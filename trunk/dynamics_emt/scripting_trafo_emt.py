@@ -151,7 +151,8 @@ for bus in circuit.buses:
     get_bus_emt_template(grid=circuit, bus=bus)
 
 gen_mdl = get_generator_thevenin_rl_emt_template_with_ref(vf=circuit.var_factory).block
-trafo_mdl = get_transformer_emt_template(vf=circuit.var_factory, name=transformer.name).block
+trafo_templ = get_transformer_emt_template(vf=circuit.var_factory, name=transformer.name)
+trafo_mdl = trafo_templ.block.children[0]
 load_mdl = get_shunt_r_emt_template(vf=circuit.var_factory, phA=True, phB=True, phC=True, name=load.name).block
 
 set_emt_model(device=gen1, model=gen_mdl, var_factory=circuit.var_factory)
@@ -385,32 +386,32 @@ print("=" * 50 + "\n")
 # =====================================================================
 tme = np.asarray(t)
 
-v_A_bus1 = find_name_in_block("v_A_Bus1_AC_emt_template", bus1_ac.emt_model)
-v_B_bus1 = find_name_in_block("v_B_Bus1_AC_emt_template", bus1_ac.emt_model)
-v_C_bus1 = find_name_in_block("v_C_Bus1_AC_emt_template", bus1_ac.emt_model)
+v_A_bus1 = find_name_in_block("v_A", bus1_ac.emt_model)
+v_B_bus1 = find_name_in_block("v_B", bus1_ac.emt_model)
+v_C_bus1 = find_name_in_block("v_C", bus1_ac.emt_model)
 
-v_A_bus2 = find_name_in_block("v_A_Bus2_AC_emt_template", bus2_ac.emt_model)
-v_B_bus2 = find_name_in_block("v_B_Bus2_AC_emt_template", bus2_ac.emt_model)
-v_C_bus2 = find_name_in_block("v_C_Bus2_AC_emt_template", bus2_ac.emt_model)
+v_A_bus2 = find_name_in_block("v_A", bus2_ac.emt_model)
+v_B_bus2 = find_name_in_block("v_B", bus2_ac.emt_model)
+v_C_bus2 = find_name_in_block("v_C", bus2_ac.emt_model)
 
-i_A_gen = find_name_in_block("i_A_emt_thevenin_eq_generator_template", gen_mdl)
-i_B_gen = find_name_in_block("i_B_emt_thevenin_eq_generator_template", gen_mdl)
-i_C_gen = find_name_in_block("i_C_emt_thevenin_eq_generator_template", gen_mdl)
+i_A_gen = find_name_in_block("i_A", gen_mdl)
+i_B_gen = find_name_in_block("i_B", gen_mdl)
+i_C_gen = find_name_in_block("i_C", gen_mdl)
 
-if_A_trafo = find_name_in_block(f"if_{transformer.name}_A", trafo_mdl)
-if_B_trafo = find_name_in_block(f"if_{transformer.name}_B", trafo_mdl)
-if_C_trafo = find_name_in_block(f"if_{transformer.name}_C", trafo_mdl)
-it_A_trafo = find_name_in_block(f"it_{transformer.name}_A", trafo_mdl)
-it_B_trafo = find_name_in_block(f"it_{transformer.name}_B", trafo_mdl)
-it_C_trafo = find_name_in_block(f"it_{transformer.name}_C", trafo_mdl)
+if_A_trafo = find_name_in_block("if_A", trafo_mdl)
+if_B_trafo = find_name_in_block("if_B", trafo_mdl)
+if_C_trafo = find_name_in_block("if_C", trafo_mdl)
+it_A_trafo = find_name_in_block("it_A", trafo_mdl)
+it_B_trafo = find_name_in_block("it_B", trafo_mdl)
+it_C_trafo = find_name_in_block("it_C", trafo_mdl)
 
-i_f_A_trafo = find_name_in_block(f"i_f_A_{transformer.name}", trafo_mdl)
-i_f_B_trafo = find_name_in_block(f"i_f_B_{transformer.name}", trafo_mdl)
-i_f_C_trafo = find_name_in_block(f"i_f_C_{transformer.name}", trafo_mdl)
+i_f_A_trafo = find_name_in_block("i_f_A", trafo_mdl)
+i_f_B_trafo = find_name_in_block("i_f_B", trafo_mdl)
+i_f_C_trafo = find_name_in_block("i_f_C", trafo_mdl)
 
-i_A_load = find_name_in_block(f"i_A_{load_mdl.name}", load_mdl)
-i_B_load = find_name_in_block(f"i_B_{load_mdl.name}", load_mdl)
-i_C_load = find_name_in_block(f"i_C_{load_mdl.name}", load_mdl)
+i_A_load = find_name_in_block("i_A", load_mdl)
+i_B_load = find_name_in_block("i_B", load_mdl)
+i_C_load = find_name_in_block("i_C", load_mdl)
 
 required_vars = [
     v_A_bus1, v_B_bus1, v_C_bus1,

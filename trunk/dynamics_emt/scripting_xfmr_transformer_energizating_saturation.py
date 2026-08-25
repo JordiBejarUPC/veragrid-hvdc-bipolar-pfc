@@ -484,7 +484,8 @@ def build_grid_and_run(event_time: float) -> dict[str, Any]:
     for bus in grid.buses:
         get_bus_emt_template(grid, bus)
 
-    xfmr_mdl = get_xfmr_emt_template(vf=grid.var_factory, name="xfmr_sat_test").block
+    xfmr_templ = get_xfmr_emt_template(vf=grid.var_factory, name="xfmr_sat_test")
+    xfmr_mdl = xfmr_templ.block.children[0]
     gen_mdl = get_generator_thevenin_rl_emt_template_with_ref(vf=grid.var_factory, name="gen_sat_test").block
     load_mdl = get_shunt_r_emt_template(vf=grid.var_factory, phA=True, phB=True, phC=True).block
 
@@ -509,21 +510,21 @@ def build_grid_and_run(event_time: float) -> dict[str, Any]:
     xfmr_mdl.set_parameter_in_model(var_name="xfmr_core_b_prime_xfmr_sat_test", new_value=0.15) # 0.25
 
     # Secondary almost open.
-    load_mdl.set_parameter_in_model(var_name="R_A_Shunt_R_3ph", new_value=1e9)
-    load_mdl.set_parameter_in_model(var_name="R_B_Shunt_R_3ph", new_value=1e9)
-    load_mdl.set_parameter_in_model(var_name="R_C_Shunt_R_3ph", new_value=1e9)
+    load_mdl.set_parameter_in_model(var_name="R_A", new_value=1e9)
+    load_mdl.set_parameter_in_model(var_name="R_B", new_value=1e9)
+    load_mdl.set_parameter_in_model(var_name="R_C", new_value=1e9)
 
     ##################################################################################################
     # Generator breaker-less energization
     ##################################################################################################
-    gen_mdl.set_parameter_in_model(var_name="E_scale_gen_sat_test", new_value=1.0)
+    gen_mdl.set_parameter_in_model(var_name="E_scale", new_value=1.0)
 
-    gen_escale = find_name_in_block("E_scale_gen_sat_test", gen_mdl)
+    gen_escale = find_name_in_block("E_scale", gen_mdl)
     if gen_escale is None:
         raise ValueError(
-            "The generator EMT template does not expose E_scale_gen_sat_test. "
-            "Add a local event_dict parameter E_scale to the Thevenin EMT generator template "
-            "and multiply Epk_expr by E_scale in e_A/e_B/e_C."
+            "The generator EMT template does not expose E_scale. "
+            "Check that the Thevenin EMT generator template keeps the refactored unsuffixed "
+            "runtime parameter name E_scale in its event_dict and equations."
         )
 
     events_group = EmtEventsGroup(name=f"xfmr_inrush_demo_{event_time:.6f}")
@@ -618,39 +619,39 @@ def build_grid_and_run(event_time: float) -> dict[str, Any]:
     ##################################################################################################
     # Extract trajectories
     ##################################################################################################
-    vA_hv = get_series(problem, y, "v_A_Bus_HV_emt_template")
-    vB_hv = get_series(problem, y, "v_B_Bus_HV_emt_template")
-    vC_hv = get_series(problem, y, "v_C_Bus_HV_emt_template")
+    vA_hv = get_series(problem, y, "v_A")
+    vB_hv = get_series(problem, y, "v_B")
+    vC_hv = get_series(problem, y, "v_C")
 
-    vA_lv = get_series(problem, y, "v_A_Bus_LV_emt_template")
-    vB_lv = get_series(problem, y, "v_B_Bus_LV_emt_template")
-    vC_lv = get_series(problem, y, "v_C_Bus_LV_emt_template")
+    vA_lv = get_series(problem, y, "v_A")
+    vB_lv = get_series(problem, y, "v_B")
+    vC_lv = get_series(problem, y, "v_C")
 
-    ifA = get_series(problem, y, "if_A_xfmr_sat_test")
-    ifB = get_series(problem, y, "if_B_xfmr_sat_test")
-    ifC = get_series(problem, y, "if_C_xfmr_sat_test")
+    ifA = get_series(problem, y, "if_A")
+    ifB = get_series(problem, y, "if_B")
+    ifC = get_series(problem, y, "if_C")
 
-    itA = get_series(problem, y, "it_A_xfmr_sat_test")
-    itB = get_series(problem, y, "it_B_xfmr_sat_test")
-    itC = get_series(problem, y, "it_C_xfmr_sat_test")
+    itA = get_series(problem, y, "it_A")
+    itB = get_series(problem, y, "it_B")
+    itC = get_series(problem, y, "it_C")
 
-    iA_gen = get_series(problem, y, "i_A_gen_sat_test")
-    iB_gen = get_series(problem, y, "i_B_gen_sat_test")
-    iC_gen = get_series(problem, y, "i_C_gen_sat_test")
+    iA_gen = get_series(problem, y, "i_A")
+    iB_gen = get_series(problem, y, "i_B")
+    iC_gen = get_series(problem, y, "i_C")
 
-    lam_A = get_series(problem, y, "lam_leg_A_xfmr_sat_test")
-    lam_B = get_series(problem, y, "lam_leg_B_xfmr_sat_test")
-    lam_C = get_series(problem, y, "lam_leg_C_xfmr_sat_test")
+    lam_A = get_series(problem, y, "lam_leg_A")
+    lam_B = get_series(problem, y, "lam_leg_B")
+    lam_C = get_series(problem, y, "lam_leg_C")
 
-    i_leg_core_A = get_series(problem, y, "i_leg_core_A_xfmr_sat_test")
-    i_leg_core_B = get_series(problem, y, "i_leg_core_B_xfmr_sat_test")
-    i_leg_core_C = get_series(problem, y, "i_leg_core_C_xfmr_sat_test")
+    i_leg_core_A = get_series(problem, y, "i_leg_core_A")
+    i_leg_core_B = get_series(problem, y, "i_leg_core_B")
+    i_leg_core_C = get_series(problem, y, "i_leg_core_C")
 
-    i_mag_A = get_series(problem, y, "i_mag_A_xfmr_sat_test")
-    i_mag_B = get_series(problem, y, "i_mag_B_xfmr_sat_test")
-    i_mag_C = get_series(problem, y, "i_mag_C_xfmr_sat_test")
+    i_mag_A = get_series(problem, y, "i_mag_A")
+    i_mag_B = get_series(problem, y, "i_mag_B")
+    i_mag_C = get_series(problem, y, "i_mag_C")
 
-    i_return = get_series(problem, y, "i_return_total_xfmr_sat_test")
+    i_return = get_series(problem, y, "i_return_total")
 
     lam_sum = None
     if lam_A is not None and lam_B is not None and lam_C is not None:

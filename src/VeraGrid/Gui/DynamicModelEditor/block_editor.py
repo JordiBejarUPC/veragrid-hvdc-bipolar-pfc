@@ -18,8 +18,7 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
 from PySide6.QtWidgets import (QApplication, QFrame, QGraphicsView, QHBoxLayout,
     QHeaderView, QLabel, QLineEdit, QMainWindow,
     QPushButton, QSizePolicy, QSpacerItem, QSplitter,
-    QTableView, QToolBox, QTreeView, QVBoxLayout,
-    QWidget)
+    QToolBox, QTreeView, QVBoxLayout, QWidget)
 from VeraGrid.Gui.Icons.icons_rc import *
 
 class Ui_BlockEditorWindow(object):
@@ -48,7 +47,7 @@ class Ui_BlockEditorWindow(object):
         self.frame_7.setFrameShadow(QFrame.Shadow.Raised)
         self.verticalLayout_3 = QVBoxLayout(self.frame_7)
         self.verticalLayout_3.setObjectName(u"verticalLayout_3")
-        self.verticalLayout_3.setContentsMargins(0, 10, 6, 0)
+        self.verticalLayout_3.setContentsMargins(0, 0, 6, 0)
         self.graphicsView = QGraphicsView(self.frame_7)
         self.graphicsView.setObjectName(u"graphicsView")
 
@@ -92,45 +91,6 @@ class Ui_BlockEditorWindow(object):
         self.verticalLayout_13.addWidget(self.libraryTreeView)
 
         self.toolBox.addItem(self.page_7, u"Library")
-        self.page = QWidget()
-        self.page.setObjectName(u"page")
-        self.page.setGeometry(QRect(0, 0, 424, 288))
-        self.verticalLayout_7 = QVBoxLayout(self.page)
-        self.verticalLayout_7.setObjectName(u"verticalLayout_7")
-        self.verticalLayout_7.setContentsMargins(0, 0, 0, 0)
-        self.variablesTableView = QTableView(self.page)
-        self.variablesTableView.setObjectName(u"variablesTableView")
-        self.variablesTableView.setFrameShape(QFrame.Shape.NoFrame)
-
-        self.verticalLayout_7.addWidget(self.variablesTableView)
-
-        self.toolBox.addItem(self.page, u"Variables")
-        self.page_2 = QWidget()
-        self.page_2.setObjectName(u"page_2")
-        self.page_2.setGeometry(QRect(0, 0, 424, 288))
-        self.verticalLayout_8 = QVBoxLayout(self.page_2)
-        self.verticalLayout_8.setObjectName(u"verticalLayout_8")
-        self.verticalLayout_8.setContentsMargins(0, 0, 0, 0)
-        self.parametersTableView = QTableView(self.page_2)
-        self.parametersTableView.setObjectName(u"parametersTableView")
-        self.parametersTableView.setFrameShape(QFrame.Shape.NoFrame)
-
-        self.verticalLayout_8.addWidget(self.parametersTableView)
-
-        self.toolBox.addItem(self.page_2, u"Parameters")
-        self.page_3 = QWidget()
-        self.page_3.setObjectName(u"page_3")
-        self.page_3.setGeometry(QRect(0, 0, 424, 288))
-        self.verticalLayout_9 = QVBoxLayout(self.page_3)
-        self.verticalLayout_9.setObjectName(u"verticalLayout_9")
-        self.verticalLayout_9.setContentsMargins(0, 0, 0, 0)
-        self.equationsTableView = QTableView(self.page_3)
-        self.equationsTableView.setObjectName(u"equationsTableView")
-        self.equationsTableView.setFrameShape(QFrame.Shape.NoFrame)
-
-        self.verticalLayout_9.addWidget(self.equationsTableView)
-
-        self.toolBox.addItem(self.page_3, u"Equations")
 
         self.verticalLayout_6.addWidget(self.toolBox)
 
@@ -182,10 +142,6 @@ class Ui_BlockEditorWindow(object):
         BlockEditorWindow.setWindowTitle(QCoreApplication.translate("BlockEditorWindow", u"BlockEditorWindow", None))
         self.librarySearchLineEdit.setPlaceholderText(QCoreApplication.translate("BlockEditorWindow", u"Search basic blocks", None))
         self.toolBox.setItemText(self.toolBox.indexOf(self.page_7), QCoreApplication.translate("BlockEditorWindow", u"Library", None))
-        self.toolBox.setItemText(self.toolBox.indexOf(self.page), QCoreApplication.translate("BlockEditorWindow", u"Variables", None))
-        self.toolBox.setItemText(self.toolBox.indexOf(self.page_2), QCoreApplication.translate("BlockEditorWindow", u"Parameters", None))
-        self.toolBox.setItemText(self.toolBox.indexOf(self.page_3), QCoreApplication.translate("BlockEditorWindow", u"Equations", None))
         self.deviceLabel.setText("")
         self.doItButton.setText("")
     # retranslateUi
-

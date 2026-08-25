@@ -13,7 +13,143 @@ from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, _expr_to_di
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
 from VeraGridEngine.enumerations import VarPowerFlowReferenceType, ParamPowerFlowReferenceType
 from VeraGridEngine.Utils.Symbolic.compare_expressions_structure import equivalent_systems
+from VeraGridEngine.Utils.Symbolic.dynamic_connection_intent import (DynamicConnectionIntent,
+                                                                     DynamicConnectionIntentDirection,
+                                                                     DynamicConnectionIntentOrigin,
+                                                                     dynamic_connection_intent_from_dict,
+                                                                     dynamic_connection_intent_to_dict)
 from VeraGridEngine.Utils.Symbolic.variable_alignment_engine import align_variables
+
+
+def normalize_dynamic_connection_intents(block: "Block") -> None:
+    """
+    Keep one current typed state for each connection-intent identity.
+
+    :param block: Block whose intents must be normalized.
+    :return: None.
+    """
+    normalized_entries: List[DynamicConnectionIntent] = list()
+    entry: object
+    existing_index: int
+    existing_entry: DynamicConnectionIntent
+    matching_index: int | None
+
+    for entry in block.connection_intents:
+        if isinstance(entry, DynamicConnectionIntent):
+            matching_index = None
+            for existing_index, existing_entry in enumerate(normalized_entries):
+                if existing_entry.has_same_identity(entry):
+                    matching_index = existing_index
+                else:
+                    pass
+
+            # Replacing the previous value makes the list represent current
+            # desired state instead of retaining an edit history.
+            if matching_index is None:
+                normalized_entries.append(entry)
+            else:
+                normalized_entries[matching_index] = entry
+        else:
+            pass
+
+    block.connection_intents = normalized_entries
+
+
+def find_matching_dynamic_connection_intent(block: "Block",
+                                             origin: DynamicConnectionIntentOrigin,
+                                             root_reference: VarPowerFlowReferenceType,
+                                             direction: DynamicConnectionIntentDirection,
+                                             internal_block_uid: int,
+                                             internal_variable_uid: int) -> DynamicConnectionIntent | None:
+    """
+    Find one exact connection-intent record on one block.
+
+    :param block: Root block that owns the persisted intents.
+    :param origin: Required provenance.
+    :param root_reference: Semantic root-interface reference.
+    :param direction: Connection direction.
+    :param internal_block_uid: Internal block UID.
+    :param internal_variable_uid: Internal variable non-mutable UID.
+    :return: Matching record or ``None``.
+    """
+    entry: DynamicConnectionIntent
+
+    for entry in block.connection_intents:
+        if entry.get_origin() != origin:
+            pass
+        elif entry.get_root_reference() != root_reference:
+            pass
+        elif entry.get_direction() != direction:
+            pass
+        elif entry.get_internal_block_uid() != internal_block_uid:
+            pass
+        elif entry.get_internal_variable_uid() != internal_variable_uid:
+            pass
+        else:
+            return entry
+
+    return None
+
+
+def upsert_dynamic_connection_intent(block: "Block", intent: DynamicConnectionIntent) -> None:
+    """
+    Replace the current state of one connection intent on a block.
+
+    :param block: Root block that owns the connection intents.
+    :param intent: Current desired connection state.
+    :return: None.
+    """
+    block.connection_intents.append(intent)
+    normalize_dynamic_connection_intents(block=block)
+
+
+def rehash_block_var_keyed_dicts(block_model: "Block") -> None:
+    """
+    Rebuild every block dictionary whose keys are mutable-UID variables.
+
+    ``Var.__hash__`` depends on ``uid``. Identity alignment can intentionally
+    update that value, so all Var-keyed containers must be rebuilt immediately
+    afterward to restore valid hash buckets.
+
+    :param block_model: Block whose variable-keyed dictionaries must be rebuilt.
+    :return: None.
+    """
+    block_model.parameters = dict(block_model.parameters.items())
+    block_model.init_values = dict(block_model.init_values.items())
+    block_model.init_eqs = dict(block_model.init_eqs.items())
+    block_model.diff_init_eqs = dict(block_model.diff_init_eqs.items())
+    block_model.discrete_eqs = dict(block_model.discrete_eqs.items())
+    block_model.event_dict = dict(block_model.event_dict.items())
+    block_model.mode_dict = dict(block_model.mode_dict.items())
+    block_model.boolean_guards = dict(block_model.boolean_guards.items())
+
+
+def rehash_block_tree_var_keyed_dicts(root_block: "Block") -> None:
+    """
+    Rebuild variable-keyed dictionaries throughout one symbolic block tree.
+
+    :param root_block: Root of the block tree to repair.
+    :return: None.
+    """
+    block_model: Block
+    for block_model in root_block.get_all_blocks():
+        rehash_block_var_keyed_dicts(block_model=block_model)
+
+
+def refresh_block_tree_var_name_mappings(root_block: "Block") -> None:
+    """
+    Rebuild algebraic-variable lookups after connected names change.
+
+    :param root_block: Root of the block tree whose names were propagated.
+    :return: None.
+    """
+    block_model: Block
+    algebraic_var: Var
+
+    for block_model in root_block.get_all_blocks():
+        block_model.var_mapping = dict()
+        for algebraic_var in block_model.algebraic_vars:
+            block_model.var_mapping[algebraic_var.name] = algebraic_var
 
 
 def _new_uid() -> int:
@@ -78,6 +214,7 @@ class Block:
                  mode_dict: Dict[Var, Expr] | None = None,
                  boolean_guards: Dict[Var, Expr | Comparison] | None = None,
                  procedural_logic: List[Any] | None = None,
+                 connection_intents: List[DynamicConnectionIntent] | None = None,
                  external_mapping: Dict[VarPowerFlowReferenceType, Var] | None = None,
                  api_obj_mapping: Dict[ParamPowerFlowReferenceType, Var] | None = None,
                  is_decomposable: bool = True,
@@ -86,20 +223,33 @@ class Block:
         """
         This represents a group of equations or a group of blocks
 
-        :param algebraic_vars: List of non-differential variables (AKA algebraic)
-        :param algebraic_eqs: List of equations that provide values for the algebraic variables
-        :param state_vars: List of differential variables (AKA state variables)
-        :param state_eqs: List of equations that provide values for the state variables
-        :param children: List of other blocks to be flattened later into this block
-        :param in_vars: List of variables from other blocks that we use here
-        :param out_vars: List of variables that already exist in algebraic_vars or state_vars that we want to expose
-        :param init_eqs: List of equations that help initializing the block variables (algebraic and state)
-        :param diff_init_eqs: List of equations that help initializing the block derivatives of state variables
-         :param event_dict: Dictionary of parameters that can change during the simulations
-         :param procedural_logic: List of runtime procedural logic objects attached to the block
-         :param external_mapping: Dictionary of vars that are related to the Power flow initialization
-         :param name: name of the block
-         """
+        :param state_vars: Differential state variables solved by the block.
+        :param state_eqs: Right-hand-side equations associated with ``state_vars``.
+        :param algebraic_vars: Non-differential variables solved by the block.
+        :param algebraic_eqs: Residual equations associated with ``algebraic_vars``.
+        :param inequalities: Inequality constraints enforced by the block.
+        :param diff_vars: Explicit derivative variables associated with state variables.
+        :param reformulated_vars: Auxiliary variables introduced by symbolic reformulation.
+        :param differential_eqs: Legacy differential residual equations retained for compatible model loading.
+        :param parameters: Static symbolic parameters and their constant values.
+        :param init_values: Explicit initial values assigned to symbolic variables.
+        :param init_eqs: Equations used to initialize algebraic and state variables.
+        :param diff_init_eqs: Equations used to initialize state-variable derivatives.
+        :param discrete_eqs: Discrete update equations keyed by their target variables.
+        :param children: Nested blocks flattened with this block during compilation.
+        :param in_vars: Variables consumed from outside the block.
+        :param out_vars: Internal variables exposed to other blocks.
+        :param event_dict: Runtime-changeable parameters and their current expressions.
+        :param mode_dict: Discrete mode variables and their current expressions.
+        :param boolean_guards: Boolean guard variables and the comparisons that drive them.
+        :param procedural_logic: Runtime procedural-logic objects attached to the block.
+        :param connection_intents: Semantic dynamic connections retained across interface reconstruction.
+        :param external_mapping: Variables initialized from power-flow result references.
+        :param api_obj_mapping: Static parameters mapped to properties of the associated grid device.
+        :param is_decomposable: Whether the editor and compiler may expose the block's internal structure.
+        :param name: Human-readable block name.
+        :param uid: Stable block identifier, or ``None`` to allocate a new identifier.
+        """
 
         self.name: str = name
 
@@ -151,6 +301,12 @@ class Block:
         self.mode_dict: Dict[Var, Expr | Const] = dict() if mode_dict is None else mode_dict
         self.boolean_guards: Dict[Var, Expr | Comparison] = dict() if boolean_guards is None else boolean_guards
         self.procedural_logic: List[Any] = list() if procedural_logic is None else procedural_logic
+        # Root-interface intents are current semantic connection states. They
+        # are independent from the graphical wires that happen to be visible
+        # under the current network topology.
+        self.connection_intents: List[DynamicConnectionIntent] = (list()
+                                                                  if connection_intents is None
+                                                                  else connection_intents)
 
         self._diagram: BlockDiagram = BlockDiagram()
 
@@ -173,6 +329,17 @@ class Block:
             self._diagram = diagram
         else:
             raise ValueError(f"Cannot set diagram with {val}")
+
+    def set_name(self, name: str) -> None:
+        """
+        Change the block name without changing the block identity.
+
+        :param name: New block name.
+        :return: None.
+        """
+        # Only the display and serialization name changes here. The block
+        # identity remains tied to the existing uid.
+        self.name = name
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -237,6 +404,7 @@ class Block:
             },
 
             "procedural_logic": self._procedural_logic_to_dict(),
+            "connection_intents": [dynamic_connection_intent_to_dict(intent) for intent in self.connection_intents],
 
             "parameters": {
                 k.uid: {
@@ -347,6 +515,23 @@ class Block:
         # Fill the diagram
         block.diagram.parse(data.get("diagram", {}))
 
+        # Parse intents only after the complete block hierarchy exists because
+        # legacy records identify the internal variable by its port position.
+        persisted_intent: object
+        for persisted_intent in data.get("connection_intents", list()):
+            if isinstance(persisted_intent, dict):
+                parsed_intent: DynamicConnectionIntent | None = dynamic_connection_intent_from_dict(
+                    data=persisted_intent,
+                    root_block=block,
+                )
+                if parsed_intent is not None:
+                    block.connection_intents.append(parsed_intent)
+                else:
+                    pass
+            else:
+                pass
+        normalize_dynamic_connection_intents(block=block)
+
         return block
 
     def copy(self) -> "Block":
@@ -426,6 +611,7 @@ class Block:
             result.mode_dict = copy.deepcopy(self.mode_dict, memo)
             result.boolean_guards = copy.deepcopy(self.boolean_guards, memo)
             result.procedural_logic = copy.deepcopy(self.procedural_logic, memo)
+            result.connection_intents = copy.deepcopy(self.connection_intents, memo)
             result._diagram = copy.deepcopy(self._diagram, memo)
 
             extra_key: str

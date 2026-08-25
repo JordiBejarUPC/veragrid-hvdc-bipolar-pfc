@@ -24,6 +24,7 @@ from typing import Any, Optional, TYPE_CHECKING
 import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 
+from VeraGridEngine.enumerations import EngineType, LogSeverity
 from VeraGrid.Gui.AiAgent.ai_backend import ApprovalPolicy
 from VeraGrid.Gui.AiAgent.ai_backend import ChatMessage
 from VeraGrid.Gui.AiAgent.ai_backend import ConversationOrchestrator
@@ -562,7 +563,11 @@ def build_grid_error_log_entries(error_log: GridErrorLog) -> list[dict[str, obje
 
         while message_index < len(message_entries):
             entry: list[object] = message_entries[message_index]
-            severity_text: str = str(entry[3].value) if hasattr(entry[3], "value") else str(entry[3])
+            severity_value: object = entry[3]
+            if isinstance(severity_value, LogSeverity):
+                severity_text: str = severity_value.value
+            else:
+                severity_text = str(severity_value)
             entries.append(
                 {
                     "message": str(message_text),
@@ -914,7 +919,7 @@ def get_preferred_study_name_for_result_analysis(
         pass
     else:
         if current_study_name != SimulationTypes.DesignView.value:
-            if app.session.get_driver_by_name(study_name=current_study_name) is None:
+            if get_driver_from_study_name(app=app, study_name=current_study_name) is None:
                 pass
             else:
                 return current_study_name
@@ -929,7 +934,7 @@ def get_preferred_study_name_for_result_analysis(
     preferred_study_names.append(SimulationTypes.OPFTimeSeries_run.value)
 
     for current_study_name in preferred_study_names:
-        if app.session.get_driver_by_name(study_name=current_study_name) is None:
+        if get_driver_from_study_name(app=app, study_name=current_study_name) is None:
             pass
         else:
             return current_study_name
@@ -3949,12 +3954,50 @@ def get_current_study_name_from_app(app: "SimulationsMain") -> Optional[str]:
     :param app: VeraGrid main window.
     :returns: Study name or None.
     """
-    study_name_text: str = app.ui.available_results_to_color_comboBox.currentText().strip()
+    study_name_data: object = app.ui.available_results_to_color_comboBox.currentData()
+    if isinstance(study_name_data, SimulationTypes):
+        study_name_text: str = study_name_data.value
+    else:
+        study_name_text = str(study_name_data) if study_name_data is not None else ""
 
     if len(study_name_text) > 0:
         return study_name_text
     else:
         return None
+
+
+def get_simulation_type_from_study_name(study_name: str) -> SimulationTypes | None:
+    """
+    Resolve a displayed study name into a simulation enum when possible.
+
+    :param study_name: Study display name.
+    :returns: Simulation type or None for custom names.
+    """
+    simulation_type: SimulationTypes
+    for simulation_type in SimulationTypes:
+        # The enum value is the stable source label; translations must not drive runtime lookup.
+        if study_name == simulation_type.value:
+            return simulation_type
+        else:
+            pass
+
+    return None
+
+
+def get_driver_from_study_name(app: "SimulationsMain", study_name: str) -> Any:
+    """
+    Resolve a study driver using enum lookup when the study name maps to an enum.
+
+    :param app: VeraGrid main window.
+    :param study_name: Study display or custom name.
+    :returns: Driver instance or None.
+    """
+    simulation_type: SimulationTypes | None = get_simulation_type_from_study_name(study_name=study_name)
+    if simulation_type is not None:
+        return app.session.get_driver(driver_type=simulation_type)
+    else:
+        # Custom/imported study names remain string-addressed for compatibility.
+        return app.session.get_driver_by_name(study_name=study_name)
 
 
 def get_current_solver_name_from_app(app: "SimulationsMain") -> Optional[str]:
@@ -3964,7 +4007,8 @@ def get_current_solver_name_from_app(app: "SimulationsMain") -> Optional[str]:
     :param app: VeraGrid main window.
     :returns: Solver name or None.
     """
-    solver_name_text: str = app.ui.engineComboBox.currentText().strip()
+    solver_data: EngineType | None = app.ui.engineComboBox.currentData()
+    solver_name_text: str = solver_data.value if isinstance(solver_data, EngineType) else ""
 
     if len(solver_name_text) > 0:
         return solver_name_text
@@ -4288,10 +4332,7 @@ def summarize_power_flow_time_series_results(
     summary["ignored_loading_value_count"] = int(loading_abs_values.size - valid_loading_values.size)
     summary["ignored_branch_count"] = int(np.size(valid_rate_mask) - int(np.sum(valid_rate_mask)))
 
-    if hasattr(results, "converged_values"):
-        summary["converged_time_step_count"] = int(np.sum(results.converged_values))
-    else:
-        pass
+    summary["converged_time_step_count"] = int(np.sum(results.converged_values))
 
     if valid_voltage_values.size > 0:
         summary["min_voltage_pu"] = float(np.min(valid_voltage_values))
@@ -4443,7 +4484,7 @@ def build_study_summary_payload_from_app(
         if study_name == SimulationTypes.DesignView.value:
             return False, dict(), "The active study is Design View, which has no simulation results."
         else:
-            driver: Any = app.session.get_driver_by_name(study_name=study_name)
+            driver: Any = get_driver_from_study_name(app=app, study_name=study_name)
 
     if driver is None:
         return False, dict(), f"Study '{study_name}' is not available in the current session."
@@ -4516,7 +4557,7 @@ def build_study_status_payloads_from_app(
 
     while index < len(available_studies):
         study_name: str = available_studies[index]
-        driver: Any = app.session.get_driver_by_name(study_name)
+        driver: Any = get_driver_from_study_name(app=app, study_name=study_name)
         item: dict[str, object] = dict()
 
         item["study_name"] = study_name

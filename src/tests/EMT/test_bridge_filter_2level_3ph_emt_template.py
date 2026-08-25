@@ -131,15 +131,15 @@ def _build_bridge_filter_problem() -> Tuple[GenericEmtProblem, Dict[str, Var]]:
     root_block.unify_blocks()
     static_parameter_values_mapping: Dict[Var, Const] = dict()
     problem = GenericEmtProblem(sys_block=root_block, glob_time=vf.add_var("t_bridge_filter_problem"),static_parameter_values_mapping=static_parameter_values_mapping)
-    tracked_vars["m_a"] = find_name_in_block("m_a_bridge_filter_case_bridge", problem.sys_block)
-    tracked_vars["m_b"] = find_name_in_block("m_b_bridge_filter_case_bridge", problem.sys_block)
-    tracked_vars["m_c"] = find_name_in_block("m_c_bridge_filter_case_bridge", problem.sys_block)
-    tracked_vars["gate_a"] = find_name_in_block("gate_a_bridge_filter_case_bridge", problem.sys_block)
-    tracked_vars["gate_b"] = find_name_in_block("gate_b_bridge_filter_case_bridge", problem.sys_block)
-    tracked_vars["gate_c"] = find_name_in_block("gate_c_bridge_filter_case_bridge", problem.sys_block)
-    tracked_vars["i_A"] = find_name_in_block("i_A_bridge_filter_case", problem.sys_block)
-    tracked_vars["i_B"] = find_name_in_block("i_B_bridge_filter_case", problem.sys_block)
-    tracked_vars["i_C"] = find_name_in_block("i_C_bridge_filter_case", problem.sys_block)
+    tracked_vars["m_a"] = find_name_in_block("m_a", problem.sys_block)
+    tracked_vars["m_b"] = find_name_in_block("m_b", problem.sys_block)
+    tracked_vars["m_c"] = find_name_in_block("m_c", problem.sys_block)
+    tracked_vars["gate_a"] = find_name_in_block("gate_a", problem.sys_block)
+    tracked_vars["gate_b"] = find_name_in_block("gate_b", problem.sys_block)
+    tracked_vars["gate_c"] = find_name_in_block("gate_c", problem.sys_block)
+    tracked_vars["i_A"] = find_name_in_block("i_A", problem.sys_block)
+    tracked_vars["i_B"] = find_name_in_block("i_B", problem.sys_block)
+    tracked_vars["i_C"] = find_name_in_block("i_C", problem.sys_block)
 
     return problem, tracked_vars
 
@@ -173,9 +173,9 @@ def test_bridge_filter_2level_3ph_template_has_filter_states_and_switches_all_ph
     gate_b_hist = np.zeros(len(time_samples), dtype=float)
     gate_c_hist = np.zeros(len(time_samples), dtype=float)
 
-    mode_a_idx = problem.uid2idx_event_params[next(var.uid for var in problem.get_runtime_mode_parameters() if var.name == "gate_a_mode_bridge_filter_case_bridge")]
-    mode_b_idx = problem.uid2idx_event_params[next(var.uid for var in problem.get_runtime_mode_parameters() if var.name == "gate_b_mode_bridge_filter_case_bridge")]
-    mode_c_idx = problem.uid2idx_event_params[next(var.uid for var in problem.get_runtime_mode_parameters() if var.name == "gate_c_mode_bridge_filter_case_bridge")]
+    mode_a_idx = problem.uid2idx_event_params[next(var.uid for var in problem.get_runtime_mode_parameters() if var.name == "gate_a_mode")]
+    mode_b_idx = problem.uid2idx_event_params[next(var.uid for var in problem.get_runtime_mode_parameters() if var.name == "gate_b_mode")]
+    mode_c_idx = problem.uid2idx_event_params[next(var.uid for var in problem.get_runtime_mode_parameters() if var.name == "gate_c_mode")]
 
     sample_idx = 0
     while sample_idx < len(time_samples):

@@ -6,6 +6,7 @@ import os
 import sys
 import chardet
 import subprocess
+import time
 from PySide6 import QtCore, QtWidgets
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QClipboard
@@ -14,15 +15,9 @@ from VeraGrid.Gui.AboutDialogue.about_gui import Ui_AboutDialog
 from VeraGrid.__version__ import __VeraGrid_VERSION__
 from VeraGrid.update import check_version, get_upgrade_command
 from VeraGridEngine.__version__ import __VeraGridEngine_VERSION__, copyright_msg, contributors_msg
-from VeraGridEngine.Compilers.circuit_to_gslv import (GSLV_AVAILABLE,
+from VeraGridEngine.Compilers.Gslv.activation import (GSLV_AVAILABLE,
                                                       GSLV_RECOMMENDED_VERSION,
                                                       GSLV_VERSION)
-from VeraGridEngine.Compilers.circuit_to_newton_pa import (NEWTON_PA_AVAILABLE,
-                                                           NEWTON_PA_RECOMMENDED_VERSION,
-                                                           NEWTON_PA_VERSION)
-from VeraGridEngine.Compilers.circuit_to_bentayga import (BENTAYGA_AVAILABLE,
-                                                          BENTAYGA_RECOMMENDED_VERSION,
-                                                          BENTAYGA_VERSION)
 from VeraGridEngine.Compilers.circuit_to_pgm import (PGM_AVAILABLE,
                                                      PGM_RECOMMENDED_VERSION,
                                                      PGM_VERSION)
@@ -97,6 +92,50 @@ def sanitize_tsv_field(text: str) -> str:
     text = text.replace("\n", " ")  # Unix newlines
     text = text.replace("\r", " ")  # Old mac newlines
     return text.strip()
+
+
+def run_upgrade_command(command: List[str], max_attempts: int) -> tuple[int, str, int]:
+    """
+    Run the package upgrade command with a bounded retry loop.
+
+    Some user environments fail during the first ``pip install --upgrade`` run
+    but succeed when the exact same command is executed again. Retrying a small
+    number of times is cheaper than asking the user to repeat the action
+    manually.
+
+    :param command: Upgrade command already split for ``subprocess.run``.
+    :param max_attempts: Maximum number of attempts.
+    :return: Final exit code, collected command output and number of attempts used.
+    """
+    attempt_number: int = 0
+    process_result: subprocess.CompletedProcess[str]
+    output_chunks: List[str] = list()
+    output_text: str
+
+    while attempt_number < max_attempts:
+        attempt_number = attempt_number + 1
+
+        # Capture stdout and stderr together because pip error details are
+        # useful both for retries and for the final message shown to the user.
+        process_result = subprocess.run(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True
+        )
+
+        output_text = process_result.stdout if process_result.stdout is not None else ""
+        output_chunks.append(f"Attempt {attempt_number}\n{output_text}")
+
+        if process_result.returncode == 0:
+            return process_result.returncode, "\n\n".join(output_chunks), attempt_number
+        else:
+            if attempt_number < max_attempts:
+                time.sleep(1.0)
+            else:
+                pass
+
+    return process_result.returncode, "\n\n".join(output_chunks), attempt_number
 
 
 def translate_about_dialog(source_text: str, disambiguation: str | None = None, n: int = -1) -> str:
@@ -192,7 +231,7 @@ class AboutDialogueGuiGUI(QtWidgets.QDialog):
         :return:
         """
         self.ui.librariesTableWidget.setColumnCount(4)
-        self.ui.librariesTableWidget.setRowCount(5)
+        self.ui.librariesTableWidget.setRowCount(3)
         self.ui.librariesTableWidget.setHorizontalHeaderLabels([
             self.tr("Name"),
             self.tr("version"),
@@ -214,30 +253,13 @@ class AboutDialogueGuiGUI(QtWidgets.QDialog):
         self.ui.librariesTableWidget.setItem(1, 2, QtWidgets.QTableWidgetItem(GSLV_RECOMMENDED_VERSION))
         self.ui.librariesTableWidget.setItem(1, 3, QtWidgets.QTableWidgetItem(str(GSLV_AVAILABLE)))
 
-        # Newton
-        self.ui.librariesTableWidget.setItem(2, 0, QtWidgets.QTableWidgetItem("NewtonPa"))
-        self.ui.librariesTableWidget.setItem(2, 1, QtWidgets.QTableWidgetItem(NEWTON_PA_VERSION
-                                                                              if NEWTON_PA_AVAILABLE else
-                                                                              self.tr("Not installed")))
-
-        self.ui.librariesTableWidget.setItem(2, 2, QtWidgets.QTableWidgetItem(NEWTON_PA_RECOMMENDED_VERSION))
-        self.ui.librariesTableWidget.setItem(2, 3, QtWidgets.QTableWidgetItem(str(NEWTON_PA_AVAILABLE)))
-
-        # Bentayga
-        self.ui.librariesTableWidget.setItem(3, 0, QtWidgets.QTableWidgetItem("Bentayga"))
-        self.ui.librariesTableWidget.setItem(3, 1, QtWidgets.QTableWidgetItem(BENTAYGA_VERSION
-                                                                              if BENTAYGA_AVAILABLE else
-                                                                              self.tr("Not installed")))
-        self.ui.librariesTableWidget.setItem(3, 2, QtWidgets.QTableWidgetItem(BENTAYGA_RECOMMENDED_VERSION))
-        self.ui.librariesTableWidget.setItem(3, 3, QtWidgets.QTableWidgetItem(str(BENTAYGA_AVAILABLE)))
-
         # PGM
-        self.ui.librariesTableWidget.setItem(4, 0, QtWidgets.QTableWidgetItem("power-grid-model"))
-        self.ui.librariesTableWidget.setItem(4, 1, QtWidgets.QTableWidgetItem(PGM_VERSION
+        self.ui.librariesTableWidget.setItem(2, 0, QtWidgets.QTableWidgetItem("power-grid-model"))
+        self.ui.librariesTableWidget.setItem(2, 1, QtWidgets.QTableWidgetItem(PGM_VERSION
                                                                               if PGM_AVAILABLE else
                                                                               self.tr("Not installed")))
-        self.ui.librariesTableWidget.setItem(4, 2, QtWidgets.QTableWidgetItem(PGM_RECOMMENDED_VERSION))
-        self.ui.librariesTableWidget.setItem(4, 3, QtWidgets.QTableWidgetItem(str(PGM_AVAILABLE)))
+        self.ui.librariesTableWidget.setItem(2, 2, QtWidgets.QTableWidgetItem(PGM_RECOMMENDED_VERSION))
+        self.ui.librariesTableWidget.setItem(2, 3, QtWidgets.QTableWidgetItem(str(PGM_AVAILABLE)))
 
     def fill_libs(self):
 
@@ -279,14 +301,34 @@ class AboutDialogueGuiGUI(QtWidgets.QDialog):
         Upgrade VeraGrid
         :return:
         """
-        list_files = subprocess.run(self.upgrade_cmd,
-                                    stdout=subprocess.PIPE,
-                                    text=True,
-                                    input="Hello from the other side")  # upgrade_cmd is a list already
-        if list_files.returncode != 0:
-            self.msg("The exit code was: %d" % list_files.returncode)
+        max_attempts: int = 3
+        return_code: int
+        command_output: str
+        attempts_used: int
+        message_text: str
+        output_excerpt: str
+
+        return_code, command_output, attempts_used = run_upgrade_command(
+            command=self.upgrade_cmd,
+            max_attempts=max_attempts
+        )
+
+        output_excerpt = command_output[-4000:] if len(command_output) > 4000 else command_output
+
+        if return_code != 0:
+            message_text = (
+                f"VeraGrid update failed after {attempts_used} attempt(s).\n"
+                f"Exit code: {return_code}\n\n"
+                f"Command output:\n{output_excerpt}"
+            )
+            self.msg(message_text)
         else:
-            self.msg('VeraGrid updated successfully')
+            if attempts_used == 1:
+                message_text = 'VeraGrid updated successfully'
+            else:
+                message_text = f'VeraGrid updated successfully after {attempts_used} attempts'
+
+            self.msg(message_text)
 
     def copy_libs(self):
         """
@@ -334,9 +376,9 @@ class AboutDialogueGuiGUI(QtWidgets.QDialog):
         self.ui.licenseTextEdit.setPlainText(license_txt)
 
 
-if __name__ == "__main__":
-    app = QtWidgets.QApplication(sys.argv)
-    window = AboutDialogueGuiGUI()
-    # window.resize(1.61 * 700.0, 600.0)  # golden ratio
-    window.show()
-    sys.exit(app.exec())
+# if __name__ == "__main__":
+#     app = QtWidgets.QApplication(sys.argv)
+#     window = AboutDialogueGuiGUI()
+#     # window.resize(1.61 * 700.0, 600.0)  # golden ratio
+#     window.show()
+#     sys.exit(app.exec())

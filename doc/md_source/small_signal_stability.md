@@ -1,41 +1,192 @@
-# 🔍 Small-Signal stability analysis
+# 🔍Small-Signal Stability Analysis
 
-RMS Small-Signal Stability assessment is crucial for any system and of course, VeraGrid has it.
+RMS small-signal stability analysis linearizes the RMS dynamic model around one operating point and computes the corresponding eigenvalues and modal information.
 
-⚠️Before performing small-signal stability analysis, a power flow calculation must be completed! 
-### Settings
+Before running the RMS small-signal assessment, a power-flow solution must exist because the RMS model is initialized from that operating point.
+
+## RMS Workflow
+
+The RMS small-signal driver follows two stages.
+
+1. Build and initialize the RMS DAE model from the grid and the power-flow results.
+2. Evaluate the linearization at the requested assessment time.
+
+If `ss_assessment_time == 0.0`, the linearization is computed directly at the initialized RMS operating point.
+
+If `ss_assessment_time > 0.0`, the driver first runs an RMS simulation from `t = 0` up to the requested assessment instant, and then linearizes the model at that dynamic state.
+
+## Settings
+
 This is the Small-Signal settings page:
 
-![](figures/smallsignal_settings.png)
+![](figures/dynamics/dynamic_settings.png)
 
- The main setting in Small-Signal Stability assessment is the time instant when the analysis is performed. 
- Therefore, if the assessment time is zero, no dynamic simulation is needed and the only parameter to set is the
- assessment time itself. Otherwise, Rms dynamic simulation parameters must be considered.
+### Small-signal settings
 
-Settings from Small-signal:
-- **Assessment time (s)**: The time instant in seconds where the stability assessment is performed.
+- **Assessment time (s)**: Time instant where the linearization is evaluated.
+- **Modes**: Number of eigenvalues to compute.
 
-Settings from RMS simulations that must be considered:
+The `Modes` option selects the numerical path used by the driver.
 
-- **Integration method**: The integration method to use if the Rms dynamic simulation is performed.
+- If `k = 0`, all available modes are computed with the dense algorithm.
+- If `k >= n - 1`, where `n = number of states + number of differential variables`, the driver also falls back to the dense algorithm.
+- If `0 < k < n - 1`, the sparse algorithm is used and returns only `k` modes.
 
-    - Trapezoidal
-    - Implicit euler
+### RMS settings used by the assessment
 
-- **Tolerance**: per-unit error tolerance to use in the integration method. Only needed if the Rms dynamic simulation is performed.
+When `ss_assessment_time > 0.0`, the RMS simulation settings become part of the workflow because the system must first be simulated to the target instant.
 
-- **Time step (s)**: Step size in seconds between each numerical evaluation in the integration method. Smaller intervals
-increase accuracy but require more computation. Only needed if the Rms dynamic simulation is performed.
+- **Integration method**: RMS time-domain integrator used before linearization.
+  - `DynamicIntegrationMethod.DaeBackEuler`
+- **Time step (s)**: RMS integration step used to reach the assessment time.
+- **Maximum iterations**: Nonlinear iterations allowed inside each implicit RMS step.
+- **Initialization method**: RMS initialization strategy used to build the operating point before the simulation starts.
+  - For example: `RmsInitializationMethod.PseudoTransient`
+  - Or: `RmsInitializationMethod.Explicit`
+- **Simulation time**: Must be consistent with the requested assessment time when the RMS simulation is used.
+- **Verbose**: Controls the amount of printed diagnostic information.
 
-### Results
-The available results are the following:
+The small-signal driver currently advances the pre-assessment RMS simulation with the RMS integration method selected in `RmsOptions` and then evaluates the Jacobians at the requested time.
 
-- **State matrix**: State matrix of the state-space representation of the system.
-- **Modes**: Table with the modes and damping ratios and oscillation frequencies of the complex conjugate modes.
-- **Participation factors**: The participation factor of variable *k* in mode *i* is found in row *k*, column *i*. 
-- **S-Domain stability plot**: available with different imaginary axis units: "rad/s" or "Hz".
+## Numerical Formulation
 
-![](figures/SDomain_plot_VeraGrid.png)
+The RMS small-signal implementation supports two related formulations.
+
+### Standard formulation
+
+When the RMS model has no differential-variable block in the generalized sense, the driver builds the classical reduced state matrix
+
+$$
+A = fx - fy \, gy^{-1} \, gx
+$$
+
+from the DAE Jacobians.
+
+The eigenanalysis is then the standard problem
+
+$$
+A v = \lambda v
+$$
+
+In this case:
+
+- the state matrix stored in the results is the reduced state matrix
+- participation factors are computed from the left and right eigenvectors of `A`
+- the participation-factor rows usually align with the RMS state variables
+
+### Generalized formulation
+
+When the RMS model includes differential variables that must be retained explicitly, the driver solves the generalized eigenvalue problem
+
+$$
+A v = \lambda E v
+$$
+
+using the matrices returned by `problem.get_static_state_matrix(x, dx)` and `problem.get_E_matrix(x, dx)`.
+
+In this case:
+
+- the state matrix stored in the results corresponds to the unreduced generalized linearization matrix used for the eigenanalysis
+- participation factors are computed with the generalized normalization
+
+$$
+w_i^T E v_i = 1
+$$
+- the participation-factor rows and state-matrix axes can include both state and algebraic variables
+
+This is why the results object also stores:
+
+- `stat_vars_array`
+- `algebraic_vars_array`
+
+Those arrays identify how the result tables must be labelled in standard and generalized cases.
+
+## Dense vs Sparse Calculation
+
+The RMS driver exposes two eigensolution paths.
+
+### Dense calculation
+
+Dense calculation is used when all modes are requested.
+
+- It computes the complete eigenvalue spectrum.
+- It is the path used when `k = 0`.
+- It is also used when `k` is large enough that sparse extraction is no longer meaningful.
+- For the standard formulation it solves the full eigenproblem of the reduced matrix.
+- For the generalized formulation it solves the dense generalized eigenproblem.
+
+Dense calculation is the correct choice when:
+
+- the full modal spectrum is required
+- a complete participation-factor matrix is needed
+- the model is small or medium enough that a full solve is affordable
+
+### Sparse calculation
+
+Sparse calculation is used when only a subset of modes is requested.
+
+- It computes only `k` eigenvalues.
+- It is used when `0 < k < n - 1`.
+- It relies on sparse linear algebra and shift-and-invert style operators.
+- It is the preferred path for large RMS models when only the dominant modes are needed.
+
+Sparse calculation is the correct choice when:
+
+- the model is large
+- only a limited number of electromechanical or critical modes are required
+- full-spectrum dense analysis would be unnecessarily expensive
+
+## Results
+
+The RMS small-signal study provides four result tables.
+
+- **Modes**: Modal properties and the source table for the S-domain plot.
+- **Participation factors**: Normalized participation-factor matrix. Row `k`, column `i` gives the participation of variable `k` in mode `i`.
+- **State matrix**: Linearized state or generalized system matrix used by the modal analysis.
+- **Right eigenvectors**: Right eigenvector matrix and the source table for the mode-shape plots.
+
+### Modes and the S-domain plot
+
+The **Modes** result replaces the former separate **S-Domain Plot** and **S-Domain Plot in Hz** entries. It contains one row per eigenvalue and the following columns.
+
+| Column | Description |
+|--------|-------------|
+| `Real` | Real part of the eigenvalue. |
+| `Imaginary [rad/s]` | Signed imaginary part in radians per second. |
+| `Imaginary [Hz]` | Signed imaginary part divided by $2\pi$. Both members of a conjugate pair are retained. |
+| `Damping ratio` | Damping ratio reported by the modal calculation. |
+| `Oscillation frequency` | Frequency in hertz assigned only to the representative member of an oscillatory conjugate pair. Other rows contain `NaN`. |
+
+Clicking **Plot** with no selection draws all visible modes in the complex plane using `Real` and `Imaginary [rad/s]`. The plot includes the $\zeta=5\%$ damping boundary, and hovering over a point shows its mode name and coordinates.
+
+To plot a subset of modes, select cells or complete rows in the **Modes** table before clicking **Plot**. A filter applied to the table also limits the visible modes. When there is no selection, every mode that remains visible after filtering is plotted.
+
+To use hertz on the imaginary axis:
+
+1. Hold `Ctrl` and select the complete `Real` and `Imaginary [Hz]` column headers.
+2. Optionally select the desired modal rows while keeping both complete columns selected.
+3. Click **Plot**.
+
+Only a complete pair consisting of `Real` and one of the two `Imaginary` columns changes the plot coordinates. Selecting ordinary cells chooses modes; it does not redefine the coordinate pair.
+
+![](figures/dynamics/SDomain_plot_VeraGrid.png)
+
+### Right eigenvectors and mode-shape plots
+
+The **Right eigenvectors** table contains state variables in its rows and modes in its columns. Oscillatory representative modes include their frequency on a second line in the column header, for example `Mode 4` followed by `f=0.443 Hz`.
+
+Clicking **Plot** draws each selected mode in a separate real-versus-imaginary subplot. Each state component is represented by an arrow from the origin. The vectors are phase-aligned with their dominant visible component and normalized so that this component has unit magnitude; this preserves the relative magnitude and phase of the other components.
+
+Modes can be chosen by selecting their column headers or any cells in their columns. The column-name filter can also be used to reduce the table before plotting; for example, `col like Hz` keeps the oscillatory representative modes whose headers include a frequency. Select complete row headers to restrict the plotted state components. If there is no selection, all visible modes and state rows are plotted.
+
+Complex-plane plotting is available for the original **Modes** and **Right eigenvectors** representations. Table transformations such as transpose, absolute value, or cumulative distribution produce a generic transformed table and therefore use the standard series plot.
+
+### Result interpretation notes
+
+- `damping_ratios` and `conjugate_frequencies` are reported for the representative member of each oscillatory conjugate pair.
+- The other member of the conjugate pair and non-oscillatory modes keep `NaN` entries in those vectors.
+- `Imaginary [Hz]` is different from `Oscillation frequency`: the former is a signed coordinate available for every eigenvalue, while the latter identifies one representative per oscillatory pair.
+- In generalized RMS cases, result tables can include algebraic variables in addition to state variables.
 
 <!-- BEGIN RESULTS REGISTERED PROPERTIES -->
 
@@ -43,15 +194,18 @@ The available results are the following:
 
 ### `SmallSignalStabilityRmsResults` registered properties
 
-The RMS small-signal stability result stores eigenvalue, damping, frequency, participation, and state-matrix data.
+The RMS small-signal stability result stores modal, matrix, and labeling data for the current linearization.
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `eigenvalues` | `Vec` | Eigenvalues of the linearized system. |
-| `participation_factors` | `Mat` | Participation-factor matrix relating states or variables to modes. |
-| `damping_ratios` | `Vec` | Damping ratio for each identified mode. |
-| `conjugate_frequencies` | `Vec` | Frequency of each complex-conjugate mode. |
-| `state_matrix` | `Mat` | State matrix of the linearized system. |
+| `stat_vars_array` | `StrVec` | Labels of the RMS state variables used to annotate result tables. |
+| `algebraic_vars_array` | `StrVec` | Labels of the RMS algebraic variables used when generalized results include algebraic rows or columns. |
+| `eigenvalues` | `Vec` | Eigenvalues of the linearized RMS system. |
+| `participation_factors` | `Mat` | Normalized participation-factor matrix relating variables to modes. |
+| `damping_ratios` | `Vec` | Damping ratio assigned to the representative member of each oscillatory conjugate pair. Other entries remain `NaN`. |
+| `conjugate_frequencies` | `Vec` | Frequency in hertz assigned to the representative member of each oscillatory conjugate pair. Other entries remain `NaN`. |
+| `state_matrix` | `Mat` | Linearized matrix used by the RMS modal analysis. |
+| `right_eigenvectors` | `Mat` | Right eigenvector matrix associated with the computed modes. |
 
 ### `SmallSignalStabilityEmtResults` registered properties
 
@@ -100,425 +254,59 @@ The EMT result stores the simulated variable values.
 
 ## API
 
-Using the RMS small-signal API:
+The maintained RMS small-signal example is `trunk/dynamics/small_signal/rms_kundur_small_signal.py`. The pattern below follows the current driver usage.
 
 ```python
-import os
+from pathlib import Path
 
-from VeraGridEngine.enumerations import DynamicIntegrationMethod
-from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions, PowerFlowDriver
+import numpy as np
+
+import VeraGridEngine.api as gce
+from VeraGridEngine.enumerations import (
+    DynamicIntegrationMethod,
+    RmsInitializationMethod,
+    VarPowerFlowReferenceType
+)
+from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import (
+    PowerFlowDriver,
+    PowerFlowOptions,
+)
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_driver import (
     SmallSignalStabilityRmsDriver,
-    plot_stability,
 )
 from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_options import (
     RmsSmallSignalStabilityOptions,
 )
-import VeraGridEngine.api as gce
 
-folder = os.path.join('..', 'Grids_and_profiles', 'grids')
-fname = os.path.join(folder, 'IEEE39_1W.veragrid')
-grid = gce.open_file(fname)
+from VeraGridEngine.Templates.Rms.genrow1_rms_template import get_genrow1_rms_template
+from VeraGridEngine.Templates.Rms.genrow2_rms_template import get_genrow2_rms_template
+from VeraGridEngine.Templates.Rms.genrow3_rms_template import get_genrow3_rms_template
+from VeraGridEngine.Templates.Rms.genrow4_rms_template import get_genrow4_rms_template
 
-# A power flow must be available before the RMS small-signal assessment.
-pf_options = PowerFlowOptions(solver_type=gce.SolverType.NR, verbose=False)
-power_flow = PowerFlowDriver(grid=grid, options=pf_options)
-power_flow.run()
-pf_results = power_flow.results
+from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
+from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
+from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 
-# RMS options are only used when ss_assessment_time > 0, because the driver
-# performs an RMS simulation from t=0 up to the assessment instant.
-rms_options = RmsOptions(
-    time_step=0.001,
-    simulation_time=20.0,
-    tolerance=1e-6,
-    integration_method=DynamicIntegrationMethod.DaeBackEuler,
-    max_iter=1000,
-    verbose=0,
-)
+# this example creates the KUNDUR grid without shunts. If you want to open an already created file use the following:
+# grid_path = Path("..") / "Grids_and_profiles" / "grids" / "IEEE39_1W.veragrid"
+# grid = gce.open_file(str(grid_path))
 
-# Case 1: assessment at t = 0 s (no RMS dynamic simulation is run).
-ss_options_t0 = RmsSmallSignalStabilityOptions(
-    ss_assessment_time=0.0,
-    k=0,
-    verbose=1,
-)
 
-small_signal_t0 = SmallSignalStabilityRmsDriver(
-    grid=grid,
-    rms_options=rms_options,
-    sss_options=ss_options_t0,
-    pf_results=pf_results,
-)
-small_signal_t0.run_small_signal_stability()
-
-eigenvalues_t0 = small_signal_t0.results.eigenvalues
-participation_factors_t0 = small_signal_t0.results.participation_factors
-damping_ratios_t0 = small_signal_t0.results.damping_ratios
-conjugate_frequencies_t0 = small_signal_t0.results.conjugate_frequencies
-state_matrix_t0 = small_signal_t0.results.state_matrix
-
-# Case 2: assessment at t = 20 s.
-# The driver first runs the RMS simulation and then linearizes the system at t = 20 s.
-ss_options_t20 = RmsSmallSignalStabilityOptions(
-    ss_assessment_time=20.0,
-    k=0,
-    verbose=1,
-)
-
-small_signal_t20 = SmallSignalStabilityRmsDriver(
-    grid=grid,
-    rms_options=rms_options,
-    sss_options=ss_options_t20,
-    pf_results=pf_results,
-)
-small_signal_t20.run_small_signal_stability()
-
-eigenvalues_t20 = small_signal_t20.results.eigenvalues
-participation_factors_t20 = small_signal_t20.results.participation_factors
-damping_ratios_t20 = small_signal_t20.results.damping_ratios
-conjugate_frequencies_t20 = small_signal_t20.results.conjugate_frequencies
-state_matrix_t20 = small_signal_t20.results.state_matrix
-```
- 
-Output:
-
-```text
-Eigenvalues: [-2.+64.08943759j -2.-64.08943759j -0. +0.j         -2.+44.07988997j -2.-44.07988997j -2.+43.18166955j -2.-43.18166955j -2.+42.76559246j -2.-42.76559246j -2.+38.07928002j -2.-38.07928002j -2.+36.155124j   -2.-36.155124j   -2.+21.84445116j -2.-21.84445116j -2.+24.66622044j -2.-24.66622044j -2.+30.09976294j
- -2.-30.09976294j -2.+26.68017287j -2.-26.68017287j -4. +0.j        ]
-Daming ratios: ['0.031191206336476197', '-', '-', '0.04532553372859127', '-', '0.04626635094680637', '-', '0.04671551016349282', '-', '0.05244970840548839', '-', '0.05523275243053552', '-', '0.09117508790940405', '-', '0.08081732123290178', '-', '0.06629951000786061', '-', '0.07475229922283681', '-', '-']
-Oscillation frequencies[Hz]: ['10.200150792654048', '-', '-', '7.0155323802875404', '-', '6.872576160385048', '-', '6.806355434076857', '-', '6.06050564510895', '-', '5.7542667023807', '-', '3.4766523816869435', '-', '3.9257509100087766', '-', '4.790526057009294', '-', '4.246281394817547', '-', '-']
-Participation factors: [[0.00357204 0.00357204 0.0926209  0.00074082 0.00074082 0.25126465 0.25126465 0.07900952 0.07900952 0.00004668 0.00004668 0.00316457 0.00316457 0.02426172 0.02426172 0.00344389 0.00344389 0.0877041  0.0877041  0.00048156 0.00048156 0.        ]
- [0.00357204 0.00357204 0.         0.00074082 0.00074082 0.25126465 0.25126465 0.07900952 0.07900952 0.00004668 0.00004668 0.00316457 0.00316457 0.02426172 0.02426172 0.00344389 0.00344389 0.0877041  0.0877041  0.00048156 0.00048156 0.0926209 ]
- [0.01426164 0.01426164 0.09238855 0.00000793 0.00000793 0.00021923 0.00021923 0.00000009 0.00000009 0.26700701 0.26700701 0.00212486 0.00212486 0.03034834 0.03034834 0.08097717 0.08097717 0.05779924 0.05779924 0.00106021 0.00106021 0.        ]
- [0.01426164 0.01426164 0.         0.00000793 0.00000793 0.00021923 0.00021923 0.00000009 0.00000009 0.26700701 0.26700701 0.00212486 0.00212486 0.03034834 0.03034834 0.08097717 0.08097717 0.05779924 0.05779924 0.00106021 0.00106021 0.09238855]
- [0.0537019  0.0537019  0.09168668 0.00010264 0.00010264 0.00001923 0.00001923 0.00393335 0.00393335 0.21081061 0.21081061 0.04664987 0.04664987 0.02012104 0.02012104 0.06597425 0.06597425 0.0523657  0.0523657  0.00047807 0.00047807 0.        ]
- [0.0537019  0.0537019  0.         0.00010264 0.00010264 0.00001923 0.00001923 0.00393335 0.00393335 0.21081061 0.21081061 0.04664987 0.04664987 0.02012104 0.02012104 0.06597425 0.06597425 0.0523657  0.0523657  0.00047807 0.00047807 0.09168668]
- [0.00297603 0.00297603 0.08976704 0.24594546 0.24594546 0.017432   0.017432   0.05843227 0.05843227 0.00002158 0.00002158 0.         0.         0.07855066 0.07855066 0.00025169 0.00025169 0.00000381 0.00000381 0.05150299 0.05150299 0.        ]
- [0.00297603 0.00297603 0.         0.24594546 0.24594546 0.017432   0.017432   0.05843227 0.05843227 0.00002158 0.00002158 0.         0.         0.07855066 0.07855066 0.00025169 0.00025169 0.00000381 0.00000381 0.05150299 0.05150299 0.08976704]
- [0.00012145 0.00012145 0.08998892 0.11268232 0.11268232 0.0120963  0.0120963  0.04981461 0.04981461 0.00048795 0.00048795 0.0004482  0.0004482  0.13621279 0.13621279 0.0005366  0.0005366  0.00001986 0.00001986 0.14258547 0.14258547 0.        ]
- [0.00012145 0.00012145 0.         0.11268232 0.11268232 0.0120963  0.0120963  0.04981461 0.04981461 0.00048795 0.00048795 0.0004482  0.0004482  0.13621279 0.13621279 0.0005366  0.0005366  0.00001986 0.00001986 0.14258547 0.14258547 0.08998892]
- [0.00355442 0.00355442 0.09056877 0.10511506 0.10511506 0.06579047 0.06579047 0.14419363 0.14419363 0.00000978 0.00000978 0.0000125  0.0000125  0.04085957 0.04085957 0.00004103 0.00004103 0.00003311 0.00003311 0.09510605 0.09510605 0.        ]
- [0.00355442 0.00355442 0.         0.10511506 0.10511506 0.06579047 0.06579047 0.14419363 0.14419363 0.00000978 0.00000978 0.0000125  0.0000125  0.04085957 0.04085957 0.00004103 0.00004103 0.00003311 0.00003311 0.09510605 0.09510605 0.09056877]
- [0.00035084 0.00035084 0.09012679 0.03523002 0.03523002 0.03866155 0.03866155 0.10979721 0.10979721 0.0008192  0.0008192  0.00084248 0.00084248 0.06252575 0.06252575 0.0000789  0.0000789  0.00011193 0.00011193 0.20651874 0.20651874 0.        ]
- [0.00035084 0.00035084 0.         0.03523002 0.03523002 0.03866155 0.03866155 0.10979721 0.10979721 0.0008192  0.0008192  0.00084248 0.00084248 0.06252575 0.06252575 0.0000789  0.0000789  0.00011193 0.00011193 0.20651874 0.20651874 0.09012679]
- [0.0004793  0.0004793  0.08902137 0.0001083  0.0001083  0.09468602 0.09468602 0.04503221 0.04503221 0.00642155 0.00642155 0.11251576 0.11251576 0.03014674 0.03014674 0.01891151 0.01891151 0.14656132 0.14656132 0.00062661 0.00062661 0.        ]
- [0.0004793  0.0004793  0.         0.0001083  0.0001083  0.09468602 0.09468602 0.04503221 0.04503221 0.00642155 0.00642155 0.11251576 0.11251576 0.03014674 0.03014674 0.01891151 0.01891151 0.14656132 0.14656132 0.00062661 0.00062661 0.08902137]
- [0.00025615 0.00025615 0.08768682 0.0000086  0.0000086  0.00001203 0.00001203 0.00021251 0.00021251 0.00001783 0.00001783 0.00482891 0.00482891 0.03369426 0.03369426 0.30064902 0.30064902 0.11624527 0.11624527 0.00023201 0.00023201 0.        ]
- [0.00025615 0.00025615 0.         0.0000086  0.0000086  0.00001203 0.00001203 0.00021251 0.00021251 0.00001783 0.00001783 0.00482891 0.00482891 0.03369426 0.03369426 0.30064902 0.30064902 0.11624527 0.11624527 0.00023201 0.00023201 0.08768682]
- [0.00322139 0.00322139 0.09364509 0.0000261  0.0000261  0.01981826 0.01981826 0.00867828 0.00867828 0.00874676 0.00874676 0.32699964 0.32699964 0.03847909 0.03847909 0.01267044 0.01267044 0.03314817 0.03314817 0.00138933 0.00138933 0.        ]
- [0.00322139 0.00322139 0.         0.0000261  0.0000261  0.01981826 0.01981826 0.00867828 0.00867828 0.00874676 0.00874676 0.32699964 0.32699964 0.03847909 0.03847909 0.01267044 0.01267044 0.03314817 0.03314817 0.00138933 0.00138933 0.09364509]
- [0.41750485 0.41750485 0.09249908 0.00003275 0.00003275 0.00000026 0.00000026 0.00089631 0.00089631 0.00561105 0.00561105 0.00241321 0.00241321 0.00480005 0.00480005 0.01646552 0.01646552 0.0060075  0.0060075  0.00001896 0.00001896 0.        ]
- [0.41750485 0.41750485 0.         0.00003275 0.00003275 0.00000026 0.00000026 0.00089631 0.00089631 0.00561105 0.00561105 0.00241321 0.00241321 0.00480005 0.00480005 0.01646552 0.01646552 0.0060075  0.0060075  0.00001896 0.00001896 0.09249908]]
-
-```
-
-The S-Domain stability plot can be obtained running Small-signal stability from the GUI. Note that the plot units can be
-"rad/s" or "Hz" for the imaginary part.
-
-
-## Benchmark
-
-
-### Running ANDES
-Thanks to its symbolic precision and reliable numerical performance, ANDES provides a great baseline 
-for stability analysis in contemporary power system studies. That's why VeraGrid uses ANDES 
-as its benchmark for small-signal analysis. Of course, VeraGrid successfully reproduces all eigenvalue 
-placements from ANDES.
-
-VeraGrid loads ANDES models by opening json files. Naturally, VeraGrid replicates all eigenvalue 
-results from ANDES across standard benchmarks like the Kundur two area system with consistent accuracy 
-and sub-second performance.
-
-This is the code to get ANDES results:
-
-```python
-"""
-To run this script andes must be installed (pip install andes)
-"""
-import andes
-import time
-import pandas as pd
-import numpy as np
-
-def stability_andes():
-    
-   ss = andes.load('Gen_Load/kundur_ieee_no_shunt.json', default_config=True)
-   n_xy = len(ss.dae.xy_name)
-   print(f"Andes variables = {n_xy}")
-   ss.files.no_output = True
-
-   # fix P & Q load ANDES
-   ss.PQ.config.p2p = 1.0
-   ss.PQ.config.p2i = 0
-   ss.PQ.config.p2z = 0
-
-   ss.PQ.config.q2q = 1.0
-   ss.PQ.config.q2i = 0
-   ss.PQ.config.q2z = 0
-
-   dae = ss.dae
-
-   # Run PF
-   ss.PFlow.config.tol = 1e-8
-   ss.PFlow.run()
-
-   #Run Small-Signal Stability analysis
-   eig = ss.EIG
-   eig.run()
-
-   df_Eig = pd.DataFrame(eig.mu)
-   df_Eig.to_csv("Eigenvalues_results_Andes.csv", index=False, header=False)
-
-   df_pfactors = pd.DataFrame(eig.pfactors.T)
-   df_pfactors.to_csv("pfactors_results_Andes.csv", index=False, header=False, float_format="%.10f")
-
-    return eig.mu, eig.pfactors
-```
-Comparing the case of Kundur two-area system VeraGrid gets exactly the same results.
-
-![](figures/andes_vs_veragrid_kundur.png)
-
-The following plot template is used to compare results.
-```python
-import matplotlib.pyplot as plt
-import numpy as np
-
-x1 = VeraGrid_Eig.real
-y1 = VeraGrid_Eig.imag
-x2= Andes_Eig.real
-y2 = Andes_Eig.imag
-slope = 1 / 0.05
-x_z = np.linspace(-200, 0, 400)
-y_z = slope * x_z
-# Plot the two lines (positive and negative imaginary axis)
-plt.plot(x_z, y_z, '--', color='grey', label='$\lambda$ = 5%')
-plt.plot(x_z, -y_z, '--', color='grey')
-plt.scatter(x2, y2, marker='o', color='orange', label='Andes')
-plt.scatter(x1, y1, marker='x', color='blue', label='VeraGrid')
-plt.xlabel("Re [s -1]")
-plt.ylabel("Im [s -1]")
-plt.title("Stability plot")
-margin_x = (x1.max() - x1.min()) * 0.1
-margin_y = (y1.max() - y1.min()) * 0.1
-x_min = x1.min() - margin_x
-x_max = x1.max() + margin_x
-y_min = y1.min() - margin_y
-y_max = y1.max() + margin_y
-plt.xlim([x_min, x_max])
-plt.ylim([y_min, y_max])
-plt.axhline(0, color='black', linewidth=1)  # eje horizontal (y = 0)
-plt.axvline(0, color='black', linewidth=1)
-plt.legend(loc='upper left', ncol=2)
-plt.tight_layout()
-plt.show()
-```
-Where ```VeraGrid_Eig``` and ```Andes_Eig``` are numpy arrays with the eigenvalues results from the VeraGrid and Andes
-stability assessments respectively.
-
-## Small-signal 
-
-Small-signal analysis is a technique used to evaluate the dynamic behavior of nonlinear systems by linearizing 
-their equations around a specific operating point. This approach assumes that perturbations are sufficiently 
-small (typically within 1%) so that the system's response can be approximated using linear models.
-The resulting linear representation enables the use of standard control engineering tools to assess system 
-stability and dynamic performance.
-
-Although small-signal analysis is inherently limited to small variations around the linearization point, 
-it provides a robust framework for applying state-space models and a wide range of analytical techniques.
-
-
-### State-space representation
-Small-signal stability assessment methods are typically classified into two main groups: state-space
-techniques and frequency-domain techniques. State-space methods model the system dynamics using a set of first-order 
-differential equations
-
-$$
-\dot{x} = A x + Bu
-$$
-$$
-y = Cx + Du
-$$
-Where:
-- *x* : state variables vector
-- *u* : system inputs vector
-- *y* : outputs vector
-- *A* : state matrix
-- *B* : input matrix
-- *C* : output matrix
-- *D* : direct transmission matrix
-
-This representation allows the representation of non-linear systems, time-dependent systems, autonomous systems and a wide 
-range of possibilities. Moreover, each single system has infinite different state space models depending on how state variables 
-and outputs are interpreted.
-
-This formalism enables the representation of a wide variety of systems, including nonlinear, time-varying, 
-and autonomous configurations. Importantly, a single physical system may admit infinitely 
-many equivalent state-space realizations, depending on the choice of state variables and output definitions. 
-This flexibility makes state-space modeling a powerful tool for both analysis and control design.
-
-
-To perform a small-signal stability analysis, the system must first be linearized around a steady-state operating point. 
-This process involves approximating the nonlinear system dynamics with a linear model that captures the system's behavior 
-under small perturbations.
-
-In the context of state-space representation, linearization is achieved by expressing the system variables as deviations 
-from their nominal operating points:
-
-$$
-\mathcal{X} \overset{\triangle}{=} x-x^*
-$$
-$$
-\mathcal{U} \overset{\triangle}{=} u-u^*
-$$
-$$
-\mathcal{Y} \overset{\triangle}{=} y-y^*
-$$
-
-Substituting these into the original nonlinear model and applying a first-order Taylor expansion 
-yields the linearized state-space representation:
-
-
-$$
-\dot{\mathcal{X}} = A \mathcal{X} + B\mathcal{U}
-$$
-$$
-\mathcal{Y} = C\mathcal{X} + D\mathcal{U}
-$$
-
-
-### Stability assessment
-Eigenvalue analysis and participation factors (PFs) are key tools for identifying dominant modes and evaluating system stability.
-These methods are well established in conventional power systems and are increasingly being applied to power-electronics-based systems, 
-where dynamic behavior is often more complex and sensitive to operating conditions. 
-
-The **eigenvalues** of the state matrix A (commonly referred to as the system's modes) characterize its
-small-signal stability according to the following criteria:
-
-
-- All $Re(\lambda)<0$: asymptotically stable 
-- All $Re(\lambda) \leq 0$: marginally stable
-- At least one mode satisfies $Re(\lambda)<0$ : unstable
-
-When a linearized system has complex conjugate modes, they represent oscillatory modes in the dynamic response.
-
-- The **real part** determines damping:
-  - $Re(\lambda)<0$: exponential decay
-  - $Re(\lambda) = 0$: oscillations persist indefinitely
-  - $Re(\lambda)<0$: exponential growth
-- The **imaginary part** determines oscillation frequency: $f=\frac{Im(\lambda)}{2\pi}$
-
-In this line, **Damping ratios** are computed to assess oscillations on modes:
-
-$$
-\zeta = -  \frac{Re(\lambda)}{\sqrt{Re(\lambda)^2+Im(\lambda)^2}}
-$$
-
-And they are analyzed as:
-
-- $\zeta<0$: Unstable oscillations. The system exhibits exponentially growing modes due to eigenvalues with positive real part.
-- $\zeta=0$: Marginally stable oscillations. The system sustains undamped oscillations indefinitely. 
-Eigenvalues lie on the imaginary axis.
-- $0<\zeta<1$: Stable but oscillatory response. The system returns to equilibrium with decaying oscillations. 
-A commonly accepted threshold for adequate damping is around $\zeta = 0.05$.
-- $\zeta=1$: Critically damped response. The system returns to equilibrium without oscillations and in the shortest 
-possible time without overshoot.
-
-
-**Participation factors** determine how much each state variable contributes to each mode and otherwise. In power systems 
-it is crucial to determine which devices are the origin of the oscillations and instabilities. They are often normalized 
-to to enhance interpretability and facilitate analytical comparison. They are computed as:
-
-$$
-PF_{i,k}=W_{i,k} \cdot V_{i,k}
-$$
-
-Where PF is the participation factor of the *k*-state variable to the *i*-mode, W  is the left eigenvector of the *k*-state 
-variable to the *i*-mode of matrix A and V is the right eigenvector of the *k*-state variable to the *i*-mode of matrix A.
-
-
-### DAE system to State Space representation
-
-In  power systems the dynamic behavior is described as a set of differential-algebraic equations (DAEs) due to the different components in the grid:
-
-- Differential equations arise with dynamic components such as synchronous generators, exciters, converters and control loops.
-- Algebraic equations come from network constraints and power balances mainly.
-
-Explicit DAE formulation:
-
-$$
-T \dot{x} = f(x,y)
-$$
-$$
-0 = g(x,y)
-$$
-
-Merging the DAE formulation into the linearized state-space representation, the state matrix can be computed:
-
-$$
-\Delta \dot{x} = T^{-1}(fx-fy \cdot gy^{-1} \cdot gx) \Delta x
-$$
-
- and therefore:
-
-$$
-A= T^{-1}(fx-fy \cdot gy^{-1} \cdot gx)
-$$
-
-Where $fx$, $fy$, $gx$ and $gy$ are the $\frac{\delta f}{\delta x}$, $\frac{\delta f}{\delta y}$, 
-$\frac{\delta g}{\delta x}$ and $\frac{\delta g}{\delta y}$ components of the jacobian matrix of
-the DAE system respectively.
-
-
-
-### Benchmark - Kundur system
-The Kundur two-area system is a standard benchmark network widely used for small-signal and transient stability studies.
-It was introduced in the P. Kundur power system stability literature as a compact, yet representative, 
-test case that exposes inter-area oscillatory modes and control interactions without excessive model complexity.
-
-![](figures/Kundur_system_no_shunt.png)
-
-The main characteristics of the system, depicted in the figure above, are:
-- Two areas connected by a pair of parallel lines. In each area, 2 synchronous generators are placed so that each area can
-swing against each other and produce inter-area oscillations.
-- All the synchronous generators are connected to the network through a transformer.
-- In this version of the Kundur two-area system no shunts are connected to buses 7 and 9.
-- The base power is 100 MW and the voltage levels are 20kV for the generators and 230kV for the network.
-
-The following code can be used to model the Kundur two area system without shunt in VeraGrid and to perform the small-signal
-Stability analysis.
-
-```python
-from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-from VeraGridEngine.Devices.Substation.bus import Bus
-from VeraGridEngine.Devices.Injections.generator import Generator
-from VeraGridEngine.Devices.Injections.load import Load
-from VeraGridEngine.Devices.Branches.line import Line
-
-from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod
-from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions, PowerFlowDriver
-from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
-from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_driver import SmallSignalStabilityRmsDriver
-from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_options import (
-    RmsSmallSignalStabilityOptions,
-)
-import VeraGridEngine.api as gce
-
-grid = MultiCircuit()
+grid = gce.MultiCircuit()
 
 # Buses
-bus1 = Bus(name="Bus1", Vnom=230)
-bus2 = Bus(name="Bus2", Vnom=230)
-bus3 = Bus(name="Bus3", Vnom=230, is_slack=True)
-bus4 = Bus(name="Bus4", Vnom=230)
-bus5 = Bus(name="Bus5", Vnom=230)
-bus6 = Bus(name="Bus6", Vnom=230)
-bus7 = Bus(name="Bus7", Vnom=230)
-bus8 = Bus(name="Bus8", Vnom=230)
-bus9 = Bus(name="Bus9", Vnom=230)
-bus10 = Bus(name="Bus10", Vnom=230)
-bus11 = Bus(name="Bus11", Vnom=230)
+bus1 = gce.Bus(name="Bus1", Vnom=20)
+bus2 = gce.Bus(name="Bus2", Vnom=20)
+bus3 = gce.Bus(name="Bus3", Vnom=20, is_slack=True)
+bus4 = gce.Bus(name="Bus4", Vnom=20)
+bus5 = gce.Bus(name="Bus5", Vnom=230)
+bus6 = gce.Bus(name="Bus6", Vnom=230)
+bus7 = gce.Bus(name="Bus7", Vnom=230)
+bus8 = gce.Bus(name="Bus8", Vnom=230)
+bus9 = gce.Bus(name="Bus9", Vnom=230)
+bus10 = gce.Bus(name="Bus10", Vnom=230)
+bus11 = gce.Bus(name="Bus11", Vnom=230)
 
 grid.add_bus(bus1)
 grid.add_bus(bus2)
@@ -532,86 +320,71 @@ grid.add_bus(bus9)
 grid.add_bus(bus10)
 grid.add_bus(bus11)
 
+for bus in grid.buses:
+    initialize_bus_rms(bus, vf=grid.var_factory)
+
 # Line
-line0 = grid.add_line(
-    Line(name="line 5-6-1", bus_from=bus5, bus_to=bus6,
-         r=0.00500, x=0.05000, b=0.02187, rate=750.0))
 
-line1 = grid.add_line(
-    Line(name="line 5-6-2", bus_from=bus5, bus_to=bus6,
-         r=0.00500, x=0.05000, b=0.02187, rate=750.0))
+line0 = gce.Line(name="line 5-6-1", bus_from=bus5, bus_to=bus6,
+                 r=0.00500, x=0.05000, b=0.02187, rate=750.0)
 
-line2 = grid.add_line(
-    Line(name="line 6-7-1", bus_from=bus6, bus_to=bus7,
-         r=0.00300, x=0.03000, b=0.00583, rate=700.0))
+line1 = gce.Line(name="line 5-6-2", bus_from=bus5, bus_to=bus6,
+                 r=0.00500, x=0.05000, b=0.02187, rate=750.0)
 
-line3 = grid.add_line(
-    Line(name="line 6-7-2", bus_from=bus6, bus_to=bus7,
-         r=0.00300, x=0.03000, b=0.00583, rate=700.0))
+line2 = gce.Line(name="line 6-7-1", bus_from=bus6, bus_to=bus7,
+                 r=0.00300, x=0.03000, b=0.00583, rate=700.0)
 
-line4 = grid.add_line(
-    Line(name="line 6-7-3", bus_from=bus6, bus_to=bus7,
-         r=0.00300, x=0.03000, b=0.00583, rate=700.0))
+line3 = gce.Line(name="line 6-7-2", bus_from=bus6, bus_to=bus7,
+                 r=0.00300, x=0.03000, b=0.00583, rate=700.0)
 
-line5 = grid.add_line(
-    Line(name="line 7-8-1", bus_from=bus7, bus_to=bus8,
-         r=0.01100, x=0.11000, b=0.19250, rate=400.0))
+line4 = gce.Line(name="line 6-7-3", bus_from=bus6, bus_to=bus7,
+                 r=0.00300, x=0.03000, b=0.00583, rate=700.0)
 
-line6 = grid.add_line(
-    Line(name="line 7-8-2", bus_from=bus7, bus_to=bus8,
-         r=0.01100, x=0.11000, b=0.19250, rate=400.0))
+line5 = gce.Line(name="line 7-8-1", bus_from=bus7, bus_to=bus8,
+                 r=0.01100, x=0.11000, b=0.19250, rate=400.0)
 
-line7 = grid.add_line(
-    Line(name="line 8-9-1", bus_from=bus8, bus_to=bus9,
-         r=0.01100, x=0.11000, b=0.19250, rate=400.0))
+line6 = gce.Line(name="line 7-8-2", bus_from=bus7, bus_to=bus8,
+                 r=0.01100, x=0.11000, b=0.19250, rate=400.0)
 
-line8 = grid.add_line(
-    Line(name="line 8-9-2", bus_from=bus8, bus_to=bus9,
-         r=0.01100, x=0.11000, b=0.19250, rate=400.0))
+line7 = gce.Line(name="line 8-9-1", bus_from=bus8, bus_to=bus9,
+                 r=0.01100, x=0.11000, b=0.19250, rate=400.0)
 
-line9 = grid.add_line(
-    Line(name="line 9-10-1", bus_from=bus9, bus_to=bus10,
-         r=0.00300, x=0.03000, b=0.00583, rate=700.0))
+line8 = gce.Line(name="line 8-9-2", bus_from=bus8, bus_to=bus9,
+                 r=0.01100, x=0.11000, b=0.19250, rate=400.0)
 
-line10 = grid.add_line(
-    Line(name="line 9-10-2", bus_from=bus9, bus_to=bus10,
-         r=0.00300, x=0.03000, b=0.00583, rate=700.0))
+line9 = gce.Line(name="line 9-10-1", bus_from=bus9, bus_to=bus10,
+                 r=0.00300, x=0.03000, b=0.00583, rate=700.0)
 
-line11 = grid.add_line(
-    Line(name="line 9-10-3", bus_from=bus9, bus_to=bus10,
-         r=0.00300, x=0.03000, b=0.00583, rate=700.0))
+line10 = gce.Line(name="line 9-10-2", bus_from=bus9, bus_to=bus10,
+                  r=0.00300, x=0.03000, b=0.00583, rate=700.0)
 
-line12 = grid.add_line(
-    Line(name="line 10-11-1", bus_from=bus10, bus_to=bus11,
-         r=0.00500, x=0.05000, b=0.02187, rate=750.0))
+line11 = gce.Line(name="line 9-10-3", bus_from=bus9, bus_to=bus10,
+                  r=0.00300, x=0.03000, b=0.00583, rate=700.0)
 
-line13 = grid.add_line(
-    Line(name="line 10-11-2", bus_from=bus10, bus_to=bus11,
-         r=0.00500, x=0.05000, b=0.02187, rate=750.0))
+line12 = gce.Line(name="line 10-11-1", bus_from=bus10, bus_to=bus11,
+                  r=0.00500, x=0.05000, b=0.02187, rate=750.0)
+
+line13 = gce.Line(name="line 10-11-2", bus_from=bus10, bus_to=bus11,
+                  r=0.00500, x=0.05000, b=0.02187, rate=750.0)
 
 # Transformers
-grid.add_line(
-    Line(name="trafo 5-1", bus_from=bus5, bus_to=bus1,
-         r=0.00000, x=0.15 * (100.0 / 900.0), b=0.0, rate=900.0))
+xt1 = 0.15 * (100.0 / 900.0)
+trafo_G1 = gce.Line(name="trafo 5-1", bus_from=bus5, bus_to=bus1,
+                r=0.00000, x=0.15 * (100.0 / 900.0), b=0.0, rate=900.0)
 
-grid.add_line(
-    Line(name="trafo 6-2", bus_from=bus6, bus_to=bus2,
-         r=0.00000, x=0.15 * (100.0 / 900.0), b=0.0, rate=900.0))
+trafo_G2 = gce.Line(name="trafo 6-2", bus_from=bus6, bus_to=bus2,
+                    r=0.00000, x=0.15 * (100.0 / 900.0), b=0.0, rate=900.0)
 
-grid.add_line(
-    Line(name="trafo 11-3", bus_from=bus11, bus_to=bus3,
-         r=0.00000, x=0.15 * (100.0 / 900.0), b=0.0, rate=900.0))
+trafo_G3 = gce.Line(name="trafo 11-3", bus_from=bus11, bus_to=bus3,
+                    r=0.00000, x=0.15 * (100.0 / 900.0), b=0.0, rate=900.0)
 
-grid.add_line(
-    Line(name="trafo 10-4", bus_from=bus10, bus_to=bus4,
-         r=0.00000, x=0.15 * (100.0 / 900.0), b=0.0, rate=900.0))
+trafo_G4 = gce.Line(name="trafo 10-4", bus_from=bus10, bus_to=bus4,
+                    r=0.00000, x=0.15 * (100.0 / 900.0), b=0.0, rate=900.0)
 
 # load
-load1 = Load(name="load1", P=967.0, Q=100.0, Pl0=-9.670000000007317, Ql0=-0.9999999999967969)
-grid.add_load(bus=bus7, api_obj=load1)
+load1 = gce.Load(name="load1", P=967.0, Q=100.0)
 
-load2 = Load(name="load2", P=1767.0, Q=100.0, Pl0=-17.6699999999199, Ql0=-0.999999999989467)
-grid.add_load(bus=bus9, api_obj=load2)
+load2 = gce.Load(name="load2", P=1767.0, Q=100.0)
 
 # Generators
 fn_1 = 60.0
@@ -651,117 +424,450 @@ Kp_4 = 0.0
 Ki_4 = 0.0
 
 # Generators
-gen1 = Generator(
+gen1 = gce.Generator(
     name="Gen1", P=700.0, vset=1.03, Snom=900.0,
     x1=xd_1, r1=ra_1, freq=fn_1,
-    tm0=6.999999999999923,
-    vf=1.141048034212655,
-    M=M_1, D=D_1,
-    omega_ref=omega_ref_1,
-    Kp=Kp_1, Ki=Ki_1
 )
 
-gen2 = Generator(
+gen2 = gce.Generator(
     name="Gen2", P=700.0, vset=1.01, Snom=900.0,
     x1=xd_2, r1=ra_2, freq=fn_2,
-    tm0=6.999999999999478,
-    vf=1.180101792122771,
-    M=M_2, D=D_2,
-    omega_ref=omega_ref_2,
-    Kp=Kp_2, Ki=Ki_2
 )
 
-gen3 = Generator(
+gen3 = gce.Generator(
     name="Gen3", P=719.091, vset=1.03, Snom=900.0,
     x1=xd_3, r1=ra_3, freq=fn_3,
-    tm0=7.331832804674334,
-    vf=1.1551307366822237,
-    M=M_3, D=D_3,
-    omega_ref=omega_ref_3,
-    Kp=Kp_3, Ki=Ki_3
 )
 
-gen4 = Generator(
+gen4 = gce.Generator(
     name="Gen4", P=700.0, vset=1.01, Snom=900.0,
     x1=xd_4, r1=ra_4, freq=fn_4,
-    tm0=6.99999999999765,
-    vf=1.2028205849036708,
-    M=M_4, D=D_4,
-    omega_ref=omega_ref_4,
-    Kp=Kp_4, Ki=Ki_4
 )
+
+######################################################################################################
+# Build Rms models
+######################################################################################################
+
+# Build rms models from template
+# generators
+genrow_mdl1 = get_genrow1_rms_template(grid.var_factory).block
+genrow_mdl2 = get_genrow2_rms_template(grid.var_factory).block
+genrow_mdl3 = get_genrow3_rms_template(grid.var_factory).block
+genrow_mdl4 = get_genrow4_rms_template(grid.var_factory).block
+
+# lines
+line0_mdl = get_line_rms_template(grid.var_factory).block
+line1_mdl = get_line_rms_template(grid.var_factory).block
+line2_mdl = get_line_rms_template(grid.var_factory).block
+line3_mdl = get_line_rms_template(grid.var_factory).block
+line4_mdl = get_line_rms_template(grid.var_factory).block
+line5_mdl = get_line_rms_template(grid.var_factory).block
+line6_mdl = get_line_rms_template(grid.var_factory).block
+line7_mdl = get_line_rms_template(grid.var_factory).block
+line8_mdl = get_line_rms_template(grid.var_factory).block
+line9_mdl = get_line_rms_template(grid.var_factory).block
+line10_mdl = get_line_rms_template(grid.var_factory).block
+line11_mdl = get_line_rms_template(grid.var_factory).block
+line12_mdl = get_line_rms_template(grid.var_factory).block
+line13_mdl = get_line_rms_template(grid.var_factory).block
+
+# trafos
+trafo1_mdl = get_line_rms_template(grid.var_factory).block
+trafo2_mdl = get_line_rms_template(grid.var_factory).block
+trafo3_mdl = get_line_rms_template(grid.var_factory).block
+trafo4_mdl = get_line_rms_template(grid.var_factory).block
+
+# loads
+load1_mdl = get_load_rms_template(grid.var_factory).block
+load2_mdl = get_load_rms_template(grid.var_factory).block
+
+# set models parameters
+load1_mdl.set_parameter_in_model(var_name="Pl0", new_value=-9.670000000007317)
+load1_mdl.set_parameter_in_model(var_name="Ql0", new_value=-0.9999999999967969)
+
+load2_mdl.set_parameter_in_model(var_name="Pl0", new_value=-17.6699999999199)
+load2_mdl.set_parameter_in_model(var_name="Ql0", new_value=-0.999999999989467)
+
+# connection with buses
+
+grid.var_factory.add_connections([genrow_mdl1.in_vars[0]], [bus1.rms_model.out_vars[0]])
+grid.var_factory.add_connections([genrow_mdl1.in_vars[1]], [bus1.rms_model.out_vars[1]])
+
+grid.var_factory.add_connections([genrow_mdl2.in_vars[0]], [bus2.rms_model.out_vars[0]])
+grid.var_factory.add_connections([genrow_mdl2.in_vars[1]], [bus2.rms_model.out_vars[1]])
+
+grid.var_factory.add_connections([genrow_mdl3.in_vars[0]], [bus3.rms_model.out_vars[0]])
+grid.var_factory.add_connections([genrow_mdl3.in_vars[1]], [bus3.rms_model.out_vars[1]])
+
+grid.var_factory.add_connections([genrow_mdl4.in_vars[0]], [bus4.rms_model.out_vars[0]])
+grid.var_factory.add_connections([genrow_mdl4.in_vars[1]], [bus4.rms_model.out_vars[1]])
+
+grid.var_factory.add_connections([line0_mdl.in_vars[0]], [bus5.rms_model.out_vars[0]])
+grid.var_factory.add_connections([line0_mdl.in_vars[1]], [bus5.rms_model.out_vars[1]])
+
+grid.var_factory.add_connections([line0_mdl.in_vars[2]], [bus6.rms_model.out_vars[0]])
+grid.var_factory.add_connections([line0_mdl.in_vars[3]], [bus6.rms_model.out_vars[1]])
+
+grid.var_factory.add_connections([line1_mdl.in_vars[0]], [bus5.rms_model.out_vars[0]])
+grid.var_factory.add_connections([line1_mdl.in_vars[1]], [bus5.rms_model.out_vars[1]])
+
+grid.var_factory.add_connections([line1_mdl.in_vars[2]], [bus6.rms_model.out_vars[0]])
+grid.var_factory.add_connections([line1_mdl.in_vars[3]], [bus6.rms_model.out_vars[1]])
+
+grid.var_factory.add_connections([line2_mdl.in_vars[0]], [bus6.rms_model.out_vars[0]])
+grid.var_factory.add_connections([line2_mdl.in_vars[1]], [bus6.rms_model.out_vars[1]])
+
+grid.var_factory.add_connections([line2_mdl.in_vars[2]], [bus7.rms_model.out_vars[0]])
+grid.var_factory.add_connections([line2_mdl.in_vars[3]], [bus7.rms_model.out_vars[1]])
+
+grid.var_factory.add_connections([line3_mdl.in_vars[0]], [bus6.rms_model.out_vars[0]])
+grid.var_factory.add_connections([line3_mdl.in_vars[1]], [bus6.rms_model.out_vars[1]])
+
+grid.var_factory.add_connections([line3_mdl.in_vars[2]], [bus7.rms_model.out_vars[0]])
+grid.var_factory.add_connections([line3_mdl.in_vars[3]], [bus7.rms_model.out_vars[1]])
+
+grid.var_factory.add_connections([line4_mdl.in_vars[0]], [bus6.rms_model.out_vars[0]])
+grid.var_factory.add_connections([line4_mdl.in_vars[1]], [bus6.rms_model.out_vars[1]])
+
+grid.var_factory.add_connections([line4_mdl.in_vars[2]], [bus7.rms_model.out_vars[0]])
+grid.var_factory.add_connections([line4_mdl.in_vars[3]], [bus7.rms_model.out_vars[1]])
+
+grid.var_factory.add_connections([line5_mdl.in_vars[0]], [bus7.rms_model.out_vars[0]])
+grid.var_factory.add_connections([line5_mdl.in_vars[1]], [bus7.rms_model.out_vars[1]])
+
+grid.var_factory.add_connections([line5_mdl.in_vars[2]], [bus8.rms_model.out_vars[0]])
+grid.var_factory.add_connections([line5_mdl.in_vars[3]], [bus8.rms_model.out_vars[1]])
+
+grid.var_factory.add_connections([line6_mdl.in_vars[0]], [bus7.rms_model.out_vars[0]])
+grid.var_factory.add_connections([line6_mdl.in_vars[1]], [bus7.rms_model.out_vars[1]])
+
+grid.var_factory.add_connections([line6_mdl.in_vars[2]], [bus8.rms_model.out_vars[0]])
+grid.var_factory.add_connections([line6_mdl.in_vars[3]], [bus8.rms_model.out_vars[1]])
+
+grid.var_factory.add_connections([line7_mdl.in_vars[0]], [bus8.rms_model.out_vars[0]])
+grid.var_factory.add_connections([line7_mdl.in_vars[1]], [bus8.rms_model.out_vars[1]])
+
+grid.var_factory.add_connections([line7_mdl.in_vars[2]], [bus9.rms_model.out_vars[0]])
+grid.var_factory.add_connections([line7_mdl.in_vars[3]], [bus9.rms_model.out_vars[1]])
+
+grid.var_factory.add_connections([line8_mdl.in_vars[0]], [bus8.rms_model.out_vars[0]])
+grid.var_factory.add_connections([line8_mdl.in_vars[1]], [bus8.rms_model.out_vars[1]])
+
+grid.var_factory.add_connections([line8_mdl.in_vars[2]], [bus9.rms_model.out_vars[0]])
+grid.var_factory.add_connections([line8_mdl.in_vars[3]], [bus9.rms_model.out_vars[1]])
+
+grid.var_factory.add_connections([line9_mdl.in_vars[0]], [bus9.rms_model.out_vars[0]])
+grid.var_factory.add_connections([line9_mdl.in_vars[1]], [bus9.rms_model.out_vars[1]])
+
+grid.var_factory.add_connections([line9_mdl.in_vars[2]], [bus10.rms_model.out_vars[0]])
+grid.var_factory.add_connections([line9_mdl.in_vars[3]], [bus10.rms_model.out_vars[1]])
+
+grid.var_factory.add_connections([line10_mdl.in_vars[0]], [bus9.rms_model.out_vars[0]])
+grid.var_factory.add_connections([line10_mdl.in_vars[1]], [bus9.rms_model.out_vars[1]])
+
+grid.var_factory.add_connections([line10_mdl.in_vars[2]], [bus10.rms_model.out_vars[0]])
+grid.var_factory.add_connections([line10_mdl.in_vars[3]], [bus10.rms_model.out_vars[1]])
+
+grid.var_factory.add_connections([line11_mdl.in_vars[0]], [bus9.rms_model.out_vars[0]])
+grid.var_factory.add_connections([line11_mdl.in_vars[1]], [bus9.rms_model.out_vars[1]])
+
+grid.var_factory.add_connections([line11_mdl.in_vars[2]], [bus10.rms_model.out_vars[0]])
+grid.var_factory.add_connections([line11_mdl.in_vars[3]], [bus10.rms_model.out_vars[1]])
+
+grid.var_factory.add_connections([line12_mdl.in_vars[0]], [bus10.rms_model.out_vars[0]])
+grid.var_factory.add_connections([line12_mdl.in_vars[1]], [bus10.rms_model.out_vars[1]])
+
+grid.var_factory.add_connections([line12_mdl.in_vars[2]], [bus11.rms_model.out_vars[0]])
+grid.var_factory.add_connections([line12_mdl.in_vars[3]], [bus11.rms_model.out_vars[1]])
+
+grid.var_factory.add_connections([line13_mdl.in_vars[0]], [bus10.rms_model.out_vars[0]])
+grid.var_factory.add_connections([line13_mdl.in_vars[1]], [bus10.rms_model.out_vars[1]])
+
+grid.var_factory.add_connections([line13_mdl.in_vars[2]], [bus11.rms_model.out_vars[0]])
+grid.var_factory.add_connections([line13_mdl.in_vars[3]], [bus11.rms_model.out_vars[1]])
+
+grid.var_factory.add_connections([trafo1_mdl.in_vars[0]], [bus5.rms_model.out_vars[0]])
+grid.var_factory.add_connections([trafo1_mdl.in_vars[1]], [bus5.rms_model.out_vars[1]])
+
+grid.var_factory.add_connections([trafo1_mdl.in_vars[2]], [bus1.rms_model.out_vars[0]])
+grid.var_factory.add_connections([trafo1_mdl.in_vars[3]], [bus1.rms_model.out_vars[1]])
+
+grid.var_factory.add_connections([trafo2_mdl.in_vars[0]], [bus6.rms_model.out_vars[0]])
+grid.var_factory.add_connections([trafo2_mdl.in_vars[1]], [bus6.rms_model.out_vars[1]])
+
+grid.var_factory.add_connections([trafo2_mdl.in_vars[2]], [bus2.rms_model.out_vars[0]])
+grid.var_factory.add_connections([trafo2_mdl.in_vars[3]], [bus2.rms_model.out_vars[1]])
+
+grid.var_factory.add_connections([trafo3_mdl.in_vars[0]], [bus11.rms_model.out_vars[0]])
+grid.var_factory.add_connections([trafo3_mdl.in_vars[1]], [bus11.rms_model.out_vars[1]])
+
+grid.var_factory.add_connections([trafo3_mdl.in_vars[2]], [bus3.rms_model.out_vars[0]])
+grid.var_factory.add_connections([trafo3_mdl.in_vars[3]], [bus3.rms_model.out_vars[1]])
+
+grid.var_factory.add_connections([trafo4_mdl.in_vars[0]], [bus10.rms_model.out_vars[0]])
+grid.var_factory.add_connections([trafo4_mdl.in_vars[1]], [bus10.rms_model.out_vars[1]])
+
+grid.var_factory.add_connections([trafo4_mdl.in_vars[2]], [bus4.rms_model.out_vars[0]])
+grid.var_factory.add_connections([trafo4_mdl.in_vars[3]], [bus4.rms_model.out_vars[1]])
+
+grid.var_factory.add_connections([load1_mdl.in_vars[0]], [bus7.rms_model.out_vars[0]])
+grid.var_factory.add_connections([load1_mdl.in_vars[1]], [bus7.rms_model.out_vars[1]])
+
+grid.var_factory.add_connections([load2_mdl.in_vars[0]], [bus9.rms_model.out_vars[0]])
+grid.var_factory.add_connections([load2_mdl.in_vars[1]], [bus9.rms_model.out_vars[1]])
+
+# external mapping
+
+big_gen1 = gce.Block(children=[genrow_mdl1])
+big_gen2 = gce.Block(children=[genrow_mdl2])
+big_gen3 = gce.Block(children=[genrow_mdl3])
+big_gen4 = gce.Block(children=[genrow_mdl4])
+
+big_gen1.external_mapping.update({VarPowerFlowReferenceType.P: genrow_mdl1.out_vars[0]})
+big_gen1.external_mapping.update({VarPowerFlowReferenceType.Q: genrow_mdl1.out_vars[1]})
+
+big_gen2.external_mapping.update({VarPowerFlowReferenceType.P: genrow_mdl2.out_vars[0]})
+big_gen2.external_mapping.update({VarPowerFlowReferenceType.Q: genrow_mdl2.out_vars[1]})
+
+big_gen3.external_mapping.update({VarPowerFlowReferenceType.P: genrow_mdl3.out_vars[0]})
+big_gen3.external_mapping.update({VarPowerFlowReferenceType.Q: genrow_mdl3.out_vars[1]})
+
+big_gen4.external_mapping.update({VarPowerFlowReferenceType.P: genrow_mdl4.out_vars[0]})
+big_gen4.external_mapping.update({VarPowerFlowReferenceType.Q: genrow_mdl4.out_vars[1]})
+
+# add models to opi objects
+
+gen1.rms_model = big_gen1
+gen2.rms_model = big_gen2
+gen3.rms_model = big_gen3
+gen4.rms_model = big_gen4
+
+line0.rms_model = line0_mdl
+line1.rms_model = line1_mdl
+line2.rms_model = line2_mdl
+line3.rms_model = line3_mdl
+line4.rms_model = line4_mdl
+line5.rms_model = line5_mdl
+line6.rms_model = line6_mdl
+line7.rms_model = line7_mdl
+line8.rms_model = line8_mdl
+line9.rms_model = line9_mdl
+line10.rms_model = line10_mdl
+line11.rms_model = line11_mdl
+line12.rms_model = line12_mdl
+line13.rms_model = line13_mdl
+
+trafo_G1.rms_model = trafo1_mdl
+trafo_G2.rms_model = trafo2_mdl
+trafo_G3.rms_model = trafo3_mdl
+trafo_G4.rms_model = trafo4_mdl
+
+load1.rms_model = load1_mdl
+load2.rms_model = load2_mdl
+
+grid.add_line(line0)
+grid.add_line(line1)
+grid.add_line(line2)
+grid.add_line(line3)
+grid.add_line(line4)
+grid.add_line(line5)
+grid.add_line(line6)
+grid.add_line(line7)
+grid.add_line(line8)
+grid.add_line(line9)
+grid.add_line(line10)
+grid.add_line(line11)
+grid.add_line(line12)
+grid.add_line(line13)
+
+grid.add_line(trafo_G1)
+grid.add_line(trafo_G2)
+grid.add_line(trafo_G3)
+grid.add_line(trafo_G4)
+
+grid.add_load(bus=bus7, api_obj=load1)
+grid.add_load(bus=bus9, api_obj=load2)
 
 grid.add_generator(bus=bus1, api_obj=gen1)
 grid.add_generator(bus=bus2, api_obj=gen2)
 grid.add_generator(bus=bus3, api_obj=gen3)
 grid.add_generator(bus=bus4, api_obj=gen4)
 
-# # Run power flow
+######################################################################################################
+# Run PowerFlow and Small-Signal stability
+######################################################################################################
+
+# The RMS small-signal assessment always starts from one solved power flow.
 pf_options = PowerFlowOptions(
-    solver_type=gce.SolverType.NR,
-    retry_with_other_methods=False,
-    verbose=0,
-    initialize_with_existing_solution=True,
-    tolerance=1e-8,
-    max_iter=25,
-    control_q=False,
-    control_taps_modules=True,
-    control_taps_phase=True,
-    control_remote_voltage=True,
-    orthogonalize_controls=True,
-    apply_temperature_correction=True,
-    branch_impedance_tolerance_mode=gce.BranchImpedanceMode.Specified,
-    distributed_slack=False,
-    ignore_single_node_islands=False,
-    trust_radius=1.0,
-    backtracking_parameter=0.05,
-    use_stored_guess=False,
-    initialize_angles=False,
-    generate_report=False,
-    three_phase_unbalanced=False
-)
-power_flow = PowerFlowDriver(grid, pf_options)
+        solver_type=gce.SolverType.NR,
+        retry_with_other_methods=False,
+        verbose=0,
+        initialize_with_existing_solution=True,
+        tolerance=1e-6,
+        max_iter=25,
+        control_q=False,
+        control_taps_modules=True,
+        control_taps_phase=True,
+        control_remote_voltage=True,
+        orthogonalize_controls=True,
+        apply_temperature_correction=True,
+        branch_impedance_tolerance_mode=gce.BranchImpedanceMode.Specified,
+        distributed_slack=False,
+        ignore_single_node_islands=False,
+        trust_radius=1.0,
+        backtracking_parameter=0.05,
+        use_stored_guess=False,
+        initialize_angles=False,
+        generate_report=False,
+    )
+power_flow = PowerFlowDriver(grid=grid, options=pf_options)
 power_flow.run()
-res = power_flow.results
+pf_results = power_flow.results
 
-# # Print results
-print(res.get_bus_df())
-print(res.get_branch_df())
-print(f"Converged: {res.converged}")
+# RMS options are only used when the assessment time is strictly positive,
+# because the driver must simulate the RMS model up to that instant before
+# building the linearization.
+rms_options = RmsOptions(time_step=0.001,
+                         simulation_time=10,
+                         tolerance=1e-6,
+                         integration_method=DynamicIntegrationMethod.DaeBackEuler,
+                         initialization_method=RmsInitializationMethod.Explicit,
+                         use_init_values=False,
+                         max_iter=1000,
+                         verbose=0)
 
-# Small-signal stability assessment at t = 0 s.
-rms_options = RmsOptions(
-    time_step=0.001,
-    simulation_time=10.0,
-    tolerance=1e-6,
-    integration_method=DynamicIntegrationMethod.DaeBackEuler,
-    initialization_method=RmsInitializationMethod.Explicit,
-    use_init_values=False,
-    max_iter=1000,
-    verbose=0,
-)
 
-ss_options = RmsSmallSignalStabilityOptions(
-    ss_assessment_time=0.0,
-    k=0,
+# k = 0 requests the complete eigenvalue spectrum.
+sss_options = RmsSmallSignalStabilityOptions(k=0,
+                                             ss_assessment_time=0,
+                                             verbose=1)
+
+
+driver = SmallSignalStabilityRmsDriver(grid=grid,
+                                       rms_options=rms_options,
+                                       sss_options=sss_options,
+                                       pf_results=pf_results,
+                                       )
+driver.run()
+
+results = driver.results
+
+eigenvalues = np.asarray(results.eigenvalues, dtype=complex)
+participation = np.asarray(results.participation_factors, dtype=float)
+damping_ratios = np.asarray(results.damping_ratios, dtype=float)
+frequencies_hz = np.asarray(results.conjugate_frequencies, dtype=float)
+state_matrix = np.asarray(results.state_matrix)
+right_eigenvectors = np.asarray(results.right_eigenvectors, dtype=complex)
+state_labels = np.asarray(results.stat_vars_array, dtype=str)
+algebraic_labels = np.asarray(results.algebraic_vars_array, dtype=str)
+```
+
+### Assessment at a nonzero time
+
+To linearize the system at a later instant, keep the same workflow and change the assessment time.
+
+```python
+sss_options = RmsSmallSignalStabilityOptions(
+    k=20,
+    ss_assessment_time=5.0,
     verbose=1,
 )
-
-small_signal_driver = SmallSignalStabilityRmsDriver(
-    grid=grid,
-    rms_options=rms_options,
-    sss_options=ss_options,
-    pf_results=res,
-)
-small_signal_driver.run()
-
-Eigenvalues = small_signal_driver.results.eigenvalues
-PFactors = small_signal_driver.results.participation_factors
-damping_ratios = small_signal_driver.results.damping_ratios
-conjugate_frequencies = small_signal_driver.results.conjugate_frequencies
-state_matrix = small_signal_driver.results.state_matrix
-
-plot_stability(Eigenvalues, plot_units="rad/s")
-
-
 ```
+
+In that case, the driver first runs the RMS simulation to `t = 5.0 s` and then computes the modal analysis there.
+
+## Benchmark
+
+### Running ANDES
+
+Thanks to its symbolic precision and reliable numerical performance, ANDES provides a great baseline for stability analysis in contemporary power system studies. That's why VeraGrid uses ANDES as its benchmark for small-signal analysis. Of course, VeraGrid successfully reproduces all eigenvalue placements from ANDES.
+
+VeraGrid loads ANDES models by opening json files. Naturally, VeraGrid replicates all eigenvalue results from ANDES across standard benchmarks like the Kundur two area system with consistent accuracy and sub-second performance.
+
+This is the code to get ANDES results:
+
+```python
+"""
+To run this script andes must be installed (pip install andes)
+"""
+import andes
+import time
+import pandas as pd
+import numpy as np
+
+def stability_andes():
+
+   ss = andes.load('Gen_Load/kundur_ieee_no_shunt.json', default_config=True)
+   n_xy = len(ss.dae.xy_name)
+   print(f"Andes variables = {n_xy}")
+   ss.files.no_output = True
+
+   # fix P & Q load ANDES
+   ss.PQ.config.p2p = 1.0
+   ss.PQ.config.p2i = 0
+   ss.PQ.config.p2z = 0
+
+   ss.PQ.config.q2q = 1.0
+   ss.PQ.config.q2i = 0
+   ss.PQ.config.q2z = 0
+
+   dae = ss.dae
+
+   # Run PF
+   ss.PFlow.config.tol = 1e-8
+   ss.PFlow.run()
+
+   #Run Small-Signal Stability analysis
+   eig = ss.EIG
+   eig.run()
+
+   df_Eig = pd.DataFrame(eig.mu)
+   df_Eig.to_csv("Eigenvalues_results_Andes.csv", index=False, header=False)
+
+   df_pfactors = pd.DataFrame(eig.pfactors.T)
+   df_pfactors.to_csv("pfactors_results_Andes.csv", index=False, header=False, float_format="%.10f")
+
+    return eig.mu, eig.pfactors
+```
+
+Comparing the case of Kundur two-area system VeraGrid gets exactly the same results.
+
+![](figures/dynamics/andes_vs_veragrid_kundur.png)
+
+The following plot template is used to compare results.
+
+```python
+import matplotlib.pyplot as plt
+import numpy as np
+
+x1 = VeraGrid_Eig.real
+y1 = VeraGrid_Eig.imag
+x2= Andes_Eig.real
+y2 = Andes_Eig.imag
+slope = 1 / 0.05
+x_z = np.linspace(-200, 0, 400)
+y_z = slope * x_z
+# Plot the two lines (positive and negative imaginary axis)
+plt.plot(x_z, y_z, '--', color='grey', label='$\lambda$ = 5%')
+plt.plot(x_z, -y_z, '--', color='grey')
+plt.scatter(x2, y2, marker='o', color='orange', label='Andes')
+plt.scatter(x1, y1, marker='x', color='blue', label='VeraGrid')
+plt.xlabel("Re [s -1]")
+plt.ylabel("Im [s -1]")
+plt.title("Stability plot")
+margin_x = (x1.max() - x1.min()) * 0.1
+margin_y = (y1.max() - y1.min()) * 0.1
+x_min = x1.min() - margin_x
+x_max = x1.max() + margin_x
+y_min = y1.min() - margin_y
+y_max = y1.max() + margin_y
+plt.xlim([x_min, x_max])
+plt.ylim([y_min, y_max])
+plt.axhline(0, color='black', linewidth=1)
+plt.axvline(0, color='black', linewidth=1)
+plt.legend(loc='upper left', ncol=2)
+plt.tight_layout()
+plt.show()
+```
+
+Where `VeraGrid_Eig` and `Andes_Eig` are numpy arrays with the eigenvalues results from the VeraGrid and Andes stability assessments respectively.

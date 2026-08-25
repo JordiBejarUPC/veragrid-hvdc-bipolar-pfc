@@ -39,6 +39,7 @@
     <file>icons/flag_system.png</file>
     <file>icons/flag_en.png</file>
     <file>icons/flag_ja.png</file>
+    <file>icons/flag_ko.png</file>
     <file>icons/flag_eu.png</file>
     <file>icons/flag_gl.png</file>
     <file>icons/flag_ar.png</file>
@@ -52,6 +53,7 @@
     <file>icons/flag_fr.png</file>
     <file>icons/flag_pt.png</file>
     <file>icons/flag_es.png</file>
+    <file>icons/flag_pl.png</file>
     <file>icons/region.png</file>
     <file>icons/rotate.png</file>
     <file>icons/community.png</file>
@@ -187,6 +189,10 @@
     <file>icons/copy2up.png</file>
     <file>icons/calculator.png</file>
     <file>icons/magnifying_glass.png</file>
+    <file>icons/line_edit_clear_gray.png</file>
+    <file>icons/line_edit_clear_gray.svg</file>
+    <file>icons/table_filter_active.png</file>
+    <file>icons/table_filter_active.svg</file>
     <file>icons/up.png</file>
     <file>icons/undo.png</file>
     <file>icons/redo.png</file>

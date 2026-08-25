@@ -44,6 +44,7 @@ from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
 from VeraGridEngine.Templates.Emt.generator_emt_type_template import get_complete_generator_template_emt
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_emt_template
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
@@ -127,8 +128,39 @@ def attach_emt_models(
     return line.emt_model, generator_1.emt_model, generator_2.emt_model, load.emt_model
 
 
+def seed_complete_generator_phase_power(generator_block: Block, phase_power: complex) -> None:
+    """
+    Seed the complete generator's nested Sauer-Pai phase-power references.
+
+    The current complete-generator template stores these six initialization
+    references as ``Const(None)`` values inside its nested machine block. The
+    explicit initializer reads those original expressions, so this script must
+    resolve them before the EMT problem captures the symbolic hierarchy.
+
+    :param generator_block: Complete generator EMT block to initialize.
+    :param phase_power: Per-phase complex power in system per-unit.
+    :return: None.
+    """
+    active_power: float = float(phase_power.real)
+    reactive_power: float = float(phase_power.imag)
+    phase_label: str
+
+    # Balanced operation gives the same P and Q in every phase. Updating the
+    # model constants preserves the variables used by the template's explicit
+    # initialization equations while supplying their power-flow operating point.
+    for phase_label in ("A", "B", "C"):
+        generator_block.set_parameter_in_model(
+            var_name=f"P_{phase_label}_",
+            new_value=active_power,
+        )
+        generator_block.set_parameter_in_model(
+            var_name=f"Q_{phase_label}_",
+            new_value=reactive_power,
+        )
+
+
 def export_plots_two_slack_generators_same_bus(
-        problem,
+        problem: EmtProblemDae,
         time_values: np.ndarray,
         y_values: np.ndarray,
         bus0: Bus,
@@ -165,25 +197,25 @@ def export_plots_two_slack_generators_same_bus(
     total_generator_currents: np.ndarray = generator_1_currents + generator_2_currents
 
     load_currents: np.ndarray = -np.column_stack((
-        get_state_series(problem, load_block, "i_A_R_shunt_3ph", y_values),
-        get_state_series(problem, load_block, "i_B_R_shunt_3ph", y_values),
-        get_state_series(problem, load_block, "i_C_R_shunt_3ph", y_values),
+        get_state_series(problem, load_block, "i_A", y_values),
+        get_state_series(problem, load_block, "i_B", y_values),
+        get_state_series(problem, load_block, "i_C", y_values),
     ))
 
     line_series_currents: np.ndarray = np.column_stack((
-        get_state_series(problem, line_block, "i_ser_Line01_Pi_A", y_values),
-        get_state_series(problem, line_block, "i_ser_Line01_Pi_B", y_values),
-        get_state_series(problem, line_block, "i_ser_Line01_Pi_C", y_values),
+        get_state_series(problem, line_block, "i_ser_A", y_values),
+        get_state_series(problem, line_block, "i_ser_B", y_values),
+        get_state_series(problem, line_block, "i_ser_C", y_values),
     ))
     line_from_shunt_currents: np.ndarray = np.column_stack((
-        get_state_series(problem, line_block, "i_cap_f_Line01_Pi_A", y_values),
-        get_state_series(problem, line_block, "i_cap_f_Line01_Pi_B", y_values),
-        get_state_series(problem, line_block, "i_cap_f_Line01_Pi_C", y_values),
+        get_state_series(problem, line_block, "i_cap_f_A", y_values),
+        get_state_series(problem, line_block, "i_cap_f_B", y_values),
+        get_state_series(problem, line_block, "i_cap_f_C", y_values),
     ))
     line_to_shunt_currents: np.ndarray = np.column_stack((
-        get_state_series(problem, line_block, "i_cap_t_Line01_Pi_A", y_values),
-        get_state_series(problem, line_block, "i_cap_t_Line01_Pi_B", y_values),
-        get_state_series(problem, line_block, "i_cap_t_Line01_Pi_C", y_values),
+        get_state_series(problem, line_block, "i_cap_t_A", y_values),
+        get_state_series(problem, line_block, "i_cap_t_B", y_values),
+        get_state_series(problem, line_block, "i_cap_t_C", y_values),
     ))
 
     output_directory.mkdir(parents=True, exist_ok=True)
@@ -262,7 +294,7 @@ def main() -> None:
     generator_2_block: Block
     load_block: Block
     power_flow_results: Any
-    problem: Any
+    problem: EmtProblemDae
     slack_bus_power: complex
     slack_phase_power_total: complex
     slack_phase_power_1: complex
@@ -284,14 +316,18 @@ def main() -> None:
     print(power_flow_results.get_bus_df())
     print(power_flow_results.get_branch_df())
 
-    problem = build_emt_problem(grid, power_flow_results)
-
     # The balanced PF gives one total slack-bus power. The EMT builder must seed
     # each complete generator with its own current share according to ``Snom``.
     slack_bus_power = complex(power_flow_results.Sbus[0] / grid.Sbase)
     slack_phase_power_total = slack_bus_power / 3.0
     slack_phase_power_1 = slack_phase_power_total * (float(generator_1.Snom) / (float(generator_1.Snom) + float(generator_2.Snom)))
     slack_phase_power_2 = slack_phase_power_total * (float(generator_2.Snom) / (float(generator_1.Snom) + float(generator_2.Snom)))
+
+    # Resolve the complete template's nested power placeholders before problem
+    # construction, when the explicit initialization graph is captured.
+    seed_complete_generator_phase_power(generator_1_block, slack_phase_power_1)
+    seed_complete_generator_phase_power(generator_2_block, slack_phase_power_2)
+    problem = build_emt_problem(grid, power_flow_results)
 
     bus_voltage_a = complex(power_flow_results.voltage[0])
     expected_current_1_a = compute_expected_balanced_phase_current(slack_phase_power_1, bus_voltage_a)
@@ -300,12 +336,12 @@ def main() -> None:
     initialized_current_1_a = get_external_init_value(
         problem,
         generator_1_block,
-        "i_A_SlackGen1_CompleteEmt_gen",
+        "i_A",
     )
     initialized_current_2_a = get_external_init_value(
         problem,
         generator_2_block,
-        "i_A_SlackGen2_CompleteEmt_gen",
+        "i_A",
     )
 
     assert_close(

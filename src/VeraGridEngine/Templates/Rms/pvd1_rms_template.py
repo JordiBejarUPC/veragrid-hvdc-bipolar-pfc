@@ -27,8 +27,8 @@ def get_pvd1_rms_template(vfactory: VarFactory, name: str = "PVD1 RMS template")
     templ = RmsModelTemplate(name=name)
     templ.tpe = DeviceType.GeneratorDevice
 
-    vm = vfactory.add_var(f"Vm_{name}", reference=VarPowerFlowReferenceType.Vm)
-    va = vfactory.add_var(f"Va_{name}", reference=VarPowerFlowReferenceType.Va)
+    vm = vfactory.add_var(f"Vm", reference=VarPowerFlowReferenceType.Vm)
+    va = vfactory.add_var(f"Va", reference=VarPowerFlowReferenceType.Va)
     inputs = [vm, va]
 
     p = vfactory.add_var("P_pvd1")
@@ -208,8 +208,8 @@ def get_pvd1_complete_rms_template(vfactory: VarFactory, name: str = "PVD1 compl
     # Local import avoids a package import cycle at module load time.
 
 
-    vm = vfactory.add_var(f"Vm_{name}", reference=VarPowerFlowReferenceType.Vm)
-    va = vfactory.add_var(f"Va_{name}", reference=VarPowerFlowReferenceType.Va)
+    vm = vfactory.add_var(f"Vm", reference=VarPowerFlowReferenceType.Vm)
+    va = vfactory.add_var(f"Va", reference=VarPowerFlowReferenceType.Va)
     inputs = [vm, va]
 
     p = vfactory.add_var("P_pvd1")
@@ -536,12 +536,12 @@ def get_pvd1_dc_mppt_rms_template(vfactory: VarFactory, name: str = "PVD1 DC-MPP
     templ = RmsModelTemplate(name=name)
     templ.tpe = DeviceType.GeneratorDevice
 
-    vm = vfactory.add_var(f"Vm_{name}", reference=VarPowerFlowReferenceType.Vm)
-    va = vfactory.add_var(f"Va_{name}", reference=VarPowerFlowReferenceType.Va)
+    vm = vfactory.add_var(f"Vm", reference=VarPowerFlowReferenceType.Vm)
+    va = vfactory.add_var(f"Va", reference=VarPowerFlowReferenceType.Va)
     inputs = [vm, va]
 
-    p = vfactory.add_var("P_pvd1_" + name, reference=VarPowerFlowReferenceType.P)
-    q = vfactory.add_var("Q_pvd1_" + name, reference=VarPowerFlowReferenceType.Q)
+    p = vfactory.add_var("P_pvd1", reference=VarPowerFlowReferenceType.P)
+    q = vfactory.add_var("Q_pvd1", reference=VarPowerFlowReferenceType.Q)
     ip_cmd = vfactory.add_var("Ip_cmd")
     iq_cmd = vfactory.add_var("Iq_cmd")
     ip_max = vfactory.add_var("Ip_max")
@@ -714,9 +714,19 @@ def get_pvd1_dc_mppt_rms_template(vfactory: VarFactory, name: str = "PVD1 DC-MPP
         VarPowerFlowReferenceType.P: p,
         VarPowerFlowReferenceType.Q: q,
     }
-    block.out_vars = [p, q, ipout, iqout, pavail, pmppt, p_sum, q_sum, f_trip, v_trip]
+    block.out_vars = [p, q]
 
-    templ.block = block
+    templ.block.children.append(block)
+    templ.block.external_mapping = {
+        VarPowerFlowReferenceType.Vm: vm,
+        VarPowerFlowReferenceType.Va: va,
+        VarPowerFlowReferenceType.P: p,
+        VarPowerFlowReferenceType.Q: q,
+    }
+    templ.block.api_obj_mapping = {}
+    templ.block.in_vars = inputs
+    templ.block.out_vars = [p, q]
+
     return templ
 
 
@@ -732,8 +742,8 @@ def get_pvd1_dc_link_mppt_rms_template(vfactory: VarFactory, name: str = "PVD1 D
     templ = RmsModelTemplate(name=name)
     templ.tpe = DeviceType.GeneratorDevice
 
-    vm = vfactory.add_var(f"Vm_{name}", reference=VarPowerFlowReferenceType.Vm)
-    va = vfactory.add_var(f"Va_{name}", reference=VarPowerFlowReferenceType.Va)
+    vm = vfactory.add_var(f"Vm", reference=VarPowerFlowReferenceType.Vm)
+    va = vfactory.add_var(f"Va", reference=VarPowerFlowReferenceType.Va)
     inputs = [vm, va]
 
     p = vfactory.add_var("P_pvd1")
@@ -1020,8 +1030,8 @@ def get_pvd1_dc_link_bess_rms_template(vfactory: VarFactory, name: str = "PVD1 D
     templ = RmsModelTemplate(name=name)
     templ.tpe = DeviceType.BatteryDevice
 
-    vm = vfactory.add_var(f"Vm_{name}", reference=VarPowerFlowReferenceType.Vm)
-    va = vfactory.add_var(f"Va_{name}", reference=VarPowerFlowReferenceType.Va)
+    vm = vfactory.add_var(f"Vm", reference=VarPowerFlowReferenceType.Vm)
+    va = vfactory.add_var(f"Va", reference=VarPowerFlowReferenceType.Va)
     inputs = [vm, va]
 
     p = vfactory.add_var("P_pvd1", reference=VarPowerFlowReferenceType.P)

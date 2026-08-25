@@ -23,13 +23,20 @@ Run:  ``.venv/bin/python trunk/gfm_emt_droop_examples.py``
 
 from __future__ import annotations
 
-import os,sys
+import os
+import sys
 from typing import Any, Dict, List, Tuple, cast
 import numpy as np
 import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+REPO_ROOT = os.path.dirname(HERE)
+SRC_DIR = os.path.join(REPO_ROOT, "src")
+if SRC_DIR not in sys.path:
+    sys.path.insert(0, SRC_DIR)
 
 import VeraGridEngine.api as gce
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
@@ -59,13 +66,16 @@ from VeraGridEngine.enumerations import (
     SolverType,
 )
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-
 # Event / simulation timing (shared by every run in a sweep).
 EVENT_TIME = 0.04          # s, when the load step happens
 R_STEP_VALUE = 3.0         # ohm, post-event per-phase load resistance
 SIM_TIME = 0.20            # s, total simulated window
 TIME_STEP = 5.0e-5         # s, integration step
+
+
+def _post_step_pe_target() -> float:
+    """Expected settled per-phase active power for the post-event shunt R."""
+    return 1.0 / R_STEP_VALUE
 
 
 def _build_rl_line_emt_template(vf: VarFactory, R_pu: float, X_pu: float,
@@ -236,10 +246,10 @@ def build_dc_fed_gfm_island(kdp: float, kdq: float,
         source_conductance_value=200.0, name="DC_Gen").block
 
     vsc_template = get_gfm_emt_template(vf=grid.var_factory, name="GFM_VSC")
-    R_s_var = _find_name_in_block("R_s_GFM_VSC", vsc_template.block)
-    X_s_var = _find_name_in_block("X_s_GFM_VSC", vsc_template.block)
-    Kdp_var = _find_name_in_block("Kdp_GFM_VSC", vsc_template.block)
-    Kdq_var = _find_name_in_block("Kdq_GFM_VSC", vsc_template.block)
+    R_s_var = _find_name_in_block("R_s", vsc_template.block)
+    X_s_var = _find_name_in_block("X_s", vsc_template.block)
+    Kdp_var = _find_name_in_block("Kdp", vsc_template.block)
+    Kdq_var = _find_name_in_block("Kdq", vsc_template.block)
     assert all(v is not None for v in (R_s_var, X_s_var, Kdp_var, Kdq_var))
     # GFM internal impedance lives in the filter line; make GFM near-ideal.
     vsc_template.block.event_dict[R_s_var] = grid.var_factory.add_const(1.0e-4)
@@ -334,11 +344,11 @@ def run_case(kdp: float, kdq: float, use_rl_main_line: bool = False) -> Dict[str
 
     return {
         "t": t,
-        "omega": col("omega_GFM_VSC"),
-        "Pe": col("Pe_GFM_VSC"),
-        "Qe": col("Qe_GFM_VSC"),
-        "Epk": col("Epk_GFM_VSC"),
-        "i_A": col("i_A_GFM_VSC"),
+        "omega": col("omega"),
+        "Pe": col("Pe"),
+        "Qe": col("Qe"),
+        "Epk": col("Epk"),
+        "i_A": col("i_A"),
     }
 
 
@@ -348,28 +358,39 @@ def _settle(t: np.ndarray, sig: np.ndarray) -> float:
     return float(np.mean(sig[mask]))
 
 
+def _pe_target_error(t: np.ndarray, pe: np.ndarray) -> Tuple[float, float]:
+    """Return settled Pe and its error against the post-step resistor target."""
+    settled = _settle(t, pe)
+    return settled, settled - _post_step_pe_target()
+
+
 def sweep_kdp(kdp_values: List[float], kdq_fixed: float) -> None:
     """Sweep Kdp, fixed Kdq; plot omega / Pe / i_A response to the load step."""
     fig, axes = plt.subplots(3, 1, figsize=(9, 9), sharex=True)
+    pe_target = _post_step_pe_target()
     print(f"\n=== Kdp sweep (Kdq = {kdq_fixed}) ===")
-    print(f"{'Kdp':>6} | {'omega_settle':>12} | {'Pe_settle':>10} | {'omega_min':>10}")
+    print(f"Post-step Pe target ~= 1/R = {pe_target:.4f} for R={R_STEP_VALUE:g}")
+    print(f"{'Kdp':>6} | {'omega_settle':>12} | {'Pe_settle':>10} | {'Pe-target':>10} | {'omega_min':>10}")
     for kdp in kdp_values:
         r = run_case(kdp=kdp, kdq=kdq_fixed)
+        pe_settle, pe_error = _pe_target_error(r["t"], r["Pe"])
         lbl = f"Kdp={kdp:g}"
         axes[0].plot(r["t"], r["omega"], label=lbl)
         axes[1].plot(r["t"], r["Pe"], label=lbl)
         axes[2].plot(r["t"], r["i_A"], label=lbl)
         print(f"{kdp:>6g} | {_settle(r['t'], r['omega']):>12.6f} | "
-              f"{_settle(r['t'], r['Pe']):>10.4f} | {float(np.min(r['omega'])):>10.6f}")
+              f"{pe_settle:>10.4f} | {pe_error:>10.4f} | {float(np.min(r['omega'])):>10.6f}")
 
+    axes[0].set_ylabel("omega [pu]")
+    axes[1].set_ylabel("Pe [3·pu]")
+    axes[1].axhline(pe_target, color="0.25", ls="--", lw=0.9, alpha=0.8,
+                    label=f"post-step target {pe_target:.3f}")
+    axes[2].set_ylabel("i_A [pu]")
+    axes[2].set_xlabel("time [s]")
     for ax in axes:
         ax.axvline(EVENT_TIME, color="k", ls=":", lw=0.8, alpha=0.6)
         ax.legend(fontsize=8, loc="best")
         ax.grid(True, alpha=0.3)
-    axes[0].set_ylabel("omega [pu]")
-    axes[1].set_ylabel("Pe [3·pu]")
-    axes[2].set_ylabel("i_A [pu]")
-    axes[2].set_xlabel("time [s]")
     axes[0].set_title(f"GFM load-step response — Kdp sweep (Kdq={kdq_fixed}), "
                       f"R step to {R_STEP_VALUE} ohm at t={EVENT_TIME}s")
     fig.tight_layout()
@@ -382,23 +403,27 @@ def sweep_kdp(kdp_values: List[float], kdq_fixed: float) -> None:
 def sweep_kdq(kdq_values: List[float], kdp_fixed: float) -> None:
     """Sweep Kdq, fixed Kdp; plot Epk / Qe response to the load step."""
     fig, axes = plt.subplots(2, 1, figsize=(9, 7), sharex=True)
+    pe_target = _post_step_pe_target()
     print(f"\n=== Kdq sweep (Kdp = {kdp_fixed}) ===")
-    print(f"{'Kdq':>6} | {'Epk_settle':>10} | {'Qe_settle':>10} | {'Epk_min':>10}")
+    print(f"Post-step Pe target ~= 1/R = {pe_target:.4f} for R={R_STEP_VALUE:g}")
+    print(f"{'Kdq':>6} | {'Epk_settle':>10} | {'Qe_settle':>10} | {'Pe_settle':>10} | {'Pe-target':>10} | {'Epk_min':>10}")
     for kdq in kdq_values:
         r = run_case(kdp=kdp_fixed, kdq=kdq)
+        pe_settle, pe_error = _pe_target_error(r["t"], r["Pe"])
         lbl = f"Kdq={kdq:g}"
         axes[0].plot(r["t"], r["Epk"], label=lbl)
         axes[1].plot(r["t"], r["Qe"], label=lbl)
         print(f"{kdq:>6g} | {_settle(r['t'], r['Epk']):>10.4f} | "
-              f"{_settle(r['t'], r['Qe']):>10.4f} | {float(np.min(r['Epk'])):>10.4f}")
+              f"{_settle(r['t'], r['Qe']):>10.4f} | {pe_settle:>10.4f} | "
+              f"{pe_error:>10.4f} | {float(np.min(r['Epk'])):>10.4f}")
 
+    axes[0].set_ylabel("Epk [pu]")
+    axes[1].set_ylabel("Qe [3·pu]")
+    axes[1].set_xlabel("time [s]")
     for ax in axes:
         ax.axvline(EVENT_TIME, color="k", ls=":", lw=0.8, alpha=0.6)
         ax.legend(fontsize=8, loc="best")
         ax.grid(True, alpha=0.3)
-    axes[0].set_ylabel("Epk [pu]")
-    axes[1].set_ylabel("Qe [3·pu]")
-    axes[1].set_xlabel("time [s]")
     axes[0].set_title(f"GFM load-step response — Kdq sweep (Kdp={kdp_fixed}), "
                       f"R step to {R_STEP_VALUE} ohm at t={EVENT_TIME}s")
     fig.tight_layout()
@@ -418,6 +443,8 @@ def compare_line_models(kdp: float = 0.05, kdq: float = 0.05) -> None:
     :param kdq: Q-V droop gain (same for both runs).
     """
     print(f"\n=== line-model comparison (Kdp={kdp}, Kdq={kdq}) ===")
+    pe_target = _post_step_pe_target()
+    print(f"Post-step Pe target ~= 1/R = {pe_target:.4f} for R={R_STEP_VALUE:g}")
     cases = [
         ("Bergeron (travelling-wave)", "C0", False),
         ("Balanced lumped RL", "C3", True),
@@ -426,8 +453,9 @@ def compare_line_models(kdp: float = 0.05, kdq: float = 0.05) -> None:
     for label, _color, rl in cases:
         r = run_case(kdp=kdp, kdq=kdq, use_rl_main_line=rl)
         mask = r["t"] > (r["t"][-1] - 0.02)
-        print(f"{label:28s} | Pe pk-pk(post)={np.ptp(r['Pe'][mask]):.4f} | "
-              f"Qe pk-pk(post)={np.ptp(r['Qe'][mask]):.4f}")
+        pe_settle, pe_error = _pe_target_error(r["t"], r["Pe"])
+        print(f"{label:28s} | Pe_settle={pe_settle:.4f} | Pe-target={pe_error:+.4f} | "
+              f"Pe pk-pk(post)={np.ptp(r['Pe'][mask]):.4f} | Qe pk-pk(post)={np.ptp(r['Qe'][mask]):.4f}")
         results.append((label, _color, r))
 
     fig, axes = plt.subplots(3, 1, figsize=(9, 9), sharex=True)
@@ -436,14 +464,16 @@ def compare_line_models(kdp: float = 0.05, kdq: float = 0.05) -> None:
         axes[1].plot(r["t"], r["Pe"], color=color, label=label)
         axes[2].plot(r["t"], r["Qe"], color=color, label=label)
 
+    axes[0].set_ylabel("omega [pu]")
+    axes[1].set_ylabel("Pe [3·pu]")
+    axes[1].axhline(pe_target, color="0.25", ls="--", lw=0.9, alpha=0.8,
+                    label=f"post-step target {pe_target:.3f}")
+    axes[2].set_ylabel("Qe [3·pu]")
+    axes[2].set_xlabel("time [s]")
     for ax in axes:
         ax.axvline(EVENT_TIME, color="k", ls=":", lw=0.8, alpha=0.6)
         ax.legend(fontsize=8, loc="best")
         ax.grid(True, alpha=0.3)
-    axes[0].set_ylabel("omega [pu]")
-    axes[1].set_ylabel("Pe [3·pu]")
-    axes[2].set_ylabel("Qe [3·pu]")
-    axes[2].set_xlabel("time [s]")
     axes[0].set_title(f"GFM load-step: travelling-wave line vs perfectly balanced "
                       f"RL line (Kdp={kdp}, Kdq={kdq})")
     fig.tight_layout()

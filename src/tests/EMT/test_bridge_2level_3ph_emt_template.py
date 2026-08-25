@@ -136,12 +136,12 @@ def _build_bridge_standalone_problem() -> Tuple[GenericEmtProblem, Dict[str, Var
     static_parameter_values_mapping: Dict[Var, Const] = dict()
 
     problem = GenericEmtProblem(sys_block=root_block, glob_time=vf.add_var("t_bridge_test"), static_parameter_values_mapping=static_parameter_values_mapping)
-    tracked_vars["m_a"] = find_name_in_block(f"m_a_{bridge_name}", problem.sys_block)
-    tracked_vars["m_b"] = find_name_in_block(f"m_b_{bridge_name}", problem.sys_block)
-    tracked_vars["m_c"] = find_name_in_block(f"m_c_{bridge_name}", problem.sys_block)
-    tracked_vars["gate_a"] = find_name_in_block(f"gate_a_{bridge_name}", problem.sys_block)
-    tracked_vars["gate_b"] = find_name_in_block(f"gate_b_{bridge_name}", problem.sys_block)
-    tracked_vars["gate_c"] = find_name_in_block(f"gate_c_{bridge_name}", problem.sys_block)
+    tracked_vars["m_a"] = find_name_in_block("m_a", problem.sys_block)
+    tracked_vars["m_b"] = find_name_in_block("m_b", problem.sys_block)
+    tracked_vars["m_c"] = find_name_in_block("m_c", problem.sys_block)
+    tracked_vars["gate_a"] = find_name_in_block("gate_a", problem.sys_block)
+    tracked_vars["gate_b"] = find_name_in_block("gate_b", problem.sys_block)
+    tracked_vars["gate_c"] = find_name_in_block("gate_c", problem.sys_block)
 
     all_problem_vars = list(problem.get_state_vars()) + list(problem.get_algebraic_vars())
     init_values = dict([
@@ -153,9 +153,9 @@ def _build_bridge_standalone_problem() -> Tuple[GenericEmtProblem, Dict[str, Var
         ("k_v_conv_test", 0.5),
         ("m_max_test", 0.95),
         ("vdc_floor_test", 0.05),
-        (f"m_a_{bridge_name}", 0.0),
-        (f"m_b_{bridge_name}", -0.6),
-        (f"m_c_{bridge_name}", 0.6),
+        ("m_a", 0.0),
+        ("m_b", -0.6),
+        ("m_c", 0.6),
     ])
 
     for init_name, init_value in init_values.items():
@@ -198,9 +198,9 @@ def test_bridge_2level_3ph_pwm_logic_switches_all_phases() -> None:
     gate_b_hist = np.zeros(len(time_samples), dtype=float)
     gate_c_hist = np.zeros(len(time_samples), dtype=float)
 
-    mode_a_idx = problem.uid2idx_event_params[next(var.uid for var in problem.get_runtime_mode_parameters() if var.name == "gate_a_mode_bridge_2level_test")]
-    mode_b_idx = problem.uid2idx_event_params[next(var.uid for var in problem.get_runtime_mode_parameters() if var.name == "gate_b_mode_bridge_2level_test")]
-    mode_c_idx = problem.uid2idx_event_params[next(var.uid for var in problem.get_runtime_mode_parameters() if var.name == "gate_c_mode_bridge_2level_test")]
+    mode_a_idx = problem.uid2idx_event_params[next(var.uid for var in problem.get_runtime_mode_parameters() if var.name == "gate_a_mode")]
+    mode_b_idx = problem.uid2idx_event_params[next(var.uid for var in problem.get_runtime_mode_parameters() if var.name == "gate_b_mode")]
+    mode_c_idx = problem.uid2idx_event_params[next(var.uid for var in problem.get_runtime_mode_parameters() if var.name == "gate_c_mode")]
 
     sample_idx = 0
     while sample_idx < len(time_samples):

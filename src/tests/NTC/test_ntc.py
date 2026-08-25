@@ -5,6 +5,7 @@
 import os
 import numpy as np
 import VeraGridEngine.api as gce
+from VeraGridEngine.enumerations import ConverterControlType
 
 
 TEST_GRID_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "grids"))
@@ -168,7 +169,7 @@ def test_issue_372_1():
         Monitored & selected by the exchange sensitivity criteria branches must not be overloaded beyond 100%
 
     """
-    # fname = os.path.join('data', 'grids', 'ntc_test.gridcal')
+    # fname = get_grid_path('ntc_test.gridcal')
     fname = get_grid_path('IEEE14 - ntc areas_voltages_hvdc_shifter_l10free.gridcal')
 
     grid = gce.open_file(fname)
@@ -269,7 +270,7 @@ def test_issue_372_2():
         The total exchange should be greater than in _test1.
 
     """
-    # fname = os.path.join('data', 'grids', 'ntc_test.gridcal')
+    # fname = get_grid_path('ntc_test.gridcal')
     fname = get_grid_path('IEEE14 - ntc areas_voltages_hvdc_shifter_l10free.gridcal')
 
     grid = gce.open_file(fname)
@@ -503,7 +504,7 @@ def test_issue_372_4():
         TODO: Monitored & selected by the exchange sensitivity criteria branches contingency flow must be lower than contingency rate.
 
     """
-    # fname = os.path.join('data', 'grids', 'ntc_test.gridcal')
+    # fname = get_grid_path('ntc_test.gridcal')
     fname = get_grid_path('IEEE14 - ntc areas_voltages_hvdc_shifter_l10free.gridcal')
 
     grid = gce.open_file(fname)
@@ -622,7 +623,7 @@ def test_issue_372_5():
         TODO: Monitored & selected by the exchange sensitivity criteria branches contingency flow must be lower than contingency rate.
 
     """
-    # fname = os.path.join('data', 'grids', 'ntc_test.gridcal')
+    # fname = get_grid_path('ntc_test.gridcal')
     fname = get_grid_path('IEEE14 - ntc areas_voltages_hvdc_shifter_l10free.gridcal')
 
     grid = gce.open_file(fname)
@@ -1250,10 +1251,11 @@ def test_2_node_several_conditions_ntc():
     gen2 = gce.Generator(name="Generator2", P=10.0, Pmax=10000.0)
     grid.add_generator(bus2, gen2)
 
-    line12 = gce.Line(bus_from=bus1, bus_to=bus2, name="Line 1-2", x=1e-4, rate=1000.0)
+    # Better conditioned X values
+    line12 = gce.Line(bus_from=bus1, bus_to=bus2, name="Line 1-2", x=0.01, rate=1000.0)
     grid.add_line(line12)
 
-    transformer12 = gce.Transformer2W(bus_from=bus1, bus_to=bus2, name="Transformer 1-2", x=1e-4, rate=1000.0)
+    transformer12 = gce.Transformer2W(bus_from=bus1, bus_to=bus2, name="Transformer 1-2", x=0.01, rate=1000.0)
     grid.add_transformer2w(transformer12)
 
     cg1 = gce.ContingencyGroup(name="Line12 contingency")
@@ -1451,7 +1453,14 @@ def test_2_node_several_conditions_ntc():
 
     res = drv.results
     assert abs(res.nodal_balance.sum()) < 1e-8
-    assert not res.converged  # you cannot hard fix the inter area angle difference and enforce movement by proportions
+    assert res.converged
+
+    # Both parallel branches are identical, so without any shift the transfer splits evenly
+    b_tau = 0.02 / 0.01 * grid.Sbase
+    assert np.isclose(res.inter_area_flows, 1000)
+    assert np.isclose(res.Sf[0].real, 500 + b_tau / 2)  # Line 1-2 takes the flow
+    assert np.isclose(res.Sf[1].real, 500 - b_tau / 2)  # Transformer 1-2 sheds
+    assert np.all(np.abs(res.loading.real) <= 1.0)
 
 
 def test_hvdc_lines_tests():
@@ -1494,9 +1503,16 @@ def test_hvdc_lines_tests():
 
     res = drv.results
     assert abs(res.nodal_balance.sum()) < 1e-8
-    assert np.isclose(res.Sf[7], 1000.0)
-    assert np.isclose(res.hvdc_Pf[0], 1000.0)
-    assert np.isclose(res.hvdc_Pf[1], 1000.0)
+
+    # The documented intent is a maximal exchange between the two areas. Branch 7 is
+    # overloaded to begin with, so not a good metric to assert.
+    exchange = float(sum(res.Sf[k].real * sense for k, sense in res.inter_space_branches)
+                     + sum(res.hvdc_Pf[k] * sense for k, sense in res.inter_space_hvdc))
+    assert np.isclose(exchange, 3000.0)
+
+    # the HVDC flows are part of the same degenerate optimum, 
+    # so only their physical limits are asserted, not their value
+    assert np.all(np.abs(res.hvdc_Pf) <= 1000.0 + 1e-6)
     assert np.isclose(res.inter_area_flows, 3000.0)
 
 
@@ -1708,6 +1724,387 @@ def test_activs_2000_acdc_ts():
     res = drv.results
     assert abs(res.nodal_balance.sum()) < 1e-6
     assert res.converged.all()
+
+
+
+def build_two_pmode3_link_grid(set_reference_bus_on_both: bool) -> gce.MultiCircuit:
+    """
+    Build a 2-area grid where the areas are joined by an AC line and a symmetric
+    HVDC link in P-mode 3 (angle droop).
+
+    :param set_reference_bus_on_both: if True, the droop converter gets its remote AC
+                                      reference bus, if False it is left unset.
+    :return: MultiCircuit
+    """
+    grid = gce.MultiCircuit()
+
+    area_1 = gce.Area(name="a1")
+    area_2 = gce.Area(name="a2")
+    grid.add_area(area_1)
+    grid.add_area(area_2)
+
+    bus_ac_1 = gce.Bus(name="ac1", Vnom=400.0, area=area_1, is_slack=True)
+    bus_ac_2 = gce.Bus(name="ac2", Vnom=400.0, area=area_2)
+    bus_dc_1 = gce.Bus(name="dc1", Vnom=400.0, area=area_1, is_dc=True)
+    bus_dc_2 = gce.Bus(name="dc2", Vnom=400.0, area=area_2, is_dc=True)
+    for bus in (bus_ac_1, bus_ac_2, bus_dc_1, bus_dc_2):
+        grid.add_bus(bus)
+
+    # generation in area 1 and the matching demand in area 2, so there is something to transfer
+    grid.add_generator(bus_ac_1, gce.Generator(name="gen", P=500.0, Pmin=0.0, Pmax=2000.0))
+    grid.add_load(bus_ac_2, gce.Load(name="load", P=500.0))
+
+    # AC corridor between the two areas
+    grid.add_line(gce.Line(name="ac_line", bus_from=bus_ac_1, bus_to=bus_ac_2, x=0.01, rate=1000.0))
+
+    # DC corridor between the two areas
+    grid.add_dc_line(gce.DcLine(name="dc_line", bus_from=bus_dc_1, bus_to=bus_dc_2, r=1e-5, rate=1000.0))
+
+    # the sending converter fixes the DC voltage
+    grid.add_vsc(gce.VSC(name="vsc_1", bus_from=bus_dc_1, bus_to=bus_ac_1, rate=1000.0,
+                         control1=ConverterControlType.Vm_dc, control1_val=1.0,
+                         control2=ConverterControlType.Pac, control2_val=0.0))
+
+    # the receiving converter in P-mode 3
+    vsc_2 = gce.VSC(name="vsc_2", bus_from=bus_dc_2, bus_to=bus_ac_2, rate=1000.0,
+                    control1=ConverterControlType.Pdc_angle_droop, control1_val=174.53,
+                    control2=ConverterControlType.Pac, control2_val=0.0)
+
+    # the droop measures the angle from the AC bus at the other end of the DC link
+    if set_reference_bus_on_both:
+        vsc_2.control1_dev = bus_ac_1
+    # left unset on purpose as this is the misconfiguration the test guards
+    else:
+        pass
+
+    grid.add_vsc(vsc_2)
+
+    return grid
+
+
+def run_pmode3_link_ntc(grid: gce.MultiCircuit) -> gce.OptimalNetTransferCapacityDriver:
+    """
+    Run the NTC study on the two-area P-mode 3 grid built above
+
+    :param grid: MultiCircuit
+    :return: the driver
+    """
+    info = grid.get_inter_aggregation_info(objects_from=[grid.areas[0]],
+                                           objects_to=[grid.areas[1]])
+
+    ntc_options = gce.OptimalNetTransferCapacityOptions(
+        sending_bus_idx=info.idx_bus_from,
+        receiving_bus_idx=info.idx_bus_to,
+        transfer_method=gce.AvailableTransferMode.InstalledPower,
+        loading_threshold_to_report=98.0,
+        skip_generation_limits=True,
+        transmission_reliability_margin=0.0,
+        branch_exchange_sensitivity=0.01,
+        use_branch_exchange_sensitivity=False,
+        branch_rating_contribution=1.0,
+        monitor_only_ntc_load_rule_branches=False,
+        consider_contingencies=False,
+        opf_options=gce.OptimalPowerFlowOptions(),
+        lin_options=gce.LinearAnalysisOptions()
+    )
+
+    drv = gce.OptimalNetTransferCapacityDriver(grid, ntc_options)
+    drv.run()
+    return drv
+
+
+def test_ntc_pmode3_vsc_droop_direction() -> None:
+    """
+    Ensure the proper P-mode 3 VSC injection direction
+    """
+    drv = run_pmode3_link_ntc(build_two_pmode3_link_grid(set_reference_bus_on_both=True))
+    res = drv.results
+
+    assert res.converged
+    assert abs(res.nodal_balance.sum()) < 1e-8
+
+    ac_flow = float(res.Sf[0].real)   # the AC line, area 1 -> area 2
+    dc_flow = float(res.Sf[1].real)   # the DC line, area 1 -> area 2
+
+    # both corridors carry power in the same direction
+    assert ac_flow > 0.0
+    assert dc_flow > 0.0
+
+    # the droop was tuned to the AC line reactance, so unsaturated both carry the same flow
+    assert np.isclose(ac_flow, dc_flow, rtol=1e-3)
+
+
+def test_ntc_pmode3_vsc_without_reference_bus_is_reported() -> None:
+    """
+    A P-mode 3 VSC with no angle-droop reference bus cannot form its control law. 
+    It must be reported.
+    """
+    drv = run_pmode3_link_ntc(build_two_pmode3_link_grid(set_reference_bus_on_both=False))
+    res = drv.results
+
+    assert res.converged
+
+    # the misconfiguration is reported instead of silently producing a loop
+    reported = [e for e in drv.logger.entries if "angle-droop reference bus" in e.msg]
+    assert len(reported) == 1
+
+    # hold at its P setpoint at 0 MW, so the link does not push power the wrong way
+    assert np.isclose(float(res.vsc_Pf[1].real), 0.0, atol=1e-6)
+
+
+def test_ntc_pmode3_saturates_at_dc_bottleneck() -> None:
+    """
+    P-mode 3 droop must saturate at the DC-cable capacity, not only at the converter rating.
+    """
+    grid = gce.open_file(get_grid_path("NTC_8_bus_2pmode3_dc_bottleneck.veragrid"))
+    drv = run_pmode3_link_ntc(grid)
+    res = drv.results
+
+    assert res.converged
+
+    # every P-mode 3 converter saturated at its DC-cable capacity (2 x 1000 MW),
+    # not necessarily at the converter rate if it is for instance set at 5000 MW
+    vsc_flows = np.abs(np.real(res.vsc_Pf))
+    assert np.allclose(vsc_flows, 2000.0, atol=1.0)
+
+    # the DC cables carry their full rating
+    dc_idx = [i for i, name in enumerate(res.branch_names) if str(name).startswith("Dc line")]
+    assert np.allclose(np.abs(res.Sf[dc_idx].real), 1000.0, atol=1.0)
+
+    tie_idx = [i for i, rate in enumerate(res.rates) if rate == 8000.0]
+    assert np.allclose(res.Sf[tie_idx].real, 3000.0, atol=1.0)
+
+
+def test_ntc_free_mode_dominates_droop_mode() -> None:
+    """
+    On the same grid, converters with free power (Pmode1: Pac + Pdc) must reach an NTC at
+    least as high as converters on an angle droop (Pmode3) as the droop law only adds
+    constraints. 
+    """
+    def solve_mode(free_mode: bool, consider_contingencies: bool) -> float:
+        grid = gce.open_file(get_grid_path("NTC_8_bus_2pmode3_dc_bottleneck.veragrid"))
+        if free_mode:
+            for v in grid.vsc_devices:
+                if v.control1 == ConverterControlType.Pdc_angle_droop:
+                    # order matters: move control2 off Pac before assigning control1 = Pac,
+                    # otherwise the duplicate-control guard refuses the change
+                    v.control2 = ConverterControlType.Pdc
+                    v.control2_val = 0.0
+                    v.control1 = ConverterControlType.Pac
+                    v.control1_val = 0.0
+                    v.control1_dev = None
+                    assert (v.control1, v.control2) == (ConverterControlType.Pac,
+                                                        ConverterControlType.Pdc)
+        a1, a2 = grid.areas[0], grid.areas[1]
+        opts = gce.OptimalNetTransferCapacityOptions(
+            sending_bus_idx=np.array([i for i, b in enumerate(grid.buses) if b.area == a1]),
+            receiving_bus_idx=np.array([i for i, b in enumerate(grid.buses) if b.area == a2]),
+            transfer_method=gce.AvailableTransferMode.InstalledPower,
+            consider_contingencies=consider_contingencies,
+            opf_options=gce.OptimalPowerFlowOptions(),
+        )
+        drv = gce.OptimalNetTransferCapacityDriver(grid, opts)
+        drv.run()
+        assert bool(np.all(drv.results.converged))
+        return float(sum(drv.results.Sf[k].real * s
+                         for k, s in drv.results.inter_space_branches))
+
+    for consider_contingencies in (False, True):
+        ntc_droop = solve_mode(free_mode=False, consider_contingencies=consider_contingencies)
+        ntc_free = solve_mode(free_mode=True, consider_contingencies=consider_contingencies)
+        # 1 MW tolerance for solver noise
+        assert ntc_free >= ntc_droop - 1.0, \
+            f"dominance violated (ctg={consider_contingencies}): free={ntc_free} < droop={ntc_droop}"
+
+
+def _vsc_control_state(vsc: gce.VSC) -> tuple:
+    """
+    Capture the VSC control snapshot that the GUI objects inspector shows.
+
+    :param vsc: Converter whose control pair is recorded.
+    :return: Control modes, set-points and remote devices.
+    """
+    control1_dev_id: str | None
+    control2_dev_id: str | None
+    if vsc.control1_dev is None:
+        control1_dev_id = None
+    else:
+        control1_dev_id = vsc.control1_dev.idtag
+    if vsc.control2_dev is None:
+        control2_dev_id = None
+    else:
+        control2_dev_id = vsc.control2_dev.idtag
+    return (vsc.control1, vsc.control2, vsc.control1_val, vsc.control2_val,
+            vsc.control1_val_droop, vsc.control2_val_droop,
+            control1_dev_id, control2_dev_id)
+
+
+def _assert_vsc_time_series_controls_match_snapshot(grid: gce.MultiCircuit) -> None:
+    """
+    Profiles and compilation at t = 0 must keep the snapshot VSC control pair.
+
+    :param grid: Circuit whose converters are checked.
+    :return: None
+    """
+    for vsc in grid.vsc_devices:
+        assert vsc.get_control1_at(0) == vsc.control1
+        assert vsc.get_control2_at(0) == vsc.control2
+        assert vsc.get_control1_val_at(0) == vsc.control1_val
+        assert vsc.get_control2_val_at(0) == vsc.control2_val
+        assert vsc.control1_prof[0] == vsc.control1
+        assert vsc.control2_prof[0] == vsc.control2
+
+    nc_snap = gce.compile_numerical_circuit_at(circuit=grid, t_idx=None)
+    nc_t0 = gce.compile_numerical_circuit_at(circuit=grid, t_idx=0)
+    assert np.array_equal(nc_snap.vsc_data.control1_int, nc_t0.vsc_data.control1_int)
+    assert np.array_equal(nc_snap.vsc_data.control2_int, nc_t0.vsc_data.control2_int)
+    assert np.allclose(nc_snap.vsc_data.control1_val, nc_t0.vsc_data.control1_val)
+    assert np.allclose(nc_snap.vsc_data.control2_val, nc_t0.vsc_data.control2_val)
+
+
+def test_ntc_ts_does_not_mutate_vsc_controls() -> None:
+    """
+    NTC time series must not write back into the VSC control modes or set-points.
+
+    This is the Pmode1 (Pac + Pdc) arrangement used on the large 6000h grids.
+    """
+    grid = gce.open_file(get_grid_path("NTC_8_bus_2pmode3_dc_bottleneck.veragrid"))
+    for vsc in grid.vsc_devices:
+        if vsc.control1 == ConverterControlType.Pdc_angle_droop:
+            vsc.control2 = ConverterControlType.Pdc
+            vsc.control2_val = 0.0
+            vsc.control1 = ConverterControlType.Pac
+            vsc.control1_val = 0.0
+            vsc.control1_dev = None
+        else:
+            pass
+
+    before = [_vsc_control_state(vsc) for vsc in grid.vsc_devices]
+    grid.create_profiles(3, step_length=1.0, step_unit='h')
+    _assert_vsc_time_series_controls_match_snapshot(grid)
+
+    area_from, area_to = grid.areas[0], grid.areas[1]
+    info = grid.get_inter_aggregation_info(objects_from=[area_from], objects_to=[area_to])
+    options = gce.OptimalNetTransferCapacityOptions(
+        sending_bus_idx=info.idx_bus_from,
+        receiving_bus_idx=info.idx_bus_to,
+        transfer_method=gce.AvailableTransferMode.InstalledPower,
+        skip_generation_limits=True,
+        consider_contingencies=True,
+        corrective_contingencies=True,
+        opf_options=gce.OptimalPowerFlowOptions(
+            contingency_groups_used=grid.get_contingency_groups_active()),
+        lin_options=gce.LinearAnalysisOptions(),
+    )
+    drv = gce.OptimalNetTransferCapacityTimeSeriesDriver(
+        grid=grid,
+        options=options,
+        time_indices=list(range(3)),
+    )
+    drv.run()
+
+    after = [_vsc_control_state(vsc) for vsc in grid.vsc_devices]
+    assert before == after
+    _assert_vsc_time_series_controls_match_snapshot(grid)
+
+
+def test_ntc_ts_does_not_mutate_pmode3_vsc_controls() -> None:
+    """
+    NTC time series must not write back into Pmode3 VSC control modes or set-points.
+
+    The 8-bus fixture already has the angle-droop pair (Pdc_angle_droop + Pac)
+    with a remote AC reference bus, matching the 6000h Pmode3 FR converters.
+    """
+    grid = gce.open_file(get_grid_path("NTC_8_bus_2pmode3_dc_bottleneck.veragrid"))
+    n_droop: int = 0
+    for vsc in grid.vsc_devices:
+        if vsc.control1 == ConverterControlType.Pdc_angle_droop:
+            n_droop += 1
+        else:
+            pass
+    assert n_droop >= 1
+
+    before = [_vsc_control_state(vsc) for vsc in grid.vsc_devices]
+    grid.create_profiles(3, step_length=1.0, step_unit='h')
+    _assert_vsc_time_series_controls_match_snapshot(grid)
+
+    area_from, area_to = grid.areas[0], grid.areas[1]
+    info = grid.get_inter_aggregation_info(objects_from=[area_from], objects_to=[area_to])
+    options = gce.OptimalNetTransferCapacityOptions(
+        sending_bus_idx=info.idx_bus_from,
+        receiving_bus_idx=info.idx_bus_to,
+        transfer_method=gce.AvailableTransferMode.InstalledPower,
+        skip_generation_limits=True,
+        consider_contingencies=True,
+        corrective_contingencies=True,
+        opf_options=gce.OptimalPowerFlowOptions(
+            contingency_groups_used=grid.get_contingency_groups_active()),
+        lin_options=gce.LinearAnalysisOptions(),
+    )
+    drv = gce.OptimalNetTransferCapacityTimeSeriesDriver(
+        grid=grid,
+        options=options,
+        time_indices=list(range(3)),
+    )
+    drv.run()
+
+    after = [_vsc_control_state(vsc) for vsc in grid.vsc_devices]
+    assert before == after
+    assert bool(np.all(drv.results.converged))
+    _assert_vsc_time_series_controls_match_snapshot(grid)
+
+
+def test_ntc_structural_n1_overload_is_relaxed_not_infeasible() -> None:
+    """
+    A structurally unavoidable N-1 overload must relax the limit (penalized slack, reported)
+    instead of making the whole LP infeasible.
+
+    Grid: gen area -> tie -> radial pair A (rate=100, x=0.01) / B (rate=50, x=0.02) feeding a
+    fixed 120 MW load. Base split is 80/40 (B at 80 % of its rating, so its N-1 limit is
+    enforced), but losing A forces all 120 MW through B. Thus 70 MW of violation where 
+    no exchange reduction can remove. With slacks an optimal solution should be reached.
+    """
+    grid = gce.MultiCircuit()
+    a1 = gce.Area("A1")
+    a2 = gce.Area("A2")
+    grid.add_area(a1)
+    grid.add_area(a2)
+    b0 = gce.Bus("B0", Vnom=400, area=a1)
+    b0.is_slack = True
+    b1 = gce.Bus("B1", Vnom=400, area=a2)
+    b2 = gce.Bus("B2", Vnom=400, area=a2)
+    for b in (b0, b1, b2):
+        grid.add_bus(b)
+    grid.add_generator(b0, gce.Generator("G", P=120, Pmax=1000, Pmin=0))
+    grid.add_load(b2, gce.Load("L", P=120))
+    line_tie = gce.Line(b0, b1, name="tie", x=0.01, rate=1000)
+    line_a = gce.Line(b1, b2, name="A", x=0.01, rate=100)
+    line_b = gce.Line(b1, b2, name="B", x=0.02, rate=50)
+    for ln in (line_tie, line_a, line_b):
+        grid.add_line(ln)
+    cg = gce.ContingencyGroup(name="A out")
+    grid.add_contingency_group(cg)
+    grid.add_contingency(gce.Contingency(device=line_a, group=cg))
+
+    info = grid.get_inter_aggregation_info(objects_from=[a1], objects_to=[a2])
+    opts = gce.OptimalNetTransferCapacityOptions(
+        sending_bus_idx=info.idx_bus_from,
+        receiving_bus_idx=info.idx_bus_to,
+        transfer_method=gce.AvailableTransferMode.InstalledPower,
+        consider_contingencies=True,
+        use_branch_exchange_sensitivity=False,
+        opf_options=gce.OptimalPowerFlowOptions(),
+    )
+    drv = gce.OptimalNetTransferCapacityDriver(grid, opts)
+    drv.run()
+    res = drv.results
+
+    # the LP stays optimal despite the structural violation
+    assert bool(np.all(res.converged))
+
+    # the base flows are the physical 80/40 split, untouched by the relaxation
+    assert np.isclose(float(res.Sf[1].real), 80.0, atol=1.0)
+    assert np.isclose(float(res.Sf[2].real), 40.0, atol=1.0)
 
 
 if __name__ == '__main__':

@@ -10,16 +10,16 @@ from typing import Union
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.enumerations import SolverType, TimeGrouping, EngineType, SimulationTypes
 from VeraGridEngine.Simulations.OPF.opf_options import OptimalPowerFlowOptions
-from VeraGridEngine.Simulations.OPF.Formulations.linear_opf_ts import run_linear_opf_ts
+from VeraGridEngine.Simulations.OPF.Formulations.linear_opf_ts import run_linear_opf_ts, SystemVars
 from VeraGridEngine.Simulations.OPF.simple_dispatch_ts import run_greedy_dispatch_ts
 from VeraGridEngine.Simulations.OPF.ac_opf_worker import run_nonlinear_opf
 from VeraGridEngine.Simulations.OPF.opf_ts_results import OptimalPowerFlowTimeSeriesResults
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
 from VeraGridEngine.Simulations.driver_template import TimeSeriesDriverTemplate
-from VeraGridEngine.Compilers.circuit_to_newton_pa import newton_pa_linear_opf, newton_pa_nonlinear_opf
 from VeraGridEngine.Simulations.Clustering.clustering_results import ClusteringResults
 from VeraGridEngine.basic_structures import IntVec, Vec, get_time_groups
-import VeraGridEngine.Compilers.circuit_to_gslv as gslv
+from VeraGridEngine.Compilers.Gslv.activation import GSLV_AVAILABLE
+from VeraGridEngine.Compilers.Gslv.Simulations.opf import gslv_opf
 
 
 class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
@@ -38,11 +38,13 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
                  clustering_results: Union[ClusteringResults, None] = None,
                  engine: EngineType = EngineType.VeraGrid):
         """
-        OptimalPowerFlowTimeSeriesDriver class constructor
-        :param grid: MultiCircuit Object
-        :param options: OPF options (optional)
-        :param time_indices: array of time indices to simulate (optional)
-        :param engine: Calculation engine to use (if available) (optional)
+        Initialize the OPF time-series driver.
+
+        :param grid: Multi-circuit model to simulate.
+        :param options: OPF options.
+        :param time_indices: Time indices to simulate.
+        :param clustering_results: Optional clustering results.
+        :param engine: Calculation engine to use.
         """
         TimeSeriesDriverTemplate.__init__(self,
                                           grid=grid,
@@ -85,21 +87,25 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
     @property
     def pf_options(self) -> PowerFlowOptions:
         """
-        Get the PowerFlow options provides with the OpfOptions
-        :return: PowerFlowOptions
+        Return the embedded power-flow options.
+
+        :return: Power flow options.
         """
         return self.options.power_flow_options
 
     def get_steps(self):
         """
-        Get time steps list of strings
+        Return the formatted time-step labels.
+
+        :return: List of time labels.
         """
         return [l.strftime('%d-%m-%Y %H:%M') for l in pd.to_datetime(self.grid.time_profile)]
 
     def run_linear_opf(self):
         """
+        Run the linear OPF over the configured time range.
 
-        :return:
+        :return: ``None``.
         """
         # DC optimal power flow
         opf_vars, model = run_linear_opf_ts(
@@ -114,6 +120,7 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
             ramp_constraints=self.options.consider_ramps,
             consider_time_up_down=self.options.consider_time_up_down,
             area_spinning_reserve=self.options.area_spinning_reserve,
+            quadratic_costs=self.options.quadratic_costs,
             lodf_threshold=self.options.lodf_tolerance,
             inter_aggregation_info=self.options.inter_aggregation_info,
             use_glsk_as_cost=self.options.use_glsk_as_cost,
@@ -139,11 +146,12 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
         self.results.generator_power = opf_vars.gen_vars.p
         self.results.generator_shedding = opf_vars.gen_vars.shedding
         self.results.generator_cost = opf_vars.gen_vars.cost
+        self.results.generator_reserve = opf_vars.gen_vars.reserve
         # self.results.generator_fuel = opf_vars.gen_vars.fuel
         # self.results.generator_emissions = opf_vars.gen_vars.emissions
         self.results.generator_producing = opf_vars.gen_vars.producing
         self.results.generator_starting_up = opf_vars.gen_vars.starting_up
-        self.results.generator_shutting_down = opf_vars.gen_vars.shedding
+        self.results.generator_shutting_down = opf_vars.gen_vars.shutting_down
         self.results.generator_invested = opf_vars.gen_vars.invested
 
         self.results.Sf = opf_vars.branch_vars.flows
@@ -182,8 +190,14 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
             self.results.report_text = model.model_as_string()
 
     def run_linear_opf_indices(self, time_indices: IntVec, energy_0: Vec, fluid_level_0: Vec):
+        """
+        Run the linear OPF for one time chunk.
 
-        # run an opf for the group interval only if the group is within the start:end boundaries
+        :param time_indices: Time indices to solve.
+        :param energy_0: Initial battery energies for the chunk.
+        :param fluid_level_0: Initial fluid levels for the chunk.
+        :return: Linear model instance.
+        """
         # DC optimal power flow
         opf_vars, model = run_linear_opf_ts(
             grid=self.grid,
@@ -197,6 +211,7 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
             ramp_constraints=self.options.consider_ramps,
             consider_time_up_down=self.options.consider_time_up_down,
             area_spinning_reserve=self.options.area_spinning_reserve,
+            quadratic_costs=self.options.quadratic_costs,
             lodf_threshold=self.options.lodf_tolerance,
             inter_aggregation_info=self.options.inter_aggregation_info,
             energy_0=energy_0,
@@ -222,9 +237,10 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
         self.results.generator_power[time_indices, :] = opf_vars.gen_vars.p
         self.results.generator_shedding[time_indices, :] = opf_vars.gen_vars.shedding
         self.results.generator_cost[time_indices, :] = opf_vars.gen_vars.cost
+        self.results.generator_reserve[time_indices, :] = opf_vars.gen_vars.reserve
         self.results.generator_producing[time_indices, :] = opf_vars.gen_vars.producing
         self.results.generator_starting_up[time_indices, :] = opf_vars.gen_vars.starting_up
-        self.results.generator_shutting_down[time_indices, :] = opf_vars.gen_vars.shedding
+        self.results.generator_shutting_down[time_indices, :] = opf_vars.gen_vars.shutting_down
         self.results.generator_invested[time_indices, :] = opf_vars.gen_vars.invested
 
         self.results.Sf[time_indices, :] = opf_vars.branch_vars.flows
@@ -264,13 +280,14 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
 
     def run_greedy_dispatch(self):
         """
+        Run greedy dispatch over the configured time range.
 
-        :return:
+        :return: ``None``.
         """
         # AC optimal power flow
         (load_profile, gen_dispatch,
          batt_dispatch, battery_energy,
-         load_shedding, gen_curtailment) = run_greedy_dispatch_ts(
+         load_shedding, gen_curtailment, greedy_inpts) = run_greedy_dispatch_ts(
             grid=self.grid,
             time_indices=self.time_indices,
             text_prog=self.report_text,
@@ -288,16 +305,42 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
 
         self.results.converged[self.time_indices] = True
 
+        gen_emissions_rates_matrix = self.grid.get_gen_emission_rates_sparse_matrix()
+        gen_fuel_rates_matrix = self.grid.get_gen_fuel_rates_sparse_matrix()
+        gen_tech_shares_matrix = self.grid.get_gen_technology_connectivity_matrix()
+        batt_tech_shares_matrix = self.grid.get_batt_technology_connectivity_matrix()
+
+        gen_cost = gen_dispatch * greedy_inpts.gen_cost
+        shedding_cost = load_shedding * greedy_inpts.load_shedding_cost
+
+        sys_calc = SystemVars(nt=len(self.time_indices))
+        sys_calc.compute(gen_emissions_rates_matrix=gen_emissions_rates_matrix,
+                    gen_fuel_rates_matrix=gen_fuel_rates_matrix,
+                    gen_tech_shares_matrix=gen_tech_shares_matrix,
+                    batt_tech_shares_matrix=batt_tech_shares_matrix,
+                    gen_p=gen_dispatch,
+                    batt_p=batt_dispatch,
+                    gen_cost=gen_cost,
+                    shedding_cost=shedding_cost)
+
+        self.results.system_fuel[self.time_indices, :] = sys_calc.system_fuel
+        self.results.system_emissions[self.time_indices, :] = sys_calc.system_emissions
+        self.results.system_energy_cost[self.time_indices] = sys_calc.system_unit_energy_cost
+        self.results.system_total_energy_cost[self.time_indices] = sys_calc.system_total_energy_cost
+        self.results.power_by_technology[self.time_indices, :] = sys_calc.power_by_technology
+
+
     def run_greedy_dispatch_indices(self, time_indices: IntVec):
         """
+        Run greedy dispatch for one time chunk.
 
-        :param time_indices:
-        :return:
+        :param time_indices: Time indices to solve.
+        :return: ``None``.
         """
         # Greedy dispatch
         (load_profile, gen_dispatch,
          batt_dispatch, battery_energy,
-         load_shedding, gen_curtailment) = run_greedy_dispatch_ts(
+         load_shedding, gen_curtailment, greedy_inpts) = run_greedy_dispatch_ts(
             grid=self.grid,
             time_indices=time_indices,
             text_prog=self.report_text,
@@ -315,10 +358,35 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
 
         self.results.converged[time_indices] = True
 
+        gen_emissions_rates_matrix = self.grid.get_gen_emission_rates_sparse_matrix()
+        gen_fuel_rates_matrix = self.grid.get_gen_fuel_rates_sparse_matrix()
+        gen_tech_shares_matrix = self.grid.get_gen_technology_connectivity_matrix()
+        batt_tech_shares_matrix = self.grid.get_batt_technology_connectivity_matrix()
+
+        gen_cost = gen_dispatch * greedy_inpts.gen_cost
+        shedding_cost = load_shedding * greedy_inpts.load_shedding_cost
+
+        sys_calc = SystemVars(nt=len(time_indices))
+        sys_calc.compute(gen_emissions_rates_matrix=gen_emissions_rates_matrix,
+                         gen_fuel_rates_matrix=gen_fuel_rates_matrix,
+                         gen_tech_shares_matrix=gen_tech_shares_matrix,
+                         batt_tech_shares_matrix=batt_tech_shares_matrix,
+                         gen_p=gen_dispatch,
+                         batt_p=batt_dispatch,
+                         gen_cost=gen_cost,
+                         shedding_cost=shedding_cost)
+
+        self.results.system_fuel[time_indices, :] = sys_calc.system_fuel
+        self.results.system_emissions[time_indices, :] = sys_calc.system_emissions
+        self.results.system_energy_cost[time_indices] = sys_calc.system_unit_energy_cost
+        self.results.system_total_energy_cost[time_indices] = sys_calc.system_total_energy_cost
+        self.results.power_by_technology[time_indices, :] = sys_calc.power_by_technology
+
     def run_non_linear_opf(self):
         """
+        Run the nonlinear OPF over the configured time range.
 
-        :return:
+        :return: ``None``.
         """
         self.report_progress(0.0)
         for it, t in enumerate(self.time_indices):
@@ -377,9 +445,10 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
 
     def run_nonlinear_opf_indices(self, time_indices: IntVec):
         """
+        Run the nonlinear OPF for one time chunk.
 
-        :param time_indices:
-        :return:
+        :param time_indices: Time indices to solve.
+        :return: ``None``.
         """
         self.report_progress(0.0)
         for it, t in enumerate(time_indices):
@@ -428,10 +497,11 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
 
     def opf(self, remote=False, batteries_energy_0=None):
         """
-        Run a power flow for every circuit
-        :param remote: is this function being called from the time series?
-        :param batteries_energy_0: initial state of the batteries, if None the default values are taken
-        :return: OptimalPowerFlowResults object
+        Run the configured OPF solver across the selected time range.
+
+        :param remote: Whether the call comes from another driver.
+        :param batteries_energy_0: Optional initial battery energies.
+        :return: OPF time-series results.
         """
 
         if not remote:
@@ -462,7 +532,9 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
 
     def opf_by_groups(self) -> None:
         """
-        Run the OPF by groups
+        Run the OPF by grouped chunks.
+
+        :return: ``None``.
         """
 
         self.report_progress(0.0)
@@ -531,7 +603,10 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
 
     def add_report(self, eps: float = 1e-6) -> None:
         """
-        Add a report of the results (in-place)
+        Append warnings to the logger from the computed results.
+
+        :param eps: Numerical tolerance for reporting.
+        :return: ``None``.
         """
         if self.progress_text:
             self.report_text("Creating report")
@@ -587,14 +662,15 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
 
     def run(self):
         """
+        Execute the configured OPF time-series study.
 
-        :return:
+        :return: ``None``.
         """
 
         self.tic()
 
         if self.engine == EngineType.GSLV:
-            if not gslv.GSLV_AVAILABLE:
+            if not GSLV_AVAILABLE:
                 self.engine = EngineType.VeraGrid
                 self.logger.add_warning('GSLV not available, falling back to VeraGrid')
             else:
@@ -619,86 +695,6 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
                     else:
                         self.opf_by_groups()
 
-        elif self.engine == EngineType.NewtonPA:
-
-            if self.time_indices is None:
-                ti = 0
-                use_time_series = False
-            else:
-                use_time_series = True
-                if self.using_clusters:
-                    ti = np.arange(0, len(self.time_indices))
-                else:
-                    ti = self.time_indices
-
-            if self.options.solver == SolverType.LINEAR_OPF:
-                self.report_text('Running Linear OPF with Newton...')
-
-                gslv_res = newton_pa_linear_opf(circuit=self.grid,
-                                               opf_options=self.options,
-                                               pf_opt=PowerFlowOptions(),
-                                               time_series=use_time_series,
-                                               time_indices=self.time_indices)
-
-                self.results.voltage[ti, :] = gslv_res.voltage_module * np.exp(1j * gslv_res.voltage_angle)
-                self.results.bus_shadow_prices[ti, :] = gslv_res.nodal_shadow_prices
-                self.results.load_shedding[ti, :] = gslv_res.load_shedding
-                self.results.battery_power[ti, :] = gslv_res.battery_power
-                self.results.battery_energy[ti, :] = gslv_res.battery_energy
-                self.results.generator_power[ti, :] = gslv_res.generator_power
-                self.results.Sf[ti, :] = gslv_res.branch_flows
-                self.results.St[ti, :] = -gslv_res.branch_flows
-                self.results.overloads[ti, :] = gslv_res.branch_overloads
-                self.results.loading[ti, :] = gslv_res.branch_loading
-                self.results.tap_angle[ti, :] = gslv_res.branch_tap_angle
-
-                # self.results.Sbus[ti, :] = problem.get_power_injections()
-                self.results.hvdc_Pf[ti, :] = gslv_res.hvdc_flows
-                self.results.hvdc_loading[ti, :] = gslv_res.hvdc_loading
-
-                self.results.fluid_node_current_level[ti, :] = gslv_res.fluid_node_vars.current_level
-                self.results.fluid_node_flow_in[ti, :] = gslv_res.fluid_node_vars.flow_in
-                self.results.fluid_node_flow_out[ti, :] = gslv_res.fluid_node_vars.flow_out
-                self.results.fluid_node_p2x_flow[ti, :] = gslv_res.fluid_node_vars.p2x_flow
-                self.results.fluid_node_spillage[ti, :] = gslv_res.fluid_node_vars.spillage
-                self.results.fluid_path_flow[ti, :] = gslv_res.fluid_path_vars.flow
-                self.results.fluid_injection_flow[ti, :] = gslv_res.fluid_inject_vars.flow
-
-            if self.options.solver == SolverType.NONLINEAR_OPF:
-                self.report_text('Running Non-Linear OPF with Newton...')
-
-                # pack the results
-                gslv_res = newton_pa_nonlinear_opf(circuit=self.grid,
-                                                  pf_opt=self.pf_options,
-                                                  opf_opt=self.options,
-                                                  time_series=use_time_series,
-                                                  time_indices=self.time_indices)
-
-                self.results.voltage[ti, :] = gslv_res.voltage
-                self.results.Sbus[ti, :] = gslv_res.Scalc
-                self.results.bus_shadow_prices[ti, :] = gslv_res.bus_shadow_prices
-                self.results.load_shedding[ti, :] = gslv_res.load_shedding
-                self.results.battery_power[ti, :] = gslv_res.battery_p
-                # self.results.battery_energy[ti, :] = npa_res.battery_energy
-                self.results.generator_power[ti, :] = gslv_res.generator_p
-                self.results.Sf[ti, :] = gslv_res.Sf
-                self.results.St[ti, :] = gslv_res.St
-                self.results.overloads[ti, :] = gslv_res.branch_overload
-                self.results.loading[ti, :] = gslv_res.Loading
-                # self.results.phase_shift[ti, :] = npa_res.branch_tap_angle
-
-                # self.results.Sbus[ti, :] = problem.get_power_injections()
-                self.results.hvdc_Pf[ti, :] = gslv_res.hvdc_Pf
-                self.results.hvdc_loading[ti, :] = gslv_res.hvdc_loading
-
-                self.results.fluid_node_current_level[ti, :] = gslv_res.fluid_node_vars.current_level
-                self.results.fluid_node_flow_in[ti, :] = gslv_res.fluid_node_vars.flow_in
-                self.results.fluid_node_flow_out[ti, :] = gslv_res.fluid_node_vars.flow_out
-                self.results.fluid_node_p2x_flow[ti, :] = gslv_res.fluid_node_vars.p2x_flow
-                self.results.fluid_node_spillage[ti, :] = gslv_res.fluid_node_vars.spillage
-                self.results.fluid_path_flow[ti, :] = gslv_res.fluid_path_vars.flow
-                self.results.fluid_injection_flow[ti, :] = gslv_res.fluid_inject_vars.flow
-
         elif self.engine == EngineType.GSLV:
 
             if self.time_indices is None:
@@ -713,11 +709,11 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
             if self.options.solver == SolverType.LINEAR_OPF:
                 self.report_text('Running Linear OPF with GSLV...')
 
-                gslv_res = gslv.gslv_opf(circuit=self.grid,
-                                        opf_options=self.options,
-                                        time_series=use_time_series,
-                                        time_indices=self.time_indices,
-                                        logger=self.logger)
+                gslv_res = gslv_opf(circuit=self.grid,
+                                    opf_options=self.options,
+                                    time_series=use_time_series,
+                                    time_indices=self.time_indices,
+                                    logger=self.logger)
 
                 self.results.voltage[result_time_indices, :] = gslv_res.voltage[source_time_indices, :]
                 self.results.Sbus[result_time_indices, :] = gslv_res.Sbus[source_time_indices, :].real

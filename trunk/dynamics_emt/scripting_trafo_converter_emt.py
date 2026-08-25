@@ -149,7 +149,8 @@ for bus in circuit.buses:
 gen_mdl = get_generator_thevenin_rl_emt_template_with_ref(vf = circuit.var_factory).block
 
 # Transformer model (series RL with ideal transformer)
-trafo_mdl = get_transformer_emt_template(vf=circuit.var_factory, name=transformer.name).block
+trafo_templ = get_transformer_emt_template(vf=circuit.var_factory, name=transformer.name)
+trafo_mdl = trafo_templ.block.children[0]
 
 # VSC model (standard converter: DC -> AC with power balance)
 vsc_mdl = get_emt_ideal_converter(
@@ -428,19 +429,19 @@ v_C_bus2 = find_name_in_block(f"v_C_Bus2_AC_emt_template", bus2_ac.emt_model)
 v_DC_bus3 = find_name_in_block(f"v_DC_Bus3_DC_emt_template", bus3_dc.emt_model)
 
 # Generator currents
-i_A_gen = find_name_in_block(f"i_A_emt_thevenin_eq_generator_template", gen_mdl)
-i_B_gen = find_name_in_block(f"i_B_emt_thevenin_eq_generator_template", gen_mdl)
-i_C_gen = find_name_in_block(f"i_C_emt_thevenin_eq_generator_template", gen_mdl)
+i_A_gen = find_name_in_block("i_A", gen_mdl)
+i_B_gen = find_name_in_block("i_B", gen_mdl)
+i_C_gen = find_name_in_block("i_C", gen_mdl)
 
-theta_gen = find_name_in_block("theta_emt_thevenin_eq_generator_template", gen_mdl)
+theta_gen = find_name_in_block("theta", gen_mdl)
 
 # VSC currents (AC side)
-i_A_vsc = find_name_in_block(f"i_A_{vsc.name}", vsc_mdl)
-i_B_vsc = find_name_in_block(f"i_B_{vsc.name}", vsc_mdl)
-i_C_vsc = find_name_in_block(f"i_C_{vsc.name}", vsc_mdl)
+i_A_vsc = find_name_in_block("i_A", vsc_mdl)
+i_B_vsc = find_name_in_block("i_B", vsc_mdl)
+i_C_vsc = find_name_in_block("i_C", vsc_mdl)
 
 # DC current
-i_DC_vsc = find_name_in_block(f"i_dc_VSC", vsc_mdl)
+i_DC_vsc = find_name_in_block("i_dc", vsc_mdl)
 
 # Plot voltages at AC buses
 plt.figure(figsize=(14, 10))

@@ -1,0 +1,1 @@
+Hi! I'm currently using Veragrid to run short-circuit studies on the 9-bus model. The GUI seems to go completely blank when I try to run the short circuit study and when I check the results data, all the values in the buses and brances are 0. Could there be a problem with the solver? I'm using version 6.3.0

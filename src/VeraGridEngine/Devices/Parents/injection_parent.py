@@ -3,6 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
+
 from typing import Union, List, TYPE_CHECKING, Tuple
 import numpy as np
 
@@ -46,7 +47,10 @@ class InjectionParent(DynamicDevice):
         '_use_kw',
         '_bus_pos',
         '_conn',
-
+        "_phN",
+        "_phA",
+        "_phB",
+        "_phC",
         'color',
     )
 
@@ -74,6 +78,7 @@ class InjectionParent(DynamicDevice):
             tpe=str,
             definition='Color to paint the element in the map diagram',
             is_color=True,
+            cat=[PrpCat.TP],
         ),
         GCProp(
             prop_name='mttf',
@@ -109,7 +114,7 @@ class InjectionParent(DynamicDevice):
             tpe=float,
             definition='Cost of not served energy. Used in OPF.',
             profile_name='Cost_prof',
-            cat=[PrpCat.OPF],
+            cat=[PrpCat.OPF, PrpCat.NTC],
         ),
         GCProp(
             prop_name='facility',
@@ -117,6 +122,7 @@ class InjectionParent(DynamicDevice):
             tpe=DeviceType.FacilityDevice,
             definition='Facility where this is located',
             editable=True,
+            cat=[PrpCat.OPF, PrpCat.TP],
         ),
         GCProp(
             prop_name='technologies',
@@ -162,7 +168,7 @@ class InjectionParent(DynamicDevice):
             units='',
             tpe=bool,
             definition='Consider the injections in kW and kVAr?',
-            cat=[PrpCat.PF, PrpCat.OPF],
+            cat=[PrpCat.PF, PrpCat.OPF, PrpCat.NTC],
         ),
         GCProp(
             prop_name='conn',
@@ -171,6 +177,39 @@ class InjectionParent(DynamicDevice):
             definition='Connection type for 3-phase studies',
             cat=[PrpCat.SC, PrpCat.PF3],
             dyn_ref=ParamPowerFlowReferenceType.injection_connection_type,
+        ),
+
+        GCProp(
+            prop_name='phN',
+            units='',
+            tpe=bool,
+            definition='Is the neutral connected?',
+            cat=[PrpCat.SC, PrpCat.PF3, PrpCat.EMT],
+            display=False,
+        ),
+
+        GCProp(
+            prop_name='phA',
+            units='',
+            tpe=bool,
+            definition='Is phase A connected?',
+            cat=[PrpCat.SC, PrpCat.PF3, PrpCat.EMT],
+        ),
+
+        GCProp(
+            prop_name='phB',
+            units='',
+            tpe=bool,
+            definition='Is phase B connected?',
+            cat=[PrpCat.SC, PrpCat.PF3, PrpCat.EMT],
+        ),
+
+        GCProp(
+            prop_name='phC',
+            units='',
+            tpe=bool,
+            definition='Is phase C connected?',
+            cat=[PrpCat.SC, PrpCat.PF3, PrpCat.EMT],
         ),
 
         GCProp(
@@ -253,6 +292,11 @@ class InjectionParent(DynamicDevice):
         self._use_kw: bool = False
 
         self._conn: ShuntConnectionType = ShuntConnectionType.GroundedStar
+
+        self._phN: bool = False
+        self._phA: bool = True
+        self._phB: bool = True
+        self._phC: bool = True
 
         self.bus_pos: int = 0
 
@@ -383,6 +427,12 @@ class InjectionParent(DynamicDevice):
     def conn(self, val: ShuntConnectionType):
         if isinstance(val, ShuntConnectionType):
             self._conn = val
+
+            if self.auto_update_enabled:
+                if self._conn == ShuntConnectionType.NeutralStar:
+                    self.phN = True
+                else:
+                    self.phN = False
 
     def get_S_with_sign(self) -> complex:
         """
@@ -682,3 +732,59 @@ class InjectionParent(DynamicDevice):
         :return: None
         """
         self._bus_pos = int(val)
+
+    @property
+    def phN(self) -> bool:
+        """
+        :return:
+        """
+        return self._phN
+
+    @phN.setter
+    def phN(self, val: bool):
+        if isinstance(val, bool):
+            self._phN = val
+        else:
+            raise ValueError(f'{val} is not an bool.')
+
+    @property
+    def phA(self) -> bool:
+        """
+        :return:
+        """
+        return self._phA
+
+    @phA.setter
+    def phA(self, val: bool):
+        if isinstance(val, bool):
+            self._phA = val
+        else:
+            raise ValueError(f'{val} is not an bool.')
+
+    @property
+    def phB(self) -> bool:
+        """
+        :return:
+        """
+        return self._phB
+
+    @phB.setter
+    def phB(self, val: bool):
+        if isinstance(val, bool):
+            self._phB = val
+        else:
+            raise ValueError(f'{val} is not an bool.')
+
+    @property
+    def phC(self) -> bool:
+        """
+        :return:
+        """
+        return self._phC
+
+    @phC.setter
+    def phC(self, val: bool):
+        if isinstance(val, bool):
+            self._phC = val
+        else:
+            raise ValueError(f'{val} is not an bool.')

@@ -43,50 +43,54 @@ def get_genqec_phasor(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     templ.tpe = DeviceType.GeneratorDevice
 
     # Inputs: Vr, Vi (phasor voltage components), Tm, Vf
-    Vr = vfactory.add_var("Vr_" + name, VarPowerFlowReferenceType.Vr)
-    Vi = vfactory.add_var("Vi_" + name, VarPowerFlowReferenceType.Vi)
+    Vr = vfactory.add_var("Vr", VarPowerFlowReferenceType.Vr)
+    Vi = vfactory.add_var("Vi", VarPowerFlowReferenceType.Vi)
     inputs = [Vr, Vi,
-              vfactory.add_var("Tm_" + name),
-              vfactory.add_var("Vf_" + name)]
+              vfactory.add_var("Tm"),
+              vfactory.add_var("Vf")]
 
     # ______________________________________________________________________________________
     #                                    variables
     # ______________________________________________________________________________________
 
     # State variables
-    delta = vfactory.add_var("delta" + name)  # rotor angle
-    omega = vfactory.add_var("omega" + name)  # rotor electrical speed
-    Eq1 = vfactory.add_var("Eq1" + name)  # internal emf behind Xd'
-    Ed1 = vfactory.add_var("Ed1" + name)
-    Eq_prime = vfactory.add_var("Eq_prime" + name)  # transient voltage q-axis
-    Ed_prime = vfactory.add_var("Ed_prime" + name)  # transient voltage d-axis
-    Psid_prime = vfactory.add_var("Psid_prime" + name)  # transient voltage d-axis
-    Psiq_prime = vfactory.add_var("Psiq_prime" + name)  # transient voltage d-axis
+    delta = vfactory.add_var("delta")  # rotor angle
+    omega = vfactory.add_var("omega")  # rotor electrical speed
+    Eq1 = vfactory.add_var("Eq1")  # internal emf behind Xd'
+    Ed1 = vfactory.add_var("Ed1")
+    Eq_prime = vfactory.add_var("Eq_prime")  # transient voltage q-axis
+    Ed_prime = vfactory.add_var("Ed_prime")  # transient voltage d-axis
+    Psid_prime = vfactory.add_var("Psid_prime")  # transient voltage d-axis
+    Psiq_prime = vfactory.add_var("Psiq_prime")  # transient voltage d-axis
 
     # Algebraic variables
-    Pg = vfactory.add_var('Pg' + name)
-    Qg = vfactory.add_var('Qg' + name)
-    Id = vfactory.add_var("Id" + name)
-    Iq = vfactory.add_var("Iq" + name)
-    Vd = vfactory.add_var("Vd" + name)
-    Vq = vfactory.add_var("Vq" + name)
-    Psid = vfactory.add_var("Psid" + name)
-    Psiq = vfactory.add_var("Psiq" + name)
-    Te = vfactory.add_var("Te" + name)
-    IRPu = vfactory.add_var("IRPu" + name)
+    Pg = vfactory.add_var('Pg')
+    Qg = vfactory.add_var('Qg')
+    Id = vfactory.add_var("Id")
+    Iq = vfactory.add_var("Iq")
+    Vd = vfactory.add_var("Vd")
+    Vq = vfactory.add_var("Vq")
+    Psid = vfactory.add_var("Psid")
+    Psiq = vfactory.add_var("Psiq")
+    Te = vfactory.add_var("Te")
+    IRPu = vfactory.add_var("IRPu")
 
     # Saturated resistances
-    Xd_2prime_sat = vfactory.add_var('Xd_2prime_sat' + name)
-    Xq_2prime_sat = vfactory.add_var('Xq_2prime_sat' + name)
-    Sa = vfactory.add_var('Sa' + name)
-    Sat = vfactory.add_var('Sat' + name)
-    V_qag = vfactory.add_var('V_qag' + name)
-    V_dag = vfactory.add_var('V_dag' + name)
-    Psi_ag = vfactory.add_var('Psi_ag' + name)
+    Xd_2prime_sat = vfactory.add_var('Xd_2prime_sat')
+    Xq_2prime_sat = vfactory.add_var('Xq_2prime_sat')
+    Sa = vfactory.add_var('Sa')
+    Sat = vfactory.add_var('Sat')
+    V_qag = vfactory.add_var('V_qag')
+    V_dag = vfactory.add_var('V_dag')
+    Psi_ag = vfactory.add_var('Psi_ag')
+    V_qag_aux = vfactory.add_var('V_qag_aux')
+    V_dag_aux = vfactory.add_var('V_dag_aux')
+    Psi_sqrt1 = vfactory.add_var('Psi_sqrt1')
+    Psi_sqrt2 = vfactory.add_var('Psi_sqrt2')
     
     # Phasor current outputs for current balance formulation
-    Irg = vfactory.add_var('Irg' + name)  # Real current injection
-    Iig = vfactory.add_var('Iig' + name)  # Imaginary current injection
+    Irg = vfactory.add_var('Irg')  # Real current injection
+    Iig = vfactory.add_var('Iig')  # Imaginary current injection
 
     # ______________________________________________________________________________________
     #                                    parameters
@@ -231,7 +235,11 @@ def get_genqec_phasor(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
             # flux
             V_dag - (Vd + Id * Ra - Iq * Xl),
             V_qag - (Vq + Iq * Ra + Id * Xl),
-            omega * Psi_ag - sym.sqrt(V_qag * V_qag + V_dag * V_dag),
+            Psi_sqrt1 - Psi_sqrt2,
+            V_qag_aux - V_qag,
+            V_dag_aux - V_dag,
+            Psi_sqrt1 * Psi_sqrt2 - (V_qag_aux * V_qag + V_dag_aux * V_dag),
+            omega * Psi_ag - Psi_sqrt1,
             # saturations using multilinear ml_positive_part
             Sa - A * Psi_plus,
 
@@ -248,8 +256,9 @@ def get_genqec_phasor(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
                         # saturated resistance
                         Xq_2prime_sat, Xd_2prime_sat, Id_sat, Iq_sat,
                         # flux
-                        Sa, Sat, V_dag, V_qag, Psi_ag,
-                        IRPu,
+            Sa, Sat, V_dag, V_qag, Psi_ag,
+            V_qag_aux, V_dag_aux, Psi_sqrt1, Psi_sqrt2,
+            IRPu,
                         # Phasor current outputs for current balance
                         Irg, Iig],
         init_eqs={
@@ -288,6 +297,10 @@ def get_genqec_phasor(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
             Iq: (Pg * Vq - Qg * Vd) / (Vd ** 2 + Vq ** 2),
             V_dag: (Vd + Id * Ra - Iq * Xl),
             V_qag: (Vq + Iq * Ra + Id * Xl),
+            V_qag_aux: V_qag,
+            V_dag_aux: V_dag,
+            Psi_sqrt1: Psi_ag,
+            Psi_sqrt2: Psi_sqrt1,
 
             # We initialize the states Eq', Ed', Psid', Psiq'
             Psid_prime: (Vq + Xd_2prime_sat * Id + Ra * Iq) / omega - (Xd_2prime - Xl) * Id / Sat,
@@ -380,34 +393,32 @@ def get_complete_generator_template_phasor(vfactory: VarFactory,
     Returns:
         RmsModelTemplate: Complete generator model template for phasor simulation
     """
-    from VeraGridEngine.Templates.Rms.generation_tensygrid_ml import GenqecBuild, GovernorBuild, StabilizerBuild, ExciterBuild
+    from VeraGridEngine.Templates.Rms.generation_tensygrid_ml import GovernorBuild, StabilizerBuild, ExciterBuild
     
     templ = RmsModelTemplate(name=name)
     templ.tpe = DeviceType.GeneratorDevice
     templ.name = name
 
     # Generate models from generation_tensygrid_ml.py
-    genqec_mdl = GenqecBuild(vfactory=vfactory, name=name, hard_sat_type=hard_sat_type).block
+    genqec_mdl = get_genqec_phasor(vfactory=vfactory, name=name).block
     governor_mdl = GovernorBuild(vfactory=vfactory, name=name, hard_sat_type=hard_sat_type).block
     stabilizer_mdl = StabilizerBuild(vfactory=vfactory, name=name, hard_sat_type=hard_sat_type).block
     exciter_mdl = ExciterBuild(vfactory=vfactory, name=name, hard_sat_type=hard_sat_type).block
 
-    # Create Vm calculation block: Vm = sqrt(Vr^2 + Vi^2)
-    # This computes the voltage magnitude from phasor components for the exciter
-    Vr_input = genqec_mdl.in_vars[0]  # Vr
-    Vi_input = genqec_mdl.in_vars[1]  # Vi
-    
-    # Create a block to compute Vm = sqrt(Vr^2 + Vi^2)
-    Vm_calc = vfactory.add_var(f"Vm_calc_{name}")
-    Vm_calc_aux = vfactory.add_var(f"Vm_calc_{name}")
-    Vr_aux = vfactory.add_var(f"Vr_aux_{name}")
-    Vi_aux = vfactory.add_var(f"Vi_aux_{name}")
+    Vr_input = genqec_mdl.in_vars[0]
+    Vi_input = genqec_mdl.in_vars[1]
+
+    # Create a block to compute Vm = sqrt(Vr^2 + Vi^2) for the exciter.
+    Vm_calc = vfactory.add_var("Vm_calc")
+    Vm_calc_aux = vfactory.add_var("Vm_calc_aux_aux")
+    Vr_aux = vfactory.add_var("Vr_aux")
+    Vi_aux = vfactory.add_var("Vi_aux")
     vm_calc_block = Block(
         algebraic_eqs=[
             Vr_aux - Vr_input,
             Vi_aux - Vi_input,
             Vm_calc*Vm_calc_aux - (Vr_input * Vr_aux + Vi_input * Vi_aux),
-            Vm_calc -Vm_calc_aux],
+            Vm_calc - Vm_calc_aux],
         algebraic_vars=[Vm_calc, Vm_calc_aux, Vr_aux, Vi_aux],
         out_vars=[Vm_calc],
         init_eqs={
@@ -437,8 +448,8 @@ def get_complete_generator_template_phasor(vfactory: VarFactory,
     # Convert generator P/Q outputs to injected Ir/Ii for current-balance formulations
     Pg_out = genqec_mdl.out_vars[0]
     Qg_out = genqec_mdl.out_vars[1]
-    Irg_out = vfactory.add_var(f"Irg_{name}")
-    Iig_out = vfactory.add_var(f"Iig_{name}")
+    Irg_out = vfactory.add_var("Irg_out")
+    Iig_out = vfactory.add_var("Iig_out")
     v_sq = Vr_input * Vr_input + Vi_input * Vi_input
 
     iq_map_block = Block(
@@ -468,15 +479,15 @@ def get_complete_generator_template_phasor(vfactory: VarFactory,
     templ.block = to_implicit(templ.block, vfactory)
     # External mapping for phasor coordinates (current balance)
     templ.block.external_mapping = {
-        VarPowerFlowReferenceType.Vr: genqec_mdl.in_vars[0],
-        VarPowerFlowReferenceType.Vi: genqec_mdl.in_vars[1],
+        VarPowerFlowReferenceType.Vr: Vr_input,
+        VarPowerFlowReferenceType.Vi: Vi_input,
         VarPowerFlowReferenceType.P: Pg_out,
         VarPowerFlowReferenceType.Q: Qg_out,
         VarPowerFlowReferenceType.Ir: Irg_out,
         VarPowerFlowReferenceType.Ii: Iig_out,
     }
 
-    templ.block.in_vars = [genqec_mdl.in_vars[0], genqec_mdl.in_vars[1]]
+    templ.block.in_vars = [Vr_input, Vi_input]
     templ.block.out_vars = [Irg_out, Iig_out]
 
     return templ

@@ -30,8 +30,8 @@ def _build_time_state(vf: VarFactory, template: EmtModelTemplate, resolved_name:
     :param resolved_name: Symbolic block name.
     :return: Internal source-time state variable.
     """
-    time_var: Var = vf.add_var(name=f"t_src_{resolved_name}")
-    diff_time_var: Var = vf.add_diff_var(name=f"d_t_src_{resolved_name}", base_var=time_var)
+    time_var: Var = vf.add_var(name=f"t_src")
+    diff_time_var: Var = vf.add_diff_var(name=f"d_t_src", base_var=time_var)
     template.block.state_vars = [time_var]
     template.block.diff_vars = [diff_time_var]
     template.block.state_eqs = [sym.Const(1.0)]
@@ -206,8 +206,8 @@ def _build_current_source_template_from_waveform(vf: VarFactory,
     phase_label: str
 
     for phase_label in active_labels:
-        voltage_var: Var = vf.add_var(name=f"v_{phase_label}_{resolved_name}", reference=_get_voltage_reference(phase_label))
-        current_var: Var = vf.add_var(name=f"i_{phase_label}_{resolved_name}", reference=_get_current_reference(phase_label))
+        voltage_var: Var = vf.add_var(name=f"v_{phase_label}", reference=_get_voltage_reference(phase_label))
+        current_var: Var = vf.add_var(name=f"i_{phase_label}", reference=_get_current_reference(phase_label))
         voltage_vars[phase_label] = voltage_var
         current_vars[phase_label] = current_var
         in_vars.append(voltage_var)
@@ -261,8 +261,8 @@ def _build_voltage_source_template_from_waveform(vf: VarFactory,
     phase_label: str
 
     for phase_label in active_labels:
-        voltage_var: Var = vf.add_var(name=f"v_{phase_label}_{resolved_name}", reference=_get_voltage_reference(phase_label))
-        current_var: Var = vf.add_var(name=f"i_{phase_label}_{resolved_name}", reference=_get_current_reference(phase_label))
+        voltage_var: Var = vf.add_var(name=f"v_{phase_label}", reference=_get_voltage_reference(phase_label))
+        current_var: Var = vf.add_var(name=f"i_{phase_label}", reference=_get_current_reference(phase_label))
         voltage_vars[phase_label] = voltage_var
         current_vars[phase_label] = current_var
         in_vars.append(voltage_var)
@@ -340,9 +340,9 @@ def get_step_current_source_emt_template(vf: VarFactory,
     template.name = resolved_name
     template.block.name = resolved_name
     time_var: Var = _build_time_state(vf, template, resolved_name)
-    initial_var: Var = vf.add_var(name=f"step_init_{resolved_name}")
-    final_var: Var = vf.add_var(name=f"step_final_{resolved_name}")
-    step_time_var: Var = vf.add_var(name=f"step_time_{resolved_name}")
+    initial_var: Var = vf.add_var(name=f"step_init")
+    final_var: Var = vf.add_var(name=f"step_final")
+    step_time_var: Var = vf.add_var(name=f"step_time")
     template.block.event_dict[initial_var] = vf.add_const(float(initial_value))
     template.block.event_dict[final_var] = vf.add_const(float(final_value))
     template.block.event_dict[step_time_var] = vf.add_const(float(step_time_s))
@@ -424,10 +424,10 @@ def get_step_voltage_source_emt_template(vf: VarFactory,
     template.name = resolved_name
     template.block.name = resolved_name
     time_var: Var = _build_time_state(vf, template, resolved_name)
-    initial_var: Var = vf.add_var(name=f"step_init_{resolved_name}")
-    final_var: Var = vf.add_var(name=f"step_final_{resolved_name}")
-    step_time_var: Var = vf.add_var(name=f"step_time_{resolved_name}")
-    conductance_var: Var = vf.add_var(name=f"g_src_{resolved_name}")
+    initial_var: Var = vf.add_var(name=f"step_init")
+    final_var: Var = vf.add_var(name=f"step_final")
+    step_time_var: Var = vf.add_var(name=f"step_time")
+    conductance_var: Var = vf.add_var(name=f"g_src")
     template.block.event_dict[initial_var] = vf.add_const(float(initial_value))
     template.block.event_dict[final_var] = vf.add_const(float(final_value))
     template.block.event_dict[step_time_var] = vf.add_const(float(step_time_s))
@@ -498,10 +498,10 @@ def get_ramp_current_source_emt_template(vf: VarFactory,
     template.name = resolved_name
     template.block.name = resolved_name
     time_var: Var = _build_time_state(vf, template, resolved_name)
-    initial_var: Var = vf.add_var(name=f"ramp_init_{resolved_name}")
-    final_var: Var = vf.add_var(name=f"ramp_final_{resolved_name}")
-    start_time_var: Var = vf.add_var(name=f"ramp_start_{resolved_name}")
-    end_time_var: Var = vf.add_var(name=f"ramp_end_{resolved_name}")
+    initial_var: Var = vf.add_var(name=f"ramp_init")
+    final_var: Var = vf.add_var(name=f"ramp_final")
+    start_time_var: Var = vf.add_var(name=f"ramp_start")
+    end_time_var: Var = vf.add_var(name=f"ramp_end")
     template.block.event_dict[initial_var] = vf.add_const(float(initial_value))
     template.block.event_dict[final_var] = vf.add_const(float(final_value))
     template.block.event_dict[start_time_var] = vf.add_const(float(start_time_s))
@@ -575,11 +575,11 @@ def get_ramp_voltage_source_emt_template(vf: VarFactory,
     template.name = resolved_name
     template.block.name = resolved_name
     time_var: Var = _build_time_state(vf, template, resolved_name)
-    initial_var: Var = vf.add_var(name=f"ramp_init_{resolved_name}")
-    final_var: Var = vf.add_var(name=f"ramp_final_{resolved_name}")
-    start_time_var: Var = vf.add_var(name=f"ramp_start_{resolved_name}")
-    end_time_var: Var = vf.add_var(name=f"ramp_end_{resolved_name}")
-    conductance_var: Var = vf.add_var(name=f"g_src_{resolved_name}")
+    initial_var: Var = vf.add_var(name=f"ramp_init")
+    final_var: Var = vf.add_var(name=f"ramp_final")
+    start_time_var: Var = vf.add_var(name=f"ramp_start")
+    end_time_var: Var = vf.add_var(name=f"ramp_end")
+    conductance_var: Var = vf.add_var(name=f"g_src")
     template.block.event_dict[initial_var] = vf.add_const(float(initial_value))
     template.block.event_dict[final_var] = vf.add_const(float(final_value))
     template.block.event_dict[start_time_var] = vf.add_const(float(start_time_s))
@@ -651,10 +651,10 @@ def get_double_exponential_current_source_emt_template(vf: VarFactory,
     template.name = resolved_name
     template.block.name = resolved_name
     time_var: Var = _build_time_state(vf, template, resolved_name)
-    amplitude_var: Var = vf.add_var(name=f"amp_{resolved_name}")
-    alpha_var: Var = vf.add_var(name=f"alpha_{resolved_name}")
-    beta_var: Var = vf.add_var(name=f"beta_{resolved_name}")
-    delay_var: Var = vf.add_var(name=f"delay_{resolved_name}")
+    amplitude_var: Var = vf.add_var(name=f"amp")
+    alpha_var: Var = vf.add_var(name=f"alpha")
+    beta_var: Var = vf.add_var(name=f"beta")
+    delay_var: Var = vf.add_var(name=f"delay")
     template.block.event_dict[amplitude_var] = vf.add_const(float(amplitude_value))
     template.block.event_dict[alpha_var] = vf.add_const(float(alpha_value))
     template.block.event_dict[beta_var] = vf.add_const(float(beta_value))
@@ -728,11 +728,11 @@ def get_heidler_current_source_emt_template(vf: VarFactory,
     template.name = resolved_name
     template.block.name = resolved_name
     time_var: Var = _build_time_state(vf, template, resolved_name)
-    peak_var: Var = vf.add_var(name=f"peak_{resolved_name}")
-    front_time_var: Var = vf.add_var(name=f"front_time_{resolved_name}")
-    tail_time_var: Var = vf.add_var(name=f"tail_time_{resolved_name}")
-    order_var: Var = vf.add_var(name=f"order_{resolved_name}")
-    delay_var: Var = vf.add_var(name=f"delay_{resolved_name}")
+    peak_var: Var = vf.add_var(name=f"peak")
+    front_time_var: Var = vf.add_var(name=f"front_time")
+    tail_time_var: Var = vf.add_var(name=f"tail_time")
+    order_var: Var = vf.add_var(name=f"order")
+    delay_var: Var = vf.add_var(name=f"delay")
     template.block.event_dict[peak_var] = vf.add_const(float(peak_value))
     template.block.event_dict[front_time_var] = vf.add_const(float(front_time_s))
     template.block.event_dict[tail_time_var] = vf.add_const(float(tail_time_s))
@@ -819,15 +819,15 @@ def get_cigre_surge_current_source_emt_template(vf: VarFactory,
     template.name = resolved_name
     template.block.name = resolved_name
     time_var: Var = _build_time_state(vf, template, resolved_name)
-    a_var: Var = vf.add_var(name=f"a_{resolved_name}")
-    b_var: Var = vf.add_var(name=f"b_{resolved_name}")
-    n_var: Var = vf.add_var(name=f"n_{resolved_name}")
-    tn_var: Var = vf.add_var(name=f"tn_{resolved_name}")
-    i1_var: Var = vf.add_var(name=f"i1_{resolved_name}")
-    t1_var: Var = vf.add_var(name=f"t1_{resolved_name}")
-    i2_var: Var = vf.add_var(name=f"i2_{resolved_name}")
-    t2_var: Var = vf.add_var(name=f"t2_{resolved_name}")
-    delay_var: Var = vf.add_var(name=f"delay_{resolved_name}")
+    a_var: Var = vf.add_var(name=f"a")
+    b_var: Var = vf.add_var(name=f"b")
+    n_var: Var = vf.add_var(name=f"n")
+    tn_var: Var = vf.add_var(name=f"tn")
+    i1_var: Var = vf.add_var(name=f"i1")
+    t1_var: Var = vf.add_var(name=f"t1")
+    i2_var: Var = vf.add_var(name=f"i2")
+    t2_var: Var = vf.add_var(name=f"t2")
+    delay_var: Var = vf.add_var(name=f"delay")
     template.block.event_dict[a_var] = vf.add_const(float(a_value))
     template.block.event_dict[b_var] = vf.add_const(float(b_value))
     template.block.event_dict[n_var] = vf.add_const(float(n_value))

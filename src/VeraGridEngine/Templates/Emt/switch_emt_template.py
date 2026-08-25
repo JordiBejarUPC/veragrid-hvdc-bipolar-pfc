@@ -180,14 +180,14 @@ def get_switch_emt_template(
     templ.name = name
     templ.block.name = name
 
-    closed_mode: Var = vf.add_var(f"switch_closed_mode_{name}")
+    closed_mode: Var = vf.add_var(f"switch_closed_mode")
     templ.block.mode_dict[closed_mode] = Const(1.0 if initial_closed else 0.0, name="switch_closed_mode")
 
-    g_device: Var = vf.add_var(f"switch_closed_g_api_{name}")
-    g_manual: Var = vf.add_var(f"switch_closed_g_manual_{name}")
-    g_open: Var = vf.add_var(f"switch_open_g_{name}")
-    tau_var: Var = vf.add_var(f"switch_tau_{name}")
-    seed_from_pf_var: Var = vf.add_var(f"switch_seed_from_pf_{name}")
+    g_device: Var = vf.add_var(f"switch_closed_g_api")
+    g_manual: Var = vf.add_var(f"switch_closed_g_manual")
+    g_open: Var = vf.add_var(f"switch_open_g")
+    tau_var: Var = vf.add_var(f"switch_tau")
+    seed_from_pf_var: Var = vf.add_var(f"switch_seed_from_pf")
 
     templ.block.parameters[g_device] = Const(0.0, name="switch_closed_g_api")
     templ.block.api_obj_mapping[ParamPowerFlowReferenceType.g] = g_device
@@ -240,8 +240,8 @@ def get_switch_emt_template(
     })
 
     if signal_controlled:
-        command_input = vf.add_var(f"switch_cmd_{name}")
-        threshold_var = vf.add_var(f"switch_cmd_threshold_{name}")
+        command_input = vf.add_var(f"switch_cmd")
+        threshold_var = vf.add_var(f"switch_cmd_threshold")
         templ.block.event_dict[threshold_var] = Const(float(command_threshold), name="switch_cmd_threshold")
         templ.block.procedural_logic.append(
             sampled_value(output=closed_mode, source=Comparison(lhs=command_input, op=CmpOp.GE, rhs=threshold_var))
@@ -252,12 +252,12 @@ def get_switch_emt_template(
 
     phase_label: str
     for phase_label in active_phases:
-        v_from = vf.add_var(f"vf_{phase_label}_{name}", reference=_get_from_voltage_reference(phase_label))
-        v_to = vf.add_var(f"vt_{phase_label}_{name}", reference=_get_to_voltage_reference(phase_label))
-        i_state = vf.add_var(f"i_{phase_label}_{name}")
-        di_state = vf.add_diff_var(name=f"di_{phase_label}_{name}", base_var=i_state)
-        i_from = vf.add_var(f"if_{phase_label}_{name}", reference=_get_from_current_reference(phase_label))
-        i_to = vf.add_var(f"it_{phase_label}_{name}", reference=_get_to_current_reference(phase_label))
+        v_from = vf.add_var(f"vf_{phase_label}", reference=_get_from_voltage_reference(phase_label))
+        v_to = vf.add_var(f"vt_{phase_label}", reference=_get_to_voltage_reference(phase_label))
+        i_state = vf.add_var(f"i_{phase_label}")
+        di_state = vf.add_diff_var(name=f"di_{phase_label}", base_var=i_state)
+        i_from = vf.add_var(f"if_{phase_label}", reference=_get_from_current_reference(phase_label))
+        i_to = vf.add_var(f"it_{phase_label}", reference=_get_to_current_reference(phase_label))
 
         in_vars.extend(list([v_from, v_to]))
         state_vars.append(i_state)

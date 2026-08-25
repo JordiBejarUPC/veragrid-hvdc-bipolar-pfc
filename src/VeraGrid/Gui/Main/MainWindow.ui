@@ -1298,7 +1298,56 @@
                  <number>6</number>
                 </property>
                 <item>
+                 <widget class="QFrame" name="frame_62">
+                  <property name="frameShape">
+                   <enum>QFrame::Shape::NoFrame</enum>
+                  </property>
+                  <property name="frameShadow">
+                   <enum>QFrame::Shadow::Raised</enum>
+                  </property>
+                  <layout class="QHBoxLayout" name="horizontalLayout_21">
+                   <property name="leftMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="topMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="rightMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="bottomMargin">
+                    <number>0</number>
+                   </property>
+                   <item>
+                    <widget class="QLineEdit" name="device_tree_search_lineEdit">
+                     <property name="minimumSize">
+                      <size>
+                       <width>120</width>
+                       <height>0</height>
+                      </size>
+                     </property>
+                     <property name="toolTip">
+                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Type anything to search the device. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item>
                  <widget class="QTreeView" name="dataStructuresTreeView">
+                  <property name="minimumSize">
+                   <size>
+                    <width>230</width>
+                    <height>0</height>
+                   </size>
+                  </property>
+                  <property name="maximumSize">
+                   <size>
+                    <width>16777215</width>
+                    <height>16777215</height>
+                   </size>
+                  </property>
                   <property name="animated">
                    <bool>true</bool>
                   </property>
@@ -2425,7 +2474,7 @@
                 <rect>
                  <x>0</x>
                  <y>0</y>
-                 <width>98</width>
+                 <width>86</width>
                  <height>88</height>
                 </rect>
                </property>
@@ -2832,7 +2881,11 @@
                       <string>Open the RMS pre-simulation dynamic plot editor</string>
                      </property>
                      <property name="text">
-                      <string>RMS plots</string>
+                      <string/>
+                     </property>
+                     <property name="icon">
+                      <iconset resource="../Icons/icons.qrc">
+                       <normaloff>:/Icons/icons/dyn.png</normaloff>:/Icons/icons/dyn.png</iconset>
                      </property>
                     </widget>
                    </item>
@@ -2842,7 +2895,11 @@
                       <string>Open the EMT pre-simulation dynamic plot editor</string>
                      </property>
                      <property name="text">
-                      <string>EMT plots</string>
+                      <string/>
+                     </property>
+                     <property name="icon">
+                      <iconset resource="../Icons/icons.qrc">
+                       <normaloff>:/Icons/icons/dyn_emt.png</normaloff>:/Icons/icons/dyn_emt.png</iconset>
                      </property>
                     </widget>
                    </item>
@@ -5302,21 +5359,21 @@
                <string>Linear settings</string>
               </property>
               <layout class="QGridLayout" name="gridLayout_18">
-               <item row="3" column="1" colspan="2">
-                <widget class="QComboBox" name="opf_time_grouping_comboBox">
+               <item row="4" column="0">
+                <widget class="QLabel" name="label_103">
                  <property name="font">
                   <font>
                    <pointsize>10</pointsize>
                    <bold>false</bold>
                   </font>
                  </property>
-                 <property name="toolTip">
-                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose the time grouping to possibly shorten the solution time.&lt;/p&gt;&lt;p&gt;This splits the time series by week, month, etc. and the subproblems are solved sequentially.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                 <property name="text">
+                  <string>Zone grouping</string>
                  </property>
                 </widget>
                </item>
-               <item row="10" column="0" colspan="3">
-                <widget class="QCheckBox" name="opfSpinningReserveCheckBox">
+               <item row="0" column="1" colspan="2">
+                <widget class="QComboBox" name="opfDispatchModeComboBox">
                  <property name="font">
                   <font>
                    <pointsize>10</pointsize>
@@ -5324,26 +5381,20 @@
                   </font>
                  </property>
                  <property name="toolTip">
-                  <string>Consider per-area generation spinning reserve</string>
-                 </property>
-                 <property name="text">
-                  <string>Spinning reserve</string>
+                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select how the generation dispatch should behave&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                  </property>
                 </widget>
                </item>
-               <item row="13" column="0" colspan="3">
-                <widget class="QCheckBox" name="useGslkAsCostsOpfCheckBox">
+               <item row="0" column="0">
+                <widget class="QLabel" name="label_9">
                  <property name="font">
                   <font>
                    <pointsize>10</pointsize>
                    <bold>false</bold>
                   </font>
                  </property>
-                 <property name="toolTip">
-                  <string>Instead of using the generation, loads cost for dispatching, use the GLSK (Generation, Load Shift Keys)</string>
-                 </property>
                  <property name="text">
-                  <string>Use GSLK as costs</string>
+                  <string>Dispatch mode</string>
                  </property>
                 </widget>
                </item>
@@ -5357,6 +5408,39 @@
                  </property>
                  <property name="text">
                   <string>MIP framework</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="5" column="2">
+                <widget class="QComboBox" name="mip_solver_comboBox">
+                 <property name="font">
+                  <font>
+                   <pointsize>10</pointsize>
+                   <bold>false</bold>
+                  </font>
+                 </property>
+                 <property name="toolTip">
+                  <string>Choose the external mixed integer programming solver</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="3" column="0">
+                <widget class="QLabel" name="label_4">
+                 <property name="font">
+                  <font>
+                   <pointsize>10</pointsize>
+                   <bold>false</bold>
+                  </font>
+                 </property>
+                 <property name="text">
+                  <string>Time grouping</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="7" column="0" colspan="2">
+                <widget class="QLabel" name="label_132">
+                 <property name="text">
+                  <string/>
                  </property>
                 </widget>
                </item>
@@ -5386,27 +5470,7 @@
                  </property>
                 </widget>
                </item>
-               <item row="3" column="0">
-                <widget class="QLabel" name="label_4">
-                 <property name="font">
-                  <font>
-                   <pointsize>10</pointsize>
-                   <bold>false</bold>
-                  </font>
-                 </property>
-                 <property name="text">
-                  <string>Time grouping</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="7" column="0" colspan="2">
-                <widget class="QLabel" name="label_132">
-                 <property name="text">
-                  <string/>
-                 </property>
-                </widget>
-               </item>
-               <item row="19" column="0">
+               <item row="20" column="0">
                 <spacer name="verticalSpacer_18">
                  <property name="orientation">
                   <enum>Qt::Orientation::Vertical</enum>
@@ -5419,8 +5483,8 @@
                  </property>
                 </spacer>
                </item>
-               <item row="9" column="0" colspan="3">
-                <widget class="QCheckBox" name="opfConsiderUpDownTimeCheckBox">
+               <item row="3" column="1" colspan="2">
+                <widget class="QComboBox" name="opf_time_grouping_comboBox">
                  <property name="font">
                   <font>
                    <pointsize>10</pointsize>
@@ -5428,178 +5492,211 @@
                   </font>
                  </property>
                  <property name="toolTip">
-                  <string>Consider generation minimum up/down time</string>
-                 </property>
-                 <property name="text">
-                  <string>Consider min up/down time</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="14" column="0" colspan="3">
-                <widget class="QCheckBox" name="approximateLossesOpfCheckBox">
-                 <property name="font">
-                  <font>
-                   <pointsize>10</pointsize>
-                   <bold>false</bold>
-                  </font>
-                 </property>
-                 <property name="toolTip">
-                  <string>When checked, the branch losses will be aproximated by a factor r * rate / (V^2)</string>
-                 </property>
-                 <property name="text">
-                  <string>Approximate losses</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="0" column="1" colspan="2">
-                <widget class="QComboBox" name="opfDispatchModeComboBox">
-                 <property name="font">
-                  <font>
-                   <pointsize>10</pointsize>
-                   <bold>false</bold>
-                  </font>
-                 </property>
-                 <property name="toolTip">
-                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select how the generation dispatch should behave&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="12" column="0">
-                <widget class="QLabel" name="label_104">
-                 <property name="font">
-                  <font>
-                   <pointsize>10</pointsize>
-                   <bold>false</bold>
-                  </font>
-                 </property>
-                 <property name="text">
-                  <string>Contingency tolerance</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="12" column="1" colspan="2">
-                <widget class="QDoubleSpinBox" name="opfContingencyToleranceSpinBox">
-                 <property name="font">
-                  <font>
-                   <pointsize>10</pointsize>
-                   <bold>false</bold>
-                  </font>
-                 </property>
-                 <property name="toolTip">
-                  <string>LODF matrix tolerance choosing contingencies</string>
-                 </property>
-                 <property name="decimals">
-                  <number>4</number>
-                 </property>
-                 <property name="singleStep">
-                  <double>0.010000000000000</double>
-                 </property>
-                 <property name="value">
-                  <double>0.050000000000000</double>
-                 </property>
-                </widget>
-               </item>
-               <item row="11" column="0" colspan="3">
-                <widget class="QCheckBox" name="considerContingenciesOpfCheckBox">
-                 <property name="font">
-                  <font>
-                   <pointsize>10</pointsize>
-                   <bold>false</bold>
-                  </font>
-                 </property>
-                 <property name="toolTip">
-                  <string>Consider the contingencies when dispatching</string>
-                 </property>
-                 <property name="text">
-                  <string>Compute contingencies</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="18" column="0" colspan="3">
-                <widget class="QCheckBox" name="save_mip_checkBox">
-                 <property name="font">
-                  <font>
-                   <pointsize>10</pointsize>
-                   <bold>false</bold>
-                  </font>
-                 </property>
-                 <property name="toolTip">
-                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The program will save the MIP formulation and be displayed in the text tab of the results&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                 </property>
-                 <property name="text">
-                  <string>Report MIP formulation</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="15" column="0" colspan="3">
-                <widget class="QCheckBox" name="fixOpfCheckBox">
-                 <property name="font">
-                  <font>
-                   <pointsize>10</pointsize>
-                   <bold>false</bold>
-                  </font>
-                 </property>
-                 <property name="toolTip">
-                  <string>Fix infeasible problems and rey with the relaxed problem. Applies to OPF and NTC</string>
-                 </property>
-                 <property name="text">
-                  <string>Fix infeasibilities and retry</string>
+                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose the time grouping to possibly shorten the solution time.&lt;/p&gt;&lt;p&gt;This splits the time series by week, month, etc. and the subproblems are solved sequentially.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                  </property>
                 </widget>
                </item>
                <item row="8" column="0" colspan="3">
-                <widget class="QCheckBox" name="opfConsiderRampsCheckBox">
-                 <property name="font">
-                  <font>
-                   <pointsize>10</pointsize>
-                   <bold>false</bold>
-                  </font>
+                <widget class="QFrame" name="frame_60">
+                 <property name="frameShape">
+                  <enum>QFrame::Shape::NoFrame</enum>
                  </property>
-                 <property name="toolTip">
-                  <string>Consider generation ramps</string>
+                 <property name="frameShadow">
+                  <enum>QFrame::Shadow::Raised</enum>
                  </property>
-                 <property name="text">
-                  <string>Consider ramps</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="0" column="0">
-                <widget class="QLabel" name="label_9">
-                 <property name="font">
-                  <font>
-                   <pointsize>10</pointsize>
-                   <bold>false</bold>
-                  </font>
-                 </property>
-                 <property name="text">
-                  <string>Dispatch mode</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="5" column="2">
-                <widget class="QComboBox" name="mip_solver_comboBox">
-                 <property name="font">
-                  <font>
-                   <pointsize>10</pointsize>
-                   <bold>false</bold>
-                  </font>
-                 </property>
-                 <property name="toolTip">
-                  <string>Choose the external mixed integer programming solver</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="4" column="0">
-                <widget class="QLabel" name="label_103">
-                 <property name="font">
-                  <font>
-                   <pointsize>10</pointsize>
-                   <bold>false</bold>
-                  </font>
-                 </property>
-                 <property name="text">
-                  <string>Zone grouping</string>
-                 </property>
+                 <layout class="QGridLayout" name="gridLayout_3">
+                  <property name="leftMargin">
+                   <number>0</number>
+                  </property>
+                  <property name="topMargin">
+                   <number>0</number>
+                  </property>
+                  <property name="rightMargin">
+                   <number>0</number>
+                  </property>
+                  <property name="bottomMargin">
+                   <number>0</number>
+                  </property>
+                  <item row="2" column="0" colspan="2">
+                   <widget class="QCheckBox" name="opfSpinningReserveCheckBox">
+                    <property name="font">
+                     <font>
+                      <pointsize>10</pointsize>
+                      <bold>false</bold>
+                     </font>
+                    </property>
+                    <property name="toolTip">
+                     <string>Consider per-area generation spinning reserve</string>
+                    </property>
+                    <property name="text">
+                     <string>Spinning reserve</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="1" column="0" colspan="2">
+                   <widget class="QCheckBox" name="opfConsiderUpDownTimeCheckBox">
+                    <property name="font">
+                     <font>
+                      <pointsize>10</pointsize>
+                      <bold>false</bold>
+                     </font>
+                    </property>
+                    <property name="toolTip">
+                     <string>Consider generation minimum up/down time</string>
+                    </property>
+                    <property name="text">
+                     <string>Consider min up/down time</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="3" column="0" colspan="2">
+                   <widget class="QCheckBox" name="considerContingenciesOpfCheckBox">
+                    <property name="font">
+                     <font>
+                      <pointsize>10</pointsize>
+                      <bold>false</bold>
+                     </font>
+                    </property>
+                    <property name="toolTip">
+                     <string>Consider the contingencies when dispatching</string>
+                    </property>
+                    <property name="text">
+                     <string>Compute contingencies</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="4" column="1">
+                   <widget class="QDoubleSpinBox" name="opfContingencyToleranceSpinBox">
+                    <property name="font">
+                     <font>
+                      <pointsize>10</pointsize>
+                      <bold>false</bold>
+                     </font>
+                    </property>
+                    <property name="toolTip">
+                     <string>LODF matrix tolerance choosing contingencies</string>
+                    </property>
+                    <property name="decimals">
+                     <number>4</number>
+                    </property>
+                    <property name="singleStep">
+                     <double>0.010000000000000</double>
+                    </property>
+                    <property name="value">
+                     <double>0.050000000000000</double>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="0" column="0" colspan="2">
+                   <widget class="QCheckBox" name="opfConsiderRampsCheckBox">
+                    <property name="font">
+                     <font>
+                      <pointsize>10</pointsize>
+                      <bold>false</bold>
+                     </font>
+                    </property>
+                    <property name="toolTip">
+                     <string>Consider generation ramps</string>
+                    </property>
+                    <property name="text">
+                     <string>Consider ramps</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="4" column="0">
+                   <widget class="QLabel" name="label_104">
+                    <property name="font">
+                     <font>
+                      <pointsize>10</pointsize>
+                      <bold>false</bold>
+                     </font>
+                    </property>
+                    <property name="text">
+                     <string>Contingency tolerance</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="0" column="2">
+                   <widget class="QCheckBox" name="quadraticCostsOpfCheckBox">
+                    <property name="font">
+                     <font>
+                      <pointsize>10</pointsize>
+                      <bold>false</bold>
+                     </font>
+                    </property>
+                    <property name="toolTip">
+                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;When checked, the generation costs will use the quadratic coefficients cost, which will trigger a more complex formulation to approximate the quadratic thermal generation curve. Otherwise a linear model is used.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                    </property>
+                    <property name="text">
+                     <string>Use quadratic costs</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="1" column="2">
+                   <widget class="QCheckBox" name="useGslkAsCostsOpfCheckBox">
+                    <property name="font">
+                     <font>
+                      <pointsize>10</pointsize>
+                      <bold>false</bold>
+                     </font>
+                    </property>
+                    <property name="toolTip">
+                     <string>Instead of using the generation, loads cost for dispatching, use the GLSK (Generation, Load Shift Keys)</string>
+                    </property>
+                    <property name="text">
+                     <string>Use GSLK as costs</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="2" column="2">
+                   <widget class="QCheckBox" name="approximateLossesOpfCheckBox">
+                    <property name="font">
+                     <font>
+                      <pointsize>10</pointsize>
+                      <bold>false</bold>
+                     </font>
+                    </property>
+                    <property name="toolTip">
+                     <string>When checked, the branch losses will be aproximated by a factor r * rate / (V^2)</string>
+                    </property>
+                    <property name="text">
+                     <string>Approximate losses</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="3" column="2">
+                   <widget class="QCheckBox" name="fixOpfCheckBox">
+                    <property name="font">
+                     <font>
+                      <pointsize>10</pointsize>
+                      <bold>false</bold>
+                     </font>
+                    </property>
+                    <property name="toolTip">
+                     <string>Fix infeasible problems and rey with the relaxed problem. Applies to OPF and NTC</string>
+                    </property>
+                    <property name="text">
+                     <string>Fix infeasibilities and retry</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="4" column="2">
+                   <widget class="QCheckBox" name="save_mip_checkBox">
+                    <property name="font">
+                     <font>
+                      <pointsize>10</pointsize>
+                      <bold>false</bold>
+                     </font>
+                    </property>
+                    <property name="toolTip">
+                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The program will save the MIP formulation and be displayed in the text tab of the results&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                    </property>
+                    <property name="text">
+                     <string>Report MIP formulation</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
                 </widget>
                </item>
               </layout>
@@ -7600,8 +7697,8 @@
            <attribute name="toolTip">
             <string>Rms simulation settings</string>
            </attribute>
-           <layout class="QHBoxLayout" name="horizontalLayout_21">
-            <item>
+           <layout class="QGridLayout" name="gridLayout_34">
+            <item row="0" column="0">
              <widget class="QFrame" name="frame_109">
               <property name="frameShape">
                <enum>QFrame::Shape::NoFrame</enum>
@@ -7610,6 +7707,56 @@
                <enum>QFrame::Shadow::Raised</enum>
               </property>
               <layout class="QGridLayout" name="gridLayout_33">
+               <item row="1" column="0" colspan="3">
+                <widget class="Line" name="line_62">
+                 <property name="palette">
+                  <palette>
+                   <active>
+                    <colorrole role="WindowText">
+                     <brush brushstyle="SolidPattern">
+                      <color alpha="255">
+                       <red>186</red>
+                       <green>189</green>
+                       <blue>182</blue>
+                      </color>
+                     </brush>
+                    </colorrole>
+                   </active>
+                   <inactive>
+                    <colorrole role="WindowText">
+                     <brush brushstyle="SolidPattern">
+                      <color alpha="255">
+                       <red>186</red>
+                       <green>189</green>
+                       <blue>182</blue>
+                      </color>
+                     </brush>
+                    </colorrole>
+                   </inactive>
+                   <disabled>
+                    <colorrole role="WindowText">
+                     <brush brushstyle="SolidPattern">
+                      <color alpha="255">
+                       <red>190</red>
+                       <green>190</green>
+                       <blue>190</blue>
+                      </color>
+                     </brush>
+                    </colorrole>
+                   </disabled>
+                  </palette>
+                 </property>
+                 <property name="frameShadow">
+                  <enum>QFrame::Shadow::Plain</enum>
+                 </property>
+                 <property name="lineWidth">
+                  <number>4</number>
+                 </property>
+                 <property name="orientation">
+                  <enum>Qt::Orientation::Horizontal</enum>
+                 </property>
+                </widget>
+               </item>
                <item row="0" column="1" colspan="2">
                 <widget class="QFrame" name="frame_111">
                  <property name="frameShape">
@@ -7719,60 +7866,8 @@
                  <property name="frameShadow">
                   <enum>QFrame::Shadow::Raised</enum>
                  </property>
-                 <layout class="QGridLayout" name="gridLayout_34">
-                  <item row="5" column="0" colspan="2">
-                   <widget class="QLabel" name="label_45">
-                    <property name="text">
-                     <string/>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="13" column="1">
-                   <spacer name="verticalSpacer_4">
-                    <property name="orientation">
-                     <enum>Qt::Orientation::Vertical</enum>
-                    </property>
-                    <property name="sizeHint" stdset="0">
-                     <size>
-                      <width>20</width>
-                      <height>40</height>
-                     </size>
-                    </property>
-                   </spacer>
-                  </item>
-                  <item row="4" column="2">
-                   <widget class="QDoubleSpinBox" name="rms_h_spinBox">
-                    <property name="toolTip">
-                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Initial time for the simulation. &lt;/p&gt;&lt;p&gt;In practice this is used to slow down troublesome solutions.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                    </property>
-                    <property name="suffix">
-                     <string> s</string>
-                    </property>
-                    <property name="decimals">
-                     <number>4</number>
-                    </property>
-                    <property name="minimum">
-                     <double>0.000000000000000</double>
-                    </property>
-                    <property name="maximum">
-                     <double>1000.000000000000000</double>
-                    </property>
-                    <property name="singleStep">
-                     <double>0.001000000000000</double>
-                    </property>
-                    <property name="value">
-                     <double>0.001000000000000</double>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="9" column="0" colspan="2">
-                   <widget class="QLabel" name="label_416">
-                    <property name="text">
-                     <string>Assessment time</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="7" column="0">
+                 <layout class="QGridLayout" name="gridLayout_32">
+                  <item row="8" column="0">
                    <widget class="QLabel" name="label_415">
                     <property name="sizePolicy">
                      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
@@ -7803,28 +7898,122 @@
                     </property>
                    </widget>
                   </item>
-                  <item row="1" column="0" colspan="2">
+                  <item row="0" column="3">
+                   <widget class="QComboBox" name="rms_integration_method_comboBox">
+                    <property name="minimumSize">
+                     <size>
+                      <width>200</width>
+                      <height>0</height>
+                     </size>
+                    </property>
+                    <property name="editable">
+                     <bool>false</bool>
+                    </property>
+                    <item>
+                     <property name="text">
+                      <string>trapezoid</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
+                      <string>implicit euler</string>
+                     </property>
+                    </item>
+                   </widget>
+                  </item>
+                  <item row="1" column="0" colspan="3">
                    <widget class="QLabel" name="label_413">
                     <property name="text">
                      <string>Initialization</string>
                     </property>
                    </widget>
                   </item>
-                  <item row="4" column="0" colspan="2">
-                   <widget class="QLabel" name="label_405">
-                    <property name="text">
-                     <string>Time step</string>
+                  <item row="10" column="3">
+                   <widget class="QDoubleSpinBox" name="rms_ss_assessment_time_spinBox">
+                    <property name="toolTip">
+                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Initial time for the simulation. &lt;/p&gt;&lt;p&gt;In practice this is used to slow down troublesome solutions.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                    </property>
+                    <property name="suffix">
+                     <string>s</string>
+                    </property>
+                    <property name="decimals">
+                     <number>4</number>
+                    </property>
+                    <property name="minimum">
+                     <double>0.000000000000000</double>
+                    </property>
+                    <property name="maximum">
+                     <double>1000.000000000000000</double>
+                    </property>
+                    <property name="singleStep">
+                     <double>0.010000000000000</double>
+                    </property>
+                    <property name="value">
+                     <double>0.000000000000000</double>
                     </property>
                    </widget>
                   </item>
-                  <item row="2" column="0" colspan="2">
-                   <widget class="QLabel" name="label_409">
+                  <item row="0" column="0" colspan="3">
+                   <widget class="QLabel" name="label_411">
                     <property name="text">
-                     <string>Tolerance</string>
+                     <string>Integration</string>
                     </property>
                    </widget>
                   </item>
-                  <item row="8" column="0" colspan="3">
+                  <item row="2" column="3">
+                   <widget class="QComboBox" name="rms_problem_comboBox">
+                    <item>
+                     <property name="text">
+                      <string>standard</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
+                      <string>vectorized</string>
+                     </property>
+                    </item>
+                   </widget>
+                  </item>
+                  <item row="4" column="3">
+                   <widget class="QDoubleSpinBox" name="rms_sim_time_spinBox">
+                    <property name="toolTip">
+                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Initial time for the simulation. &lt;/p&gt;&lt;p&gt;In practice this is used to slow down troublesome solutions.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                    </property>
+                    <property name="suffix">
+                     <string> s</string>
+                    </property>
+                    <property name="decimals">
+                     <number>4</number>
+                    </property>
+                    <property name="minimum">
+                     <double>0.000000000000000</double>
+                    </property>
+                    <property name="maximum">
+                     <double>1000.000000000000000</double>
+                    </property>
+                    <property name="singleStep">
+                     <double>0.010000000000000</double>
+                    </property>
+                    <property name="value">
+                     <double>1.000000000000000</double>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="11" column="0" colspan="2">
+                   <widget class="QLabel" name="label_54">
+                    <property name="text">
+                     <string>Modes</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="6" column="0">
+                   <widget class="QLabel" name="label_45">
+                    <property name="text">
+                     <string/>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="9" column="0" colspan="4">
                    <widget class="Line" name="line_63">
                     <property name="palette">
                      <palette>
@@ -7874,14 +8063,14 @@
                     </property>
                    </widget>
                   </item>
-                  <item row="0" column="0" colspan="2">
-                   <widget class="QLabel" name="label_411">
+                  <item row="10" column="0" colspan="3">
+                   <widget class="QLabel" name="label_416">
                     <property name="text">
-                     <string>Integration</string>
+                     <string>Assessment time</string>
                     </property>
                    </widget>
                   </item>
-                  <item row="2" column="2">
+                  <item row="3" column="3">
                    <widget class="QSpinBox" name="tolerance_rms_spinBox">
                     <property name="toolTip">
                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Error tolerance of the method&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -7900,13 +8089,13 @@
                     </property>
                    </widget>
                   </item>
-                  <item row="9" column="2">
-                   <widget class="QDoubleSpinBox" name="rms_ss_assessment_time_spinBox">
+                  <item row="5" column="3">
+                   <widget class="QDoubleSpinBox" name="rms_h_spinBox">
                     <property name="toolTip">
                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Initial time for the simulation. &lt;/p&gt;&lt;p&gt;In practice this is used to slow down troublesome solutions.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                     </property>
                     <property name="suffix">
-                     <string>s</string>
+                     <string> s</string>
                     </property>
                     <property name="decimals">
                      <number>4</number>
@@ -7918,21 +8107,78 @@
                      <double>1000.000000000000000</double>
                     </property>
                     <property name="singleStep">
-                     <double>0.010000000000000</double>
+                     <double>0.001000000000000</double>
                     </property>
                     <property name="value">
-                     <double>0.000000000000000</double>
+                     <double>0.001000000000000</double>
                     </property>
                    </widget>
                   </item>
-                  <item row="3" column="0" colspan="2">
+                  <item row="1" column="3">
+                   <widget class="QComboBox" name="rms_initialization_method_comboBox"/>
+                  </item>
+                  <item row="11" column="3">
+                   <widget class="QSpinBox" name="rms_small_signal_modes_number_spinBox">
+                    <property name="toolTip">
+                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Number of modes.&lt;br/&gt;If zero, all modes are included and the calculation is done using dense matrices.&lt;br/&gt;If a number of modes greater than zero is given the calculation is sparse.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="4" column="0" colspan="3">
                    <widget class="QLabel" name="label_412">
                     <property name="text">
                      <string>Simulation time</string>
                     </property>
                    </widget>
                   </item>
-                  <item row="7" column="1" colspan="2">
+                  <item row="7" column="0">
+                   <widget class="QLabel" name="label_50">
+                    <property name="minimumSize">
+                     <size>
+                      <width>0</width>
+                      <height>26</height>
+                     </size>
+                    </property>
+                    <property name="text">
+                     <string/>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="3" column="0" colspan="3">
+                   <widget class="QLabel" name="label_409">
+                    <property name="text">
+                     <string>Tolerance</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="12" column="2">
+                   <spacer name="verticalSpacer_4">
+                    <property name="orientation">
+                     <enum>Qt::Orientation::Vertical</enum>
+                    </property>
+                    <property name="sizeHint" stdset="0">
+                     <size>
+                      <width>20</width>
+                      <height>40</height>
+                     </size>
+                    </property>
+                   </spacer>
+                  </item>
+                  <item row="5" column="0" colspan="3">
+                   <widget class="QLabel" name="label_405">
+                    <property name="text">
+                     <string>Time step</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="2" column="0" colspan="2">
+                   <widget class="QLabel" name="label_439">
+                    <property name="text">
+                     <string>Problem</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="8" column="1" colspan="3">
                    <widget class="QLabel" name="label_418">
                     <property name="palette">
                      <palette>
@@ -7984,89 +8230,23 @@
                     </property>
                    </widget>
                   </item>
-                  <item row="3" column="2">
-                   <widget class="QDoubleSpinBox" name="rms_sim_time_spinBox">
-                    <property name="toolTip">
-                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Initial time for the simulation. &lt;/p&gt;&lt;p&gt;In practice this is used to slow down troublesome solutions.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                    </property>
-                    <property name="suffix">
-                     <string> s</string>
-                    </property>
-                    <property name="decimals">
-                     <number>4</number>
-                    </property>
-                    <property name="minimum">
-                     <double>0.000000000000000</double>
-                    </property>
-                    <property name="maximum">
-                     <double>1000.000000000000000</double>
-                    </property>
-                    <property name="singleStep">
-                     <double>0.010000000000000</double>
-                    </property>
-                    <property name="value">
-                     <double>1.000000000000000</double>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="1" column="2">
-                   <widget class="QComboBox" name="rms_initialization_method_comboBox"/>
-                  </item>
-                  <item row="0" column="2">
-                   <widget class="QComboBox" name="rms_integration_method_comboBox">
-                    <property name="minimumSize">
-                     <size>
-                      <width>200</width>
-                      <height>0</height>
-                     </size>
-                    </property>
-                    <property name="editable">
-                     <bool>false</bool>
-                    </property>
-                    <item>
-                     <property name="text">
-                      <string>trapezoid</string>
-                     </property>
-                    </item>
-                    <item>
-                     <property name="text">
-                      <string>implicit euler</string>
-                     </property>
-                    </item>
-                   </widget>
-                  </item>
-                  <item row="6" column="0" colspan="2">
-                   <widget class="QLabel" name="label_50">
-                    <property name="minimumSize">
-                     <size>
-                      <width>0</width>
-                      <height>26</height>
-                     </size>
-                    </property>
-                    <property name="text">
-                     <string/>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="12" column="2">
-                   <widget class="QSpinBox" name="rms_small_signal_modes_number_spinBox">
-                    <property name="toolTip">
-                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Number of modes.&lt;br/&gt;If zero, all modes are included and the calculation is done using dense matrices.&lt;br/&gt;If a number of modes greater than zero is given the calculation is sparse.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="12" column="0" colspan="2">
-                   <widget class="QLabel" name="label_54">
-                    <property name="text">
-                     <string>Modes</string>
-                    </property>
-                   </widget>
-                  </item>
                  </layout>
                 </widget>
                </item>
+              </layout>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="QFrame" name="frame_110">
+              <property name="frameShape">
+               <enum>QFrame::Shape::NoFrame</enum>
+              </property>
+              <property name="frameShadow">
+               <enum>QFrame::Shadow::Raised</enum>
+              </property>
+              <layout class="QGridLayout" name="gridLayout_41">
                <item row="1" column="0" colspan="3">
-                <widget class="Line" name="line_62">
+                <widget class="Line" name="line_67">
                  <property name="palette">
                   <palette>
                    <active>
@@ -8115,18 +8295,6 @@
                  </property>
                 </widget>
                </item>
-              </layout>
-             </widget>
-            </item>
-            <item>
-             <widget class="QFrame" name="frame_110">
-              <property name="frameShape">
-               <enum>QFrame::Shape::NoFrame</enum>
-              </property>
-              <property name="frameShadow">
-               <enum>QFrame::Shadow::Raised</enum>
-              </property>
-              <layout class="QGridLayout" name="gridLayout_41">
                <item row="0" column="1" colspan="2">
                 <widget class="QFrame" name="frame_115">
                  <property name="frameShape">
@@ -8236,8 +8404,137 @@
                  <property name="frameShadow">
                   <enum>QFrame::Shadow::Raised</enum>
                  </property>
-                 <layout class="QGridLayout" name="gridLayout_42">
-                  <item row="0" column="2">
+                 <layout class="QGridLayout" name="gridLayout_5">
+                  <item row="12" column="3">
+                   <widget class="QComboBox" name="emt_sss_build_type_comboBox">
+                    <property name="minimumSize">
+                     <size>
+                      <width>200</width>
+                      <height>0</height>
+                     </size>
+                    </property>
+                    <property name="toolTip">
+                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Subspace build type. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                    </property>
+                    <property name="currentText">
+                     <string>Arnoldi</string>
+                    </property>
+                    <item>
+                     <property name="text">
+                      <string>Arnoldi</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
+                      <string>Hybrid Arnoldi</string>
+                     </property>
+                    </item>
+                   </widget>
+                  </item>
+                  <item row="9" column="3">
+                   <widget class="QDoubleSpinBox" name="emt_ss_assessment_time_spinBox">
+                    <property name="toolTip">
+                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Initial time for the simulation. &lt;/p&gt;&lt;p&gt;In practice this is used to slow down troublesome solutions.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                    </property>
+                    <property name="suffix">
+                     <string> s</string>
+                    </property>
+                    <property name="decimals">
+                     <number>4</number>
+                    </property>
+                    <property name="minimum">
+                     <double>0.000000000000000</double>
+                    </property>
+                    <property name="maximum">
+                     <double>1000.000000000000000</double>
+                    </property>
+                    <property name="singleStep">
+                     <double>0.010000000000000</double>
+                    </property>
+                    <property name="value">
+                     <double>0.000000000000000</double>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="5" column="3">
+                   <widget class="QDoubleSpinBox" name="emt_sim_time_spinBox">
+                    <property name="toolTip">
+                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Initial time for the simulation. &lt;/p&gt;&lt;p&gt;In practice this is used to slow down troublesome solutions.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                    </property>
+                    <property name="suffix">
+                     <string> s</string>
+                    </property>
+                    <property name="decimals">
+                     <number>4</number>
+                    </property>
+                    <property name="minimum">
+                     <double>0.000000000000000</double>
+                    </property>
+                    <property name="maximum">
+                     <double>1000.000000000000000</double>
+                    </property>
+                    <property name="singleStep">
+                     <double>0.010000000000000</double>
+                    </property>
+                    <property name="value">
+                     <double>0.010000000000000</double>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="12" column="0" colspan="2">
+                   <widget class="QLabel" name="label_37">
+                    <property name="text">
+                     <string>Build type</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="4" column="3">
+                   <widget class="QSpinBox" name="tolerance_emt_spinBox">
+                    <property name="toolTip">
+                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Error tolerance of the method&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                    </property>
+                    <property name="prefix">
+                     <string>1e-</string>
+                    </property>
+                    <property name="minimum">
+                     <number>1</number>
+                    </property>
+                    <property name="maximum">
+                     <number>15</number>
+                    </property>
+                    <property name="value">
+                     <number>4</number>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="13" column="2">
+                   <spacer name="verticalSpacer_26">
+                    <property name="orientation">
+                     <enum>Qt::Orientation::Vertical</enum>
+                    </property>
+                    <property name="sizeHint" stdset="0">
+                     <size>
+                      <width>18</width>
+                      <height>149</height>
+                     </size>
+                    </property>
+                   </spacer>
+                  </item>
+                  <item row="2" column="0" colspan="2">
+                   <widget class="QLabel" name="label_440">
+                    <property name="text">
+                     <string>Problem</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="4" column="0" colspan="2">
+                   <widget class="QLabel" name="label_434">
+                    <property name="text">
+                     <string>Tolerance</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="0" column="3">
                    <widget class="QComboBox" name="emt_integration_method_comboBox">
                     <property name="minimumSize">
                      <size>
@@ -8263,7 +8560,119 @@
                     </item>
                    </widget>
                   </item>
-                  <item row="7" column="1" colspan="2">
+                  <item row="1" column="3">
+                   <widget class="QComboBox" name="emt_initialization_method_comboBox"/>
+                  </item>
+                  <item row="11" column="3">
+                   <widget class="QDoubleSpinBox" name="emt_small_signal_modes_number_spinBox">
+                    <property name="toolTip">
+                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Number of modes.&lt;br/&gt;If zero, all modes are included and the calculation is done using dense matrices.&lt;br/&gt;If a number of modes greater than zero is given the calculation is sparse.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                    </property>
+                    <property name="decimals">
+                     <number>0</number>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="10" column="0" colspan="2">
+                   <widget class="QLabel" name="label_60">
+                    <property name="text">
+                     <string>Target period</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="3" column="0">
+                   <widget class="QLabel" name="label_438">
+                    <property name="text">
+                     <string>Solver</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="0" column="0" colspan="2">
+                   <widget class="QLabel" name="label_432">
+                    <property name="text">
+                     <string>Integration</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="5" column="0" colspan="3">
+                   <widget class="QLabel" name="label_435">
+                    <property name="text">
+                     <string>Simulation time</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="8" column="0" colspan="4">
+                   <widget class="Line" name="line_66">
+                    <property name="palette">
+                     <palette>
+                      <active>
+                       <colorrole role="WindowText">
+                        <brush brushstyle="SolidPattern">
+                         <color alpha="255">
+                          <red>186</red>
+                          <green>189</green>
+                          <blue>182</blue>
+                         </color>
+                        </brush>
+                       </colorrole>
+                      </active>
+                      <inactive>
+                       <colorrole role="WindowText">
+                        <brush brushstyle="SolidPattern">
+                         <color alpha="255">
+                          <red>186</red>
+                          <green>189</green>
+                          <blue>182</blue>
+                         </color>
+                        </brush>
+                       </colorrole>
+                      </inactive>
+                      <disabled>
+                       <colorrole role="WindowText">
+                        <brush brushstyle="SolidPattern">
+                         <color alpha="255">
+                          <red>190</red>
+                          <green>190</green>
+                          <blue>190</blue>
+                         </color>
+                        </brush>
+                       </colorrole>
+                      </disabled>
+                     </palette>
+                    </property>
+                    <property name="frameShadow">
+                     <enum>QFrame::Shadow::Plain</enum>
+                    </property>
+                    <property name="lineWidth">
+                     <number>4</number>
+                    </property>
+                    <property name="orientation">
+                     <enum>Qt::Orientation::Horizontal</enum>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="9" column="0" colspan="3">
+                   <widget class="QLabel" name="label_437">
+                    <property name="text">
+                     <string>Assessment time</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="6" column="0" colspan="2">
+                   <widget class="QLabel" name="label_436">
+                    <property name="text">
+                     <string>Time step</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="11" column="0">
+                   <widget class="QLabel" name="label_56">
+                    <property name="text">
+                     <string>Modes</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="7" column="1" colspan="3">
                    <widget class="QLabel" name="label_431">
                     <property name="palette">
                      <palette>
@@ -8315,45 +8724,6 @@
                     </property>
                    </widget>
                   </item>
-                  <item row="3" column="0" colspan="2">
-                   <widget class="QLabel" name="label_434">
-                    <property name="text">
-                     <string>Tolerance</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="2" column="0">
-                   <widget class="QLabel" name="label_438">
-                    <property name="text">
-                     <string>Solver</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="9" column="2">
-                   <widget class="QDoubleSpinBox" name="emt_ss_assessment_time_spinBox">
-                    <property name="toolTip">
-                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Initial time for the simulation. &lt;/p&gt;&lt;p&gt;In practice this is used to slow down troublesome solutions.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                    </property>
-                    <property name="suffix">
-                     <string> s</string>
-                    </property>
-                    <property name="decimals">
-                     <number>4</number>
-                    </property>
-                    <property name="minimum">
-                     <double>0.000000000000000</double>
-                    </property>
-                    <property name="maximum">
-                     <double>1000.000000000000000</double>
-                    </property>
-                    <property name="singleStep">
-                     <double>0.010000000000000</double>
-                    </property>
-                    <property name="value">
-                     <double>0.000000000000000</double>
-                    </property>
-                   </widget>
-                  </item>
                   <item row="7" column="0">
                    <widget class="QLabel" name="label_430">
                     <property name="sizePolicy">
@@ -8385,7 +8755,37 @@
                     </property>
                    </widget>
                   </item>
-                  <item row="5" column="2">
+                  <item row="2" column="3">
+                   <widget class="QComboBox" name="emt_problem_comboBox">
+                    <item>
+                     <property name="text">
+                      <string>standard</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
+                      <string>vectorized</string>
+                     </property>
+                    </item>
+                   </widget>
+                  </item>
+                  <item row="10" column="3">
+                   <widget class="QDoubleSpinBox" name="emt_sss_target_period_spinBox">
+                    <property name="toolTip">
+                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Period of the periodic orbit. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                    </property>
+                    <property name="suffix">
+                     <string>Hz</string>
+                    </property>
+                    <property name="decimals">
+                     <number>4</number>
+                    </property>
+                    <property name="singleStep">
+                     <double>0.010000000000000</double>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="6" column="3">
                    <widget class="QDoubleSpinBox" name="emt_h_spinBox">
                     <property name="toolTip">
                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Initial time for the simulation. &lt;/p&gt;&lt;p&gt;In practice this is used to slow down troublesome solutions.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -8410,13 +8810,6 @@
                     </property>
                    </widget>
                   </item>
-                  <item row="0" column="0" colspan="2">
-                   <widget class="QLabel" name="label_432">
-                    <property name="text">
-                     <string>Integration</string>
-                    </property>
-                   </widget>
-                  </item>
                   <item row="1" column="0" colspan="2">
                    <widget class="QLabel" name="label_433">
                     <property name="text">
@@ -8424,218 +8817,29 @@
                     </property>
                    </widget>
                   </item>
-                  <item row="9" column="0" colspan="2">
-                   <widget class="QLabel" name="label_437">
-                    <property name="text">
-                     <string>Assessment time</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="13" column="1">
-                   <spacer name="verticalSpacer_26">
-                    <property name="orientation">
-                     <enum>Qt::Orientation::Vertical</enum>
-                    </property>
-                    <property name="sizeHint" stdset="0">
-                     <size>
-                      <width>20</width>
-                      <height>40</height>
-                     </size>
-                    </property>
-                   </spacer>
-                  </item>
-                  <item row="5" column="0" colspan="2">
-                   <widget class="QLabel" name="label_436">
-                    <property name="text">
-                     <string>Time step</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="2" column="2">
+                  <item row="3" column="3">
                    <widget class="QComboBox" name="emt_solver_type_comboBox"/>
                   </item>
-                  <item row="1" column="2">
-                   <widget class="QComboBox" name="emt_initialization_method_comboBox"/>
-                  </item>
-                  <item row="8" column="0" colspan="3">
-                   <widget class="Line" name="line_66">
-                    <property name="palette">
-                     <palette>
-                      <active>
-                       <colorrole role="WindowText">
-                        <brush brushstyle="SolidPattern">
-                         <color alpha="255">
-                          <red>186</red>
-                          <green>189</green>
-                          <blue>182</blue>
-                         </color>
-                        </brush>
-                       </colorrole>
-                      </active>
-                      <inactive>
-                       <colorrole role="WindowText">
-                        <brush brushstyle="SolidPattern">
-                         <color alpha="255">
-                          <red>186</red>
-                          <green>189</green>
-                          <blue>182</blue>
-                         </color>
-                        </brush>
-                       </colorrole>
-                      </inactive>
-                      <disabled>
-                       <colorrole role="WindowText">
-                        <brush brushstyle="SolidPattern">
-                         <color alpha="255">
-                          <red>190</red>
-                          <green>190</green>
-                          <blue>190</blue>
-                         </color>
-                        </brush>
-                       </colorrole>
-                      </disabled>
-                     </palette>
-                    </property>
-                    <property name="frameShadow">
-                     <enum>QFrame::Shadow::Plain</enum>
-                    </property>
-                    <property name="lineWidth">
-                     <number>4</number>
-                    </property>
-                    <property name="orientation">
-                     <enum>Qt::Orientation::Horizontal</enum>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="4" column="2">
-                   <widget class="QDoubleSpinBox" name="emt_sim_time_spinBox">
-                    <property name="toolTip">
-                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Initial time for the simulation. &lt;/p&gt;&lt;p&gt;In practice this is used to slow down troublesome solutions.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                    </property>
-                    <property name="suffix">
-                     <string> s</string>
-                    </property>
-                    <property name="decimals">
-                     <number>4</number>
-                    </property>
-                    <property name="minimum">
-                     <double>0.000000000000000</double>
-                    </property>
-                    <property name="maximum">
-                     <double>1000.000000000000000</double>
-                    </property>
-                    <property name="singleStep">
-                     <double>0.010000000000000</double>
-                    </property>
-                    <property name="value">
-                     <double>0.010000000000000</double>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="3" column="2">
-                   <widget class="QSpinBox" name="tolerance_emt_spinBox">
-                    <property name="toolTip">
-                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Error tolerance of the method&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                    </property>
-                    <property name="prefix">
-                     <string>1e-</string>
-                    </property>
-                    <property name="minimum">
-                     <number>1</number>
-                    </property>
-                    <property name="maximum">
-                     <number>15</number>
-                    </property>
-                    <property name="value">
-                     <number>4</number>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="4" column="0" colspan="2">
-                   <widget class="QLabel" name="label_435">
-                    <property name="text">
-                     <string>Simulation time</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="6" column="0">
-                   <widget class="QLabel" name="label_49">
-                    <property name="text">
-                     <string/>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="12" column="2">
-                   <widget class="QSpinBox" name="emt_small_signal_modes_number_spinBox_2">
-                    <property name="toolTip">
-                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Number of modes.&lt;br/&gt;If zero, all modes are included and the calculation is done using dense matrices.&lt;br/&gt;If a number of modes greater than zero is given the calculation is sparse.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="12" column="0" colspan="2">
-                   <widget class="QLabel" name="label_56">
-                    <property name="text">
-                     <string>Modes</string>
-                    </property>
-                   </widget>
-                  </item>
                  </layout>
-                </widget>
-               </item>
-               <item row="1" column="0" colspan="3">
-                <widget class="Line" name="line_67">
-                 <property name="palette">
-                  <palette>
-                   <active>
-                    <colorrole role="WindowText">
-                     <brush brushstyle="SolidPattern">
-                      <color alpha="255">
-                       <red>186</red>
-                       <green>189</green>
-                       <blue>182</blue>
-                      </color>
-                     </brush>
-                    </colorrole>
-                   </active>
-                   <inactive>
-                    <colorrole role="WindowText">
-                     <brush brushstyle="SolidPattern">
-                      <color alpha="255">
-                       <red>186</red>
-                       <green>189</green>
-                       <blue>182</blue>
-                      </color>
-                     </brush>
-                    </colorrole>
-                   </inactive>
-                   <disabled>
-                    <colorrole role="WindowText">
-                     <brush brushstyle="SolidPattern">
-                      <color alpha="255">
-                       <red>190</red>
-                       <green>190</green>
-                       <blue>190</blue>
-                      </color>
-                     </brush>
-                    </colorrole>
-                   </disabled>
-                  </palette>
-                 </property>
-                 <property name="frameShadow">
-                  <enum>QFrame::Shadow::Plain</enum>
-                 </property>
-                 <property name="lineWidth">
-                  <number>4</number>
-                 </property>
-                 <property name="orientation">
-                  <enum>Qt::Orientation::Horizontal</enum>
-                 </property>
+                 <widget class="QLabel" name="label_49">
+                  <property name="geometry">
+                   <rect>
+                    <x>9</x>
+                    <y>189</y>
+                    <width>16</width>
+                    <height>16</height>
+                   </rect>
+                  </property>
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
                 </widget>
                </item>
               </layout>
              </widget>
             </item>
-            <item>
+            <item row="0" column="2">
              <spacer name="horizontalSpacer_12">
               <property name="orientation">
                <enum>Qt::Orientation::Horizontal</enum>
@@ -11159,7 +11363,7 @@ QProgressBar::chunk{
     <font/>
    </property>
    <property name="shortcut">
-    <string>Ctrl+Alt++</string>
+    <string>Ctrl+Shift++</string>
    </property>
   </action>
   <action name="actionSmaller_nodes">
@@ -11177,7 +11381,7 @@ QProgressBar::chunk{
     <font/>
    </property>
    <property name="shortcut">
-    <string>Ctrl+Alt+-</string>
+    <string>Ctrl+Shift+-</string>
    </property>
   </action>
   <action name="actionPower_flow_Stochastic">

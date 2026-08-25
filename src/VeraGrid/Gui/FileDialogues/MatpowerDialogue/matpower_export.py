@@ -56,7 +56,7 @@ class MatpowerExportDialogue(QtWidgets.QDialog):
         """
         export_mode: MatpowerExportMode
         for export_mode in self.matpower_export_modes:
-            self.ui.matpower_export_mode_comboBox.addItem(str(export_mode))
+            self.ui.matpower_export_mode_comboBox.addItem(self.tr(str(export_mode)), export_mode)
 
     def _configure_time_slot_widgets(self) -> None:
         """
@@ -90,8 +90,7 @@ class MatpowerExportDialogue(QtWidgets.QDialog):
 
         :return: Selected MATPOWER export mode.
         """
-        combo_index: int = self.ui.matpower_export_mode_comboBox.currentIndex()
-        return self.matpower_export_modes[combo_index]
+        return self.ui.matpower_export_mode_comboBox.currentData()
 
     def get_selected_t_idx(self) -> int | None:
         """

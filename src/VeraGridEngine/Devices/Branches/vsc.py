@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
+import warnings
 import pandas as pd
 import numpy as np
 from matplotlib import pyplot as plt
@@ -68,6 +69,11 @@ class VSC(BranchParent):
         '_ysvs',
         '_x',
         '_y',
+
+        '_phN',
+        '_phA',
+        '_phB',
+        '_phC',
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
@@ -99,6 +105,38 @@ class VSC(BranchParent):
             tpe=float,
             definition='Losses quadratic parameter (IEC 62751-2 loss Correction, resistive loss).',
             dyn_ref=ParamPowerFlowReferenceType.alpha3,
+        ),
+
+        GCProp(
+            prop_name='phN',
+            units='',
+            tpe=bool,
+            definition='Is the neutral connected?',
+            cat=[PrpCat.SC, PrpCat.PF3, PrpCat.EMT],
+        ),
+
+        GCProp(
+            prop_name='phA',
+            units='',
+            tpe=bool,
+            definition='Is phase A connected?',
+            cat=[PrpCat.SC, PrpCat.PF3, PrpCat.EMT],
+        ),
+
+        GCProp(
+            prop_name='phB',
+            units='',
+            tpe=bool,
+            definition='Is phase B connected?',
+            cat=[PrpCat.SC, PrpCat.PF3, PrpCat.EMT],
+        ),
+
+        GCProp(
+            prop_name='phC',
+            units='',
+            tpe=bool,
+            definition='Is phase C connected?',
+            cat=[PrpCat.SC, PrpCat.PF3, PrpCat.EMT],
         ),
 
 
@@ -461,6 +499,11 @@ class VSC(BranchParent):
         # Q_min: float = -999.0,
         # Q_max: float = 999.0,
 
+        self._phN: bool = False
+        self._phA: bool = True
+        self._phB: bool = True
+        self._phC: bool = True
+
         self._control1: ConverterControlType = control1
         self._control1_prof: ProfileEnum = ProfileEnum(default_value=control1, enum_type=ConverterControlType)
         self._control1_dev: Bus | BRANCH_TYPES | None = control1_dev
@@ -585,6 +628,63 @@ class VSC(BranchParent):
     #             raise Exception(str(type(val)) + 'not supported to be set into a connectivity node from')
 
     @property
+    def phN(self) -> bool:
+        """
+        :return:
+        """
+        return self._phN
+
+    @phN.setter
+    def phN(self, val: bool):
+        if isinstance(val, bool):
+            self._phN = val
+        else:
+            raise ValueError(f'{val} is not an bool.')
+
+    @property
+    def phA(self) -> bool:
+        """
+        :return:
+        """
+        return self._phA
+
+    @phA.setter
+    def phA(self, val: bool):
+        if isinstance(val, bool):
+            self._phA = val
+        else:
+            raise ValueError(f'{val} is not an bool.')
+
+    @property
+    def phB(self) -> bool:
+        """
+        :return:
+        """
+        return self._phB
+
+    @phB.setter
+    def phB(self, val: bool):
+        if isinstance(val, bool):
+            self._phB = val
+        else:
+            raise ValueError(f'{val} is not an bool.')
+
+    @property
+    def phC(self) -> bool:
+        """
+        :return:
+        """
+        return self._phC
+
+    @phC.setter
+    def phC(self, val: bool):
+        if isinstance(val, bool):
+            self._phC = val
+        else:
+            raise ValueError(f'{val} is not an bool.')
+
+
+    @property
     def control1(self):
         """
 
@@ -602,6 +702,10 @@ class VSC(BranchParent):
                 if (value in (ConverterControlType.Vm_dc, ConverterControlType.Vm_ac) and
                         not (0.9 < self.control1_val <= 1.1)):
                     self.control1_val = 1.0
+            else:
+                # a silent refusal here leaves the converter in its old mode
+                warnings.warn(f"VSC {self.name}: control1 = {value} refused because control2 "
+                              f"already holds that control. Change control2 first.")
         else:
             self._control1 = value
 
@@ -647,6 +751,10 @@ class VSC(BranchParent):
                 if (value in (ConverterControlType.Vm_dc, ConverterControlType.Vm_ac) and
                         not (0.9 < self.control2_val <= 1.1)):
                     self.control2_val = 1.0
+            else:
+                # loud refusal, see the control1 setter for the reasoning
+                warnings.warn(f"VSC {self.name}: control2 = {value} refused because control1 "
+                              f"already holds that control. Change control1 first.")
         else:
             self._control2 = value
 

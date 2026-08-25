@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import os
 import sys
-from typing import Tuple
+from typing import Tuple, Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -384,7 +384,7 @@ def run_dc_line_case(enable_plots: bool = False) -> None:
     options = build_default_emt_options()
     problem = EmtProblemDae(grid=grid, options=options, pf_results=pf_results, pf_results_3Ph=None)
     solver = create_symbolic_solver(problem=problem, options=options)
-    load_param_idx = get_constant_parameter_full_index(problem, 'g_dc_load_emt')
+    load_param_idx = get_constant_parameter_full_index(problem, 'g')
     boundary_updater = LoadStepBoundaryUpdater(
         problem=problem,
         param_full_idx=load_param_idx,

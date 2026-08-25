@@ -53,17 +53,20 @@ def build_dynamic_editor_entry(api_object: Any, circuit: Any) -> DynamicEditorEn
     :param circuit: Circuit that owns the candidate object.
     :return: Resolved editor entry or ``None``.
     """
-    available_modes = get_available_dynamic_modes(api_object)
+    available_modes: tuple[DynamicSimulationMode, ...] = get_available_dynamic_modes(api_object)
     if len(available_modes) == 0:
         return None
+    else:
+        pass
 
     if isinstance(api_object, EditableDevice):
-        key_base = f"{api_object.device_type.value}:{api_object.idtag}"
-        type_label = str(api_object.device_type.value)
-        display_name = api_object.name
+        key_base: str = f"{api_object.device_type.value}:{api_object.idtag}"
+        type_label: str = str(api_object.device_type.value)
+        display_name: str = api_object.name
     else:
         key_base = f"dynamic-object:{id(api_object)}"
-        type_label = type(api_object).__name__
+        api_object_class_name: str = api_object.__class__.__name__
+        type_label = api_object_class_name
         display_name = api_object.name
 
     return DynamicEditorEntry(
@@ -84,13 +87,28 @@ def iter_dynamic_editor_entries(circuit: Any) -> Iterable[DynamicEditorEntry]:
     :return: Iterable of unique editor entries.
     """
     seen_keys: set[str] = set()
+    branch_objects: list[Any] = list(circuit.get_branches(add_vsc=True, add_hvdc=True, add_switch=True))
+    injection_objects: list[Any] = list(circuit.get_injection_devices())
+    scanned_objects: Iterable[Any] = chain(injection_objects, branch_objects)
     api_object: Any
-    for api_object in chain(circuit.get_injection_devices(), circuit.get_branches()):
+    entry: DynamicEditorEntry | None
+
+    # The tree must list every branch-like device that can own one dynamic
+    # editor model. The default branch collector excludes VSC and HVDC objects,
+    # so request the full branch family explicitly before deduplicating entries.
+    # The algorithm scans injections and branch-like devices in one pass, then
+    # filters unsupported objects and duplicate mode keys before yielding them
+    # to the workspace tree builder.
+    for api_object in scanned_objects:
         entry = build_dynamic_editor_entry(api_object, circuit)
-        if entry is None or entry.key_base in seen_keys:
-            continue
-        seen_keys.add(entry.key_base)
-        yield entry
+        if entry is None:
+            pass
+        else:
+            if entry.key_base in seen_keys:
+                pass
+            else:
+                seen_keys.add(entry.key_base)
+                yield entry
 
 
 def get_templates_for_entry(entry: DynamicEditorEntry, mode: DynamicSimulationMode) -> list[Any]:

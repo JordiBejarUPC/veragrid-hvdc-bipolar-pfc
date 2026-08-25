@@ -44,6 +44,54 @@ from VeraGridEngine.Simulations.LinearFactors.linear_analysis import (LinearAnal
                                                                       LinearMultiContingencies)
 
 
+def get_hydro_power_to_flow_coeff(flow_rate: float,
+                                  efficiency: float,
+                                  rated_power: float,
+                                  sbase: float,
+                                  logger: Logger,
+                                  device_label: str) -> float:
+    """
+    Build one safe power-to-flow conversion coefficient for hydro-like devices.
+
+    :param flow_rate: Device maximum flow rate.
+    :param efficiency: Device efficiency factor.
+    :param rated_power: Absolute generator power magnitude used in the conversion.
+    :param sbase: System base power.
+    :param logger: Simulation logger.
+    :param device_label: Device family label for diagnostics.
+    :return: Finite coefficient or ``0.0`` for invalid data.
+    """
+    if not np.isfinite(flow_rate) or flow_rate < 0.0:
+        logger.add_error(msg=f'Invalid {device_label} flow rate for hydro OPF coefficient',
+                         value=flow_rate)
+        return 0.0
+    else:
+        pass
+
+    if not np.isfinite(efficiency) or efficiency <= 0.0:
+        logger.add_error(msg=f'Invalid {device_label} efficiency for hydro OPF coefficient',
+                         value=efficiency)
+        return 0.0
+    else:
+        pass
+
+    if not np.isfinite(rated_power) or rated_power <= 0.0:
+        logger.add_error(msg=f'Invalid {device_label} generator power bound for hydro OPF coefficient',
+                         value=rated_power)
+        return 0.0
+    else:
+        pass
+
+    if not np.isfinite(sbase) or sbase <= 0.0:
+        logger.add_error(msg='Invalid system base power for hydro OPF coefficient',
+                         value=sbase)
+        return 0.0
+    else:
+        pass
+
+    return flow_rate / (rated_power / sbase * efficiency)
+
+
 def get_contingency_flow_with_filter(multi_contingency: LinearMultiContingency,
                                      base_flow: Vec,
                                      injections: Union[None, Vec],
@@ -1200,8 +1248,33 @@ def add_linear_battery_formulation(local_t: int,
                                       + dt * (elm.discharge_efficiency * p_pos - elm.charge_efficiency * p_neg)),
                                  name=join("batt_energy_", [local_t, k], "_"))
                 else:
-                    # set the initial energy value
-                    batt_vars.e[local_t, k] = energy_0[k] / Sbase
+                    # Tie the first modeled interval to the provided initial energy.
+                    #
+                    # local_t is the row inside the current optimization chunk. When local_t == 0
+                    # we still need to distinguish between:
+                    # - the true start of the whole simulation (global_t == 0), and
+                    # - the first row of a later chunk (global_t > 0).
+                    #
+                    # In the second case, the battery state comes from the previous chunk, so the
+                    # interval duration must come from the full time series at global_t/global_t-1.
+                    # In the first case there is no previous timestamp, so we use the first known
+                    # spacing in the time series as the duration of interval 0.
+                    #
+                    # For a single-point run there is no spacing information, so we use 1 hour.
+                    if global_t > 0:
+                        # First local row of a later chunk: local_t has no previous row, so use
+                        # the previous timestamp from the full simulation timeline instead.
+                        dt = (time_array[global_t] - time_array[global_t - 1]).seconds / 3600.0
+                    elif len(time_array) > 1:
+                        # True start of the full simulation: there is no previous timestamp, so
+                        # use the first available spacing to define interval 0.
+                        dt = (time_array[1] - time_array[0]).seconds / 3600.0
+                    else:
+                        # Single-point run: no time spacing exists, fall back to 1 hour.
+                        dt = 1.0
+                    prob.add_cst(cst=(batt_vars.e[local_t, k] == energy_0[k] / Sbase
+                                      + dt * (elm.discharge_efficiency * p_pos - elm.charge_efficiency * p_neg)),
+                                 name=join("batt_energy_", [local_t, k], "_"))
 
             else:
 
@@ -1423,22 +1496,27 @@ def add_linear_branches_formulation(local_t: int,
                     bk = 1.0 / elm.X
 
                 # compute the flow
-                if elm.get_tap_phase_control_mode_at(global_t) == TapPhaseControl.Pf.idx():
+                if (elm.get_tap_phase_control_mode_at(global_t) == TapPhaseControl.Pf.idx() or
+                        elm.get_tap_phase_control_mode_at(global_t) == TapPhaseControl.Pt.idx()):
 
-                    # add angle
+                    # Phase shifter under control, so define angle as a variable
                     branch_vars.tap_angles[local_t, m] = prob.add_var(
                         lb=elm.tap_phase_min,
                         ub=elm.tap_phase_max,
                         name=join("tap_ang_", [local_t, m], "_")
                     )
 
-                    # is a phase shifter device (like phase shifter transformer or VSC with P control)
-                    # flow_ctr = branch_vars.flows[t, m] == bk * (
-                    #         bus_vars.theta[t, fr] - bus_vars.theta[t, to] + branch_vars.tap_angles[t, m])
-                    # prob.add_cst(cst=flow_ctr, name=join("Branch_flow_set_with_ps_", [t, m], "_"))
+                    branch_vars.flows[local_t, m] = bk * (bus_vars.Va[local_t, fr] -
+                                                          bus_vars.Va[local_t, to] -
+                                                          branch_vars.tap_angles[local_t, m])
+
+                elif elm.get_tap_phase_at(global_t) != 0.0:
+
+                    # The device carries a phase shift the user imposed
+                    branch_vars.tap_angles[local_t, m] = elm.get_tap_phase_at(global_t)
 
                     branch_vars.flows[local_t, m] = bk * (bus_vars.Va[local_t, fr] -
-                                                          bus_vars.Va[local_t, to] +
+                                                          bus_vars.Va[local_t, to] -
                                                           branch_vars.tap_angles[local_t, m])
 
                 else:  # rest of the branches
@@ -1885,8 +1963,13 @@ def add_hydro_formulation(local_t: Union[int, None],
 
         if gen_idx is not None and plant_idx is not None:
 
-            # flow [m3/s] = pgen [pu] * max_flow [m3/s] / (Pgen_max [MW] / Sbase [MW] * eff)
-            coeff = elm.max_flow_rate / (elm.generator.get_Pmax_at(global_t) / Sbase * elm.efficiency)
+            # Convert electrical output into water flow, or clamp to zero when the device data is invalid.
+            coeff = get_hydro_power_to_flow_coeff(flow_rate=float(elm.max_flow_rate),
+                                                  efficiency=float(elm.efficiency),
+                                                  rated_power=float(elm.generator.get_Pmax_at(global_t)),
+                                                  sbase=Sbase,
+                                                  logger=logger,
+                                                  device_label='turbine')
             turbine_flow = (generator_vars.p[local_t, gen_idx] * coeff)
             # node_vars.flow_out[t, plant_idx] = turbine_flow  # assume only 1 turbine connected
 
@@ -1908,10 +1991,13 @@ def add_hydro_formulation(local_t: Union[int, None],
         plant_idx = fluid_node_dict.get(elm.plant, None)
 
         if gen_idx is not None and plant_idx is not None:
-            # flow [m3/s] = pcons [pu] * max_flow [m3/s] * eff / (Pcons_min [MW] / Sbase [MW])
-            # invert the efficiency compared to a turbine
-            # pmin instead of pmax because the sign should be inverted (consuming instead of generating)
-            coeff = elm.max_flow_rate * elm.efficiency / (abs(elm.generator.get_Pmin_at(global_t)) / Sbase)
+            # Convert electrical consumption into pumped flow, or clamp to zero when the device data is invalid.
+            coeff = get_hydro_power_to_flow_coeff(flow_rate=float(elm.max_flow_rate),
+                                                  efficiency=1.0 / float(elm.efficiency),
+                                                  rated_power=abs(float(elm.generator.get_Pmin_at(global_t))),
+                                                  sbase=Sbase,
+                                                  logger=logger,
+                                                  device_label='pump')
             pump_flow = (generator_vars.p[local_t, gen_idx] * coeff)
             # node_vars.flow_in[t, plant_idx] = pump_flow  # assume only 1 pump connected
 
@@ -1933,10 +2019,13 @@ def add_hydro_formulation(local_t: Union[int, None],
 
         if gen_idx is not None and plant_idx is not None:
 
-            # flow[m3/s] = pcons [pu] * max_flow [m3/s] * eff / (Pcons_max [MW] / Sbase [MW])
-            # invert the efficiency compared to a turbine
-            # pmin instead of pmax because the sign should be inverted (consuming instead of generating)
-            coeff = elm.max_flow_rate * elm.efficiency / (abs(elm.generator.get_Pmin_at(global_t)) / Sbase)
+            # Convert electrical consumption into process flow, or clamp to zero when the device data is invalid.
+            coeff = get_hydro_power_to_flow_coeff(flow_rate=float(elm.max_flow_rate),
+                                                  efficiency=1.0 / float(elm.efficiency),
+                                                  rated_power=abs(float(elm.generator.get_Pmin_at(global_t))),
+                                                  sbase=Sbase,
+                                                  logger=logger,
+                                                  device_label='p2x')
             p2x_flow = (generator_vars.p[local_t, gen_idx] * coeff)
 
             # if t > 0:

@@ -127,7 +127,8 @@ def _build_xfmr_neutral_grid() -> tuple[gce.MultiCircuit, gce.Transformer2W, gce
         get_bus_emt_template(grid, bus)
 
     generator_model = get_generator_thevenin_rl_emt_template_with_ref(vf=grid.var_factory, name="Gen").block
-    xfmr_model = get_xfmr_emt_template(vf=grid.var_factory, conn_f=xfmr.conn_f, conn_t=xfmr.conn_t, name="XFMR").block
+    xfmr_template = get_xfmr_emt_template(vf=grid.var_factory, conn_f=xfmr.conn_f, conn_t=xfmr.conn_t, name="XFMR")
+    xfmr_model = xfmr_template.block.children[0]
     line_model = get_pi_line_emt_template(vf=grid.var_factory, phN=True, phA=True, phB=True, phC=True, name="Line").block
     load_model = get_shunt_rlc_combo_emt_template(
         vf=grid.var_factory,

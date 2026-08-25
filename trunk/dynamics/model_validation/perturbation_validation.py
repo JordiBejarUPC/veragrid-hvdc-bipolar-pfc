@@ -201,8 +201,8 @@ def perturbation_validation():
     print(f"Converged: {converged}")
     
     # Extract key state trajectories
-    delta_var = find_name_in_block("deltaGen0", genqec)
-    omega_var = find_name_in_block("omegaGen0", genqec)
+    delta_var = find_name_in_block("delta", genqec)
+    omega_var = find_name_in_block("omega", genqec)
     
     if delta_var and omega_var:
         delta_idx = problem_sim.get_var_idx(delta_var)

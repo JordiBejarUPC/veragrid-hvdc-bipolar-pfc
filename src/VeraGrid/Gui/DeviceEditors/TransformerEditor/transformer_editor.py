@@ -8,7 +8,7 @@ import sys
 from PySide6 import QtWidgets
 
 from VeraGrid.Gui.DeviceEditors.TransformerEditor.transformer_editor_gui import Ui_TransformerEditorDialog
-from VeraGrid.Gui.gui_functions import get_list_model
+import VeraGrid.Gui.gui_functions as gf
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Devices.Branches.transformer_type import TransformerType
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
@@ -40,24 +40,9 @@ class TransformerEditor(QtWidgets.QDialog):
         self.templates: list[TransformerType] = self.filter_valid_templates(grid.transformer_types)
         self.current_template: TransformerType | None = branch.template
         self.selected_template: TransformerType | None = None
-        self.tap_changer_types_dict: dict[str, TapChangerTypes] = self._build_tap_changer_type_map()
 
         self._configure_initial_values()
         self._connect_signals()
-
-    def _build_tap_changer_type_map(self) -> dict[str, TapChangerTypes]:
-        """
-        Build the map between GUI text and tap changer enum values.
-
-        :return: Text-to-enum mapping.
-        """
-        tap_map: dict[str, TapChangerTypes] = {
-            TapChangerTypes.NoRegulation.value: TapChangerTypes.NoRegulation,
-            TapChangerTypes.Symmetrical.value: TapChangerTypes.Symmetrical,
-            TapChangerTypes.Asymmetrical.value: TapChangerTypes.Asymmetrical,
-            TapChangerTypes.VoltageRegulation.value: TapChangerTypes.VoltageRegulation,
-        }
-        return tap_map
 
     def _configure_initial_values(self) -> None:
         """
@@ -70,7 +55,7 @@ class TransformerEditor(QtWidgets.QDialog):
         vsc_value: float = self.transformer_obj.Vsc
 
         if len(self.templates) > 0:
-            self.ui.catalogueComboBox.setModel(get_list_model(self.templates))
+            self.ui.catalogueComboBox.setModel(gf.get_list_model(self.templates))
             if self.current_template in self.templates:
                 template_index: int = self.templates.index(self.current_template)
                 self.ui.catalogueComboBox.setCurrentIndex(template_index)
@@ -91,11 +76,16 @@ class TransformerEditor(QtWidgets.QDialog):
         self.ui.i0SpinBox.setValue(i0_value)
         self.ui.vscSpinBox.setValue(vsc_value)
 
-        tap_type_names: list[str] = list(self.tap_changer_types_dict.keys())
-        self.ui.tapChangerTypeComboBox.setModel(get_list_model(tap_type_names))
-        current_tap_type_name: str = self.transformer_obj.tap_changer.tc_type.value
-        if current_tap_type_name in tap_type_names:
-            self.ui.tapChangerTypeComboBox.setCurrentIndex(tap_type_names.index(current_tap_type_name))
+        tap_types: list[TapChangerTypes] = [
+            TapChangerTypes.NoRegulation,
+            TapChangerTypes.Symmetrical,
+            TapChangerTypes.Asymmetrical,
+            TapChangerTypes.VoltageRegulation,
+        ]
+        self.ui.tapChangerTypeComboBox.setModel(gf.ComboModel(enum_values=tap_types, translate=self.tr))
+        tap_type_index: int = self.ui.tapChangerTypeComboBox.findData(self.transformer_obj.tap_changer.tc_type)
+        if tap_type_index >= 0:
+            self.ui.tapChangerTypeComboBox.setCurrentIndex(tap_type_index)
         else:
             self.ui.tapChangerTypeComboBox.setCurrentIndex(0)
 
@@ -210,11 +200,7 @@ class TransformerEditor(QtWidgets.QDialog):
         tap_changer_obj.dV = self.ui.dvSpinBox.value()
         tap_changer_obj.neutral_position = self.ui.neutralPositionSpinBox.value()
 
-        selected_tap_type_name: str = self.ui.tapChangerTypeComboBox.currentText()
-        if selected_tap_type_name in self.tap_changer_types_dict:
-            tap_changer_obj.tc_type = self.tap_changer_types_dict[selected_tap_type_name]
-        else:
-            pass
+        tap_changer_obj.tc_type = self.ui.tapChangerTypeComboBox.currentData()
 
         tap_changer_obj.recalc()
 

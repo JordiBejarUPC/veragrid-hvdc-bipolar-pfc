@@ -127,7 +127,8 @@ def _build_transformer_neutral_grid() -> tuple[gce.MultiCircuit, gce.Transformer
         get_bus_emt_template(grid, bus)
 
     generator_model = get_generator_thevenin_rl_emt_template_with_ref(vf=grid.var_factory, name="Gen").block
-    transformer_model = get_transformer_emt_template(vf=grid.var_factory, conn_f=transformer.conn_f, conn_t=transformer.conn_t, name="TRAFO").block
+    transformer_template = get_transformer_emt_template(vf=grid.var_factory, conn_f=transformer.conn_f, conn_t=transformer.conn_t, name="TRAFO")
+    transformer_model = transformer_template.block.children[0]
     line_model = get_pi_line_emt_template(vf=grid.var_factory, phN=True, phA=True, phB=True, phC=True, name="Line").block
     load_model = get_shunt_rlc_combo_emt_template(
         vf=grid.var_factory,

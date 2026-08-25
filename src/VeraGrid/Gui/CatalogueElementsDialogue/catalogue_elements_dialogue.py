@@ -255,14 +255,14 @@ class CatalogueElementsSelectionDialogue(QtWidgets.QDialog):
         :return: List[CatalogueAction]
         """
         actions: List[CatalogueAction] = list()
-        actions.append(CatalogueAction(kind=CatalogueActionKind.AddRmsTemplate,
-                                       args=(self._circuit.var_factory,),
-                                       name='GENQEC',
-                                       voltage_text='',
-                                       power_text='',
-                                       unique_key='rms:get_genqec_rms',
-                                       function_ptr=tem.get_genqec_rms)
-                       )
+        # actions.append(CatalogueAction(kind=CatalogueActionKind.AddRmsTemplate,
+        #                                args=(self._circuit.var_factory,),
+        #                                name='GENQEC',
+        #                                voltage_text='',
+        #                                power_text='',
+        #                                unique_key='rms:get_genqec_rms',
+        #                                function_ptr=tem.get_genqec_rms)
+        #                )
         # actions.append(CatalogueAction(kind=CatalogueActionKind.AddRmsTemplate,
         #                                args=(self._circuit.var_factory,),
         #                                name='Governor',
@@ -350,6 +350,22 @@ class CatalogueElementsSelectionDialogue(QtWidgets.QDialog):
                                        power_text='',
                                        unique_key='rms:build_vsc_rms',
                                        function_ptr=tem.build_vsc_rms)
+                       )
+        actions.append(CatalogueAction(kind=CatalogueActionKind.AddRmsTemplate,
+                                       args=(self._circuit.var_factory,),
+                                       name='HVDC GFL VSC - Vdc/Q',
+                                       voltage_text='',
+                                       power_text='',
+                                       unique_key='rms:get_hvdc_vdc_q_vsc_rms',
+                                       function_ptr=tem.get_hvdc_vdc_q_vsc_rms)
+                       )
+        actions.append(CatalogueAction(kind=CatalogueActionKind.AddRmsTemplate,
+                                       args=(self._circuit.var_factory,),
+                                       name='HVDC GFL VSC - Pdc/Q',
+                                       voltage_text='',
+                                       power_text='',
+                                       unique_key='rms:get_hvdc_pdc_q_vsc_rms',
+                                       function_ptr=tem.get_hvdc_pdc_q_vsc_rms)
                        )
         # actions.append(CatalogueAction(kind=CatalogueActionKind.AddRmsTemplate,
         #                                args=(self._circuit.var_factory,),

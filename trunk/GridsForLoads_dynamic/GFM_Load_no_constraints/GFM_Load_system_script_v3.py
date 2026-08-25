@@ -26,7 +26,8 @@ from typing import Any, cast
 
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
 
-from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Utils.Symbolic.block import Block, VarPowerFlowReferenceType
+from VeraGridEngine.Utils.Symbolic.symbolic import Var
 
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
@@ -46,7 +47,7 @@ from VeraGridEngine.enumerations import (BranchImpedanceMode, DynamicIntegration
                                          DynamicEventTransitionType, EmtSolverTypes, ShuntConnectionType, SolverType)
 
 from trunk.GridsForLoads_dynamic.gridsforloads_converter_template_V3 import (get_trafo_grid_connection_G4L,
-                                                                          get_complete_load_template_G4L)
+                                                                           get_complete_load_template_G4L)
 import VeraGridEngine.api as gce
 
 from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup
@@ -69,6 +70,44 @@ def try_get_series(problem: EmtProblemDae, y_arr: np.ndarray, name: str):
         return y_arr[:, idx]
     except Exception:
         return None
+
+
+def try_get_var_series(problem: EmtProblemDae, y_arr: np.ndarray, variable: Var | None) -> np.ndarray | None:
+    """Return a result series using an exact symbolic variable.
+
+    Bus voltage variables deliberately share names such as ``v_A``.  Looking
+    them up by name therefore aliases Bus0 and Bus1; their symbolic UID is the
+    unambiguous identifier used by the EMT problem.
+
+    :param problem: Solved EMT problem containing the variable index map.
+    :param y_arr: State and algebraic-variable result matrix.
+    :param variable: Exact symbolic variable, or ``None`` when unavailable.
+    :return: Result series, or ``None`` when the variable is unavailable.
+    """
+    if variable is None:
+        return None
+    else:
+        variable_index: int = problem.get_var_idx(variable)
+        return y_arr[:, variable_index]
+
+
+def try_get_var_init_value(problem: EmtProblemDae, variable: Var | None) -> float | None:
+    """Return an initialized value using the exact symbolic variable UID.
+
+    Bus phase-voltage names are local and therefore not unique.  Using the
+    variable object preserves the UID assigned to the requested bus and avoids
+    accidentally resolving another bus with the same local name.
+
+    :param problem: Initialized EMT problem containing the variable index map.
+    :param variable: Exact symbolic variable, or ``None`` when unavailable.
+    :return: Initialized scalar value, or ``None`` when unavailable.
+    """
+    if variable is None:
+        return None
+    else:
+        variable_index: int = problem.get_var_idx(variable)
+        initial_values: np.ndarray = problem.get_x0()
+        return float(initial_values[variable_index])
 
 
 def plot_if_available(ax, t_arr: np.ndarray, series, label: str):
@@ -210,7 +249,7 @@ def sanitize_file_name(name: str) -> str:
 
 def get_plot_output_folder(selected_test_name: str) -> Path:
     base_folder = Path(REPO_ROOT) / "trunk" / "GridsForLoads_dynamic" / "generated_plots"
-    return base_folder / f"GFM_Load_no_constraints_{sanitize_file_name(selected_test_name)}_v3"
+    return base_folder / f"GFM_Load_no_constraints_{sanitize_file_name(selected_test_name)}_v3_continuous_3s"
 
 
 def save_selected_figures(output_folder: Path, figures: list[tuple[str, plt.Figure]]) -> None:
@@ -221,6 +260,103 @@ def save_selected_figures(output_folder: Path, figures: list[tuple[str, plt.Figu
         print(f"Saved plot: {figure_path}")
 
 
+def validate_emt_simulation(
+        time_values: np.ndarray,
+        state_values: np.ndarray,
+        differential_values: np.ndarray,
+        well_initialized: bool,
+        converged: bool,
+) -> None:
+    """Validate the EMT result before plots or CSV files are generated.
+
+    A solver can return a complete time vector after a failed Newton step while
+    filling the remaining state history with ``NaN``.  Rejecting that result is
+    essential because the comparison workflow must never interpolate across a
+    failed simulation.
+
+    :param time_values: EMT simulation time vector.
+    :param state_values: State and algebraic-variable history.
+    :param differential_values: Differential-variable history.
+    :param well_initialized: Solver initialization status.
+    :param converged: Solver convergence status.
+    :return: None.
+    """
+    if well_initialized:
+        pass
+    else:
+        raise RuntimeError("EMT initialization failed; comparison CSV was not generated.")
+
+    if converged:
+        pass
+    else:
+        raise RuntimeError("EMT simulation did not converge; comparison CSV was not generated.")
+
+    time_is_finite: bool = bool(np.all(np.isfinite(time_values)))
+    states_are_finite: bool = bool(np.all(np.isfinite(state_values)))
+    differentials_are_finite: bool = bool(np.all(np.isfinite(differential_values)))
+    if time_is_finite and states_are_finite and differentials_are_finite:
+        pass
+    else:
+        raise RuntimeError("EMT simulation contains NaN or Inf; comparison CSV was not generated.")
+
+
+def validate_nyquist_ringing(
+        problem: EmtProblemDae,
+        time_values: np.ndarray,
+        state_values: np.ndarray,
+        voltage_variables: list[Var],
+        window_start_s: float,
+        window_end_s: float,
+        maximum_ratio: float,
+) -> None:
+    """Reject alternating-sample voltage ringing before CSV export.
+
+    Trapezoidal integration can preserve an artificial mode at the Nyquist
+    frequency when initial states are inconsistent.  Its signature is a large
+    projection on ``(-1)**sample_index``.  The check uses a settled pre-event
+    window so that the 50 Hz fundamental does not mask that numerical mode.
+
+    :param problem: Solved EMT problem containing the variable index map.
+    :param time_values: Simulation time vector in seconds.
+    :param state_values: State and algebraic-variable result matrix.
+    :param voltage_variables: Exact bus-voltage variables to inspect.
+    :param window_start_s: Start of the diagnostic window in seconds.
+    :param window_end_s: End of the diagnostic window in seconds.
+    :param maximum_ratio: Maximum alternating-component to RMS ratio.
+    :return: None.
+    """
+    window_mask: np.ndarray = (time_values >= window_start_s) & (time_values <= window_end_s)
+    sample_indices: np.ndarray = np.flatnonzero(window_mask)
+    if sample_indices.size >= 2:
+        pass
+    else:
+        raise RuntimeError("Nyquist diagnostic window does not contain enough samples.")
+
+    alternating_sign: np.ndarray = np.where(np.arange(sample_indices.size) % 2 == 0, 1.0, -1.0)
+    maximum_measured_ratio: float = 0.0
+    for variable in voltage_variables:
+        series: np.ndarray | None = try_get_var_series(problem, state_values, variable)
+        if series is None:
+            raise RuntimeError(f"Missing voltage variable for Nyquist validation: {variable.name}")
+        else:
+            window_values: np.ndarray = series[window_mask]
+            rms_value: float = float(np.sqrt(np.mean(window_values * window_values)))
+            alternating_amplitude: float = float(abs(np.mean(window_values * alternating_sign)))
+            if rms_value > 0.0:
+                measured_ratio: float = alternating_amplitude / rms_value
+            else:
+                measured_ratio = 0.0
+            maximum_measured_ratio = max(maximum_measured_ratio, measured_ratio)
+
+    print(f"Maximum bus-voltage Nyquist/RMS ratio: {maximum_measured_ratio:.6e}")
+    if maximum_measured_ratio <= maximum_ratio:
+        pass
+    else:
+        raise RuntimeError(
+            "Trapezoidal Nyquist ringing exceeds the allowed ratio; comparison CSV was not generated."
+        )
+
+
 ######################################################################################################
 # Build grid
 ######################################################################################################
@@ -228,8 +364,13 @@ def save_selected_figures(output_folder: Path, figures: list[tuple[str, plt.Figu
 U       = 33000 / 1000 # V -> kV
 Sb      = 2000000 / 1000000 # VA -> MVA
 omega   = 2 * np.pi * 50.0
+sample_time_s = 5.0e-6
 
-grid = gce.MultiCircuit(Sbase=Sb, fbase=50.0)
+grid = gce.MultiCircuit(name="GFM Load EMT validation system", Sbase=Sb, fbase=50.0)
+grid.comments = (
+    "Thevenin grid equivalent, grid-connection branch, grid-forming converter "
+    "with continuous DAE controllers, and controlled-current-source load."
+)
 
 # Buses
 bus0 = gce.Bus(name="Bus0", Vnom=U, is_slack=True)
@@ -244,11 +385,10 @@ grid.add_bus(bus1)
 # - branch r/x/b in p.u.
 R_trf_pu = 0.1 / 10.0
 X_trf_pu = 1.0 / 10.0
-# The EMT template implements the shunt only on the "to" side, while the
-# VeraGrid static line ``b`` is a symmetric pi-line susceptance used for PF
-# and EMT initialization. Keep the matching total susceptance here.
-# B_sh_pu = 2.0 / 15.0
-B_sh_pu = 1.0 / 15.0
+# The physical EMT shunt remains in the custom dynamic line template.  The
+# static power-flow susceptance is zero solely to reproduce Simulink's cold
+# start instead of seeding a steady-state capacitor current at t = 0.
+B_sh_pu = 0.0
 line0 = gce.Line(name="line0", bus_from=bus0, bus_to=bus1, r=R_trf_pu, x=X_trf_pu, b=B_sh_pu, rate=Sb)
 
 # load
@@ -263,8 +403,11 @@ i_C0 = -0.34355869914723824
 P_loss_f_pu = R_f_pu * (i_A0*i_A0 + i_B0*i_B0 + i_C0*i_C0)
 
 P_load_pu = P_dc_pu + P_loss_f_pu
-# P_target = P_load_pu * 2.0  # MW, because Sb = 2 MVA
-P_target = 1.6
+# Simulink starts the averaged converter with zero AC/DC current and lets the
+# dynamic controls build the requested 0.8 pu power.  A non-zero static load
+# forces PF currents into the EMT state while the converter voltage starts at
+# zero power, which creates a 1 pu DC-link current mismatch and divergence.
+P_target = 0.0
 load = gce.Load(name="load",P = P_target, P1= P_target/3, P2= P_target/3, P3= P_target/3, Q =0.0, Q1= 0.0, Q2= 0.0, Q3= 0.0)
 load.conn = ShuntConnectionType.GroundedStar
 
@@ -279,9 +422,28 @@ grid.add_line(line0)
 grid.add_generator(bus=bus0, api_obj=gen0)
 grid.add_load(bus=bus1, api_obj=load)
 
+# Store a simple one-line layout with the circuit so that the GUI opens the
+# model with Bus0 and Bus1 already positioned instead of an empty schematic.
+bus0.x = 0.0
+bus0.y = 0.0
+bus1.x = 400.0
+bus1.y = 0.0
+schematic_diagram: gce.SchematicDiagram = gce.SchematicDiagram(name="GFM Load one-line diagram")
+schematic_diagram.update_graphic_location(api_object=bus0, x=0.0, y=0.0, w=80.0, h=20.0)
+schematic_diagram.update_graphic_location(api_object=bus1, x=400.0, y=0.0, w=80.0, h=20.0)
+schematic_diagram.update_graphic_location(api_object=line0)
+grid.add_diagram(schematic_diagram)
+
 
 for bus in grid.buses:
     get_bus_emt_template(grid, bus)
+
+bus0_v_a: Var = bus0.emt_model.external_mapping[VarPowerFlowReferenceType.v_A]
+bus0_v_b: Var = bus0.emt_model.external_mapping[VarPowerFlowReferenceType.v_B]
+bus0_v_c: Var = bus0.emt_model.external_mapping[VarPowerFlowReferenceType.v_C]
+bus1_v_a: Var = bus1.emt_model.external_mapping[VarPowerFlowReferenceType.v_A]
+bus1_v_b: Var = bus1.emt_model.external_mapping[VarPowerFlowReferenceType.v_B]
+bus1_v_c: Var = bus1.emt_model.external_mapping[VarPowerFlowReferenceType.v_C]
 
 ######################################################################################################
 # Build EMT models
@@ -290,7 +452,7 @@ gen_mdl = get_generator_thevenin_rl_emt_template_with_ref(vf= grid.var_factory).
 
 line_mdl = get_trafo_grid_connection_G4L(vf= grid.var_factory).block
 
-load_mdl = get_complete_load_template_G4L(vf= grid.var_factory).block
+load_mdl = get_complete_load_template_G4L(vf=grid.var_factory).block
 
 ######################################################################################################
 # Add models to devices
@@ -310,8 +472,10 @@ TEST_P_GFM = "p_gfm"
 TEST_ROCOF = "rocof"
 TEST_PHASE_JUMP = "phase_jump"
 TEST_VAC_STEP = "vac_step"
+TEST_VAC_SAG = "vac_sag"
 TEST_VQ_STEP = "vq_step"
 TEST_VD_STEP = "vd_step"
+TEST_CURRENT_LIMITER = "current_limiter"
 
 TEST_CSV_SUFFIX = {
     TEST_NONE: "none",
@@ -319,8 +483,10 @@ TEST_CSV_SUFFIX = {
     TEST_ROCOF: "rocof",
     TEST_PHASE_JUMP: "phase_jump",
     TEST_VAC_STEP: "vac_step",
+    TEST_VAC_SAG: "vac_sag",
     TEST_VQ_STEP: "vq_step",
     TEST_VD_STEP: "vd_step",
+    TEST_CURRENT_LIMITER: "current_limiter",
 }
 
 VALID_TESTS = {
@@ -329,8 +495,10 @@ VALID_TESTS = {
     TEST_ROCOF,
     TEST_PHASE_JUMP,
     TEST_VAC_STEP,
+    TEST_VAC_SAG,
     TEST_VQ_STEP,
     TEST_VD_STEP,
+    TEST_CURRENT_LIMITER,
 }
 
 # Select a single EMT test here.
@@ -338,21 +506,26 @@ selected_test = TEST_P_GFM
 # selected_test = TEST_ROCOF
 # selected_test = TEST_PHASE_JUMP
 # selected_test = TEST_VAC_STEP
+# selected_test = TEST_VAC_SAG
 # selected_test = TEST_VQ_STEP
 # selected_test = TEST_VD_STEP
+# selected_test = TEST_CURRENT_LIMITER
 # selected_test = TEST_NONE
 
 if selected_test not in VALID_TESTS:
     valid_tests_list = ", ".join(sorted(VALID_TESTS))
     raise ValueError(f"Unknown selected_test '{selected_test}'. Valid options: {valid_tests_list}")
 
+selected_test_suffix: str = TEST_CSV_SUFFIX[selected_test]
+save_veragrid_model: bool = True
 print(f"Selected EMT test: {selected_test}")
+print(f"Result test tag: {selected_test_suffix}")
 
 ## Active power reference change (GFM controller)
 t_P_GFM = 1.0
 d_P_GFM = -0.4
-t_P_GFM_2 = 1.5
-d_P_GFM_2 = -0.8
+t_P_GFM_2 = 2.0
+d_P_GFM_2 = 0.0
 ## Deviation of frequency with a Rate-of-Change-of-Frequency (ROCOF)
 # The Thevenin source frequency event is applied as an absolute scale target,
 # with a ramp from t_omega to t_omega_end.
@@ -372,6 +545,12 @@ d_phase = -10 * np.pi / 180
 t_Vac = 1.0
 d_Vac = -269.4438717061496
 
+## Temporary grid-voltage sag
+# Apply a 10% source-voltage reduction for 150 ms and then restore the source.
+t_Vac_sag_start = 1.0
+t_Vac_sag_end = 1.15
+Vac_sag_scale_pu = 0.90
+
 ## AC voltage reference change (q-axis)
 # Simulink defines the VA q-axis reference offset and step in volts. The event
 # target in VeraGrid is the final absolute p.u. reference, built from the
@@ -387,18 +566,26 @@ d_Vq = -269.4438717061496
 t_Vd = 1.0
 d_Vd = -269.4438717061496
 
+## Current-limiter activation test
+# A larger q-axis voltage-reference change is used to demand enough converter
+# current for the limiter to become active. The resulting limiter modes and
+# limited d/q currents must be checked in the exported results.
+t_current_limiter = 1.0
+current_limiter_vq_delta_pu = -0.10 * np.sqrt(2.0)
+
 # Simulink applies these voltage disturbances in volts. Convert them to the EMT
 # internal p.u. voltage base used by the Thevenin source and virtual admittance
 # before creating events. VeraGrid event values are absolute targets, not
 # increments, so each target is built from the initial value plus the deviation.
 VLL_RMS_BASE_V = 33000.0
+V_PHASE_RMS_BASE_V = VLL_RMS_BASE_V / np.sqrt(3.0)
 V_PHASE_PEAK_BASE_V = np.sqrt(2.0 / 3.0) * VLL_RMS_BASE_V
-V_Q_REF0_PU = np.sqrt(2.0) + d_Vq0 / V_PHASE_PEAK_BASE_V
+V_Q_REF0_PU = np.sqrt(2.0) + d_Vq0 / V_PHASE_RMS_BASE_V
 V_D_REF0_PU = 0.0
 VAC_SCALE0_PU = 1.0
 DELTA_VAC_PU = d_Vac / V_PHASE_PEAK_BASE_V
-DELTA_VQ_PU = d_Vq / V_PHASE_PEAK_BASE_V
-DELTA_VD_PU = d_Vd / V_PHASE_PEAK_BASE_V
+DELTA_VQ_PU = d_Vq / V_PHASE_RMS_BASE_V
+DELTA_VD_PU = d_Vd / V_PHASE_RMS_BASE_V
 
 events_group = EmtEventsGroup(name="simulation1")
 grid.add_emt_events_group(events_group)
@@ -445,7 +632,23 @@ elif selected_test == TEST_VAC_STEP:
     events_to_add = [
         EmtEvent(device=gen0, parameter=voltage_scale_param, time=t_Vac, value=voltage_scale_fault, group=events_group),
     ]
-
+elif selected_test == TEST_VAC_SAG:
+    events_to_add = [
+        EmtEvent(
+            device=gen0,
+            parameter=voltage_scale_param,
+            time=t_Vac_sag_start,
+            value=Vac_sag_scale_pu,
+            group=events_group,
+        ),
+        EmtEvent(
+            device=gen0,
+            parameter=voltage_scale_param,
+            time=t_Vac_sag_end,
+            value=VAC_SCALE0_PU,
+            group=events_group,
+        ),
+    ]
 elif selected_test == TEST_VQ_STEP:
     events_to_add = [
         EmtEvent(device=load, parameter=v_q_ref, time=t_Vq, value=V_Q_REF0_PU + DELTA_VQ_PU, group=events_group),
@@ -454,6 +657,16 @@ elif selected_test == TEST_VD_STEP:
     events_to_add = [
         EmtEvent(device=load, parameter=v_d_ref, time=t_Vd, value=V_D_REF0_PU + DELTA_VD_PU, group=events_group),
     ]
+elif selected_test == TEST_CURRENT_LIMITER:
+    events_to_add = [
+        EmtEvent(
+            device=load,
+            parameter=v_q_ref,
+            time=t_current_limiter,
+            value=V_Q_REF0_PU + current_limiter_vq_delta_pu,
+            group=events_group,
+        ),
+    ]
 else:
     raise ValueError(f"Unknown selected_test: {selected_test}")
 
@@ -461,6 +674,26 @@ for event in events_to_add:
     grid.add_emt_event(event)
 
 emt_events_group_names = np.array(0)
+
+######################################################################################################
+# Save the complete GUI-loadable model
+######################################################################################################
+# Save after attaching all EMT templates and the selected event, but before
+# running Power Flow or EMT. This archive contains the circuit, symbolic EMT
+# blocks, schematic layout, event group, and selected test event; simulation
+# result arrays remain in the separate CSV export.
+veragrid_model_path: Path = (
+    # Keep the generated GUI model separate from earlier validation archives.
+    # Windows can reject truncating a .veragrid file that is still open in the
+    # GUI, whereas this dedicated name can be created without touching it.
+    Path(__file__).resolve().parent / f"GFM_Load_system_v3_{selected_test_suffix}_gui.veragrid"
+)
+if save_veragrid_model:
+    gce.save_file(grid=grid, filename=str(veragrid_model_path))
+    print(f"GUI-loadable VeraGrid model saved to: {veragrid_model_path}")
+else:
+    pass
+
 ######################################################################################################
 # PowerFlow
 ######################################################################################################
@@ -509,13 +742,12 @@ print(res.get_branch_df())
 ######################################################################################################
 
 
-options = EmtOptions(time_step = 1e-6,
-                     simulation_time =  2, # s
+options = EmtOptions(time_step = sample_time_s,
+                     simulation_time = 3.0,
                      tolerance = 1e-6,
                      solver_type = EmtSolverTypes.Automatic,
-                     # initialization_method = EmtInitializationMethod.PseudoTransient,
                      initialization_method = EmtInitializationMethod.Explicit,
-                     integration_method = DynamicIntegrationMethod.DaeBackEuler,
+                     integration_method = DynamicIntegrationMethod.DaeTrapezoidal,
                      verbose = 1)
 
 problem = EmtProblemDae(grid=grid,
@@ -578,11 +810,6 @@ init_runtime_param_names = [
     "theta_pll_mode_G4L_PLL",
     "i_dc_mode_G4L_grid_side_converter",
     "i_dc_L_mode_G4L_load_side_converter_control",
-    "v_con_A_mode_G4L_current_loop",
-    "v_con_B_mode_G4L_current_loop",
-    "v_con_C_mode_G4L_current_loop",
-    "i_q_lim_mode_G4L_current_limiter",
-    "i_d_lim_mode_G4L_current_limiter",
 ]
 
 print("Initial runtime parameter diagnostics")
@@ -602,24 +829,31 @@ i_dc_init = init_diagnostics["i_dc_G4L_grid_side_converter"]
 i_dc_L_init = init_diagnostics["i_dc_L_G4L_load_side_converter_control"]
 i_cap_dc_init = init_diagnostics["i_cap_dc_G4L_load_side_converter"]
 if None not in (i_dc_init, i_dc_L_init, i_cap_dc_init):
-    dc_current_balance = i_dc_init - i_dc_L_init - i_cap_dc_init
+    dc_current_balance = i_dc_init + i_dc_L_init - i_cap_dc_init
     print(f"  dc_current_balance = {dc_current_balance}")
 else:
     print("  dc_current_balance = unavailable")
 
 # RL branch residual diagnostics at t = 0 for the grid-side converter.
 omega_base = 2 * np.pi * 50.0
-X_f_pu = 1.0 / 10.0
-R_f_pu = 0.1 / 10.0
+# The instantaneous EMT phase-current base requires 3x the conventional
+# positive-sequence impedance used in the parameter script.
+X_f_pu = 3.0 * (1.0 / 10.0)
+R_f_pu = 3.0 * (0.1 / 10.0)
 L_f = X_f_pu / omega_base
-for ph in ["A", "B", "C"]:
-    v_bus = try_get_init_value(problem, f"v_{ph}_Bus1_emt_template")
-    v_con = try_get_init_value(problem, f"v_con_{ph}_mode_G4L_current_loop")
+bus1_phase_variables: tuple[tuple[str, Var], ...] = (
+    ("A", bus1_v_a),
+    ("B", bus1_v_b),
+    ("C", bus1_v_c),
+)
+for ph, bus_voltage_variable in bus1_phase_variables:
+    v_bus = try_get_var_init_value(problem, bus_voltage_variable)
+    v_con = try_get_init_value(problem, f"v_con_{ph}_G4L_current_loop")
     i_ser = try_get_init_value(problem, f"i_ser_{ph}_G4L_grid_side_converter")
     di_ser = try_get_init_diff_value(problem, f"di_ser_{ph}_G4L_grid_side_converter")
     if None not in (v_bus, v_con, i_ser, di_ser):
-        residual = v_bus - v_con - R_f_pu * i_ser - L_f * di_ser
-        v_con_required = v_bus - R_f_pu * i_ser - L_f * di_ser
+        residual = v_con - v_bus - R_f_pu * i_ser - L_f * di_ser
+        v_con_required = v_bus + R_f_pu * i_ser + L_f * di_ser
         print(f"grid-side RL residual phase {ph}: {residual}")
         print(f"  v_bus={v_bus}, v_con={v_con}, i={i_ser}, di={di_ser}")
         print(f"  v_con_required={v_con_required}, dv_con={(v_con - v_con_required)}")
@@ -672,6 +906,23 @@ print(f"EMT converged: {converged}")
 if hasattr(solver, "get_last_runtime_stats"):
     print(solver.get_last_runtime_stats())
 
+validate_emt_simulation(
+    time_values=t_arr,
+    state_values=y_arr,
+    differential_values=dy_arr,
+    well_initialized=well_initialized,
+    converged=converged,
+)
+# validate_nyquist_ringing(
+#     problem=problem,
+#     time_values=t_arr,
+#     state_values=y_arr,
+#     voltage_variables=[bus0_v_a, bus0_v_b, bus0_v_c, bus1_v_a, bus1_v_b, bus1_v_c],
+#     window_start_s=0.90,
+#     window_end_s=0.98,
+#     maximum_ratio=0.02,
+# )
+
 print("Time-series diagnostics")
 for name in [
     "Pac_bus_G4L_grid_side_converter",
@@ -704,12 +955,17 @@ for name in [
 print("Differential-state diagnostics")
 for name in [
     "dx_e_pll_G4L_PLL",
+    "d_theta_pll_G4L_PLL",
     "dy_G4L_VSM",
     "d_phase_vsm_G4L_VSM",
     "dx1_1_G4L_Virtual_admittance",
     "dx2_1_G4L_Virtual_admittance",
     "dx1_2_G4L_Virtual_admittance",
     "dx2_2_G4L_Virtual_admittance",
+    "dx1_3_G4L_Virtual_admittance",
+    "dx2_3_G4L_Virtual_admittance",
+    "dx1_4_G4L_Virtual_admittance",
+    "dx2_4_G4L_Virtual_admittance",
     "dv_ffw_q_G4L_current_loop",
     "dv_ffw_d_G4L_current_loop",
     "dx_e_q_G4L_current_loop",
@@ -718,7 +974,17 @@ for name in [
     "dq_cap_G4L_load_side_converter",
     "di_ser_A_G4L_grid_side_converter",
     "di_ser_B_G4L_grid_side_converter",
-        "di_ser_C_G4L_grid_side_converter",
+    "di_ser_C_G4L_grid_side_converter",
+    "di_ser_A_G4L_transformer",
+    "di_ser_B_G4L_transformer",
+    "di_ser_C_G4L_transformer",
+    "dq_t_A_G4L_transformer",
+    "dq_t_B_G4L_transformer",
+    "dq_t_C_G4L_transformer",
+    "d_i_A_emt_thevenin_eq_generator_template",
+    "d_i_B_emt_thevenin_eq_generator_template",
+    "d_i_C_emt_thevenin_eq_generator_template",
+    "d_theta_emt_thevenin_eq_generator_template",
 ]:
     print_diff_summary(problem, dy_arr, name)
 
@@ -727,8 +993,10 @@ for name in [
 fig_overview, axes_overview = plt.subplots(3, 2, figsize=(14, 11), sharex=True)
 axes_overview = axes_overview.ravel()
 
-for name in ["v_A_Bus1_emt_template", "v_B_Bus1_emt_template", "v_C_Bus1_emt_template"]:
-    plot_if_available(axes_overview[0], t_arr, try_get_series(problem, y_arr, name), name)
+for name, bus_voltage_variable in bus1_phase_variables:
+    voltage_label: str = f"v_{name}_Bus1"
+    voltage_series: np.ndarray | None = try_get_var_series(problem, y_arr, bus_voltage_variable)
+    plot_if_available(axes_overview[0], t_arr, voltage_series, voltage_label)
 axes_overview[0].set_title("Grid-Side AC Voltages")
 axes_overview[0].grid(True)
 if axes_overview[0].lines:
@@ -889,6 +1157,32 @@ def ramp_series(t_arr: np.ndarray, start_time: float, end_time: float, start_val
     return result
 
 
+def pulse_series(
+    t_arr: np.ndarray,
+    start_time: float,
+    end_time: float,
+    normal_value: float,
+    disturbed_value: float,
+) -> np.ndarray:
+    """Build a finite-duration disturbance reference for exported diagnostics.
+
+    The reference stays at its normal value outside the event interval and at
+    its disturbed value from the start instant up to, but excluding, the end
+    instant. This mirrors the two absolute EMT events used for a temporary sag.
+
+    :param t_arr: Simulation time samples in seconds.
+    :param start_time: Disturbance start time in seconds.
+    :param end_time: Disturbance clearing time in seconds.
+    :param normal_value: Reference value before and after the disturbance.
+    :param disturbed_value: Reference value while the disturbance is active.
+    :return: Reference series evaluated at every simulation time sample.
+    """
+    result: np.ndarray = np.full_like(t_arr, normal_value, dtype=float)
+    active_mask: np.ndarray = (t_arr >= start_time) & (t_arr < end_time)
+    result[active_mask] = disturbed_value
+    return result
+
+
 def get_series_with_tracking(name: str):
     series = try_get_series(problem, y_arr, name)
     if series is None:
@@ -907,13 +1201,23 @@ v_q_ref_initial_pu = np.sqrt(2.0)
 v_d_ref_initial_pu = 0.0
 vac_grid_initial_V = Vac_phase_peak
 vac_grid_fault_V = (VAC_SCALE0_PU + DELTA_VAC_PU) * Vac_phase_peak
+vac_grid_sag_V = Vac_sag_scale_pu * Vac_phase_peak
 v_q_ref_initial_V = v_q_ref_initial_pu * V_phase_rms_base
 v_q_ref_final_V = (V_Q_REF0_PU + DELTA_VQ_PU) * V_phase_rms_base
+v_q_ref_current_limiter_V = (V_Q_REF0_PU + current_limiter_vq_delta_pu) * V_phase_rms_base
 v_d_ref_initial_V = v_d_ref_initial_pu * V_phase_rms_base
 v_d_ref_final_V = (V_D_REF0_PU + DELTA_VD_PU) * V_phase_rms_base
 
 if selected_test == TEST_VAC_STEP:
     vac_grid_series_V = step_series(t_arr, t_Vac, vac_grid_initial_V, vac_grid_fault_V)
+elif selected_test == TEST_VAC_SAG:
+    vac_grid_series_V = pulse_series(
+        t_arr,
+        t_Vac_sag_start,
+        t_Vac_sag_end,
+        vac_grid_initial_V,
+        vac_grid_sag_V,
+    )
 else:
     vac_grid_series_V = np.full_like(t_arr, vac_grid_initial_V, dtype=float)
 
@@ -931,13 +1235,27 @@ if selected_test == TEST_PHASE_JUMP:
 else:
     phase_jump_series = np.zeros_like(t_arr, dtype=float)
 
-theta_grid_series = np.cumsum(omega_grid_series) * options.time_step + phase_jump_series
+theta_grid_series = np.zeros_like(t_arr, dtype=float)
+if t_arr.size > 1:
+    theta_grid_series[1:] = np.cumsum(
+        0.5 * (omega_grid_series[:-1] + omega_grid_series[1:]) * options.time_step
+    )
+else:
+    pass
+theta_grid_series = theta_grid_series + phase_jump_series
 phase_a_grid_series = theta_grid_series
 phase_b_grid_series = theta_grid_series - 2.0 * np.pi / 3.0
 phase_c_grid_series = theta_grid_series + 2.0 * np.pi / 3.0
 
 if selected_test == TEST_VQ_STEP:
     v_q_ref_series_V = step_series(t_arr, t_Vq, v_q_ref_initial_V, v_q_ref_final_V)
+elif selected_test == TEST_CURRENT_LIMITER:
+    v_q_ref_series_V = step_series(
+        t_arr,
+        t_current_limiter,
+        v_q_ref_initial_V,
+        v_q_ref_current_limiter_V,
+    )
 else:
     v_q_ref_series_V = np.full_like(t_arr, v_q_ref_initial_V, dtype=float)
 
@@ -951,12 +1269,21 @@ else:
 fig_si_overview, axes_si_overview = plt.subplots(3, 2, figsize=(16, 12), sharex=True)
 axes_si_overview = axes_si_overview.ravel()
 
-plot_scaled_with_tracking(axes_si_overview[0], t_arr, problem, y_arr, "v_A_Bus1_emt_template",
-                          V_phase_rms_base / 1000.0, "v_A_Bus1 [kV]")
-plot_scaled_with_tracking(axes_si_overview[0], t_arr, problem, y_arr, "v_B_Bus1_emt_template",
-                          V_phase_rms_base / 1000.0, "v_B_Bus1 [kV]")
-plot_scaled_with_tracking(axes_si_overview[0], t_arr, problem, y_arr, "v_C_Bus1_emt_template",
-                          V_phase_rms_base / 1000.0, "v_C_Bus1 [kV]")
+plot_if_available(
+    axes_si_overview[0], t_arr,
+    scale_series(try_get_var_series(problem, y_arr, bus1_v_a), V_phase_rms_base / 1000.0),
+    "v_A_Bus1 [kV]",
+)
+plot_if_available(
+    axes_si_overview[0], t_arr,
+    scale_series(try_get_var_series(problem, y_arr, bus1_v_b), V_phase_rms_base / 1000.0),
+    "v_B_Bus1 [kV]",
+)
+plot_if_available(
+    axes_si_overview[0], t_arr,
+    scale_series(try_get_var_series(problem, y_arr, bus1_v_c), V_phase_rms_base / 1000.0),
+    "v_C_Bus1 [kV]",
+)
 axes_si_overview[0].set_title("Grid-Side AC Voltages [kV phase-to-neutral instantaneous]")
 axes_si_overview[0].set_ylabel("Voltage [kV]")
 axes_si_overview[0].grid(True)
@@ -1010,9 +1337,11 @@ plot_scaled_with_tracking(axes_si_overview[4], t_arr, problem, y_arr, "Pac_bus_G
 plot_scaled_with_tracking(axes_si_overview[4], t_arr, problem, y_arr, "Pac_G4L_grid_side_converter",
                           Sb_va / 1e6, "Pac [MW]", negate=True)
 plot_scaled_with_tracking(axes_si_overview[4], t_arr, problem, y_arr, "p_dc_G4L_load_side_converter_control",
-                          Sb_va / 1e6, "p_dc [MW]", negate=True)
+                          Sb_va / 1e6, "p_dc [MW]")
 if selected_test == TEST_P_GFM:
-    pref_series_mw = step_series(t_arr, t_P_GFM, P_dc_pu * Sb_va / 1e6, (P_dc_pu + d_P_GFM) * Sb_va / 1e6)
+    pref_series_mw = np.full_like(t_arr, P_dc_pu * Sb_va / 1e6, dtype=float)
+    pref_series_mw[t_arr >= t_P_GFM] = -d_P_GFM * Sb_va / 1e6
+    pref_series_mw[t_arr >= t_P_GFM_2] = -d_P_GFM_2 * Sb_va / 1e6
 else:
     pref_series_mw = np.full_like(t_arr, P_dc_pu * Sb_va / 1e6, dtype=float)
 axes_si_overview[4].plot(t_arr, pref_series_mw, linestyle="--", label="P_ref [MW]")
@@ -1291,9 +1620,9 @@ for ax in axes_si_currents:
 for ax in axes_si_pll:
     ax.set_xlabel("Time [s]")
 
-csv_suffix = TEST_CSV_SUFFIX.get(selected_test, selected_test)
+csv_suffix = selected_test_suffix
 # csv_path = os.path.join(REPO_ROOT, "trunk", "GridsForLoads_dynamic", f"veragrid_G4L_{csv_suffix}_v3.csv")
-csv_path = os.path.join(REPO_ROOT, "trunk", "GridsForLoads_dynamic", f"veragrid_G4L_{csv_suffix}_v3_2pref.csv")
+csv_path = os.path.join(REPO_ROOT, "trunk", "GridsForLoads_dynamic", f"veragrid_G4L_{csv_suffix}_v3_continuous.csv")
 plot_output_folder = get_plot_output_folder(csv_suffix)
 csv_columns = {"time_s": t_arr}
 
@@ -1306,22 +1635,38 @@ def add_csv_series(column_name: str, source_name: str, factor: float, negate: bo
     csv_columns[column_name] = negate_scale_series(series, factor) if negate else scale_series(series, factor)
 
 
+def add_csv_var_series(column_name: str, variable: Var, factor: float, negate: bool = False) -> None:
+    """Add an exact symbolic-variable series to the comparison CSV.
+
+    :param column_name: Output CSV column name.
+    :param variable: Exact symbolic variable to export.
+    :param factor: Multiplicative SI-unit conversion factor.
+    :param negate: Whether to invert the signal sign.
+    :return: None.
+    """
+    series: np.ndarray | None = try_get_var_series(problem, y_arr, variable)
+    if series is None:
+        missing_si_variables.add(variable.name)
+    else:
+        csv_columns[column_name] = negate_scale_series(series, factor) if negate else scale_series(series, factor)
+
+
 def add_csv_array(column_name: str, series):
     if series is not None:
         csv_columns[column_name] = series
 
-add_csv_series("vA_Bus0_kV", "v_A_Bus0_emt_template", V_phase_rms_base / 1000.0)
-add_csv_series("vB_Bus0_kV", "v_B_Bus0_emt_template", V_phase_rms_base / 1000.0)
-add_csv_series("vC_Bus0_kV", "v_C_Bus0_emt_template", V_phase_rms_base / 1000.0)
+add_csv_var_series("vA_Bus0_kV", bus0_v_a, V_phase_rms_base / 1000.0)
+add_csv_var_series("vB_Bus0_kV", bus0_v_b, V_phase_rms_base / 1000.0)
+add_csv_var_series("vC_Bus0_kV", bus0_v_c, V_phase_rms_base / 1000.0)
 add_csv_series("iA_Bus0_A", "i_A_emt_thevenin_eq_generator_template", Ibase_vg)
 add_csv_series("iB_Bus0_A", "i_B_emt_thevenin_eq_generator_template", Ibase_vg)
 add_csv_series("iC_Bus0_A", "i_C_emt_thevenin_eq_generator_template", Ibase_vg)
-add_csv_series("vA_Bus1_kV", "v_A_Bus1_emt_template", V_phase_rms_base / 1000.0)
-add_csv_series("vB_Bus1_kV", "v_B_Bus1_emt_template", V_phase_rms_base / 1000.0)
-add_csv_series("vC_Bus1_kV", "v_C_Bus1_emt_template", V_phase_rms_base / 1000.0)
-add_csv_series("vA_conv_kV", "v_A_Bus1_emt_template", V_phase_rms_base / 1000.0)
-add_csv_series("vB_conv_kV", "v_B_Bus1_emt_template", V_phase_rms_base / 1000.0)
-add_csv_series("vC_conv_kV", "v_C_Bus1_emt_template", V_phase_rms_base / 1000.0)
+add_csv_var_series("vA_Bus1_kV", bus1_v_a, V_phase_rms_base / 1000.0)
+add_csv_var_series("vB_Bus1_kV", bus1_v_b, V_phase_rms_base / 1000.0)
+add_csv_var_series("vC_Bus1_kV", bus1_v_c, V_phase_rms_base / 1000.0)
+add_csv_series("vA_conv_kV", "v_con_A_G4L_current_loop", V_phase_rms_base / 1000.0)
+add_csv_series("vB_conv_kV", "v_con_B_G4L_current_loop", V_phase_rms_base / 1000.0)
+add_csv_series("vC_conv_kV", "v_con_C_G4L_current_loop", V_phase_rms_base / 1000.0)
 add_csv_series("iA_grid_A_sim_sign", "i_f_A_G4L_grid_side_converter", Ibase_vg, negate=True)
 add_csv_series("iB_grid_A_sim_sign", "i_f_B_G4L_grid_side_converter", Ibase_vg, negate=True)
 add_csv_series("iC_grid_A_sim_sign", "i_f_C_G4L_grid_side_converter", Ibase_vg, negate=True)
@@ -1335,7 +1680,7 @@ add_csv_series("iq_meas_A_sim_sign", "i_q_G4L_clark_park_transforms_qd", Ibase_v
 add_csv_series("id_meas_A_sim_sign", "i_d_G4L_clark_park_transforms_qd", Ibase_vg, negate=True)
 add_csv_series("Pac_bus_MW_sim_sign", "Pac_bus_G4L_grid_side_converter", Sb_va / 1e6, negate=True)
 add_csv_series("Pac_MW_sim_sign", "Pac_G4L_grid_side_converter", Sb_va / 1e6, negate=True)
-add_csv_series("pdc_MW_sim_sign", "p_dc_G4L_load_side_converter_control", Sb_va / 1e6, negate=True)
+add_csv_series("pdc_MW_sim_sign", "p_dc_G4L_load_side_converter_control", Sb_va / 1e6)
 add_csv_series("vdc_V", "v_dc_G4L_load_side_converter", Vdc_ref)
 add_csv_series("idc_A", "i_dc_G4L_grid_side_converter", Idc_base)
 add_csv_series("idcL_A", "i_dc_L_G4L_load_side_converter_control", Idc_base)
@@ -1349,6 +1694,7 @@ add_csv_array("phase_a", phase_a_grid_series)
 add_csv_array("phase_b", phase_b_grid_series)
 add_csv_array("phase_c", phase_c_grid_series)
 add_csv_array("omega_grid", omega_grid_series)
+add_csv_array("P_ref_MW", pref_series_mw)
 add_csv_array("Vq_ref", v_q_ref_series_V)
 add_csv_array("Vd_ref", v_d_ref_series_V)
 if "phase_vsm" in csv_columns and "theta_pll" in csv_columns:

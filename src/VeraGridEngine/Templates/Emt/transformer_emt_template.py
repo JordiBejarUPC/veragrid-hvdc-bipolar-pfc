@@ -152,7 +152,7 @@ def get_transformer_emt_template(
     templ: EmtModelTemplate = EmtModelTemplate()
     templ.tpe = DeviceType.Transformer2WDevice
     templ.name = name
-    templ.block.name = name
+
 
     if conn_f in {WindingType.GroundedStar, WindingType.NeutralStar}:
         from_has_neutral_port: bool = True
@@ -169,21 +169,24 @@ def get_transformer_emt_template(
     # ------------------------------------------------------------------
     # Static parameters injected from the API object
     # ------------------------------------------------------------------
-    r1: Var = vf.add_var(name=f"trafo_r1_{name}")
-    r2: Var = vf.add_var(name=f"trafo_r2_{name}")
-    l1: Var = vf.add_var(name=f"trafo_l1_{name}")
-    l2: Var = vf.add_var(name=f"trafo_l2_{name}")
-    m12: Var = vf.add_var(name=f"trafo_m_{name}")
-    gm: Var = vf.add_var(name=f"trafo_gm_{name}")  # kept for compatibility, unused here
-    total_voltage_ratio: Var = vf.add_var(name=f"trafo_tap_ratio_{name}")
+    r1: Var = vf.add_var(name=f"trafo_r1")
+    r2: Var = vf.add_var(name=f"trafo_r2")
+    l1: Var = vf.add_var(name=f"trafo_l1")
+    l2: Var = vf.add_var(name=f"trafo_l2")
+    m12: Var = vf.add_var(name=f"trafo_m")
+    gm: Var = vf.add_var(name=f"trafo_gm")  # kept for compatibility, unused here
+    total_voltage_ratio: Var = vf.add_var(name=f"trafo_tap_ratio")
 
-    templ.block.api_obj_mapping[ParamPowerFlowReferenceType.transformer_winding1_resistance_pu] = r1
-    templ.block.api_obj_mapping[ParamPowerFlowReferenceType.transformer_winding2_resistance_pu] = r2
-    templ.block.api_obj_mapping[ParamPowerFlowReferenceType.transformer_winding1_inductance_pu_s] = l1
-    templ.block.api_obj_mapping[ParamPowerFlowReferenceType.transformer_winding2_inductance_pu_s] = l2
-    templ.block.api_obj_mapping[ParamPowerFlowReferenceType.transformer_mutual_inductance_pu_s] = m12
-    templ.block.api_obj_mapping[ParamPowerFlowReferenceType.transformer_magnetizing_conductance_pu] = gm
-    templ.block.api_obj_mapping[ParamPowerFlowReferenceType.transformer_total_voltage_ratio] = total_voltage_ratio
+    block = Block()
+    block.name = name
+
+    block.api_obj_mapping[ParamPowerFlowReferenceType.transformer_winding1_resistance_pu] = r1
+    block.api_obj_mapping[ParamPowerFlowReferenceType.transformer_winding2_resistance_pu] = r2
+    block.api_obj_mapping[ParamPowerFlowReferenceType.transformer_winding1_inductance_pu_s] = l1
+    block.api_obj_mapping[ParamPowerFlowReferenceType.transformer_winding2_inductance_pu_s] = l2
+    block.api_obj_mapping[ParamPowerFlowReferenceType.transformer_mutual_inductance_pu_s] = m12
+    block.api_obj_mapping[ParamPowerFlowReferenceType.transformer_magnetizing_conductance_pu] = gm
+    block.api_obj_mapping[ParamPowerFlowReferenceType.transformer_total_voltage_ratio] = total_voltage_ratio
 
     # ------------------------------------------------------------------
     # Terminal voltages
@@ -196,12 +199,12 @@ def get_transformer_emt_template(
     to_grounding_link_block: Block | None = None
 
     if from_has_neutral_port:
-        vf_n = vf.add_var(name=f"vf_N_{name}", reference=VarPowerFlowReferenceType.vf_N)
+        vf_n = vf.add_var(name=f"vf_N", reference=VarPowerFlowReferenceType.vf_N)
     else:
         pass
 
     if to_has_neutral_port:
-        vt_n = vf.add_var(name=f"vt_N_{name}", reference=VarPowerFlowReferenceType.vt_N)
+        vt_n = vf.add_var(name=f"vt_N", reference=VarPowerFlowReferenceType.vt_N)
     else:
         pass
 
@@ -218,7 +221,7 @@ def get_transformer_emt_template(
         vf.add_connections(from_grounding_link_template.block.in_vars, [vf_n])
         from_ground_current = from_grounding_link_template.block.out_vars[0]
         from_grounding_link_block = from_grounding_link_template.block
-        templ.block.add(from_grounding_link_block)
+        block.add(from_grounding_link_block)
     else:
         pass
 
@@ -235,61 +238,61 @@ def get_transformer_emt_template(
         vf.add_connections(to_grounding_link_template.block.in_vars, [vt_n])
         to_ground_current = to_grounding_link_template.block.out_vars[0]
         to_grounding_link_block = to_grounding_link_template.block
-        templ.block.add(to_grounding_link_block)
+        block.add(to_grounding_link_block)
     else:
         pass
 
     vf_vars: list[Var] = [
-        vf.add_var(name=f"vf_A_{name}", reference=VarPowerFlowReferenceType.vf_A),
-        vf.add_var(name=f"vf_B_{name}", reference=VarPowerFlowReferenceType.vf_B),
-        vf.add_var(name=f"vf_C_{name}", reference=VarPowerFlowReferenceType.vf_C),
+        vf.add_var(name=f"vf_A", reference=VarPowerFlowReferenceType.vf_A),
+        vf.add_var(name=f"vf_B", reference=VarPowerFlowReferenceType.vf_B),
+        vf.add_var(name=f"vf_C", reference=VarPowerFlowReferenceType.vf_C),
     ]
     vt_vars: list[Var] = [
-        vf.add_var(name=f"vt_A_{name}", reference=VarPowerFlowReferenceType.vt_A),
-        vf.add_var(name=f"vt_B_{name}", reference=VarPowerFlowReferenceType.vt_B),
-        vf.add_var(name=f"vt_C_{name}", reference=VarPowerFlowReferenceType.vt_C),
+        vf.add_var(name=f"vt_A", reference=VarPowerFlowReferenceType.vt_A),
+        vf.add_var(name=f"vt_B", reference=VarPowerFlowReferenceType.vt_B),
+        vf.add_var(name=f"vt_C", reference=VarPowerFlowReferenceType.vt_C),
     ]
 
     # ------------------------------------------------------------------
     # Internal winding-current states
     # ------------------------------------------------------------------
     i_f: list[Var] = [
-        vf.add_var(name=f"i_f_A_{name}"),
-        vf.add_var(name=f"i_f_B_{name}"),
-        vf.add_var(name=f"i_f_C_{name}"),
+        vf.add_var(name=f"i_f_A"),
+        vf.add_var(name=f"i_f_B"),
+        vf.add_var(name=f"i_f_C"),
     ]
     i_t: list[Var] = [
-        vf.add_var(name=f"i_t_A_{name}"),
-        vf.add_var(name=f"i_t_B_{name}"),
-        vf.add_var(name=f"i_t_C_{name}"),
+        vf.add_var(name=f"i_t_A"),
+        vf.add_var(name=f"i_t_B"),
+        vf.add_var(name=f"i_t_C"),
     ]
 
     di_f: list[Var] = [
-        vf.add_diff_var(name=f"di_f_A_{name}", base_var=i_f[0]),
-        vf.add_diff_var(name=f"di_f_B_{name}", base_var=i_f[1]),
-        vf.add_diff_var(name=f"di_f_C_{name}", base_var=i_f[2]),
+        vf.add_diff_var(name=f"di_f_A", base_var=i_f[0]),
+        vf.add_diff_var(name=f"di_f_B", base_var=i_f[1]),
+        vf.add_diff_var(name=f"di_f_C", base_var=i_f[2]),
     ]
     di_t: list[Var] = [
-        vf.add_diff_var(name=f"di_t_A_{name}", base_var=i_t[0]),
-        vf.add_diff_var(name=f"di_t_B_{name}", base_var=i_t[1]),
-        vf.add_diff_var(name=f"di_t_C_{name}", base_var=i_t[2]),
+        vf.add_diff_var(name=f"di_t_A", base_var=i_t[0]),
+        vf.add_diff_var(name=f"di_t_B", base_var=i_t[1]),
+        vf.add_diff_var(name=f"di_t_C", base_var=i_t[2]),
     ]
 
     # ------------------------------------------------------------------
     # External branch-port currents
     # ------------------------------------------------------------------
     if_act: list[Var] = [
-        vf.add_var(name=f"if_{name}_A"),
-        vf.add_var(name=f"if_{name}_B"),
-        vf.add_var(name=f"if_{name}_C"),
+        vf.add_var(name=f"if_A", reference=VarPowerFlowReferenceType.if_A),
+        vf.add_var(name=f"if_B", reference=VarPowerFlowReferenceType.if_B),
+        vf.add_var(name=f"if_C", reference=VarPowerFlowReferenceType.if_C),
     ]
     it_act: list[Var] = [
-        vf.add_var(name=f"it_{name}_A"),
-        vf.add_var(name=f"it_{name}_B"),
-        vf.add_var(name=f"it_{name}_C"),
+        vf.add_var(name=f"it_A", reference=VarPowerFlowReferenceType.it_A),
+        vf.add_var(name=f"it_B", reference=VarPowerFlowReferenceType.it_B),
+        vf.add_var(name=f"it_C", reference=VarPowerFlowReferenceType.it_C),
     ]
-    if_n_act: Var | None = vf.add_var(name=f"if_{name}_N") if from_has_neutral_port else None
-    it_n_act: Var | None = vf.add_var(name=f"it_{name}_N") if to_has_neutral_port else None
+    if_n_act: Var | None = vf.add_var(name=f"if_N", reference=VarPowerFlowReferenceType.if_N) if from_has_neutral_port else None
+    it_n_act: Var | None = vf.add_var(name=f"it_N", reference=VarPowerFlowReferenceType.it_N) if to_has_neutral_port else None
 
     input_vars: list[Var] = list()
     if vf_n is not None:
@@ -317,10 +320,10 @@ def get_transformer_emt_template(
     else:
         pass
 
-    templ.block.in_vars = input_vars
-    templ.block.state_vars = i_f + i_t
-    templ.block.diff_vars = di_f + di_t
-    templ.block.algebraic_vars = algebraic_vars
+    block.in_vars = input_vars
+    block.state_vars = i_f + i_t
+    block.diff_vars = di_f + di_t
+    block.algebraic_vars = algebraic_vars
 
     v_f_term: list[Expr] = list()
     v_t_term: list[Expr] = list()
@@ -355,7 +358,7 @@ def get_transformer_emt_template(
         state_eqs_f.append((l2 * primary_rhs - m12 * secondary_rhs) / (det_l + c_eps))
         state_eqs_t.append((l1 * secondary_rhs - m12 * primary_rhs) / (det_l + c_eps))
 
-    templ.block.state_eqs = state_eqs_f + state_eqs_t
+    block.state_eqs = state_eqs_f + state_eqs_t
 
     # ------------------------------------------------------------------
     # Port-current algebraic equations
@@ -392,7 +395,7 @@ def get_transformer_emt_template(
     else:
         pass
 
-    templ.block.algebraic_eqs = alg_eqs
+    block.algebraic_eqs = alg_eqs
     output_vars: list[Var] = list()
     if if_n_act is not None:
         output_vars.append(if_n_act)
@@ -407,12 +410,12 @@ def get_transformer_emt_template(
         pass
 
     output_vars.extend(it_act)
-    templ.block.out_vars = output_vars
+    block.out_vars = output_vars
 
     # ------------------------------------------------------------------
     # External mapping for network stamping / PF seeding
     # ------------------------------------------------------------------
-    templ.block.external_mapping = dict({
+    block.external_mapping = dict({
         VarPowerFlowReferenceType.if_N: if_n_act,
         VarPowerFlowReferenceType.if_A: if_act[0],
         VarPowerFlowReferenceType.if_B: if_act[1],
@@ -422,14 +425,14 @@ def get_transformer_emt_template(
         VarPowerFlowReferenceType.it_B: it_act[1],
         VarPowerFlowReferenceType.it_C: it_act[2],
     })
-    templ.block.external_mapping[VarPowerFlowReferenceType.vf_N] = vf_n
-    templ.block.external_mapping[VarPowerFlowReferenceType.vt_N] = vt_n
-    templ.block.external_mapping[VarPowerFlowReferenceType.vf_A] = vf_vars[0]
-    templ.block.external_mapping[VarPowerFlowReferenceType.vf_B] = vf_vars[1]
-    templ.block.external_mapping[VarPowerFlowReferenceType.vf_C] = vf_vars[2]
-    templ.block.external_mapping[VarPowerFlowReferenceType.vt_A] = vt_vars[0]
-    templ.block.external_mapping[VarPowerFlowReferenceType.vt_B] = vt_vars[1]
-    templ.block.external_mapping[VarPowerFlowReferenceType.vt_C] = vt_vars[2]
+    block.external_mapping[VarPowerFlowReferenceType.vf_N] = vf_n
+    block.external_mapping[VarPowerFlowReferenceType.vt_N] = vt_n
+    block.external_mapping[VarPowerFlowReferenceType.vf_A] = vf_vars[0]
+    block.external_mapping[VarPowerFlowReferenceType.vf_B] = vf_vars[1]
+    block.external_mapping[VarPowerFlowReferenceType.vf_C] = vf_vars[2]
+    block.external_mapping[VarPowerFlowReferenceType.vt_A] = vt_vars[0]
+    block.external_mapping[VarPowerFlowReferenceType.vt_B] = vt_vars[1]
+    block.external_mapping[VarPowerFlowReferenceType.vt_C] = vt_vars[2]
 
     # ------------------------------------------------------------------
     # State initialization
@@ -447,7 +450,7 @@ def get_transformer_emt_template(
         init_eqs[i_f[idx]] = if_act[idx] - gm * v_f_term[idx]
         init_eqs[i_t[idx]] = it_act[idx]
 
-    templ.block.init_eqs = init_eqs
+    block.init_eqs = init_eqs
 
     # ------------------------------------------------------------------
     # Derivative initialization aligned with runtime dynamics
@@ -460,7 +463,7 @@ def get_transformer_emt_template(
         diff_init_eqs[di_f[idx]] = (l2 * primary_rhs - m12 * secondary_rhs) / (det_l + c_eps)
         diff_init_eqs[di_t[idx]] = (l1 * secondary_rhs - m12 * primary_rhs) / (det_l + c_eps)
 
-    templ.block.diff_init_eqs = diff_init_eqs
+    block.diff_init_eqs = diff_init_eqs
 
     grounding_pairs: List[Tuple[Var, Block]] = list()
     if vf_n is not None and from_grounding_link_block is not None:
@@ -474,11 +477,18 @@ def get_transformer_emt_template(
         pass
 
     _attach_transformer_editor_diagram(
-        root_block=templ.block,
+        root_block=block,
         input_vars=input_vars,
         output_vars=output_vars,
         grounding_pairs=grounding_pairs,
     )
+
+    templ.block.children.append(block)
+    templ.block.external_mapping = block.external_mapping
+    templ.block.api_obj_mapping = block.api_obj_mapping
+    templ.block.parameters = block.parameters
+    templ.block.in_vars = block.in_vars
+    templ.block.out_vars = block.out_vars
 
     return templ
 

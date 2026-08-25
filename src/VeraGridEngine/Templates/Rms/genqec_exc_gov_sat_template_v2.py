@@ -26,11 +26,13 @@ from VeraGridEngine.enumerations import VarPowerFlowReferenceType
 def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec_rms_template") -> RmsModelTemplate:
     """
      generator with quadratic saturation
+     :return: RmsModelTemplate
     """
     pi = math.pi
 
     templ = RmsModelTemplate(name=name)
     templ.tpe = DeviceType.GeneratorDevice
+    templ.name = name
 
     # Inputs
     # Vm: Bus voltage module
@@ -38,45 +40,45 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec_rms_template") -> R
     # Tm: mechanical torque (from governor)
     # Vf: excitation voltage (from exciter)
 
-    inputs = [vfactory.add_var("Vm_" + name, reference=VarPowerFlowReferenceType.Vm),
-              vfactory.add_var("Va_" + name, reference=VarPowerFlowReferenceType.Va),
-              vfactory.add_var("Tm_" + name, shared_reference="tm_reference"),
-              vfactory.add_var("Vf_" + name, shared_reference="vf_reference")]
+    inputs = [vfactory.add_var("Vm", reference=VarPowerFlowReferenceType.Vm),
+              vfactory.add_var("Va", reference=VarPowerFlowReferenceType.Va),
+              vfactory.add_var("Tm", shared_reference="tm_reference"),
+              vfactory.add_var("Vf", shared_reference="vf_reference")]
 
     # ______________________________________________________________________________________
     #                                    variables
     # ______________________________________________________________________________________
 
     # State variables
-    delta = vfactory.add_var("delta" + name)  # rotor angle
-    omega = vfactory.add_var("omega" + name, shared_reference="omega_reference")  # rotor electrical speed
-    Eq1 = vfactory.add_var("Eq1" + name)  # internal emf behind Xd'
-    Ed1 = vfactory.add_var("Ed1" + name)
-    Eq_prime = vfactory.add_var("Eq_prime" + name)  # transient voltage q-axis
-    Ed_prime = vfactory.add_var("Ed_prime" + name)  # transient voltage d-axis
-    Psid_prime = vfactory.add_var("Psid_prime" + name)  # transient voltage d-axis
-    Psiq_prime = vfactory.add_var("Psiq_prime" + name)  # transient voltage d-axis
+    delta = vfactory.add_var("delta")  # rotor angle
+    omega = vfactory.add_var("omega", shared_reference="omega_reference")  # rotor electrical speed
+    Eq1 = vfactory.add_var("Eq1")  # internal emf behind Xd'
+    Ed1 = vfactory.add_var("Ed1")
+    Eq_prime = vfactory.add_var("Eq_prime")  # transient voltage q-axis
+    Ed_prime = vfactory.add_var("Ed_prime")  # transient voltage d-axis
+    Psid_prime = vfactory.add_var("Psid_prime")  # transient voltage d-axis
+    Psiq_prime = vfactory.add_var("Psiq_prime")  # transient voltage d-axis
 
     # Algebraic variables
-    Pg = vfactory.add_var('Pg' + name, reference=VarPowerFlowReferenceType.P)
-    Qg = vfactory.add_var('Qg' + name, reference=VarPowerFlowReferenceType.Q)
-    Id = vfactory.add_var("Id" + name)
-    Iq = vfactory.add_var("Iq" + name)
-    Vd = vfactory.add_var("Vd" + name)
-    Vq = vfactory.add_var("Vq" + name)
-    Psid = vfactory.add_var("Psid" + name)
-    Psiq = vfactory.add_var("Psiq" + name)
-    Te = vfactory.add_var("Te" + name, shared_reference="te_reference")
-    IRPu = vfactory.add_var("IRPu" + name, shared_reference="irpu_reference")
+    Pg = vfactory.add_var('Pg', reference=VarPowerFlowReferenceType.P)
+    Qg = vfactory.add_var('Qg', reference=VarPowerFlowReferenceType.Q)
+    Id = vfactory.add_var("Id")
+    Iq = vfactory.add_var("Iq")
+    Vd = vfactory.add_var("Vd")
+    Vq = vfactory.add_var("Vq")
+    Psid = vfactory.add_var("Psid")
+    Psiq = vfactory.add_var("Psiq")
+    Te = vfactory.add_var("Te", shared_reference="te_reference")
+    IRPu = vfactory.add_var("IRPu", shared_reference="irpu_reference")
 
     # Saturated resistances
-    Xd_2prime_sat = vfactory.add_var('Xd_2prime_sat' + name)
-    Xq_2prime_sat = vfactory.add_var('Xq_2prime_sat' + name)
-    Sa = vfactory.add_var('Sa' + name)
-    Sat = vfactory.add_var('Sat' + name)
-    V_qag = vfactory.add_var('V_qag' + name)
-    V_dag = vfactory.add_var('V_dag' + name)
-    Psi_ag = vfactory.add_var('Psi_ag' + name)
+    Xd_2prime_sat = vfactory.add_var('Xd_2prime_sat')
+    Xq_2prime_sat = vfactory.add_var('Xq_2prime_sat')
+    Sa = vfactory.add_var('Sa')
+    Sat = vfactory.add_var('Sat')
+    V_qag = vfactory.add_var('V_qag')
+    V_dag = vfactory.add_var('V_dag')
+    Psi_ag = vfactory.add_var('Psi_ag')
 
     # ______________________________________________________________________________________
     #                                    parameters
@@ -173,7 +175,7 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec_rms_template") -> R
     # Xd_2prime_sat = (Xd_2prime - Xl)/Sat + Xl
     # Xq_2prime_sat = (Xq_2prime - Xl)/Sat + Xl
 
-    templ.block = Block(
+    block = Block(
         state_eqs=[
             (omega - vfactory.add_const(1)) * ws,  # dδ/dt
             (inputs[2] - Te - D * (omega - vfactory.add_const(1))) * (1 / M),  # dω/dt
@@ -284,6 +286,12 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec_rms_template") -> R
         event_dict=event_dict,
         name="genqec"
     )
+
+    templ.block.children.append(block)
+    templ.block.external_mapping = block.external_mapping
+    templ.block.api_obj_mapping = block.api_obj_mapping
+    templ.block.in_vars = inputs
+    templ.block.out_vars = block.out_vars
 
     return templ
 

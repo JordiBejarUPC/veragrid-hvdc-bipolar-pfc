@@ -173,7 +173,8 @@ def _build_demo_configs() -> list[InductionMotorDemoConfig]:
 
 def _motor_var_name(base_name: str, motor_name: str) -> str:
     """Return one motor-scoped symbolic variable name."""
-    return f"{base_name}_{motor_name}"
+    _unused_motor_name: str = motor_name
+    return base_name
 
 
 def _get_output_directory(config: InductionMotorDemoConfig) -> Path:
@@ -1062,9 +1063,9 @@ def _run_induction_motor_emt_demo_case(config: InductionMotorDemoConfig) -> Indu
         raise RuntimeError(f"The induction-motor EMT demo for level {config.level} did not converge during simulation.")
 
     bus_voltages: np.ndarray = np.column_stack((
-        _get_series(problem, bus_motor.emt_model, "v_A_Bus_Motor_emt_template", y_values),
-        _get_series(problem, bus_motor.emt_model, "v_B_Bus_Motor_emt_template", y_values),
-        _get_series(problem, bus_motor.emt_model, "v_C_Bus_Motor_emt_template", y_values),
+        _get_series(problem, bus_motor.emt_model, "v_A", y_values),
+        _get_series(problem, bus_motor.emt_model, "v_B", y_values),
+        _get_series(problem, bus_motor.emt_model, "v_C", y_values),
     ))
     motor_currents: np.ndarray = np.column_stack((
         -_get_series(problem, motor_block, _motor_var_name("i_A", config.model_name), y_values),

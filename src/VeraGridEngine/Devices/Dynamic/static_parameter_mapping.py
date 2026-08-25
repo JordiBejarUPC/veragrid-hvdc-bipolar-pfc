@@ -44,6 +44,7 @@ from VeraGridEngine.enumerations import (
     ShuntControlMode,
     WindingType,
 )
+from VeraGridEngine.Devices.Parents.editable_device import GCProp
 
 if TYPE_CHECKING:
     import VeraGridEngine.Devices as dev
@@ -379,11 +380,12 @@ def assign_api_mapping_value_if_present(
         problem_mapping: Dict[Var, Const] | None = None,
 ) -> bool:
     """
-    Assign one static API-object value to ``mdl.parameters`` if exposed.
+    Assign one static API-object value to the problem-side mapping if exposed.
 
     This function is the only low-level writer used by this module. It never
-    writes into ``mdl.event_dict`` because event parameters are model-dynamic
-    or runtime parameters initialized by the explicit/native initialization path.
+    writes into ``mdl.event_dict`` or ``mdl.parameters`` because runtime
+    parameters and static parameter storage belong to the problem assembly path,
+    not to the symbolic model object itself.
 
     :param mdl: EMT symbolic block receiving the static parameter.
     :param key: Static API-object reference key.
@@ -421,11 +423,13 @@ def assign_api_mapping_value_if_present(
             assigned = False
         else:
             # The static mapping declares the symbolic parameter target.
-            # The target does not need to pre-exist in mdl.parameters.
+            # The target is recorded only in the problem-side parameter mapping
+            # so the symbolic model object remains immutable during assembly.
             resolved_value: Const = value if isinstance(value, Const) else Const(float(value))
             if problem_mapping is not None:
                 problem_mapping[target] = resolved_value
-            mdl.parameters[target] = resolved_value
+            else:
+                pass
             assigned = True
 
     return assigned
@@ -2517,6 +2521,30 @@ def assign_generator_static_api_mapping(
         mdl=mdl,
         key=ParamPowerFlowReferenceType.freq,
         value=float(generator.freq),
+        logger=logger,
+        device_name=device_name,
+        problem_mapping=problem_mapping,
+    )
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowReferenceType.R1,
+        value=float(generator.R1),
+        logger=logger,
+        device_name=device_name,
+        problem_mapping=problem_mapping,
+    )
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowReferenceType.X1,
+        value=float(generator.X1),
+        logger=logger,
+        device_name=device_name,
+        problem_mapping=problem_mapping,
+    )
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowReferenceType.X0,
+        value=float(generator.X0),
         logger=logger,
         device_name=device_name,
         problem_mapping=problem_mapping,

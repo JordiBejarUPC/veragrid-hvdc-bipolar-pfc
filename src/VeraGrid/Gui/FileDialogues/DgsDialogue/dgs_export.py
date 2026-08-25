@@ -60,7 +60,7 @@ class DgsExportDialogue(QtWidgets.QDialog):
         :return: None.
         """
         for export_mode in self.dgs_export_modes:
-            self.ui.dgs_export_mode_comboBox.addItem(str(export_mode))
+            self.ui.dgs_export_mode_comboBox.addItem(self.tr(str(export_mode)), export_mode)
 
     def _configure_time_slot_widgets(self) -> None:
         """
@@ -96,8 +96,7 @@ class DgsExportDialogue(QtWidgets.QDialog):
 
         :return: Selected DGS export mode.
         """
-        combo_index: int = self.ui.dgs_export_mode_comboBox.currentIndex()
-        return self.dgs_export_modes[combo_index]
+        return self.ui.dgs_export_mode_comboBox.currentData()
 
     def get_selected_t_idx(self) -> int | None:
         """

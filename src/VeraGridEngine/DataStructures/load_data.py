@@ -5,7 +5,8 @@
 
 import numpy as np
 import VeraGridEngine.Topology.topology as tp
-from VeraGridEngine.basic_structures import Vec, CxVec, IntVec, StrVec, BoolVec
+from VeraGridEngine.basic_structures import Vec, CxVec, IntVec, StrVec, BoolVec, Logger
+from VeraGridEngine.Utils.compare import compare_arr
 
 
 class LoadData:
@@ -26,6 +27,7 @@ class LoadData:
         self.idtag: StrVec = np.empty(nelm, dtype=object)
 
         self.active: BoolVec = np.zeros(nelm, dtype=bool)
+        self.is_static_generator: BoolVec = np.zeros(nelm, dtype=bool)
         self.S: Vec = np.zeros(nelm, dtype=complex)
         self.I: Vec = np.zeros(nelm, dtype=complex)
         self.Y: Vec = np.zeros(nelm, dtype=complex)
@@ -81,6 +83,7 @@ class LoadData:
         data.idtag = self.idtag[elm_idx]
 
         data.active = self.active[elm_idx]
+        data.is_static_generator = self.is_static_generator[elm_idx]
         data.S = self.S[elm_idx]
         data.I = self.I[elm_idx]
         data.Y = self.Y[elm_idx]
@@ -145,6 +148,7 @@ class LoadData:
         data.idtag = self.idtag.copy()
 
         data.active = self.active.copy()
+        data.is_static_generator = self.is_static_generator.copy()
         data.S = self.S.copy()
         data.I = self.I.copy()
         data.Y = self.Y.copy()
@@ -198,6 +202,29 @@ class LoadData:
         """
         return -tp.sum_per_bus_cx(self.nbus, self.bus_idx, self.get_effective_load())
 
+    def get_static_generator_injections_per_bus(self) -> CxVec:
+        """
+        Get the static generator injections per bus with sign.
+        Static generators are stored in the load data structure with negative load values.
+        :return:
+        """
+        return -tp.sum_per_bus_cx(
+            self.nbus,
+            self.bus_idx,
+            self.get_effective_load() * self.is_static_generator.astype(int)
+        )
+
+    def get_non_static_generator_injections_per_bus(self) -> CxVec:
+        """
+        Get the non-static-generator injections per bus with sign.
+        :return:
+        """
+        return -tp.sum_per_bus_cx(
+            self.nbus,
+            self.bus_idx,
+            self.get_effective_load() * (~self.is_static_generator).astype(int)
+        )
+
     def get_linear_injections_per_bus(self) -> Vec:
         """
         Get Injections per bus with sign
@@ -249,3 +276,12 @@ class LoadData:
         :return: array with the bus indices
         """
         return self.bus_idx
+
+    def compare(self, other: "LoadData", tol: float, logger: Logger) -> None:
+        """
+        Compare load fields used by NumericalCircuit.compare().
+        """
+        compare_arr(self.active, other.active, tol, 'LoadData', 'active', logger)
+        compare_arr(self.S, other.S, tol, 'LoadData', 'S', logger)
+        compare_arr(self.I, other.I, tol, 'LoadData', 'I', logger)
+        compare_arr(self.Y, other.Y, tol, 'LoadData', 'Y', logger)

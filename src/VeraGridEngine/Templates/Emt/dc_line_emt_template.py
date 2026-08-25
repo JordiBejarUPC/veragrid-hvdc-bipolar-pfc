@@ -7,6 +7,7 @@ from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.enumerations import DeviceType, ParamPowerFlowReferenceType, VarPowerFlowReferenceType
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var
+from VeraGridEngine.Utils.Symbolic.block import Block
 
 
 def get_dc_line_emt_template(vf: VarFactory, name: str = "dc_line_emt_template") -> EmtModelTemplate:
@@ -32,7 +33,8 @@ def get_dc_line_emt_template(vf: VarFactory, name: str = "dc_line_emt_template")
     templ: EmtModelTemplate = EmtModelTemplate()
     templ.tpe = DeviceType.DCLineDevice
     templ.name = name
-    templ.block.name = name
+
+    block = Block()
 
     c0: Const = Const(0.0)
     tau_series: Const = Const(5.0e-5)
@@ -42,32 +44,32 @@ def get_dc_line_emt_template(vf: VarFactory, name: str = "dc_line_emt_template")
     # ------------------------------------------------------------------
     # External terminal voltages.
     # ------------------------------------------------------------------
-    v_f_dc: Var = vf.add_var(name=f"v_f_dc_{name}", reference=VarPowerFlowReferenceType.Vf_dc)
-    v_t_dc: Var = vf.add_var(name=f"v_t_dc_{name}", reference=VarPowerFlowReferenceType.Vt_dc)
+    v_f_dc: Var = vf.add_var(name=f"v_f_dc", reference=VarPowerFlowReferenceType.Vf_dc)
+    v_t_dc: Var = vf.add_var(name=f"v_t_dc", reference=VarPowerFlowReferenceType.Vt_dc)
 
     # ------------------------------------------------------------------
     # API-mapped electrical parameter.
     # ------------------------------------------------------------------
-    g_ser: Var = vf.add_var(name=f"g_ser_{name}")
-    templ.block.parameters[g_ser] = Const(0.0)
+    g_ser: Var = vf.add_var(name=f"g_ser")
+    block.parameters[g_ser] = Const(0.0)
 
     # ------------------------------------------------------------------
     # PI-structure variables.
     # ------------------------------------------------------------------
-    i_ser: Var = vf.add_var(name=f"i_ser_{name}")
-    q_f: Var = vf.add_var(name=f"q_f_{name}")
-    q_t: Var = vf.add_var(name=f"q_t_{name}")
+    i_ser: Var = vf.add_var(name=f"i_ser")
+    q_f: Var = vf.add_var(name=f"q_f")
+    q_t: Var = vf.add_var(name=f"q_t")
 
-    di_ser: Var = vf.add_diff_var(name=f"di_ser_{name}", base_var=i_ser)
-    dq_f: Var = vf.add_diff_var(name=f"dq_f_{name}", base_var=q_f)
-    dq_t: Var = vf.add_diff_var(name=f"dq_t_{name}", base_var=q_t)
+    di_ser: Var = vf.add_diff_var(name=f"di_ser", base_var=i_ser)
+    dq_f: Var = vf.add_diff_var(name=f"dq_f", base_var=q_f)
+    dq_t: Var = vf.add_diff_var(name=f"dq_t", base_var=q_t)
 
-    i_cap_f: Var = vf.add_var(name=f"i_cap_f_{name}")
-    i_cap_t: Var = vf.add_var(name=f"i_cap_t_{name}")
-    i_f_dc: Var = vf.add_var(name=f"i_f_dc_{name}", reference=VarPowerFlowReferenceType.If_dc)
-    i_t_dc: Var = vf.add_var(name=f"i_t_dc_{name}", reference=VarPowerFlowReferenceType.It_dc)
-    p_f: Var = vf.add_var(name=f"p_f_dc_{name}", reference=VarPowerFlowReferenceType.Pf)
-    p_t: Var = vf.add_var(name=f"p_t_dc_{name}", reference=VarPowerFlowReferenceType.Pt)
+    i_cap_f: Var = vf.add_var(name=f"i_cap_f")
+    i_cap_t: Var = vf.add_var(name=f"i_cap_t")
+    i_f_dc: Var = vf.add_var(name=f"i_f_dc", reference=VarPowerFlowReferenceType.If_dc)
+    i_t_dc: Var = vf.add_var(name=f"i_t_dc", reference=VarPowerFlowReferenceType.It_dc)
+    p_f: Var = vf.add_var(name=f"p_f_dc", reference=VarPowerFlowReferenceType.Pf)
+    p_t: Var = vf.add_var(name=f"p_t_dc", reference=VarPowerFlowReferenceType.Pt)
 
     # ------------------------------------------------------------------
     # Series-branch dynamics.
@@ -76,18 +78,18 @@ def get_dc_line_emt_template(vf: VarFactory, name: str = "dc_line_emt_template")
     # current tracks the resistive PF solution quickly without becoming algebraic.
     di_ser_expression: Expr = (g_ser * (v_f_dc - v_t_dc) - i_ser) / tau_series
 
-    templ.block.in_vars = list([v_f_dc, v_t_dc])
-    templ.block.state_vars = list([i_ser, q_f, q_t])
-    templ.block.diff_vars = list([di_ser, dq_f, dq_t])
-    templ.block.algebraic_vars = list([i_cap_f, i_cap_t, i_f_dc, i_t_dc, p_f, p_t])
+    block.in_vars = list([v_f_dc, v_t_dc])
+    block.state_vars = list([i_ser, q_f, q_t])
+    block.diff_vars = list([di_ser, dq_f, dq_t])
+    block.algebraic_vars = list([i_cap_f, i_cap_t, i_f_dc, i_t_dc, p_f, p_t])
 
-    templ.block.state_eqs = list([
+    block.state_eqs = list([
         di_ser_expression,
         i_cap_f,
         i_cap_t,
     ])
 
-    templ.block.algebraic_eqs = list([
+    block.algebraic_eqs = list([
         q_f - c_shunt * v_f_dc,
         q_t - c_shunt * v_t_dc,
         i_f_dc - (i_ser + i_cap_f + g_damp * v_f_dc),
@@ -96,10 +98,10 @@ def get_dc_line_emt_template(vf: VarFactory, name: str = "dc_line_emt_template")
         p_t - v_t_dc * i_t_dc,
     ])
 
-    # templ.block.out_vars = list([i_f_dc, i_t_dc, p_f, p_t])
-    templ.block.out_vars = list([i_f_dc, i_t_dc])
+    # block.out_vars = list([i_f_dc, i_t_dc, p_f, p_t])
+    block.out_vars = list([i_f_dc, i_t_dc])
 
-    templ.block.external_mapping = dict([
+    block.external_mapping = dict([
         (VarPowerFlowReferenceType.Vf_dc, v_f_dc),
         (VarPowerFlowReferenceType.Vt_dc, v_t_dc),
         (VarPowerFlowReferenceType.Vdc, v_f_dc),
@@ -110,11 +112,11 @@ def get_dc_line_emt_template(vf: VarFactory, name: str = "dc_line_emt_template")
         (VarPowerFlowReferenceType.Pt, p_t),
     ])
 
-    templ.block.api_obj_mapping = dict([
+    block.api_obj_mapping = dict([
         (ParamPowerFlowReferenceType.g, g_ser),
     ])
 
-    templ.block.init_eqs = dict([
+    block.init_eqs = dict([
         (q_f, c_shunt * v_f_dc),
         (q_t, c_shunt * v_t_dc),
         (i_cap_f, c0),
@@ -124,11 +126,19 @@ def get_dc_line_emt_template(vf: VarFactory, name: str = "dc_line_emt_template")
         (p_t, v_t_dc * i_t_dc),
     ])
 
-    templ.block.diff_init_eqs = dict([
+    block.diff_init_eqs = dict([
         (di_ser, di_ser_expression),
         (dq_f, i_cap_f),
         (dq_t, i_cap_t),
     ])
+
+    templ.block.children.append(block)
+    templ.block.name = name
+    templ.block.external_mapping = block.external_mapping
+    templ.block.api_obj_mapping = block.api_obj_mapping
+    templ.block.parameters = block.parameters
+    templ.block.in_vars = block.in_vars
+    templ.block.out_vars = block.out_vars
 
     return templ
 
@@ -160,65 +170,65 @@ def get_dc_line_with_power_input_emt_template(vf: VarFactory, name: str = "dc_li
     templ: EmtModelTemplate = EmtModelTemplate()
     templ.tpe = DeviceType.DCLineDevice
     templ.name = name
-    templ.block.name = name
+    block = Block()
 
     c0 = Const(0.0)
     eps = Const(1.0e-9)
     g_damp = Const(1.0e-8)
 
-    v_f_dc: Var = vf.add_var(name=f"v_f_dc_{name}", reference=VarPowerFlowReferenceType.Vf_dc)
-    v_t_dc: Var = vf.add_var(name=f"v_t_dc_{name}", reference=VarPowerFlowReferenceType.Vt_dc)
+    v_f_dc: Var = vf.add_var(name=f"v_f_dc", reference=VarPowerFlowReferenceType.Vf_dc)
+    v_t_dc: Var = vf.add_var(name=f"v_t_dc", reference=VarPowerFlowReferenceType.Vt_dc)
 
-    r1 = vf.add_var(name=f"R1_{name}")
-    l1 = vf.add_var(name=f"L1_{name}")
-    r2 = vf.add_var(name=f"R2_{name}")
-    l2 = vf.add_var(name=f"L2_{name}")
-    r3 = vf.add_var(name=f"R3_{name}")
-    l3 = vf.add_var(name=f"L3_{name}")
-    c_end_f = vf.add_var(name=f"C_end_f_{name}")
-    c_mid_1 = vf.add_var(name=f"C_mid_1_{name}")
-    c_mid_2 = vf.add_var(name=f"C_mid_2_{name}")
-    c_end_t = vf.add_var(name=f"C_end_t_{name}")
-    p_ext = vf.add_var(name=f"Pext_{name}")
+    r1 = vf.add_var(name=f"R1")
+    l1 = vf.add_var(name=f"L1")
+    r2 = vf.add_var(name=f"R2")
+    l2 = vf.add_var(name=f"L2")
+    r3 = vf.add_var(name=f"R3")
+    l3 = vf.add_var(name=f"L3")
+    c_end_f = vf.add_var(name=f"C_end_f")
+    c_mid_1 = vf.add_var(name=f"C_mid_1")
+    c_mid_2 = vf.add_var(name=f"C_mid_2")
+    c_end_t = vf.add_var(name=f"C_end_t")
+    p_ext = vf.add_var(name=f"Pext")
 
-    v_n1 = vf.add_var(name=f"v_n1_{name}")
-    v_n2 = vf.add_var(name=f"v_n2_{name}")
-    q_end_f = vf.add_var(name=f"q_end_f_{name}")
-    q_mid_1 = vf.add_var(name=f"q_mid_1_{name}")
-    q_mid_2 = vf.add_var(name=f"q_mid_2_{name}")
-    q_end_t = vf.add_var(name=f"q_end_t_{name}")
-    i_r1 = vf.add_var(name=f"i_r1_{name}")
-    i_r2 = vf.add_var(name=f"i_r2_{name}")
-    i_r3 = vf.add_var(name=f"i_r3_{name}")
+    v_n1 = vf.add_var(name=f"v_n1")
+    v_n2 = vf.add_var(name=f"v_n2")
+    q_end_f = vf.add_var(name=f"q_end_f")
+    q_mid_1 = vf.add_var(name=f"q_mid_1")
+    q_mid_2 = vf.add_var(name=f"q_mid_2")
+    q_end_t = vf.add_var(name=f"q_end_t")
+    i_r1 = vf.add_var(name=f"i_r1")
+    i_r2 = vf.add_var(name=f"i_r2")
+    i_r3 = vf.add_var(name=f"i_r3")
 
-    d_q_end_f = vf.add_diff_var(name=f"d_q_end_f_{name}", base_var=q_end_f)
-    d_q_mid_1 = vf.add_diff_var(name=f"d_q_mid_1_{name}", base_var=q_mid_1)
-    d_q_mid_2 = vf.add_diff_var(name=f"d_q_mid_2_{name}", base_var=q_mid_2)
-    d_q_end_t = vf.add_diff_var(name=f"d_q_end_t_{name}", base_var=q_end_t)
-    d_i_r1 = vf.add_diff_var(name=f"d_i_r1_{name}", base_var=i_r1)
-    d_i_r2 = vf.add_diff_var(name=f"d_i_r2_{name}", base_var=i_r2)
-    d_i_r3 = vf.add_diff_var(name=f"d_i_r3_{name}", base_var=i_r3)
+    d_q_end_f = vf.add_diff_var(name=f"d_q_end_f", base_var=q_end_f)
+    d_q_mid_1 = vf.add_diff_var(name=f"d_q_mid_1", base_var=q_mid_1)
+    d_q_mid_2 = vf.add_diff_var(name=f"d_q_mid_2", base_var=q_mid_2)
+    d_q_end_t = vf.add_diff_var(name=f"d_q_end_t", base_var=q_end_t)
+    d_i_r1 = vf.add_diff_var(name=f"d_i_r1", base_var=i_r1)
+    d_i_r2 = vf.add_diff_var(name=f"d_i_r2", base_var=i_r2)
+    d_i_r3 = vf.add_diff_var(name=f"d_i_r3", base_var=i_r3)
 
-    i_cap_end_f = vf.add_var(name=f"i_cap_end_f_{name}")
-    i_cap_mid_1 = vf.add_var(name=f"i_cap_mid_1_{name}")
-    i_cap_mid_2 = vf.add_var(name=f"i_cap_mid_2_{name}")
-    i_cap_end_t = vf.add_var(name=f"i_cap_end_t_{name}")
-    i_f_dc = vf.add_var(name=f"i_f_dc_{name}", reference=VarPowerFlowReferenceType.If_dc)
-    i_t_dc = vf.add_var(name=f"i_t_dc_{name}", reference=VarPowerFlowReferenceType.It_dc)
-    p_f = vf.add_var(name=f"p_f_dc_{name}", reference=VarPowerFlowReferenceType.Pf)
-    p_t = vf.add_var(name=f"p_t_dc_{name}", reference=VarPowerFlowReferenceType.Pt)
-    i_n1 = vf.add_var(name=f"i_n1_{name}")
-    i_n2 = vf.add_var(name=f"i_n2_{name}")
+    i_cap_end_f = vf.add_var(name=f"i_cap_end_f")
+    i_cap_mid_1 = vf.add_var(name=f"i_cap_mid_1")
+    i_cap_mid_2 = vf.add_var(name=f"i_cap_mid_2")
+    i_cap_end_t = vf.add_var(name=f"i_cap_end_t")
+    i_f_dc = vf.add_var(name=f"i_f_dc", reference=VarPowerFlowReferenceType.If_dc)
+    i_t_dc = vf.add_var(name=f"i_t_dc", reference=VarPowerFlowReferenceType.It_dc)
+    p_f = vf.add_var(name=f"p_f_dc", reference=VarPowerFlowReferenceType.Pf)
+    p_t = vf.add_var(name=f"p_t_dc", reference=VarPowerFlowReferenceType.Pt)
+    i_n1 = vf.add_var(name=f"i_n1")
+    i_n2 = vf.add_var(name=f"i_n2")
 
     i_n1_expr = p_ext / (v_n1 + eps)
     i_n2_expr = p_ext / (v_n2 + eps)
 
-    templ.block.in_vars = [v_f_dc, v_t_dc]
+    block.in_vars = [v_f_dc, v_t_dc]
 
     # State ordering is explicit and must stay aligned with the differential equations.
-    templ.block.state_vars = [q_end_f, q_mid_1, q_mid_2, q_end_t, i_r1, i_r2, i_r3]
-    templ.block.diff_vars = [d_q_end_f, d_q_mid_1, d_q_mid_2, d_q_end_t, d_i_r1, d_i_r2, d_i_r3]
-    templ.block.state_eqs = [
+    block.state_vars = [q_end_f, q_mid_1, q_mid_2, q_end_t, i_r1, i_r2, i_r3]
+    block.diff_vars = [d_q_end_f, d_q_mid_1, d_q_mid_2, d_q_end_t, d_i_r1, d_i_r2, d_i_r3]
+    block.state_eqs = [
         # d(q_end_f)/dt = current through the sending-end shunt capacitor at the from node.
         i_cap_end_f,
         # d(q_mid_1)/dt = current through the internal shunt capacitor at node v1.
@@ -236,7 +246,7 @@ def get_dc_line_with_power_input_emt_template(vf: VarFactory, name: str = "dc_li
     ]
 
     # Algebraic ordering is explicit and must stay aligned with the algebraic equations.
-    templ.block.algebraic_vars = [
+    block.algebraic_vars = [
         i_cap_end_f,
         i_cap_mid_1,
         i_cap_mid_2,
@@ -250,7 +260,7 @@ def get_dc_line_with_power_input_emt_template(vf: VarFactory, name: str = "dc_li
         p_f,
         p_t,
     ]
-    templ.block.algebraic_eqs = [
+    block.algebraic_eqs = [
         # Sending-end capacitor current from dq/dt with q = C * v.
         q_end_f - c_end_f * v_f_dc,
         # First distributed capacitor current from dq/dt with q = C * v.
@@ -277,9 +287,9 @@ def get_dc_line_with_power_input_emt_template(vf: VarFactory, name: str = "dc_li
         p_t - v_t_dc * i_t_dc,
     ]
 
-    # templ.block.out_vars = [i_f_dc, i_t_dc, p_f, p_t]
-    templ.block.out_vars = [i_f_dc, i_t_dc]
-    templ.block.external_mapping = {
+    # block.out_vars = [i_f_dc, i_t_dc, p_f, p_t]
+    block.out_vars = [i_f_dc, i_t_dc]
+    block.external_mapping = {
         VarPowerFlowReferenceType.Vf_dc: v_f_dc,
         VarPowerFlowReferenceType.Vt_dc: v_t_dc,
         VarPowerFlowReferenceType.Vdc: v_f_dc,
@@ -290,8 +300,8 @@ def get_dc_line_with_power_input_emt_template(vf: VarFactory, name: str = "dc_li
         VarPowerFlowReferenceType.Pt: p_t,
     }
 
-    templ.block.api_obj_mapping = dict()
-    templ.block.event_dict = {
+    block.api_obj_mapping = dict()
+    block.event_dict = {
         r1: Const(0.5),
         l1: Const(0.005),
         r2: Const(0.25),
@@ -308,7 +318,7 @@ def get_dc_line_with_power_input_emt_template(vf: VarFactory, name: str = "dc_li
     # Initialization uses the externally mapped terminal voltages/currents/powers as anchors.
     # The internal nodes start at the terminal voltages and all shunt currents start at zero,
     # so the series currents are derived directly from the nodal KCL equations.
-    templ.block.init_eqs = {
+    block.init_eqs = {
         q_end_f: c_end_f * v_f_dc,
         q_mid_1: c_mid_1 * v_f_dc,
         q_mid_2: c_mid_2 * v_t_dc,
@@ -333,7 +343,7 @@ def get_dc_line_with_power_input_emt_template(vf: VarFactory, name: str = "dc_li
         p_t: v_t_dc * i_t_dc,
     }
 
-    templ.block.diff_init_eqs = {
+    block.diff_init_eqs = {
         d_q_end_f: i_cap_end_f,
         d_q_mid_1: i_cap_mid_1,
         d_q_mid_2: i_cap_mid_2,
@@ -342,6 +352,14 @@ def get_dc_line_with_power_input_emt_template(vf: VarFactory, name: str = "dc_li
         d_i_r2: (v_n1 - v_n2 - r2 * i_r2) / (l2 + eps),
         d_i_r3: (v_f_dc - v_n1 - r3 * i_r3) / (l3 + eps),
     }
+
+    templ.block.children.append(block)
+    templ.block.name = name
+    templ.block.external_mapping = block.external_mapping
+    templ.block.api_obj_mapping = block.api_obj_mapping
+    templ.block.parameters = block.parameters
+    templ.block.in_vars = block.in_vars
+    templ.block.out_vars = block.out_vars
 
     return templ
 

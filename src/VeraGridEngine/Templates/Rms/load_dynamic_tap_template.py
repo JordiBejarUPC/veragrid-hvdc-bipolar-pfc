@@ -7,7 +7,7 @@
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowReferenceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-from VeraGridEngine.Templates.template_definiton import TemplateDefinition, TemplateProp
+from VeraGridEngine.Templates.template_definition import TemplateDefinition, TemplateProp
 from VeraGridEngine.Utils.Symbolic.block import Block
 
 
@@ -51,7 +51,7 @@ def DynamicTapLoadBuild(vfactory: VarFactory, name: str = "", Pl0=1.0, Ql0=0.1) 
     """
     templ = RmsModelTemplate()
     templ.tpe = DeviceType.LoadDevice
-    inputs = [vfactory.add_var("Vm_")]
+    inputs = [vfactory.add_var("Vm")]
 
     # Vars:
     m = vfactory.add_var('m')

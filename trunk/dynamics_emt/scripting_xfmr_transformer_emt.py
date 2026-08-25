@@ -145,7 +145,8 @@ for bus in circuit.buses:
     get_bus_emt_template(grid=circuit, bus=bus)
 
 gen_mdl = get_generator_thevenin_rl_emt_template_with_ref(vf=circuit.var_factory, name='gen_test').block
-xfmr_mdl = get_xfmr_emt_template(vf=circuit.var_factory, name='xfmr_test').block
+xfmr_templ = get_xfmr_emt_template(vf=circuit.var_factory, name='xfmr_test')
+xfmr_mdl = xfmr_templ.block.children[0]
 load_mdl = get_shunt_r_emt_template(vf=circuit.var_factory, phA=True, phB=True, phC=True).block
 
 set_emt_model(device=gen, model=gen_mdl, var_factory=circuit.var_factory)
@@ -254,13 +255,13 @@ print('\nSimulation completed successfully!')
 t_sim = np.asarray(t).reshape(-1)
 
 # Bus voltages
-vA_hv = get_series(problem, y, find_name_in_block('v_A_Bus_HV_emt_template', bus_hv.emt_model))
-vB_hv = get_series(problem, y, find_name_in_block('v_B_Bus_HV_emt_template', bus_hv.emt_model))
-vC_hv = get_series(problem, y, find_name_in_block('v_C_Bus_HV_emt_template', bus_hv.emt_model))
+vA_hv = get_series(problem, y, find_name_in_block('v_A', bus_hv.emt_model))
+vB_hv = get_series(problem, y, find_name_in_block('v_B', bus_hv.emt_model))
+vC_hv = get_series(problem, y, find_name_in_block('v_C', bus_hv.emt_model))
 
-vA_lv = get_series(problem, y, find_name_in_block('v_A_Bus_LV_emt_template', bus_lv.emt_model))
-vB_lv = get_series(problem, y, find_name_in_block('v_B_Bus_LV_emt_template', bus_lv.emt_model))
-vC_lv = get_series(problem, y, find_name_in_block('v_C_Bus_LV_emt_template', bus_lv.emt_model))
+vA_lv = get_series(problem, y, find_name_in_block('v_A', bus_lv.emt_model))
+vB_lv = get_series(problem, y, find_name_in_block('v_B', bus_lv.emt_model))
+vC_lv = get_series(problem, y, find_name_in_block('v_C', bus_lv.emt_model))
 
 # Transformer terminal currents
 ifA = get_series(problem, y, find_name_in_block('if_A_xfmr_test', xfmr_mdl))

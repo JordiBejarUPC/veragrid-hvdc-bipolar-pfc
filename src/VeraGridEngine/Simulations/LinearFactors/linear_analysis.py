@@ -350,13 +350,16 @@ def make_ptdf(Bpqpv: sp.csc_matrix,
 def make_acdc_ptdf(nc: NumericalCircuit,
                    logger: Logger,
                    bus_types: IntVec,
-                   distribute_slack: bool = False) -> Mat:
+                   distribute_slack: bool = False,
+                   converters_as_setpoint: bool = False) -> Mat:
     """
     Build the ACDC PTDF matrix
     :param nc: NumericalCircuit
     :param logger: Logger
     :param bus_types: Array of bus types for the distributed slack
     :param distribute_slack: distribute the slack?
+    :param converters_as_setpoint: treat every converter (VSC and HVDC) as a set-point
+        device with the small admittance, ignoring droop control modes
     :return: PTDF matrix. It is a full matrix of dimensions Branches x buses
     """
     n = nc.nbus
@@ -389,12 +392,15 @@ def make_acdc_ptdf(nc: NumericalCircuit,
         A[t, f] -= ys
         A[t, t] += ys
 
-    # fake impedances for converters
+    # Fake impedances for converters.
+    # Set-point devices get a small coupling that only keeps the AC-DC topology visible
+    # In the NTC the free mode has to have a higher or equal NTC than the Pmode3
     for k in range(nc.nvsc):
         f = nc.vsc_data.F[k]
         t = nc.vsc_data.T[k]
 
-        if nc.vsc_data.control1_int[k] == ConverterControlType.Pdc_angle_droop.idx():
+        if (not converters_as_setpoint and
+                nc.vsc_data.control1_int[k] == ConverterControlType.Pdc_angle_droop.idx()):
             # P-MODE 3: The VSC behaves as a droop control
             # P = P0 + k * (theta_f - theta_t)
             # k is in MW/deg, we need it in p.u./rad
@@ -408,12 +414,13 @@ def make_acdc_ptdf(nc: NumericalCircuit,
         A[t, f] -= ys
         A[t, t] += ys
 
-    # fake impedances for hvdc
+    # fake impedances for hvdc, same reasoning as the VSCs
     for k in range(nc.nhvdc):
         f = nc.hvdc_data.F[k]
         t = nc.hvdc_data.T[k]
 
-        if nc.hvdc_data.control_mode_int[k] == HvdcControlType.type_0_free.idx():
+        if (not converters_as_setpoint and
+                nc.hvdc_data.control_mode_int[k] == HvdcControlType.type_0_free.idx()):
             # Free mode: P = Pset + angle_droop * (theta_f - theta_t)
             # angle_droop is in MW/deg, we need it in p.u./rad
             ys = nc.hvdc_data.angle_droop[k] * 57.295779513 / nc.Sbase
@@ -555,6 +562,41 @@ def create_M_numba(lodf: Mat, branch_contingency_indices) -> Mat:
     return M
 
 
+def compute_phase_shift_terms(nc: NumericalCircuit) -> Tuple[Vec, Vec]:
+    """
+    Build the per-unit contribution of the branch phase shifts to the DC branch flows.
+
+    A branch with susceptance b = 1/X and phase shift tau has
+    ``Pf = b · (theta_f - theta_t - tau)``, where the tap ratio ``t = m·exp(j·tau)`` 
+    gives ``Pf ~ sin(theta_f - theta_t - tau) / (X·m)``.
+
+    Separating the constant part turns the DC system into ``B·theta = P - Pshift``, so the flows are
+    ``Pf = PTDF @ (P - Pshift) + shift_flow`` with ``shift_flow = -b·tau`` and
+    ``Pshift[from] = -b·tau``, ``Pshift[to] = +b·tau``. 
+    Without these two terms the PTDF flows are simply blind to any phase shifter.
+
+    :param nc: numerical circuit
+    :return: direct flow term per branch, equivalent bus injections), in p.u.
+    """
+    tau_flows: Vec = np.zeros(nc.nbr, dtype=float)
+    tau_injections: Vec = np.zeros(nc.nbus, dtype=float)
+
+    for k in range(nc.nbr):
+        tau = float(nc.active_branch_data.tap_angle[k])
+        x = float(nc.passive_branch_data.X[k])
+
+        if tau == 0.0 or bool(nc.passive_branch_data.dc[k]) or x == 0.0:
+            # no shift, a DC branch where the concept does not apply, or no usable susceptance
+            pass
+        else:
+            contribution = -tau / x
+            tau_flows[k] = contribution
+            tau_injections[nc.passive_branch_data.F[k]] += contribution
+            tau_injections[nc.passive_branch_data.T[k]] -= contribution
+
+    return tau_flows, tau_injections
+
+
 class LinearAnalysis:
     """
     Linear Analysis
@@ -564,12 +606,15 @@ class LinearAnalysis:
                  nc: NumericalCircuit,
                  distributed_slack: bool = False,
                  correct_values: bool = False,
+                 converters_as_setpoint: bool = False,
                  logger: Logger = Logger()):
         """
         Linear Analysis constructor
         :param nc: numerical circuit instance
         :param distributed_slack: boolean to distribute slack
         :param correct_values: boolean to fix out layer values
+        :param converters_as_setpoint: build the AC-DC PTDF with every converter treated
+            as a set-point device regardless of its control mode
         """
 
         self.logger: Logger = logger
@@ -593,6 +638,12 @@ class LinearAnalysis:
 
         self.bus_types = nc.bus_data.bus_types.copy()
         self.distributed_slack = distributed_slack
+        self.Sbase = nc.Sbase
+
+        # phase-shift contribution in MW, applied by get_flows / get_flows2d
+        tau_flows_pu, tau_injections_pu = compute_phase_shift_terms(nc=nc)
+        self.tau_flows = tau_flows_pu * nc.Sbase
+        self.tau_injections = tau_injections_pu * nc.Sbase
 
         # compute the PTDF per islands
         if len(self.islands) > 0:
@@ -609,7 +660,8 @@ class LinearAnalysis:
                                 nc=island,
                                 logger=self.logger,
                                 bus_types=island.bus_data.bus_types,
-                                distribute_slack=distributed_slack
+                                distribute_slack=distributed_slack,
+                                converters_as_setpoint=converters_as_setpoint
                             )
 
                         else:
@@ -693,16 +745,21 @@ class LinearAnalysis:
             rates=rates
         )
 
-    def get_flows(self, Sbus: CxVec | Vec, P_hvdc: Vec | None = None, P_vsc: Vec | None = None) -> CxVec | Vec:
+    def get_flows(self, Sbus: CxVec | Vec, P_hvdc: Vec | None = None,
+                  P_vsc: Vec | None = None) -> CxVec | Vec:
         """
         Compute the time series branch Sf using the PTDF
-        :param Sbus: Power Injections time series array (nbus)
-        :param P_hvdc: Power from HvdcLines (nhvdc) (optional)
-        :param P_vsc: Power from Vsc (nvsc) (optional)
-        :return: branch active power Sf (nbranch)
+
+        Everything here is expected to be in MW 
+
+        :param Sbus: Power Injections time series array (nbus) [MW]
+        :param P_hvdc: Power from HvdcLines (nhvdc) [MW] (optional)
+        :param P_vsc: Power from Vsc (nvsc) [MW] (optional)
+        :return: branch active power Sf (nbranch) [MW]
         """
         if Sbus.ndim == 1:
-            Pf = self.PTDF @ Sbus.real
+            # the phase shift acts as a pair of equivalent injections plus a direct term
+            Pf = self.PTDF @ (Sbus.real - self.tau_injections) + self.tau_flows
 
             if P_hvdc is not None:
                 Pf += self.HvdcDF @ P_hvdc
@@ -714,16 +771,18 @@ class LinearAnalysis:
         else:
             raise Exception(f'Sbus has unsupported dimensions: {Sbus.shape}')
 
-    def get_flows2d(self, Sbus: CxMat | Mat, P_hvdc: Mat | None = None, P_vsc: Mat | None = None) -> CxMat | Mat:
+    def get_flows2d(self, Sbus: CxMat | Mat, P_hvdc: Mat | None = None,
+                    P_vsc: Mat | None = None) -> CxMat | Mat:
         """
-        Compute the time series branch Sf using the PTDF
-        :param Sbus: Power Injections time series array (time, nbus) for 2D
-        :param P_hvdc: Power from HvdcLines (nhvdc) (optional)
-        :param P_vsc: Power from Vsc (nvsc) (optional)
-        :return: branch active power Sf (time, nbranch)
+        Compute the time series branch Sf using the PTDF, everything in MW, see get_flows
+        :param Sbus: Power Injections time series array (time, nbus) for 2D [MW]
+        :param P_hvdc: Power from HvdcLines (nhvdc) [MW] (optional)
+        :param P_vsc: Power from Vsc (nvsc) [MW] (optional)
+        :return: branch active power Sf (time, nbranch) [MW]
         """
         if Sbus.ndim == 2:
-            Pf = np.dot(self.PTDF, Sbus.real.T).T
+            # same phase-shift correction as get_flows, broadcast over the time axis
+            Pf = np.dot(self.PTDF, (Sbus.real - self.tau_injections).T).T + self.tau_flows
 
             if P_hvdc is not None:
                 Pf += np.dot(self.HvdcDF, P_hvdc.T).T
@@ -944,43 +1003,47 @@ class LinearMultiContingency:
                                  base_flow: ObjVec,
                                  injections: ObjVec,
                                  hvdc_flow: ObjVec | None = None,
-                                 vsc_flow: ObjVec | None = None) -> Tuple[ObjVec, BoolVec, IntVec]:
+                                 vsc_flow: ObjVec | None = None,
+                                 row_filter: BoolVec | None = None) -> Tuple[ObjVec, BoolVec, IntVec]:
         """
         Get contingency flows using the LP interface equations
         :param base_flow: Base branch flows (nbranch)
         :param injections: Bus injections (nbus)
         :param hvdc_flow: Base HvdcLine flows (n_hvdc)
         :param vsc_flow: Base Vsc flows (n_vsc)
-        :return: New flows (nbranch)
+        :param row_filter: per-branch flag, True for the branches the caller is going to constrain.
+        :return: New flows (nbranch), the mask of branches that changed, and their indices
         """
         mask: BoolVec = np.zeros(len(base_flow), dtype=bool)
         flow: ObjVec = base_flow.copy()
-        changed_idx: IntVec = np.zeros(0, dtype=int)
 
         if len(self.branch_indices) > 0:
-            inc, changed_idx = lpDot1D_changes(self.mlodf_factors, base_flow[self.branch_indices])
-            if len(changed_idx) > 0:
-                mask[changed_idx] = True
-                flow[changed_idx] += inc[changed_idx]
+            inc, block_idx = lpDot1D_changes(self.mlodf_factors, base_flow[self.branch_indices], row_filter)
+            if len(block_idx) > 0:
+                mask[block_idx] = True
+                flow[block_idx] += inc[block_idx]
 
         if len(self.hvdc_indices) > 0 and hvdc_flow is not None:
-            inc, changed_idx = lpDot1D_changes(self.hvdc_odf, hvdc_flow[self.hvdc_indices])
-            if len(changed_idx) > 0:
-                mask[changed_idx] = True
-                flow[changed_idx] += inc[changed_idx]
+            inc, block_idx = lpDot1D_changes(self.hvdc_odf, hvdc_flow[self.hvdc_indices], row_filter)
+            if len(block_idx) > 0:
+                mask[block_idx] = True
+                flow[block_idx] += inc[block_idx]
 
         if len(self.vsc_indices) > 0 and vsc_flow is not None:
-            inc, changed_idx = lpDot1D_changes(self.vsc_odf, vsc_flow[self.vsc_indices])
-            if len(changed_idx) > 0:
-                mask[changed_idx] = True
-                flow[changed_idx] += inc[changed_idx]
+            inc, block_idx = lpDot1D_changes(self.vsc_odf, vsc_flow[self.vsc_indices], row_filter)
+            if len(block_idx) > 0:
+                mask[block_idx] = True
+                flow[block_idx] += inc[block_idx]
 
         if len(self.bus_indices) > 0:
             injection_delta: ObjVec = self.injections_factor * injections[self.bus_indices]
-            inc, changed_idx = lpDot1D_changes(self.compensated_ptdf_factors, injection_delta)
-            if len(changed_idx) > 0:
-                mask[changed_idx] = True
-                flow[changed_idx] += inc[changed_idx]
+            inc, block_idx = lpDot1D_changes(self.compensated_ptdf_factors, injection_delta, row_filter)
+            if len(block_idx) > 0:
+                mask[block_idx] = True
+                flow[block_idx] += inc[block_idx]
+
+        # Derive the changed indices from the accumulated mask
+        changed_idx: IntVec = np.flatnonzero(mask)
 
         return flow, mask, changed_idx
 

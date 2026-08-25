@@ -317,6 +317,7 @@ class SolverType(Enum):
     """
 
     NR = 'Newton Raphson'
+    NR_PC = 'Newton Raphson Predictor-Corrector'
     GAUSS = 'Gauss-Seidel'
     Decoupled_LU = 'Decoupled-LU Decomposition'
     GN = "Gauss-Newton"
@@ -395,8 +396,6 @@ class EngineType(Enum):
     Available engines enumeration
     """
     VeraGrid = 'VeraGrid'
-    Bentayga = 'Bentayga'
-    NewtonPA = 'Newton Power Analytics'
     PGM = 'Power Grid Model'
     GSLV = "gslv"
 
@@ -448,6 +447,8 @@ class MIPSolvers(Enum):
     XPRESS = 'XPRESS'
     CBC = 'CBC'
     PDLP = 'PDLP'
+    CUOPT = "CUOPT"
+    COPT = "COPT"
 
     def __str__(self):
         return self.value
@@ -492,6 +493,34 @@ class MIPFramework(Enum):
             return MIPFramework[s]
         except KeyError:
             return MIPFramework.PuLP
+
+
+class SolutionState(Enum):
+    """
+    Quality of an NTC solution: strictly optimal, optimal but with relaxed (slacked)
+    limits, or not solved to optimality at all
+    """
+    Optimal = 'Optimal'
+    Relaxed = 'Optimal with relaxed limits'
+    NotOptimal = 'Not optimal'
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return SolutionState[s]
+        except KeyError:
+            return SolutionState.NotOptimal
 
 
 class TimeGrouping(Enum):
@@ -1318,6 +1347,30 @@ class TerminalType(Enum):
         return list(enum_item.value for enum_item in cls)
 
 
+
+class WaveformSequenceType(Enum):
+    """
+        Squence points type
+    """
+
+class V_I_CurveSequenceType(Enum):
+    """
+        Squence points type
+    """
+
+class X_Y_SequenceType(Enum):
+    """
+        Squence points type
+    """
+
+class X_Y_Z_Matrix(Enum):
+    """
+        Squence points type
+    """
+
+
+
+
 class WindingType(str, Enum):
     """
     Transformer windings connection types
@@ -1659,6 +1712,8 @@ class DeviceType(Enum):
 
     DynamicPlotEntry = "Plot Event"
     DynamicPlotGroupDevice = "Plot Group"
+
+    ControlPc = "Control PC"
 
     VarFactory = "Var Factory"
 
@@ -2552,6 +2607,7 @@ class ResultTypes(Enum):
     GeneratorReactivePowerC = 'Generator reactive power C'
 
     GeneratorCost = 'Generator cost'
+    GeneratorReserve = 'Generator reserve'
     GeneratorFuels = 'Generator fuels'
     GeneratorEmissions = 'Generator emissions'
     GeneratorProducing = 'Generator producing'
@@ -2573,7 +2629,7 @@ class ResultTypes(Enum):
     ShuntNeutralVoltage = 'Shunt neutral voltage'
 
     BusVoltagePolarPlot = 'Voltage plot'
-    BusNodalCapacity = "Nodal capacity"
+    BusNodalCapacity = "Bus nodal capacity"
 
     # OPF-NTC
     HvdcOverloads = 'HVDC overloads'
@@ -2727,6 +2783,7 @@ class ResultTypes(Enum):
     ParticipationFactors = "Participation Factors"
     StateMatrix = "State Matrix"
     Modes = "Modes"
+    RightEigenvectors = "Right Eigenvectors"
     SDomainPlot = "S-Domain Plot"
     SDomainPlotHz = "S-Domain Plot in Hz"
 
@@ -2956,6 +3013,7 @@ class SimulationTypes(Enum):
     InvestmentsEvaluation_run = 'Investments evaluation'
     CatalogueOptimization_run = 'Catalogue optimization'
     TopologyProcessor_run = 'Topology Processor'
+    NodalCapacity_run = 'Nodal capacity'
     NodalCapacityTimeSeries_run = 'Nodal capacity time series'
     Reliability_run = "Reliability"
     RmsDynamic_run = "RMS Dynamic"
@@ -3326,6 +3384,7 @@ class RmsProblemTypes(Enum):
     Tensygrid       = "Tensygrid"
     PowerBalance    = "RmsProblemDae"
     PowerBalanceVectorized = "RmsProblemDaeVectorized"
+    PowerBalanceFullVectorized = "RmsProblemDaeFullVectorized"
     CurrentBalance  = "RmsProblemPhasor"
     Multilinear     = "RmsProblemMultilinear"
 
@@ -3459,6 +3518,7 @@ class RmsInitializationMethod(Enum):
     Explicit = "Explicit"
     ReducedExplicit = "ReducedExplicit"
     PseudoTransient = "PseudoTransient"
+    Auto = "Auto"
     CustomValues = "CustomValues"
 
     def __str__(self) -> str:
@@ -4224,6 +4284,28 @@ class PlotSimulationType(Enum):
         return self.value
 
 
+class ResultTablePlotType(Enum):
+    """
+    Plot representation used by a results table.
+
+    The representation describes how table dimensions map to graphical
+    coordinates without coupling the generic results infrastructure to a
+    particular simulation.
+    """
+
+    SERIES = "SERIES"
+    COMPLEX_POINTS = "COMPLEX_POINTS"
+    COMPLEX_VECTORS = "COMPLEX_VECTORS"
+
+    def __str__(self) -> str:
+        """
+        Return the persistent plot-representation label.
+
+        :return: Persistent plot-representation label.
+        """
+        return self.value
+
+
 class DynamicPlotMode(Enum):
     """
     Plotting mode used by persistent dynamic plot definitions.
@@ -4312,10 +4394,55 @@ class BlockType(Enum):
     CONST = "CONST"
     GAIN = "GAIN"
     SUM = "SUM"
-    SUBSTR = "SUBSTR"
-    PRODUCT = "PRODUCT"
     DIVIDE = "Divide"
+    PRODUCT = "PRODUCT"
     ABS = "Abs"
+    INTEGRATOR = "Integrator"
+    POWER = "Power"
+    SIN = "Sin"
+    COS = "Cos"
+    TAN = "Tan"
+    EXP = "Exp"
+    LOG = "Log"
+    LOG10 = "Log10"
+    SQRT = "Sqrt"
+    ASIN = "Asin"
+    ACOS = "Acos"
+    ATAN = "Atan"
+    SINH = "Sinh"
+    COSH = "Cosh"
+    TANH = "Tanh"
+    FLOOR = "Floor"
+    CEIL = "Ceil"
+    ROUND = "Round"
+    REAL = "Real"
+    IMAG = "Imag"
+    CONJ = "Conj"
+    ANGLE = "Angle"
+    HEAVISIDE = "Heaviside"
+    RAND = "Rand"
+    ATAN2 = "Atan2"
+    MIN = "Min"
+    MAX = "Max"
+
+    NOTYPE = "Notype"
+
+    # common basic arrays and matrices
+
+    INVERSE_LOOKUP_ARRAY = "INVERSE_LOOKUP_ARRAY"
+    INVERSE_LOOKUP_ARRAY_OBJECT = "INVERSE_LOOKUP_ARRAY_OBJECT"
+    INVERSE_LOOKUP_ARRAY_LINEAR_NOCLIPPING = "INVERSE_LOOKUP_ARRAY_LINEAR_NOCLIPPING"
+    LOOKUP_ARRAY_LINEAR = "LOOKUP_ARRAY_LINEAR"
+    LOOKUP_ARRAY_SPLINE = "LOOKUP_ARRAY_SPLINE"
+    LOOKUP_ARRAY_LINEAR_FIXED = "LOOKUP_ARRAY_LINEAR_FIXED"
+    LOOKUP_ARRAY_LINEAR_VARIABLE = "LOOKUP_ARRAY_LINEAR_VARIABLE"
+    LOOKUP_ARRAY_OBJECT_LINEAR_NOCLIPPING = "LOOKUP_ARRAY_OBJECT_LINEAR_NOCLIPPING"
+    LOOKUP_ARRAY_OBJECT = "LOOKUP_ARRAY_OBJECT"
+    LOOKUP_ARRAY_OBJECT_SPLINE = "LOOKUP_MATRIX_LINEAR"
+    LOOKUP_MATRIX_LINEAR = "LOOKUP_MATRIX_LINEAR"
+    LOOKUP_MATRIX_SPLINE = "LOOKUP_MATRIX_SPLINE"
+    LOOKUP_MATRIX_LINEAR_OBJECT = "LOOKUP_MATRIX_LINEAR_OBJECT"
+    LOOKUP_MATRIX_SPLINE_OBJECT = "LOOKUP_MATRIX_SPLINE_OBJECT"
 
     # RMS
     GENRAW = "GENRAW"
@@ -4374,8 +4501,8 @@ class BlockType(Enum):
     EXP_LOAD_EMT = "EXP_LOAD_EMT"
     ZIP_LOAD_EMT = "ZIP_LOAD_EMT"
     DC_LOAD_EMT = "DC_LOAD_EMT"
-    EMT_THEVENIN = "EMT_THEVENIN_EMT"
-    EMTLOAD = "EMT_LOAD"
+    EMT_THEVENIN = "EMT_THEVENIN"
+    EMT_LOAD = "EMT_LOAD"
     TRAFO_EMT = "TRAFO_EMT"
     XFMR_TRANSFORMER = "XFMR_TRANSFORMER"
     INDUCTION_MOTOR_EMT = "INDUCTION_MOTOR_EMT"
@@ -4401,6 +4528,68 @@ class BlockType(Enum):
             return BlockType[s]
         except KeyError:
             return s
+
+
+class BlockSymbolKind(Enum):
+    """Editable primary role of one dynamic-block symbol."""
+
+    INPUT = "Input"
+    ALGEBRAIC = "Algebraic"
+    STATE = "State"
+    DIFFERENTIAL = "Differential"
+    PARAMETER = "Parameter"
+    EVENT_PARAMETER = "Dynamic parameter"
+    MODE_PARAMETER = "Mode parameter"
+    OUTPUT_ONLY = "Output only (legacy)"
+
+
+class BlockSymbolCategory(Enum):
+    """Visible symbol group used to filter dynamic-block symbol tables."""
+
+    VARIABLES = "Variables"
+    PARAMETERS = "Parameters"
+
+
+class DynamicEditorMimeType(Enum):
+    """MIME identifiers used by Dynamic Model Editor drag-and-drop workflows."""
+
+    TAB = "application/x-veragrid-dynamic-editor-tab"
+
+
+class EquationExportSection(Enum):
+    """Dynamic equation groups that users can select independently for export."""
+
+    STATE = "State equations"
+    ALGEBRAIC = "Algebraic equations"
+    INITIALIZATION = "Initialization equations"
+    DERIVATIVE_INITIALIZATION = "Derivative initialization equations"
+
+
+class JMartiDataSourceMode(Enum):
+    """Available sources for the offline JMarti frequency-domain fit."""
+
+    AUTOMATIC_TEMPLATE = "Auto from attached template"
+    IMPORT_FREQUENCY_SAMPLES = "Import NPZ frequency samples"
+
+
+class ProceduralFieldType(Enum):
+    """Semantic editor kind for one procedural-logic field."""
+
+    EXPRESSION = "Expression"
+    MODE_REFERENCE = "Retained mode"
+    VARIABLE_REFERENCE = "DAE variable"
+    RUNTIME_REFERENCE = "Runtime parameter"
+    TARGET_REFERENCE = "Mutable target"
+    FLOAT = "Number"
+    OPTIONAL_FLOAT = "Optional number"
+
+
+class RoutingNodeKind(Enum):
+    """Topological roles supported by an orthogonal routing graph."""
+
+    PORT = "port"
+    STUB = "stub"
+    ELBOW = "elbow"
 
 
 class ProceduralGridMethods(Enum):
@@ -4449,6 +4638,7 @@ class ProceduralLogicType(Enum):
     StartupHandover = "startup_handover"
     ValveState = "valve_state"
     ThreePhaseCarrierPwm = "three_phase_carrier_pwm"
+    ThreePhaseCarrierSampledModulation = "three_phase_carrier_sampled_modulation"
 
     def __str__(self) -> str:
         return str(self.value)
@@ -4543,3 +4733,42 @@ class DynamicTableModelMode(Enum):
     VARIABLES = "variables"
     PARAMETERS = "parameters"
     EQUATIONS = "equations"
+
+class DynEditorGraphicsModes(Enum):
+    """
+    Modes to definr editor colouring
+    """
+    DARK = "Dark"
+    LIGHT = "Light"
+
+class RoutingAxis(Enum):
+    """
+    Enumerate the only valid orthogonal segment axes.
+
+    :returns: Enumeration values describing orthogonal axes.
+    """
+
+    HORIZONTAL = "horizontal"
+    VERTICAL = "vertical"
+
+class RoutingPortSide(Enum):
+    """
+    Enumerate the physical block side where one routing port is attached.
+
+    :returns: Enumeration values describing the physical port side.
+    """
+
+    LEFT = "left"
+    RIGHT = "right"
+    TOP = "top"
+    BOTTOM = "bottom"
+
+class RoutingValidationMessageLevel(Enum):
+    """
+    Enumerate validation message severities.
+
+    :returns: Enumeration values describing validation severity levels.
+    """
+
+    ERROR = "error"
+    WARNING = "warning"

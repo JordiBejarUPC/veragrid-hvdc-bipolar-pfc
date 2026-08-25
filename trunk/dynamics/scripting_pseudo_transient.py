@@ -68,6 +68,8 @@ def build_grid() -> gce.MultiCircuit:
         gen_model = get_complete_generator_template_rms(grid.var_factory, name=gen.name).block
         #gen_model = get_genrow_rms_template(grid.var_factory, name=gen.name).block
         gen_model = to_explicit(gen_model, grid.var_factory)
+        for blk in gen_model.get_all_blocks():
+            blk.init_eqs = dict()
         set_rms_model(
             device=gen,
             model=gen_model,
@@ -146,17 +148,27 @@ def run_validation() -> None:
                     return float(x[i])
         raise RuntimeError(f"Could not find any reference variable in {candidates}")
 
-    x0_explicit, names_explicit, event_map_explicit = _run_init(RmsInitializationMethod.PseudoTransient)
-    pref_seed = _pick_reference_seed(x0_explicit, names_explicit, event_map_explicit, ("Pm_ref", "Pref", "P_ref"))
-    vref_seed = _pick_reference_seed(x0_explicit, names_explicit, event_map_explicit, ("UsRefPu", "Vref", "V_ref", "U_ref"))
-    print(f"Explicit reference seeds: Pref={pref_seed:.12g}, UsRefPu={vref_seed:.12g}")
+    x0_pseudo_baseline, names_pseudo_baseline, event_map_pseudo_baseline = _run_init(RmsInitializationMethod.PseudoTransient)
+    pref_seed = _pick_reference_seed(
+        x0_pseudo_baseline,
+        names_pseudo_baseline,
+        event_map_pseudo_baseline,
+        ("Pm_ref", "Pref", "P_ref"),
+    )
+    vref_seed = _pick_reference_seed(
+        x0_pseudo_baseline,
+        names_pseudo_baseline,
+        event_map_pseudo_baseline,
+        ("UsRefPu", "Vref", "V_ref", "U_ref"),
+    )
+    print(f"Baseline pseudo-transient reference seeds: Pref={pref_seed:.12g}, UsRefPu={vref_seed:.12g}")
 
     prev_pref_env = os.environ.get("VERAGRID_INIT_PREF")
     prev_vref_env = os.environ.get("VERAGRID_INIT_VREF")
     os.environ["VERAGRID_INIT_PREF"] = repr(pref_seed)
     os.environ["VERAGRID_INIT_VREF"] = repr(vref_seed)
     print(
-        "Running PseudoTransient using explicit reference seeds: "
+        "Running PseudoTransient using baseline pseudo-transient reference seeds: "
         f"VERAGRID_INIT_PREF={os.environ['VERAGRID_INIT_PREF']}, "
         f"VERAGRID_INIT_VREF={os.environ['VERAGRID_INIT_VREF']}"
     )
@@ -174,34 +186,35 @@ def run_validation() -> None:
         else:
             os.environ["VERAGRID_INIT_VREF"] = prev_vref_env
 
-    if x0_explicit.size != x0_pseudo.size:
+    if x0_pseudo_baseline.size != x0_pseudo.size:
         raise RuntimeError(
-            f"Initialization vector size mismatch: explicit={x0_explicit.size}, pseudo={x0_pseudo.size}"
+            "Initialization vector size mismatch: "
+            f"baseline_pseudo={x0_pseudo_baseline.size}, seeded_pseudo={x0_pseudo.size}"
         )
 
-    names = names_pseudo if len(names_pseudo) == x0_pseudo.size else names_explicit
-    delta = np.abs(x0_pseudo - x0_explicit)
+    names = names_pseudo if len(names_pseudo) == x0_pseudo.size else names_pseudo_baseline
+    delta = np.abs(x0_pseudo - x0_pseudo_baseline)
     top_n = min(20, delta.size)
     top_idx = np.argsort(-delta)[:top_n]
-    print(f"Largest init deltas |PseudoTransient-Explicit| (top {top_n}):")
+    print(f"Largest init deltas |seeded pseudo - baseline pseudo| (top {top_n}):")
     for idx in top_idx:
         d = float(delta[idx])
         if d <= 0.0:
             continue
         nm = names[idx] if idx < len(names) else f"x[{idx}]"
         print(
-            f"  - {nm}: explicit={float(x0_explicit[idx]):+.6e}, "
-            f"pseudo={float(x0_pseudo[idx]):+.6e}, |delta|={d:.6e}"
+            f"  - {nm}: baseline={float(x0_pseudo_baseline[idx]):+.6e}, "
+            f"seeded={float(x0_pseudo[idx]):+.6e}, |delta|={d:.6e}"
         )
 
     ref_names = {"Pm_ref", "Pref", "P_ref", "UsRefPu", "Vref", "V_ref", "U_ref"}
-    print("Reference comparison (Explicit vs PseudoTransient):")
+    print("Reference comparison (baseline pseudo vs seeded pseudo):")
     for idx, nm in enumerate(names):
         if nm in ref_names:
-            d = abs(float(x0_pseudo[idx]) - float(x0_explicit[idx]))
+            d = abs(float(x0_pseudo[idx]) - float(x0_pseudo_baseline[idx]))
             print(
-                f"  - {nm}: explicit={float(x0_explicit[idx]):+.6e}, "
-                f"pseudo={float(x0_pseudo[idx]):+.6e}, |delta|={d:.6e}"
+                f"  - {nm}: baseline={float(x0_pseudo_baseline[idx]):+.6e}, "
+                f"seeded={float(x0_pseudo[idx]):+.6e}, |delta|={d:.6e}"
             )
 
     print("Pseudo-transient initialization validation passed")

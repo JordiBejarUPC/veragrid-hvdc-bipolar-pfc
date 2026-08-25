@@ -20,7 +20,7 @@ def VSCShuntBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     """
     templ = RmsModelTemplate()
     templ.tpe = DeviceType.VscDevice
-    inputs = [vfactory.add_var("Vm_"), vfactory.add_var("Va_"), vfactory.add_var("Vdc_"), vfactory.add_var("Idc_")]
+    inputs = [vfactory.add_var("Vm"), vfactory.add_var("Va"), vfactory.add_var("Vdc"), vfactory.add_var("Idc")]
     Vm = inputs[0]
     Va = inputs[1]
     v_dc = inputs[2]

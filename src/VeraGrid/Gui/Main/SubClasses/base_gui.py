@@ -29,9 +29,7 @@ from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
 from VeraGridEngine.DataStructures.numerical_circuit import NumericalCircuit
 
-from VeraGridEngine.Compilers.circuit_to_bentayga import BENTAYGA_AVAILABLE
-from VeraGridEngine.Compilers.circuit_to_newton_pa import NEWTON_PA_AVAILABLE
-from VeraGridEngine.Compilers.circuit_to_gslv import GSLV_AVAILABLE
+from VeraGridEngine.Compilers.Gslv.activation import GSLV_AVAILABLE
 from VeraGridEngine.Compilers.circuit_to_pgm import PGM_AVAILABLE
 from VeraGridEngine.Simulations.Clustering.clustering_results import ClusteringResults
 
@@ -62,7 +60,7 @@ from VeraGrid.Session.dynamic_editor_workspace_session import DynamicEditorWorks
 from VeraGrid.Gui.Diagrams.SchematicWidget.diagram_bus_selection_dialogue import DiagramBusSelectorDialogue
 from VeraGrid.Gui.Diagrams.generic_graphics import is_dark_mode
 from VeraGrid.Gui.python_console import PythonConsole
-from VeraGrid.Gui.python_script_editor import PythonCodeEditor
+from VeraGrid.Gui.python_script_editor import ScriptingPythonEditor
 from VeraGrid.Gui.toast_widget import ToastManager
 from VeraGrid.Gui.FileDialogues.PsseDialogue.psse_import import PsseImportDialogue
 from VeraGrid.Gui.ProceduralGrid.procedural_grid import ProceduralGridWindow
@@ -112,7 +110,9 @@ def traverse_objects(name, obj, lst: list, i=0):
     """
     lst.append((name, sys.getsizeof(obj)))
     if i < 10:
-        if hasattr(obj, '__dict__'):
+        if obj.__class__.__dictoffset__ == 0:
+            pass
+        else:
             for name2, obj2 in obj.__dict__.items():
                 if isinstance(obj2, np.ndarray):
                     lst.append((name + "/" + name2, sys.getsizeof(obj2)))
@@ -216,6 +216,7 @@ class BaseMainGui(QMainWindow):
         self.stuff_running_now: List[SimulationTypes] = list()
 
         self.session: SimulationSession = SimulationSession(name='GUI session')
+
         self.dynamic_editor_workspace_session: DynamicEditorWorkspaceSession = DynamicEditorWorkspaceSession()
 
         self._file_name = ''
@@ -293,7 +294,7 @@ class BaseMainGui(QMainWindow):
         self.console = PythonConsole(banner="VeraGrid Python Console!")
         self.ui.consoleLayout.addWidget(self.console)
 
-        self.code_editor = PythonCodeEditor(vars_dict={
+        self.code_editor = ScriptingPythonEditor(vars_dict={
 
             # "app": self,
             # "np": np,
@@ -336,25 +337,20 @@ class BaseMainGui(QMainWindow):
         engine_lst = [EngineType.VeraGrid]
         if GSLV_AVAILABLE:
             engine_lst.append(EngineType.GSLV)
-        if NEWTON_PA_AVAILABLE:
-            engine_lst.append(EngineType.NewtonPA)
-        if BENTAYGA_AVAILABLE:
-            engine_lst.append(EngineType.Bentayga)
+
         if PGM_AVAILABLE:
             engine_lst.append(EngineType.PGM)
 
-        self.ui.engineComboBox.setModel(gf.get_list_model([x.value for x in engine_lst]))
+        self.ui.engineComboBox.setModel(gf.ComboModel(enum_values=engine_lst, translate=self.tr))
         self.ui.engineComboBox.setCurrentIndex(0)
-        self.engine_dict = {x.value: x for x in engine_lst}
 
         # available engines --------------------------------------------------------------------------------------------
         exchange_places = [DeviceType.AreaDevice, DeviceType.CountryDevice]
-        exchange_places_mdl = gf.get_list_model([x.value for x in exchange_places])
+        exchange_places_mdl = gf.ComboModel(enum_values=exchange_places, translate=self.tr)
         self.ui.fromComboBox.setModel(exchange_places_mdl)
         self.ui.fromComboBox.setCurrentIndex(0)
         self.ui.toComboBox.setModel(exchange_places_mdl)
         self.ui.toComboBox.setCurrentIndex(0)
-        self.exchange_places_dict = {x.value: x for x in exchange_places}
 
         # dark mode detection ------------------------------------------------------------------------------------------
         self.ui.dark_mode_checkBox.setChecked(is_dark_mode())
@@ -389,10 +385,10 @@ class BaseMainGui(QMainWindow):
         self.ui.grid_name_line_edit.textChanged.connect(self.refresh_ai_context_if_available)
 
         # combo-boxes
-        self.ui.fromComboBox.currentTextChanged.connect(self.update_from_to_list_views)
-        self.ui.toComboBox.currentTextChanged.connect(self.update_from_to_list_views)
-        self.ui.engineComboBox.currentTextChanged.connect(self.refresh_ai_context_if_available)
-        self.ui.available_results_to_color_comboBox.currentTextChanged.connect(self.refresh_ai_context_if_available)
+        self.ui.fromComboBox.currentIndexChanged.connect(self.update_from_to_list_views)
+        self.ui.toComboBox.currentIndexChanged.connect(self.update_from_to_list_views)
+        self.ui.engineComboBox.currentIndexChanged.connect(self.refresh_ai_context_if_available)
+        self.ui.available_results_to_color_comboBox.currentIndexChanged.connect(self.refresh_ai_context_if_available)
 
     def changeEvent(self, event: QtCore.QEvent) -> None:
         """
@@ -533,12 +529,12 @@ class BaseMainGui(QMainWindow):
         return workspace
 
     def open_dynamic_editor(
-        self,
-        api_object,
-        circuit,
-        preferred_mode: DynamicSimulationMode | None = None,
-        target_workspace: DynamicEditorWorkspaceWindow | None = None,
-        show_tree: bool = False,
+            self,
+            api_object,
+            circuit,
+            preferred_mode: DynamicSimulationMode | None = None,
+            target_workspace: DynamicEditorWorkspaceWindow | None = None,
+            show_tree: bool = False,
     ) -> DynamicBlockEditorGUI | None:
         """
         Open one dynamic editor in this main GUI workspace session.
@@ -748,13 +744,13 @@ class BaseMainGui(QMainWindow):
         """
         Update the exchange area, countries, etc... dependent combos
         """
-        same_type = self.ui.fromComboBox.currentText() == self.ui.toComboBox.currentText()
+        same_type = self.ui.fromComboBox.currentData() == self.ui.toComboBox.currentData()
 
-        devs_from = self.circuit.get_elements_by_type(self.exchange_places_dict[self.ui.fromComboBox.currentText()])
+        devs_from = self.circuit.get_elements_by_type(self.ui.fromComboBox.currentData())
         mdl1 = gf.get_list_model([str(elm) for elm in devs_from], checks=True)
         self.ui.fromListView.setModel(mdl1)
 
-        devs_to = self.circuit.get_elements_by_type(self.exchange_places_dict[self.ui.toComboBox.currentText()])
+        devs_to = self.circuit.get_elements_by_type(self.ui.toComboBox.currentData())
         mdl2 = gf.get_list_model([str(elm) for elm in devs_to], checks=True)
         self.ui.toListView.setModel(mdl2)
 
@@ -800,8 +796,7 @@ class BaseMainGui(QMainWindow):
         Get the currently selected engine
         :return: EngineType
         """
-        val = self.ui.engineComboBox.currentText()
-        return self.engine_dict[val]
+        return self.ui.engineComboBox.currentData()
 
     def about_box(self):
         """
@@ -1133,8 +1128,8 @@ class BaseMainGui(QMainWindow):
                 self.refresh_ai_context_if_available()
                 self.ai_backend_state = self.ai_chat_dialogue.get_backend_state()
                 if (
-                    self.ai_backend_state.provider_tpe == ProviderType.LOCAL_LLAMA_CPP
-                    and len(self.ai_backend_state.base_url.strip()) == 0
+                        self.ai_backend_state.provider_tpe == ProviderType.LOCAL_LLAMA_CPP
+                        and len(self.ai_backend_state.base_url.strip()) == 0
                 ):
                     default_state: AiBackendState = self.build_default_ai_backend_state()
                     self.ai_backend_state = default_state
@@ -1245,8 +1240,12 @@ class BaseMainGui(QMainWindow):
 
             for drv in self.get_all_threads():
                 if drv is not None:
-                    if hasattr(drv, 'cancel'):
+                    if isinstance(drv, GcThread):
                         drv.cancel()
+                    else:
+                        pass
+                else:
+                    pass
         else:
             pass
 

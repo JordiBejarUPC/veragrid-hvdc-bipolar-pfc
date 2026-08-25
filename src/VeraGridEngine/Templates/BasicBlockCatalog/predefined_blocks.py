@@ -90,8 +90,8 @@ class AdderTemplate(TemplateDefinition):
         super().__init__(
             vf,
             params=[
-                TemplateProp(name="minuend_inputs", units="", descr="Number of positive (added) inputs.", tpe=int, value=0),
-                TemplateProp(name="subtrahend_inputs", units="", descr="Number of negative (subtracted) inputs.", tpe=int, value=0)
+                TemplateProp(name="minuend_inputs", units="", descr="Number of positive (added) inputs.", tpe=int, value=1),
+                TemplateProp(name="subtrahend_inputs", units="", descr="Number of negative (subtracted) inputs.", tpe=int, value=1)
             ]
         )
 
@@ -105,7 +105,7 @@ class AdderTemplate(TemplateDefinition):
 
 
 
-def adder(var_factory: VarFactory, minuend_inputs: int = 1, subtrahend_inputs: int = 1) -> Block:
+def adder(var_factory: VarFactory, minuend_inputs: int = 1, subtrahend_inputs: int = 1, name: str = "sum") -> Block:
     """
 
     :param var_factory:

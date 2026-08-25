@@ -5,20 +5,26 @@
 
 from __future__ import annotations
 import numpy as np
-from typing import Dict, List, Union, Any, Tuple, TYPE_CHECKING, Set, Sequence
+from enum import Enum
+from typing import Callable, Dict, List, Union, Any, Tuple, TYPE_CHECKING, Set, Sequence
 from PySide6 import QtCore, QtWidgets, QtGui
-from collections import defaultdict, OrderedDict
+from collections import defaultdict
 
-from VeraGridEngine.basic_structures import IntVec
+from VeraGridEngine import X_Y_SequenceType
+from VeraGridEngine.basic_structures import IntVec, BoolVec
 from VeraGridEngine.data_logger import DataLogger
 from VeraGridEngine.IO.cim.cgmes.cgmes_circuit import CgmesCircuit, CGMES_ASSETS
+from VeraGridEngine.IO.cim.cgmes.base import Base as CgmesBase
 from VeraGridEngine.Devices.Branches.line_locations import LineLocations
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
-from VeraGridEngine.enumerations import SimulationTypes, WindingType
+from VeraGridEngine.enumerations import SimulationTypes, WindingType, WaveformSequenceType, V_I_CurveSequenceType
 from VeraGrid.Gui.font_config import MENU_FONT_SIZE
 
 if TYPE_CHECKING:
     from VeraGrid.Gui.object_model import ObjectsModel
+
+
+ComboStableKey = Union[str, int, float, bool, None]
 
 
 def translate_context_menu_text(text: str) -> str:
@@ -158,18 +164,27 @@ class ComboDelegate(QtWidgets.QItemDelegate):
 
     def setEditorData(self, editor: QtWidgets.QComboBox, index: QtCore.QModelIndex):
         """
+        Open the editor at the cell's current value. The match is done on the actual
+        object (EditRole) first and only then on the display string, because for plain
+        (non str-mixin) enums str(value) legitimately differs from the display name.
 
-        :param editor:
-        :param index:
+        :param editor: combo editor
+        :param index: model index being edited
         """
         editor.blockSignals(True)
-        val = index.model().data(index, role=QtCore.Qt.ItemDataRole.DisplayRole)
-        try:
-            idx = self.object_names.index(val)
-            editor.setCurrentIndex(idx)
-            editor.blockSignals(False)
-        except ValueError:
-            pass
+
+        obj_val = index.model().data(index, role=QtCore.Qt.ItemDataRole.EditRole)
+        if obj_val in self.objects:
+            editor.setCurrentIndex(self.objects.index(obj_val))
+        else:
+            display_val = index.model().data(index, role=QtCore.Qt.ItemDataRole.DisplayRole)
+            if display_val in self.object_names:
+                editor.setCurrentIndex(self.object_names.index(display_val))
+            else:
+                # unknown current value so we keep the editor at its default position 
+                pass
+
+        editor.blockSignals(False)
 
     def setModelData(self,
                      editor: QtWidgets.QComboBox,
@@ -681,7 +696,7 @@ def get_list_model(lst: Sequence[Union[str, ALL_DEV_TYPES]],
     return list_model
 
 
-def get_elm_chck_list_model(lst: List[ALL_DEV_TYPES], check_status: IntVec) -> QtGui.QStandardItemModel:
+def get_elm_chck_list_model(lst: List[ALL_DEV_TYPES], check_status: BoolVec) -> QtGui.QStandardItemModel:
     """
     Pass a list to a list model
     """
@@ -715,37 +730,199 @@ def get_chck_list_model(lst: List[str], check_status: List[bool]) -> QtGui.QStan
     return list_model
 
 
-def enums_to_model(enums_lst: List[Any]) -> Tuple[Dict[str, Any], QtGui.QStandardItemModel]:
+class ComboModel(QtGui.QStandardItemModel):
     """
-    Get the model and dict from a list of Enum value
-    :param enums_lst:
-    :return: dictionary, model
+    Combo-box model storing translated display labels separately from runtime
+    values and persistent configuration keys.
     """
-    d = OrderedDict()
-    val_list = list()
-    for e in enums_lst:
-        d[e.value] = e
-        val_list.append(e.value)
 
-    mdl = get_list_model(val_list)
+    __slots__ = ("_translate",)
 
-    return d, mdl
+    SourceTextRole = QtCore.Qt.ItemDataRole.UserRole + 1
+    StableKeyRole = QtCore.Qt.ItemDataRole.UserRole + 2
 
-def enums_to_icons_model(enums_lst: List[Tuple[Any, str]]) -> Tuple[Dict[str, Any], QtGui.QStandardItemModel]:
-    """
-    Get the model and dict from a list of Enum value
-    :param enums_lst: Tuple of (enum, icon string)
-    :return: dictionary, model
-    """
-    d = OrderedDict()
-    val_list = list()
-    for e, icon_str in enums_lst:
-        d[e.value] = e
-        val_list.append((e.value, icon_str))
+    def __init__(self,
+                 enum_values: Sequence[Enum] | None = None,
+                 text_items: Sequence[Tuple[str, Any]] | None = None,
+                 icon_enum_values: Sequence[Tuple[Enum, str]] | None = None,
+                 icon_text_items: Sequence[Tuple[str, Any, str]] | None = None,
+                 translate: Callable[[str], str] | None = None) -> None:
+        """
+        Constructor.
 
-    mdl = get_icon_list_model(val_list)
+        :param enum_values: Optional enum values to add immediately.
+        :param text_items: Optional (label, runtime data) items to add immediately.
+        :param icon_enum_values: Optional (enum value, icon path) items to add immediately.
+        :param icon_text_items: Optional (label, runtime data, icon path) items to add immediately.
+        :param translate: Optional label translation function, typically ``self.tr``.
+        """
+        QtGui.QStandardItemModel.__init__(self)
+        self._translate: Callable[[str], str] | None = translate
+        if enum_values is None:
+            pass
+        else:
+            for enum_value in enum_values:
+                self.add_enum(enum_value=enum_value)
 
-    return d, mdl
+        if text_items is None:
+            pass
+        else:
+            for source_text, data in text_items:
+                stable_key: ComboStableKey
+                if isinstance(data, (str, int, float, bool)):
+                    stable_key = data
+                else:
+                    stable_key = str(source_text)
+                self.add_combo_item(source_text=str(source_text), data=data, stable_key=stable_key)
+
+        if icon_enum_values is None:
+            pass
+        else:
+            for enum_value, icon_path in icon_enum_values:
+                self.add_icon_enum(enum_value=enum_value, icon_path=icon_path)
+
+        if icon_text_items is None:
+            pass
+        else:
+            for source_text, data, icon_path in icon_text_items:
+                stable_key: ComboStableKey
+                if isinstance(data, (str, int, float, bool)):
+                    stable_key = data
+                else:
+                    stable_key = str(source_text)
+                self.add_combo_item(source_text=str(source_text),
+                                    data=data,
+                                    stable_key=stable_key,
+                                    icon_path=icon_path)
+
+    def _get_display_text(self, source_text: str) -> str:
+        """
+        Get the current display text for a source label.
+
+        :param source_text: Untranslated label.
+        :return: Translated label when a translator is available.
+        """
+        if self._translate is None:
+            return source_text
+        else:
+            return self._translate(source_text)
+
+    def add_combo_item(self,
+                       source_text: str,
+                       data: Any,
+                       stable_key: ComboStableKey,
+                       icon_path: str | None = None,
+                       checks: bool = False,
+                       check_value: bool = False) -> None:
+        """
+        Add one item with separate display text, runtime data and stable key.
+
+        :param source_text: Untranslated display label.
+        :param data: Runtime value returned by ``QComboBox.currentData()``.
+        :param stable_key: Serializable value used for settings persistence.
+        :param icon_path: Optional icon resource path.
+        :param checks: Add a check box to the item.
+        :param check_value: Initial check state when checks is true.
+        :return: Nothing.
+        """
+        display_text: str = self._get_display_text(source_text=source_text)
+        item = QtGui.QStandardItem(display_text)
+        item.setEditable(False)
+        item.setData(data, QtCore.Qt.ItemDataRole.UserRole)
+        item.setData(source_text, self.SourceTextRole)
+        item.setData(stable_key, self.StableKeyRole)
+        if icon_path is None:
+            pass
+        else:
+            icon = QtGui.QIcon()
+            icon.addPixmap(QtGui.QPixmap(icon_path))
+            item.setIcon(icon)
+        if checks:
+            item.setCheckable(True)
+            if check_value:
+                item.setCheckState(QtCore.Qt.CheckState.Checked)
+            else:
+                pass
+        else:
+            pass
+        self.appendRow(item)
+
+    def add_text(self,
+                 source_text: str,
+                 data: str,
+                 checks: bool = False,
+                 check_value: bool = False) -> None:
+        """
+        Add one text-backed item.
+
+        :param source_text: Untranslated display label.
+        :param data: Runtime string value.
+        :param checks: Add a check box to the item.
+        :param check_value: Initial check state when checks is true.
+        :return: Nothing.
+        """
+        self.add_combo_item(source_text=source_text,
+                            data=data,
+                            stable_key=data,
+                            checks=checks,
+                            check_value=check_value)
+
+    def add_enum(self,
+                 enum_value: Enum,
+                 checks: bool = False,
+                 check_value: bool = False) -> None:
+        """
+        Add one enum-backed item.
+
+        :param enum_value: Runtime enum value.
+        :param checks: Add a check box to the item.
+        :param check_value: Initial check state when checks is true.
+        :return: Nothing.
+        """
+        source_text: str = str(enum_value.value)
+        self.add_combo_item(source_text=source_text,
+                            data=enum_value,
+                            stable_key=source_text,
+                            checks=checks,
+                            check_value=check_value)
+
+    def add_icon_enum(self,
+                      enum_value: Enum,
+                      icon_path: str,
+                      checks: bool = False,
+                      check_value: bool = False) -> None:
+        """
+        Add one enum-backed item with an icon.
+
+        :param enum_value: Runtime enum value.
+        :param icon_path: Icon resource path.
+        :param checks: Add a check box to the item.
+        :param check_value: Initial check state when checks is true.
+        :return: Nothing.
+        """
+        source_text: str = str(enum_value.value)
+        self.add_combo_item(source_text=source_text,
+                            data=enum_value,
+                            stable_key=source_text,
+                            icon_path=icon_path,
+                            checks=checks,
+                            check_value=check_value)
+
+    def retranslate(self, translate: Callable[[str], str] | None) -> None:
+        """
+        Refresh all display labels from their stored source text.
+
+        :param translate: New translation function.
+        :return: Nothing.
+        """
+        self._translate = translate
+        for row_idx in range(self.rowCount()):
+            item = self.item(row_idx)
+            source_text = item.data(self.SourceTextRole)
+            if isinstance(source_text, str):
+                item.setText(self._get_display_text(source_text=source_text))
+            else:
+                pass
 
 
 class CustomFileSystemModel(QtWidgets.QFileSystemModel):
@@ -961,43 +1138,44 @@ def get_tree_model(d, top='', icons: Dict[str, str] = None) -> QtGui.QStandardIt
     return model
 
 
-def get_simulation_tree_icons() -> Dict[str, str]:
+def get_simulation_tree_icons() -> Dict[SimulationTypes, str]:
     """
     Build the icon map shared by simulation-oriented tree views.
 
-    :return: Mapping from simulation display name to icon resource path.
+    :return: Mapping from simulation types to icon resource paths.
     """
     return {
-        SimulationTypes.PowerFlow_run.value: ':/Icons/icons/pf',
-        SimulationTypes.PowerFlow3ph_run.value: ':/Icons/icons/pf3',
-        SimulationTypes.PowerFlowTimeSeries3ph_run.value: ':/Icons/icons/pf3',
-        SimulationTypes.PowerFlowTimeSeries_run.value: ':/Icons/icons/pf_ts.png',
-        SimulationTypes.OPF_run.value: ':/Icons/icons/dcopf.png',
-        SimulationTypes.OPFTimeSeries_run.value: ':/Icons/icons/dcopf_ts.png',
-        SimulationTypes.ShortCircuit_run.value: ':/Icons/icons/short_circuit.png',
-        SimulationTypes.LinearAnalysis_run.value: ':/Icons/icons/ptdf.png',
-        SimulationTypes.LinearAnalysis_TS_run.value: ':/Icons/icons/ptdf_ts.png',
-        SimulationTypes.SigmaAnalysis_run.value: ':/Icons/icons/sigma.png',
-        SimulationTypes.StochasticPowerFlow.value: ':/Icons/icons/stochastic_power_flow.png',
-        SimulationTypes.ContingencyAnalysis_run.value: ':/Icons/icons/otdf.png',
-        SimulationTypes.ContingencyAnalysisTS_run.value: ':/Icons/icons/otdf_ts.png',
-        SimulationTypes.NetTransferCapacity_run.value: ':/Icons/icons/atc.png',
-        SimulationTypes.NetTransferCapacityTS_run.value: ':/Icons/icons/atc_ts.png',
-        SimulationTypes.OptimalNetTransferCapacityTimeSeries_run.value: ':/Icons/icons/ntc_opf_ts.png',
-        SimulationTypes.InputsAnalysis_run.value: ':/Icons/icons/stats.png',
-        SimulationTypes.NodeGrouping_run.value: ':/Icons/icons/ml.png',
-        SimulationTypes.ContinuationPowerFlow_run.value: ':/Icons/icons/continuation_power_flow.png',
-        SimulationTypes.ClusteringAnalysis_run.value: ':/Icons/icons/clustering.png',
-        SimulationTypes.InvestmentsEvaluation_run.value: ':/Icons/icons/expansion_planning.png',
-        SimulationTypes.NodalCapacityTimeSeries_run.value: ':/Icons/icons/nodal_capacity.png',
-        SimulationTypes.OPF_NTC_run.value: ':/Icons/icons/ntc_opf.png',
-        SimulationTypes.OPF_NTC_TS_run.value: ':/Icons/icons/ntc_opf_ts.png',
-        SimulationTypes.Reliability_run.value: ':/Icons/icons/reliability.png',
-        SimulationTypes.RmsSmallSignal_run.value: ':/Icons/icons/ss_icon.png',
-        SimulationTypes.RmsDynamic_run.value: ':/Icons/icons/dyn.png',
-        SimulationTypes.EmtSmallSignal_run.value: ':/Icons/icons/ss_emt_icon.png',
-        SimulationTypes.EmtDynamic_run.value: ':/Icons/icons/dyn_emt.png',
-        SimulationTypes.StateEstimation_run.value: ':/Icons/icons/SE.png',
+        SimulationTypes.PowerFlow_run: ':/Icons/icons/pf',
+        SimulationTypes.PowerFlow3ph_run: ':/Icons/icons/pf3',
+        SimulationTypes.PowerFlowTimeSeries3ph_run: ':/Icons/icons/pf3',
+        SimulationTypes.PowerFlowTimeSeries_run: ':/Icons/icons/pf_ts.png',
+        SimulationTypes.OPF_run: ':/Icons/icons/dcopf.png',
+        SimulationTypes.OPFTimeSeries_run: ':/Icons/icons/dcopf_ts.png',
+        SimulationTypes.ShortCircuit_run: ':/Icons/icons/short_circuit.png',
+        SimulationTypes.LinearAnalysis_run: ':/Icons/icons/ptdf.png',
+        SimulationTypes.LinearAnalysis_TS_run: ':/Icons/icons/ptdf_ts.png',
+        SimulationTypes.SigmaAnalysis_run: ':/Icons/icons/sigma.png',
+        SimulationTypes.StochasticPowerFlow: ':/Icons/icons/stochastic_power_flow.png',
+        SimulationTypes.ContingencyAnalysis_run: ':/Icons/icons/otdf.png',
+        SimulationTypes.ContingencyAnalysisTS_run: ':/Icons/icons/otdf_ts.png',
+        SimulationTypes.NetTransferCapacity_run: ':/Icons/icons/atc.png',
+        SimulationTypes.NetTransferCapacityTS_run: ':/Icons/icons/atc_ts.png',
+        SimulationTypes.OptimalNetTransferCapacityTimeSeries_run: ':/Icons/icons/ntc_opf_ts.png',
+        SimulationTypes.InputsAnalysis_run: ':/Icons/icons/stats.png',
+        SimulationTypes.NodeGrouping_run: ':/Icons/icons/ml.png',
+        SimulationTypes.ContinuationPowerFlow_run: ':/Icons/icons/continuation_power_flow.png',
+        SimulationTypes.ClusteringAnalysis_run: ':/Icons/icons/clustering.png',
+        SimulationTypes.InvestmentsEvaluation_run: ':/Icons/icons/expansion_planning.png',
+        SimulationTypes.NodalCapacity_run: ':/Icons/icons/nodal_capacity.png',
+        SimulationTypes.NodalCapacityTimeSeries_run: ':/Icons/icons/nodal_capacity.png',
+        SimulationTypes.OPF_NTC_run: ':/Icons/icons/ntc_opf.png',
+        SimulationTypes.OPF_NTC_TS_run: ':/Icons/icons/ntc_opf_ts.png',
+        SimulationTypes.Reliability_run: ':/Icons/icons/reliability.png',
+        SimulationTypes.RmsSmallSignal_run: ':/Icons/icons/ss_icon.png',
+        SimulationTypes.RmsDynamic_run: ':/Icons/icons/dyn.png',
+        SimulationTypes.EmtSmallSignal_run: ':/Icons/icons/ss_emt_icon.png',
+        SimulationTypes.EmtDynamic_run: ':/Icons/icons/dyn_emt.png',
+        SimulationTypes.StateEstimation_run: ':/Icons/icons/SE.png',
     }
 
 
@@ -1022,21 +1200,19 @@ CIM_LOADED_ROLE = QtCore.Qt.UserRole + 121
 
 
 def _get_cim_object_id(obj: Any):
-    if hasattr(obj, 'rdfid') and obj.rdfid is not None:
+    if isinstance(obj, CgmesBase) and obj.rdfid is not None:
         return obj.rdfid
-    return id(obj)
+    else:
+        return id(obj)
 
 
 def _get_cim_object_label(class_tag, device):
     if class_tag is not None:
         return class_tag
-    if hasattr(device, 'name'):
-        if device.name is not None:
-            if device.name != '':
-                return device.name
-    if hasattr(device, 'rdfid'):
+    elif isinstance(device, CgmesBase):
         return device.rdfid
-    return str(device)
+    else:
+        return str(device)
 
 
 def _collect_cim_ancestor_ids(item: QtGui.QStandardItem) -> Set[Any]:
@@ -1087,7 +1263,7 @@ def populate_cim_item_children(item: QtGui.QStandardItem, editable=False):
 
         property_value = getattr(device, property_name)
 
-        if hasattr(property_value, 'rdfid'):
+        if isinstance(property_value, CgmesBase):
 
             prop_id = _get_cim_object_id(property_value)
             we_are_in_a_recursive_loop = prop_id in ancestor_ids
@@ -1164,7 +1340,7 @@ def add_cim_object_node(class_tag,
 
             property_value = getattr(device, property_name)
 
-            if hasattr(property_value, 'rdfid'):
+            if isinstance(property_value, CgmesBase):
 
                 prop_id = _get_cim_object_id(property_value)
                 we_are_in_a_recursive_loop = prop_id in already_visited
@@ -1423,10 +1599,11 @@ class WaveformPoint:
         return f"WaveformPoint({self.time}, {self.value})"
 
 
-class WaveformEditorDialog(QtWidgets.QDialog):
-    def __init__(self, parent=None):
+class SequenceEditorDialog(QtWidgets.QDialog):
+    def __init__(self, parent, sequence_type: WaveformSequenceType | V_I_CurveSequenceType | X_Y_SequenceType ):
         super().__init__(parent)
-        self.setWindowTitle("Waveform editor")
+        self.sequence_type = sequence_type
+        self.setWindowTitle("Sequence editor")
         self.setMinimumSize(600, 500)
 
         layout = QtWidgets.QVBoxLayout(self)
@@ -1449,7 +1626,12 @@ class WaveformEditorDialog(QtWidgets.QDialog):
         layout.addLayout(button_layout)
 
         self.table = QtWidgets.QTableWidget(0, 2)
-        self.table.setHorizontalHeaderLabels(["time", "value"])
+        if self.sequence_type is type[V_I_CurveSequenceType]:
+            self.table.setHorizontalHeaderLabels(["Voltage", "Current"])
+        elif self.sequence_type is type[WaveformSequenceType]:
+            self.table.setHorizontalHeaderLabels(["time", "value"])
+        elif self.sequence_type is type[X_Y_SequenceType]:
+            self.table.setHorizontalHeaderLabels(["X", "Y"])
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.setSelectionBehavior(QtWidgets.QTableWidget.SelectionBehavior.SelectRows)
         layout.addWidget(self.table)
@@ -1531,25 +1713,77 @@ class WaveformEditorDialog(QtWidgets.QDialog):
         if self.canvas is None:
             return
 
-        times = []
-        values = []
+        values_0 = []
+        values_1 = []
         for row in range(self.table.rowCount()):
-            t_item = self.table.item(row, 0)
-            v_item = self.table.item(row, 1)
-            if t_item is not None and v_item is not None:
+            item_0 = self.table.item(row, 0)
+            item_1 = self.table.item(row, 1)
+            if item_0 is not None and item_1 is not None:
                 try:
-                    times.append(float(t_item.text()))
-                    values.append(float(v_item.text()))
+                    values_0.append(float(item_0.text()))
+                    values_1.append(float(item_1.text()))
                 except ValueError:
                     pass
 
         self.ax.clear()
-        if times:
-            self.ax.plot(times, values, "o-")
-            self.ax.set_xlabel("time")
-            self.ax.set_ylabel("value")
+        if values_0:
+            self.ax.plot(values_0, values_1, "o-")
+            if self.sequence_type is V_I_CurveSequenceType:
+                self.ax.set_xlabel("voltage")
+                self.ax.set_ylabel("current")
+            elif self.sequence_type is WaveformSequenceType:
+                self.ax.set_xlabel("time")
+                self.ax.set_ylabel("value")
             self.ax.grid(True)
         self.canvas.draw_idle()
+
+    def accept(self) -> None:
+        # points count check
+        if self.sequence_type in [type[WaveformSequenceType], type[X_Y_SequenceType]]:
+            row_count = self.table.rowCount()
+            if row_count < 2:
+                QtWidgets.QMessageBox.warning(
+                    self,
+                    "Invalid number of points",
+                    "At least two points are required.",
+                )
+                return
+
+        # increasing values check
+        if self.sequence_type in [type[WaveformSequenceType], type[X_Y_SequenceType]]:
+            row_count = self.table.rowCount()
+            prev_x: float | None = None
+            for row in range(row_count):
+                item = self.table.item(row, 0)
+                if item is None:
+                    continue
+                try:
+                    x = float(item.text())
+                except ValueError:
+                    QtWidgets.QMessageBox.warning(
+                        self,
+                        "Invalid values",
+                        f"Non-numeric value in column 0 at row {row + 1}.",
+                    )
+                    return
+                if prev_x is not None and x <= prev_x:
+                    if self.sequence_type is WaveformSequenceType:
+                        QtWidgets.QMessageBox.warning(
+                            self,
+                            "Invalid waveform",
+                            "Arbitrary source waveform times must be strictly increasing.",
+                        )
+
+                    elif self.sequence_type is X_Y_SequenceType:
+                        QtWidgets.QMessageBox.warning(
+                            self,
+                            "Invalid points",
+                            "y points must be strictly increasing.",
+                        )
+                    return
+                prev_x = x
+
+        super().accept()
 
     def set_points(self, points):
         self.table.setRowCount(0)
@@ -1575,10 +1809,410 @@ class WaveformEditorDialog(QtWidgets.QDialog):
         return points
 
 
+class LookupMatrixEditorDialog(QtWidgets.QDialog):
+    """
+    Dialog for editing a 2-D lookup matrix.
+
+    The user edits X breakpoints and Y breakpoints in two separate tables.
+    A third table shows the Z matrix whose first row holds the X values,
+    first column holds the Y values, and the remaining cells are the
+    user-editable Z values.  Both the row and column headers update
+    dynamically whenever X or Y points change.
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Lookup matrix editor")
+        self.setMinimumSize(750, 650)
+
+        main_layout = QtWidgets.QVBoxLayout(self)
+
+        # ── X points section ────────────────────────────────────────────
+        x_group = QtWidgets.QGroupBox("X breakpoints")
+        x_layout = QtWidgets.QHBoxLayout(x_group)
+
+        self.x_table = QtWidgets.QTableWidget(0, 1)
+        self.x_table.setHorizontalHeaderLabels(["X"])
+        self.x_table.horizontalHeader().setStretchLastSection(True)
+        self.x_table.setSelectionBehavior(QtWidgets.QTableWidget.SelectionBehavior.SelectRows)
+        self.x_table.setMaximumHeight(150)
+        self.x_table.itemChanged.connect(self._on_x_changed)
+        x_layout.addWidget(self.x_table)
+
+        x_btn_layout = QtWidgets.QVBoxLayout()
+        self.x_add_btn = QtWidgets.QPushButton("Add")
+        self.x_del_btn = QtWidgets.QPushButton("Delete")
+        self.x_up_btn = QtWidgets.QPushButton("Up")
+        self.x_down_btn = QtWidgets.QPushButton("Down")
+        self.x_add_btn.clicked.connect(self._add_x)
+        self.x_del_btn.clicked.connect(self._del_x)
+        self.x_up_btn.clicked.connect(self._up_x)
+        self.x_down_btn.clicked.connect(self._down_x)
+        for btn in (self.x_add_btn, self.x_del_btn, self.x_up_btn, self.x_down_btn):
+            x_btn_layout.addWidget(btn)
+        x_btn_layout.addStretch()
+        x_layout.addLayout(x_btn_layout)
+
+        main_layout.addWidget(x_group)
+
+        # ── Y points section ────────────────────────────────────────────
+        y_group = QtWidgets.QGroupBox("Y breakpoints")
+        y_layout = QtWidgets.QHBoxLayout(y_group)
+
+        self.y_table = QtWidgets.QTableWidget(0, 1)
+        self.y_table.setHorizontalHeaderLabels(["Y"])
+        self.y_table.horizontalHeader().setStretchLastSection(True)
+        self.y_table.setSelectionBehavior(QtWidgets.QTableWidget.SelectionBehavior.SelectRows)
+        self.y_table.setMaximumHeight(150)
+        self.y_table.itemChanged.connect(self._on_y_changed)
+        y_layout.addWidget(self.y_table)
+
+        y_btn_layout = QtWidgets.QVBoxLayout()
+        self.y_add_btn = QtWidgets.QPushButton("Add")
+        self.y_del_btn = QtWidgets.QPushButton("Delete")
+        self.y_up_btn = QtWidgets.QPushButton("Up")
+        self.y_down_btn = QtWidgets.QPushButton("Down")
+        self.y_add_btn.clicked.connect(self._add_y)
+        self.y_del_btn.clicked.connect(self._del_y)
+        self.y_up_btn.clicked.connect(self._up_y)
+        self.y_down_btn.clicked.connect(self._down_y)
+        for btn in (self.y_add_btn, self.y_del_btn, self.y_up_btn, self.y_down_btn):
+            y_btn_layout.addWidget(btn)
+        y_btn_layout.addStretch()
+        y_layout.addLayout(y_btn_layout)
+
+        main_layout.addWidget(y_group)
+
+        # ── Z matrix section ────────────────────────────────────────────
+        matrix_group = QtWidgets.QGroupBox("Z matrix  (row = Y, column = X)")
+        matrix_layout = QtWidgets.QVBoxLayout(matrix_group)
+
+        self.matrix_table = QtWidgets.QTableWidget()
+        self.matrix_table.horizontalHeader().setStretchLastSection(True)
+        self.matrix_table.setSelectionBehavior(QtWidgets.QTableWidget.SelectionBehavior.SelectItems)
+        matrix_layout.addWidget(self.matrix_table)
+
+        main_layout.addWidget(matrix_group)
+
+        # ── Matplotlib plot (optional) ──────────────────────────────────
+        try:
+            from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
+            from matplotlib.figure import Figure
+            self.figure = Figure()
+            self.canvas = FigureCanvasQTAgg(self.figure)
+            self.ax = self.figure.add_subplot(111)
+            main_layout.addWidget(self.canvas)
+        except Exception:
+            self.canvas = None
+            self.ax = None
+
+        # ── Dialog buttons ──────────────────────────────────────────────
+        button_box = QtWidgets.QDialogButtonBox(
+            QtWidgets.QDialogButtonBox.StandardButton.Ok | QtWidgets.QDialogButtonBox.StandardButton.Cancel
+        )
+        button_box.accepted.connect(self.accept)
+        button_box.rejected.connect(self.reject)
+        main_layout.addWidget(button_box)
+
+    # ── X table helpers ─────────────────────────────────────────────────
+
+    def _add_x(self):
+        self.x_table.blockSignals(True)
+        row = self.x_table.rowCount()
+        self.x_table.insertRow(row)
+        self.x_table.setItem(row, 0, QtWidgets.QTableWidgetItem("0.0"))
+        self.x_table.blockSignals(False)
+        self._rebuild_matrix()
+
+    def _del_x(self):
+        rows = sorted(set(i.row() for i in self.x_table.selectedIndexes()), reverse=True)
+        self.x_table.blockSignals(True)
+        for r in rows:
+            self.x_table.removeRow(r)
+        self.x_table.blockSignals(False)
+        self._rebuild_matrix()
+
+    def _up_x(self):
+        rows = sorted(set(i.row() for i in self.x_table.selectedIndexes()))
+        if not rows or rows[0] == 0:
+            return
+        self.x_table.blockSignals(True)
+        for r in rows:
+            self._swap_x_rows(r, r - 1)
+        self.x_table.blockSignals(False)
+        self._rebuild_matrix()
+
+    def _down_x(self):
+        rows = sorted(set(i.row() for i in self.x_table.selectedIndexes()), reverse=True)
+        if not rows or rows[-1] == self.x_table.rowCount() - 1:
+            return
+        self.x_table.blockSignals(True)
+        for r in rows:
+            self._swap_x_rows(r, r + 1)
+        self.x_table.blockSignals(False)
+        self._rebuild_matrix()
+
+    def _swap_x_rows(self, r1: int, r2: int):
+        item1 = self.x_table.item(r1, 0)
+        item2 = self.x_table.item(r2, 0)
+        if item1 is None:
+            item1 = QtWidgets.QTableWidgetItem("0.0")
+            self.x_table.setItem(r1, 0, item1)
+        if item2 is None:
+            item2 = QtWidgets.QTableWidgetItem("0.0")
+            self.x_table.setItem(r2, 0, item2)
+        item1.setText(item2.text())
+
+    # ── Y table helpers ─────────────────────────────────────────────────
+
+    def _add_y(self):
+        self.y_table.blockSignals(True)
+        row = self.y_table.rowCount()
+        self.y_table.insertRow(row)
+        self.y_table.setItem(row, 0, QtWidgets.QTableWidgetItem("0.0"))
+        self.y_table.blockSignals(False)
+        self._rebuild_matrix()
+
+    def _del_y(self):
+        rows = sorted(set(i.row() for i in self.y_table.selectedIndexes()), reverse=True)
+        self.y_table.blockSignals(True)
+        for r in rows:
+            self.y_table.removeRow(r)
+        self.y_table.blockSignals(False)
+        self._rebuild_matrix()
+
+    def _up_y(self):
+        rows = sorted(set(i.row() for i in self.y_table.selectedIndexes()))
+        if not rows or rows[0] == 0:
+            return
+        self.y_table.blockSignals(True)
+        for r in rows:
+            self._swap_y_rows(r, r - 1)
+        self.y_table.blockSignals(False)
+        self._rebuild_matrix()
+
+    def _down_y(self):
+        rows = sorted(set(i.row() for i in self.y_table.selectedIndexes()), reverse=True)
+        if not rows or rows[-1] == self.y_table.rowCount() - 1:
+            return
+        self.y_table.blockSignals(True)
+        for r in rows:
+            self._swap_y_rows(r, r + 1)
+        self.y_table.blockSignals(False)
+        self._rebuild_matrix()
+
+    def _swap_y_rows(self, r1: int, r2: int):
+        item1 = self.y_table.item(r1, 0)
+        item2 = self.y_table.item(r2, 0)
+        if item1 is None:
+            item1 = QtWidgets.QTableWidgetItem("0.0")
+            self.y_table.setItem(r1, 0, item1)
+        if item2 is None:
+            item2 = QtWidgets.QTableWidgetItem("0.0")
+            self.y_table.setItem(r2, 0, item2)
+        item1.setText(item2.text())
+
+    # ── Signal handlers ─────────────────────────────────────────────────
+
+    def _on_x_changed(self, item: QtWidgets.QTableWidgetItem):
+        if item.column() == 0:
+            self._rebuild_matrix()
+
+    def _on_y_changed(self, item: QtWidgets.QTableWidgetItem):
+        if item.column() == 0:
+            self._rebuild_matrix()
+
+    # ── Matrix rebuild ──────────────────────────────────────────────────
+
+    def _read_x_values(self) -> list[float]:
+        values: list[float] = []
+        for row in range(self.x_table.rowCount()):
+            item = self.x_table.item(row, 0)
+            if item is not None:
+                try:
+                    values.append(float(item.text()))
+                except ValueError:
+                    values.append(0.0)
+        return values
+
+    def _read_y_values(self) -> list[float]:
+        values: list[float] = []
+        for row in range(self.y_table.rowCount()):
+            item = self.y_table.item(row, 0)
+            if item is not None:
+                try:
+                    values.append(float(item.text()))
+                except ValueError:
+                    values.append(0.0)
+        return values
+
+    def _rebuild_matrix(self):
+        x_vals = self._read_x_values()
+        y_vals = self._read_y_values()
+        x_count = len(x_vals)
+        y_count = len(y_vals)
+
+        # preserve existing z values where possible
+        old_z: dict[tuple[int, int], str] = {}
+        for r in range(1, self.matrix_table.rowCount()):
+            for c in range(1, self.matrix_table.columnCount()):
+                item = self.matrix_table.item(r, c)
+                if item is not None:
+                    old_z[(r, c)] = item.text()
+
+        self.matrix_table.blockSignals(True)
+        self.matrix_table.setRowCount(y_count + 1)
+        self.matrix_table.setColumnCount(x_count + 1)
+
+        # header row (X values)
+        self.matrix_table.setHorizontalHeaderItem(0, QtWidgets.QTableWidgetItem(""))
+        for c, xval in enumerate(x_vals, start=1):
+            self.matrix_table.setHorizontalHeaderItem(c, QtWidgets.QTableWidgetItem(str(xval)))
+
+        # header column (Y values)
+        self.matrix_table.setVerticalHeaderItem(0, QtWidgets.QTableWidgetItem(""))
+        for r, yval in enumerate(y_vals, start=1):
+            self.matrix_table.setVerticalHeaderItem(r, QtWidgets.QTableWidgetItem(str(yval)))
+
+        # fill cells
+        for r in range(y_count + 1):
+            for c in range(x_count + 1):
+                if r == 0 and c == 0:
+                    item = QtWidgets.QTableWidgetItem("")
+                    item.setFlags(item.flags() & ~QtCore.Qt.ItemFlag.ItemIsEditable)
+                    self.matrix_table.setItem(r, c, item)
+                elif r == 0 or c == 0:
+                    item = QtWidgets.QTableWidgetItem("")
+                    item.setFlags(item.flags() & ~QtCore.Qt.ItemFlag.ItemIsEditable)
+                    self.matrix_table.setItem(r, c, item)
+                else:
+                    text = old_z.get((r, c), "0.0")
+                    self.matrix_table.setItem(r, c, QtWidgets.QTableWidgetItem(text))
+
+        self.matrix_table.blockSignals(False)
+        self._update_plot()
+
+    # ── Plot ────────────────────────────────────────────────────────────
+
+    def _update_plot(self):
+        if self.ax is None:
+            return
+
+        x_vals = self._read_x_values()
+        y_vals = self._read_y_values()
+        z_matrix = self._read_z_matrix()
+
+        self.ax.clear()
+        if x_vals and y_vals and z_matrix:
+            X, Y = np.meshgrid(x_vals, y_vals)
+            try:
+                Z = np.array(z_matrix, dtype=np.float64)
+                if Z.shape == (len(y_vals), len(x_vals)):
+                    self.ax.pcolormesh(X, Y, Z, shading="auto")
+                    self.ax.set_xlabel("X")
+                    self.ax.set_ylabel("Y")
+                    self.ax.set_title("Z matrix")
+            except (ValueError, TypeError):
+                pass
+        self.canvas.draw_idle()
+
+    # ── Data accessors ──────────────────────────────────────────────────
+
+    def _read_z_matrix(self) -> list[list[float]]:
+        matrix: list[list[float]] = []
+        for r in range(1, self.matrix_table.rowCount()):
+            row: list[float] = []
+            for c in range(1, self.matrix_table.columnCount()):
+                item = self.matrix_table.item(r, c)
+                if item is not None:
+                    try:
+                        row.append(float(item.text()))
+                    except ValueError:
+                        row.append(0.0)
+                else:
+                    row.append(0.0)
+            matrix.append(row)
+        return matrix
+
+    def set_data(self, x_points, y_points, z_matrix):
+        self.x_table.blockSignals(True)
+        self.y_table.blockSignals(True)
+        self.x_table.setRowCount(0)
+        self.y_table.setRowCount(0)
+
+        for x in x_points:
+            row = self.x_table.rowCount()
+            self.x_table.insertRow(row)
+            self.x_table.setItem(row, 0, QtWidgets.QTableWidgetItem(str(float(x))))
+
+        for y in y_points:
+            row = self.y_table.rowCount()
+            self.y_table.insertRow(row)
+            self.y_table.setItem(row, 0, QtWidgets.QTableWidgetItem(str(float(y))))
+
+        self.x_table.blockSignals(False)
+        self.y_table.blockSignals(False)
+        self._rebuild_matrix()
+
+        # fill z values from the provided matrix
+        if z_matrix is not None:
+            for r_idx, row in enumerate(z_matrix):
+                for c_idx, val in enumerate(row):
+                    item = self.matrix_table.item(r_idx + 1, c_idx + 1)
+                    if item is not None:
+                        item.setText(str(float(val)))
+
+    def get_data(self) -> tuple[list[float], list[float], list[list[float]]]:
+        return self._read_x_values(), self._read_y_values(), self._read_z_matrix()
+
+    def accept(self) -> None:
+        x_vals = self._read_x_values()
+        y_vals = self._read_y_values()
+
+        if len(x_vals) < 2:
+            QtWidgets.QMessageBox.warning(
+                self,
+                "Invalid number of X points",
+                "At least two X breakpoints are required.",
+            )
+            return
+
+        if len(y_vals) < 2:
+            QtWidgets.QMessageBox.warning(
+                self,
+                "Invalid number of Y points",
+                "At least two Y breakpoints are required.",
+            )
+            return
+
+        # check X strictly increasing
+        for i in range(1, len(x_vals)):
+            if x_vals[i] <= x_vals[i - 1]:
+                QtWidgets.QMessageBox.warning(
+                    self,
+                    "Invalid X breakpoints",
+                    "X values must be strictly increasing.",
+                )
+                return
+
+        # check Y strictly increasing
+        for i in range(1, len(y_vals)):
+            if y_vals[i] <= y_vals[i - 1]:
+                QtWidgets.QMessageBox.warning(
+                    self,
+                    "Invalid Y breakpoints",
+                    "Y values must be strictly increasing.",
+                )
+                return
+
+        super().accept()
+
+
 class SequenceDelegate(QtWidgets.QStyledItemDelegate):
 
-    def __init__(self, parent):
+    def __init__(self, parent, sequence_type: type[WaveformSequenceType] | type[V_I_CurveSequenceType] | type[X_Y_SequenceType]):
         QtWidgets.QStyledItemDelegate.__init__(self, parent)
+        self.sequence_type: type[WaveformSequenceType] | type[V_I_CurveSequenceType] | type[X_Y_SequenceType] = sequence_type
 
     def paint(self, painter, option, index):
         painter.save()
@@ -1588,9 +2222,9 @@ class SequenceDelegate(QtWidgets.QStyledItemDelegate):
 
         val = index.model().data(index, QtCore.Qt.ItemDataRole.EditRole)
         if val is not None and len(val) > 0:
-            btn_option.text = f"Edit waveform ({len(val)} pts)"
+            btn_option.text = f"Edit  ({len(val)} points)"
         else:
-            btn_option.text = "Edit waveform"
+            btn_option.text = "Edit points"
 
         QtWidgets.QApplication.style().drawControl(
             QtWidgets.QStyle.CE_PushButton, btn_option, painter
@@ -1602,7 +2236,7 @@ class SequenceDelegate(QtWidgets.QStyledItemDelegate):
         if event.type() == QtCore.QEvent.Type.MouseButtonRelease:
             if not (index.flags() & QtCore.Qt.ItemFlag.ItemIsEditable):
                 return False
-            dialog = WaveformEditorDialog(self.parent())
+            dialog = SequenceEditorDialog(self.parent(), self.sequence_type)
             current = index.model().data(index, QtCore.Qt.ItemDataRole.EditRole)
             if current is not None:
                 dialog.set_points(current)
@@ -1610,6 +2244,46 @@ class SequenceDelegate(QtWidgets.QStyledItemDelegate):
                 model.setData(index, dialog.get_points())
             return True
         return False
+
+
+class ZmatrixDelegate(QtWidgets.QStyledItemDelegate):
+
+    def __init__(self, parent):
+        QtWidgets.QStyledItemDelegate.__init__(self, parent)
+
+    def paint(self, painter, option, index):
+        painter.save()
+
+        btn_option = QtWidgets.QStyleOptionButton()
+        btn_option.rect = option.rect
+
+        val = index.model().data(index, QtCore.Qt.ItemDataRole.EditRole)
+        if val is not None:
+            x_pts, y_pts, z_mat = val
+            btn_option.text = f"Edit matrix  ({len(x_pts)}x{len(y_pts)})"
+        else:
+            btn_option.text = "Edit matrix"
+
+        QtWidgets.QApplication.style().drawControl(
+            QtWidgets.QStyle.CE_PushButton, btn_option, painter
+        )
+
+        painter.restore()
+
+    def editorEvent(self, event, model, option, index):
+        if event.type() == QtCore.QEvent.Type.MouseButtonRelease:
+            if not (index.flags() & QtCore.Qt.ItemFlag.ItemIsEditable):
+                return False
+            dialog = LookupMatrixEditorDialog(self.parent())
+            current = index.model().data(index, QtCore.Qt.ItemDataRole.EditRole)
+            if current is not None:
+                x_pts, y_pts, z_mat = current
+                dialog.set_data(x_pts, y_pts, z_mat)
+            if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                model.setData(index, dialog.get_data())
+            return True
+        return False
+
 
 class WindingTypeDelegate(QtWidgets.QItemDelegate):
     commitData = QtCore.Signal(object)

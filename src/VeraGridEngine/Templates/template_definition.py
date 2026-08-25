@@ -5,9 +5,11 @@
 
 from __future__ import annotations
 from typing import Sequence, Any, Union, Type
+
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.basic_structures import Vec
-from VeraGridEngine.enumerations import WindingType
+from VeraGridEngine.enumerations import WindingType, V_I_CurveSequenceType, WaveformSequenceType, X_Y_SequenceType, X_Y_Z_Matrix
+
 
 
 
@@ -17,7 +19,12 @@ TEMPLATEPROP_TYPES = Union[
     Type[float],
     Type[str],
     Type[Sequence[Vec]],
-    Type[WindingType]
+    Type[WindingType],
+    Type[V_I_CurveSequenceType],
+    Type[WaveformSequenceType],
+    Type[X_Y_SequenceType],
+    Type[X_Y_Z_Matrix]
+
 ]
 
 class TemplateProp:

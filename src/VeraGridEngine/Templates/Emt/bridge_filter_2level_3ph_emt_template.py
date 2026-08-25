@@ -77,22 +77,22 @@ def get_bridge_filter_2level_3ph_emt_template(vf: VarFactory,
     # ------------------------------------------------------------------
     # External inputs.
     # ------------------------------------------------------------------
-    theta_pll: Var = vf.add_var(name=f"theta_pll_in_{name}")
-    omega_base: Var = vf.add_var(name=f"omega_base_in_{name}")
-    v_A: Var = vf.add_var(name=f"v_A_in_{name}")
-    v_B: Var = vf.add_var(name=f"v_B_in_{name}")
-    v_C: Var = vf.add_var(name=f"v_C_in_{name}")
-    v_cmd_d: Var = vf.add_var(name=f"v_cmd_d_in_{name}")
-    v_cmd_q: Var = vf.add_var(name=f"v_cmd_q_in_{name}")
-    v_cmd_0: Var = vf.add_var(name=f"v_cmd_0_in_{name}")
-    v_dc: Var = vf.add_var(name=f"v_dc_in_{name}")
-    k_v_conv: Var = vf.add_var(name=f"k_v_conv_in_{name}")
-    m_max: Var = vf.add_var(name=f"m_max_in_{name}")
-    vdc_floor: Var = vf.add_var(name=f"vdc_floor_in_{name}")
-    omega_sw: Var = vf.add_var(name=f"omega_sw_in_{name}")
-    carrier_phase: Var = vf.add_var(name=f"carrier_phase_in_{name}")
-    R_f: Var = vf.add_var(name=f"R_f_in_{name}")
-    L_f: Var = vf.add_var(name=f"L_f_in_{name}")
+    theta_pll: Var = vf.add_var(name=f"theta_pll_in")
+    omega_base: Var = vf.add_var(name=f"omega_base_in")
+    v_A: Var = vf.add_var(name=f"v_A_in")
+    v_B: Var = vf.add_var(name=f"v_B_in")
+    v_C: Var = vf.add_var(name=f"v_C_in")
+    v_cmd_d: Var = vf.add_var(name=f"v_cmd_d_in")
+    v_cmd_q: Var = vf.add_var(name=f"v_cmd_q_in")
+    v_cmd_0: Var = vf.add_var(name=f"v_cmd_0_in")
+    v_dc: Var = vf.add_var(name=f"v_dc_in")
+    k_v_conv: Var = vf.add_var(name=f"k_v_conv_in")
+    m_max: Var = vf.add_var(name=f"m_max_in")
+    vdc_floor: Var = vf.add_var(name=f"vdc_floor_in")
+    omega_sw: Var = vf.add_var(name=f"omega_sw_in")
+    carrier_phase: Var = vf.add_var(name=f"carrier_phase_in")
+    R_f: Var = vf.add_var(name=f"R_f_in")
+    L_f: Var = vf.add_var(name=f"L_f_in")
 
     # ------------------------------------------------------------------
     # Bridge child block.
@@ -125,22 +125,22 @@ def get_bridge_filter_2level_3ph_emt_template(vf: VarFactory,
     # ------------------------------------------------------------------
     # Filter states.
     # ------------------------------------------------------------------
-    i_A: Var = vf.add_var(name=f"i_A_{name}")
-    i_B: Var = vf.add_var(name=f"i_B_{name}")
-    i_C: Var = vf.add_var(name=f"i_C_{name}")
-    d_i_A: Var = vf.add_diff_var(name=f"d_i_A_{name}", base_var=i_A)
-    d_i_B: Var = vf.add_diff_var(name=f"d_i_B_{name}", base_var=i_B)
-    d_i_C: Var = vf.add_diff_var(name=f"d_i_C_{name}", base_var=i_C)
+    i_A: Var = vf.add_var(name=f"i_A")
+    i_B: Var = vf.add_var(name=f"i_B")
+    i_C: Var = vf.add_var(name=f"i_C")
+    d_i_A: Var = vf.add_diff_var(name=f"d_i_A", base_var=i_A)
+    d_i_B: Var = vf.add_diff_var(name=f"d_i_B", base_var=i_B)
+    d_i_C: Var = vf.add_diff_var(name=f"d_i_C", base_var=i_C)
 
     # ------------------------------------------------------------------
     # Filter measurements.
     # ------------------------------------------------------------------
-    i_d: Var = vf.add_var(name=f"i_d_{name}")
-    i_q: Var = vf.add_var(name=f"i_q_{name}")
-    i_0: Var = vf.add_var(name=f"i_0_{name}")
-    v_d: Var = vf.add_var(name=f"v_d_{name}")
-    v_q: Var = vf.add_var(name=f"v_q_{name}")
-    v_0: Var = vf.add_var(name=f"v_0_{name}")
+    i_d: Var = vf.add_var(name=f"i_d")
+    i_q: Var = vf.add_var(name=f"i_q")
+    i_0: Var = vf.add_var(name=f"i_0")
+    v_d: Var = vf.add_var(name=f"v_d")
+    v_q: Var = vf.add_var(name=f"v_q")
+    v_0: Var = vf.add_var(name=f"v_0")
 
     i_d_expr: Expr
     i_q_expr: Expr

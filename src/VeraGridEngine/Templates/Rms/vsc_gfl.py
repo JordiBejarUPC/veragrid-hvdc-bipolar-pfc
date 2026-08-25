@@ -6,7 +6,7 @@
 import numpy as np
 import math
 
-from VeraGridEngine.Templates.template_definiton import TemplateDefinition, TemplateProp
+from VeraGridEngine.Templates.template_definition import TemplateDefinition, TemplateProp
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowReferenceType, ParamPowerFlowReferenceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import (Block, Var)
@@ -136,23 +136,22 @@ def get_pll_transform_rms(vfactory: VarFactory, name: str = "Pll_transform_rms")
     """
      Pll
     """
-    suffix = f"_{name}" if name else ""
     templ = RmsModelTemplate(name=name)
     templ.tpe = DeviceType.GeneratorDevice
 
-    inputs = [vfactory.add_var("Vm_" + name, reference=VarPowerFlowReferenceType.Vm),
-              vfactory.add_var("Va_" + name, reference=VarPowerFlowReferenceType.Va),
-              vfactory.add_var("omega_" + name, shared_reference="omega_reference")]
+    inputs = [vfactory.add_var("Vm", reference=VarPowerFlowReferenceType.Vm),
+              vfactory.add_var("Va", reference=VarPowerFlowReferenceType.Va),
+              vfactory.add_var("omega", shared_reference="omega_reference")]
 
     # Variables
-    theta = vfactory.add_var(f'theta{suffix}', shared_reference="theta_reference")
-    vd = vfactory.add_var(f'vd{suffix}', shared_reference="vd_reference")
-    vq = vfactory.add_var(f'vq{suffix}', shared_reference="vq_reference")
+    theta = vfactory.add_var('theta', shared_reference="theta_reference")
+    vd = vfactory.add_var('vd', shared_reference="vd_reference")
+    vq = vfactory.add_var('vq', shared_reference="vq_reference")
 
     # Parameters
-    Kp_pll = vfactory.add_var(f'Kp_pll{suffix}')
-    Ki_pll = vfactory.add_var(f'Ki_pll{suffix}')
-    fn = vfactory.add_var(f'fn{suffix}')
+    Kp_pll = vfactory.add_var('Kp_pll')
+    Ki_pll = vfactory.add_var('Ki_pll')
+    fn = vfactory.add_var('fn')
 
     res_event_dict = {
         fn: vfactory.add_const(50),
@@ -200,18 +199,15 @@ def get_pll_transform_rms(vfactory: VarFactory, name: str = "Pll_transform_rms")
     return templ
 
 def pll_transform_rms(vfactory: VarFactory, Vm, Va, name:str = ''):
-    suffix = f"_{name}" if name else ""
-
-
     # Variables
-    theta = vfactory.add_var(f'theta{suffix}')
-    vd = vfactory.add_var(f'vd{suffix}')
-    vq = vfactory.add_var(f'vq{suffix}')
+    theta = vfactory.add_var('theta')
+    vd = vfactory.add_var('vd')
+    vq = vfactory.add_var('vq')
 
     # Parameters
-    Kp_pll = vfactory.add_var(f'Kp_pll{suffix}')
-    Ki_pll = vfactory.add_var(f'Ki_pll{suffix}')
-    fn = vfactory.add_var(f'fn{suffix}')
+    Kp_pll = vfactory.add_var('Kp_pll')
+    Ki_pll = vfactory.add_var('Ki_pll')
+    fn = vfactory.add_var('fn')
 
     event_dict = {
         fn: vfactory.add_const(50),
@@ -564,6 +560,7 @@ def build_gfl_converter_model(vfactory: VarFactory, inputs,
     # Add all control blocks
     for ctrl_block in control_blocks:
         gfl_block.add(ctrl_block)
+    gfl_block.add(current_limiter_block)
     gfl_block.add(control_block_id)
     gfl_block.add(control_block_iq)
 

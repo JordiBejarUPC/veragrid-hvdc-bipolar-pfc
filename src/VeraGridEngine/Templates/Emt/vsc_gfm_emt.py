@@ -56,72 +56,72 @@ def get_gfm_emt_template(vf: VarFactory, name: str = "VSC_GridForming") -> EmtMo
     templ.block.name = name
 
     # Inputs: instantaneous abc bus voltages + DC bus voltage.
-    v_A = vf.add_var(name=f"v_A_{name}", reference=VarPowerFlowReferenceType.v_A)
-    v_B = vf.add_var(name=f"v_B_{name}", reference=VarPowerFlowReferenceType.v_B)
-    v_C = vf.add_var(name=f"v_C_{name}", reference=VarPowerFlowReferenceType.v_C)
-    v_dc = vf.add_var(name=f"v_dc_{name}", reference=VarPowerFlowReferenceType.Vdc)
+    v_A = vf.add_var(name=f"v_A", reference=VarPowerFlowReferenceType.v_A)
+    v_B = vf.add_var(name=f"v_B", reference=VarPowerFlowReferenceType.v_B)
+    v_C = vf.add_var(name=f"v_C", reference=VarPowerFlowReferenceType.v_C)
+    v_dc = vf.add_var(name=f"v_dc", reference=VarPowerFlowReferenceType.Vdc)
     inputs: List[Any] = [v_A, v_B, v_C, v_dc]
 
     # States: three phase currents, internal angle, frequency, EMF.
-    i_A = vf.add_var(name=f"i_A_{name}", reference=VarPowerFlowReferenceType.i_A)
-    i_B = vf.add_var(name=f"i_B_{name}", reference=VarPowerFlowReferenceType.i_B)
-    i_C = vf.add_var(name=f"i_C_{name}", reference=VarPowerFlowReferenceType.i_C)
-    theta = vf.add_var(name=f"theta_{name}")
-    omega = vf.add_var(name=f"omega_{name}")
-    Epk = vf.add_var(name=f"Epk_{name}")
+    i_A = vf.add_var(name=f"i_A", reference=VarPowerFlowReferenceType.i_A)
+    i_B = vf.add_var(name=f"i_B", reference=VarPowerFlowReferenceType.i_B)
+    i_C = vf.add_var(name=f"i_C", reference=VarPowerFlowReferenceType.i_C)
+    theta = vf.add_var(name=f"theta")
+    omega = vf.add_var(name=f"omega")
+    Epk = vf.add_var(name=f"Epk")
 
-    d_i_A = vf.add_diff_var(name=f"d_i_A_{name}", base_var=i_A)
-    d_i_B = vf.add_diff_var(name=f"d_i_B_{name}", base_var=i_B)
-    d_i_C = vf.add_diff_var(name=f"d_i_C_{name}", base_var=i_C)
-    d_theta = vf.add_diff_var(name=f"d_theta_{name}", base_var=theta)
-    d_omega = vf.add_diff_var(name=f"d_omega_{name}", base_var=omega)
-    d_Epk = vf.add_diff_var(name=f"d_Epk_{name}", base_var=Epk)
+    d_i_A = vf.add_diff_var(name=f"d_i_A", base_var=i_A)
+    d_i_B = vf.add_diff_var(name=f"d_i_B", base_var=i_B)
+    d_i_C = vf.add_diff_var(name=f"d_i_C", base_var=i_C)
+    d_theta = vf.add_diff_var(name=f"d_theta", base_var=theta)
+    d_omega = vf.add_diff_var(name=f"d_omega", base_var=omega)
+    d_Epk = vf.add_diff_var(name=f"d_Epk", base_var=Epk)
 
     # Algebraic variables: internal EMFs, powers.
-    e_A = vf.add_var(name=f"e_A_{name}")
-    e_B = vf.add_var(name=f"e_B_{name}")
-    e_C = vf.add_var(name=f"e_C_{name}")
-    Pe = vf.add_var(name=f"Pe_{name}")
-    Qe = vf.add_var(name=f"Qe_{name}")
+    e_A = vf.add_var(name=f"e_A")
+    e_B = vf.add_var(name=f"e_B")
+    e_C = vf.add_var(name=f"e_C")
+    Pe = vf.add_var(name=f"Pe")
+    Qe = vf.add_var(name=f"Qe")
     # DC-side current injection (branch ``if_dc`` terminal). It closes the DC
     # bus KCL when the VSC is connected to a real DC bus (e.g. through the GUI
     # branch connector). Defined by the lossless power balance below.
-    i_dc = vf.add_var(name=f"i_dc_{name}", reference=VarPowerFlowReferenceType.Idc)
+    i_dc = vf.add_var(name=f"i_dc", reference=VarPowerFlowReferenceType.Idc)
 
     # Static parameters and droop / control set-points.
-    omega_base = vf.add_var(name=f"omega_base_{name}")
-    R_s = vf.add_var(name=f"R_s_{name}")
-    X_s = vf.add_var(name=f"X_s_{name}")
-    Kdp = vf.add_var(name=f"Kdp_{name}")
-    Kdq = vf.add_var(name=f"Kdq_{name}")
-    tau_omega = vf.add_var(name=f"tau_omega_{name}")
-    tau_v = vf.add_var(name=f"tau_v_{name}")
-    omega_ref = vf.add_var(name=f"omega_ref_{name}")
-    P_ref = vf.add_var(name=f"P_ref_{name}")
-    Q_ref = vf.add_var(name=f"Q_ref_{name}")
-    V_ref = vf.add_var(name=f"V_ref_{name}")
-    Qf = vf.add_var(name=f"Qf_{name}")
+    omega_base = vf.add_var(name=f"omega_base")
+    R_s = vf.add_var(name=f"R_s")
+    X_s = vf.add_var(name=f"X_s")
+    Kdp = vf.add_var(name=f"Kdp")
+    Kdq = vf.add_var(name=f"Kdq")
+    tau_omega = vf.add_var(name=f"tau_omega")
+    tau_v = vf.add_var(name=f"tau_v")
+    omega_ref = vf.add_var(name=f"omega_ref")
+    P_ref = vf.add_var(name=f"P_ref")
+    Q_ref = vf.add_var(name=f"Q_ref")
+    V_ref = vf.add_var(name=f"V_ref")
+    Qf = vf.add_var(name=f"Qf")
 
     # PF positive-sequence references. The EMT bridge populates these
     # through ``_set_vsc_pf_positive_sequence`` when they are exposed in
     # the external mapping below. They are the SINGLE source of truth for
     # the EMT initialization — every initial value is derived from them.
-    Vpk_ref = vf.add_var(name=f"Vpk_ref_{name}")
-    phi_v_ref = vf.add_var(name=f"phi_v_ref_{name}")
-    Ipk_ref = vf.add_var(name=f"Ipk_ref_{name}")
-    phi_ref = vf.add_var(name=f"phi_ref_{name}")
+    Vpk_ref = vf.add_var(name=f"Vpk_ref")
+    phi_v_ref = vf.add_var(name=f"phi_v_ref")
+    Ipk_ref = vf.add_var(name=f"Ipk_ref")
+    phi_ref = vf.add_var(name=f"phi_ref")
 
     # Instantaneous algebraic expressions (used at runtime, NOT for init).
     # Sign convention: ``i_A`` is the current from the bus into the
-    # converter (branch convention). The active and reactive power
-    # ``delivered by the converter to the bus`` is therefore the negative
-    # of the instantaneous ``i * v`` sum.
-    Pe_expr = -(i_A * v_A + i_B * v_B + i_C * v_C)
-    Qe_expr = -(1.0 / np.sqrt(3.0)) * (
+    # converter (branch convention). With the standard three-phase per-unit
+    # current base, abc instantaneous sums are three times system-base power,
+    # so divide by 3 to report total three-phase p.u. power.
+    Pe_expr = -(i_A * v_A + i_B * v_B + i_C * v_C) / 3.0
+    Qe_expr = (-(1.0 / np.sqrt(3.0)) * (
         (v_A - v_B) * i_C
         + (v_B - v_C) * i_A
         + (v_C - v_A) * i_B
-    )
+    )) / 3.0
 
     two_pi_over_3: float = 2.0 * np.pi / 3.0
 
@@ -173,16 +173,16 @@ def get_gfm_emt_template(vf: VarFactory, name: str = "VSC_GridForming") -> EmtMo
     # For balanced sinusoids in sin convention (sin(omega*t + phi_*)):
     #     i_a·v_a + i_b·v_b + i_c·v_c        = (3/2)·Vpk·Ipk·cos(phi)
     #     (1/√3)·Σ (v_a−v_b)·i_c            = -(3/2)·Vpk·Ipk·sin(phi)
-    # The model's algebraic equations use ``Pe_expr = -(i·v)_sum`` and
-    # ``Qe_expr = -(1/√3)·Σ(...)``, so:
-    #     Pe_steady = -(3/2)·Vpk·Ipk·cos(phi)
-    #     Qe_steady = +(3/2)·Vpk·Ipk·sin(phi)
+    # The model's algebraic equations divide abc sums by 3 to convert standard
+    # three-phase per-unit current samples back to total system-base power, so:
+    #     Pe_steady = -(1/2)·Vpk·Ipk·cos(phi)
+    #     Qe_steady = +(1/2)·Vpk·Ipk·sin(phi)
     # For generation, ``phi ≈ π`` so ``cos(phi) < 0`` and ``Pe > 0``;
     # the small imaginary part of the PF current phasor gives the
     # observed sign of ``Qe``.
-    c_3_2 = vf.add_const(1.5)
-    Pe_init_expr = -c_3_2 * Vpk_ref * Ipk_ref * sym.cos(phi_ref)
-    Qe_init_expr = c_3_2 * Vpk_ref * Ipk_ref * sym.sin(phi_ref)
+    c_1_2 = vf.add_const(0.5)
+    Pe_init_expr = -c_1_2 * Vpk_ref * Ipk_ref * sym.cos(phi_ref)
+    Qe_init_expr = c_1_2 * Vpk_ref * Ipk_ref * sym.sin(phi_ref)
 
     # Classic droop differential equations: ``P_ref`` and ``Q_ref`` are
     # constants pinned at init to the PF operating point ``Pe_init`` /
@@ -217,7 +217,7 @@ def get_gfm_emt_template(vf: VarFactory, name: str = "VSC_GridForming") -> EmtMo
         Pe, Qe, i_dc,
     ]
 
-    templ.block = Block(
+    converter_block = Block(
         state_eqs=state_eqs,
         state_vars=state_vars,
         algebraic_eqs=algebraic_eqs,
@@ -226,12 +226,12 @@ def get_gfm_emt_template(vf: VarFactory, name: str = "VSC_GridForming") -> EmtMo
         out_vars=[i_A, i_B, i_C, i_dc],
     )
 
-    templ.block.diff_vars = [d_i_A, d_i_B, d_i_C, d_theta, d_omega, d_Epk]
+    converter_block.diff_vars = [d_i_A, d_i_B, d_i_C, d_theta, d_omega, d_Epk]
 
     # External mapping. The four ``Vpk`` / ``phi_v`` / ``Ipk`` / ``phi``
     # entries are what the EMT bridge populates from the PF positive-
     # sequence solution (see ``_set_vsc_pf_positive_sequence``).
-    templ.block.external_mapping = {
+    converter_block.external_mapping = {
         VarPowerFlowReferenceType.v_A: v_A,
         VarPowerFlowReferenceType.v_B: v_B,
         VarPowerFlowReferenceType.v_C: v_C,
@@ -245,21 +245,18 @@ def get_gfm_emt_template(vf: VarFactory, name: str = "VSC_GridForming") -> EmtMo
         VarPowerFlowReferenceType.phi_v: phi_v_ref,
         VarPowerFlowReferenceType.Ipk: Ipk_ref,
         VarPowerFlowReferenceType.phi: phi_ref,
+        VarPowerFlowReferenceType.P: P_ref,
+        VarPowerFlowReferenceType.Q: Q_ref,
     }
 
     # API-object mapping.
-    templ.block.api_obj_mapping = {
+    converter_block.api_obj_mapping = {
         ParamPowerFlowReferenceType.omega_base: omega_base,
         ParamPowerFlowReferenceType.R1: R_s,
         ParamPowerFlowReferenceType.X1: X_s,
     }
 
-    # Runtime / PF-bound parameters.
-    # ``Vpk_ref``, ``phi_v_ref``, ``Ipk_ref``, ``phi_ref`` are seeded by
-    # the bridge. ``P_ref``, ``Q_ref``, ``V_ref`` are pinned by
-    # ``init_eqs`` to the analytical PF steady-state values, so the
-    # droop input is zero at ``t = 0``.
-    templ.block.event_dict = {
+    converter_block.event_dict = {
         omega_base: vf.add_const(2.0 * np.pi * 50.0),
         R_s: vf.add_const(0.01),
         X_s: vf.add_const(0.1),
@@ -268,6 +265,15 @@ def get_gfm_emt_template(vf: VarFactory, name: str = "VSC_GridForming") -> EmtMo
         tau_omega: vf.add_const(0.05),
         tau_v: vf.add_const(0.05),
         omega_ref: vf.add_const(1.0),
+    }
+
+    # Runtime / PF-bound parameters.
+    # ``Vpk_ref``, ``phi_v_ref``, ``Ipk_ref``, ``phi_ref`` are the canonical
+    # PF-seeded quantities that define the full GFM EMT steady-state operating
+    # point. ``P_ref``, ``Q_ref`` and ``V_ref`` are derived from them at
+    # initialization time, so they must remain ordinary runtime parameters and
+    # not be treated as persistent zero defaults by the EMT build path.
+    converter_block.event_dict.update({
         Qf: vf.add_const(0.0),
         Vpk_ref: vf.add_const(None),
         phi_v_ref: vf.add_const(None),
@@ -276,7 +282,7 @@ def get_gfm_emt_template(vf: VarFactory, name: str = "VSC_GridForming") -> EmtMo
         P_ref: vf.add_const(None),
         Q_ref: vf.add_const(None),
         V_ref: vf.add_const(None),
-    }
+    })
 
     # Initialization equations.
     #
@@ -286,7 +292,7 @@ def get_gfm_emt_template(vf: VarFactory, name: str = "VSC_GridForming") -> EmtMo
     # change during simulation, so the consistency Newton has nothing to
     # shift — the explicit init already places the system on the exact
     # steady-state sinusoidal trajectory.
-    templ.block.init_eqs = {
+    converter_block.init_eqs = {
         # Bus AC sample at t = 0 — pin v_A/v_B/v_C so KCL sees the same
         # values that the analytical EMF formula assumes.
         v_A: v_A_init_expr,
@@ -308,23 +314,9 @@ def get_gfm_emt_template(vf: VarFactory, name: str = "VSC_GridForming") -> EmtMo
         e_B: e_B_init_expr,
         e_C: e_C_init_expr,
 
-        # ``Pe`` and ``Qe`` are NOT pinned via ``init_eqs`` because the
-        # current init code path (``_collect_reduced_initialization_problem``)
-        # adds every algebraic variable to the reduced Newton system with
-        # the runtime algebraic equation as its residual, ignoring any
-        # ``init_eqs`` entry for algebraic vars. Pinning them here is
-        # silently dead code. Pe / Qe are determined by the runtime
-        # equations from the seeded ``v`` and ``i`` samples.
-        #
-        # Side effect we know about: at t=0 the bus per-phase voltages
-        # are not yet populated in the order the init Newton expects,
-        # so ``Qe_expr(0)`` evaluates to exactly 0 instead of the
-        # analytical PF value (~0.05 pu). The runtime algebraic equation
-        # closes this in the very next integrator step, leaving a small
-        # one-step jump on ``Pe`` and ``Qe`` (a few mpu on Pe, ~50 mpu
-        # on Qe). Tracked: needs a fix to ``initialization_emt.py`` so
-        # algebraic vars in ``init_guess`` are skipped by the reduced
-        # system, or so the bridge populates buses before init starts.
+        Pe: Pe_init_expr,
+        Qe: Qe_init_expr,
+
         P_ref: Pe_init_expr,
         Q_ref: Qe_init_expr,
         V_ref: Epk_init_expr,
@@ -338,7 +330,7 @@ def get_gfm_emt_template(vf: VarFactory, name: str = "VSC_GridForming") -> EmtMo
     d_i_A_init_expr = omega_base * Ipk_ref * sym.cos(theta_i_init_expr)
     d_i_B_init_expr = omega_base * Ipk_ref * sym.cos(theta_i_init_expr - two_pi_over_3)
     d_i_C_init_expr = omega_base * Ipk_ref * sym.cos(theta_i_init_expr + two_pi_over_3)
-    templ.block.diff_init_eqs = {
+    converter_block.diff_init_eqs = {
         d_i_A: d_i_A_init_expr,
         d_i_B: d_i_B_init_expr,
         d_i_C: d_i_C_init_expr,
@@ -346,5 +338,11 @@ def get_gfm_emt_template(vf: VarFactory, name: str = "VSC_GridForming") -> EmtMo
         d_omega: vf.add_const(0.0),
         d_Epk: vf.add_const(0.0),
     }
+
+    templ.block.children.append(converter_block)
+    templ.block.external_mapping = converter_block.external_mapping
+    templ.block.api_obj_mapping = converter_block.api_obj_mapping
+    templ.block.in_vars = inputs
+    templ.block.out_vars = converter_block.out_vars
 
     return templ

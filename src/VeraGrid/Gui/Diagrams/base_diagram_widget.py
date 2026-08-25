@@ -35,6 +35,7 @@ from VeraGridEngine.enumerations import SimulationTypes, ResultTypes, PrpCat
 import VeraGridEngine.Devices.Diagrams.palettes as palettes
 
 from VeraGrid.Gui.Diagrams.graphics_manager import GraphicsManager, ALL_GRAPHICS
+from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.injections_template_graphics import InjectionNexusPathItem
 from VeraGrid.Gui.general_dialogues import DeleteDialogue
 from VeraGrid.Gui.messages import yes_no_question, info_msg
 from VeraGrid.Gui.object_model import ObjectsModel
@@ -174,8 +175,8 @@ class BaseDiagramWidget(QSplitter):
         # change_font_size(self.object_editor_table.horizontalHeader(), 9)
 
         self.filter_combo = QComboBox()
-        self.prop_filter_dict, prop_filter_mdl = gf.enums_to_icons_model(
-            [
+        prop_filter_mdl = gf.ComboModel(
+            icon_enum_values=[
                 (PrpCat.All,":/Icons/icons/edit.png"),
                 (PrpCat.TP,":/Icons/icons/automatic_layout.png"),
                 (PrpCat.PF,":/Icons/icons/pf.png"),
@@ -188,7 +189,8 @@ class BaseDiagramWidget(QSplitter):
                 (PrpCat.INV,":/Icons/icons/expansion_planning.png"),
                 (PrpCat.RMS,":/Icons/icons/dyn.png"),
                 (PrpCat.EMT,":/Icons/icons/dyn_emt.png"),
-            ]
+            ],
+            translate=self.tr
         )
         self.filter_combo.setModel(prop_filter_mdl)
 
@@ -479,12 +481,16 @@ class BaseDiagramWidget(QSplitter):
             for graphic_obj in selected:
 
                 if graphic_obj is not None:
-                    if isinstance(graphic_obj, GenericDiagramWidget):
-                        extended.add(graphic_obj.api_object)
+                    owner_graphic: GenericDiagramWidget | None = self._get_delete_owner_graphic(graphic_obj=graphic_obj)
 
-                    for child_item in graphic_obj.get_associated_devices():
-                        if child_item is not None:
-                            extended.add(child_item)
+                    if owner_graphic is not None:
+                        extended.add(owner_graphic.api_object)
+
+                        for child_item in owner_graphic.get_associated_devices():
+                            if child_item is not None:
+                                extended.add(child_item)
+                    else:
+                        pass
 
             extended_lst: List[ALL_DEV_TYPES] = list(extended)
 
@@ -512,6 +518,29 @@ class BaseDiagramWidget(QSplitter):
         else:
             self.gui.show_warning_toast("Choose some elements to delete_with_dialogue")
             return False, False
+
+    def _get_delete_owner_graphic(self, graphic_obj: QGraphicsItem) -> GenericDiagramWidget | None:
+        """
+        Resolve one selected graphics item to the diagram widget that owns the device.
+
+        Some selectable helper items, such as injection nexus paths, are not
+        ``GenericDiagramWidget`` instances. Deletion must still target the owning
+        device widget so the dependency dialogue and removal flow remain valid.
+
+        :param graphic_obj: Selected graphics item.
+        :return: Owning diagram widget or ``None`` when unsupported.
+        """
+        if isinstance(graphic_obj, GenericDiagramWidget):
+            return graphic_obj
+        elif isinstance(graphic_obj, InjectionNexusPathItem):
+            owner_item: QGraphicsItem = graphic_obj.owner_item
+
+            if isinstance(owner_item, GenericDiagramWidget):
+                return owner_item
+            else:
+                return None
+        else:
+            return None
 
     def delete_selected_from_widget(self, delete_from_db: bool) -> None:
         """
@@ -569,7 +598,7 @@ class BaseDiagramWidget(QSplitter):
         """
         template_elm, dictionary_of_lists = self.circuit.get_dictionary_of_lists(api_object.device_type)
 
-        filter_prop = self.prop_filter_dict[self.filter_combo.currentText()]
+        filter_prop = self.filter_combo.currentData()
         self.api_object = api_object
 
         mdl = ObjectsModel(

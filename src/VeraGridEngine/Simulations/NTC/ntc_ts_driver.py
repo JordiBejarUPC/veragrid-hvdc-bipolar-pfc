@@ -13,7 +13,7 @@ from VeraGridEngine.Simulations.NTC.ntc_driver import OptimalNetTransferCapacity
 from VeraGridEngine.Simulations.NTC.ntc_ts_results import OptimalNetTransferCapacityTimeSeriesResults
 from VeraGridEngine.Simulations.driver_template import TimeSeriesDriverTemplate
 from VeraGridEngine.Simulations.Clustering.clustering_results import ClusteringResults
-from VeraGridEngine.basic_structures import Logger
+from VeraGridEngine.basic_structures import Logger, IntVec
 from VeraGridEngine.enumerations import SimulationTypes
 
 
@@ -29,7 +29,7 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
 
     def __init__(self, grid: MultiCircuit,
                  options: OptimalNetTransferCapacityOptions,
-                 time_indices: np.ndarray,
+                 time_indices: IntVec | None,
                  clustering_results: Union[ClusteringResults, None] = None):
         """
 
@@ -88,9 +88,14 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
                     consider_contingencies=self.options.consider_contingencies,
                     corrective_contingencies=self.options.corrective_contingencies,
                     contingency_groups_used=self.options.opf_options.contingency_groups_used,
+                    alpha_threshold=self.options.branch_exchange_sensitivity,
                     lodf_threshold=self.options.lin_options.lodf_threshold,
                     bus_a1_idx=self.options.sending_bus_idx,
                     bus_a2_idx=self.options.receiving_bus_idx,
+                    transfer_method=self.options.transfer_method,
+                    monitor_only_sensitive_branches=self.options.use_branch_exchange_sensitivity,
+                    monitor_only_ntc_load_rule_branches=self.options.monitor_only_ntc_load_rule_branches,
+                    ntc_load_rule=self.options.branch_rating_contribution,
                     logger=self.logger,
                     progress_text=None,
                     progress_func=None,
@@ -108,9 +113,14 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
                     consider_contingencies=self.options.consider_contingencies,
                     corrective_contingencies=self.options.corrective_contingencies,
                     contingency_groups_used=self.options.opf_options.contingency_groups_used,
+                    alpha_threshold=self.options.branch_exchange_sensitivity,
                     lodf_threshold=self.options.lin_options.lodf_threshold,
                     bus_a1_idx=self.options.sending_bus_idx,
                     bus_a2_idx=self.options.receiving_bus_idx,
+                    transfer_method=self.options.transfer_method,
+                    monitor_only_sensitive_branches=self.options.use_branch_exchange_sensitivity,
+                    monitor_only_ntc_load_rule_branches=self.options.monitor_only_ntc_load_rule_branches,
+                    ntc_load_rule=self.options.branch_rating_contribution,
                     logger=self.logger,
                     progress_text=None,
                     progress_func=None,
@@ -150,7 +160,10 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
             self.results.alpha[t_idx, :] = opf_vars.branch_vars.alpha[0, :]
             self.results.monitor_logic[t_idx, :] = opf_vars.branch_vars.monitor_logic[0, :]
 
-            self.results.contingency_flows_list += opf_vars.branch_vars.contingency_flow_data
+            # the snapshot LP always runs at its internal t = 0, so re-stamp every report
+            # entry with the time series step index before accumulating
+            for report_entry in opf_vars.branch_vars.contingency_flow_data:
+                self.results.contingency_flows_list.append((t_idx,) + tuple(report_entry[1:]))
 
             self.results.hvdc_Pf[t_idx, :] = opf_vars.hvdc_vars.flows[0, :]
             self.results.hvdc_loading[t_idx, :] = opf_vars.hvdc_vars.loading[0, :]

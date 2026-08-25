@@ -5,12 +5,12 @@
 
 from __future__ import annotations
 
-import chardet
 import re
 import datetime
 from typing import List, AnyStr, Dict
 
 from VeraGridEngine.IO.raw.raw_writer_comment_map import comment_version_map
+from VeraGridEngine.Utils.charatcter_detection import detect_character_encoding
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.IO.raw.psse_circuit import PsseCircuit
 from VeraGridEngine.IO.raw.versioned.v29.area import RawAreaV29
@@ -266,7 +266,10 @@ def interpret_line(raw_line: str, splitter=','):
     pattern = splitter + r"\s*(?=(?:[^']*'[^']*')*[^']*$)"
 
     # Use re.split to apply the pattern
-    elms = re.split(pattern, lne)
+    if ',' in lne:
+        elms = re.split(pattern, lne)
+    else:
+        elms = lne.split()
 
     for elm in elms:
 
@@ -308,8 +311,7 @@ def read_and_split(file_name: str, text_func=None, progress_func=None) -> (List[
     if progress_func is not None:
         progress_func(0)
 
-    # make a guess of the file encoding
-    detection = chardet.detect(open(file_name, "rb").read())
+    detected_encoding: str = detect_character_encoding(source=file_name)
 
     # open the text file into a variable
 
@@ -319,7 +321,9 @@ def read_and_split(file_name: str, text_func=None, progress_func=None) -> (List[
     sections_dict: Dict[str, List[List[str | float | int] | str]] = dict()
     sections_dict["bus"] = list()
     sep = ","
-    with open(file_name, 'r', encoding=detection['encoding']) as my_file:
+    # Reuse the shared detector so the guessed encoding is validated before the
+    # parser starts iterating through the RAW records.
+    with open(file_name, 'r', encoding=detected_encoding) as my_file:
         i = 0
         block_category = "bus"
         for line_ in my_file:
@@ -866,13 +870,21 @@ def read_raw(filename, text_func=None, progress_func=None, logger=Logger()) -> P
                         if is_3w(lines[l_count], bus_set):
                             # 3 - windings (5 lines)
                             for k in range(5):
-                                data.append(lines[l_count])
-                                l_count += 1
+                                try:
+                                    data.append(lines[l_count])
+                                    l_count += 1
+                                except IndexError:
+                                    logger.add_error("Incomplete 3W transformer data at the raw file")
+                                    data = list()
                         else:
                             # 2-windings (4 lines)
                             for k in range(4):
-                                data.append(lines[l_count])
-                                l_count += 1
+                                try:
+                                    data.append(lines[l_count])
+                                    l_count += 1
+                                except IndexError:
+                                    logger.add_error("Incomplete 2W transformer data at the raw file")
+                                    data = list()
 
                     elif key == 'induction machine':
                         if is_one_line_for_induction_machine(lines[l_count]):
@@ -910,10 +922,11 @@ def read_raw(filename, text_func=None, progress_func=None, logger=Logger()) -> P
                     # data = [interpret_line(object_lines[k]) for k in range(lines_per_object)]
 
                     # pass the data to the according object to assign it to the matching variables
-                    data2 = format_lines(data1=data, logger=logger)
-                    obj = ObjectT()
-                    obj.parse(data2, version, logger)
-                    objects_list.append(obj)
+                    if len(data) > 0:
+                        data2 = format_lines(data1=data, logger=logger)
+                        obj = ObjectT()
+                        obj.parse(data2, version, logger)
+                        objects_list.append(obj)
 
                     if progress_func is not None:
                         progress_func((l_count / len(lines)) * 100)

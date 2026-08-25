@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Sequence
+from typing import Sequence, Type
 
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
@@ -12,7 +12,42 @@ from VeraGridEngine.Templates.Emt.load_RLC_emt_template import _build_external_m
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_ground_emt_template
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import CmpOp, Comparison, Const, Expr, Var
-from VeraGridEngine.enumerations import DeviceType, VarPowerFlowReferenceType
+from VeraGridEngine.enumerations import DeviceType, VarPowerFlowReferenceType, V_I_CurveSequenceType
+from VeraGridEngine.Templates.template_definition import TemplateDefinition, TemplateProp
+from VeraGridEngine.basic_structures import Vec
+
+
+class NonLinearResistorEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        """
+
+        :param vf: variable factory.
+        """
+        super().__init__(
+            vf,
+            params=[
+                TemplateProp(name="V-I curve", units="", descr="V-I curve (voltage, current)", tpe=V_I_CurveSequenceType,
+                             value=((0.0, 0.0), (0.02, 1), (0.04, 0.0))),
+                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str,
+                             value="non_linear_resistor_emt"),
+            ]
+        )
+
+    def eval(self) -> EmtModelTemplate:
+
+        v_i_points: Sequence[Vec] = self.get_value("V-I curve")
+        name: str = self.get_value("name")
+
+        voltage_points = list()
+        current_points = list()
+        for point in v_i_points:
+            voltage_points.append(point[0])
+            current_points.append(point[1])
+
+        return get_nonlinear_resistor_emt_template(
+            self.vf, voltage_points, current_points, name
+        )
 
 
 def get_nonlinear_resistor_emt_template(
@@ -44,10 +79,10 @@ def get_nonlinear_resistor_emt_template(
     template.name = name
     template.block.name = name
 
-    node_voltage_var: Var = vf.add_var(name=f"v_N_{name}", reference=VarPowerFlowReferenceType.v_N)
-    current_var: Var = vf.add_var(name=f"i_N_{name}", reference=VarPowerFlowReferenceType.i_N)
-    ground_node_var: Var = vf.add_var(name=f"v_gnd_{name}")
-    abs_voltage_var: Var = vf.add_var(name=f"v_abs_{name}")
+    node_voltage_var: Var = vf.add_var(name=f"v_N", reference=VarPowerFlowReferenceType.v_N)
+    current_var: Var = vf.add_var(name=f"i_N", reference=VarPowerFlowReferenceType.i_N)
+    ground_node_var: Var = vf.add_var(name=f"v_gnd")
+    abs_voltage_var: Var = vf.add_var(name=f"v_abs")
     one_const: Const = Const(1.0)
     zero_const: Const = Const(0.0)
 
@@ -62,8 +97,8 @@ def get_nonlinear_resistor_emt_template(
     point_index: int
 
     for point_index in range(len(voltage_points)):
-        x_var = vf.add_var(name=f"arr_v{point_index + 1}_{name}")
-        y_var = vf.add_var(name=f"arr_i{point_index + 1}_{name}")
+        x_var = vf.add_var(name=f"arr_v{point_index + 1}")
+        y_var = vf.add_var(name=f"arr_i{point_index + 1}")
         template.block.event_dict[x_var] = vf.add_const(float(voltage_points[point_index]), name=f"arr_v{point_index + 1}")
         template.block.event_dict[y_var] = vf.add_const(float(current_points[point_index]), name=f"arr_i{point_index + 1}")
         x_vars.append(x_var)

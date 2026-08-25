@@ -421,6 +421,27 @@ def _get_injection_result_index(device_name: str,
         return fallback_index
 
 
+def _get_branch_result_index(branch_index: int,
+                             phase_index: int,
+                             values: Vec | CxVec | None,
+                             is_three_phase: bool) -> int:
+    """
+    Resolve the right index for branch-like result arrays.
+
+    Three-phase flows are flattened per phase, but some companion arrays such as
+    transformer taps are still stored once per branch.
+    """
+    if values is None or not is_three_phase:
+        return branch_index
+
+    if len(values) % 3 == 0 and len(values) > branch_index:
+        branch_count = len(values) // 3
+        if branch_count > branch_index:
+            return 3 * branch_index + phase_index
+
+    return branch_index
+
+
 def _has_single_phase_explicit_injection_results(gen_p: Vec | None,
                                                  gen_q: Vec | None,
                                                  battery_p: Vec | None,
@@ -4123,9 +4144,11 @@ class SchematicWidget(BaseDiagramWidget):
                             tooltip += f'\nLoss {pname}:\t{losses[k]:10.4f} [MVA]'
                         if branch.device_type == DeviceType.Transformer2WDevice:
                             if ma is not None:
-                                tooltip += f'\nPf {pname}:\t{ma[k]:10.4f}'
+                                ma_idx = _get_branch_result_index(i, ph_idx, ma, is_three_phase=True)
+                                tooltip += f'\ntap module {pname}:\t{ma[ma_idx]:10.4f}'
                             if tau is not None:
-                                tooltip += f'\nPf {pname}:\t{tau[k]:10.4f} [rad]'
+                                tau_idx = _get_branch_result_index(i, ph_idx, tau, is_three_phase=True)
+                                tooltip += f'\ntap angle {pname}:\t{tau[tau_idx]:10.4f} [rad]'
                         tooltip += "\n"
                     sf_norm = max(sf_abs[k_idx]) / max(max_flow, 1e-20)
                     arrow_sf = Sf[k_idx].sum()
@@ -4372,17 +4395,60 @@ class SchematicWidget(BaseDiagramWidget):
         if self.circuit.get_fluid_nodes_number() != len(fluid_node_current_level):
             return
 
+        bus_index_dict: Dict[Bus, int] = self.circuit.get_bus_index_dict()
         for i, elm in enumerate(self.circuit.fluid_nodes):
             graphic_object = self._query_fluid_node_graphic(elm)
             if graphic_object is not None:
+                bus_idx: int | None = None
+                bus_vm: float | None = None
+                bus_va: float | None = None
+                bus_p: float | None = None
+                bus_q: float | None = None
+                bus_tpe: str | None = None
+
+                if elm.bus is None:
+                    pass
+                else:
+                    bus_idx = bus_index_dict.get(elm.bus, None)
+
+                if bus_idx is None:
+                    pass
+                elif bus_idx < 0:
+                    bus_idx = None
+                elif bus_idx >= len(vabs) or bus_idx >= len(vang):
+                    bus_idx = None
+                else:
+                    bus_vm = float(vabs[bus_idx])
+                    bus_va = float(vang[bus_idx])
+
+                    if Sbus is None:
+                        pass
+                    elif bus_idx >= len(Sbus):
+                        pass
+                    else:
+                        bus_p = float(Sbus[bus_idx].real)
+                        bus_q = float(Sbus[bus_idx].imag)
+
+                    if types is None:
+                        pass
+                    elif bus_idx >= len(types):
+                        pass
+                    else:
+                        bus_type_index: int = int(types[bus_idx])
+
+                        if 0 <= bus_type_index < len(bus_types):
+                            bus_tpe = bus_types[bus_type_index]
+                        else:
+                            pass
+
                 graphic_object.set_api_object_color()
                 graphic_object.set_fluid_values(
                     i=i,
-                    Vm=vabs[i],
-                    Va=vang[i],
-                    P=Sbus[i].real if Sbus is not None else None,
-                    Q=Sbus[i].imag if Sbus is not None else None,
-                    tpe=bus_types[int(types[i])] if types is not None else None,
+                    Vm=bus_vm if bus_vm is not None else 0.0,
+                    Va=bus_va if bus_va is not None else 0.0,
+                    P=bus_p,
+                    Q=bus_q,
+                    tpe=bus_tpe,
                     fluid_node_p2x_flow=fluid_node_p2x_flow[i] if fluid_node_p2x_flow is not None else None,
                     fluid_node_current_level=fluid_node_current_level[i] if fluid_node_current_level is not None else None,
                     fluid_node_spillage=fluid_node_spillage[i] if fluid_node_spillage is not None else None,

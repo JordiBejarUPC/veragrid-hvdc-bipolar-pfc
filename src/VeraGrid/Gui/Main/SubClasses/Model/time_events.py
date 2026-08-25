@@ -112,13 +112,12 @@ class TimeEventsMain(DataBaseTableMain):
         """
         Profile importer
         """
-        dev_type_text = self.get_db_object_selected_type()
+        dev_type: DeviceType | None = self.get_db_object_selected_type()
 
-        if dev_type_text is not None:
+        if dev_type is not None:
             idx = self.ui.device_type_magnitude_comboBox.currentIndex()
 
-            magnitudes, mag_types = self.circuit.profile_magnitudes[dev_type_text]
-            dev_type = self.circuit.device_type_name_dict[dev_type_text]
+            magnitudes, mag_types = self.circuit.profile_magnitudes[dev_type]
             objects: List[ALL_DEV_TYPES] = self.circuit.get_elements_by_type(dev_type)
             magnitude = magnitudes[idx]
 
@@ -265,16 +264,14 @@ class TimeEventsMain(DataBaseTableMain):
         """
         value = self.ui.profile_factor_doubleSpinBox.value()
 
-        dev_type_text = self.get_db_object_selected_type()
+        dev_type: DeviceType | None = self.get_db_object_selected_type()
 
-        if dev_type_text is not None:
-            magnitudes, mag_types = self.circuit.profile_magnitudes[dev_type_text]
+        if dev_type is not None:
+            magnitudes, mag_types = self.circuit.profile_magnitudes[dev_type]
             idx = self.ui.device_type_magnitude_comboBox.currentIndex()
 
             if idx > -1:
                 magnitude = magnitudes[idx]
-
-                dev_type = self.circuit.device_type_name_dict[dev_type_text]
                 objects: List[ALL_DEV_TYPES] = self.circuit.get_elements_by_type(dev_type)
                 # Assign profiles
                 if len(objects) > 0:
@@ -380,9 +377,9 @@ class TimeEventsMain(DataBaseTableMain):
         logger: Logger = Logger()
         # value = self.ui.profile_factor_doubleSpinBox.value()
 
-        dev_type_text = self.get_db_object_selected_type()
-        if dev_type_text is not None:
-            magnitudes, mag_types = self.circuit.profile_magnitudes[dev_type_text]
+        dev_type: DeviceType | None = self.get_db_object_selected_type()
+        if dev_type is not None:
+            magnitudes, mag_types = self.circuit.profile_magnitudes[dev_type]
             idx_from = self.ui.device_type_magnitude_comboBox.currentIndex()
             magnitude_from = magnitudes[idx_from]
 
@@ -399,8 +396,6 @@ class TimeEventsMain(DataBaseTableMain):
                                                        QtWidgets.QMessageBox.StandardButton.No)
 
                 if reply == QtWidgets.QMessageBox.StandardButton.Yes.value:
-
-                    dev_type = self.circuit.device_type_name_dict[dev_type_text]
                     objects: List[ALL_DEV_TYPES] = self.circuit.get_elements_by_type(dev_type)
 
                     # Assign profiles
@@ -440,7 +435,7 @@ class TimeEventsMain(DataBaseTableMain):
         if dlg.is_accepted:
             self.circuit.re_index_time2(t0=dlg.date_time_editor.dateTime().toPython(),
                                         step_size=dlg.step_length.value(),
-                                        step_unit=dlg.units.currentText())
+                                        step_unit=dlg.units.currentData())
 
             self.update_date_dependent_combos()
 
@@ -448,10 +443,10 @@ class TimeEventsMain(DataBaseTableMain):
         """
         Plot profiles from the time events
         """
-        dev_type_text = self.get_db_object_selected_type()
+        dev_type: DeviceType | None = self.get_db_object_selected_type()
 
-        if dev_type_text is not None:
-            magnitudes, mag_types = self.circuit.profile_magnitudes[dev_type_text]
+        if dev_type is not None:
+            magnitudes, mag_types = self.circuit.profile_magnitudes[dev_type]
             idx = self.ui.device_type_magnitude_comboBox.currentIndex()
             magnitude = magnitudes[idx]
 
@@ -461,7 +456,7 @@ class TimeEventsMain(DataBaseTableMain):
             # NOTE: we use the (filtered or not) objects table model
             #       to get the objects for the (filtered or not) time series
             proxy_model: ObjectModelFilterProxy = self.ui.dataStructureTableView.model()
-            objects = proxy_model.objects
+            objects = proxy_model.get_objects_in_display_order()
 
             t = self.circuit.time_profile
 
@@ -512,15 +507,13 @@ class TimeEventsMain(DataBaseTableMain):
             return
 
         if self.circuit.time_profile is None:
-            self.models_input_dialogue = ModelsInputGUI(parent=self)
+            self.models_input_dialogue = ModelsInputGUI(parent=self, main_grid=self.circuit)
 
             self.models_input_dialogue.resize(int(1.61 * 600.0), 550)  # golden ratio
-            self.models_input_dialogue.exec()  # exec leaves the parent on hold
+            result = self.models_input_dialogue.exec()  # exec leaves the parent on hold
 
-            if self.models_input_dialogue.grids_model is not None:
-
-                logger = Logger()
-                self.models_input_dialogue.process(main_grid=self.circuit, logger=logger)
+            if result:
+                logger = self.models_input_dialogue.process_logger
 
                 # set up sliders
                 self.update_date_dependent_combos()
@@ -560,18 +553,17 @@ class TimeEventsMain(DataBaseTableMain):
 
         mdl: ProfilesModel = self.ui.profiles_tableView.model()
 
-        cols = set()
-        if len(self.ui.profiles_tableView.selectedIndexes()) > 0:
-            for index in self.ui.profiles_tableView.selectedIndexes():
-                row_idx = index.row()
-                col_idx = index.column()
-                cols.add(col_idx)
-        else:
-            row_idx = 0
-            col_idx = 0
-
         if mdl is not None:
-            ok = mdl.copy_to_clipboard(cols=list(cols))
+            selected_indexes = self.ui.profiles_tableView.selectedIndexes()
+            total_cells: int = mdl.rowCount() * mdl.columnCount()
+
+            if len(selected_indexes) == 0 or len(selected_indexes) == total_cells:
+                ok = mdl.copy_to_clipboard()
+            else:
+                rows: List[int] = sorted(set(index.row() for index in selected_indexes))
+                cols: List[int] = sorted(set(index.column() for index in selected_indexes))
+                ok = mdl.copy_to_clipboard(cols=cols, rows=rows, include_headers=False)
+
             if ok:
                 self.show_info_toast('Copied!')
             else:
@@ -587,15 +579,21 @@ class TimeEventsMain(DataBaseTableMain):
         mdl = self.ui.profiles_tableView.model()
         if mdl is not None:
 
-            if len(self.ui.profiles_tableView.selectedIndexes()) > 0:
-                index = self.ui.profiles_tableView.selectedIndexes()[0]
-                row_idx = index.row()
-                col_idx = index.column()
+            selected_indexes = self.ui.profiles_tableView.selectedIndexes()
+            if len(selected_indexes) > 0:
+                rows: List[int] = sorted(set(index.row() for index in selected_indexes))
+                cols: List[int] = sorted(set(index.column() for index in selected_indexes))
+                row_idx = rows[0]
+                col_idx = cols[0]
             else:
+                rows = list()
+                cols = list()
                 row_idx = 0
                 col_idx = 0
 
-            mdl.paste_from_clipboard(row_idx=row_idx, col_idx=col_idx)
+            mdl.paste_from_clipboard(row_idx=row_idx,
+                                     col_idx=col_idx,
+                                     selected_rows=rows,
+                                     selected_cols=cols)
         else:
             warning_msg('There is no profile displayed, please display one', 'Paste profile to clipboard')
-

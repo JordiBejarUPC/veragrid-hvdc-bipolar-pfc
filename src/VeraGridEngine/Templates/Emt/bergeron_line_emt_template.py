@@ -10,6 +10,7 @@ from VeraGridEngine.Utils.Symbolic.block import Block, Var
 from VeraGridEngine.enumerations import DeviceType, EmtLineTypes, VarPowerFlowReferenceType
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
+from VeraGridEngine.Templates.template_definition import TemplateDefinition, TemplateProp
 
 
 def _build_symmetric_abc_matrix_from_sequence_values(positive_sequence_value: complex,
@@ -137,6 +138,32 @@ def _build_line_parameter_matrices_from_template_or_balanced_data(line: Any,
     c_full = np.imag(y_full) / w
     return r_full, l_full, c_full
 
+class BergeronLineEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(
+            vf,
+            params=[
+                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool, value=False),
+                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool, value=True),
+                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool, value=True),
+                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool, value=True),
+                TemplateProp(name="name", units="", descr="Symbolic block name.", tpe=str, value="Bergeron"),
+            ]
+        )
+
+    def eval(self) -> EmtModelTemplate:
+        phN: bool = self.get_value("phN")
+        phA: bool = self.get_value("phA")
+        phB: bool = self.get_value("phB")
+        phC: bool = self.get_value("phC")
+        name: str = self.get_value("name")
+
+        return get_bergeron_line_emt_template(
+            self.vf, phN, phA, phB, phC, name,
+        )
+
+
 def get_bergeron_line_emt_template(
     vf: VarFactory,
     phN: bool = False,
@@ -187,17 +214,26 @@ def get_bergeron_line_emt_template(
         "C": VarPowerFlowReferenceType.vt_C,
     })
 
-    vf_vars = [vf.add_var(name=f"vf_{ph_label}_{name}", reference=vf_keys[ph_label]) for ph_label in active_ph]
-    vt_vars = [vf.add_var(name=f"vt_{ph_label}_{name}", reference=vt_keys[ph_label]) for ph_label in active_ph]
+    vf_vars = [vf.add_var(name=f"vf_{ph_label}", reference=vf_keys[ph_label]) for ph_label in active_ph]
+    vt_vars = [vf.add_var(name=f"vt_{ph_label}", reference=vt_keys[ph_label]) for ph_label in active_ph]
 
-    templ.block.in_vars = vf_vars + vt_vars
+    block: Block = Block()
+    block.in_vars = vf_vars + vt_vars
 
 
-    ih_f = [vf.add_var(f"Ih_f_{name}_{ph}") for ph in active_ph]
-    ih_t = [vf.add_var(f"Ih_t_{name}_{ph}") for ph in active_ph]
+    ih_f = [vf.add_var(f"Ih_f_{ph}") for ph in active_ph]
+    ih_t = [vf.add_var(f"Ih_t_{ph}") for ph in active_ph]
 
     # I history
-    templ.block.event_dict = {p: vf.add_const(0.0) for p in (ih_f + ih_t)}
+    block.event_dict = {p: vf.add_const(0.0) for p in (ih_f + ih_t)}
+    block.out_vars = list()
+
+    templ.block.children.append(block)
+    templ.block.external_mapping = block.external_mapping
+    templ.block.api_obj_mapping = block.api_obj_mapping
+    templ.block.parameters = block.parameters
+    templ.block.in_vars = block.in_vars
+    templ.block.out_vars = block.out_vars
 
 
     return templ
@@ -270,8 +306,8 @@ class BergeronHistoryRuntime:
         if self.block.event_dict is None:
             raise ValueError(f"Bergeron line '{line.name}': block.event_dict is None")
 
-        self.Ih_f = self._extract_hist_vars(prefix=f"Ih_f_{line.name}_")
-        self.Ih_t = self._extract_hist_vars(prefix=f"Ih_t_{line.name}_")
+        self.Ih_f = self._extract_hist_vars(prefix=f"Ih_f_")
+        self.Ih_t = self._extract_hist_vars(prefix=f"Ih_t_")
 
         w = 2.0 * np.pi * fbase
         R_full, L_full, C_full = _build_line_parameter_matrices_from_template_or_balanced_data(
@@ -343,7 +379,12 @@ class BergeronHistoryRuntime:
         self.idx_p_ht = None
 
     def _extract_hist_vars(self, prefix: str) -> List[Var]:
-        vars_by_name = {getattr(v, "name", ""): v for v in self.block.event_dict.keys()}
+        vars_by_name = dict()
+        block_item: Block
+        history_var: Var
+        for block_item in self.block.get_all_blocks():
+            for history_var in block_item.event_dict.keys():
+                vars_by_name[str(history_var.name)] = history_var
         out: List[Var] = []
 
         for ph in self.active_ph:
