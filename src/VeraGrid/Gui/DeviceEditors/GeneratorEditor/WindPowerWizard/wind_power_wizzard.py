@@ -242,7 +242,10 @@ def get_open_meteo_wind_weather_df(time_index: pd.DatetimeIndex,
             weather_df["surface_pressure"] = np.asarray(hourly["surface_pressure"], dtype=float)
             return True, weather_df
         else:
-            error_msg("Open-Meteo did not return hourly weather data")
+            error_msg(QtCore.QCoreApplication.translate(
+                "MainWindow",
+                "Open-Meteo did not return hourly weather data",
+            ))
             return False, pd.DataFrame()
 
     except (requests.RequestException, KeyError, ValueError, TypeError) as err:
@@ -612,15 +615,24 @@ def get_wind_power_df(time_array: Sequence[Union[str, datetime, pd.Timestamp]],
                 if valid_longitude:
                     if valid_peak_power:
                         if valid_hub_height:
-                            error_msg("The roughness length must be zero or greater")
+                            error_msg(QtCore.QCoreApplication.translate(
+                                "MainWindow",
+                                "The roughness length must be zero or greater",
+                            ))
                         else:
-                            error_msg("The hub height must be greater than zero")
+                            error_msg(QtCore.QCoreApplication.translate("MainWindow", "The hub height must be greater than zero"))
                     else:
-                        error_msg("The wind generator peak power must be greater than zero")
+                        error_msg(QtCore.QCoreApplication.translate(
+                            "MainWindow",
+                            "The wind generator peak power must be greater than zero",
+                        ))
                 else:
-                    error_msg("The longitude must be between -180 and 180 degrees")
+                    error_msg(QtCore.QCoreApplication.translate(
+                        "MainWindow",
+                        "The longitude must be between -180 and 180 degrees",
+                    ))
             else:
-                error_msg("The latitude must be between -90 and 90 degrees")
+                error_msg(QtCore.QCoreApplication.translate("MainWindow", "The latitude must be between -90 and 90 degrees"))
 
             return False, pd.DataFrame(data=dict(P=np.zeros(len(time_array))))
     else:
@@ -898,7 +910,7 @@ class WindFarmWizard(QtWidgets.QDialog):
                 figure.tight_layout()
                 plt.show()
             else:
-                error_msg("The selected turbine has no design curves")
+                error_msg(self.tr("The selected turbine has no design curves"))
         else:
             pass
 

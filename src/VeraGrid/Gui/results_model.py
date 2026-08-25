@@ -364,4 +364,4 @@ class ResultsModel(WrappableTableModel):
                             selected_rows=selected_rows,
                             stacked=stacked)
         except ValueError as e:
-            error_msg(text=str(e), title="Plotting error")
+            error_msg(text=str(e), title=self.tr("Plotting error"))

@@ -979,7 +979,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         if self.api_object is not None:
             self.editor.gui.new_bus_branch_diagram_from_bus(root_bus=self.api_object)
         else:
-            warning_msg("The api object is none :(")
+            warning_msg(self.tr("The api object is none :("))
 
     def enable_disable_toggle(self):
         """
@@ -1002,8 +1002,8 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
             self.update_color()
 
             if self._editor.circuit.has_time_series:
-                ok = yes_no_question('Do you want to update the time series active status accordingly?',
-                                     'Update time series active status')
+                ok = yes_no_question(self.tr('Do you want to update the time series active status accordingly?'),
+                                     self.tr('Update time series active status'))
 
                 if ok:
                     # change the bus state (time series)

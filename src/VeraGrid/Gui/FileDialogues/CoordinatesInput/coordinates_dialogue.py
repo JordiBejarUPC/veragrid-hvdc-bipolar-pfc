@@ -213,7 +213,7 @@ class CoordinatesInputGUI(QtWidgets.QDialog):
         self.grid: MultiCircuit = grid
         self.ui = Ui_Dialog()
         self.ui.setupUi(self)
-        self.setWindowTitle('Coordinates import dialogue')
+        self.setWindowTitle(self.tr('Coordinates import dialogue'))
         self.setAcceptDrops(True)
 
         self.project_directory = None
@@ -345,7 +345,7 @@ class CoordinatesInputGUI(QtWidgets.QDialog):
                     # Just open the file
                     self.open_file_now(filename=file_names[0])
                 else:
-                    error_msg('Only one file accepted :(')
+                    error_msg(self.tr('Only one file accepted :('))
 
     def display_associations(self):
 
@@ -450,7 +450,7 @@ class CoordinatesInputGUI(QtWidgets.QDialog):
         # filename, type_selected = QFileDialog.getOpenFileNameAndFilter(self, 'Save file', '', files_types)
 
         # call dialog to select the file
-        filename, type_selected = QtWidgets.QFileDialog.getOpenFileName(self, 'Open file', filter=files_types)
+        filename, type_selected = QtWidgets.QFileDialog.getOpenFileName(self, self.tr('Open file'), filter=files_types)
         self.open_file_now(filename)
 
     def open_file_now(self, filename: str):
@@ -487,7 +487,7 @@ class CoordinatesInputGUI(QtWidgets.QDialog):
                 for hdr in duplicate_hdr:
                     logger.add_error("Duplicated header", device=hdr)
 
-                logs_dialogue = LogsDialogue(name="Duplicated headers", logger=logger, expand_all=True)
+                logs_dialogue = LogsDialogue(name=self.tr("Duplicated headers"), logger=logger, expand_all=True)
                 logs_dialogue.exec()
 
                 # filter the headers

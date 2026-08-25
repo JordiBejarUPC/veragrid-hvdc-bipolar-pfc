@@ -340,7 +340,7 @@ class RosetaExplorerGUI(QMainWindow):
         self.ui.loggerTreeView.setModel(logger_model)  # display
 
         if logger.size():
-            error_msg(logger.get_message(), 'Logger')
+            error_msg(logger.get_message(), self.tr('Logger'))
 
     def on_class_click(self):
         """
@@ -388,8 +388,8 @@ class RosetaExplorerGUI(QMainWindow):
         """
         if self.logger.size():
 
-            file, selected_filter = QtWidgets.QFileDialog.getSaveFileName(self, "Export logs", '',
-                                                                          filter="Excel files (*.xlsx)")
+            file, selected_filter = QtWidgets.QFileDialog.getSaveFileName(self, self.tr("Export logs"), '',
+                                                                          filter=self.tr("Excel files (*.xlsx)"))
 
             if file != '':
                 if 'xlsx' in selected_filter:
@@ -401,7 +401,7 @@ class RosetaExplorerGUI(QMainWindow):
                 else:
                     error_msg(file[0] + ' is not valid :(')
         else:
-            warning_msg('There no logs :)')
+            warning_msg(self.tr('There no logs :)'))
 
     # def launch_tree_view(self):
     #     """
@@ -469,13 +469,13 @@ class RosetaExplorerGUI(QMainWindow):
 
         if isinstance(mdl, RosetaObjectsModel):
             mdl.copy_to_clipboard()
-            info_msg("Copied table to clipboard!")
+            info_msg(self.tr("Copied table to clipboard!"))
         elif isinstance(mdl, ObjectsModel):
             mdl.copy_to_clipboard()
-            info_msg("Copied table to clipboard!")
+            info_msg(self.tr("Copied table to clipboard!"))
         elif isinstance(mdl, PandasModel):
             mdl.copy_to_clipboard()
-            info_msg("Copied table to clipboard!")
+            info_msg(self.tr("Copied table to clipboard!"))
 
     @staticmethod
     def show_docs():

@@ -461,6 +461,21 @@ li.checked::marker { content: &quot;\2612&quot;; }
     </message>
 </context>
 <context>
+    <name>ArrayEditor</name>
+    <message>
+        <source>Add</source>
+        <translation>Hinzufügen</translation>
+    </message>
+    <message>
+        <source>Array Editor</source>
+        <translation>Array-Editor</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>Löschen</translation>
+    </message>
+</context>
+<context>
     <name>BlockEditorWindow</name>
     <message>
         <location filename="../DynamicModelEditor/block_editor.ui" line="14"/>
@@ -488,6 +503,48 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <source>Equations</source>
         <translation type="vanished">Gleichungen</translation>
+    </message>
+</context>
+<context>
+    <name>BlockParameterDraftModel</name>
+    <message>
+        <source>Name</source>
+        <translation>Name</translation>
+    </message>
+    <message>
+        <source>Numeric value. Changes are staged until Apply changes is pressed.</source>
+        <translation>Numerischer Wert. Änderungen werden vorgemerkt, bis auf &apos;Änderungen anwenden&apos; gedrückt wird.</translation>
+    </message>
+    <message>
+        <source>Real value or symbolic initialization expression. Changes are staged until Apply changes is pressed.</source>
+        <translation>Realer Wert oder symbolischer Initialisierungsausdruck. Änderungen werden vorgemerkt, bis auf &apos;Änderungen anwenden&apos; gedrückt wird.</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>Typ</translation>
+    </message>
+    <message>
+        <source>Value</source>
+        <translation>Wert</translation>
+    </message>
+</context>
+<context>
+    <name>BlockSymbolFilterProxyModel</name>
+    <message>
+        <source>Initializes a variable through VarPowerFlowReferenceType and block.external_mapping.</source>
+        <translation>Initialisiert eine Variable über VarPowerFlowReferenceType und block.external_mapping.</translation>
+    </message>
+    <message>
+        <source>Maps a static parameter through ParamPowerFlowReferenceType to block.api_obj_mapping. Dynamic parameters are not editable here.</source>
+        <translation>Mappt einen statischen Parameter über ParamPowerFlowReferenceType auf block.api_obj_mapping. Dynamische Parameter können hier nicht bearbeitet werden.</translation>
+    </message>
+    <message>
+        <source>Power-flow derived initialization</source>
+        <translation>Über Stromfluss abgeleitete Initialisierung</translation>
+    </message>
+    <message>
+        <source>Static parameter mapping</source>
+        <translation>Statische Parameterzuordnung</translation>
     </message>
 </context>
 <context>
@@ -1274,6 +1331,256 @@ li.checked::marker { content: &quot;\2612&quot;; }
     </message>
 </context>
 <context>
+    <name>CorrectInconsistenciesDialogue</name>
+    <message>
+        <source>Accept</source>
+        <translation>Akzeptiere</translation>
+    </message>
+    <message>
+        <source>Correct inconsistencies</source>
+        <translation>Inkonsistenzen korrigieren</translation>
+    </message>
+    <message>
+        <source>Maximum generator set point</source>
+        <translation>Maximaler Generator-Sollwert</translation>
+    </message>
+    <message>
+        <source>Maximum virtual tap difference</source>
+        <translation>Maximale virtuelle Tap-Differenz</translation>
+    </message>
+    <message>
+        <source>Minimum generator set point</source>
+        <translation>Minimaler Generator-Sollwert</translation>
+    </message>
+</context>
+<context>
+    <name>DataBaseTableMain</name>
+    <message>
+        <source>Add</source>
+        <translation>Hinzufügen</translation>
+    </message>
+    <message>
+        <source>Add to current diagram</source>
+        <translation>Zum aktuellen Diagramm hinzufügen</translation>
+    </message>
+    <message>
+        <source>Assign to profile</source>
+        <translation>Dem Profil zuweisen</translation>
+    </message>
+    <message>
+        <source>Colour branches like this</source>
+        <translation>Färben Sie Zweige so</translation>
+    </message>
+    <message>
+        <source>Copy idtag</source>
+        <translation>Kopieren Sie idtag</translation>
+    </message>
+    <message>
+        <source>Copy table</source>
+        <translation>Tabelle kopieren</translation>
+    </message>
+    <message>
+        <source>Crop model to buses selection</source>
+        <translation>Modell auf Busauswahl zuschneiden</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>Löschen</translation>
+    </message>
+    <message>
+        <source>Duplicate object</source>
+        <translation>Doppeltes Objekt</translation>
+    </message>
+    <message>
+        <source>Edit</source>
+        <translation>Bearbeiten</translation>
+    </message>
+    <message>
+        <source>Grid reduction</source>
+        <translation>Netzverkleinerung</translation>
+    </message>
+    <message>
+        <source>Highlight based on property</source>
+        <translation>Hervorhebung basierend auf der Eigenschaft</translation>
+    </message>
+    <message>
+        <source>Highlight buses selection</source>
+        <translation>Busauswahl hervorheben</translation>
+    </message>
+    <message>
+        <source>Merge</source>
+        <translation>Zusammenführen</translation>
+    </message>
+    <message>
+        <source>New diagram from selection</source>
+        <translation>Neues Diagramm aus Auswahl</translation>
+    </message>
+    <message>
+        <source>New map from selection</source>
+        <translation>Neue Karte aus Auswahl</translation>
+    </message>
+    <message>
+        <source>New vicinity diagram</source>
+        <translation>Neues Umgebungsdiagramm</translation>
+    </message>
+    <message>
+        <source>Set value to column</source>
+        <translation>Wert auf Spalte setzen</translation>
+    </message>
+    <message>
+        <source>Type the object name or a smart filter expression ...</source>
+        <translation>Geben Sie den Objektnamen oder einen intelligenten Filterausdruck ein ...</translation>
+    </message>
+    <message>
+        <source>Add selected DB objects to current diagram</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Are you sure that you want to delete_with_dialogue the selected elements?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Are you sure that you want to duplicate the selected elements?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Are you sure that you want to merge the selected substations?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Choose an element from the table</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy profile to clipboard</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Create new diagram</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Crop model to buses selection?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>DB clean</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>DB clean logger</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Delete inconsistencies</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Detect facilities</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Detect substations</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Do you want to try to detect facilities in the grid model?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Do you want to try to detect substations and voltage levels in the grid model?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Duplicate</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Highlight</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>How do you want to represent the merged grid?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>New substation</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No editor available.
+The values can be changed from the table or via context menus in the graphical interface.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No object found :(</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Restore investments</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select a catalogue element and then a catalogue object</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select a cell or a column first</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select a data structure</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select some element to serve as source to copy</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select some elements to highlight</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Setting the database buses x,y position from their latitude and longitude values will change the buses values but not the current diagrams. New diagrams will use the new values</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The maximum value is 0, so the coloring cannot be applied</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The selected property must be of a numeric type</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There is no data displayed, please display one</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>This action may delete_with_dialogue unused objects and references, 
+Are you sure?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>This action removes all disconnected devices with no active profile and delete all small islands</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>This action will restore the circuit to the state before the last investment modification. Do you want to proceed?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>This object does not support table-like addition.
+Use the schematic instead.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>This will delete all buses and their connected elements that were not selected.This cannot be undone and it is dangerous if you don't knowwhat you are doing. 
+Are you sure?</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>DcLineEditorDialog</name>
     <message>
         <location filename="../DeviceEditors/DcLineEditor/dc_line_editor_gui.ui" line="14"/>
@@ -1360,6 +1667,153 @@ li.checked::marker { content: &quot;\2612&quot;; }
         <location filename="../FileDialogues/DgsDialogue/dgs_import_gui.ui" line="53"/>
         <source>Import</source>
         <translation>Importieren</translation>
+    </message>
+</context>
+<context>
+    <name>DiagramsMain</name>
+    <message>
+        <source>Are you sure that you want to try an automatic layout?</source>
+        <translation>Sind Sie sicher, dass Sie ein automatisches Layout versuchen möchten?</translation>
+    </message>
+    <message>
+        <source>Duplicate</source>
+        <translation>Duplikat</translation>
+    </message>
+    <message>
+        <source>Message</source>
+        <translation>Nachricht</translation>
+    </message>
+    <message>
+        <source>New map</source>
+        <translation>Neue Karte</translation>
+    </message>
+    <message>
+        <source>New schematic</source>
+        <translation>Neuer Schaltplan</translation>
+    </message>
+    <message>
+        <source>New schematic from selection</source>
+        <translation>Neuer Schaltplan aus Auswahl</translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation>Entfernen</translation>
+    </message>
+    <message>
+        <source>Save image file</source>
+        <translation>Bilddatei speichern</translation>
+    </message>
+    <message>
+        <source>Save video file</source>
+        <translation>Videodatei speichern</translation>
+    </message>
+    <message>
+        <source>Type to search in the current diagram</source>
+        <translation>Zum Suchen im aktuellen Diagramm tippen</translation>
+    </message>
+    <message>
+        <source>Add selected to contingency</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Add selected to investment</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Add selected to remedial action</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>All buses will be positioned to a 2D plane projection of their latitude and longitude. This updates the current diagram and the stored bus x, y, so diagrams created afterwards use the new positions. Are you sure of this?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Choose some elements from the schematic</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Consolidate diagram coordinates into the DB</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Duplicate diagram</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Fix buses locations</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>New schematic from substation</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No EMT Events Group</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No EMT Events Group found, please create one before adding an event.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No RMS Events Group</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No RMS Events Group found, please create one before adding an event.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No substations selected. Please select some substations</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Remove diagram</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Reset diagram coordinates using the DB</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Rotate diagram</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select a valid diagram</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select some cells</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select some elements in the schematic first</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select the expansion level</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Substations schematic</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The current diagram cannot be automatically layed out</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The diagram coordinates will be reset to its database values. Do you want to do this?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The diagram coordinates will be saved into the corresponding properties of the database, overwriting the existing ones. Do you want to do this?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Vicinity diagram</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -1821,6 +2275,73 @@ li.checked::marker { content: &quot;\2612&quot;; }
     </message>
 </context>
 <context>
+    <name>DynamicBlockEditorGUI</name>
+    <message>
+        <source>Block name already exists</source>
+        <translation>Blockname existiert bereits</translation>
+    </message>
+    <message>
+        <source>Block name cannot be empty</source>
+        <translation>Blockname darf nicht leer sein</translation>
+    </message>
+    <message>
+        <source>Block name is invalid</source>
+        <translation>Blockname ist ungültig</translation>
+    </message>
+    <message>
+        <source>Change Block Name</source>
+        <translation>Blocknamen ändern</translation>
+    </message>
+    <message>
+        <source>Change Variable Name</source>
+        <translation>Variablenname ändern</translation>
+    </message>
+    <message>
+        <source>Dynamic Model Editor</source>
+        <translation>Dynamischer Modell-Editor</translation>
+    </message>
+    <message>
+        <source>Dynamic Model Editor [{mode}]</source>
+        <translation>Dynamischer Modell-Editor [{mode}]</translation>
+    </message>
+    <message>
+        <source>Library</source>
+        <translation>Bibliothek</translation>
+    </message>
+    <message>
+        <source>Variable name already exists</source>
+        <translation>Variablenname existiert bereits</translation>
+    </message>
+    <message>
+        <source>Variable name cannot be empty</source>
+        <translation>Variablenname darf nicht leer sein</translation>
+    </message>
+    <message>
+        <source>Variable name is invalid</source>
+        <translation>Variablenname ist ungültig</translation>
+    </message>
+    <message>
+        <source>Delete all</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Inspect Model</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There are unapplied changes. Do you want to close without applying them?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Unsaved changes</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>You are going to delete the complete model and start from scratch. Are you sure?</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>DynamicBlockPropertiesDialog</name>
     <message>
         <location filename="../DynamicModelEditor/dynamic_block_properties.ui" line="14"/>
@@ -2129,8 +2650,8 @@ li.checked::marker { content: &quot;\2612&quot;; }
         <translation>Allen Code validieren</translation>
     </message>
     <message>
-        <source>Variable renamed to '{name}'.</source>
-        <translation>Variable in '{name}' umbenannt.</translation>
+        <source>Variable renamed to &apos;{name}&apos;.</source>
+        <translation>Variable in &apos;{name}&apos; umbenannt.</translation>
     </message>
     <message>
         <source>Variables</source>
@@ -2139,6 +2660,63 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <source>{active} / {count}</source>
         <translation>{active} / {count}</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEditorAddButton</name>
+    <message>
+        <source>Open another Dynamic Editor</source>
+        <translation>Anderen Dynamischen Editor öffnen</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEditorGraphics</name>
+    <message>
+        <source>{direction} {index}: {name}</source>
+        <translation>{direction} {index}: {name}</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEditorPickerDialog</name>
+    <message>
+        <source>Mode</source>
+        <translation>Modus</translation>
+    </message>
+    <message>
+        <source>Modes</source>
+        <translation>Modi</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>Name</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation>Öffnen</translation>
+    </message>
+    <message>
+        <source>Open the current block in the other mode.</source>
+        <translation>Öffnet den aktuellen Block im anderen Modus.</translation>
+    </message>
+    <message>
+        <source>Open the current block in {mode}.</source>
+        <translation>Öffnet den aktuellen Block in {mode}.</translation>
+    </message>
+    <message>
+        <source>Open {mode}</source>
+        <translation>Öffne {mode}</translation>
+    </message>
+    <message>
+        <source>Quick Open</source>
+        <translation>Schnell öffnen</translation>
+    </message>
+    <message>
+        <source>Search dynamic editors</source>
+        <translation>Dynamische Editoren suchen</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>Typ</translation>
     </message>
 </context>
 <context>
@@ -2250,6 +2828,220 @@ li.checked::marker { content: &quot;\2612&quot;; }
     </message>
 </context>
 <context>
+    <name>DynamicEventEditor</name>
+    <message>
+        <source>&lt;b&gt;Target device:&lt;/b&gt;</source>
+        <translation>&lt;b&gt;Zielgerät:&lt;/b&gt;</translation>
+    </message>
+    <message>
+        <source>Align Step</source>
+        <translation>Schritt ausrichten</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Abbrechen</translation>
+    </message>
+    <message>
+        <source>Dynamic Event Editor</source>
+        <translation>Dynamischer Ereigniseditor</translation>
+    </message>
+    <message>
+        <source>EMT Event Editor</source>
+        <translation>EMT Ereignis-Editor</translation>
+    </message>
+    <message>
+        <source>EMT group Created</source>
+        <translation>EMT Gruppe erstellt</translation>
+    </message>
+    <message>
+        <source>End Time</source>
+        <translation>Endzeit</translation>
+    </message>
+    <message>
+        <source>Group</source>
+        <translation>Gruppe</translation>
+    </message>
+    <message>
+        <source>Group: {group_name}</source>
+        <translation>Gruppe: {group_name}</translation>
+    </message>
+    <message>
+        <source>Invalid Input</source>
+        <translation>Ungültige Eingabe</translation>
+    </message>
+    <message>
+        <source>Missing fields</source>
+        <translation>Fehlende Felder</translation>
+    </message>
+    <message>
+        <source>New Value</source>
+        <translation>Neuer Wert</translation>
+    </message>
+    <message>
+        <source>New group name</source>
+        <translation>Neuer Gruppenname</translation>
+    </message>
+    <message>
+        <source>New row {row_number}</source>
+        <translation>Neue Zeile {row_number}</translation>
+    </message>
+    <message>
+        <source>No EMT Events Group</source>
+        <translation>Keine EMT Ereignisgruppe</translation>
+    </message>
+    <message>
+        <source>No EMT Events Group found, please create one before adding an event.</source>
+        <translation>Keine EMT Ereignisgruppe gefunden, bitte erstellen Sie eine, bevor Sie ein Ereignis hinzufügen.</translation>
+    </message>
+    <message>
+        <source>No Events</source>
+        <translation>Keine Ereignisse</translation>
+    </message>
+    <message>
+        <source>No RMS Events Group</source>
+        <translation>Keine RMS Ereignisgruppe</translation>
+    </message>
+    <message>
+        <source>No RMS Events Group found, please create one before adding an event.</source>
+        <translation>Keine RMS Ereignisgruppe gefunden, bitte erstellen Sie eine, bevor Sie ein Ereignis hinzufügen.</translation>
+    </message>
+    <message>
+        <source>No Rows Selected</source>
+        <translation>Keine Zeilen ausgewählt</translation>
+    </message>
+    <message>
+        <source>No switch EMT mode parameter is available in this device.</source>
+        <translation>Der Schalter EMT-Modus-Parameter ist in diesem Gerät nicht verfügbar.</translation>
+    </message>
+    <message>
+        <source>Overlapping Events</source>
+        <translation>Überlappende Ereignisse</translation>
+    </message>
+    <message>
+        <source>Parameter</source>
+        <translation>Parameter</translation>
+    </message>
+    <message>
+        <source>Please add at least one event before confirming.</source>
+        <translation>Bitte fügen Sie vor der Bestätigung mindestens ein Ereignis hinzu.</translation>
+    </message>
+    <message>
+        <source>Please check at least one row to remove.</source>
+        <translation>Bitte wählen Sie mindestens eine Zeile zum Entfernen aus.</translation>
+    </message>
+    <message>
+        <source>RMS Event Editor</source>
+        <translation>RMS Ereignis-Editor</translation>
+    </message>
+    <message>
+        <source>RMS group Created</source>
+        <translation>RMS Gruppe erstellt</translation>
+    </message>
+    <message>
+        <source>Ramp</source>
+        <translation>Rampe</translation>
+    </message>
+    <message>
+        <source>Row {row_number}: {message}</source>
+        <translation>Zeile {row_number}: {message}</translation>
+    </message>
+    <message>
+        <source>Some events are overlapped and cannot be applied.</source>
+        <translation>Einige Ereignisse überlappen und können nicht angewendet werden.</translation>
+    </message>
+    <message>
+        <source>Step</source>
+        <translation>Schritt</translation>
+    </message>
+    <message>
+        <source>Switch Sequence</source>
+        <translation>Schaltfolge</translation>
+    </message>
+    <message>
+        <source>Switch Sequence Wizard</source>
+        <translation>Schalten-Sequenz-Assistent</translation>
+    </message>
+    <message>
+        <source>Target device:</source>
+        <translation>Zielgerät:</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>Zeit</translation>
+    </message>
+    <message>
+        <source>Transition</source>
+        <translation>Übergang</translation>
+    </message>
+    <message>
+        <source>group has invalid type</source>
+        <translation>Gruppe hat ungültigen Typ</translation>
+    </message>
+    <message>
+        <source>parameter must be Var</source>
+        <translation>Parameter muss Var sein</translation>
+    </message>
+    <message>
+        <source>transition_type must be DynamicEventTransitionType</source>
+        <translation>transition_type muss DynamicEventTransitionType sein</translation>
+    </message>
+    <message>
+        <source>{origin}: {transition}, parameter={parameter}, time={time:.4f} s, end_time={end_time:.4f} s, value={value:.6f}</source>
+        <translation>{origin}: {transition}, parameter={parameter}, time={time:.4f} s, end_time={end_time:.4f} s, value={value:.6f}</translation>
+    </message>
+    <message>
+        <source>{origin}: {transition}, parameter={parameter}, time={time:.4f} s, value={value:.6f}</source>
+        <translation>{origin}: {transition}, parameter={parameter}, time={time:.4f} s, value={value:.6f}</translation>
+    </message>
+    <message>
+        <source>{prefix}: {group_name}</source>
+        <translation>{prefix}: {group_name}</translation>
+    </message>
+    <message>
+        <source>✅ Add Events</source>
+        <translation>✅ Ereignisse hinzufügen</translation>
+    </message>
+    <message>
+        <source>❌ Remove Selected Rows</source>
+        <translation>❌ Ausgewählte Zeilen entfernen</translation>
+    </message>
+    <message>
+        <source>➕ Add New Event</source>
+        <translation>➕ Neues Ereignis hinzufügen</translation>
+    </message>
+    <message>
+        <source>➕ New Event Group</source>
+        <translation>➕ Neue Ereignisgruppe</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventsGroupsDialog</name>
+    <message>
+        <source>Create EMT Events Group</source>
+        <translation>EMT Ereignisgruppe erstellen</translation>
+    </message>
+    <message>
+        <source>Create RMS Events Group</source>
+        <translation>RMS Ereignisgruppe erstellen</translation>
+    </message>
+    <message>
+        <source>Enter group name</source>
+        <translation>Gruppenname eingeben</translation>
+    </message>
+    <message>
+        <source>Invalid name</source>
+        <translation>Ungültiger Name</translation>
+    </message>
+    <message>
+        <source>Name:</source>
+        <translation>Name:</translation>
+    </message>
+    <message>
+        <source>The name cannot be empty.</source>
+        <translation>Der Name darf nicht leer sein.</translation>
+    </message>
+</context>
+<context>
     <name>DynamicsResultsHandler</name>
     <message>
         <source>X-Y plot slot</source>
@@ -2293,6 +3085,17 @@ li.checked::marker { content: &quot;\2612&quot;; }
     </message>
 </context>
 <context>
+    <name>EquationLatexModel</name>
+    <message>
+        <source>Equation</source>
+        <translation>Gleichung</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>Typ</translation>
+    </message>
+</context>
+<context>
     <name>ExcelSelectionDialog</name>
     <message>
         <location filename="../FileDialogues/ProfilesInput/excel_sheet_selection.ui" line="20"/>
@@ -2315,13 +3118,13 @@ li.checked::marker { content: &quot;\2612&quot;; }
         <translation>Wählen Sie, wie die Datei geladen werden soll</translation>
     </message>
     <message>
-        <source>You've passed a generic list of files
+        <source>You&apos;ve passed a generic list of files
 select the expected processing format</source>
         <translation>Sie haben eine allgemeine Liste von Dateien übergeben
 Wählen Sie das erwartete Verarbeitungsformat</translation>
     </message>
     <message>
-        <source>You've passed a generic of file
+        <source>You&apos;ve passed a generic of file
 select the expected processing format</source>
         <translation>Sie haben ein allgemeines Dateiformat übergeben
 Wählen Sie das erwartete Verarbeitungsformat</translation>
@@ -2400,6 +3203,121 @@ Wählen Sie das erwartete Verarbeitungsformat</translation>
         <location filename="../DeviceEditors/GeneratorEditor/generator_editor_gui.ui" line="95"/>
         <source>Del</source>
         <translation>Del</translation>
+    </message>
+</context>
+<context>
+    <name>GridGeneratorGUI</name>
+    <message>
+        <source>Grid Generator</source>
+        <translation>Gittergenerator</translation>
+    </message>
+    <message>
+        <source>Warning</source>
+        <translation>Warnung</translation>
+    </message>
+</context>
+<context>
+    <name>GridMapWidget</name>
+    <message>
+        <source>Connection Error</source>
+        <translation>Verbindungsfehler</translation>
+    </message>
+    <message>
+        <source>No suitable voltage level ({voltage:.2f} kV) found in substation &quot;{substation_name}&quot;.</source>
+        <translation>Kein geeignetes Spannungsniveau ({voltage:.2f} kV) in der Umspannstation &quot;{substation_name}&quot; gefunden.</translation>
+    </message>
+    <message>
+        <source>Operation Successful</source>
+        <translation>Vorgang erfolgreich</translation>
+    </message>
+    <message>
+        <source>Please select exactly one line and one substation.</source>
+        <translation>Bitte wählen Sie genau eine Leitung und einen Umspannwerk aus.</translation>
+    </message>
+    <message>
+        <source>Selection Error</source>
+        <translation>Auswahlfehler</translation>
+    </message>
+    <message>
+        <source>T-joint connection created between {substation_name} and {line_name}.</source>
+        <translation>T-Verbindung erstellt zwischen {substation_name} und {line_name}.</translation>
+    </message>
+    <message>
+        <source>The line cannot be connected. Please ensure the target substation has a bus with a matching nominal voltage.</source>
+        <translation>Die Leitung kann nicht verbunden werden. Bitte stellen Sie sicher, dass das Ziel-Umspannwerk einen Bus mit einer passenden Nennspannung hat.</translation>
+    </message>
+    <message>
+        <source>Waypoint replaced with new substation &apos;{substation_name}&apos;.
+Original line split into two segments:
+- {line1_name}: {length1:.2f} km
+- {line2_name}: {length2:.2f} km
+New connection line: {distance:.2f} km</source>
+        <translation>Wegpunkt durch neues Umspannwerk &apos;{substation_name}&apos; ersetzt.
+Ursprüngliche Leitung in zwei Segmente aufgeteilt:
+- {line1_name}: {length1:.2f} km
+- {line2_name}: {length2:.2f} km
+Neue Verbindungslinie: {distance:.2f} km</translation>
+    </message>
+    <message>
+        <source>Circuit ID</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Create new line</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Do you want to delete the substation where the lines were connecting? This will open the substation deletion menu, with the information of the items that would be removed.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Do you want to finalize the editing of the substation in the schematic?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Do you want to transform to substation the selected waypoint? This operation will split the line at the selected location, and will connect the new ends to the new substation.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Do you want to update lengths of lines? 
+IMPORTANT: This will take into account every movement of substation and line locations. If you are unsure of the effects of this updating, click no and perform the individual length update in a new map or in the specific line.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Please select two substations</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Remove substation?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select circuit ID</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Some of the buses was None :(</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Somehow the two substations are the same :(</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The nominal voltage of the two connecting substations is not the same :(</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Transform waypoint to substation?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Update lengths?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>create substation diagram</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -2869,6 +3787,73 @@ Abbrechen und erneut versuchen?</translation>
         <location filename="../DeviceEditors/LineLocationsEditor/line_locations_editor_gui.ui" line="89"/>
         <source>Paste</source>
         <translation>Einfügen</translation>
+    </message>
+    <message>
+        <source>CSV files (*.csv);;All files (*)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>CSV files (*.csv);;Text files (*.txt);;All files (*)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Export coordinates</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Import coordinates</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Locations</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>LogsDialogue</name>
+    <message>
+        <source>Accept</source>
+        <translation>Akzeptiere</translation>
+    </message>
+    <message>
+        <source>CSV (*.csv);;Excel files (*.xlsx)</source>
+        <translation>CSV (*.csv);;Excel-Dateien (*.xlsx)</translation>
+    </message>
+    <message>
+        <source>Class</source>
+        <translation>Klasse</translation>
+    </message>
+    <message>
+        <source>Copy</source>
+        <translation>Kopie</translation>
+    </message>
+    <message>
+        <source>Device</source>
+        <translation>Gerät</translation>
+    </message>
+    <message>
+        <source>Expected value</source>
+        <translation>Erwarteter Wert</translation>
+    </message>
+    <message>
+        <source>Export results</source>
+        <translation>Ergebnisse exportieren</translation>
+    </message>
+    <message>
+        <source>Property</source>
+        <translation>Eigenschaft</translation>
+    </message>
+    <message>
+        <source>Save</source>
+        <translation>Speichern</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>Zeit</translation>
+    </message>
+    <message>
+        <source>Value</source>
+        <translation>Wert</translation>
     </message>
 </context>
 <context>
@@ -4098,6 +5083,42 @@ Abbrechen und erneut versuchen?</translation>
         <source>{status_text} Min distance {min_distance:.3f} p.u. • mean distance {mean_distance:.3f} p.u.</source>
         <translation>{status_text} Min. Abstand {min_distance:.3f} p.u. • mittlerer Abstand {mean_distance:.3f} p.u.</translation>
     </message>
+    <message>
+        <source>Open-Meteo did not return hourly weather data</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>PVGIS did not return photovoltaic power data</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>PVGIS returned data, but it could not be interpolated to the circuit time profile</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The hub height must be greater than zero</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The latitude must be between -90 and 90 degrees</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The longitude must be between -180 and 180 degrees</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The photovoltaic peak power must be greater than zero</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The roughness length must be zero or greater</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The wind generator peak power must be greater than zero</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>MatpowerExportDialog</name>
@@ -4125,6 +5146,68 @@ Abbrechen und erneut versuchen?</translation>
         <location filename="../FileDialogues/MatpowerDialogue/matpower_export_gui.ui" line="72"/>
         <source>Export</source>
         <translation>Exportieren</translation>
+    </message>
+</context>
+<context>
+    <name>NewProfilesStructureDialogue</name>
+    <message>
+        <source>Accept</source>
+        <translation>Akzeptiere</translation>
+    </message>
+    <message>
+        <source>New profiles structure</source>
+        <translation>Neue Profilstruktur</translation>
+    </message>
+    <message>
+        <source>Number of time steps</source>
+        <translation>Anzahl der Zeitschritte</translation>
+    </message>
+    <message>
+        <source>Start date</source>
+        <translation>Startdatum</translation>
+    </message>
+    <message>
+        <source>Time step length</source>
+        <translation>Zeitschrittlänge</translation>
+    </message>
+    <message>
+        <source>Time units</source>
+        <translation>Zeiteinheiten</translation>
+    </message>
+</context>
+<context>
+    <name>ObjectColumnFilterDialog</name>
+    <message>
+        <source>Apply</source>
+        <translation>Anwenden</translation>
+    </message>
+    <message>
+        <source>Cancel filter</source>
+        <translation>Filter zurücksetzen</translation>
+    </message>
+    <message>
+        <source>Clear filter</source>
+        <translation>Filter löschen</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>Suchen</translation>
+    </message>
+    <message>
+        <source>Select all visible</source>
+        <translation>Alle sichtbaren auswählen</translation>
+    </message>
+    <message>
+        <source>Select no visible</source>
+        <translation>Keine sichtbaren auswählen</translation>
+    </message>
+    <message>
+        <source>Sort A to Z</source>
+        <translation>Sortieren A-Z</translation>
+    </message>
+    <message>
+        <source>Sort Z to A</source>
+        <translation>Sortieren Z-A</translation>
     </message>
 </context>
 <context>
@@ -4413,6 +5496,45 @@ Ist es für Sie in Ordnung, möglicherweise lange zu warten?</translation>
     </message>
 </context>
 <context>
+    <name>RmsPlotDialog</name>
+    <message>
+        <source>Add</source>
+        <translation>Hinzufügen</translation>
+    </message>
+    <message>
+        <source>Device:</source>
+        <translation>Gerät:</translation>
+    </message>
+    <message>
+        <source>Plot Variables</source>
+        <translation>Variablen plotten</translation>
+    </message>
+    <message>
+        <source>Plot Window</source>
+        <translation>Plot-Fenster</translation>
+    </message>
+    <message>
+        <source>Remove variable</source>
+        <translation>Variable entfernen</translation>
+    </message>
+    <message>
+        <source>Rms Simulation Results</source>
+        <translation>RMS Simulationsergebnisse</translation>
+    </message>
+    <message>
+        <source>Show in new window</source>
+        <translation>In neuem Fenster anzeigen</translation>
+    </message>
+    <message>
+        <source>Variable:</source>
+        <translation>Variable:</translation>
+    </message>
+    <message>
+        <source>time (s)</source>
+        <translation>Zeit (s)</translation>
+    </message>
+</context>
+<context>
     <name>RosetaExplorer</name>
     <message>
         <location filename="../FileDialogues/RosetaExplorer/roseta_explorer.ui" line="23"/>
@@ -4469,6 +5591,235 @@ Ist es für Sie in Ordnung, möglicherweise lange zu warten?</translation>
         <location filename="../FileDialogues/RosetaExplorer/roseta_explorer.ui" line="533"/>
         <source>Save logs</source>
         <translation>Protokolle speichern</translation>
+    </message>
+</context>
+<context>
+    <name>RosetaExplorerGUI</name>
+    <message>
+        <source>Copy</source>
+        <translation>Kopie</translation>
+    </message>
+    <message>
+        <source>Copied table to clipboard!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Excel files (*.xlsx)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Export logs</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Logger</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There no logs :)</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>RuntimeLogicEditorWidget</name>
+    <message>
+        <source>Add entry</source>
+        <translation>Eintrag hinzufügen</translation>
+    </message>
+    <message>
+        <source>Add retained mode</source>
+        <translation>Behaltenen Modus hinzufügen</translation>
+    </message>
+    <message>
+        <source>Configuration</source>
+        <translation>Konfiguration</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>Löschen</translation>
+    </message>
+    <message>
+        <source>Delete retained mode</source>
+        <translation>Behaltenen Modus löschen</translation>
+    </message>
+    <message>
+        <source>Documentation</source>
+        <translation>Dokumentation</translation>
+    </message>
+    <message>
+        <source>Enter a procedural entry name.</source>
+        <translation>Geben Sie einen Namen für einen prozeduralen Eintrag ein.</translation>
+    </message>
+    <message>
+        <source>Enter a valid retained-mode symbol name.</source>
+        <translation>Geben Sie einen gültigen Symbolnamen für den Behaltenen Modus ein.</translation>
+    </message>
+    <message>
+        <source>Enter an initial value or expression.</source>
+        <translation>Geben Sie einen Anfangswert oder einen Ausdruck ein.</translation>
+    </message>
+    <message>
+        <source>Entry name</source>
+        <translation>Eintragname</translation>
+    </message>
+    <message>
+        <source>Initial value or expression</source>
+        <translation>Anfangswert oder Ausdruck</translation>
+    </message>
+    <message>
+        <source>Mode symbol name</source>
+        <translation>Modussymbolname</translation>
+    </message>
+    <message>
+        <source>Move down</source>
+        <translation>Nach unten</translation>
+    </message>
+    <message>
+        <source>Move up</source>
+        <translation>Nach oben</translation>
+    </message>
+    <message>
+        <source>Owner</source>
+        <translation>Eigentümer</translation>
+    </message>
+    <message>
+        <source>Procedural entries</source>
+        <translation>Prozedurale Einträge</translation>
+    </message>
+    <message>
+        <source>Retained modes</source>
+        <translation>Behaltene Modi</translation>
+    </message>
+    <message>
+        <source>Runtime logic is valid.</source>
+        <translation>Runtime logic is valid.</translation>
+    </message>
+    <message>
+        <source>Select a valid owner and procedural type.</source>
+        <translation>Wählen Sie einen gültigen Besitzer und einen prozeduralen Typ.</translation>
+    </message>
+    <message>
+        <source>Select a valid owner block.</source>
+        <translation>Wählen Sie einen gültigen Besitzerblock.</translation>
+    </message>
+    <message>
+        <source>Select one procedural entry to delete.</source>
+        <translation>Wählen Sie einen prozeduralen Eintrag zum Löschen aus.</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>Typ</translation>
+    </message>
+    <message>
+        <source>Valid runtime logic. Warnings: </source>
+        <translation>Gültige Laufzeitlogik. Warnungen:</translation>
+    </message>
+    <message>
+        <source>Validate runtime logic</source>
+        <translation>Laufzeitlogik validieren</translation>
+    </message>
+</context>
+<context>
+    <name>ScenariosMain</name>
+    <message>
+        <source>Add child scenario</source>
+        <translation>Untergeordnetes Szenario hinzufügen</translation>
+    </message>
+    <message>
+        <source>Commit scenario</source>
+        <translation>Commit-Szenario</translation>
+    </message>
+    <message>
+        <source>Merge children into scenario</source>
+        <translation>Kinder in das Szenario einbinden</translation>
+    </message>
+    <message>
+        <source>Remove scenario</source>
+        <translation>Szenario entfernen</translation>
+    </message>
+    <message>
+        <source>Rename scenario</source>
+        <translation>Szenario umbenennen</translation>
+    </message>
+    <message>
+        <source>Set as current scenario</source>
+        <translation>Als aktuelles Szenario festlegen</translation>
+    </message>
+    <message>
+        <source>Add Child Scenario</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Commit Scenario</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Enter scenario name:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Failed to merge child scenarios</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Failed to remove scenario</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Invalid parent scenario selected</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Invalid scenario selected</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Merge Children</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Only the current scenario can be committed. Activate it first.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Please select a parent scenario first</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Please select a scenario to commit</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Please select a scenario to merge into</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Please select a scenario to remove</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Please select a scenario to rename</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Please select a scenario to set as current</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Remove Scenario</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Rename Scenario</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Scenario name cannot be empty</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Set Current Scenario</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -4797,6 +6148,29 @@ Monte-Carlo-Leistungsflussergebnisse:</translation>
     </message>
 </context>
 <context>
+    <name>SelectionDialog</name>
+    <message>
+        <source>Cancel</source>
+        <translation>Abbrechen</translation>
+    </message>
+    <message>
+        <source>Click on a substation to reconnect branch {branch_name}</source>
+        <translation>Klicken Sie auf ein Umspannwerk, um den Zweig {branch_name} wieder zu verbinden</translation>
+    </message>
+    <message>
+        <source>The substation should have a compatible voltage level ({voltage} kV)</source>
+        <translation>Das Umspannwerk sollte eine kompatible Spannungsstufe ({voltage} kV) haben</translation>
+    </message>
+    <message>
+        <source>Waiting for Selection</source>
+        <translation>Auswahl wird erwartet</translation>
+    </message>
+    <message>
+        <source>Waiting for selection...</source>
+        <translation>Warten auf Auswahl...</translation>
+    </message>
+</context>
+<context>
     <name>ServerFileDialog</name>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="14"/>
@@ -4923,6 +6297,25 @@ Monte-Carlo-Leistungsflussergebnisse:</translation>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="309"/>
         <source>Delete the selected file or model from the server database</source>
         <translation>Löscht die ausgewählte Datei oder das Modell aus der Serverdatenbank</translation>
+    </message>
+</context>
+<context>
+    <name>ServerFileDialogue</name>
+    <message>
+        <source>Delete server file</source>
+        <translation>Serverdatei löschen</translation>
+    </message>
+    <message>
+        <source>Delete server model</source>
+        <translation>Servermodell löschen</translation>
+    </message>
+    <message>
+        <source>Delete the selected file and every model inside it?</source>
+        <translation>Die ausgewählte Datei und jedes Modell darin löschen?</translation>
+    </message>
+    <message>
+        <source>Delete the selected model from the server database?</source>
+        <translation>Das ausgewählte Modell aus der Serverdatenbank löschen?</translation>
     </message>
 </context>
 <context>
@@ -5193,6 +6586,258 @@ Monte-Carlo-Leistungsflussergebnisse:</translation>
     </message>
 </context>
 <context>
+    <name>SigmaAnalysisGUI</name>
+    <message>
+        <source>CSV (*.csv);;Excel files (*.xlsx)</source>
+        <translation>CSV (*.csv);;Excel-Dateien (*.xlsx)</translation>
+    </message>
+    <message>
+        <source>Export results</source>
+        <translation>Ergebnisse exportieren</translation>
+    </message>
+    <message>
+        <source>HELM-Sigma analysis dialogue</source>
+        <translation>HELM-Sigma Analyse Dialog</translation>
+    </message>
+    <message>
+        <source>Sigma analysis completed</source>
+        <translation>Sigma-Analyse abgeschlossen</translation>
+    </message>
+    <message>
+        <source>Sigma analysis did not return results</source>
+        <translation>Sigma-Analyse hat keine Ergebnisse geliefert</translation>
+    </message>
+    <message>
+        <source>Sigma coefficients did not converge :(</source>
+        <translation>Sigma-Koeffizienten haben nicht konvergiert :(</translation>
+    </message>
+    <message>
+        <source>Snapshot</source>
+        <translation>Schnappschuss</translation>
+    </message>
+    <message>
+        <source>This window was opened without a circuit/options rerun context.</source>
+        <translation>Dieses Fenster wurde ohne einen Kontext zum erneuten Ausführen eines Schaltkreises/der Optionen geöffnet.</translation>
+    </message>
+    <message>
+        <source>Warning</source>
+        <translation>Warnung</translation>
+    </message>
+</context>
+<context>
+    <name>SimulationsMain</name>
+    <message>
+        <source>Compiling the grid...</source>
+        <translation>Netz wird kompiliert...</translation>
+    </message>
+    <message>
+        <source>Model v. {model_version}</source>
+        <translation>Modell v. {model_version}</translation>
+    </message>
+    <message>
+        <source>Pareto combination</source>
+        <translation>Pareto-Kombination</translation>
+    </message>
+    <message>
+        <source>Pareto combination {index}</source>
+        <translation>Pareto-Kombination {index}</translation>
+    </message>
+    <message>
+        <source>Running power flow...</source>
+        <translation>Berechnung des Stromflusses läuft...</translation>
+    </message>
+    <message>
+        <source>Short circuits</source>
+        <translation>Kurzschlüsse</translation>
+    </message>
+    <message>
+        <source>User: {user_name}</source>
+        <translation>Benutzer: {user_name}</translation>
+    </message>
+    <message>
+        <source>idtag. {idtag}</source>
+        <translation>IDtag. {idtag}</translation>
+    </message>
+    <message>
+        <source>Another PTDF time series is being executed now...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Another short circuit is being executed now...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Catalogue optimization</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Catalogue optimization requires an active schematic diagram with a selection.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Clustering</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Continuation Power Flow</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Emt simulation</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>For this simulation, you need to select some buses from the interface</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Fuse devices</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No problems were detected, therefore no storage is suggested</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Nodal hosting capacity</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Power flow</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>RMS pre simulation check</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Rms simulation</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Run a power flow simulation first.
+The results are needed to initialize this simulation.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select at least one AC line or two-winding transformer in the schematic before running the catalogue optimization.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Small-Signal Stability analysis EMT</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Small-Signal Stability analysis RMS</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Small-signal stability EMT pre simulation check</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Small-signal stability RMS pre simulation check</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no power short circuit results.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>State estimation</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Storage location</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The "from" aggregation has no buses!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The area "from" has no buses!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The area "to" has no buses!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The number of clusters in the stored results is different from the specified :(
+Run another clustering analysis.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The simulation time is 0. Change it to a proper time in settings.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There are no OPF results, therefore this operation will not use OPF information.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There are no OPF time series, therefore this operation will not use OPF information.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There are no Small-Signal Stability analysis EMT results.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There are no Small-Signal Stability analysis RMS results.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There are no compatible areas</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There are no emt simulation results.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There are no inter-area Branches!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There are no investment groups, you need to create some so that VeraGrid can evaluate them ;)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There are no power flow results.
+Is there any slack bus or generator?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There are no rms simulation results.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There are no state estimation results.
+Is there any slack bus or generator?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There is no time series simulation.
+ It is needed for this functionality.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There were no power flow values available. Linear flows will be used.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>This action will fuse all the devices per node and per category. Are you sure?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>You have selected a group of buses with no power injection.
+this will result in an infinite continuation, since the loading variation of buses with zero injection will be infinite.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>SubstationDesigner</name>
     <message>
         <source>Substation maker</source>
@@ -5205,6 +6850,134 @@ Monte-Carlo-Leistungsflussergebnisse:</translation>
     <message>
         <source>There are no voltage levels, so no substation will be created, ok?</source>
         <translation>Da es keine Spannungsebenen gibt, wird auch kein Umspannwerk errichtet, ok?</translation>
+    </message>
+</context>
+<context>
+    <name>SwitchSequenceDialog</name>
+    <message>
+        <source>Add Sequence Step</source>
+        <translation>Sequenzschritt hinzufügen</translation>
+    </message>
+    <message>
+        <source>Add at least one sequence row.</source>
+        <translation>Fügen Sie mindestens eine Sequenzzeile hinzu.</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>Schließen</translation>
+    </message>
+    <message>
+        <source>Group</source>
+        <translation>Gruppe</translation>
+    </message>
+    <message>
+        <source>Mode Parameter</source>
+        <translation>Modusparameter</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation>Öffnen</translation>
+    </message>
+    <message>
+        <source>Please check at least one row to remove.</source>
+        <translation>Bitte wählen Sie mindestens eine Zeile zum Entfernen aus.</translation>
+    </message>
+    <message>
+        <source>Remove Selected Rows</source>
+        <translation>Ausgewählte Zeilen entfernen</translation>
+    </message>
+    <message>
+        <source>Select a mode parameter and an events group.</source>
+        <translation>Wählen Sie einen Modusparameter und eine Ereignisgruppe.</translation>
+    </message>
+    <message>
+        <source>State</source>
+        <translation>Status</translation>
+    </message>
+    <message>
+        <source>Switch Sequence</source>
+        <translation>Schaltfolge</translation>
+    </message>
+    <message>
+        <source>Switch Sequence Wizard</source>
+        <translation>Schalten-Sequenz-Assistent</translation>
+    </message>
+    <message>
+        <source>The selected parameter or group is invalid.</source>
+        <translation>Der ausgewählte Parameter oder die Gruppe ist ungültig.</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>Zeit</translation>
+    </message>
+</context>
+<context>
+    <name>SystemScaler</name>
+    <message>
+        <source>Aggregated energy scaling preview</source>
+        <translation>Vorschau der aggregierten Energie-Skalierung</translation>
+    </message>
+    <message>
+        <source>Aggregated power scaling preview</source>
+        <translation>Vorschau der aggregierten Leistungsskalierung</translation>
+    </message>
+    <message>
+        <source>MW</source>
+        <translation>MW</translation>
+    </message>
+    <message>
+        <source>MWh</source>
+        <translation>MWh</translation>
+    </message>
+    <message>
+        <source>Original generation</source>
+        <translation>Ursprüngliche Erzeugung</translation>
+    </message>
+    <message>
+        <source>Original generation energy</source>
+        <translation>Energie der ursprünglichen Erzeugung</translation>
+    </message>
+    <message>
+        <source>Original load</source>
+        <translation>Ursprüngliche Last</translation>
+    </message>
+    <message>
+        <source>Original load energy</source>
+        <translation>Energie der ursprünglichen Last</translation>
+    </message>
+    <message>
+        <source>Press plot to preview scaling</source>
+        <translation>Klicken Sie auf Plot, um die Skalierung zu prüfen</translation>
+    </message>
+    <message>
+        <source>Scaled generation</source>
+        <translation>Skalierte Erzeugung</translation>
+    </message>
+    <message>
+        <source>Scaled generation energy</source>
+        <translation>Energie der skalierten Erzeugung</translation>
+    </message>
+    <message>
+        <source>Scaled load</source>
+        <translation>Skalierte Last</translation>
+    </message>
+    <message>
+        <source>Scaled load energy</source>
+        <translation>Energie der skalierten Last</translation>
+    </message>
+    <message>
+        <source>System scaling</source>
+        <translation>Systemskalierung</translation>
+    </message>
+    <message>
+        <source>There is no time series to plot.</source>
+        <translation>Es gibt keine Zeitreihe zum Plotten.</translation>
+    </message>
+    <message>
+        <source>This operation will alter the generation and load composition irreversibly
+Are you sure?</source>
+        <translation>Dieser Vorgang verändert die Erzeugungs- und Lastzusammensetzung irreversibel
+Sind Sie sicher?</translation>
     </message>
 </context>
 <context>
@@ -5253,6 +7026,29 @@ Monte-Carlo-Leistungsflussergebnisse:</translation>
         <location filename="../DeviceEditors/TemplateDeviceEditor/template_device_editor_gui.ui" line="240"/>
         <source>Units</source>
         <translation>Einheiten</translation>
+    </message>
+</context>
+<context>
+    <name>TimeReIndexDialogue</name>
+    <message>
+        <source>Accept</source>
+        <translation>Akzeptiere</translation>
+    </message>
+    <message>
+        <source>Start date</source>
+        <translation>Startdatum</translation>
+    </message>
+    <message>
+        <source>Time re-index</source>
+        <translation>Zeit-Neuindizierung</translation>
+    </message>
+    <message>
+        <source>Time step length</source>
+        <translation>Zeitschrittlänge</translation>
+    </message>
+    <message>
+        <source>Time units</source>
+        <translation>Zeiteinheiten</translation>
     </message>
 </context>
 <context>
@@ -11190,1136 +12986,1269 @@ Monte-Carlo-Leistungsflussergebnisse:</translation>
     </message>
 </context>
 <context>
-    <name>ArrayEditor</name>
+    <name>BaseDiagramWidget</name>
     <message>
-        <source>Add</source>
-        <translation>Hinzufügen</translation>
+        <source>No time series results to plot, run some time series results. Even partial results are fine</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Array Editor</source>
-        <translation>Array-Editor</translation>
+        <source>Overwrite the active profile</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Delete</source>
-        <translation>Löschen</translation>
-    </message>
-</context>
-<context>
-    <name>BlockParameterDraftModel</name>
-    <message>
-        <source>Name</source>
-        <translation>Name</translation>
-    </message>
-    <message>
-        <source>Numeric value. Changes are staged until Apply changes is pressed.</source>
-        <translation>Numerischer Wert. Änderungen werden vorgemerkt, bis auf 'Änderungen anwenden' gedrückt wird.</translation>
-    </message>
-    <message>
-        <source>Real value or symbolic initialization expression. Changes are staged until Apply changes is pressed.</source>
-        <translation>Realer Wert oder symbolischer Initialisierungsausdruck. Änderungen werden vorgemerkt, bis auf 'Änderungen anwenden' gedrückt wird.</translation>
-    </message>
-    <message>
-        <source>Type</source>
-        <translation>Typ</translation>
-    </message>
-    <message>
-        <source>Value</source>
-        <translation>Wert</translation>
+        <source>Overwrite the profile</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>BlockSymbolFilterProxyModel</name>
+    <name>BusGraphicItem</name>
     <message>
-        <source>Initializes a variable through VarPowerFlowReferenceType and block.external_mapping.</source>
-        <translation>Initialisiert eine Variable über VarPowerFlowReferenceType und block.external_mapping.</translation>
+        <source>Do you want to update the time series active status accordingly?</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Maps a static parameter through ParamPowerFlowReferenceType to block.api_obj_mapping. Dynamic parameters are not editable here.</source>
-        <translation>Mappt einen statischen Parameter über ParamPowerFlowReferenceType auf block.api_obj_mapping. Dynamische Parameter können hier nicht bearbeitet werden.</translation>
+        <source>The api object is none :(</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Power-flow derived initialization</source>
-        <translation>Über Stromfluss abgeleitete Initialisierung</translation>
-    </message>
-    <message>
-        <source>Static parameter mapping</source>
-        <translation>Statische Parameterzuordnung</translation>
+        <source>Update time series active status</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>CorrectInconsistenciesDialogue</name>
+    <name>BusSelectorDialogue</name>
     <message>
-        <source>Accept</source>
-        <translation>Akzeptiere</translation>
-    </message>
-    <message>
-        <source>Correct inconsistencies</source>
-        <translation>Inkonsistenzen korrigieren</translation>
-    </message>
-    <message>
-        <source>Maximum generator set point</source>
-        <translation>Maximaler Generator-Sollwert</translation>
-    </message>
-    <message>
-        <source>Maximum virtual tap difference</source>
-        <translation>Maximale virtuelle Tap-Differenz</translation>
-    </message>
-    <message>
-        <source>Minimum generator set point</source>
-        <translation>Minimaler Generator-Sollwert</translation>
+        <source>Bus selection</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>DataBaseTableMain</name>
+    <name>CatalogueGUI</name>
     <message>
-        <source>Add</source>
-        <translation>Hinzufügen</translation>
+        <source>Can't upload file</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Add to current diagram</source>
-        <translation>Zum aktuellen Diagramm hinzufügen</translation>
+        <source>Custom Catalogue</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>CgmesExportDialogue</name>
+    <message>
+        <source>CGMES export</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Assign to profile</source>
-        <translation>Dem Profil zuweisen</translation>
+        <source>Export to CGMES</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>CgmesImportDialogue</name>
+    <message>
+        <source>CGMES import</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>ConsoleMainWindow</name>
+    <message>
+        <source>PySide6 Python Console</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>ContingencyPlannerGUI</name>
+    <message>
+        <source>Contingency planner</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>ControllableShuntDeviceEditor</name>
+    <message>
+        <source>Controllable shunt editor</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>ControllableShuntEditor</name>
+    <message>
+        <source>Controllable shunt editor</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>CoordinatesInputGUI</name>
+    <message>
+        <source>Coordinates import dialogue</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Colour branches like this</source>
-        <translation>Färben Sie Zweige so</translation>
+        <source>Duplicated headers</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Copy idtag</source>
-        <translation>Kopieren Sie idtag</translation>
+        <source>Only one file accepted :(</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Copy table</source>
-        <translation>Tabelle kopieren</translation>
+        <source>Open file</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>DcLineDeviceEditor</name>
+    <message>
+        <source>DC line design widget is not available</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Crop model to buses selection</source>
-        <translation>Modell auf Busauswahl zuschneiden</translation>
+        <source>DC line editor</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>DcLineEditor</name>
+    <message>
+        <source>Line editor</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Delete</source>
-        <translation>Löschen</translation>
+        <source>Load template</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>DgsExportDialogue</name>
+    <message>
+        <source>DGS export</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Duplicate object</source>
-        <translation>Doppeltes Objekt</translation>
+        <source>Export to Power Factory</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>DgsImportDialogue</name>
+    <message>
+        <source>DGS import</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>DiagramBusSelectorDialogue</name>
+    <message>
+        <source>Bus selection by diagram</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Edit</source>
-        <translation>Bearbeiten</translation>
+        <source>Select</source>
+        <translation type="unfinished"></translation>
     </message>
+</context>
+<context>
+    <name>FluidNodeGraphicItem</name>
+    <message>
+        <source>Are you sure that you want to delete this fluid node</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No DB object attached :/</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No electrical bus attached :/</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Remove fluid node</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>FluidPathGraphicItem</name>
+    <message>
+        <source>Are you sure that you want to convert this fluid path into a line?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Convert fluid path</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>GeneratorEditor</name>
+    <message>
+        <source>Generate a solar profile first</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Generate a wind profile first</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Generator editor</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Solar editor is not available</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Solar profile applied to generator</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Wind editor is not available</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Wind profile applied to generator</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Wrong solar profile length</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Wrong wind profile length</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>GeneratorGraphicItem</name>
+    <message>
+        <source>Are you sure that you want to convert this generator into a battery?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Convert generator</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>GeneratorQCurveEditor</name>
+    <message>
+        <source>Reactive power curve editor</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>GeneratorsProfileOptionsDialogue</name>
+    <message>
+        <source>Generator active power options</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>GenericDiagramWidget</name>
+    <message>
+        <source>Device editor</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>GridDiffDialogue</name>
+    <message>
+        <source>Errors while computing the differential :(</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>File not found</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Grid differential</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No diff</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No differential created :(
+Did you load a base grid to compare?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open base grid</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Save file</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The circuit has duplicated idtags and cannot be differentiated :(</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>VeraGrid diff (*.dveragrid)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Wait for the differential worker to finish before closing this window.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>GridMergeDialogue</name>
+    <message>
+        <source>Grid merges &amp; acquisitions</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The base circuit has duplicated idtags and cannot be merged :(</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The diff circuit has duplicated idtags and cannot be merged :(</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>GridReduceDialogue</name>
     <message>
         <source>Grid reduction</source>
-        <translation>Netzverkleinerung</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Highlight based on property</source>
-        <translation>Hervorhebung basierend auf der Eigenschaft</translation>
+        <source>Grid reduction?</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Highlight buses selection</source>
-        <translation>Busauswahl hervorheben</translation>
+        <source>Import profiles</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Merge</source>
-        <translation>Zusammenführen</translation>
+        <source>No reduction happened</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>New diagram from selection</source>
-        <translation>Neues Diagramm aus Auswahl</translation>
-    </message>
-    <message>
-        <source>New map from selection</source>
-        <translation>Neue Karte aus Auswahl</translation>
-    </message>
-    <message>
-        <source>New vicinity diagram</source>
-        <translation>Neues Umgebungsdiagramm</translation>
-    </message>
-    <message>
-        <source>Set value to column</source>
-        <translation>Wert auf Spalte setzen</translation>
-    </message>
-    <message>
-        <source>Type the object name or a smart filter expression ...</source>
-        <translation>Geben Sie den Objektnamen oder einen intelligenten Filterausdruck ein ...</translation>
+        <source>Run a power flow first! or select another method</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>DiagramsMain</name>
+    <name>HvdcGraphicItem</name>
     <message>
-        <source>Are you sure that you want to try an automatic layout?</source>
-        <translation>Sind Sie sicher, dass Sie ein automatisches Layout versuchen möchten?</translation>
+        <source>Change by a VSC system</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Duplicate</source>
-        <translation>Duplikat</translation>
+        <source>Do you want to change the HvdcLine by 2 VSC converters + 1 DC Line?</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>InjectionTemplateGraphicItem</name>
+    <message>
+        <source>Do you want to update the time series active status accordingly?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Update time series active status</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>InspectModel</name>
+    <message>
+        <source>Equations</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Parameters</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Variables</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>JMartiLineEmtDialog</name>
+    <message>
+        <source>Configure EMT J_Marti Line</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>EMT J_Marti line</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Enable at least one phase.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>NumPy archive (*.npz)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open JMARTI Frequency Samples</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select one NPZ file to import frequency samples.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The forced model order must be zero or less than or equal to the maximum model order.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The sweep sample count must be greater than or equal to the minimum frequency sample requirement.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The sweep upper frequency must be greater than the lower frequency.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>LineDeviceEditor</name>
+    <message>
+        <source>Line design widget is not available</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Line editor</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>LineEditor</name>
+    <message>
+        <source>Accept line design values</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Line editor</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Line editor initialization</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Load template</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No Template Selected</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The length cannot be 0!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Warning: You did not load template values. The circuit index will not be updated. Line parameters will be based on the provided values for Length, Max Current, Resistance, Reactance, and Susceptance.
+
+Do you want to continue without a template?</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>LineGraphicItem</name>
+    <message>
+        <source>A template will be generated using this line values per unit of length</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Add sequence line type</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Are you sure that you want to convert this line into a HVDC line?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Are you sure that you want to convert this line into a UPFC device?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Are you sure that you want to convert this line into a VSC device?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Are you sure that you want to convert this line into a series reactance device?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Are you sure that you want to convert this line into a switch device?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Are you sure that you want to convert this line into a transformer?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Convert line</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Unable to convert to VSC. One of the buses must be DC and the other AC.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>LineGraphicTemplateItem</name>
+    <message>
+        <source>Do you want to update the time series active status accordingly?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Update time series active status</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>LineLocationGraphicItem</name>
+    <message>
+        <source>Move substation graphics</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>LoadDesigner</name>
+    <message>
+        <source>Load designer</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>LoadDeviceEditor</name>
+    <message>
+        <source>Generate a profile before applying it</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Load designer is not available</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Load editor</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Wrong load profile length</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>LookupArrayLinearDialog</name>
+    <message>
+        <source>Clipboard is empty.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Configure Lookup Table</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Lookup Table</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Lookup table clipboard data can only have up to two columns.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Lookup table x values must be strictly increasing.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Lookup tables require at least two points.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>LookupMatrixEditorDialog</name>
+    <message>
+        <source>At least two X breakpoints are required.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>At least two Y breakpoints are required.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Invalid X breakpoints</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Invalid Y breakpoints</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Invalid number of X points</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Invalid number of Y points</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Lookup matrix editor</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>X values must be strictly increasing.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Y values must be strictly increasing.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>LookupMatrixLinearDialog</name>
+    <message>
+        <source>At least two X points are required.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>At least two Y points are required.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Clipboard is empty.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Configure Lookup Matrix</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Lookup Matrix</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Lookup matrix requires at least two X points and two Y points.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>X axis values must be strictly increasing.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Y axis values must be strictly increasing.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>MapGeneratorGraphicItem</name>
+    <message>
+        <source>Are you sure that you want to convert this generator into a battery?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Convert generator</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>MapLineContainer</name>
+    <message>
+        <source>Do you want to update the time series active status accordingly?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Index out of range or invalid</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Update time series active status</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>split line</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>MapLineSegment</name>
+    <message>
+        <source>Do you want to update the time series active status accordingly?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Update time series active status</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>MapView</name>
+    <message>
+        <source>Bottom Left Label</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>MapWarningDialog</name>
+    <message>
+        <source>Action Required</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>MatpowerExportDialogue</name>
+    <message>
+        <source>Export to MATPOWER</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>MATPOWER export</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>ModelsInputGUI</name>
+    <message>
+        <source>Add files</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Do you want to clear the import data?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Models import dialogue</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select file</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There is an import procedure running.
+Cancel it and close the window?</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>NewMapLineDialogue</name>
+    <message>
+        <source>New line</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>ProceduralGridWindow</name>
+    <message>
+        <source>Procedural grid expansion</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Procedural grid expansion log</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>ProfileInputGUI</name>
+    <message>
+        <source>Error</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>File open</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Import issues</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Make sure this is a proper comma-separated-value file.
+ Otherwise use excel.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No time profile</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No time profile.
+Consider loading a valid source of data.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open file</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Value error loading CSV file</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>PsseExportDialogue</name>
+    <message>
+        <source>Export to PSS/e</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>PSS/e export</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>PsseImportDialogue</name>
+    <message>
+        <source>PSS/e import</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>ResultsModel</name>
+    <message>
+        <source>Plotting error</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>SchematicWidget</name>
+    <message>
+        <source> %</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source> km</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Add extra buses?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Branch results length differs from the number of branch results. 
+Did you change the number of devices? If so, re-run the simulation.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Bus results length differs from the number of Bus results. 
+Did you change the number of devices? If so, re-run the simulation.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Change bus</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Distance from the splitting point</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Enter the distance from the beginning of the 
+line as a percentage of the total length</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>HVDC results length differs from the number of HVDC results. 
+Did you change the number of devices? If so, re-run the simulation.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Incorrect position</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Line split</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Move behind converter</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>NW transformer</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select the number of windings</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Set VSC control device 1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Set regulation bus</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Split line</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The 'from' or 'to' bus to change has not been selected!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The bus to change has not been selected!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>VSC results length differs from the number of VSC results. 
+Did you change the number of devices? If so, re-run the simulation.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>You need to select exactly one bus to be set as the generator regulation bus</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>you have to select the origin and destination buses!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>you must select the origin and destination buses!</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>SequenceEditorDialog</name>
+    <message>
+        <source>Arbitrary source waveform times must be strictly increasing.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>At least two points are required.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Invalid number of points</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Invalid points</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Invalid values</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Invalid waveform</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Sequence editor</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>y points must be strictly increasing.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>SubstationGraphicItem</name>
+    <message>
+        <source>Add voltage level</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Move substation graphics</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No devices to disconnect</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Remove substation from schematic</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Remove substation from schematic and database</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Voltage (kV)</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>SyncDialogueWindow</name>
+    <message>
+        <source>Sync conflicts</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>TemplateDeviceEditor</name>
+    <message>
+        <source>Device editor</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>TimeEventsMain</name>
+    <message>
+        <source>Are you sure that you want to crop the profiles to the clustered results?
+This cannot be undone.
+Also, the clustering will be removed after this.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy profile to clipboard</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Delete profiles</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Do you want to correct the loads active profile based on the active power profile?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Match</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Message</source>
-        <translation>Nachricht</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>New map</source>
-        <translation>Neue Karte</translation>
+        <source>Paste profile to clipboard</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>New schematic</source>
-        <translation>Neuer Schaltplan</translation>
+        <source>Select a time series step to copy to the snapshot</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>New schematic from selection</source>
-        <translation>Neuer Schaltplan aus Auswahl</translation>
+        <source>Set snapshot</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Remove</source>
-        <translation>Entfernen</translation>
+        <source>The import of profiles from many grid models can only be done if the grid has not profiles :/</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Save image file</source>
-        <translation>Bilddatei speichern</translation>
+        <source>The number of clusters in the stored results is different from the specified :(
+Run another clustering analysis.</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Save video file</source>
-        <translation>Videodatei speichern</translation>
+        <source>There are no objects to which to assign a profile. 
+You need to load or create a grid!</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Type to search in the current diagram</source>
-        <translation>Zum Suchen im aktuellen Diagramm tippen</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicBlockEditorGUI</name>
-    <message>
-        <source>Block name already exists</source>
-        <translation>Blockname existiert bereits</translation>
+        <source>There are no profiles</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Block name cannot be empty</source>
-        <translation>Blockname darf nicht leer sein</translation>
-    </message>
-    <message>
-        <source>Block name is invalid</source>
-        <translation>Blockname ist ungültig</translation>
-    </message>
-    <message>
-        <source>Change Block Name</source>
-        <translation>Blocknamen ändern</translation>
-    </message>
-    <message>
-        <source>Change Variable Name</source>
-        <translation>Variablenname ändern</translation>
-    </message>
-    <message>
-        <source>Dynamic Model Editor</source>
-        <translation>Dynamischer Modell-Editor</translation>
-    </message>
-    <message>
-        <source>Dynamic Model Editor [{mode}]</source>
-        <translation>Dynamischer Modell-Editor [{mode}]</translation>
-    </message>
-    <message>
-        <source>Library</source>
-        <translation>Bibliothek</translation>
-    </message>
-    <message>
-        <source>Variable name already exists</source>
-        <translation>Variablenname existiert bereits</translation>
-    </message>
-    <message>
-        <source>Variable name cannot be empty</source>
-        <translation>Variablenname darf nicht leer sein</translation>
-    </message>
-    <message>
-        <source>Variable name is invalid</source>
-        <translation>Variablenname ist ungültig</translation>
+        <source>There is no profile displayed, please display one</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>DynamicEditorAddButton</name>
+    <name>TowerBuilderGUI</name>
     <message>
-        <source>Open another Dynamic Editor</source>
-        <translation>Anderen Dynamischen Editor öffnen</translation>
+        <source>Line builder</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Tower computation</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>DynamicEditorGraphics</name>
+    <name>Transformer3WDeviceEditor</name>
     <message>
-        <source>{direction} {index}: {name}</source>
-        <translation>{direction} {index}: {name}</translation>
+        <source>Transformer 3W design widget is not available</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Transformer 3W editor</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>DynamicEditorPickerDialog</name>
+    <name>Transformer3WEditor</name>
     <message>
-        <source>Mode</source>
-        <translation>Modus</translation>
-    </message>
-    <message>
-        <source>Modes</source>
-        <translation>Modi</translation>
-    </message>
-    <message>
-        <source>Name</source>
-        <translation>Name</translation>
-    </message>
-    <message>
-        <source>Open</source>
-        <translation>Öffnen</translation>
-    </message>
-    <message>
-        <source>Open the current block in the other mode.</source>
-        <translation>Öffnet den aktuellen Block im anderen Modus.</translation>
-    </message>
-    <message>
-        <source>Open the current block in {mode}.</source>
-        <translation>Öffnet den aktuellen Block in {mode}.</translation>
-    </message>
-    <message>
-        <source>Open {mode}</source>
-        <translation>Öffne {mode}</translation>
-    </message>
-    <message>
-        <source>Quick Open</source>
-        <translation>Schnell öffnen</translation>
-    </message>
-    <message>
-        <source>Search dynamic editors</source>
-        <translation>Dynamische Editoren suchen</translation>
-    </message>
-    <message>
-        <source>Type</source>
-        <translation>Typ</translation>
+        <source>Transformer editor</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>DynamicEventEditor</name>
+    <name>Transformer3WGraphicItem</name>
     <message>
-        <source>&lt;b&gt;Target device:&lt;/b&gt;</source>
-        <translation>&lt;b&gt;Zielgerät:&lt;/b&gt;</translation>
+        <source>Do you want to update the time series active status accordingly?</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Align Step</source>
-        <translation>Schritt ausrichten</translation>
+        <source>Update time series active status</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>TransformerDeviceEditor</name>
+    <message>
+        <source>Transformer design widget is not available</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Transformer editor</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>TransformerEditor</name>
+    <message>
+        <source>Transformer editor</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>TransformerGraphicItem</name>
+    <message>
+        <source>A template will be generated using this transformer values</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Add transformer type</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>TransformerNWGraphicItem</name>
+    <message>
+        <source>Do you want to update the time series active status accordingly?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Update time series active status</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>UcteExportDialogue</name>
+    <message>
+        <source>Export to UCTE</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>UCTE export</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>ValidationSectionDialog</name>
+    <message>
+        <source>Issues found in this section</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Model Consistency Validation</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Run an informational validation of the edited model structure, mappings, initialization, and port connectivity. This check reports issues but does not block saving the model.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>VoltageLevelConversionWizard</name>
+    <message>
+        <source>+ Add spare position</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>- Remove selected</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Bars with impedance</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Cancel</source>
-        <translation>Abbrechen</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Dynamic Event Editor</source>
-        <translation>Dynamischer Ereigniseditor</translation>
+        <source>Cannot Remove</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>EMT Event Editor</source>
-        <translation>EMT Ereignis-Editor</translation>
+        <source>Convert Bus to Voltage Level</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>EMT group Created</source>
-        <translation>EMT Gruppe erstellt</translation>
+        <source>Do it</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>End Time</source>
-        <translation>Endzeit</translation>
+        <source>Enable transfer bus (JBPT)</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Group</source>
-        <translation>Gruppe</translation>
+        <source>Keep original rates</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Group: {group_name}</source>
-        <translation>Gruppe: {group_name}</translation>
+        <source>Only spare positions can be removed. Actual devices cannot be removed from the list.</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Invalid Input</source>
-        <translation>Ungültige Eingabe</translation>
+        <source>Options</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Missing fields</source>
-        <translation>Fehlende Felder</translation>
+        <source>Positions (use arrows to reorder):</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>New Value</source>
-        <translation>Neuer Wert</translation>
+        <source>Reducible branches</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>New group name</source>
-        <translation>Neuer Gruppenname</translation>
+        <source>Scheme type:</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>New row {row_number}</source>
-        <translation>Neue Zeile {row_number}</translation>
+        <source>Use breakers</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>No EMT Events Group</source>
-        <translation>Keine EMT Ereignisgruppe</translation>
+        <source>Validation Error</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>No EMT Events Group found, please create one before adding an event.</source>
-        <translation>Keine EMT Ereignisgruppe gefunden, bitte erstellen Sie eine, bevor Sie ein Ereignis hinzufügen.</translation>
+        <source>▲</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>No Events</source>
-        <translation>Keine Ereignisse</translation>
-    </message>
-    <message>
-        <source>No RMS Events Group</source>
-        <translation>Keine RMS Ereignisgruppe</translation>
-    </message>
-    <message>
-        <source>No RMS Events Group found, please create one before adding an event.</source>
-        <translation>Keine RMS Ereignisgruppe gefunden, bitte erstellen Sie eine, bevor Sie ein Ereignis hinzufügen.</translation>
-    </message>
-    <message>
-        <source>No Rows Selected</source>
-        <translation>Keine Zeilen ausgewählt</translation>
-    </message>
-    <message>
-        <source>No switch EMT mode parameter is available in this device.</source>
-        <translation>Der Schalter EMT-Modus-Parameter ist in diesem Gerät nicht verfügbar.</translation>
-    </message>
-    <message>
-        <source>Overlapping Events</source>
-        <translation>Überlappende Ereignisse</translation>
-    </message>
-    <message>
-        <source>Parameter</source>
-        <translation>Parameter</translation>
-    </message>
-    <message>
-        <source>Please add at least one event before confirming.</source>
-        <translation>Bitte fügen Sie vor der Bestätigung mindestens ein Ereignis hinzu.</translation>
-    </message>
-    <message>
-        <source>Please check at least one row to remove.</source>
-        <translation>Bitte wählen Sie mindestens eine Zeile zum Entfernen aus.</translation>
-    </message>
-    <message>
-        <source>RMS Event Editor</source>
-        <translation>RMS Ereignis-Editor</translation>
-    </message>
-    <message>
-        <source>RMS group Created</source>
-        <translation>RMS Gruppe erstellt</translation>
-    </message>
-    <message>
-        <source>Ramp</source>
-        <translation>Rampe</translation>
-    </message>
-    <message>
-        <source>Row {row_number}: {message}</source>
-        <translation>Zeile {row_number}: {message}</translation>
-    </message>
-    <message>
-        <source>Some events are overlapped and cannot be applied.</source>
-        <translation>Einige Ereignisse überlappen und können nicht angewendet werden.</translation>
-    </message>
-    <message>
-        <source>Step</source>
-        <translation>Schritt</translation>
-    </message>
-    <message>
-        <source>Switch Sequence</source>
-        <translation>Schaltfolge</translation>
-    </message>
-    <message>
-        <source>Switch Sequence Wizard</source>
-        <translation>Schalten-Sequenz-Assistent</translation>
-    </message>
-    <message>
-        <source>Target device:</source>
-        <translation>Zielgerät:</translation>
-    </message>
-    <message>
-        <source>Time</source>
-        <translation>Zeit</translation>
-    </message>
-    <message>
-        <source>Transition</source>
-        <translation>Übergang</translation>
-    </message>
-    <message>
-        <source>group has invalid type</source>
-        <translation>Gruppe hat ungültigen Typ</translation>
-    </message>
-    <message>
-        <source>parameter must be Var</source>
-        <translation>Parameter muss Var sein</translation>
-    </message>
-    <message>
-        <source>transition_type must be DynamicEventTransitionType</source>
-        <translation>transition_type muss DynamicEventTransitionType sein</translation>
-    </message>
-    <message>
-        <source>{origin}: {transition}, parameter={parameter}, time={time:.4f} s, end_time={end_time:.4f} s, value={value:.6f}</source>
-        <translation>{origin}: {transition}, parameter={parameter}, time={time:.4f} s, end_time={end_time:.4f} s, value={value:.6f}</translation>
-    </message>
-    <message>
-        <source>{origin}: {transition}, parameter={parameter}, time={time:.4f} s, value={value:.6f}</source>
-        <translation>{origin}: {transition}, parameter={parameter}, time={time:.4f} s, value={value:.6f}</translation>
-    </message>
-    <message>
-        <source>{prefix}: {group_name}</source>
-        <translation>{prefix}: {group_name}</translation>
-    </message>
-    <message>
-        <source>✅ Add Events</source>
-        <translation>✅ Ereignisse hinzufügen</translation>
-    </message>
-    <message>
-        <source>❌ Remove Selected Rows</source>
-        <translation>❌ Ausgewählte Zeilen entfernen</translation>
-    </message>
-    <message>
-        <source>➕ Add New Event</source>
-        <translation>➕ Neues Ereignis hinzufügen</translation>
-    </message>
-    <message>
-        <source>➕ New Event Group</source>
-        <translation>➕ Neue Ereignisgruppe</translation>
+        <source>▼</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>DynamicEventsGroupsDialog</name>
+    <name>VoltageWarningDialog</name>
     <message>
-        <source>Create EMT Events Group</source>
-        <translation>EMT Ereignisgruppe erstellen</translation>
-    </message>
-    <message>
-        <source>Create RMS Events Group</source>
-        <translation>RMS Ereignisgruppe erstellen</translation>
-    </message>
-    <message>
-        <source>Enter group name</source>
-        <translation>Gruppenname eingeben</translation>
-    </message>
-    <message>
-        <source>Invalid name</source>
-        <translation>Ungültiger Name</translation>
-    </message>
-    <message>
-        <source>Name:</source>
-        <translation>Name:</translation>
-    </message>
-    <message>
-        <source>The name cannot be empty.</source>
-        <translation>Der Name darf nicht leer sein.</translation>
+        <source>Invalid Voltage Levels</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>EquationLatexModel</name>
+    <name>VscDeviceEditor</name>
     <message>
-        <source>Equation</source>
-        <translation>Gleichung</translation>
-    </message>
-    <message>
-        <source>Type</source>
-        <translation>Typ</translation>
+        <source>VSC editor</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>GridGeneratorGUI</name>
+    <name>WindFarmWizard</name>
     <message>
-        <source>Grid Generator</source>
-        <translation>Gittergenerator</translation>
-    </message>
-    <message>
-        <source>Warning</source>
-        <translation>Warnung</translation>
-    </message>
-</context>
-<context>
-    <name>GridMapWidget</name>
-    <message>
-        <source>Connection Error</source>
-        <translation>Verbindungsfehler</translation>
-    </message>
-    <message>
-        <source>No suitable voltage level ({voltage:.2f} kV) found in substation "{substation_name}".</source>
-        <translation>Kein geeignetes Spannungsniveau ({voltage:.2f} kV) in der Umspannstation "{substation_name}" gefunden.</translation>
-    </message>
-    <message>
-        <source>Operation Successful</source>
-        <translation>Vorgang erfolgreich</translation>
-    </message>
-    <message>
-        <source>Please select exactly one line and one substation.</source>
-        <translation>Bitte wählen Sie genau eine Leitung und einen Umspannwerk aus.</translation>
-    </message>
-    <message>
-        <source>Selection Error</source>
-        <translation>Auswahlfehler</translation>
-    </message>
-    <message>
-        <source>T-joint connection created between {substation_name} and {line_name}.</source>
-        <translation>T-Verbindung erstellt zwischen {substation_name} und {line_name}.</translation>
-    </message>
-    <message>
-        <source>The line cannot be connected. Please ensure the target substation has a bus with a matching nominal voltage.</source>
-        <translation>Die Leitung kann nicht verbunden werden. Bitte stellen Sie sicher, dass das Ziel-Umspannwerk einen Bus mit einer passenden Nennspannung hat.</translation>
-    </message>
-    <message>
-        <source>Waypoint replaced with new substation '{substation_name}'.
-Original line split into two segments:
-- {line1_name}: {length1:.2f} km
-- {line2_name}: {length2:.2f} km
-New connection line: {distance:.2f} km</source>
-        <translation>Wegpunkt durch neues Umspannwerk '{substation_name}' ersetzt.
-Ursprüngliche Leitung in zwei Segmente aufgeteilt:
-- {line1_name}: {length1:.2f} km
-- {line2_name}: {length2:.2f} km
-Neue Verbindungslinie: {distance:.2f} km</translation>
-    </message>
-</context>
-<context>
-    <name>LogsDialogue</name>
-    <message>
-        <source>Accept</source>
-        <translation>Akzeptiere</translation>
-    </message>
-    <message>
-        <source>CSV (*.csv);;Excel files (*.xlsx)</source>
-        <translation>CSV (*.csv);;Excel-Dateien (*.xlsx)</translation>
-    </message>
-    <message>
-        <source>Class</source>
-        <translation>Klasse</translation>
-    </message>
-    <message>
-        <source>Copy</source>
-        <translation>Kopie</translation>
-    </message>
-    <message>
-        <source>Device</source>
-        <translation>Gerät</translation>
-    </message>
-    <message>
-        <source>Expected value</source>
-        <translation>Erwarteter Wert</translation>
-    </message>
-    <message>
-        <source>Export results</source>
-        <translation>Ergebnisse exportieren</translation>
-    </message>
-    <message>
-        <source>Property</source>
-        <translation>Eigenschaft</translation>
-    </message>
-    <message>
-        <source>Save</source>
-        <translation>Speichern</translation>
-    </message>
-    <message>
-        <source>Time</source>
-        <translation>Zeit</translation>
-    </message>
-    <message>
-        <source>Value</source>
-        <translation>Wert</translation>
-    </message>
-</context>
-<context>
-    <name>NewProfilesStructureDialogue</name>
-    <message>
-        <source>Accept</source>
-        <translation>Akzeptiere</translation>
-    </message>
-    <message>
-        <source>New profiles structure</source>
-        <translation>Neue Profilstruktur</translation>
-    </message>
-    <message>
-        <source>Number of time steps</source>
-        <translation>Anzahl der Zeitschritte</translation>
-    </message>
-    <message>
-        <source>Start date</source>
-        <translation>Startdatum</translation>
-    </message>
-    <message>
-        <source>Time step length</source>
-        <translation>Zeitschrittlänge</translation>
-    </message>
-    <message>
-        <source>Time units</source>
-        <translation>Zeiteinheiten</translation>
-    </message>
-</context>
-<context>
-    <name>ObjectColumnFilterDialog</name>
-    <message>
-        <source>Apply</source>
-        <translation>Anwenden</translation>
-    </message>
-    <message>
-        <source>Cancel filter</source>
-        <translation>Filter zurücksetzen</translation>
-    </message>
-    <message>
-        <source>Clear filter</source>
-        <translation>Filter löschen</translation>
-    </message>
-    <message>
-        <source>Search</source>
-        <translation>Suchen</translation>
-    </message>
-    <message>
-        <source>Select all visible</source>
-        <translation>Alle sichtbaren auswählen</translation>
-    </message>
-    <message>
-        <source>Select no visible</source>
-        <translation>Keine sichtbaren auswählen</translation>
-    </message>
-    <message>
-        <source>Sort A to Z</source>
-        <translation>Sortieren A-Z</translation>
-    </message>
-    <message>
-        <source>Sort Z to A</source>
-        <translation>Sortieren Z-A</translation>
-    </message>
-</context>
-<context>
-    <name>RmsPlotDialog</name>
-    <message>
-        <source>Add</source>
-        <translation>Hinzufügen</translation>
-    </message>
-    <message>
-        <source>Device:</source>
-        <translation>Gerät:</translation>
-    </message>
-    <message>
-        <source>Plot Variables</source>
-        <translation>Variablen plotten</translation>
-    </message>
-    <message>
-        <source>Plot Window</source>
-        <translation>Plot-Fenster</translation>
-    </message>
-    <message>
-        <source>Remove variable</source>
-        <translation>Variable entfernen</translation>
-    </message>
-    <message>
-        <source>Rms Simulation Results</source>
-        <translation>RMS Simulationsergebnisse</translation>
-    </message>
-    <message>
-        <source>Show in new window</source>
-        <translation>In neuem Fenster anzeigen</translation>
-    </message>
-    <message>
-        <source>Variable:</source>
-        <translation>Variable:</translation>
-    </message>
-    <message>
-        <source>time (s)</source>
-        <translation>Zeit (s)</translation>
-    </message>
-</context>
-<context>
-    <name>RosetaExplorerGUI</name>
-    <message>
-        <source>Copy</source>
-        <translation>Kopie</translation>
-    </message>
-</context>
-<context>
-    <name>RuntimeLogicEditorWidget</name>
-    <message>
-        <source>Add entry</source>
-        <translation>Eintrag hinzufügen</translation>
-    </message>
-    <message>
-        <source>Add retained mode</source>
-        <translation>Behaltenen Modus hinzufügen</translation>
-    </message>
-    <message>
-        <source>Configuration</source>
-        <translation>Konfiguration</translation>
-    </message>
-    <message>
-        <source>Delete</source>
-        <translation>Löschen</translation>
-    </message>
-    <message>
-        <source>Delete retained mode</source>
-        <translation>Behaltenen Modus löschen</translation>
-    </message>
-    <message>
-        <source>Documentation</source>
-        <translation>Dokumentation</translation>
-    </message>
-    <message>
-        <source>Enter a procedural entry name.</source>
-        <translation>Geben Sie einen Namen für einen prozeduralen Eintrag ein.</translation>
-    </message>
-    <message>
-        <source>Enter a valid retained-mode symbol name.</source>
-        <translation>Geben Sie einen gültigen Symbolnamen für den Behaltenen Modus ein.</translation>
-    </message>
-    <message>
-        <source>Enter an initial value or expression.</source>
-        <translation>Geben Sie einen Anfangswert oder einen Ausdruck ein.</translation>
-    </message>
-    <message>
-        <source>Entry name</source>
-        <translation>Eintragname</translation>
-    </message>
-    <message>
-        <source>Initial value or expression</source>
-        <translation>Anfangswert oder Ausdruck</translation>
-    </message>
-    <message>
-        <source>Mode symbol name</source>
-        <translation>Modussymbolname</translation>
-    </message>
-    <message>
-        <source>Move down</source>
-        <translation>Nach unten</translation>
-    </message>
-    <message>
-        <source>Move up</source>
-        <translation>Nach oben</translation>
-    </message>
-    <message>
-        <source>Owner</source>
-        <translation>Eigentümer</translation>
-    </message>
-    <message>
-        <source>Procedural entries</source>
-        <translation>Prozedurale Einträge</translation>
-    </message>
-    <message>
-        <source>Retained modes</source>
-        <translation>Behaltene Modi</translation>
-    </message>
-    <message>
-        <source>Runtime logic is valid.</source>
-        <translation>Runtime logic is valid.</translation>
-    </message>
-    <message>
-        <source>Select a valid owner and procedural type.</source>
-        <translation>Wählen Sie einen gültigen Besitzer und einen prozeduralen Typ.</translation>
-    </message>
-    <message>
-        <source>Select a valid owner block.</source>
-        <translation>Wählen Sie einen gültigen Besitzerblock.</translation>
-    </message>
-    <message>
-        <source>Select one procedural entry to delete.</source>
-        <translation>Wählen Sie einen prozeduralen Eintrag zum Löschen aus.</translation>
-    </message>
-    <message>
-        <source>Type</source>
-        <translation>Typ</translation>
-    </message>
-    <message>
-        <source>Valid runtime logic. Warnings: </source>
-        <translation>Gültige Laufzeitlogik. Warnungen:</translation>
-    </message>
-    <message>
-        <source>Validate runtime logic</source>
-        <translation>Laufzeitlogik validieren</translation>
-    </message>
-</context>
-<context>
-    <name>ScenariosMain</name>
-    <message>
-        <source>Add child scenario</source>
-        <translation>Untergeordnetes Szenario hinzufügen</translation>
-    </message>
-    <message>
-        <source>Commit scenario</source>
-        <translation>Commit-Szenario</translation>
-    </message>
-    <message>
-        <source>Merge children into scenario</source>
-        <translation>Kinder in das Szenario einbinden</translation>
-    </message>
-    <message>
-        <source>Remove scenario</source>
-        <translation>Szenario entfernen</translation>
-    </message>
-    <message>
-        <source>Rename scenario</source>
-        <translation>Szenario umbenennen</translation>
-    </message>
-    <message>
-        <source>Set as current scenario</source>
-        <translation>Als aktuelles Szenario festlegen</translation>
-    </message>
-</context>
-<context>
-    <name>SelectionDialog</name>
-    <message>
-        <source>Cancel</source>
-        <translation>Abbrechen</translation>
-    </message>
-    <message>
-        <source>Click on a substation to reconnect branch {branch_name}</source>
-        <translation>Klicken Sie auf ein Umspannwerk, um den Zweig {branch_name} wieder zu verbinden</translation>
-    </message>
-    <message>
-        <source>The substation should have a compatible voltage level ({voltage} kV)</source>
-        <translation>Das Umspannwerk sollte eine kompatible Spannungsstufe ({voltage} kV) haben</translation>
-    </message>
-    <message>
-        <source>Waiting for Selection</source>
-        <translation>Auswahl wird erwartet</translation>
-    </message>
-    <message>
-        <source>Waiting for selection...</source>
-        <translation>Warten auf Auswahl...</translation>
-    </message>
-</context>
-<context>
-    <name>ServerFileDialogue</name>
-    <message>
-        <source>Delete server file</source>
-        <translation>Serverdatei löschen</translation>
-    </message>
-    <message>
-        <source>Delete server model</source>
-        <translation>Servermodell löschen</translation>
-    </message>
-    <message>
-        <source>Delete the selected file and every model inside it?</source>
-        <translation>Die ausgewählte Datei und jedes Modell darin löschen?</translation>
-    </message>
-    <message>
-        <source>Delete the selected model from the server database?</source>
-        <translation>Das ausgewählte Modell aus der Serverdatenbank löschen?</translation>
-    </message>
-</context>
-<context>
-    <name>SigmaAnalysisGUI</name>
-    <message>
-        <source>CSV (*.csv);;Excel files (*.xlsx)</source>
-        <translation>CSV (*.csv);;Excel-Dateien (*.xlsx)</translation>
-    </message>
-    <message>
-        <source>Export results</source>
-        <translation>Ergebnisse exportieren</translation>
-    </message>
-    <message>
-        <source>HELM-Sigma analysis dialogue</source>
-        <translation>HELM-Sigma Analyse Dialog</translation>
-    </message>
-    <message>
-        <source>Sigma analysis completed</source>
-        <translation>Sigma-Analyse abgeschlossen</translation>
-    </message>
-    <message>
-        <source>Sigma analysis did not return results</source>
-        <translation>Sigma-Analyse hat keine Ergebnisse geliefert</translation>
-    </message>
-    <message>
-        <source>Sigma coefficients did not converge :(</source>
-        <translation>Sigma-Koeffizienten haben nicht konvergiert :(</translation>
-    </message>
-    <message>
-        <source>Snapshot</source>
-        <translation>Schnappschuss</translation>
-    </message>
-    <message>
-        <source>This window was opened without a circuit/options rerun context.</source>
-        <translation>Dieses Fenster wurde ohne einen Kontext zum erneuten Ausführen eines Schaltkreises/der Optionen geöffnet.</translation>
-    </message>
-    <message>
-        <source>Warning</source>
-        <translation>Warnung</translation>
-    </message>
-</context>
-<context>
-    <name>SimulationsMain</name>
-    <message>
-        <source>Compiling the grid...</source>
-        <translation>Netz wird kompiliert...</translation>
-    </message>
-    <message>
-        <source>Model v. {model_version}</source>
-        <translation>Modell v. {model_version}</translation>
-    </message>
-    <message>
-        <source>Pareto combination</source>
-        <translation>Pareto-Kombination</translation>
-    </message>
-    <message>
-        <source>Pareto combination {index}</source>
-        <translation>Pareto-Kombination {index}</translation>
-    </message>
-    <message>
-        <source>Running power flow...</source>
-        <translation>Berechnung des Stromflusses läuft...</translation>
-    </message>
-    <message>
-        <source>Short circuits</source>
-        <translation>Kurzschlüsse</translation>
-    </message>
-    <message>
-        <source>User: {user_name}</source>
-        <translation>Benutzer: {user_name}</translation>
-    </message>
-    <message>
-        <source>idtag. {idtag}</source>
-        <translation>IDtag. {idtag}</translation>
-    </message>
-</context>
-<context>
-    <name>SwitchSequenceDialog</name>
-    <message>
-        <source>Add Sequence Step</source>
-        <translation>Sequenzschritt hinzufügen</translation>
-    </message>
-    <message>
-        <source>Add at least one sequence row.</source>
-        <translation>Fügen Sie mindestens eine Sequenzzeile hinzu.</translation>
-    </message>
-    <message>
-        <source>Close</source>
-        <translation>Schließen</translation>
-    </message>
-    <message>
-        <source>Group</source>
-        <translation>Gruppe</translation>
-    </message>
-    <message>
-        <source>Mode Parameter</source>
-        <translation>Modusparameter</translation>
-    </message>
-    <message>
-        <source>Open</source>
-        <translation>Öffnen</translation>
-    </message>
-    <message>
-        <source>Please check at least one row to remove.</source>
-        <translation>Bitte wählen Sie mindestens eine Zeile zum Entfernen aus.</translation>
-    </message>
-    <message>
-        <source>Remove Selected Rows</source>
-        <translation>Ausgewählte Zeilen entfernen</translation>
-    </message>
-    <message>
-        <source>Select a mode parameter and an events group.</source>
-        <translation>Wählen Sie einen Modusparameter und eine Ereignisgruppe.</translation>
-    </message>
-    <message>
-        <source>State</source>
-        <translation>Status</translation>
-    </message>
-    <message>
-        <source>Switch Sequence</source>
-        <translation>Schaltfolge</translation>
-    </message>
-    <message>
-        <source>Switch Sequence Wizard</source>
-        <translation>Schalten-Sequenz-Assistent</translation>
-    </message>
-    <message>
-        <source>The selected parameter or group is invalid.</source>
-        <translation>Der ausgewählte Parameter oder die Gruppe ist ungültig.</translation>
-    </message>
-    <message>
-        <source>Time</source>
-        <translation>Zeit</translation>
-    </message>
-</context>
-<context>
-    <name>SystemScaler</name>
-    <message>
-        <source>Aggregated energy scaling preview</source>
-        <translation>Vorschau der aggregierten Energie-Skalierung</translation>
-    </message>
-    <message>
-        <source>Aggregated power scaling preview</source>
-        <translation>Vorschau der aggregierten Leistungsskalierung</translation>
-    </message>
-    <message>
-        <source>MW</source>
-        <translation>MW</translation>
-    </message>
-    <message>
-        <source>MWh</source>
-        <translation>MWh</translation>
-    </message>
-    <message>
-        <source>Original generation</source>
-        <translation>Ursprüngliche Erzeugung</translation>
-    </message>
-    <message>
-        <source>Original generation energy</source>
-        <translation>Energie der ursprünglichen Erzeugung</translation>
-    </message>
-    <message>
-        <source>Original load</source>
-        <translation>Ursprüngliche Last</translation>
-    </message>
-    <message>
-        <source>Original load energy</source>
-        <translation>Energie der ursprünglichen Last</translation>
-    </message>
-    <message>
-        <source>Press plot to preview scaling</source>
-        <translation>Klicken Sie auf Plot, um die Skalierung zu prüfen</translation>
-    </message>
-    <message>
-        <source>Scaled generation</source>
-        <translation>Skalierte Erzeugung</translation>
-    </message>
-    <message>
-        <source>Scaled generation energy</source>
-        <translation>Energie der skalierten Erzeugung</translation>
-    </message>
-    <message>
-        <source>Scaled load</source>
-        <translation>Skalierte Last</translation>
-    </message>
-    <message>
-        <source>Scaled load energy</source>
-        <translation>Energie der skalierten Last</translation>
-    </message>
-    <message>
-        <source>System scaling</source>
-        <translation>Systemskalierung</translation>
-    </message>
-    <message>
-        <source>There is no time series to plot.</source>
-        <translation>Es gibt keine Zeitreihe zum Plotten.</translation>
-    </message>
-    <message>
-        <source>This operation will alter the generation and load composition irreversibly
-Are you sure?</source>
-        <translation>Dieser Vorgang verändert die Erzeugungs- und Lastzusammensetzung irreversibel
-Sind Sie sicher?</translation>
-    </message>
-</context>
-<context>
-    <name>TimeReIndexDialogue</name>
-    <message>
-        <source>Accept</source>
-        <translation>Akzeptiere</translation>
-    </message>
-    <message>
-        <source>Start date</source>
-        <translation>Startdatum</translation>
-    </message>
-    <message>
-        <source>Time re-index</source>
-        <translation>Zeit-Neuindizierung</translation>
-    </message>
-    <message>
-        <source>Time step length</source>
-        <translation>Zeitschrittlänge</translation>
-    </message>
-    <message>
-        <source>Time units</source>
-        <translation>Zeiteinheiten</translation>
+        <source>The selected turbine has no design curves</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 </TS>

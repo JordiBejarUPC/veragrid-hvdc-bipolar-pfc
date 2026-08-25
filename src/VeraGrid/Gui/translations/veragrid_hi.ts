@@ -370,6 +370,112 @@ li.checked::marker { content: &quot;\2612&quot;; }
     </message>
 </context>
 <context>
+    <name>AiChatDialogue</name>
+    <message>
+        <source>API key</source>
+        <translation>API कुंजी</translation>
+    </message>
+    <message>
+        <source>Generating response</source>
+        <translation>प्रतिक्रिया उत्पन्न कर रहा है</translation>
+    </message>
+    <message>
+        <source>Leave empty for unauthenticated endpoints</source>
+        <translation>अप्रमाणित समापन बिंदुओं के लिए खाली छोड़ें</translation>
+    </message>
+    <message>
+        <source>Pick or type a GGUF file name</source>
+        <translation>एक GGUF फ़ाइल नाम चुनें या टाइप करें</translation>
+    </message>
+    <message>
+        <source>Provider model name</source>
+        <translation>प्रदाता मॉडल का नाम</translation>
+    </message>
+    <message>
+        <source>Query the configured backend for models.</source>
+        <translation>मॉडल के लिए कॉन्फ़िगर किए गए बैकएंड पर क्वेरी करें।</translation>
+    </message>
+    <message>
+        <source>Resolve the pending tool approval or clear the chat first.</source>
+        <translation>लंबित टूल अनुमोदन को हल करें या पहले चैट साफ़ करें।</translation>
+    </message>
+    <message>
+        <source>Running AI turn</source>
+        <translation>AI टर्न चल रहा है</translation>
+    </message>
+    <message>
+        <source>Running AI turn...</source>
+        <translation>AI टर्न चल रहा है...</translation>
+    </message>
+    <message>
+        <source>Running simulation and analyzing the results...</source>
+        <translation>सिमुलेशन चला रहा है और परिणाम का विश्लेषण कर रहा है...</translation>
+    </message>
+    <message>
+        <source>Scan the configured path for GGUF files.</source>
+        <translation>GGUF फ़ाइलों के लिए कॉन्फ़िगर किए गए पथ को स्कैन करें।</translation>
+    </message>
+    <message>
+        <source>Send</source>
+        <translation>भेजें</translation>
+    </message>
+    <message>
+        <source>Stop</source>
+        <translation>रोकें</translation>
+    </message>
+    <message>
+        <source>Stopping AI turn...</source>
+        <translation>AI टर्न रोक रहा है...</translation>
+    </message>
+    <message>
+        <source>There is no pending tool call to approve.</source>
+        <translation>अनुमोदन के लिए कोई लंबित टूल कॉल नहीं है।</translation>
+    </message>
+    <message>
+        <source>There is no running AI turn to stop.</source>
+        <translation>रोकने के लिए कोई चल रहा AI टर्न नहीं है।</translation>
+    </message>
+    <message>
+        <source>Tool</source>
+        <translation>टूल</translation>
+    </message>
+    <message>
+        <source>Type a message before sending.</source>
+        <translation>भेजने से पहले एक संदेश टाइप करें।</translation>
+    </message>
+    <message>
+        <source>VeraGrid AI</source>
+        <translation>VeraGrid AI</translation>
+    </message>
+    <message>
+        <source>VeraGrid AI dialogue</source>
+        <translation>VeraGrid AI संवाद</translation>
+    </message>
+    <message>
+        <source>Wait for the current AI turn to finish.</source>
+        <translation>वर्तमान AI टर्न के समाप्त होने का इंतज़ार करें।</translation>
+    </message>
+    <message>
+        <source>You</source>
+        <translation>आप</translation>
+    </message>
+</context>
+<context>
+    <name>ArrayEditor</name>
+    <message>
+        <source>Add</source>
+        <translation>जोड़ें</translation>
+    </message>
+    <message>
+        <source>Array Editor</source>
+        <translation>ऐरे एडिटर</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>हटाएँ</translation>
+    </message>
+</context>
+<context>
     <name>BlockEditorWindow</name>
     <message>
         <location filename="../DynamicModelEditor/block_editor.ui" line="14"/>
@@ -397,6 +503,48 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <source>Equations</source>
         <translation type="vanished">समीकरण</translation>
+    </message>
+</context>
+<context>
+    <name>BlockParameterDraftModel</name>
+    <message>
+        <source>Name</source>
+        <translation>नाम</translation>
+    </message>
+    <message>
+        <source>Numeric value. Changes are staged until Apply changes is pressed.</source>
+        <translation>संख्यात्मक मान। परिवर्तन तब तक स्टेज किए जाते हैं जब तक &apos;परिवर्तन लागू करें&apos; (Apply changes) दबाया नहीं जाता।</translation>
+    </message>
+    <message>
+        <source>Real value or symbolic initialization expression. Changes are staged until Apply changes is pressed.</source>
+        <translation>वास्तविक मान या प्रतीकात्मक आरंभीकरण अभिव्यक्ति। परिवर्तन तब तक स्टेज किए जाते हैं जब तक &apos;परिवर्तन लागू करें&apos; (Apply changes) दबाया नहीं जाता।</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>प्रकार</translation>
+    </message>
+    <message>
+        <source>Value</source>
+        <translation>मान</translation>
+    </message>
+</context>
+<context>
+    <name>BlockSymbolFilterProxyModel</name>
+    <message>
+        <source>Initializes a variable through VarPowerFlowReferenceType and block.external_mapping.</source>
+        <translation>VarPowerFlowReferenceType और block.external_mapping के माध्यम से एक चर को आरंभ करता है।</translation>
+    </message>
+    <message>
+        <source>Maps a static parameter through ParamPowerFlowReferenceType to block.api_obj_mapping. Dynamic parameters are not editable here.</source>
+        <translation>ParamPowerFlowReferenceType के माध्यम से एक स्थिर पैरामीटर को block.api_obj_mapping पर मैप करता है। गतिशील पैरामीटर यहां संपादन योग्य नहीं हैं।</translation>
+    </message>
+    <message>
+        <source>Power-flow derived initialization</source>
+        <translation>पावर-फ्लो से प्राप्त आरंभीकरण</translation>
+    </message>
+    <message>
+        <source>Static parameter mapping</source>
+        <translation>स्थिर पैरामीटर मैपिंग</translation>
     </message>
 </context>
 <context>
@@ -559,6 +707,21 @@ li.checked::marker { content: &quot;\2612&quot;; }
     </message>
 </context>
 <context>
+    <name>CgmesOptionsSelector</name>
+    <message>
+        <source>Accept</source>
+        <translation>स्वीकार करें</translation>
+    </message>
+    <message>
+        <source>CGMES Version:</source>
+        <translation>CGMES संस्करण:</translation>
+    </message>
+    <message>
+        <source>Select the CGMES options</source>
+        <translation>CGMES विकल्प चुनें</translation>
+    </message>
+</context>
+<context>
     <name>ConfigurationMain</name>
     <message>
         <source>Language</source>
@@ -605,6 +768,256 @@ li.checked::marker { content: &quot;\2612&quot;; }
         <location filename="../DeviceEditors/ControllableShuntEditor/controllable_shunt_editor_gui.ui" line="52"/>
         <source>Done</source>
         <translation>पूर्ण</translation>
+    </message>
+</context>
+<context>
+    <name>CorrectInconsistenciesDialogue</name>
+    <message>
+        <source>Accept</source>
+        <translation>स्वीकार करें</translation>
+    </message>
+    <message>
+        <source>Correct inconsistencies</source>
+        <translation>विसंगतियों को ठीक करें</translation>
+    </message>
+    <message>
+        <source>Maximum generator set point</source>
+        <translation>अधिकतम जनरेटर सेट पॉइंट</translation>
+    </message>
+    <message>
+        <source>Maximum virtual tap difference</source>
+        <translation>अधिकतम आभासी टैप अंतर</translation>
+    </message>
+    <message>
+        <source>Minimum generator set point</source>
+        <translation>न्यूनतम जनरेटर सेट पॉइंट</translation>
+    </message>
+</context>
+<context>
+    <name>DataBaseTableMain</name>
+    <message>
+        <source>Add</source>
+        <translation>जोड़ें</translation>
+    </message>
+    <message>
+        <source>Add to current diagram</source>
+        <translation>वर्तमान आरेख में जोड़ें</translation>
+    </message>
+    <message>
+        <source>Assign to profile</source>
+        <translation>प्रोफ़ाइल को असाइन करें</translation>
+    </message>
+    <message>
+        <source>Colour branches like this</source>
+        <translation>शाखाओं को इस प्रकार रंगें</translation>
+    </message>
+    <message>
+        <source>Copy idtag</source>
+        <translation>idtag कॉपी करें</translation>
+    </message>
+    <message>
+        <source>Copy table</source>
+        <translation>तालिका कॉपी करें</translation>
+    </message>
+    <message>
+        <source>Crop model to buses selection</source>
+        <translation>बस चयन तक मॉडल क्रॉप करें</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>हटाएँ</translation>
+    </message>
+    <message>
+        <source>Duplicate object</source>
+        <translation>ऑब्जेक्ट डुप्लिकेट करें</translation>
+    </message>
+    <message>
+        <source>Edit</source>
+        <translation>संपादित करें</translation>
+    </message>
+    <message>
+        <source>Grid reduction</source>
+        <translation>ग्रिड में कमी</translation>
+    </message>
+    <message>
+        <source>Highlight based on property</source>
+        <translation>संपत्ति के आधार पर हाइलाइट करें</translation>
+    </message>
+    <message>
+        <source>Highlight buses selection</source>
+        <translation>बस चयन को हाइलाइट करें</translation>
+    </message>
+    <message>
+        <source>Merge</source>
+        <translation>विलय करें</translation>
+    </message>
+    <message>
+        <source>New diagram from selection</source>
+        <translation>चयन से नया आरेख</translation>
+    </message>
+    <message>
+        <source>New map from selection</source>
+        <translation>चयन से नया मैप</translation>
+    </message>
+    <message>
+        <source>New vicinity diagram</source>
+        <translation>नया निकटता आरेख</translation>
+    </message>
+    <message>
+        <source>Set value to column</source>
+        <translation>कॉलम में मान सेट करें</translation>
+    </message>
+    <message>
+        <source>Type the object name or a smart filter expression ...</source>
+        <translation>ऑब्जेक्ट का नाम या एक स्मार्ट फ़िल्टर अभिव्यक्ति टाइप करें...</translation>
+    </message>
+    <message>
+        <source>Add selected DB objects to current diagram</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Are you sure that you want to delete_with_dialogue the selected elements?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Are you sure that you want to duplicate the selected elements?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Are you sure that you want to merge the selected substations?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Choose an element from the table</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy profile to clipboard</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Create new diagram</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Crop model to buses selection?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>DB clean</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>DB clean logger</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Delete inconsistencies</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Detect facilities</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Detect substations</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Do you want to try to detect facilities in the grid model?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Do you want to try to detect substations and voltage levels in the grid model?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Duplicate</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Highlight</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>How do you want to represent the merged grid?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>New substation</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No editor available.
+The values can be changed from the table or via context menus in the graphical interface.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No object found :(</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Restore investments</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select a catalogue element and then a catalogue object</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select a cell or a column first</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select a data structure</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select some element to serve as source to copy</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select some elements to highlight</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Setting the database buses x,y position from their latitude and longitude values will change the buses values but not the current diagrams. New diagrams will use the new values</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The maximum value is 0, so the coloring cannot be applied</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The selected property must be of a numeric type</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There is no data displayed, please display one</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>This action may delete_with_dialogue unused objects and references, 
+Are you sure?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>This action removes all disconnected devices with no active profile and delete all small islands</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>This action will restore the circuit to the state before the last investment modification. Do you want to proceed?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>This object does not support table-like addition.
+Use the schematic instead.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>This will delete all buses and their connected elements that were not selected.This cannot be undone and it is dangerous if you don't knowwhat you are doing. 
+Are you sure?</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -694,6 +1107,153 @@ li.checked::marker { content: &quot;\2612&quot;; }
         <location filename="../FileDialogues/DgsDialogue/dgs_import_gui.ui" line="53"/>
         <source>Import</source>
         <translation>आयात</translation>
+    </message>
+</context>
+<context>
+    <name>DiagramsMain</name>
+    <message>
+        <source>Are you sure that you want to try an automatic layout?</source>
+        <translation>क्या आप स्वचालित लेआउट आज़माना चाहते हैं?</translation>
+    </message>
+    <message>
+        <source>Duplicate</source>
+        <translation>डुप्लिकेट करें</translation>
+    </message>
+    <message>
+        <source>Message</source>
+        <translation>संदेश</translation>
+    </message>
+    <message>
+        <source>New map</source>
+        <translation>नया नक्शा</translation>
+    </message>
+    <message>
+        <source>New schematic</source>
+        <translation>नया योजनाबद्ध</translation>
+    </message>
+    <message>
+        <source>New schematic from selection</source>
+        <translation>चयन से नई योजना</translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation>हटाएँ</translation>
+    </message>
+    <message>
+        <source>Save image file</source>
+        <translation>छवि फ़ाइल सहेजें</translation>
+    </message>
+    <message>
+        <source>Save video file</source>
+        <translation>वीडियो फ़ाइल सहेजें</translation>
+    </message>
+    <message>
+        <source>Type to search in the current diagram</source>
+        <translation>वर्तमान आरेख में खोजने के लिए टाइप करें</translation>
+    </message>
+    <message>
+        <source>Add selected to contingency</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Add selected to investment</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Add selected to remedial action</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>All buses will be positioned to a 2D plane projection of their latitude and longitude. This updates the current diagram and the stored bus x, y, so diagrams created afterwards use the new positions. Are you sure of this?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Choose some elements from the schematic</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Consolidate diagram coordinates into the DB</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Duplicate diagram</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Fix buses locations</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>New schematic from substation</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No EMT Events Group</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No EMT Events Group found, please create one before adding an event.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No RMS Events Group</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No RMS Events Group found, please create one before adding an event.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No substations selected. Please select some substations</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Remove diagram</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Reset diagram coordinates using the DB</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Rotate diagram</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select a valid diagram</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select some cells</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select some elements in the schematic first</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select the expansion level</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Substations schematic</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The current diagram cannot be automatically layed out</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The diagram coordinates will be reset to its database values. Do you want to do this?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The diagram coordinates will be saved into the corresponding properties of the database, overwriting the existing ones. Do you want to do this?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Vicinity diagram</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -1155,6 +1715,73 @@ li.checked::marker { content: &quot;\2612&quot;; }
     </message>
 </context>
 <context>
+    <name>DynamicBlockEditorGUI</name>
+    <message>
+        <source>Block name already exists</source>
+        <translation>ब्लॉक का नाम पहले से मौजूद है</translation>
+    </message>
+    <message>
+        <source>Block name cannot be empty</source>
+        <translation>ब्लॉक का नाम खाली नहीं हो सकता</translation>
+    </message>
+    <message>
+        <source>Block name is invalid</source>
+        <translation>ब्लॉक का नाम अमान्य है</translation>
+    </message>
+    <message>
+        <source>Change Block Name</source>
+        <translation>ब्लॉक का नाम बदलें</translation>
+    </message>
+    <message>
+        <source>Change Variable Name</source>
+        <translation>चर का नाम बदलें</translation>
+    </message>
+    <message>
+        <source>Dynamic Model Editor</source>
+        <translation>गतिशील मॉडल एडिटर</translation>
+    </message>
+    <message>
+        <source>Dynamic Model Editor [{mode}]</source>
+        <translation>गतिशील मॉडल एडिटर [{mode}]</translation>
+    </message>
+    <message>
+        <source>Library</source>
+        <translation>लाइब्रेरी</translation>
+    </message>
+    <message>
+        <source>Variable name already exists</source>
+        <translation>चर का नाम पहले से मौजूद है</translation>
+    </message>
+    <message>
+        <source>Variable name cannot be empty</source>
+        <translation>चर का नाम खाली नहीं हो सकता</translation>
+    </message>
+    <message>
+        <source>Variable name is invalid</source>
+        <translation>चर का नाम अमान्य है</translation>
+    </message>
+    <message>
+        <source>Delete all</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Inspect Model</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There are unapplied changes. Do you want to close without applying them?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Unsaved changes</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>You are going to delete the complete model and start from scratch. Are you sure?</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>DynamicBlockPropertiesDialog</name>
     <message>
         <location filename="../DynamicModelEditor/dynamic_block_properties.ui" line="14"/>
@@ -1459,8 +2086,8 @@ li.checked::marker { content: &quot;\2612&quot;; }
         <translation>सभी कोड मान्य करें</translation>
     </message>
     <message>
-        <source>Variable renamed to '{name}'.</source>
-        <translation>वेरिएबल का नाम '{name}' में बदला गया।</translation>
+        <source>Variable renamed to &apos;{name}&apos;.</source>
+        <translation>वेरिएबल का नाम &apos;{name}&apos; में बदला गया।</translation>
     </message>
     <message>
         <source>Variables</source>
@@ -1469,6 +2096,63 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <source>{active} / {count}</source>
         <translation>{active} / {count}</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEditorAddButton</name>
+    <message>
+        <source>Open another Dynamic Editor</source>
+        <translation>एक अन्य गतिशील एडिटर खोलें</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEditorGraphics</name>
+    <message>
+        <source>{direction} {index}: {name}</source>
+        <translation>{direction} {index}: {name}</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEditorPickerDialog</name>
+    <message>
+        <source>Mode</source>
+        <translation>मोड</translation>
+    </message>
+    <message>
+        <source>Modes</source>
+        <translation>मोड</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>नाम</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation>खोलें</translation>
+    </message>
+    <message>
+        <source>Open the current block in the other mode.</source>
+        <translation>वर्तमान ब्लॉक को अन्य मोड में खोलें।</translation>
+    </message>
+    <message>
+        <source>Open the current block in {mode}.</source>
+        <translation>वर्तमान ब्लॉक को {mode} में खोलें।</translation>
+    </message>
+    <message>
+        <source>Open {mode}</source>
+        <translation>{mode} खोलें</translation>
+    </message>
+    <message>
+        <source>Quick Open</source>
+        <translation>त्वरित खोलें</translation>
+    </message>
+    <message>
+        <source>Search dynamic editors</source>
+        <translation>गतिशील संपादकों में खोजें</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>प्रकार</translation>
     </message>
 </context>
 <context>
@@ -1580,11 +2264,363 @@ li.checked::marker { content: &quot;\2612&quot;; }
     </message>
 </context>
 <context>
+    <name>DynamicEventEditor</name>
+    <message>
+        <source>&lt;b&gt;Target device:&lt;/b&gt;</source>
+        <translation>&lt;b&gt;टार्गेट डिवाइस:&lt;/b&gt;</translation>
+    </message>
+    <message>
+        <source>Align Step</source>
+        <translation>स्टेप संरेखित करें</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>रद्द करें</translation>
+    </message>
+    <message>
+        <source>Dynamic Event Editor</source>
+        <translation>डायनामिक इवेंट एडिटर</translation>
+    </message>
+    <message>
+        <source>EMT Event Editor</source>
+        <translation>EMT इवेंट संपादक</translation>
+    </message>
+    <message>
+        <source>EMT group Created</source>
+        <translation>EMT समूह बनाया गया</translation>
+    </message>
+    <message>
+        <source>End Time</source>
+        <translation>समाप्ति समय</translation>
+    </message>
+    <message>
+        <source>Group</source>
+        <translation>समूह</translation>
+    </message>
+    <message>
+        <source>Group: {group_name}</source>
+        <translation>समूह: {group_name}</translation>
+    </message>
+    <message>
+        <source>Invalid Input</source>
+        <translation>अमान्य इनपुट</translation>
+    </message>
+    <message>
+        <source>Missing fields</source>
+        <translation>आवश्यक फ़ील्ड गायब हैं</translation>
+    </message>
+    <message>
+        <source>New Value</source>
+        <translation>नया मान</translation>
+    </message>
+    <message>
+        <source>New group name</source>
+        <translation>नया समूह नाम</translation>
+    </message>
+    <message>
+        <source>New row {row_number}</source>
+        <translation>नई पंक्ति {row_number}</translation>
+    </message>
+    <message>
+        <source>No EMT Events Group</source>
+        <translation>कोई EMT इवेंट समूह नहीं</translation>
+    </message>
+    <message>
+        <source>No EMT Events Group found, please create one before adding an event.</source>
+        <translation>कोई EMT इवेंट समूह नहीं मिला, कृपया इवेंट जोड़ने से पहले एक बनाएं।</translation>
+    </message>
+    <message>
+        <source>No Events</source>
+        <translation>कोई इवेंट नहीं</translation>
+    </message>
+    <message>
+        <source>No RMS Events Group</source>
+        <translation>कोई RMS इवेंट समूह नहीं</translation>
+    </message>
+    <message>
+        <source>No RMS Events Group found, please create one before adding an event.</source>
+        <translation>कोई RMS इवेंट समूह नहीं मिला, कृपया इवेंट जोड़ने से पहले एक बनाएं।</translation>
+    </message>
+    <message>
+        <source>No Rows Selected</source>
+        <translation>कोई पंक्ति चयनित नहीं है</translation>
+    </message>
+    <message>
+        <source>No switch EMT mode parameter is available in this device.</source>
+        <translation>इस उपकरण में कोई स्विच EMT मोड पैरामीटर उपलब्ध नहीं है।</translation>
+    </message>
+    <message>
+        <source>Overlapping Events</source>
+        <translation>ओवरलैपिंग इवेंट्स</translation>
+    </message>
+    <message>
+        <source>Parameter</source>
+        <translation>पैरामीटर</translation>
+    </message>
+    <message>
+        <source>Please add at least one event before confirming.</source>
+        <translation>पुष्टि करने से पहले कृपया कम से कम एक इवेंट जोड़ें।</translation>
+    </message>
+    <message>
+        <source>Please check at least one row to remove.</source>
+        <translation>हटाने के लिए कृपया कम से कम एक पंक्ति चुनें।</translation>
+    </message>
+    <message>
+        <source>RMS Event Editor</source>
+        <translation>RMS इवेंट संपादक</translation>
+    </message>
+    <message>
+        <source>RMS group Created</source>
+        <translation>RMS समूह बनाया गया</translation>
+    </message>
+    <message>
+        <source>Ramp</source>
+        <translation>रैंप</translation>
+    </message>
+    <message>
+        <source>Row {row_number}: {message}</source>
+        <translation>पंक्ति {row_number}: {message}</translation>
+    </message>
+    <message>
+        <source>Some events are overlapped and cannot be applied.</source>
+        <translation>कुछ इवेंट्स ओवरलैप हैं और लागू नहीं किए जा सकते।</translation>
+    </message>
+    <message>
+        <source>Step</source>
+        <translation>स्टेप</translation>
+    </message>
+    <message>
+        <source>Switch Sequence</source>
+        <translation>स्विच अनुक्रम</translation>
+    </message>
+    <message>
+        <source>Switch Sequence Wizard</source>
+        <translation>स्विच सीक्वेंस विज़ार्ड</translation>
+    </message>
+    <message>
+        <source>Target device:</source>
+        <translation>लक्ष्य उपकरण:</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>समय</translation>
+    </message>
+    <message>
+        <source>Transition</source>
+        <translation>संक्रमण</translation>
+    </message>
+    <message>
+        <source>group has invalid type</source>
+        <translation>समूह का प्रकार अमान्य है</translation>
+    </message>
+    <message>
+        <source>parameter must be Var</source>
+        <translation>पैरामीटर Var होना चाहिए</translation>
+    </message>
+    <message>
+        <source>transition_type must be DynamicEventTransitionType</source>
+        <translation>transition_type DynamicEventTransitionType होना चाहिए</translation>
+    </message>
+    <message>
+        <source>{origin}: {transition}, parameter={parameter}, time={time:.4f} s, end_time={end_time:.4f} s, value={value:.6f}</source>
+        <translation>{origin}: {transition}, पैरामीटर={parameter}, समय={time:.4f} s, समाप्ति समय={end_time:.4f} s, मान={value:.6f}</translation>
+    </message>
+    <message>
+        <source>{origin}: {transition}, parameter={parameter}, time={time:.4f} s, value={value:.6f}</source>
+        <translation>{origin}: {transition}, पैरामीटर={parameter}, समय={time:.4f} s, मान={value:.6f}</translation>
+    </message>
+    <message>
+        <source>{prefix}: {group_name}</source>
+        <translation>{prefix}: {group_name}</translation>
+    </message>
+    <message>
+        <source>✅ Add Events</source>
+        <translation>✅ इवेंट जोड़ें</translation>
+    </message>
+    <message>
+        <source>❌ Remove Selected Rows</source>
+        <translation>❌ चयनित पंक्तियाँ हटाएं</translation>
+    </message>
+    <message>
+        <source>➕ Add New Event</source>
+        <translation>➕ नई इवेंट जोड़ें</translation>
+    </message>
+    <message>
+        <source>➕ New Event Group</source>
+        <translation>➕ नई इवेंट समूह</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventsGroupsDialog</name>
+    <message>
+        <source>Create EMT Events Group</source>
+        <translation>EMT इवेंट समूह बनाएं</translation>
+    </message>
+    <message>
+        <source>Create RMS Events Group</source>
+        <translation>RMS इवेंट समूह बनाएं</translation>
+    </message>
+    <message>
+        <source>Enter group name</source>
+        <translation>समूह का नाम दर्ज करें</translation>
+    </message>
+    <message>
+        <source>Invalid name</source>
+        <translation>अमान्य नाम</translation>
+    </message>
+    <message>
+        <source>Name:</source>
+        <translation>नाम:</translation>
+    </message>
+    <message>
+        <source>The name cannot be empty.</source>
+        <translation>नाम खाली नहीं हो सकता।</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicsResultsHandler</name>
+    <message>
+        <source>Cancel</source>
+        <translation>रद्द करें</translation>
+    </message>
+    <message>
+        <source>Choose whether to place the dropped signal on the X axis or Y axis.</source>
+        <translation>चुनें कि गिराया गया सिग्नल X अक्ष पर रखा जाए या Y अक्ष पर।</translation>
+    </message>
+    <message>
+        <source>Dynamic plots</source>
+        <translation>गतिशील प्लॉट</translation>
+    </message>
+    <message>
+        <source>Dynamics results</source>
+        <translation>गतिशीलता परिणाम</translation>
+    </message>
+    <message>
+        <source>Replace X</source>
+        <translation>X को बदलें</translation>
+    </message>
+    <message>
+        <source>Replace Y</source>
+        <translation>Y को बदलें</translation>
+    </message>
+    <message>
+        <source>This X-Y plot already has X and Y signals. Replace X, replace Y, or cancel?</source>
+        <translation>इस X-Y प्लॉट में पहले से X और Y सिग्नल हैं। क्या आप X बदलना चाहते हैं, Y बदलना चाहते हैं, या रद्द करना चाहते हैं?</translation>
+    </message>
+    <message>
+        <source>X axis</source>
+        <translation>X अक्ष</translation>
+    </message>
+    <message>
+        <source>X-Y plot slot</source>
+        <translation>X-Y प्लॉट स्लॉट</translation>
+    </message>
+    <message>
+        <source>Y axis</source>
+        <translation>Y अक्ष</translation>
+    </message>
+</context>
+<context>
+    <name>EquationLatexModel</name>
+    <message>
+        <source>Equation</source>
+        <translation>समीकरण</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>प्रकार</translation>
+    </message>
+</context>
+<context>
     <name>ExcelSelectionDialog</name>
     <message>
         <location filename="../FileDialogues/ProfilesInput/excel_sheet_selection.ui" line="20"/>
         <source>Excel sheet selection</source>
         <translation>Excel शीट चयन</translation>
+    </message>
+</context>
+<context>
+    <name>FileTypeSelector</name>
+    <message>
+        <source>Accept</source>
+        <translation>स्वीकार करें</translation>
+    </message>
+    <message>
+        <source>Format:</source>
+        <translation>प्रारूप:</translation>
+    </message>
+    <message>
+        <source>Select how to load the file</source>
+        <translation>फ़ाइल कैसे लोड करनी है, चुनें</translation>
+    </message>
+    <message>
+        <source>You&apos;ve passed a generic list of files
+select the expected processing format</source>
+        <translation>आपने फ़ाइलों की एक सामान्य सूची पास की है
+अपेक्षित प्रोसेसिंग प्रारूप चुनें</translation>
+    </message>
+    <message>
+        <source>You&apos;ve passed a generic of file
+select the expected processing format</source>
+        <translation>आपने फ़ाइल का एक सामान्य सेट पास किया है
+अपेक्षित प्रोसेसिंग प्रारूप चुनें</translation>
+    </message>
+</context>
+<context>
+    <name>FmuTemplateEditorDialog</name>
+    <message>
+        <source>Browse...</source>
+        <translation>ब्राउज़...</translation>
+    </message>
+    <message>
+        <source>Choose an FMU archive to load its metadata and build the visual block.</source>
+        <translation>मेटाडेटा लोड करने और विज़ुअल ब्लॉक बनाने के लिए एक FMU आर्काइव चुनें।</translation>
+    </message>
+    <message>
+        <source>Choose an FMU file first.</source>
+        <translation>पहले एक FMU फ़ाइल चुनें।</translation>
+    </message>
+    <message>
+        <source>Device type</source>
+        <translation>उपकरण प्रकार</translation>
+    </message>
+    <message>
+        <source>Domain</source>
+        <translation>डोमेन</translation>
+    </message>
+    <message>
+        <source>FMU Template Editor</source>
+        <translation>FMU टेम्पलेट संपादक</translation>
+    </message>
+    <message>
+        <source>FMU file</source>
+        <translation>FMU फ़ाइल</translation>
+    </message>
+    <message>
+        <source>FMU file not found:
+{path}</source>
+        <translation>FMU फ़ाइल नहीं मिली:
+{path}</translation>
+    </message>
+    <message>
+        <source>FMU files (*.fmu)</source>
+        <translation>FMU फ़ाइलें (*.fmu)</translation>
+    </message>
+    <message>
+        <source>Metadata</source>
+        <translation>मेटाडेटा</translation>
+    </message>
+    <message>
+        <source>Mode</source>
+        <translation>मोड</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>नाम</translation>
+    </message>
+    <message>
+        <source>Select FMU file</source>
+        <translation>FMU फ़ाइल चुनें</translation>
     </message>
 </context>
 <context>
@@ -1603,6 +2639,474 @@ li.checked::marker { content: &quot;\2612&quot;; }
         <location filename="../DeviceEditors/GeneratorEditor/generator_editor_gui.ui" line="95"/>
         <source>Del</source>
         <translation>हटाएँ</translation>
+    </message>
+</context>
+<context>
+    <name>GridGeneratorGUI</name>
+    <message>
+        <source>Grid Generator</source>
+        <translation>ग्रिड जेनरेटर</translation>
+    </message>
+    <message>
+        <source>Warning</source>
+        <translation>चेतावनी</translation>
+    </message>
+</context>
+<context>
+    <name>GridMapWidget</name>
+    <message>
+        <source>Connection Error</source>
+        <translation>कनेक्शन त्रुटि</translation>
+    </message>
+    <message>
+        <source>No suitable voltage level ({voltage:.2f} kV) found in substation &quot;{substation_name}&quot;.</source>
+        <translation>सबस्टेशन &quot;{substation_name}&quot; में कोई उपयुक्त वोल्टेज स्तर ({voltage:.2f} kV) नहीं मिला।</translation>
+    </message>
+    <message>
+        <source>Operation Successful</source>
+        <translation>ऑपरेशन सफल</translation>
+    </message>
+    <message>
+        <source>Please select exactly one line and one substation.</source>
+        <translation>कृपया ठीक एक लाइन और एक सबस्टेशन चुनें।</translation>
+    </message>
+    <message>
+        <source>Selection Error</source>
+        <translation>चयन त्रुटि</translation>
+    </message>
+    <message>
+        <source>T-joint connection created between {substation_name} and {line_name}.</source>
+        <translation>{substation_name} और {line_name} के बीच टी-जॉइंट कनेक्शन बनाया गया।</translation>
+    </message>
+    <message>
+        <source>The line cannot be connected. Please ensure the target substation has a bus with a matching nominal voltage.</source>
+        <translation>लाइन को कनेक्ट नहीं किया जा सकता। कृपया सुनिश्चित करें कि लक्ष्य सबस्टेशन में मिलान करने वाला नाममात्र वोल्टेज वाला बस है।</translation>
+    </message>
+    <message>
+        <source>Waypoint replaced with new substation &apos;{substation_name}&apos;.
+Original line split into two segments:
+- {line1_name}: {length1:.2f} km
+- {line2_name}: {length2:.2f} km
+New connection line: {distance:.2f} km</source>
+        <translation>वेपॉइंट को नए सबस्टेशन &apos;{substation_name}&apos; से बदल दिया गया।
+मूल लाइन दो खंडों में विभाजित हो गई:
+- {line1_name}: {length1:.2f} km
+- {line2_name}: {length2:.2f} km
+नई कनेक्शन लाइन: {distance:.2f} km</translation>
+    </message>
+    <message>
+        <source>Circuit ID</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Create new line</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Do you want to delete the substation where the lines were connecting? This will open the substation deletion menu, with the information of the items that would be removed.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Do you want to finalize the editing of the substation in the schematic?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Do you want to transform to substation the selected waypoint? This operation will split the line at the selected location, and will connect the new ends to the new substation.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Do you want to update lengths of lines? 
+IMPORTANT: This will take into account every movement of substation and line locations. If you are unsure of the effects of this updating, click no and perform the individual length update in a new map or in the specific line.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Please select two substations</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Remove substation?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select circuit ID</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Some of the buses was None :(</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Somehow the two substations are the same :(</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The nominal voltage of the two connecting substations is not the same :(</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Transform waypoint to substation?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Update lengths?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>create substation diagram</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>IoMain</name>
+    <message>
+        <source>Add to current diagram</source>
+        <translation>वर्तमान आरेख में जोड़ें</translation>
+    </message>
+    <message>
+        <source>Are you sure that you want to delete the current grid and replace it?</source>
+        <translation>क्या आप वर्तमान ग्रिड को हटाना और उसे बदलना चाहते हैं?</translation>
+    </message>
+    <message>
+        <source>Are you sure that you want to quit the current grid and create a new one?</source>
+        <translation>क्या आप वर्तमान ग्रिड छोड़ना और एक नया बनाना चाहते हैं?</translation>
+    </message>
+    <message>
+        <source>Are you sure that you want to quit the current grid and open a new one?
+ If the process is cancelled the grid will remain.</source>
+        <translation>क्या आप वर्तमान ग्रिड छोड़ना और एक नया खोलना चाहते हैं?
+ यदि प्रक्रिया रद्द की जाती है तो ग्रिड बना रहेगा।</translation>
+    </message>
+    <message>
+        <source>CIM (*.xml)</source>
+        <translation>CIM (*.xml)</translation>
+    </message>
+    <message>
+        <source>CSV (*.csv)</source>
+        <translation>CSV (*.csv)</translation>
+    </message>
+    <message>
+        <source>Catalogue Excel file (*.xlsx)</source>
+        <translation>कैटलॉग एक्सेल फ़ाइल (*.xlsx)</translation>
+    </message>
+    <message>
+        <source>Catalogue added!</source>
+        <translation>कैटलॉग जोड़ा गया!</translation>
+    </message>
+    <message>
+        <source>Catalogue file (*.xlsx)</source>
+        <translation>कैटलॉग फ़ाइल (*.xlsx)</translation>
+    </message>
+    <message>
+        <source>Catalogue loaded!</source>
+        <translation>कैटलॉग लोड हो गया!</translation>
+    </message>
+    <message>
+        <source>Catalogue saved!</source>
+        <translation>कैटलॉग सहेजा गया!</translation>
+    </message>
+    <message>
+        <source>Contingencies import</source>
+        <translation>आकस्मिकताओं का आयात</translation>
+    </message>
+    <message>
+        <source>Create new diagram</source>
+        <translation>नया आरेख बनाएं</translation>
+    </message>
+    <message>
+        <source>Current: {circuit_name}</source>
+        <translation>वर्तमान: {circuit_name}</translation>
+    </message>
+    <message>
+        <source>Do you want to open the Rosetta CGMES browser?</source>
+        <translation>क्या आप रोसेटा CGMES ब्राउज़र खोलना चाहते हैं?</translation>
+    </message>
+    <message>
+        <source>Does not seem to be a plugin :/</source>
+        <translation>प्लगइन नहीं लगता :/</translation>
+    </message>
+    <message>
+        <source>Done!</source>
+        <translation>हो गया!</translation>
+    </message>
+    <message>
+        <source>Driver load from disk</source>
+        <translation>डिस्क से ड्राइवर लोड करें</translation>
+    </message>
+    <message>
+        <source>Electrical Json V3 (*.ejson3)</source>
+        <translation>इलेक्ट्रिकल Json V3 (*.ejson3)</translation>
+    </message>
+    <message>
+        <source>Error while loading the file(s)</source>
+        <translation>फ़ाइल(फ़ाइलें) लोड करते समय त्रुटि</translation>
+    </message>
+    <message>
+        <source>Excel (*.xlsx)</source>
+        <translation>Excel (*.xlsx)</translation>
+    </message>
+    <message>
+        <source>Excel file (*.xlsx)</source>
+        <translation>एक्सेल फ़ाइल (*.xlsx)</translation>
+    </message>
+    <message>
+        <source>Export VeraGrid scenario</source>
+        <translation>वेराग्रिड परिदृश्य निर्यात करें</translation>
+    </message>
+    <message>
+        <source>Export all</source>
+        <translation>सभी निर्यात करें</translation>
+    </message>
+    <message>
+        <source>Export object profiles</source>
+        <translation>ऑब्जेक्ट प्रोफाइल निर्यात करें</translation>
+    </message>
+    <message>
+        <source>Export to CIM</source>
+        <translation>CIM में निर्यात करें</translation>
+    </message>
+    <message>
+        <source>Export to JSON</source>
+        <translation>JSON में निर्यात करें</translation>
+    </message>
+    <message>
+        <source>Export to Microsoft Excel</source>
+        <translation>माइक्रोसॉफ्ट एक्सेल में निर्यात करें</translation>
+    </message>
+    <message>
+        <source>Export to Power Grid Models</source>
+        <translation>पावर ग्रिड मॉडल में निर्यात करें</translation>
+    </message>
+    <message>
+        <source>Export to Sqlite</source>
+        <translation>Sqlite में निर्यात करें</translation>
+    </message>
+    <message>
+        <source>Export to VeraGrid HDF5</source>
+        <translation>वेराग्रिड HDF5 में निर्यात करें</translation>
+    </message>
+    <message>
+        <source>File opening</source>
+        <translation>फ़ाइल खोलना</translation>
+    </message>
+    <message>
+        <source>Formats (*.json)</source>
+        <translation>फ़ॉर्मेट (*.json)</translation>
+    </message>
+    <message>
+        <source>Formats ({files_types})</source>
+        <translation>फ़ॉर्मेट ({files_types})</translation>
+    </message>
+    <message>
+        <source>Grid generated randomly using the RPGM algorithm.</source>
+        <translation>RPGM एल्गोरिथम का उपयोग करके ग्रिड यादृच्छिक रूप से उत्पन्न किया गया।</translation>
+    </message>
+    <message>
+        <source>Grid merge</source>
+        <translation>ग्रिड विलय</translation>
+    </message>
+    <message>
+        <source>How do you want to represent the merged grid?</source>
+        <translation>आप विलय किए गए ग्रिड को कैसे दर्शाना चाहते हैं?</translation>
+    </message>
+    <message>
+        <source>JSON file (*.json)</source>
+        <translation>JSON फ़ाइल (*.json)</translation>
+    </message>
+    <message>
+        <source>Load catalogue</source>
+        <translation>कैटलॉग लोड करें</translation>
+    </message>
+    <message>
+        <source>Load results from disk</source>
+        <translation>डिस्क से परिणाम लोड करें</translation>
+    </message>
+    <message>
+        <source>Loaded &apos;{study_name}&apos; results from disk</source>
+        <translation>डिस्क से &apos;{study_name}&apos; परिणाम लोड किए गए</translation>
+    </message>
+    <message>
+        <source>Message</source>
+        <translation>संदेश</translation>
+    </message>
+    <message>
+        <source>Model v. {model_version}</source>
+        <translation>मॉडल सं. {model_version}</translation>
+    </message>
+    <message>
+        <source>No file driver declared :/</source>
+        <translation>कोई फ़ाइल ड्राइवर घोषित नहीं है :/</translation>
+    </message>
+    <message>
+        <source>No grid to load :(</source>
+        <translation>लोड करने के लिए कोई ग्रिड नहीं :(</translation>
+    </message>
+    <message>
+        <source>No schematic diagram was selected...</source>
+        <translation>कोई योजनाबद्ध आरेख (schematic diagram) नहीं चुना गया...</translation>
+    </message>
+    <message>
+        <source>Open CGMES file logger</source>
+        <translation>CGMES फ़ाइल लॉगर खोलें</translation>
+    </message>
+    <message>
+        <source>Open catalogue logger</source>
+        <translation>कैटलॉग लॉगर खोलें</translation>
+    </message>
+    <message>
+        <source>Open file</source>
+        <translation>फ़ाइल खोलें</translation>
+    </message>
+    <message>
+        <source>Open file logger</source>
+        <translation>फ़ाइल लॉगर खोलें</translation>
+    </message>
+    <message>
+        <source>Plugin install</source>
+        <translation>प्लगइन स्थापित करें</translation>
+    </message>
+    <message>
+        <source>Power Grid Models (*.pgm)</source>
+        <translation>पावर ग्रिड मॉडल (*.pgm)</translation>
+    </message>
+    <message>
+        <source>Power Grid Models not installed :/</source>
+        <translation>पावर ग्रिड मॉडल स्थापित नहीं हैं :/</translation>
+    </message>
+    <message>
+        <source>Random grid {bus_count} buses</source>
+        <translation>{bus_count} बसों वाला यादृच्छिक ग्रिड</translation>
+    </message>
+    <message>
+        <source>Results of </source>
+        <translation>के परिणाम</translation>
+    </message>
+    <message>
+        <source>Results parsing</source>
+        <translation>परिणाम पार्सिंग</translation>
+    </message>
+    <message>
+        <source>Save catalogue</source>
+        <translation>कैटलॉग सहेजें</translation>
+    </message>
+    <message>
+        <source>Save file</source>
+        <translation>फ़ाइल सहेजें</translation>
+    </message>
+    <message>
+        <source>Save file logger</source>
+        <translation>फ़ाइल लॉगर सहेजें</translation>
+    </message>
+    <message>
+        <source>Select a driver inside a session</source>
+        <translation>एक सत्र के अंदर एक ड्राइवर चुनें</translation>
+    </message>
+    <message>
+        <source>Server file deleted.</source>
+        <translation>सर्वर फ़ाइल हटा दी गई।</translation>
+    </message>
+    <message>
+        <source>Server file saved.</source>
+        <translation>सर्वर फ़ाइल सहेजी गई।</translation>
+    </message>
+    <message>
+        <source>Server model deleted.</source>
+        <translation>सर्वर मॉडल हटा दिया गया।</translation>
+    </message>
+    <message>
+        <source>Server save cancelled.</source>
+        <translation>सर्वर सहेजना रद्द कर दिया गया।</translation>
+    </message>
+    <message>
+        <source>Sessions</source>
+        <translation>सत्र</translation>
+    </message>
+    <message>
+        <source>Show Rosetta</source>
+        <translation>रोसेटा दिखाएं</translation>
+    </message>
+    <message>
+        <source>Sqlite (*.sqlite)</source>
+        <translation>Sqlite (*.sqlite)</translation>
+    </message>
+    <message>
+        <source>The file does not exist :( 
+ {file_name}</source>
+        <translation>फ़ाइल मौजूद नहीं है :( 
+ {file_name}</translation>
+    </message>
+    <message>
+        <source>The file type {file_extension} is not accepted :(</source>
+        <translation>फ़ाइल प्रकार {file_extension} स्वीकार नहीं किया गया :(</translation>
+    </message>
+    <message>
+        <source>The file was loaded but the current project was kept because closing a dynamic editor was cancelled.</source>
+        <translation>फ़ाइल लोड की गई लेकिन वर्तमान प्रोजेक्ट रखा गया क्योंकि एक गतिशील संपादक (dynamic editor) बंद करना रद्द कर दिया गया था।</translation>
+    </message>
+    <message>
+        <source>The grid is quite big, no diagram is automatically created</source>
+        <translation>ग्रिड काफी बड़ा है, कोई आरेख स्वचालित रूप से नहीं बनाया गया।</translation>
+    </message>
+    <message>
+        <source>There are no profiles!</source>
+        <translation>कोई प्रोफ़ाइल नहीं है!</translation>
+    </message>
+    <message>
+        <source>There are no results available :/</source>
+        <translation>कोई परिणाम उपलब्ध नहीं है :/</translation>
+    </message>
+    <message>
+        <source>There is a file being processed now.</source>
+        <translation>एक फ़ाइल संसाधित की जा रही है।</translation>
+    </message>
+    <message>
+        <source>There is a file being processed..</source>
+        <translation>एक फ़ाइल संसाधित की जा रही है..</translation>
+    </message>
+    <message>
+        <source>There is a saving procedure running.
+Cancel and retry?</source>
+        <translation>एक सहेजने की प्रक्रिया चल रही है।
+रद्द करें और पुनः प्रयास करें?</translation>
+    </message>
+    <message>
+        <source>There is already a plugin: {plugin_name} {plugin_version}. The new plugin is {new_version}. Install?</source>
+        <translation>पहले से ही एक प्लगइन है: {plugin_name} {plugin_version}। नया प्लगइन {new_version} है। स्थापित करें?</translation>
+    </message>
+    <message>
+        <source>There is no manifest :(</source>
+        <translation>कोई मैनिफेस्ट नहीं है :(</translation>
+    </message>
+    <message>
+        <source>VeraGrid (*.veragrid)</source>
+        <translation>VeraGrid (*.veragrid)</translation>
+    </message>
+    <message>
+        <source>VeraGrid HDF5 (*.gch5)</source>
+        <translation>VeraGrid HDF5 (*.gch5)</translation>
+    </message>
+    <message>
+        <source>VeraGrid zip (*.veragrid)</source>
+        <translation>VeraGrid zip (*.veragrid)</translation>
+    </message>
+    <message>
+        <source>Zip file (*.zip)</source>
+        <translation>ज़िप फ़ाइल (*.zip)</translation>
+    </message>
+    <message>
+        <source>idtag. {idtag}</source>
+        <translation>आईडीटैग. {idtag}</translation>
+    </message>
+    <message>
+        <source>profiles of </source>
+        <translation>के प्रोफ़ाइल</translation>
+    </message>
+    <message>
+        <source>{name} {version} installed!</source>
+        <translation>{name} {version} स्थापित!</translation>
+    </message>
+    <message>
+        <source>{name} {version} requires VeraGrid {veragrid_version}</source>
+        <translation>{name} {version} के लिए VeraGrid {veragrid_version} आवश्यक है</translation>
     </message>
 </context>
 <context>
@@ -1715,6 +3219,73 @@ li.checked::marker { content: &quot;\2612&quot;; }
         <location filename="../DeviceEditors/LineLocationsEditor/line_locations_editor_gui.ui" line="89"/>
         <source>Paste</source>
         <translation>पेस्ट करें</translation>
+    </message>
+    <message>
+        <source>CSV files (*.csv);;All files (*)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>CSV files (*.csv);;Text files (*.txt);;All files (*)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Export coordinates</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Import coordinates</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Locations</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>LogsDialogue</name>
+    <message>
+        <source>Accept</source>
+        <translation>स्वीकार करें</translation>
+    </message>
+    <message>
+        <source>CSV (*.csv);;Excel files (*.xlsx)</source>
+        <translation>CSV (*.csv);;Excel फ़ाइलें (*.xlsx)</translation>
+    </message>
+    <message>
+        <source>Class</source>
+        <translation>वर्ग</translation>
+    </message>
+    <message>
+        <source>Copy</source>
+        <translation>कॉपी करें</translation>
+    </message>
+    <message>
+        <source>Device</source>
+        <translation>उपकरण</translation>
+    </message>
+    <message>
+        <source>Expected value</source>
+        <translation>अपेक्षित मान</translation>
+    </message>
+    <message>
+        <source>Export results</source>
+        <translation>परिणाम निर्यात करें</translation>
+    </message>
+    <message>
+        <source>Property</source>
+        <translation>गुण</translation>
+    </message>
+    <message>
+        <source>Save</source>
+        <translation>सहेजें</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>समय</translation>
+    </message>
+    <message>
+        <source>Value</source>
+        <translation>मान</translation>
     </message>
 </context>
 <context>
@@ -2944,6 +4515,42 @@ li.checked::marker { content: &quot;\2612&quot;; }
         <source>{status_text} Min distance {min_distance:.3f} p.u. • mean distance {mean_distance:.3f} p.u.</source>
         <translation>{status_text} न्यूनतम दूरी {min_distance:.3f} p.u. • औसत दूरी {mean_distance:.3f} p.u।</translation>
     </message>
+    <message>
+        <source>Open-Meteo did not return hourly weather data</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>PVGIS did not return photovoltaic power data</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>PVGIS returned data, but it could not be interpolated to the circuit time profile</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The hub height must be greater than zero</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The latitude must be between -90 and 90 degrees</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The longitude must be between -180 and 180 degrees</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The photovoltaic peak power must be greater than zero</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The roughness length must be zero or greater</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The wind generator peak power must be greater than zero</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>MatpowerExportDialog</name>
@@ -2971,6 +4578,68 @@ li.checked::marker { content: &quot;\2612&quot;; }
         <location filename="../FileDialogues/MatpowerDialogue/matpower_export_gui.ui" line="72"/>
         <source>Export</source>
         <translation>निर्यात</translation>
+    </message>
+</context>
+<context>
+    <name>NewProfilesStructureDialogue</name>
+    <message>
+        <source>Accept</source>
+        <translation>स्वीकार करें</translation>
+    </message>
+    <message>
+        <source>New profiles structure</source>
+        <translation>नई प्रोफ़ाइल संरचना</translation>
+    </message>
+    <message>
+        <source>Number of time steps</source>
+        <translation>समय चरणों की संख्या</translation>
+    </message>
+    <message>
+        <source>Start date</source>
+        <translation>प्रारंभ तिथि</translation>
+    </message>
+    <message>
+        <source>Time step length</source>
+        <translation>समय चरण की लंबाई</translation>
+    </message>
+    <message>
+        <source>Time units</source>
+        <translation>समय इकाइयाँ</translation>
+    </message>
+</context>
+<context>
+    <name>ObjectColumnFilterDialog</name>
+    <message>
+        <source>Apply</source>
+        <translation>लागू करें</translation>
+    </message>
+    <message>
+        <source>Cancel filter</source>
+        <translation>फ़िल्टर रद्द करें</translation>
+    </message>
+    <message>
+        <source>Clear filter</source>
+        <translation>फ़िल्टर साफ़ करें</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>खोजें</translation>
+    </message>
+    <message>
+        <source>Select all visible</source>
+        <translation>सभी दृश्यमान चुनें</translation>
+    </message>
+    <message>
+        <source>Select no visible</source>
+        <translation>कोई दृश्यमान नहीं चुनें</translation>
+    </message>
+    <message>
+        <source>Sort A to Z</source>
+        <translation>A से Z तक क्रमबद्ध करें</translation>
+    </message>
+    <message>
+        <source>Sort Z to A</source>
+        <translation>Z से A तक क्रमबद्ध करें</translation>
     </message>
 </context>
 <context>
@@ -3098,6 +4767,206 @@ li.checked::marker { content: &quot;\2612&quot;; }
     </message>
 </context>
 <context>
+    <name>ResultsMain</name>
+    <message>
+        <source> is not valid :(</source>
+        <translation>मान्य नहीं है :(</translation>
+    </message>
+    <message>
+        <source>Are you sure that you want to overwrite the generation, batteries and load profiles with the OPF time series results?</source>
+        <translation>क्या आप सुनिश्चित हैं कि आप OPF समय श्रृंखला परिणामों से जनरेशन, बैटरी और लोड प्रोफ़ाइल को ओवरराइट करना चाहते हैं?</translation>
+    </message>
+    <message>
+        <source>Are you sure that you want to overwrite the generation, batteries and load snapshot values with the OPF results?</source>
+        <translation>क्या आप सुनिश्चित हैं कि आप OPF परिणामों से जनरेशन, बैटरी और लोड स्नैपशॉट मानों को ओवरराइट करना चाहते हैं?</translation>
+    </message>
+    <message>
+        <source>CSV (*.csv);;Excel files (*.xlsx)</source>
+        <translation>CSV (*.csv);;Excel फ़ाइलें (*.xlsx)</translation>
+    </message>
+    <message>
+        <source>Copied!</source>
+        <translation>कॉपी किया गया!</translation>
+    </message>
+    <message>
+        <source>Copy profile to clipboard</source>
+        <translation>प्रोफ़ाइल को क्लिपबोर्ड पर कॉपी करें</translation>
+    </message>
+    <message>
+        <source>Delete driver</source>
+        <translation>ड्राइवर हटाएं</translation>
+    </message>
+    <message>
+        <source>Do you want to delete the results driver {study_name}?</source>
+        <translation>Do you want to delete the results driver {study_name}?</translation>
+    </message>
+    <message>
+        <source>Export logs</source>
+        <translation>लॉग निर्यात करें</translation>
+    </message>
+    <message>
+        <source>Export results</source>
+        <translation>परिणाम निर्यात करें</translation>
+    </message>
+    <message>
+        <source>Filter parse</source>
+        <translation>फ़िल्टर पार्स</translation>
+    </message>
+    <message>
+        <source>Message</source>
+        <translation>संदेश</translation>
+    </message>
+    <message>
+        <source>New dynamic plot</source>
+        <translation>नया गतिशील प्लॉट</translation>
+    </message>
+    <message>
+        <source>Overwrite profiles with OPF results</source>
+        <translation>OPF परिणामों से प्रोफ़ाइल ओवरराइट करें</translation>
+    </message>
+    <message>
+        <source>P profiles set from the OPF results</source>
+        <translation>OPF परिणामों से P प्रोफ़ाइल सेट</translation>
+    </message>
+    <message>
+        <source>P snapshot set from the OPF results</source>
+        <translation>OPF परिणामों से P स्नैपशॉट सेट</translation>
+    </message>
+    <message>
+        <source>Plot</source>
+        <translation>कथानक</translation>
+    </message>
+    <message>
+        <source>Plot mode</source>
+        <translation>प्लॉट मोड</translation>
+    </message>
+    <message>
+        <source>Plot name</source>
+        <translation>प्लॉट का नाम</translation>
+    </message>
+    <message>
+        <source>Plot results</source>
+        <translation>प्लॉट परिणाम</translation>
+    </message>
+    <message>
+        <source>Rename dynamic plot</source>
+        <translation>गतिशील प्लॉट का नाम बदलें</translation>
+    </message>
+    <message>
+        <source>Rename dynamic variable</source>
+        <translation>गतिशील चर का नाम बदलें</translation>
+    </message>
+    <message>
+        <source>Rename group</source>
+        <translation>समूह का नाम बदलें</translation>
+    </message>
+    <message>
+        <source>Rename variable</source>
+        <translation>चर का नाम बदलें</translation>
+    </message>
+    <message>
+        <source>Select a plot group first.</source>
+        <translation>पहले एक प्लॉट समूह चुनें।</translation>
+    </message>
+    <message>
+        <source>Select a plot group or variable first.</source>
+        <translation>पहले एक प्लॉट समूह या चर चुनें।</translation>
+    </message>
+    <message>
+        <source>Select a variable first.</source>
+        <translation>पहले एक चर चुनें।</translation>
+    </message>
+    <message>
+        <source>The OPF time series has no results :(</source>
+        <translation>OPF समय श्रृंखला में कोई परिणाम नहीं है :(</translation>
+    </message>
+    <message>
+        <source>The plot group name is empty or already exists.</source>
+        <translation>प्लॉट समूह का नाम खाली है या पहले से मौजूद है।</translation>
+    </message>
+    <message>
+        <source>The selected dynamic plot entry could not be deleted.</source>
+        <translation>चयनित गतिशील प्लॉट प्रविष्टि को हटाया नहीं जा सका।</translation>
+    </message>
+    <message>
+        <source>The selected dynamic plot entry could not be plotted.</source>
+        <translation>चयनित गतिशील प्लॉट प्रविष्टि को प्लॉट नहीं किया जा सका।</translation>
+    </message>
+    <message>
+        <source>The variable name is empty or could not be changed.</source>
+        <translation>चर का नाम खाली है या इसे बदला नहीं जा सका।</translation>
+    </message>
+    <message>
+        <source>There are no RMS dynamics results loaded.</source>
+        <translation>कोई RMS डायनेमिक्स परिणाम लोड नहीं किया गया है।</translation>
+    </message>
+    <message>
+        <source>There are no results available to plot.</source>
+        <translation>प्लॉट करने के लिए कोई परिणाम उपलब्ध नहीं है।</translation>
+    </message>
+    <message>
+        <source>There are {columns} columns, the plot might take a lot to render.
+Are you ok with potentially waiting a lot?</source>
+        <translation>इसमें {columns} कॉलम हैं, प्लॉट को रेंडर करने में बहुत समय लग सकता है।
+क्या आप संभावित रूप से बहुत देर तक इंतजार करने के लिए ठीक हैं?</translation>
+    </message>
+    <message>
+        <source>There is no profile displayed, please display one</source>
+        <translation>कोई प्रोफ़ाइल प्रदर्शित नहीं है, कृपया एक प्रदर्शित करें</translation>
+    </message>
+    <message>
+        <source>Time Series (Y vs Time)</source>
+        <translation>समय श्रृंखला (Y बनाम समय)</translation>
+    </message>
+    <message>
+        <source>Variable name</source>
+        <translation>चर का नाम</translation>
+    </message>
+    <message>
+        <source>X-Y Plot (Y vs X)</source>
+        <translation>X-Y प्लॉट (Y बनाम X)</translation>
+    </message>
+</context>
+<context>
+    <name>RmsPlotDialog</name>
+    <message>
+        <source>Add</source>
+        <translation>जोड़ें</translation>
+    </message>
+    <message>
+        <source>Device:</source>
+        <translation>डिवाइस:</translation>
+    </message>
+    <message>
+        <source>Plot Variables</source>
+        <translation>प्लॉट चर</translation>
+    </message>
+    <message>
+        <source>Plot Window</source>
+        <translation>प्लॉट विंडो</translation>
+    </message>
+    <message>
+        <source>Remove variable</source>
+        <translation>चर हटाएं</translation>
+    </message>
+    <message>
+        <source>Rms Simulation Results</source>
+        <translation>RMS सिमुलेशन परिणाम</translation>
+    </message>
+    <message>
+        <source>Show in new window</source>
+        <translation>नई विंडो में दिखाएं</translation>
+    </message>
+    <message>
+        <source>Variable:</source>
+        <translation>चर:</translation>
+    </message>
+    <message>
+        <source>time (s)</source>
+        <translation>समय (s)</translation>
+    </message>
+</context>
+<context>
     <name>RosetaExplorer</name>
     <message>
         <location filename="../FileDialogues/RosetaExplorer/roseta_explorer.ui" line="23"/>
@@ -3154,6 +5023,564 @@ li.checked::marker { content: &quot;\2612&quot;; }
         <location filename="../FileDialogues/RosetaExplorer/roseta_explorer.ui" line="533"/>
         <source>Save logs</source>
         <translation>लॉग सहेजें</translation>
+    </message>
+</context>
+<context>
+    <name>RosetaExplorerGUI</name>
+    <message>
+        <source>Copy</source>
+        <translation>कॉपी करें</translation>
+    </message>
+    <message>
+        <source>Copied table to clipboard!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Excel files (*.xlsx)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Export logs</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Logger</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There no logs :)</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>RuntimeLogicEditorWidget</name>
+    <message>
+        <source>Add entry</source>
+        <translation>प्रविष्टि जोड़ें</translation>
+    </message>
+    <message>
+        <source>Add retained mode</source>
+        <translation>रिटेन्ड मोड जोड़ें</translation>
+    </message>
+    <message>
+        <source>Configuration</source>
+        <translation>कॉन्फ़िगरेशन</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>हटाएँ</translation>
+    </message>
+    <message>
+        <source>Delete retained mode</source>
+        <translation>रिटेन्ड मोड हटाएं</translation>
+    </message>
+    <message>
+        <source>Documentation</source>
+        <translation>दस्तावेज़ीकरण</translation>
+    </message>
+    <message>
+        <source>Enter a procedural entry name.</source>
+        <translation>एक प्रक्रियात्मक प्रविष्टि का नाम दर्ज करें।</translation>
+    </message>
+    <message>
+        <source>Enter a valid retained-mode symbol name.</source>
+        <translation>एक वैध रिटेन्ड-मोड प्रतीक नाम दर्ज करें।</translation>
+    </message>
+    <message>
+        <source>Enter an initial value or expression.</source>
+        <translation>एक प्रारंभिक मान या अभिव्यक्ति दर्ज करें।</translation>
+    </message>
+    <message>
+        <source>Entry name</source>
+        <translation>प्रविष्टि का नाम</translation>
+    </message>
+    <message>
+        <source>Initial value or expression</source>
+        <translation>प्रारंभिक मान या अभिव्यक्ति</translation>
+    </message>
+    <message>
+        <source>Mode symbol name</source>
+        <translation>मोड प्रतीक नाम</translation>
+    </message>
+    <message>
+        <source>Move down</source>
+        <translation>नीचे ले जाएं</translation>
+    </message>
+    <message>
+        <source>Move up</source>
+        <translation>ऊपर ले जाएं</translation>
+    </message>
+    <message>
+        <source>Owner</source>
+        <translation>मालिक</translation>
+    </message>
+    <message>
+        <source>Procedural entries</source>
+        <translation>प्रक्रियात्मक प्रविष्टियाँ</translation>
+    </message>
+    <message>
+        <source>Retained modes</source>
+        <translation>रिटेन्ड मोड</translation>
+    </message>
+    <message>
+        <source>Runtime logic is valid.</source>
+        <translation>रनटाइम तर्क वैध है।</translation>
+    </message>
+    <message>
+        <source>Select a valid owner and procedural type.</source>
+        <translation>एक वैध मालिक और प्रक्रियात्मक प्रकार चुनें।</translation>
+    </message>
+    <message>
+        <source>Select a valid owner block.</source>
+        <translation>एक वैध मालिक ब्लॉक का चयन करें।</translation>
+    </message>
+    <message>
+        <source>Select one procedural entry to delete.</source>
+        <translation>हटाने के लिए एक प्रक्रियात्मक प्रविष्टि चुनें।</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>प्रकार</translation>
+    </message>
+    <message>
+        <source>Valid runtime logic. Warnings: </source>
+        <translation>वैध रनटाइम तर्क। चेतावनियाँ:</translation>
+    </message>
+    <message>
+        <source>Validate runtime logic</source>
+        <translation>रनटाइम तर्क मान्य करें</translation>
+    </message>
+</context>
+<context>
+    <name>ScenariosMain</name>
+    <message>
+        <source>Add child scenario</source>
+        <translation>उप परिदृश्य जोड़ें</translation>
+    </message>
+    <message>
+        <source>Commit scenario</source>
+        <translation>परिदृश्य प्रतिबद्ध करें</translation>
+    </message>
+    <message>
+        <source>Merge children into scenario</source>
+        <translation>बच्चों को परिदृश्य में मर्ज करें</translation>
+    </message>
+    <message>
+        <source>Remove scenario</source>
+        <translation>परिदृश्य हटाएं</translation>
+    </message>
+    <message>
+        <source>Rename scenario</source>
+        <translation>परिदृश्य का नाम बदलें</translation>
+    </message>
+    <message>
+        <source>Set as current scenario</source>
+        <translation>वर्तमान परिदृश्य के रूप में सेट करें</translation>
+    </message>
+    <message>
+        <source>Add Child Scenario</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Commit Scenario</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Enter scenario name:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Failed to merge child scenarios</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Failed to remove scenario</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Invalid parent scenario selected</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Invalid scenario selected</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Merge Children</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Only the current scenario can be committed. Activate it first.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Please select a parent scenario first</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Please select a scenario to commit</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Please select a scenario to merge into</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Please select a scenario to remove</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Please select a scenario to rename</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Please select a scenario to set as current</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Remove Scenario</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Rename Scenario</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Scenario name cannot be empty</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Set Current Scenario</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>ScriptingMain</name>
+    <message>
+        <source>	app.adjust_all_node_width(): Adjust the width of all the nodes according to their name.</source>
+        <translation>	app.adjust_all_node_width(): Adjust the width of all the nodes according to their name.</translation>
+    </message>
+    <message>
+        <source>	app.circuit.plot_graph(): Plot a graph in a Matplotlib window. Call plt.show() after.</source>
+        <translation>	app.circuit.plot_graph(): Plot a graph in a Matplotlib window. Call plt.show() after.</translation>
+    </message>
+    <message>
+        <source>	app.create_schematic_from_api(): Create the schematic from the circuit information.</source>
+        <translation>	app.create_schematic_from_api(): Create the schematic from the circuit information.</translation>
+    </message>
+    <message>
+        <source>	app.export_diagram(): Prompt to export the diagram in png.</source>
+        <translation>	app.export_diagram(): Prompt to export the diagram in png.</translation>
+    </message>
+    <message>
+        <source>	app.islands: get compilation of the assets split into the topological islands.</source>
+        <translation>	app.islands: get compilation of the assets split into the topological islands.</translation>
+    </message>
+    <message>
+        <source>	app.new_project(): Clear all.</source>
+        <translation>	app.new_project(): Clear all.</translation>
+    </message>
+    <message>
+        <source>	app.numerical_circuit: get compilation of the assets.</source>
+        <translation>	app.numerical_circuit: get compilation of the assets.</translation>
+    </message>
+    <message>
+        <source>	app.open_file(): Prompt to load VeraGrid compatible file</source>
+        <translation>	app.open_file(): Prompt to load VeraGrid compatible file</translation>
+    </message>
+    <message>
+        <source>	app.save_file(): Prompt to save VeraGrid file</source>
+        <translation>	app.save_file(): Prompt to save VeraGrid file</translation>
+    </message>
+    <message>
+        <source>	app.session.continuation_power_flow.Sf:	 Power values for every power multiplication factor.</source>
+        <translation>	app.session.continuation_power_flow.Sf:	 Power values for every power multiplication factor.</translation>
+    </message>
+    <message>
+        <source>	app.session.continuation_power_flow.lambda:	 Value of power multiplication factor applied</source>
+        <translation>	app.session.continuation_power_flow.lambda:	 Value of power multiplication factor applied</translation>
+    </message>
+    <message>
+        <source>	app.session.continuation_power_flow.voltage:	 Voltage values for every power multiplication factor.</source>
+        <translation>	app.session.continuation_power_flow.voltage:	 Voltage values for every power multiplication factor.</translation>
+    </message>
+    <message>
+        <source>	app.session.optimal_power_flow.Sbus:	 the nodal power Injections in MW</source>
+        <translation>	app.session.optimal_power_flow.Sbus:	 the nodal power Injections in MW</translation>
+    </message>
+    <message>
+        <source>	app.session.optimal_power_flow.Sf:	 the branch power Sf</source>
+        <translation>	app.session.optimal_power_flow.Sf:	 the branch power Sf</translation>
+    </message>
+    <message>
+        <source>	app.session.optimal_power_flow.load_shedding:	 the branch loading in %</source>
+        <translation>	app.session.optimal_power_flow.load_shedding:	 the branch loading in %</translation>
+    </message>
+    <message>
+        <source>	app.session.optimal_power_flow.losses:	 the branch losses in per unit</source>
+        <translation>	app.session.optimal_power_flow.losses:	 the branch losses in per unit</translation>
+    </message>
+    <message>
+        <source>	app.session.optimal_power_flow.voltage:	 the nodal voltages angles in rad</source>
+        <translation>	app.session.optimal_power_flow.voltage:	 the nodal voltages angles in rad</translation>
+    </message>
+    <message>
+        <source>	app.session.power_flow.Sf:	 the branch power Injections in per unit at the &quot;from&quot; side</source>
+        <translation>	app.session.power_flow.Sf:	 the branch power Injections in per unit at the &quot;from&quot; side</translation>
+    </message>
+    <message>
+        <source>	app.session.power_flow.St:	 the branch power Injections in per unit at the &quot;to&quot; side</source>
+        <translation>	app.session.power_flow.St:	 the branch power Injections in per unit at the &quot;to&quot; side</translation>
+    </message>
+    <message>
+        <source>	app.session.power_flow.current:	 the branch currents in per unit</source>
+        <translation>	app.session.power_flow.current:	 the branch currents in per unit</translation>
+    </message>
+    <message>
+        <source>	app.session.power_flow.loading:	 the branch loading in %</source>
+        <translation>	app.session.power_flow.loading:	 the branch loading in %</translation>
+    </message>
+    <message>
+        <source>	app.session.power_flow.losses:	 the branch losses in per unit</source>
+        <translation>	app.session.power_flow.losses:	 the branch losses in per unit</translation>
+    </message>
+    <message>
+        <source>	app.session.power_flow.power:	 the nodal power Injections in per unit</source>
+        <translation>	app.session.power_flow.power:	 the nodal power Injections in per unit</translation>
+    </message>
+    <message>
+        <source>	app.session.power_flow.voltage:	 the nodal voltages in per unit</source>
+        <translation>	app.session.power_flow.voltage:	 the nodal voltages in per unit</translation>
+    </message>
+    <message>
+        <source>	app.session.power_flow_ts.currents:	 Branches currents results matrix (row: time, col: branch)</source>
+        <translation>	app.session.power_flow_ts.currents:	 Branches currents results matrix (row: time, col: branch)</translation>
+    </message>
+    <message>
+        <source>	app.session.power_flow_ts.gen_profiles:	 Generation profiles matrix (row: time, col: node)</source>
+        <translation>	app.session.power_flow_ts.gen_profiles:	 Generation profiles matrix (row: time, col: node)</translation>
+    </message>
+    <message>
+        <source>	app.session.power_flow_ts.load_profiles:	 Load profiles matrix (row: time, col: node)</source>
+        <translation>	app.session.power_flow_ts.load_profiles:	 Load profiles matrix (row: time, col: node)</translation>
+    </message>
+    <message>
+        <source>	app.session.power_flow_ts.loadings:	 Branches loadings results matrix (row: time, col: branch)</source>
+        <translation>	app.session.power_flow_ts.loadings:	 Branches loadings results matrix (row: time, col: branch)</translation>
+    </message>
+    <message>
+        <source>	app.session.power_flow_ts.losses:	 Branches losses results matrix (row: time, col: branch)</source>
+        <translation>	app.session.power_flow_ts.losses:	 Branches losses results matrix (row: time, col: branch)</translation>
+    </message>
+    <message>
+        <source>	app.session.power_flow_ts.time:	 Profiles time index (pandas DateTimeIndex object)</source>
+        <translation>	app.session.power_flow_ts.time:	 Profiles time index (pandas DateTimeIndex object)</translation>
+    </message>
+    <message>
+        <source>	app.session.power_flow_ts.voltages:	 nodal voltages results matrix (row: time, col: node)</source>
+        <translation>	app.session.power_flow_ts.voltages:	 nodal voltages results matrix (row: time, col: node)</translation>
+    </message>
+    <message>
+        <source>	app.session.short_circuit.current:	 the branch currents in per unit</source>
+        <translation>	app.session.short_circuit.current:	 the branch currents in per unit</translation>
+    </message>
+    <message>
+        <source>	app.session.short_circuit.loading:	 the branch loading in %</source>
+        <translation>	app.session.short_circuit.loading:	 the branch loading in %</translation>
+    </message>
+    <message>
+        <source>	app.session.short_circuit.losses:	 the branch losses in per unit</source>
+        <translation>	app.session.short_circuit.losses:	 the branch losses in per unit</translation>
+    </message>
+    <message>
+        <source>	app.session.short_circuit.power:	 the nodal power Injections in per unit</source>
+        <translation>	app.session.short_circuit.power:	 the nodal power Injections in per unit</translation>
+    </message>
+    <message>
+        <source>	app.session.short_circuit.power_from:	 the branch power Injections in per unit at the &quot;from&quot; side</source>
+        <translation>	app.session.short_circuit.power_from:	 the branch power Injections in per unit at the &quot;from&quot; side</translation>
+    </message>
+    <message>
+        <source>	app.session.short_circuit.power_to:	 the branch power Injections in per unit at the &quot;to&quot; side</source>
+        <translation>	app.session.short_circuit.power_to:	 the branch power Injections in per unit at the &quot;to&quot; side</translation>
+    </message>
+    <message>
+        <source>	app.session.short_circuit.short_circuit_power:	 Short circuit power in MVA of the grid nodes</source>
+        <translation>	app.session.short_circuit.short_circuit_power:	 Short circuit power in MVA of the grid nodes</translation>
+    </message>
+    <message>
+        <source>	app.session.short_circuit.voltage:	 the nodal voltages in per unit</source>
+        <translation>	app.session.short_circuit.voltage:	 the nodal voltages in per unit</translation>
+    </message>
+    <message>
+        <source>	app.session.stochastic_power_flow.I_avg:	 branch current average result.</source>
+        <translation>	app.session.stochastic_power_flow.I_avg:	 branch current average result.</translation>
+    </message>
+    <message>
+        <source>	app.session.stochastic_power_flow.I_std:	 branch current standard deviation result.</source>
+        <translation>	app.session.stochastic_power_flow.I_std:	 branch current standard deviation result.</translation>
+    </message>
+    <message>
+        <source>	app.session.stochastic_power_flow.Loading_avg:	 branch loading average result.</source>
+        <translation>	app.session.stochastic_power_flow.Loading_avg:	 branch loading average result.</translation>
+    </message>
+    <message>
+        <source>	app.session.stochastic_power_flow.Loading_std:	 branch loading standard deviation result.</source>
+        <translation>	app.session.stochastic_power_flow.Loading_std:	 branch loading standard deviation result.</translation>
+    </message>
+    <message>
+        <source>	app.session.stochastic_power_flow.Losses_avg:	 branch losses average result.</source>
+        <translation>	app.session.stochastic_power_flow.Losses_avg:	 branch losses average result.</translation>
+    </message>
+    <message>
+        <source>	app.session.stochastic_power_flow.Losses_std:	 branch losses standard deviation result.</source>
+        <translation>	app.session.stochastic_power_flow.Losses_std:	 branch losses standard deviation result.</translation>
+    </message>
+    <message>
+        <source>	app.session.stochastic_power_flow.V_avg:	 nodal voltage average result.</source>
+        <translation>	app.session.stochastic_power_flow.V_avg:	 nodal voltage average result.</translation>
+    </message>
+    <message>
+        <source>	app.session.stochastic_power_flow.V_avg_series:	 nodal voltage average series.</source>
+        <translation>	app.session.stochastic_power_flow.V_avg_series:	 nodal voltage average series.</translation>
+    </message>
+    <message>
+        <source>	app.session.stochastic_power_flow.V_std:	 nodal voltage standard deviation result.</source>
+        <translation>	app.session.stochastic_power_flow.V_std:	 nodal voltage standard deviation result.</translation>
+    </message>
+    <message>
+        <source>	app.session.stochastic_power_flow.V_std_series:	 branch current standard deviation series.</source>
+        <translation>	app.session.stochastic_power_flow.V_std_series:	 branch current standard deviation series.</translation>
+    </message>
+    <message>
+        <source>	app.session.stochastic_power_flow.error_series:	 Monte Carlo error series (the convergence value).</source>
+        <translation>	app.session.stochastic_power_flow.error_series:	 Monte Carlo error series (the convergence value).</translation>
+    </message>
+    <message>
+        <source>
+
+App functions:</source>
+        <translation>ऐप फ़ंक्शन:</translation>
+    </message>
+    <message>
+        <source>
+
+Circuit functions:</source>
+        <translation>सर्किट फ़ंक्शन:</translation>
+    </message>
+    <message>
+        <source>
+
+Monte Carlo power flow results:</source>
+        <translation>मोंटे कार्लो पावर फ्लो परिणाम:</translation>
+    </message>
+    <message>
+        <source>
+
+Optimal power flow results:</source>
+        <translation>इष्टतम पावर फ्लो परिणाम:</translation>
+    </message>
+    <message>
+        <source>
+
+Power flow results:</source>
+        <translation>पावर फ्लो परिणाम:</translation>
+    </message>
+    <message>
+        <source>
+
+Short circuit results:</source>
+        <translation>शॉर्ट सर्किट परिणाम:</translation>
+    </message>
+    <message>
+        <source>
+
+Time series power flow results:</source>
+        <translation>समय श्रृंखला पावर फ्लो परिणाम:</translation>
+    </message>
+    <message>
+        <source>
+
+Voltage stability power flow results:</source>
+        <translation>वोल्टेज स्थिरता पावर फ्लो परिणाम:</translation>
+    </message>
+    <message>
+        <source>
+
+clc():	clear the console.</source>
+        <translation>clc():	कंसोल साफ़ करें।</translation>
+    </message>
+    <message>
+        <source> does not exist :/</source>
+        <translation>मौजूद नहीं है :/</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to clear source code?</source>
+        <translation>क्या आप स्रोत कोड साफ़ करना चाहते हैं?</translation>
+    </message>
+    <message>
+        <source>Clear source code</source>
+        <translation>स्रोत कोड साफ़ करें</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>हटाएँ</translation>
+    </message>
+    <message>
+        <source>Delete source code file</source>
+        <translation>स्रोत कोड फ़ाइल हटाएं</translation>
+    </message>
+    <message>
+        <source>Do you want to delete {path}?</source>
+        <translation>क्या आप {path} हटाना चाहते हैं?</translation>
+    </message>
+    <message>
+        <source>If a command is unavailable is because the study has not been executed yet.</source>
+        <translation>यदि कोई कमांड अनुपलब्ध है तो इसका मतलब है कि अध्ययन अभी तक निष्पादित नहीं किया गया है।</translation>
+    </message>
+    <message>
+        <source>Open script</source>
+        <translation>स्क्रिप्ट खोलें</translation>
+    </message>
+    <message>
+        <source>Please enter a name for the script</source>
+        <translation>कृपया स्क्रिप्ट के लिए एक नाम दर्ज करें</translation>
+    </message>
+    <message>
+        <source>Save script</source>
+        <translation>स्क्रिप्ट सहेजें</translation>
+    </message>
+    <message>
+        <source>The same for app.latin_hypercube_sampling</source>
+        <translation>app.latin_hypercube_sampling के लिए भी यही।</translation>
+    </message>
+    <message>
+        <source>VeraGrid internal commands.
+</source>
+        <translation>VeraGrid आंतरिक कमांड।</translation>
+    </message>
+</context>
+<context>
+    <name>SelectionDialog</name>
+    <message>
+        <source>Cancel</source>
+        <translation>रद्द करें</translation>
+    </message>
+    <message>
+        <source>Click on a substation to reconnect branch {branch_name}</source>
+        <translation>शाखा {branch_name} को पुनः कनेक्ट करने के लिए एक सबस्टेशन पर क्लिक करें</translation>
+    </message>
+    <message>
+        <source>The substation should have a compatible voltage level ({voltage} kV)</source>
+        <translation>सबस्टेशन में एक संगत वोल्टेज स्तर ({voltage} kV) होना चाहिए</translation>
+    </message>
+    <message>
+        <source>Waiting for Selection</source>
+        <translation>चयन की प्रतीक्षा है</translation>
+    </message>
+    <message>
+        <source>Waiting for selection...</source>
+        <translation>चयन की प्रतीक्षा है...</translation>
     </message>
 </context>
 <context>
@@ -3286,6 +5713,63 @@ li.checked::marker { content: &quot;\2612&quot;; }
     </message>
 </context>
 <context>
+    <name>ServerFileDialogue</name>
+    <message>
+        <source>Delete server file</source>
+        <translation>सर्वर फ़ाइल हटाएं</translation>
+    </message>
+    <message>
+        <source>Delete server model</source>
+        <translation>सर्वर मॉडल हटाएं</translation>
+    </message>
+    <message>
+        <source>Delete the selected file and every model inside it?</source>
+        <translation>क्या आप चयनित फ़ाइल और इसके अंदर हर मॉडल को हटाना चाहते हैं?</translation>
+    </message>
+    <message>
+        <source>Delete the selected model from the server database?</source>
+        <translation>क्या आप चयनित मॉडल को सर्वर डेटाबेस से हटाना चाहते हैं?</translation>
+    </message>
+</context>
+<context>
+    <name>ServerMain</name>
+    <message>
+        <source>Connected!</source>
+        <translation>जुड़ गया!</translation>
+    </message>
+    <message>
+        <source>Could not connect to the server :/</source>
+        <translation>सर्वर से कनेक्ट नहीं किया जा सका :/</translation>
+    </message>
+    <message>
+        <source>Could not connect to the server: {error}</source>
+        <translation>सर्वर से कनेक्ट नहीं किया जा सका: {error}</translation>
+    </message>
+    <message>
+        <source>Results received!</source>
+        <translation>परिणाम प्राप्त हुए!</translation>
+    </message>
+    <message>
+        <source>Server config file was erroneous, wrote a new one</source>
+        <translation>सर्वर कॉन्फ़िगरेशन फ़ाइल त्रुटिपूर्ण थी, एक नई लिखी गई</translation>
+    </message>
+    <message>
+        <source>Stop Server</source>
+        <translation>सर्वर रोकें</translation>
+    </message>
+    <message>
+        <source>The server connection is running, are you sure that you want to stop it?</source>
+        <translation>सर्वर कनेक्शन चल रहा है, क्या आप निश्चित हैं कि आप इसे रोकना चाहते हैं?</translation>
+    </message>
+</context>
+<context>
+    <name>ShortCircuitSelector</name>
+    <message>
+        <source>Short Circuit Configuration</source>
+        <translation>शॉर्ट सर्किट कॉन्फ़िगरेशन</translation>
+    </message>
+</context>
+<context>
     <name>ShortCircuitSelectorDialog</name>
     <message>
         <location filename="../ShortCircuitEditor/short_circuit_selector_gui.ui" line="14"/>
@@ -3351,6 +5835,45 @@ li.checked::marker { content: &quot;\2612&quot;; }
     </message>
 </context>
 <context>
+    <name>SigmaAnalysisGUI</name>
+    <message>
+        <source>CSV (*.csv);;Excel files (*.xlsx)</source>
+        <translation>CSV (*.csv);;Excel फ़ाइलें (*.xlsx)</translation>
+    </message>
+    <message>
+        <source>Export results</source>
+        <translation>परिणाम निर्यात करें</translation>
+    </message>
+    <message>
+        <source>HELM-Sigma analysis dialogue</source>
+        <translation>HELM-सिग्मा विश्लेषण संवाद</translation>
+    </message>
+    <message>
+        <source>Sigma analysis completed</source>
+        <translation>सिग्मा विश्लेषण पूरा हुआ</translation>
+    </message>
+    <message>
+        <source>Sigma analysis did not return results</source>
+        <translation>सिग्मा विश्लेषण परिणाम वापस नहीं कर पाया</translation>
+    </message>
+    <message>
+        <source>Sigma coefficients did not converge :(</source>
+        <translation>सिग्मा गुणांक अभिसरण नहीं कर पाए :(</translation>
+    </message>
+    <message>
+        <source>Snapshot</source>
+        <translation>स्नैपशॉट</translation>
+    </message>
+    <message>
+        <source>This window was opened without a circuit/options rerun context.</source>
+        <translation>यह विंडो सर्किट/विकल्पों को फिर से चलाने के संदर्भ के बिना खोली गई थी।</translation>
+    </message>
+    <message>
+        <source>Warning</source>
+        <translation>चेतावनी</translation>
+    </message>
+</context>
+<context>
     <name>SimulationsMain</name>
     <message>
         <source>Model v. {model_version}</source>
@@ -3383,6 +5906,327 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <source>Short circuits</source>
         <translation>शॉर्ट सर्किट</translation>
+    </message>
+    <message>
+        <source>Another PTDF time series is being executed now...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Another short circuit is being executed now...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Catalogue optimization</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Catalogue optimization requires an active schematic diagram with a selection.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Clustering</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Continuation Power Flow</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Emt simulation</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>For this simulation, you need to select some buses from the interface</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Fuse devices</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No problems were detected, therefore no storage is suggested</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Nodal hosting capacity</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Power flow</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>RMS pre simulation check</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Rms simulation</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Run a power flow simulation first.
+The results are needed to initialize this simulation.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select at least one AC line or two-winding transformer in the schematic before running the catalogue optimization.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Small-Signal Stability analysis EMT</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Small-Signal Stability analysis RMS</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Small-signal stability EMT pre simulation check</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Small-signal stability RMS pre simulation check</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no power short circuit results.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>State estimation</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Storage location</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The "from" aggregation has no buses!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The area "from" has no buses!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The area "to" has no buses!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The number of clusters in the stored results is different from the specified :(
+Run another clustering analysis.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The simulation time is 0. Change it to a proper time in settings.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There are no OPF results, therefore this operation will not use OPF information.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There are no OPF time series, therefore this operation will not use OPF information.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There are no Small-Signal Stability analysis EMT results.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There are no Small-Signal Stability analysis RMS results.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There are no compatible areas</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There are no emt simulation results.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There are no inter-area Branches!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There are no investment groups, you need to create some so that VeraGrid can evaluate them ;)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There are no power flow results.
+Is there any slack bus or generator?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There are no rms simulation results.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There are no state estimation results.
+Is there any slack bus or generator?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There is no time series simulation.
+ It is needed for this functionality.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There were no power flow values available. Linear flows will be used.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>This action will fuse all the devices per node and per category. Are you sure?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>You have selected a group of buses with no power injection.
+this will result in an infinite continuation, since the loading variation of buses with zero injection will be infinite.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>SubstationDesigner</name>
+    <message>
+        <source>Substation maker</source>
+        <translation>सबस्टेशन निर्माता</translation>
+    </message>
+    <message>
+        <source>Substation {number}</source>
+        <translation>सबस्टेशन {number}</translation>
+    </message>
+    <message>
+        <source>There are no voltage levels, so no substation will be created, ok?</source>
+        <translation>कोई वोल्टेज स्तर नहीं है, इसलिए कोई सबस्टेशन नहीं बनाया जाएगा, ठीक है?</translation>
+    </message>
+</context>
+<context>
+    <name>SwitchSequenceDialog</name>
+    <message>
+        <source>Add Sequence Step</source>
+        <translation>अनुक्रम चरण जोड़ें</translation>
+    </message>
+    <message>
+        <source>Add at least one sequence row.</source>
+        <translation>कम से कम एक अनुक्रम पंक्ति जोड़ें।</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>बंद करें</translation>
+    </message>
+    <message>
+        <source>Group</source>
+        <translation>समूह</translation>
+    </message>
+    <message>
+        <source>Mode Parameter</source>
+        <translation>मोड पैरामीटर</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation>खोलें</translation>
+    </message>
+    <message>
+        <source>Please check at least one row to remove.</source>
+        <translation>हटाने के लिए कृपया कम से कम एक पंक्ति चुनें।</translation>
+    </message>
+    <message>
+        <source>Remove Selected Rows</source>
+        <translation>चयनित पंक्तियाँ हटाएं</translation>
+    </message>
+    <message>
+        <source>Select a mode parameter and an events group.</source>
+        <translation>एक मोड पैरामीटर और एक इवेंट्स समूह चुनें।</translation>
+    </message>
+    <message>
+        <source>State</source>
+        <translation>स्थिति</translation>
+    </message>
+    <message>
+        <source>Switch Sequence</source>
+        <translation>स्विच अनुक्रम</translation>
+    </message>
+    <message>
+        <source>Switch Sequence Wizard</source>
+        <translation>स्विच सीक्वेंस विज़ार्ड</translation>
+    </message>
+    <message>
+        <source>The selected parameter or group is invalid.</source>
+        <translation>चयनित पैरामीटर या समूह अमान्य है।</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>समय</translation>
+    </message>
+</context>
+<context>
+    <name>SystemScaler</name>
+    <message>
+        <source>Aggregated energy scaling preview</source>
+        <translation>समग्र ऊर्जा स्केलिंग पूर्वावलोकन</translation>
+    </message>
+    <message>
+        <source>Aggregated power scaling preview</source>
+        <translation>समग्र शक्ति स्केलिंग पूर्वावलोकन</translation>
+    </message>
+    <message>
+        <source>MW</source>
+        <translation>MW</translation>
+    </message>
+    <message>
+        <source>MWh</source>
+        <translation>MWh</translation>
+    </message>
+    <message>
+        <source>Original generation</source>
+        <translation>मूल उत्पादन</translation>
+    </message>
+    <message>
+        <source>Original generation energy</source>
+        <translation>मूल उत्पादन ऊर्जा</translation>
+    </message>
+    <message>
+        <source>Original load</source>
+        <translation>मूल भार</translation>
+    </message>
+    <message>
+        <source>Original load energy</source>
+        <translation>मूल भार ऊर्जा</translation>
+    </message>
+    <message>
+        <source>Press plot to preview scaling</source>
+        <translation>स्केलिंग पूर्वावलोकन के लिए प्लॉट दबाएँ</translation>
+    </message>
+    <message>
+        <source>Scaled generation</source>
+        <translation>स्केल्ड उत्पादन</translation>
+    </message>
+    <message>
+        <source>Scaled generation energy</source>
+        <translation>स्केल्ड उत्पादन ऊर्जा</translation>
+    </message>
+    <message>
+        <source>Scaled load</source>
+        <translation>स्केल्ड भार</translation>
+    </message>
+    <message>
+        <source>Scaled load energy</source>
+        <translation>स्केल्ड भार ऊर्जा</translation>
+    </message>
+    <message>
+        <source>System scaling</source>
+        <translation>सिस्टम स्केलिंग</translation>
+    </message>
+    <message>
+        <source>There is no time series to plot.</source>
+        <translation>प्लॉट करने के लिए कोई समय श्रृंखला नहीं है।</translation>
+    </message>
+    <message>
+        <source>This operation will alter the generation and load composition irreversibly
+Are you sure?</source>
+        <translation>यह ऑपरेशन उत्पादन और भार संरचना को अपरिवर्तनीय रूप से बदल देगा
+क्या आप निश्चित हैं?</translation>
     </message>
 </context>
 <context>
@@ -3431,6 +6275,29 @@ li.checked::marker { content: &quot;\2612&quot;; }
         <location filename="../DeviceEditors/TemplateDeviceEditor/template_device_editor_gui.ui" line="240"/>
         <source>Units</source>
         <translation>इकाइयाँ</translation>
+    </message>
+</context>
+<context>
+    <name>TimeReIndexDialogue</name>
+    <message>
+        <source>Accept</source>
+        <translation>स्वीकार करें</translation>
+    </message>
+    <message>
+        <source>Start date</source>
+        <translation>प्रारंभ तिथि</translation>
+    </message>
+    <message>
+        <source>Time re-index</source>
+        <translation>समय पुन: अनुक्रमण</translation>
+    </message>
+    <message>
+        <source>Time step length</source>
+        <translation>समय चरण की लंबाई</translation>
+    </message>
+    <message>
+        <source>Time units</source>
+        <translation>समय इकाइयाँ</translation>
     </message>
 </context>
 <context>
@@ -3730,6 +6597,25 @@ li.checked::marker { content: &quot;\2612&quot;; }
         <location filename="../FileDialogues/UcteDialogue/ucte_export_gui.ui" line="72"/>
         <source>Export</source>
         <translation>निर्यात</translation>
+    </message>
+</context>
+<context>
+    <name>VeraGridMainGUI</name>
+    <message>
+        <source>Are you sure that you want to exit VeraGrid?</source>
+        <translation>क्या आप VeraGrid छोड़ना चाहते हैं?</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>बंद करें</translation>
+    </message>
+    <message>
+        <source>No effect, select diagrams or database</source>
+        <translation>कोई प्रभाव नहीं, आरेख या डेटाबेस चुनें</translation>
+    </message>
+    <message>
+        <source>VeraGrid {version}</source>
+        <translation>VeraGrid {version}</translation>
     </message>
 </context>
 <context>
@@ -9345,2226 +12231,1269 @@ li.checked::marker { content: &quot;\2612&quot;; }
     </message>
 </context>
 <context>
-    <name>AiChatDialogue</name>
+    <name>BaseDiagramWidget</name>
     <message>
-        <source>API key</source>
-        <translation>API कुंजी</translation>
+        <source>No time series results to plot, run some time series results. Even partial results are fine</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Generating response</source>
-        <translation>प्रतिक्रिया उत्पन्न कर रहा है</translation>
+        <source>Overwrite the active profile</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Leave empty for unauthenticated endpoints</source>
-        <translation>अप्रमाणित समापन बिंदुओं के लिए खाली छोड़ें</translation>
-    </message>
-    <message>
-        <source>Pick or type a GGUF file name</source>
-        <translation>एक GGUF फ़ाइल नाम चुनें या टाइप करें</translation>
-    </message>
-    <message>
-        <source>Provider model name</source>
-        <translation>प्रदाता मॉडल का नाम</translation>
-    </message>
-    <message>
-        <source>Query the configured backend for models.</source>
-        <translation>मॉडल के लिए कॉन्फ़िगर किए गए बैकएंड पर क्वेरी करें।</translation>
-    </message>
-    <message>
-        <source>Resolve the pending tool approval or clear the chat first.</source>
-        <translation>लंबित टूल अनुमोदन को हल करें या पहले चैट साफ़ करें।</translation>
-    </message>
-    <message>
-        <source>Running AI turn</source>
-        <translation>AI टर्न चल रहा है</translation>
-    </message>
-    <message>
-        <source>Running AI turn...</source>
-        <translation>AI टर्न चल रहा है...</translation>
-    </message>
-    <message>
-        <source>Running simulation and analyzing the results...</source>
-        <translation>सिमुलेशन चला रहा है और परिणाम का विश्लेषण कर रहा है...</translation>
-    </message>
-    <message>
-        <source>Scan the configured path for GGUF files.</source>
-        <translation>GGUF फ़ाइलों के लिए कॉन्फ़िगर किए गए पथ को स्कैन करें।</translation>
-    </message>
-    <message>
-        <source>Send</source>
-        <translation>भेजें</translation>
-    </message>
-    <message>
-        <source>Stop</source>
-        <translation>रोकें</translation>
-    </message>
-    <message>
-        <source>Stopping AI turn...</source>
-        <translation>AI टर्न रोक रहा है...</translation>
-    </message>
-    <message>
-        <source>There is no pending tool call to approve.</source>
-        <translation>अनुमोदन के लिए कोई लंबित टूल कॉल नहीं है।</translation>
-    </message>
-    <message>
-        <source>There is no running AI turn to stop.</source>
-        <translation>रोकने के लिए कोई चल रहा AI टर्न नहीं है।</translation>
-    </message>
-    <message>
-        <source>Tool</source>
-        <translation>टूल</translation>
-    </message>
-    <message>
-        <source>Type a message before sending.</source>
-        <translation>भेजने से पहले एक संदेश टाइप करें।</translation>
-    </message>
-    <message>
-        <source>VeraGrid AI</source>
-        <translation>VeraGrid AI</translation>
-    </message>
-    <message>
-        <source>VeraGrid AI dialogue</source>
-        <translation>VeraGrid AI संवाद</translation>
-    </message>
-    <message>
-        <source>Wait for the current AI turn to finish.</source>
-        <translation>वर्तमान AI टर्न के समाप्त होने का इंतज़ार करें।</translation>
-    </message>
-    <message>
-        <source>You</source>
-        <translation>आप</translation>
+        <source>Overwrite the profile</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>ArrayEditor</name>
+    <name>BusGraphicItem</name>
     <message>
-        <source>Add</source>
-        <translation>जोड़ें</translation>
+        <source>Do you want to update the time series active status accordingly?</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Array Editor</source>
-        <translation>ऐरे एडिटर</translation>
+        <source>The api object is none :(</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Delete</source>
-        <translation>हटाएँ</translation>
-    </message>
-</context>
-<context>
-    <name>BlockParameterDraftModel</name>
-    <message>
-        <source>Name</source>
-        <translation>नाम</translation>
-    </message>
-    <message>
-        <source>Numeric value. Changes are staged until Apply changes is pressed.</source>
-        <translation>संख्यात्मक मान। परिवर्तन तब तक स्टेज किए जाते हैं जब तक 'परिवर्तन लागू करें' (Apply changes) दबाया नहीं जाता।</translation>
-    </message>
-    <message>
-        <source>Real value or symbolic initialization expression. Changes are staged until Apply changes is pressed.</source>
-        <translation>वास्तविक मान या प्रतीकात्मक आरंभीकरण अभिव्यक्ति। परिवर्तन तब तक स्टेज किए जाते हैं जब तक 'परिवर्तन लागू करें' (Apply changes) दबाया नहीं जाता।</translation>
-    </message>
-    <message>
-        <source>Type</source>
-        <translation>प्रकार</translation>
-    </message>
-    <message>
-        <source>Value</source>
-        <translation>मान</translation>
+        <source>Update time series active status</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>BlockSymbolFilterProxyModel</name>
+    <name>BusSelectorDialogue</name>
     <message>
-        <source>Initializes a variable through VarPowerFlowReferenceType and block.external_mapping.</source>
-        <translation>VarPowerFlowReferenceType और block.external_mapping के माध्यम से एक चर को आरंभ करता है।</translation>
-    </message>
-    <message>
-        <source>Maps a static parameter through ParamPowerFlowReferenceType to block.api_obj_mapping. Dynamic parameters are not editable here.</source>
-        <translation>ParamPowerFlowReferenceType के माध्यम से एक स्थिर पैरामीटर को block.api_obj_mapping पर मैप करता है। गतिशील पैरामीटर यहां संपादन योग्य नहीं हैं।</translation>
-    </message>
-    <message>
-        <source>Power-flow derived initialization</source>
-        <translation>पावर-फ्लो से प्राप्त आरंभीकरण</translation>
-    </message>
-    <message>
-        <source>Static parameter mapping</source>
-        <translation>स्थिर पैरामीटर मैपिंग</translation>
+        <source>Bus selection</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>CgmesOptionsSelector</name>
+    <name>CatalogueGUI</name>
     <message>
-        <source>Accept</source>
-        <translation>स्वीकार करें</translation>
+        <source>Can't upload file</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>CGMES Version:</source>
-        <translation>CGMES संस्करण:</translation>
-    </message>
-    <message>
-        <source>Select the CGMES options</source>
-        <translation>CGMES विकल्प चुनें</translation>
+        <source>Custom Catalogue</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>CorrectInconsistenciesDialogue</name>
+    <name>CgmesExportDialogue</name>
     <message>
-        <source>Accept</source>
-        <translation>स्वीकार करें</translation>
+        <source>CGMES export</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Correct inconsistencies</source>
-        <translation>विसंगतियों को ठीक करें</translation>
-    </message>
-    <message>
-        <source>Maximum generator set point</source>
-        <translation>अधिकतम जनरेटर सेट पॉइंट</translation>
-    </message>
-    <message>
-        <source>Maximum virtual tap difference</source>
-        <translation>अधिकतम आभासी टैप अंतर</translation>
-    </message>
-    <message>
-        <source>Minimum generator set point</source>
-        <translation>न्यूनतम जनरेटर सेट पॉइंट</translation>
+        <source>Export to CGMES</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>DataBaseTableMain</name>
+    <name>CgmesImportDialogue</name>
     <message>
-        <source>Add</source>
-        <translation>जोड़ें</translation>
-    </message>
-    <message>
-        <source>Add to current diagram</source>
-        <translation>वर्तमान आरेख में जोड़ें</translation>
-    </message>
-    <message>
-        <source>Assign to profile</source>
-        <translation>प्रोफ़ाइल को असाइन करें</translation>
-    </message>
-    <message>
-        <source>Colour branches like this</source>
-        <translation>शाखाओं को इस प्रकार रंगें</translation>
-    </message>
-    <message>
-        <source>Copy idtag</source>
-        <translation>idtag कॉपी करें</translation>
-    </message>
-    <message>
-        <source>Copy table</source>
-        <translation>तालिका कॉपी करें</translation>
-    </message>
-    <message>
-        <source>Crop model to buses selection</source>
-        <translation>बस चयन तक मॉडल क्रॉप करें</translation>
-    </message>
-    <message>
-        <source>Delete</source>
-        <translation>हटाएँ</translation>
-    </message>
-    <message>
-        <source>Duplicate object</source>
-        <translation>ऑब्जेक्ट डुप्लिकेट करें</translation>
-    </message>
-    <message>
-        <source>Edit</source>
-        <translation>संपादित करें</translation>
-    </message>
-    <message>
-        <source>Grid reduction</source>
-        <translation>ग्रिड में कमी</translation>
-    </message>
-    <message>
-        <source>Highlight based on property</source>
-        <translation>संपत्ति के आधार पर हाइलाइट करें</translation>
-    </message>
-    <message>
-        <source>Highlight buses selection</source>
-        <translation>बस चयन को हाइलाइट करें</translation>
-    </message>
-    <message>
-        <source>Merge</source>
-        <translation>विलय करें</translation>
-    </message>
-    <message>
-        <source>New diagram from selection</source>
-        <translation>चयन से नया आरेख</translation>
-    </message>
-    <message>
-        <source>New map from selection</source>
-        <translation>चयन से नया मैप</translation>
-    </message>
-    <message>
-        <source>New vicinity diagram</source>
-        <translation>नया निकटता आरेख</translation>
-    </message>
-    <message>
-        <source>Set value to column</source>
-        <translation>कॉलम में मान सेट करें</translation>
-    </message>
-    <message>
-        <source>Type the object name or a smart filter expression ...</source>
-        <translation>ऑब्जेक्ट का नाम या एक स्मार्ट फ़िल्टर अभिव्यक्ति टाइप करें...</translation>
+        <source>CGMES import</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>DiagramsMain</name>
+    <name>ConsoleMainWindow</name>
     <message>
-        <source>Are you sure that you want to try an automatic layout?</source>
-        <translation>क्या आप स्वचालित लेआउट आज़माना चाहते हैं?</translation>
-    </message>
-    <message>
-        <source>Duplicate</source>
-        <translation>डुप्लिकेट करें</translation>
-    </message>
-    <message>
-        <source>Message</source>
-        <translation>संदेश</translation>
-    </message>
-    <message>
-        <source>New map</source>
-        <translation>नया नक्शा</translation>
-    </message>
-    <message>
-        <source>New schematic</source>
-        <translation>नया योजनाबद्ध</translation>
-    </message>
-    <message>
-        <source>New schematic from selection</source>
-        <translation>चयन से नई योजना</translation>
-    </message>
-    <message>
-        <source>Remove</source>
-        <translation>हटाएँ</translation>
-    </message>
-    <message>
-        <source>Save image file</source>
-        <translation>छवि फ़ाइल सहेजें</translation>
-    </message>
-    <message>
-        <source>Save video file</source>
-        <translation>वीडियो फ़ाइल सहेजें</translation>
-    </message>
-    <message>
-        <source>Type to search in the current diagram</source>
-        <translation>वर्तमान आरेख में खोजने के लिए टाइप करें</translation>
+        <source>PySide6 Python Console</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>DynamicBlockEditorGUI</name>
+    <name>ContingencyPlannerGUI</name>
     <message>
-        <source>Block name already exists</source>
-        <translation>ब्लॉक का नाम पहले से मौजूद है</translation>
-    </message>
-    <message>
-        <source>Block name cannot be empty</source>
-        <translation>ब्लॉक का नाम खाली नहीं हो सकता</translation>
-    </message>
-    <message>
-        <source>Block name is invalid</source>
-        <translation>ब्लॉक का नाम अमान्य है</translation>
-    </message>
-    <message>
-        <source>Change Block Name</source>
-        <translation>ब्लॉक का नाम बदलें</translation>
-    </message>
-    <message>
-        <source>Change Variable Name</source>
-        <translation>चर का नाम बदलें</translation>
-    </message>
-    <message>
-        <source>Dynamic Model Editor</source>
-        <translation>गतिशील मॉडल एडिटर</translation>
-    </message>
-    <message>
-        <source>Dynamic Model Editor [{mode}]</source>
-        <translation>गतिशील मॉडल एडिटर [{mode}]</translation>
-    </message>
-    <message>
-        <source>Library</source>
-        <translation>लाइब्रेरी</translation>
-    </message>
-    <message>
-        <source>Variable name already exists</source>
-        <translation>चर का नाम पहले से मौजूद है</translation>
-    </message>
-    <message>
-        <source>Variable name cannot be empty</source>
-        <translation>चर का नाम खाली नहीं हो सकता</translation>
-    </message>
-    <message>
-        <source>Variable name is invalid</source>
-        <translation>चर का नाम अमान्य है</translation>
+        <source>Contingency planner</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>DynamicEditorAddButton</name>
+    <name>ControllableShuntDeviceEditor</name>
     <message>
-        <source>Open another Dynamic Editor</source>
-        <translation>एक अन्य गतिशील एडिटर खोलें</translation>
+        <source>Controllable shunt editor</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>DynamicEditorGraphics</name>
+    <name>ControllableShuntEditor</name>
     <message>
-        <source>{direction} {index}: {name}</source>
-        <translation>{direction} {index}: {name}</translation>
+        <source>Controllable shunt editor</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>DynamicEditorPickerDialog</name>
+    <name>CoordinatesInputGUI</name>
     <message>
-        <source>Mode</source>
-        <translation>मोड</translation>
+        <source>Coordinates import dialogue</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Modes</source>
-        <translation>मोड</translation>
+        <source>Duplicated headers</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Name</source>
-        <translation>नाम</translation>
-    </message>
-    <message>
-        <source>Open</source>
-        <translation>खोलें</translation>
-    </message>
-    <message>
-        <source>Open the current block in the other mode.</source>
-        <translation>वर्तमान ब्लॉक को अन्य मोड में खोलें।</translation>
-    </message>
-    <message>
-        <source>Open the current block in {mode}.</source>
-        <translation>वर्तमान ब्लॉक को {mode} में खोलें।</translation>
-    </message>
-    <message>
-        <source>Open {mode}</source>
-        <translation>{mode} खोलें</translation>
-    </message>
-    <message>
-        <source>Quick Open</source>
-        <translation>त्वरित खोलें</translation>
-    </message>
-    <message>
-        <source>Search dynamic editors</source>
-        <translation>गतिशील संपादकों में खोजें</translation>
-    </message>
-    <message>
-        <source>Type</source>
-        <translation>प्रकार</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEventEditor</name>
-    <message>
-        <source>&lt;b&gt;Target device:&lt;/b&gt;</source>
-        <translation>&lt;b&gt;टार्गेट डिवाइस:&lt;/b&gt;</translation>
-    </message>
-    <message>
-        <source>Align Step</source>
-        <translation>स्टेप संरेखित करें</translation>
-    </message>
-    <message>
-        <source>Cancel</source>
-        <translation>रद्द करें</translation>
-    </message>
-    <message>
-        <source>Dynamic Event Editor</source>
-        <translation>डायनामिक इवेंट एडिटर</translation>
-    </message>
-    <message>
-        <source>EMT Event Editor</source>
-        <translation>EMT इवेंट संपादक</translation>
-    </message>
-    <message>
-        <source>EMT group Created</source>
-        <translation>EMT समूह बनाया गया</translation>
-    </message>
-    <message>
-        <source>End Time</source>
-        <translation>समाप्ति समय</translation>
-    </message>
-    <message>
-        <source>Group</source>
-        <translation>समूह</translation>
-    </message>
-    <message>
-        <source>Group: {group_name}</source>
-        <translation>समूह: {group_name}</translation>
-    </message>
-    <message>
-        <source>Invalid Input</source>
-        <translation>अमान्य इनपुट</translation>
-    </message>
-    <message>
-        <source>Missing fields</source>
-        <translation>आवश्यक फ़ील्ड गायब हैं</translation>
-    </message>
-    <message>
-        <source>New Value</source>
-        <translation>नया मान</translation>
-    </message>
-    <message>
-        <source>New group name</source>
-        <translation>नया समूह नाम</translation>
-    </message>
-    <message>
-        <source>New row {row_number}</source>
-        <translation>नई पंक्ति {row_number}</translation>
-    </message>
-    <message>
-        <source>No EMT Events Group</source>
-        <translation>कोई EMT इवेंट समूह नहीं</translation>
-    </message>
-    <message>
-        <source>No EMT Events Group found, please create one before adding an event.</source>
-        <translation>कोई EMT इवेंट समूह नहीं मिला, कृपया इवेंट जोड़ने से पहले एक बनाएं।</translation>
-    </message>
-    <message>
-        <source>No Events</source>
-        <translation>कोई इवेंट नहीं</translation>
-    </message>
-    <message>
-        <source>No RMS Events Group</source>
-        <translation>कोई RMS इवेंट समूह नहीं</translation>
-    </message>
-    <message>
-        <source>No RMS Events Group found, please create one before adding an event.</source>
-        <translation>कोई RMS इवेंट समूह नहीं मिला, कृपया इवेंट जोड़ने से पहले एक बनाएं।</translation>
-    </message>
-    <message>
-        <source>No Rows Selected</source>
-        <translation>कोई पंक्ति चयनित नहीं है</translation>
-    </message>
-    <message>
-        <source>No switch EMT mode parameter is available in this device.</source>
-        <translation>इस उपकरण में कोई स्विच EMT मोड पैरामीटर उपलब्ध नहीं है।</translation>
-    </message>
-    <message>
-        <source>Overlapping Events</source>
-        <translation>ओवरलैपिंग इवेंट्स</translation>
-    </message>
-    <message>
-        <source>Parameter</source>
-        <translation>पैरामीटर</translation>
-    </message>
-    <message>
-        <source>Please add at least one event before confirming.</source>
-        <translation>पुष्टि करने से पहले कृपया कम से कम एक इवेंट जोड़ें।</translation>
-    </message>
-    <message>
-        <source>Please check at least one row to remove.</source>
-        <translation>हटाने के लिए कृपया कम से कम एक पंक्ति चुनें।</translation>
-    </message>
-    <message>
-        <source>RMS Event Editor</source>
-        <translation>RMS इवेंट संपादक</translation>
-    </message>
-    <message>
-        <source>RMS group Created</source>
-        <translation>RMS समूह बनाया गया</translation>
-    </message>
-    <message>
-        <source>Ramp</source>
-        <translation>रैंप</translation>
-    </message>
-    <message>
-        <source>Row {row_number}: {message}</source>
-        <translation>पंक्ति {row_number}: {message}</translation>
-    </message>
-    <message>
-        <source>Some events are overlapped and cannot be applied.</source>
-        <translation>कुछ इवेंट्स ओवरलैप हैं और लागू नहीं किए जा सकते।</translation>
-    </message>
-    <message>
-        <source>Step</source>
-        <translation>स्टेप</translation>
-    </message>
-    <message>
-        <source>Switch Sequence</source>
-        <translation>स्विच अनुक्रम</translation>
-    </message>
-    <message>
-        <source>Switch Sequence Wizard</source>
-        <translation>स्विच सीक्वेंस विज़ार्ड</translation>
-    </message>
-    <message>
-        <source>Target device:</source>
-        <translation>लक्ष्य उपकरण:</translation>
-    </message>
-    <message>
-        <source>Time</source>
-        <translation>समय</translation>
-    </message>
-    <message>
-        <source>Transition</source>
-        <translation>संक्रमण</translation>
-    </message>
-    <message>
-        <source>group has invalid type</source>
-        <translation>समूह का प्रकार अमान्य है</translation>
-    </message>
-    <message>
-        <source>parameter must be Var</source>
-        <translation>पैरामीटर Var होना चाहिए</translation>
-    </message>
-    <message>
-        <source>transition_type must be DynamicEventTransitionType</source>
-        <translation>transition_type DynamicEventTransitionType होना चाहिए</translation>
-    </message>
-    <message>
-        <source>{origin}: {transition}, parameter={parameter}, time={time:.4f} s, end_time={end_time:.4f} s, value={value:.6f}</source>
-        <translation>{origin}: {transition}, पैरामीटर={parameter}, समय={time:.4f} s, समाप्ति समय={end_time:.4f} s, मान={value:.6f}</translation>
-    </message>
-    <message>
-        <source>{origin}: {transition}, parameter={parameter}, time={time:.4f} s, value={value:.6f}</source>
-        <translation>{origin}: {transition}, पैरामीटर={parameter}, समय={time:.4f} s, मान={value:.6f}</translation>
-    </message>
-    <message>
-        <source>{prefix}: {group_name}</source>
-        <translation>{prefix}: {group_name}</translation>
-    </message>
-    <message>
-        <source>✅ Add Events</source>
-        <translation>✅ इवेंट जोड़ें</translation>
-    </message>
-    <message>
-        <source>❌ Remove Selected Rows</source>
-        <translation>❌ चयनित पंक्तियाँ हटाएं</translation>
-    </message>
-    <message>
-        <source>➕ Add New Event</source>
-        <translation>➕ नई इवेंट जोड़ें</translation>
-    </message>
-    <message>
-        <source>➕ New Event Group</source>
-        <translation>➕ नई इवेंट समूह</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEventsGroupsDialog</name>
-    <message>
-        <source>Create EMT Events Group</source>
-        <translation>EMT इवेंट समूह बनाएं</translation>
-    </message>
-    <message>
-        <source>Create RMS Events Group</source>
-        <translation>RMS इवेंट समूह बनाएं</translation>
-    </message>
-    <message>
-        <source>Enter group name</source>
-        <translation>समूह का नाम दर्ज करें</translation>
-    </message>
-    <message>
-        <source>Invalid name</source>
-        <translation>अमान्य नाम</translation>
-    </message>
-    <message>
-        <source>Name:</source>
-        <translation>नाम:</translation>
-    </message>
-    <message>
-        <source>The name cannot be empty.</source>
-        <translation>नाम खाली नहीं हो सकता।</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicsResultsHandler</name>
-    <message>
-        <source>Cancel</source>
-        <translation>रद्द करें</translation>
-    </message>
-    <message>
-        <source>Choose whether to place the dropped signal on the X axis or Y axis.</source>
-        <translation>चुनें कि गिराया गया सिग्नल X अक्ष पर रखा जाए या Y अक्ष पर।</translation>
-    </message>
-    <message>
-        <source>Dynamic plots</source>
-        <translation>गतिशील प्लॉट</translation>
-    </message>
-    <message>
-        <source>Dynamics results</source>
-        <translation>गतिशीलता परिणाम</translation>
-    </message>
-    <message>
-        <source>Replace X</source>
-        <translation>X को बदलें</translation>
-    </message>
-    <message>
-        <source>Replace Y</source>
-        <translation>Y को बदलें</translation>
-    </message>
-    <message>
-        <source>This X-Y plot already has X and Y signals. Replace X, replace Y, or cancel?</source>
-        <translation>इस X-Y प्लॉट में पहले से X और Y सिग्नल हैं। क्या आप X बदलना चाहते हैं, Y बदलना चाहते हैं, या रद्द करना चाहते हैं?</translation>
-    </message>
-    <message>
-        <source>X axis</source>
-        <translation>X अक्ष</translation>
-    </message>
-    <message>
-        <source>X-Y plot slot</source>
-        <translation>X-Y प्लॉट स्लॉट</translation>
-    </message>
-    <message>
-        <source>Y axis</source>
-        <translation>Y अक्ष</translation>
-    </message>
-</context>
-<context>
-    <name>EquationLatexModel</name>
-    <message>
-        <source>Equation</source>
-        <translation>समीकरण</translation>
-    </message>
-    <message>
-        <source>Type</source>
-        <translation>प्रकार</translation>
-    </message>
-</context>
-<context>
-    <name>FileTypeSelector</name>
-    <message>
-        <source>Accept</source>
-        <translation>स्वीकार करें</translation>
-    </message>
-    <message>
-        <source>Format:</source>
-        <translation>प्रारूप:</translation>
-    </message>
-    <message>
-        <source>Select how to load the file</source>
-        <translation>फ़ाइल कैसे लोड करनी है, चुनें</translation>
-    </message>
-    <message>
-        <source>You've passed a generic list of files
-select the expected processing format</source>
-        <translation>आपने फ़ाइलों की एक सामान्य सूची पास की है
-अपेक्षित प्रोसेसिंग प्रारूप चुनें</translation>
-    </message>
-    <message>
-        <source>You've passed a generic of file
-select the expected processing format</source>
-        <translation>आपने फ़ाइल का एक सामान्य सेट पास किया है
-अपेक्षित प्रोसेसिंग प्रारूप चुनें</translation>
-    </message>
-</context>
-<context>
-    <name>FmuTemplateEditorDialog</name>
-    <message>
-        <source>Browse...</source>
-        <translation>ब्राउज़...</translation>
-    </message>
-    <message>
-        <source>Choose an FMU archive to load its metadata and build the visual block.</source>
-        <translation>मेटाडेटा लोड करने और विज़ुअल ब्लॉक बनाने के लिए एक FMU आर्काइव चुनें।</translation>
-    </message>
-    <message>
-        <source>Choose an FMU file first.</source>
-        <translation>पहले एक FMU फ़ाइल चुनें।</translation>
-    </message>
-    <message>
-        <source>Device type</source>
-        <translation>उपकरण प्रकार</translation>
-    </message>
-    <message>
-        <source>Domain</source>
-        <translation>डोमेन</translation>
-    </message>
-    <message>
-        <source>FMU Template Editor</source>
-        <translation>FMU टेम्पलेट संपादक</translation>
-    </message>
-    <message>
-        <source>FMU file</source>
-        <translation>FMU फ़ाइल</translation>
-    </message>
-    <message>
-        <source>FMU file not found:
-{path}</source>
-        <translation>FMU फ़ाइल नहीं मिली:
-{path}</translation>
-    </message>
-    <message>
-        <source>FMU files (*.fmu)</source>
-        <translation>FMU फ़ाइलें (*.fmu)</translation>
-    </message>
-    <message>
-        <source>Metadata</source>
-        <translation>मेटाडेटा</translation>
-    </message>
-    <message>
-        <source>Mode</source>
-        <translation>मोड</translation>
-    </message>
-    <message>
-        <source>Name</source>
-        <translation>नाम</translation>
-    </message>
-    <message>
-        <source>Select FMU file</source>
-        <translation>FMU फ़ाइल चुनें</translation>
-    </message>
-</context>
-<context>
-    <name>GridGeneratorGUI</name>
-    <message>
-        <source>Grid Generator</source>
-        <translation>ग्रिड जेनरेटर</translation>
-    </message>
-    <message>
-        <source>Warning</source>
-        <translation>चेतावनी</translation>
-    </message>
-</context>
-<context>
-    <name>GridMapWidget</name>
-    <message>
-        <source>Connection Error</source>
-        <translation>कनेक्शन त्रुटि</translation>
-    </message>
-    <message>
-        <source>No suitable voltage level ({voltage:.2f} kV) found in substation "{substation_name}".</source>
-        <translation>सबस्टेशन "{substation_name}" में कोई उपयुक्त वोल्टेज स्तर ({voltage:.2f} kV) नहीं मिला।</translation>
-    </message>
-    <message>
-        <source>Operation Successful</source>
-        <translation>ऑपरेशन सफल</translation>
-    </message>
-    <message>
-        <source>Please select exactly one line and one substation.</source>
-        <translation>कृपया ठीक एक लाइन और एक सबस्टेशन चुनें।</translation>
-    </message>
-    <message>
-        <source>Selection Error</source>
-        <translation>चयन त्रुटि</translation>
-    </message>
-    <message>
-        <source>T-joint connection created between {substation_name} and {line_name}.</source>
-        <translation>{substation_name} और {line_name} के बीच टी-जॉइंट कनेक्शन बनाया गया।</translation>
-    </message>
-    <message>
-        <source>The line cannot be connected. Please ensure the target substation has a bus with a matching nominal voltage.</source>
-        <translation>लाइन को कनेक्ट नहीं किया जा सकता। कृपया सुनिश्चित करें कि लक्ष्य सबस्टेशन में मिलान करने वाला नाममात्र वोल्टेज वाला बस है।</translation>
-    </message>
-    <message>
-        <source>Waypoint replaced with new substation '{substation_name}'.
-Original line split into two segments:
-- {line1_name}: {length1:.2f} km
-- {line2_name}: {length2:.2f} km
-New connection line: {distance:.2f} km</source>
-        <translation>वेपॉइंट को नए सबस्टेशन '{substation_name}' से बदल दिया गया।
-मूल लाइन दो खंडों में विभाजित हो गई:
-- {line1_name}: {length1:.2f} km
-- {line2_name}: {length2:.2f} km
-नई कनेक्शन लाइन: {distance:.2f} km</translation>
-    </message>
-</context>
-<context>
-    <name>IoMain</name>
-    <message>
-        <source>Add to current diagram</source>
-        <translation>वर्तमान आरेख में जोड़ें</translation>
-    </message>
-    <message>
-        <source>Are you sure that you want to delete the current grid and replace it?</source>
-        <translation>क्या आप वर्तमान ग्रिड को हटाना और उसे बदलना चाहते हैं?</translation>
-    </message>
-    <message>
-        <source>Are you sure that you want to quit the current grid and create a new one?</source>
-        <translation>क्या आप वर्तमान ग्रिड छोड़ना और एक नया बनाना चाहते हैं?</translation>
-    </message>
-    <message>
-        <source>Are you sure that you want to quit the current grid and open a new one?
- If the process is cancelled the grid will remain.</source>
-        <translation>क्या आप वर्तमान ग्रिड छोड़ना और एक नया खोलना चाहते हैं?
- यदि प्रक्रिया रद्द की जाती है तो ग्रिड बना रहेगा।</translation>
-    </message>
-    <message>
-        <source>CIM (*.xml)</source>
-        <translation>CIM (*.xml)</translation>
-    </message>
-    <message>
-        <source>CSV (*.csv)</source>
-        <translation>CSV (*.csv)</translation>
-    </message>
-    <message>
-        <source>Catalogue Excel file (*.xlsx)</source>
-        <translation>कैटलॉग एक्सेल फ़ाइल (*.xlsx)</translation>
-    </message>
-    <message>
-        <source>Catalogue added!</source>
-        <translation>कैटलॉग जोड़ा गया!</translation>
-    </message>
-    <message>
-        <source>Catalogue file (*.xlsx)</source>
-        <translation>कैटलॉग फ़ाइल (*.xlsx)</translation>
-    </message>
-    <message>
-        <source>Catalogue loaded!</source>
-        <translation>कैटलॉग लोड हो गया!</translation>
-    </message>
-    <message>
-        <source>Catalogue saved!</source>
-        <translation>कैटलॉग सहेजा गया!</translation>
-    </message>
-    <message>
-        <source>Contingencies import</source>
-        <translation>आकस्मिकताओं का आयात</translation>
-    </message>
-    <message>
-        <source>Create new diagram</source>
-        <translation>नया आरेख बनाएं</translation>
-    </message>
-    <message>
-        <source>Current: {circuit_name}</source>
-        <translation>वर्तमान: {circuit_name}</translation>
-    </message>
-    <message>
-        <source>Do you want to open the Rosetta CGMES browser?</source>
-        <translation>क्या आप रोसेटा CGMES ब्राउज़र खोलना चाहते हैं?</translation>
-    </message>
-    <message>
-        <source>Does not seem to be a plugin :/</source>
-        <translation>प्लगइन नहीं लगता :/</translation>
-    </message>
-    <message>
-        <source>Done!</source>
-        <translation>हो गया!</translation>
-    </message>
-    <message>
-        <source>Driver load from disk</source>
-        <translation>डिस्क से ड्राइवर लोड करें</translation>
-    </message>
-    <message>
-        <source>Electrical Json V3 (*.ejson3)</source>
-        <translation>इलेक्ट्रिकल Json V3 (*.ejson3)</translation>
-    </message>
-    <message>
-        <source>Error while loading the file(s)</source>
-        <translation>फ़ाइल(फ़ाइलें) लोड करते समय त्रुटि</translation>
-    </message>
-    <message>
-        <source>Excel (*.xlsx)</source>
-        <translation>Excel (*.xlsx)</translation>
-    </message>
-    <message>
-        <source>Excel file (*.xlsx)</source>
-        <translation>एक्सेल फ़ाइल (*.xlsx)</translation>
-    </message>
-    <message>
-        <source>Export VeraGrid scenario</source>
-        <translation>वेराग्रिड परिदृश्य निर्यात करें</translation>
-    </message>
-    <message>
-        <source>Export all</source>
-        <translation>सभी निर्यात करें</translation>
-    </message>
-    <message>
-        <source>Export object profiles</source>
-        <translation>ऑब्जेक्ट प्रोफाइल निर्यात करें</translation>
-    </message>
-    <message>
-        <source>Export to CIM</source>
-        <translation>CIM में निर्यात करें</translation>
-    </message>
-    <message>
-        <source>Export to JSON</source>
-        <translation>JSON में निर्यात करें</translation>
-    </message>
-    <message>
-        <source>Export to Microsoft Excel</source>
-        <translation>माइक्रोसॉफ्ट एक्सेल में निर्यात करें</translation>
-    </message>
-    <message>
-        <source>Export to Power Grid Models</source>
-        <translation>पावर ग्रिड मॉडल में निर्यात करें</translation>
-    </message>
-    <message>
-        <source>Export to Sqlite</source>
-        <translation>Sqlite में निर्यात करें</translation>
-    </message>
-    <message>
-        <source>Export to VeraGrid HDF5</source>
-        <translation>वेराग्रिड HDF5 में निर्यात करें</translation>
-    </message>
-    <message>
-        <source>File opening</source>
-        <translation>फ़ाइल खोलना</translation>
-    </message>
-    <message>
-        <source>Formats (*.json)</source>
-        <translation>फ़ॉर्मेट (*.json)</translation>
-    </message>
-    <message>
-        <source>Formats ({files_types})</source>
-        <translation>फ़ॉर्मेट ({files_types})</translation>
-    </message>
-    <message>
-        <source>Grid generated randomly using the RPGM algorithm.</source>
-        <translation>RPGM एल्गोरिथम का उपयोग करके ग्रिड यादृच्छिक रूप से उत्पन्न किया गया।</translation>
-    </message>
-    <message>
-        <source>Grid merge</source>
-        <translation>ग्रिड विलय</translation>
-    </message>
-    <message>
-        <source>How do you want to represent the merged grid?</source>
-        <translation>आप विलय किए गए ग्रिड को कैसे दर्शाना चाहते हैं?</translation>
-    </message>
-    <message>
-        <source>JSON file (*.json)</source>
-        <translation>JSON फ़ाइल (*.json)</translation>
-    </message>
-    <message>
-        <source>Load catalogue</source>
-        <translation>कैटलॉग लोड करें</translation>
-    </message>
-    <message>
-        <source>Load results from disk</source>
-        <translation>डिस्क से परिणाम लोड करें</translation>
-    </message>
-    <message>
-        <source>Loaded '{study_name}' results from disk</source>
-        <translation>डिस्क से '{study_name}' परिणाम लोड किए गए</translation>
-    </message>
-    <message>
-        <source>Message</source>
-        <translation>संदेश</translation>
-    </message>
-    <message>
-        <source>Model v. {model_version}</source>
-        <translation>मॉडल सं. {model_version}</translation>
-    </message>
-    <message>
-        <source>No file driver declared :/</source>
-        <translation>कोई फ़ाइल ड्राइवर घोषित नहीं है :/</translation>
-    </message>
-    <message>
-        <source>No grid to load :(</source>
-        <translation>लोड करने के लिए कोई ग्रिड नहीं :(</translation>
-    </message>
-    <message>
-        <source>No schematic diagram was selected...</source>
-        <translation>कोई योजनाबद्ध आरेख (schematic diagram) नहीं चुना गया...</translation>
-    </message>
-    <message>
-        <source>Open CGMES file logger</source>
-        <translation>CGMES फ़ाइल लॉगर खोलें</translation>
-    </message>
-    <message>
-        <source>Open catalogue logger</source>
-        <translation>कैटलॉग लॉगर खोलें</translation>
+        <source>Only one file accepted :(</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Open file</source>
-        <translation>फ़ाइल खोलें</translation>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>DcLineDeviceEditor</name>
+    <message>
+        <source>DC line design widget is not available</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Open file logger</source>
-        <translation>फ़ाइल लॉगर खोलें</translation>
+        <source>DC line editor</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>DcLineEditor</name>
+    <message>
+        <source>Line editor</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Plugin install</source>
-        <translation>प्लगइन स्थापित करें</translation>
+        <source>Load template</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>DgsExportDialogue</name>
+    <message>
+        <source>DGS export</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Power Grid Models (*.pgm)</source>
-        <translation>पावर ग्रिड मॉडल (*.pgm)</translation>
+        <source>Export to Power Factory</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>DgsImportDialogue</name>
+    <message>
+        <source>DGS import</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>DiagramBusSelectorDialogue</name>
+    <message>
+        <source>Bus selection by diagram</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Power Grid Models not installed :/</source>
-        <translation>पावर ग्रिड मॉडल स्थापित नहीं हैं :/</translation>
+        <source>Select</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>FluidNodeGraphicItem</name>
+    <message>
+        <source>Are you sure that you want to delete this fluid node</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Random grid {bus_count} buses</source>
-        <translation>{bus_count} बसों वाला यादृच्छिक ग्रिड</translation>
+        <source>No DB object attached :/</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Results of </source>
-        <translation>के परिणाम</translation>
+        <source>No electrical bus attached :/</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Results parsing</source>
-        <translation>परिणाम पार्सिंग</translation>
+        <source>Remove fluid node</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>FluidPathGraphicItem</name>
+    <message>
+        <source>Are you sure that you want to convert this fluid path into a line?</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Save catalogue</source>
-        <translation>कैटलॉग सहेजें</translation>
+        <source>Convert fluid path</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>GeneratorEditor</name>
+    <message>
+        <source>Generate a solar profile first</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Generate a wind profile first</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Generator editor</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Solar editor is not available</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Solar profile applied to generator</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Wind editor is not available</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Wind profile applied to generator</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Wrong solar profile length</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Wrong wind profile length</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>GeneratorGraphicItem</name>
+    <message>
+        <source>Are you sure that you want to convert this generator into a battery?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Convert generator</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>GeneratorQCurveEditor</name>
+    <message>
+        <source>Reactive power curve editor</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>GeneratorsProfileOptionsDialogue</name>
+    <message>
+        <source>Generator active power options</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>GenericDiagramWidget</name>
+    <message>
+        <source>Device editor</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>GridDiffDialogue</name>
+    <message>
+        <source>Errors while computing the differential :(</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>File not found</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Grid differential</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No diff</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No differential created :(
+Did you load a base grid to compare?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open base grid</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Save file</source>
-        <translation>फ़ाइल सहेजें</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Save file logger</source>
-        <translation>फ़ाइल लॉगर सहेजें</translation>
+        <source>The circuit has duplicated idtags and cannot be differentiated :(</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Select a driver inside a session</source>
-        <translation>एक सत्र के अंदर एक ड्राइवर चुनें</translation>
+        <source>VeraGrid diff (*.dveragrid)</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Server file deleted.</source>
-        <translation>सर्वर फ़ाइल हटा दी गई।</translation>
-    </message>
-    <message>
-        <source>Server file saved.</source>
-        <translation>सर्वर फ़ाइल सहेजी गई।</translation>
-    </message>
-    <message>
-        <source>Server model deleted.</source>
-        <translation>सर्वर मॉडल हटा दिया गया।</translation>
-    </message>
-    <message>
-        <source>Server save cancelled.</source>
-        <translation>सर्वर सहेजना रद्द कर दिया गया।</translation>
-    </message>
-    <message>
-        <source>Sessions</source>
-        <translation>सत्र</translation>
-    </message>
-    <message>
-        <source>Show Rosetta</source>
-        <translation>रोसेटा दिखाएं</translation>
-    </message>
-    <message>
-        <source>Sqlite (*.sqlite)</source>
-        <translation>Sqlite (*.sqlite)</translation>
-    </message>
-    <message>
-        <source>The file does not exist :( 
- {file_name}</source>
-        <translation>फ़ाइल मौजूद नहीं है :( 
- {file_name}</translation>
-    </message>
-    <message>
-        <source>The file type {file_extension} is not accepted :(</source>
-        <translation>फ़ाइल प्रकार {file_extension} स्वीकार नहीं किया गया :(</translation>
-    </message>
-    <message>
-        <source>The file was loaded but the current project was kept because closing a dynamic editor was cancelled.</source>
-        <translation>फ़ाइल लोड की गई लेकिन वर्तमान प्रोजेक्ट रखा गया क्योंकि एक गतिशील संपादक (dynamic editor) बंद करना रद्द कर दिया गया था।</translation>
-    </message>
-    <message>
-        <source>The grid is quite big, no diagram is automatically created</source>
-        <translation>ग्रिड काफी बड़ा है, कोई आरेख स्वचालित रूप से नहीं बनाया गया।</translation>
-    </message>
-    <message>
-        <source>There are no profiles!</source>
-        <translation>कोई प्रोफ़ाइल नहीं है!</translation>
-    </message>
-    <message>
-        <source>There are no results available :/</source>
-        <translation>कोई परिणाम उपलब्ध नहीं है :/</translation>
-    </message>
-    <message>
-        <source>There is a file being processed now.</source>
-        <translation>एक फ़ाइल संसाधित की जा रही है।</translation>
-    </message>
-    <message>
-        <source>There is a file being processed..</source>
-        <translation>एक फ़ाइल संसाधित की जा रही है..</translation>
-    </message>
-    <message>
-        <source>There is a saving procedure running.
-Cancel and retry?</source>
-        <translation>एक सहेजने की प्रक्रिया चल रही है।
-रद्द करें और पुनः प्रयास करें?</translation>
-    </message>
-    <message>
-        <source>There is already a plugin: {plugin_name} {plugin_version}. The new plugin is {new_version}. Install?</source>
-        <translation>पहले से ही एक प्लगइन है: {plugin_name} {plugin_version}। नया प्लगइन {new_version} है। स्थापित करें?</translation>
-    </message>
-    <message>
-        <source>There is no manifest :(</source>
-        <translation>कोई मैनिफेस्ट नहीं है :(</translation>
-    </message>
-    <message>
-        <source>VeraGrid (*.veragrid)</source>
-        <translation>VeraGrid (*.veragrid)</translation>
-    </message>
-    <message>
-        <source>VeraGrid HDF5 (*.gch5)</source>
-        <translation>VeraGrid HDF5 (*.gch5)</translation>
-    </message>
-    <message>
-        <source>VeraGrid zip (*.veragrid)</source>
-        <translation>VeraGrid zip (*.veragrid)</translation>
-    </message>
-    <message>
-        <source>Zip file (*.zip)</source>
-        <translation>ज़िप फ़ाइल (*.zip)</translation>
-    </message>
-    <message>
-        <source>idtag. {idtag}</source>
-        <translation>आईडीटैग. {idtag}</translation>
-    </message>
-    <message>
-        <source>profiles of </source>
-        <translation>के प्रोफ़ाइल</translation>
-    </message>
-    <message>
-        <source>{name} {version} installed!</source>
-        <translation>{name} {version} स्थापित!</translation>
-    </message>
-    <message>
-        <source>{name} {version} requires VeraGrid {veragrid_version}</source>
-        <translation>{name} {version} के लिए VeraGrid {veragrid_version} आवश्यक है</translation>
+        <source>Wait for the differential worker to finish before closing this window.</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>LogsDialogue</name>
+    <name>GridMergeDialogue</name>
     <message>
-        <source>Accept</source>
-        <translation>स्वीकार करें</translation>
+        <source>Grid merges &amp; acquisitions</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>CSV (*.csv);;Excel files (*.xlsx)</source>
-        <translation>CSV (*.csv);;Excel फ़ाइलें (*.xlsx)</translation>
+        <source>The base circuit has duplicated idtags and cannot be merged :(</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Class</source>
-        <translation>वर्ग</translation>
-    </message>
-    <message>
-        <source>Copy</source>
-        <translation>कॉपी करें</translation>
-    </message>
-    <message>
-        <source>Device</source>
-        <translation>उपकरण</translation>
-    </message>
-    <message>
-        <source>Expected value</source>
-        <translation>अपेक्षित मान</translation>
-    </message>
-    <message>
-        <source>Export results</source>
-        <translation>परिणाम निर्यात करें</translation>
-    </message>
-    <message>
-        <source>Property</source>
-        <translation>गुण</translation>
-    </message>
-    <message>
-        <source>Save</source>
-        <translation>सहेजें</translation>
-    </message>
-    <message>
-        <source>Time</source>
-        <translation>समय</translation>
-    </message>
-    <message>
-        <source>Value</source>
-        <translation>मान</translation>
+        <source>The diff circuit has duplicated idtags and cannot be merged :(</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>NewProfilesStructureDialogue</name>
+    <name>GridReduceDialogue</name>
     <message>
-        <source>Accept</source>
-        <translation>स्वीकार करें</translation>
+        <source>Grid reduction</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>New profiles structure</source>
-        <translation>नई प्रोफ़ाइल संरचना</translation>
+        <source>Grid reduction?</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Number of time steps</source>
-        <translation>समय चरणों की संख्या</translation>
+        <source>Import profiles</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Start date</source>
-        <translation>प्रारंभ तिथि</translation>
+        <source>No reduction happened</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Time step length</source>
-        <translation>समय चरण की लंबाई</translation>
-    </message>
-    <message>
-        <source>Time units</source>
-        <translation>समय इकाइयाँ</translation>
+        <source>Run a power flow first! or select another method</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>ObjectColumnFilterDialog</name>
+    <name>HvdcGraphicItem</name>
     <message>
-        <source>Apply</source>
-        <translation>लागू करें</translation>
+        <source>Change by a VSC system</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Cancel filter</source>
-        <translation>फ़िल्टर रद्द करें</translation>
-    </message>
-    <message>
-        <source>Clear filter</source>
-        <translation>फ़िल्टर साफ़ करें</translation>
-    </message>
-    <message>
-        <source>Search</source>
-        <translation>खोजें</translation>
-    </message>
-    <message>
-        <source>Select all visible</source>
-        <translation>सभी दृश्यमान चुनें</translation>
-    </message>
-    <message>
-        <source>Select no visible</source>
-        <translation>कोई दृश्यमान नहीं चुनें</translation>
-    </message>
-    <message>
-        <source>Sort A to Z</source>
-        <translation>A से Z तक क्रमबद्ध करें</translation>
-    </message>
-    <message>
-        <source>Sort Z to A</source>
-        <translation>Z से A तक क्रमबद्ध करें</translation>
+        <source>Do you want to change the HvdcLine by 2 VSC converters + 1 DC Line?</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>ResultsMain</name>
+    <name>InjectionTemplateGraphicItem</name>
     <message>
-        <source> is not valid :(</source>
-        <translation>मान्य नहीं है :(</translation>
+        <source>Do you want to update the time series active status accordingly?</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Are you sure that you want to overwrite the generation, batteries and load profiles with the OPF time series results?</source>
-        <translation>क्या आप सुनिश्चित हैं कि आप OPF समय श्रृंखला परिणामों से जनरेशन, बैटरी और लोड प्रोफ़ाइल को ओवरराइट करना चाहते हैं?</translation>
+        <source>Update time series active status</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>InspectModel</name>
+    <message>
+        <source>Equations</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Are you sure that you want to overwrite the generation, batteries and load snapshot values with the OPF results?</source>
-        <translation>क्या आप सुनिश्चित हैं कि आप OPF परिणामों से जनरेशन, बैटरी और लोड स्नैपशॉट मानों को ओवरराइट करना चाहते हैं?</translation>
+        <source>Parameters</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>CSV (*.csv);;Excel files (*.xlsx)</source>
-        <translation>CSV (*.csv);;Excel फ़ाइलें (*.xlsx)</translation>
+        <source>Variables</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>JMartiLineEmtDialog</name>
+    <message>
+        <source>Configure EMT J_Marti Line</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Copied!</source>
-        <translation>कॉपी किया गया!</translation>
+        <source>EMT J_Marti line</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Enable at least one phase.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>NumPy archive (*.npz)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open JMARTI Frequency Samples</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select one NPZ file to import frequency samples.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The forced model order must be zero or less than or equal to the maximum model order.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The sweep sample count must be greater than or equal to the minimum frequency sample requirement.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The sweep upper frequency must be greater than the lower frequency.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>LineDeviceEditor</name>
+    <message>
+        <source>Line design widget is not available</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Line editor</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>LineEditor</name>
+    <message>
+        <source>Accept line design values</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Line editor</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Line editor initialization</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Load template</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No Template Selected</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The length cannot be 0!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Warning: You did not load template values. The circuit index will not be updated. Line parameters will be based on the provided values for Length, Max Current, Resistance, Reactance, and Susceptance.
+
+Do you want to continue without a template?</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>LineGraphicItem</name>
+    <message>
+        <source>A template will be generated using this line values per unit of length</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Add sequence line type</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Are you sure that you want to convert this line into a HVDC line?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Are you sure that you want to convert this line into a UPFC device?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Are you sure that you want to convert this line into a VSC device?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Are you sure that you want to convert this line into a series reactance device?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Are you sure that you want to convert this line into a switch device?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Are you sure that you want to convert this line into a transformer?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Convert line</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Unable to convert to VSC. One of the buses must be DC and the other AC.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>LineGraphicTemplateItem</name>
+    <message>
+        <source>Do you want to update the time series active status accordingly?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Update time series active status</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>LineLocationGraphicItem</name>
+    <message>
+        <source>Move substation graphics</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>LoadDesigner</name>
+    <message>
+        <source>Load designer</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>LoadDeviceEditor</name>
+    <message>
+        <source>Generate a profile before applying it</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Load designer is not available</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Load editor</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Wrong load profile length</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>LookupArrayLinearDialog</name>
+    <message>
+        <source>Clipboard is empty.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Configure Lookup Table</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Lookup Table</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Lookup table clipboard data can only have up to two columns.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Lookup table x values must be strictly increasing.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Lookup tables require at least two points.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>LookupMatrixEditorDialog</name>
+    <message>
+        <source>At least two X breakpoints are required.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>At least two Y breakpoints are required.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Invalid X breakpoints</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Invalid Y breakpoints</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Invalid number of X points</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Invalid number of Y points</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Lookup matrix editor</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>X values must be strictly increasing.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Y values must be strictly increasing.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>LookupMatrixLinearDialog</name>
+    <message>
+        <source>At least two X points are required.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>At least two Y points are required.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Clipboard is empty.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Configure Lookup Matrix</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Lookup Matrix</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Lookup matrix requires at least two X points and two Y points.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>X axis values must be strictly increasing.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Y axis values must be strictly increasing.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>MapGeneratorGraphicItem</name>
+    <message>
+        <source>Are you sure that you want to convert this generator into a battery?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Convert generator</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>MapLineContainer</name>
+    <message>
+        <source>Do you want to update the time series active status accordingly?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Index out of range or invalid</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Update time series active status</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>split line</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>MapLineSegment</name>
+    <message>
+        <source>Do you want to update the time series active status accordingly?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Update time series active status</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>MapView</name>
+    <message>
+        <source>Bottom Left Label</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>MapWarningDialog</name>
+    <message>
+        <source>Action Required</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>MatpowerExportDialogue</name>
+    <message>
+        <source>Export to MATPOWER</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>MATPOWER export</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>ModelsInputGUI</name>
+    <message>
+        <source>Add files</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Do you want to clear the import data?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Models import dialogue</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select file</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There is an import procedure running.
+Cancel it and close the window?</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>NewMapLineDialogue</name>
+    <message>
+        <source>New line</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>ProceduralGridWindow</name>
+    <message>
+        <source>Procedural grid expansion</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Procedural grid expansion log</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>ProfileInputGUI</name>
+    <message>
+        <source>Error</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>File open</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Import issues</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Make sure this is a proper comma-separated-value file.
+ Otherwise use excel.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No time profile</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No time profile.
+Consider loading a valid source of data.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open file</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Value error loading CSV file</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>PsseExportDialogue</name>
+    <message>
+        <source>Export to PSS/e</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>PSS/e export</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>PsseImportDialogue</name>
+    <message>
+        <source>PSS/e import</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>ResultsModel</name>
+    <message>
+        <source>Plotting error</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>SchematicWidget</name>
+    <message>
+        <source> %</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source> km</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Add extra buses?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Branch results length differs from the number of branch results. 
+Did you change the number of devices? If so, re-run the simulation.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Bus results length differs from the number of Bus results. 
+Did you change the number of devices? If so, re-run the simulation.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Change bus</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Distance from the splitting point</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Enter the distance from the beginning of the 
+line as a percentage of the total length</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>HVDC results length differs from the number of HVDC results. 
+Did you change the number of devices? If so, re-run the simulation.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Incorrect position</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Line split</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Move behind converter</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>NW transformer</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select the number of windings</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Set VSC control device 1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Set regulation bus</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Split line</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The 'from' or 'to' bus to change has not been selected!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The bus to change has not been selected!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>VSC results length differs from the number of VSC results. 
+Did you change the number of devices? If so, re-run the simulation.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>You need to select exactly one bus to be set as the generator regulation bus</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>you have to select the origin and destination buses!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>you must select the origin and destination buses!</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>SequenceEditorDialog</name>
+    <message>
+        <source>Arbitrary source waveform times must be strictly increasing.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>At least two points are required.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Invalid number of points</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Invalid points</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Invalid values</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Invalid waveform</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Sequence editor</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>y points must be strictly increasing.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>SubstationGraphicItem</name>
+    <message>
+        <source>Add voltage level</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Move substation graphics</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No devices to disconnect</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Remove substation from schematic</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Remove substation from schematic and database</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Voltage (kV)</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>SyncDialogueWindow</name>
+    <message>
+        <source>Sync conflicts</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>TemplateDeviceEditor</name>
+    <message>
+        <source>Device editor</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>TimeEventsMain</name>
+    <message>
+        <source>Are you sure that you want to crop the profiles to the clustered results?
+This cannot be undone.
+Also, the clustering will be removed after this.</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Copy profile to clipboard</source>
-        <translation>प्रोफ़ाइल को क्लिपबोर्ड पर कॉपी करें</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Delete driver</source>
-        <translation>ड्राइवर हटाएं</translation>
+        <source>Delete profiles</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Do you want to delete the results driver {study_name}?</source>
-        <translation>Do you want to delete the results driver {study_name}?</translation>
+        <source>Do you want to correct the loads active profile based on the active power profile?</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Export logs</source>
-        <translation>लॉग निर्यात करें</translation>
-    </message>
-    <message>
-        <source>Export results</source>
-        <translation>परिणाम निर्यात करें</translation>
-    </message>
-    <message>
-        <source>Filter parse</source>
-        <translation>फ़िल्टर पार्स</translation>
+        <source>Match</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Message</source>
-        <translation>संदेश</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>New dynamic plot</source>
-        <translation>नया गतिशील प्लॉट</translation>
+        <source>Paste profile to clipboard</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Overwrite profiles with OPF results</source>
-        <translation>OPF परिणामों से प्रोफ़ाइल ओवरराइट करें</translation>
+        <source>Select a time series step to copy to the snapshot</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>P profiles set from the OPF results</source>
-        <translation>OPF परिणामों से P प्रोफ़ाइल सेट</translation>
+        <source>Set snapshot</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>P snapshot set from the OPF results</source>
-        <translation>OPF परिणामों से P स्नैपशॉट सेट</translation>
+        <source>The import of profiles from many grid models can only be done if the grid has not profiles :/</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Plot</source>
-        <translation>कथानक</translation>
+        <source>The number of clusters in the stored results is different from the specified :(
+Run another clustering analysis.</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Plot mode</source>
-        <translation>प्लॉट मोड</translation>
+        <source>There are no objects to which to assign a profile. 
+You need to load or create a grid!</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Plot name</source>
-        <translation>प्लॉट का नाम</translation>
-    </message>
-    <message>
-        <source>Plot results</source>
-        <translation>प्लॉट परिणाम</translation>
-    </message>
-    <message>
-        <source>Rename dynamic plot</source>
-        <translation>गतिशील प्लॉट का नाम बदलें</translation>
-    </message>
-    <message>
-        <source>Rename dynamic variable</source>
-        <translation>गतिशील चर का नाम बदलें</translation>
-    </message>
-    <message>
-        <source>Rename group</source>
-        <translation>समूह का नाम बदलें</translation>
-    </message>
-    <message>
-        <source>Rename variable</source>
-        <translation>चर का नाम बदलें</translation>
-    </message>
-    <message>
-        <source>Select a plot group first.</source>
-        <translation>पहले एक प्लॉट समूह चुनें।</translation>
-    </message>
-    <message>
-        <source>Select a plot group or variable first.</source>
-        <translation>पहले एक प्लॉट समूह या चर चुनें।</translation>
-    </message>
-    <message>
-        <source>Select a variable first.</source>
-        <translation>पहले एक चर चुनें।</translation>
-    </message>
-    <message>
-        <source>The OPF time series has no results :(</source>
-        <translation>OPF समय श्रृंखला में कोई परिणाम नहीं है :(</translation>
-    </message>
-    <message>
-        <source>The plot group name is empty or already exists.</source>
-        <translation>प्लॉट समूह का नाम खाली है या पहले से मौजूद है।</translation>
-    </message>
-    <message>
-        <source>The selected dynamic plot entry could not be deleted.</source>
-        <translation>चयनित गतिशील प्लॉट प्रविष्टि को हटाया नहीं जा सका।</translation>
-    </message>
-    <message>
-        <source>The selected dynamic plot entry could not be plotted.</source>
-        <translation>चयनित गतिशील प्लॉट प्रविष्टि को प्लॉट नहीं किया जा सका।</translation>
-    </message>
-    <message>
-        <source>The variable name is empty or could not be changed.</source>
-        <translation>चर का नाम खाली है या इसे बदला नहीं जा सका।</translation>
-    </message>
-    <message>
-        <source>There are no RMS dynamics results loaded.</source>
-        <translation>कोई RMS डायनेमिक्स परिणाम लोड नहीं किया गया है।</translation>
-    </message>
-    <message>
-        <source>There are no results available to plot.</source>
-        <translation>प्लॉट करने के लिए कोई परिणाम उपलब्ध नहीं है।</translation>
-    </message>
-    <message>
-        <source>There are {columns} columns, the plot might take a lot to render.
-Are you ok with potentially waiting a lot?</source>
-        <translation>इसमें {columns} कॉलम हैं, प्लॉट को रेंडर करने में बहुत समय लग सकता है।
-क्या आप संभावित रूप से बहुत देर तक इंतजार करने के लिए ठीक हैं?</translation>
+        <source>There are no profiles</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>There is no profile displayed, please display one</source>
-        <translation>कोई प्रोफ़ाइल प्रदर्शित नहीं है, कृपया एक प्रदर्शित करें</translation>
-    </message>
-    <message>
-        <source>Time Series (Y vs Time)</source>
-        <translation>समय श्रृंखला (Y बनाम समय)</translation>
-    </message>
-    <message>
-        <source>Variable name</source>
-        <translation>चर का नाम</translation>
-    </message>
-    <message>
-        <source>X-Y Plot (Y vs X)</source>
-        <translation>X-Y प्लॉट (Y बनाम X)</translation>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>RmsPlotDialog</name>
+    <name>TowerBuilderGUI</name>
     <message>
-        <source>Add</source>
-        <translation>जोड़ें</translation>
+        <source>Line builder</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Device:</source>
-        <translation>डिवाइस:</translation>
-    </message>
-    <message>
-        <source>Plot Variables</source>
-        <translation>प्लॉट चर</translation>
-    </message>
-    <message>
-        <source>Plot Window</source>
-        <translation>प्लॉट विंडो</translation>
-    </message>
-    <message>
-        <source>Remove variable</source>
-        <translation>चर हटाएं</translation>
-    </message>
-    <message>
-        <source>Rms Simulation Results</source>
-        <translation>RMS सिमुलेशन परिणाम</translation>
-    </message>
-    <message>
-        <source>Show in new window</source>
-        <translation>नई विंडो में दिखाएं</translation>
-    </message>
-    <message>
-        <source>Variable:</source>
-        <translation>चर:</translation>
-    </message>
-    <message>
-        <source>time (s)</source>
-        <translation>समय (s)</translation>
+        <source>Tower computation</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>RosetaExplorerGUI</name>
+    <name>Transformer3WDeviceEditor</name>
     <message>
-        <source>Copy</source>
-        <translation>कॉपी करें</translation>
+        <source>Transformer 3W design widget is not available</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Transformer 3W editor</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>RuntimeLogicEditorWidget</name>
+    <name>Transformer3WEditor</name>
     <message>
-        <source>Add entry</source>
-        <translation>प्रविष्टि जोड़ें</translation>
-    </message>
-    <message>
-        <source>Add retained mode</source>
-        <translation>रिटेन्ड मोड जोड़ें</translation>
-    </message>
-    <message>
-        <source>Configuration</source>
-        <translation>कॉन्फ़िगरेशन</translation>
-    </message>
-    <message>
-        <source>Delete</source>
-        <translation>हटाएँ</translation>
-    </message>
-    <message>
-        <source>Delete retained mode</source>
-        <translation>रिटेन्ड मोड हटाएं</translation>
-    </message>
-    <message>
-        <source>Documentation</source>
-        <translation>दस्तावेज़ीकरण</translation>
-    </message>
-    <message>
-        <source>Enter a procedural entry name.</source>
-        <translation>एक प्रक्रियात्मक प्रविष्टि का नाम दर्ज करें।</translation>
-    </message>
-    <message>
-        <source>Enter a valid retained-mode symbol name.</source>
-        <translation>एक वैध रिटेन्ड-मोड प्रतीक नाम दर्ज करें।</translation>
-    </message>
-    <message>
-        <source>Enter an initial value or expression.</source>
-        <translation>एक प्रारंभिक मान या अभिव्यक्ति दर्ज करें।</translation>
-    </message>
-    <message>
-        <source>Entry name</source>
-        <translation>प्रविष्टि का नाम</translation>
-    </message>
-    <message>
-        <source>Initial value or expression</source>
-        <translation>प्रारंभिक मान या अभिव्यक्ति</translation>
-    </message>
-    <message>
-        <source>Mode symbol name</source>
-        <translation>मोड प्रतीक नाम</translation>
-    </message>
-    <message>
-        <source>Move down</source>
-        <translation>नीचे ले जाएं</translation>
-    </message>
-    <message>
-        <source>Move up</source>
-        <translation>ऊपर ले जाएं</translation>
-    </message>
-    <message>
-        <source>Owner</source>
-        <translation>मालिक</translation>
-    </message>
-    <message>
-        <source>Procedural entries</source>
-        <translation>प्रक्रियात्मक प्रविष्टियाँ</translation>
-    </message>
-    <message>
-        <source>Retained modes</source>
-        <translation>रिटेन्ड मोड</translation>
-    </message>
-    <message>
-        <source>Runtime logic is valid.</source>
-        <translation>रनटाइम तर्क वैध है।</translation>
-    </message>
-    <message>
-        <source>Select a valid owner and procedural type.</source>
-        <translation>एक वैध मालिक और प्रक्रियात्मक प्रकार चुनें।</translation>
-    </message>
-    <message>
-        <source>Select a valid owner block.</source>
-        <translation>एक वैध मालिक ब्लॉक का चयन करें।</translation>
-    </message>
-    <message>
-        <source>Select one procedural entry to delete.</source>
-        <translation>हटाने के लिए एक प्रक्रियात्मक प्रविष्टि चुनें।</translation>
-    </message>
-    <message>
-        <source>Type</source>
-        <translation>प्रकार</translation>
-    </message>
-    <message>
-        <source>Valid runtime logic. Warnings: </source>
-        <translation>वैध रनटाइम तर्क। चेतावनियाँ:</translation>
-    </message>
-    <message>
-        <source>Validate runtime logic</source>
-        <translation>रनटाइम तर्क मान्य करें</translation>
+        <source>Transformer editor</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>ScenariosMain</name>
+    <name>Transformer3WGraphicItem</name>
     <message>
-        <source>Add child scenario</source>
-        <translation>उप परिदृश्य जोड़ें</translation>
+        <source>Do you want to update the time series active status accordingly?</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Commit scenario</source>
-        <translation>परिदृश्य प्रतिबद्ध करें</translation>
-    </message>
-    <message>
-        <source>Merge children into scenario</source>
-        <translation>बच्चों को परिदृश्य में मर्ज करें</translation>
-    </message>
-    <message>
-        <source>Remove scenario</source>
-        <translation>परिदृश्य हटाएं</translation>
-    </message>
-    <message>
-        <source>Rename scenario</source>
-        <translation>परिदृश्य का नाम बदलें</translation>
-    </message>
-    <message>
-        <source>Set as current scenario</source>
-        <translation>वर्तमान परिदृश्य के रूप में सेट करें</translation>
+        <source>Update time series active status</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>ScriptingMain</name>
+    <name>TransformerDeviceEditor</name>
     <message>
-        <source>	app.adjust_all_node_width(): Adjust the width of all the nodes according to their name.</source>
-        <translation>	app.adjust_all_node_width(): Adjust the width of all the nodes according to their name.</translation>
+        <source>Transformer design widget is not available</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>	app.circuit.plot_graph(): Plot a graph in a Matplotlib window. Call plt.show() after.</source>
-        <translation>	app.circuit.plot_graph(): Plot a graph in a Matplotlib window. Call plt.show() after.</translation>
-    </message>
-    <message>
-        <source>	app.create_schematic_from_api(): Create the schematic from the circuit information.</source>
-        <translation>	app.create_schematic_from_api(): Create the schematic from the circuit information.</translation>
-    </message>
-    <message>
-        <source>	app.export_diagram(): Prompt to export the diagram in png.</source>
-        <translation>	app.export_diagram(): Prompt to export the diagram in png.</translation>
-    </message>
-    <message>
-        <source>	app.islands: get compilation of the assets split into the topological islands.</source>
-        <translation>	app.islands: get compilation of the assets split into the topological islands.</translation>
-    </message>
-    <message>
-        <source>	app.new_project(): Clear all.</source>
-        <translation>	app.new_project(): Clear all.</translation>
-    </message>
-    <message>
-        <source>	app.numerical_circuit: get compilation of the assets.</source>
-        <translation>	app.numerical_circuit: get compilation of the assets.</translation>
-    </message>
-    <message>
-        <source>	app.open_file(): Prompt to load VeraGrid compatible file</source>
-        <translation>	app.open_file(): Prompt to load VeraGrid compatible file</translation>
-    </message>
-    <message>
-        <source>	app.save_file(): Prompt to save VeraGrid file</source>
-        <translation>	app.save_file(): Prompt to save VeraGrid file</translation>
-    </message>
-    <message>
-        <source>	app.session.continuation_power_flow.Sf:	 Power values for every power multiplication factor.</source>
-        <translation>	app.session.continuation_power_flow.Sf:	 Power values for every power multiplication factor.</translation>
-    </message>
-    <message>
-        <source>	app.session.continuation_power_flow.lambda:	 Value of power multiplication factor applied</source>
-        <translation>	app.session.continuation_power_flow.lambda:	 Value of power multiplication factor applied</translation>
-    </message>
-    <message>
-        <source>	app.session.continuation_power_flow.voltage:	 Voltage values for every power multiplication factor.</source>
-        <translation>	app.session.continuation_power_flow.voltage:	 Voltage values for every power multiplication factor.</translation>
-    </message>
-    <message>
-        <source>	app.session.optimal_power_flow.Sbus:	 the nodal power Injections in MW</source>
-        <translation>	app.session.optimal_power_flow.Sbus:	 the nodal power Injections in MW</translation>
-    </message>
-    <message>
-        <source>	app.session.optimal_power_flow.Sf:	 the branch power Sf</source>
-        <translation>	app.session.optimal_power_flow.Sf:	 the branch power Sf</translation>
-    </message>
-    <message>
-        <source>	app.session.optimal_power_flow.load_shedding:	 the branch loading in %</source>
-        <translation>	app.session.optimal_power_flow.load_shedding:	 the branch loading in %</translation>
-    </message>
-    <message>
-        <source>	app.session.optimal_power_flow.losses:	 the branch losses in per unit</source>
-        <translation>	app.session.optimal_power_flow.losses:	 the branch losses in per unit</translation>
-    </message>
-    <message>
-        <source>	app.session.optimal_power_flow.voltage:	 the nodal voltages angles in rad</source>
-        <translation>	app.session.optimal_power_flow.voltage:	 the nodal voltages angles in rad</translation>
-    </message>
-    <message>
-        <source>	app.session.power_flow.Sf:	 the branch power Injections in per unit at the "from" side</source>
-        <translation>	app.session.power_flow.Sf:	 the branch power Injections in per unit at the "from" side</translation>
-    </message>
-    <message>
-        <source>	app.session.power_flow.St:	 the branch power Injections in per unit at the "to" side</source>
-        <translation>	app.session.power_flow.St:	 the branch power Injections in per unit at the "to" side</translation>
-    </message>
-    <message>
-        <source>	app.session.power_flow.current:	 the branch currents in per unit</source>
-        <translation>	app.session.power_flow.current:	 the branch currents in per unit</translation>
-    </message>
-    <message>
-        <source>	app.session.power_flow.loading:	 the branch loading in %</source>
-        <translation>	app.session.power_flow.loading:	 the branch loading in %</translation>
-    </message>
-    <message>
-        <source>	app.session.power_flow.losses:	 the branch losses in per unit</source>
-        <translation>	app.session.power_flow.losses:	 the branch losses in per unit</translation>
-    </message>
-    <message>
-        <source>	app.session.power_flow.power:	 the nodal power Injections in per unit</source>
-        <translation>	app.session.power_flow.power:	 the nodal power Injections in per unit</translation>
-    </message>
-    <message>
-        <source>	app.session.power_flow.voltage:	 the nodal voltages in per unit</source>
-        <translation>	app.session.power_flow.voltage:	 the nodal voltages in per unit</translation>
-    </message>
-    <message>
-        <source>	app.session.power_flow_ts.currents:	 Branches currents results matrix (row: time, col: branch)</source>
-        <translation>	app.session.power_flow_ts.currents:	 Branches currents results matrix (row: time, col: branch)</translation>
-    </message>
-    <message>
-        <source>	app.session.power_flow_ts.gen_profiles:	 Generation profiles matrix (row: time, col: node)</source>
-        <translation>	app.session.power_flow_ts.gen_profiles:	 Generation profiles matrix (row: time, col: node)</translation>
-    </message>
-    <message>
-        <source>	app.session.power_flow_ts.load_profiles:	 Load profiles matrix (row: time, col: node)</source>
-        <translation>	app.session.power_flow_ts.load_profiles:	 Load profiles matrix (row: time, col: node)</translation>
-    </message>
-    <message>
-        <source>	app.session.power_flow_ts.loadings:	 Branches loadings results matrix (row: time, col: branch)</source>
-        <translation>	app.session.power_flow_ts.loadings:	 Branches loadings results matrix (row: time, col: branch)</translation>
-    </message>
-    <message>
-        <source>	app.session.power_flow_ts.losses:	 Branches losses results matrix (row: time, col: branch)</source>
-        <translation>	app.session.power_flow_ts.losses:	 Branches losses results matrix (row: time, col: branch)</translation>
-    </message>
-    <message>
-        <source>	app.session.power_flow_ts.time:	 Profiles time index (pandas DateTimeIndex object)</source>
-        <translation>	app.session.power_flow_ts.time:	 Profiles time index (pandas DateTimeIndex object)</translation>
-    </message>
-    <message>
-        <source>	app.session.power_flow_ts.voltages:	 nodal voltages results matrix (row: time, col: node)</source>
-        <translation>	app.session.power_flow_ts.voltages:	 nodal voltages results matrix (row: time, col: node)</translation>
-    </message>
-    <message>
-        <source>	app.session.short_circuit.current:	 the branch currents in per unit</source>
-        <translation>	app.session.short_circuit.current:	 the branch currents in per unit</translation>
-    </message>
-    <message>
-        <source>	app.session.short_circuit.loading:	 the branch loading in %</source>
-        <translation>	app.session.short_circuit.loading:	 the branch loading in %</translation>
-    </message>
-    <message>
-        <source>	app.session.short_circuit.losses:	 the branch losses in per unit</source>
-        <translation>	app.session.short_circuit.losses:	 the branch losses in per unit</translation>
-    </message>
-    <message>
-        <source>	app.session.short_circuit.power:	 the nodal power Injections in per unit</source>
-        <translation>	app.session.short_circuit.power:	 the nodal power Injections in per unit</translation>
-    </message>
-    <message>
-        <source>	app.session.short_circuit.power_from:	 the branch power Injections in per unit at the "from" side</source>
-        <translation>	app.session.short_circuit.power_from:	 the branch power Injections in per unit at the "from" side</translation>
-    </message>
-    <message>
-        <source>	app.session.short_circuit.power_to:	 the branch power Injections in per unit at the "to" side</source>
-        <translation>	app.session.short_circuit.power_to:	 the branch power Injections in per unit at the "to" side</translation>
-    </message>
-    <message>
-        <source>	app.session.short_circuit.short_circuit_power:	 Short circuit power in MVA of the grid nodes</source>
-        <translation>	app.session.short_circuit.short_circuit_power:	 Short circuit power in MVA of the grid nodes</translation>
-    </message>
-    <message>
-        <source>	app.session.short_circuit.voltage:	 the nodal voltages in per unit</source>
-        <translation>	app.session.short_circuit.voltage:	 the nodal voltages in per unit</translation>
-    </message>
-    <message>
-        <source>	app.session.stochastic_power_flow.I_avg:	 branch current average result.</source>
-        <translation>	app.session.stochastic_power_flow.I_avg:	 branch current average result.</translation>
-    </message>
-    <message>
-        <source>	app.session.stochastic_power_flow.I_std:	 branch current standard deviation result.</source>
-        <translation>	app.session.stochastic_power_flow.I_std:	 branch current standard deviation result.</translation>
-    </message>
-    <message>
-        <source>	app.session.stochastic_power_flow.Loading_avg:	 branch loading average result.</source>
-        <translation>	app.session.stochastic_power_flow.Loading_avg:	 branch loading average result.</translation>
-    </message>
-    <message>
-        <source>	app.session.stochastic_power_flow.Loading_std:	 branch loading standard deviation result.</source>
-        <translation>	app.session.stochastic_power_flow.Loading_std:	 branch loading standard deviation result.</translation>
-    </message>
-    <message>
-        <source>	app.session.stochastic_power_flow.Losses_avg:	 branch losses average result.</source>
-        <translation>	app.session.stochastic_power_flow.Losses_avg:	 branch losses average result.</translation>
-    </message>
-    <message>
-        <source>	app.session.stochastic_power_flow.Losses_std:	 branch losses standard deviation result.</source>
-        <translation>	app.session.stochastic_power_flow.Losses_std:	 branch losses standard deviation result.</translation>
-    </message>
-    <message>
-        <source>	app.session.stochastic_power_flow.V_avg:	 nodal voltage average result.</source>
-        <translation>	app.session.stochastic_power_flow.V_avg:	 nodal voltage average result.</translation>
-    </message>
-    <message>
-        <source>	app.session.stochastic_power_flow.V_avg_series:	 nodal voltage average series.</source>
-        <translation>	app.session.stochastic_power_flow.V_avg_series:	 nodal voltage average series.</translation>
-    </message>
-    <message>
-        <source>	app.session.stochastic_power_flow.V_std:	 nodal voltage standard deviation result.</source>
-        <translation>	app.session.stochastic_power_flow.V_std:	 nodal voltage standard deviation result.</translation>
-    </message>
-    <message>
-        <source>	app.session.stochastic_power_flow.V_std_series:	 branch current standard deviation series.</source>
-        <translation>	app.session.stochastic_power_flow.V_std_series:	 branch current standard deviation series.</translation>
-    </message>
-    <message>
-        <source>	app.session.stochastic_power_flow.error_series:	 Monte Carlo error series (the convergence value).</source>
-        <translation>	app.session.stochastic_power_flow.error_series:	 Monte Carlo error series (the convergence value).</translation>
-    </message>
-    <message>
-        <source>
-
-App functions:</source>
-        <translation>ऐप फ़ंक्शन:</translation>
-    </message>
-    <message>
-        <source>
-
-Circuit functions:</source>
-        <translation>सर्किट फ़ंक्शन:</translation>
-    </message>
-    <message>
-        <source>
-
-Monte Carlo power flow results:</source>
-        <translation>मोंटे कार्लो पावर फ्लो परिणाम:</translation>
-    </message>
-    <message>
-        <source>
-
-Optimal power flow results:</source>
-        <translation>इष्टतम पावर फ्लो परिणाम:</translation>
-    </message>
-    <message>
-        <source>
-
-Power flow results:</source>
-        <translation>पावर फ्लो परिणाम:</translation>
-    </message>
-    <message>
-        <source>
-
-Short circuit results:</source>
-        <translation>शॉर्ट सर्किट परिणाम:</translation>
-    </message>
-    <message>
-        <source>
-
-Time series power flow results:</source>
-        <translation>समय श्रृंखला पावर फ्लो परिणाम:</translation>
-    </message>
-    <message>
-        <source>
-
-Voltage stability power flow results:</source>
-        <translation>वोल्टेज स्थिरता पावर फ्लो परिणाम:</translation>
-    </message>
-    <message>
-        <source>
-
-clc():	clear the console.</source>
-        <translation>clc():	कंसोल साफ़ करें।</translation>
-    </message>
-    <message>
-        <source> does not exist :/</source>
-        <translation>मौजूद नहीं है :/</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to clear source code?</source>
-        <translation>क्या आप स्रोत कोड साफ़ करना चाहते हैं?</translation>
-    </message>
-    <message>
-        <source>Clear source code</source>
-        <translation>स्रोत कोड साफ़ करें</translation>
-    </message>
-    <message>
-        <source>Delete</source>
-        <translation>हटाएँ</translation>
-    </message>
-    <message>
-        <source>Delete source code file</source>
-        <translation>स्रोत कोड फ़ाइल हटाएं</translation>
-    </message>
-    <message>
-        <source>Do you want to delete {path}?</source>
-        <translation>क्या आप {path} हटाना चाहते हैं?</translation>
-    </message>
-    <message>
-        <source>If a command is unavailable is because the study has not been executed yet.</source>
-        <translation>यदि कोई कमांड अनुपलब्ध है तो इसका मतलब है कि अध्ययन अभी तक निष्पादित नहीं किया गया है।</translation>
-    </message>
-    <message>
-        <source>Open script</source>
-        <translation>स्क्रिप्ट खोलें</translation>
-    </message>
-    <message>
-        <source>Please enter a name for the script</source>
-        <translation>कृपया स्क्रिप्ट के लिए एक नाम दर्ज करें</translation>
-    </message>
-    <message>
-        <source>Save script</source>
-        <translation>स्क्रिप्ट सहेजें</translation>
-    </message>
-    <message>
-        <source>The same for app.latin_hypercube_sampling</source>
-        <translation>app.latin_hypercube_sampling के लिए भी यही।</translation>
-    </message>
-    <message>
-        <source>VeraGrid internal commands.
-</source>
-        <translation>VeraGrid आंतरिक कमांड।</translation>
+        <source>Transformer editor</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>SelectionDialog</name>
+    <name>TransformerEditor</name>
+    <message>
+        <source>Transformer editor</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>TransformerGraphicItem</name>
+    <message>
+        <source>A template will be generated using this transformer values</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Add transformer type</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>TransformerNWGraphicItem</name>
+    <message>
+        <source>Do you want to update the time series active status accordingly?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Update time series active status</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>UcteExportDialogue</name>
+    <message>
+        <source>Export to UCTE</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>UCTE export</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>ValidationSectionDialog</name>
+    <message>
+        <source>Issues found in this section</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Model Consistency Validation</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Run an informational validation of the edited model structure, mappings, initialization, and port connectivity. This check reports issues but does not block saving the model.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>VoltageLevelConversionWizard</name>
+    <message>
+        <source>+ Add spare position</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>- Remove selected</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Bars with impedance</source>
+        <translation type="unfinished"></translation>
+    </message>
     <message>
         <source>Cancel</source>
-        <translation>रद्द करें</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Click on a substation to reconnect branch {branch_name}</source>
-        <translation>शाखा {branch_name} को पुनः कनेक्ट करने के लिए एक सबस्टेशन पर क्लिक करें</translation>
+        <source>Cannot Remove</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>The substation should have a compatible voltage level ({voltage} kV)</source>
-        <translation>सबस्टेशन में एक संगत वोल्टेज स्तर ({voltage} kV) होना चाहिए</translation>
+        <source>Convert Bus to Voltage Level</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Waiting for Selection</source>
-        <translation>चयन की प्रतीक्षा है</translation>
+        <source>Do it</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Waiting for selection...</source>
-        <translation>चयन की प्रतीक्षा है...</translation>
-    </message>
-</context>
-<context>
-    <name>ServerFileDialogue</name>
-    <message>
-        <source>Delete server file</source>
-        <translation>सर्वर फ़ाइल हटाएं</translation>
+        <source>Enable transfer bus (JBPT)</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Delete server model</source>
-        <translation>सर्वर मॉडल हटाएं</translation>
+        <source>Keep original rates</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Delete the selected file and every model inside it?</source>
-        <translation>क्या आप चयनित फ़ाइल और इसके अंदर हर मॉडल को हटाना चाहते हैं?</translation>
+        <source>Only spare positions can be removed. Actual devices cannot be removed from the list.</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Delete the selected model from the server database?</source>
-        <translation>क्या आप चयनित मॉडल को सर्वर डेटाबेस से हटाना चाहते हैं?</translation>
-    </message>
-</context>
-<context>
-    <name>ServerMain</name>
-    <message>
-        <source>Connected!</source>
-        <translation>जुड़ गया!</translation>
+        <source>Options</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Could not connect to the server :/</source>
-        <translation>सर्वर से कनेक्ट नहीं किया जा सका :/</translation>
+        <source>Positions (use arrows to reorder):</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Could not connect to the server: {error}</source>
-        <translation>सर्वर से कनेक्ट नहीं किया जा सका: {error}</translation>
+        <source>Reducible branches</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Results received!</source>
-        <translation>परिणाम प्राप्त हुए!</translation>
+        <source>Scheme type:</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Server config file was erroneous, wrote a new one</source>
-        <translation>सर्वर कॉन्फ़िगरेशन फ़ाइल त्रुटिपूर्ण थी, एक नई लिखी गई</translation>
+        <source>Use breakers</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Stop Server</source>
-        <translation>सर्वर रोकें</translation>
+        <source>Validation Error</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>The server connection is running, are you sure that you want to stop it?</source>
-        <translation>सर्वर कनेक्शन चल रहा है, क्या आप निश्चित हैं कि आप इसे रोकना चाहते हैं?</translation>
+        <source>▲</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>▼</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>ShortCircuitSelector</name>
+    <name>VoltageWarningDialog</name>
     <message>
-        <source>Short Circuit Configuration</source>
-        <translation>शॉर्ट सर्किट कॉन्फ़िगरेशन</translation>
+        <source>Invalid Voltage Levels</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>SigmaAnalysisGUI</name>
+    <name>VscDeviceEditor</name>
     <message>
-        <source>CSV (*.csv);;Excel files (*.xlsx)</source>
-        <translation>CSV (*.csv);;Excel फ़ाइलें (*.xlsx)</translation>
-    </message>
-    <message>
-        <source>Export results</source>
-        <translation>परिणाम निर्यात करें</translation>
-    </message>
-    <message>
-        <source>HELM-Sigma analysis dialogue</source>
-        <translation>HELM-सिग्मा विश्लेषण संवाद</translation>
-    </message>
-    <message>
-        <source>Sigma analysis completed</source>
-        <translation>सिग्मा विश्लेषण पूरा हुआ</translation>
-    </message>
-    <message>
-        <source>Sigma analysis did not return results</source>
-        <translation>सिग्मा विश्लेषण परिणाम वापस नहीं कर पाया</translation>
-    </message>
-    <message>
-        <source>Sigma coefficients did not converge :(</source>
-        <translation>सिग्मा गुणांक अभिसरण नहीं कर पाए :(</translation>
-    </message>
-    <message>
-        <source>Snapshot</source>
-        <translation>स्नैपशॉट</translation>
-    </message>
-    <message>
-        <source>This window was opened without a circuit/options rerun context.</source>
-        <translation>यह विंडो सर्किट/विकल्पों को फिर से चलाने के संदर्भ के बिना खोली गई थी।</translation>
-    </message>
-    <message>
-        <source>Warning</source>
-        <translation>चेतावनी</translation>
+        <source>VSC editor</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>SubstationDesigner</name>
+    <name>WindFarmWizard</name>
     <message>
-        <source>Substation maker</source>
-        <translation>सबस्टेशन निर्माता</translation>
-    </message>
-    <message>
-        <source>Substation {number}</source>
-        <translation>सबस्टेशन {number}</translation>
-    </message>
-    <message>
-        <source>There are no voltage levels, so no substation will be created, ok?</source>
-        <translation>कोई वोल्टेज स्तर नहीं है, इसलिए कोई सबस्टेशन नहीं बनाया जाएगा, ठीक है?</translation>
-    </message>
-</context>
-<context>
-    <name>SwitchSequenceDialog</name>
-    <message>
-        <source>Add Sequence Step</source>
-        <translation>अनुक्रम चरण जोड़ें</translation>
-    </message>
-    <message>
-        <source>Add at least one sequence row.</source>
-        <translation>कम से कम एक अनुक्रम पंक्ति जोड़ें।</translation>
-    </message>
-    <message>
-        <source>Close</source>
-        <translation>बंद करें</translation>
-    </message>
-    <message>
-        <source>Group</source>
-        <translation>समूह</translation>
-    </message>
-    <message>
-        <source>Mode Parameter</source>
-        <translation>मोड पैरामीटर</translation>
-    </message>
-    <message>
-        <source>Open</source>
-        <translation>खोलें</translation>
-    </message>
-    <message>
-        <source>Please check at least one row to remove.</source>
-        <translation>हटाने के लिए कृपया कम से कम एक पंक्ति चुनें।</translation>
-    </message>
-    <message>
-        <source>Remove Selected Rows</source>
-        <translation>चयनित पंक्तियाँ हटाएं</translation>
-    </message>
-    <message>
-        <source>Select a mode parameter and an events group.</source>
-        <translation>एक मोड पैरामीटर और एक इवेंट्स समूह चुनें।</translation>
-    </message>
-    <message>
-        <source>State</source>
-        <translation>स्थिति</translation>
-    </message>
-    <message>
-        <source>Switch Sequence</source>
-        <translation>स्विच अनुक्रम</translation>
-    </message>
-    <message>
-        <source>Switch Sequence Wizard</source>
-        <translation>स्विच सीक्वेंस विज़ार्ड</translation>
-    </message>
-    <message>
-        <source>The selected parameter or group is invalid.</source>
-        <translation>चयनित पैरामीटर या समूह अमान्य है।</translation>
-    </message>
-    <message>
-        <source>Time</source>
-        <translation>समय</translation>
-    </message>
-</context>
-<context>
-    <name>SystemScaler</name>
-    <message>
-        <source>Aggregated energy scaling preview</source>
-        <translation>समग्र ऊर्जा स्केलिंग पूर्वावलोकन</translation>
-    </message>
-    <message>
-        <source>Aggregated power scaling preview</source>
-        <translation>समग्र शक्ति स्केलिंग पूर्वावलोकन</translation>
-    </message>
-    <message>
-        <source>MW</source>
-        <translation>MW</translation>
-    </message>
-    <message>
-        <source>MWh</source>
-        <translation>MWh</translation>
-    </message>
-    <message>
-        <source>Original generation</source>
-        <translation>मूल उत्पादन</translation>
-    </message>
-    <message>
-        <source>Original generation energy</source>
-        <translation>मूल उत्पादन ऊर्जा</translation>
-    </message>
-    <message>
-        <source>Original load</source>
-        <translation>मूल भार</translation>
-    </message>
-    <message>
-        <source>Original load energy</source>
-        <translation>मूल भार ऊर्जा</translation>
-    </message>
-    <message>
-        <source>Press plot to preview scaling</source>
-        <translation>स्केलिंग पूर्वावलोकन के लिए प्लॉट दबाएँ</translation>
-    </message>
-    <message>
-        <source>Scaled generation</source>
-        <translation>स्केल्ड उत्पादन</translation>
-    </message>
-    <message>
-        <source>Scaled generation energy</source>
-        <translation>स्केल्ड उत्पादन ऊर्जा</translation>
-    </message>
-    <message>
-        <source>Scaled load</source>
-        <translation>स्केल्ड भार</translation>
-    </message>
-    <message>
-        <source>Scaled load energy</source>
-        <translation>स्केल्ड भार ऊर्जा</translation>
-    </message>
-    <message>
-        <source>System scaling</source>
-        <translation>सिस्टम स्केलिंग</translation>
-    </message>
-    <message>
-        <source>There is no time series to plot.</source>
-        <translation>प्लॉट करने के लिए कोई समय श्रृंखला नहीं है।</translation>
-    </message>
-    <message>
-        <source>This operation will alter the generation and load composition irreversibly
-Are you sure?</source>
-        <translation>यह ऑपरेशन उत्पादन और भार संरचना को अपरिवर्तनीय रूप से बदल देगा
-क्या आप निश्चित हैं?</translation>
-    </message>
-</context>
-<context>
-    <name>TimeReIndexDialogue</name>
-    <message>
-        <source>Accept</source>
-        <translation>स्वीकार करें</translation>
-    </message>
-    <message>
-        <source>Start date</source>
-        <translation>प्रारंभ तिथि</translation>
-    </message>
-    <message>
-        <source>Time re-index</source>
-        <translation>समय पुन: अनुक्रमण</translation>
-    </message>
-    <message>
-        <source>Time step length</source>
-        <translation>समय चरण की लंबाई</translation>
-    </message>
-    <message>
-        <source>Time units</source>
-        <translation>समय इकाइयाँ</translation>
-    </message>
-</context>
-<context>
-    <name>VeraGridMainGUI</name>
-    <message>
-        <source>Are you sure that you want to exit VeraGrid?</source>
-        <translation>क्या आप VeraGrid छोड़ना चाहते हैं?</translation>
-    </message>
-    <message>
-        <source>Close</source>
-        <translation>बंद करें</translation>
-    </message>
-    <message>
-        <source>No effect, select diagrams or database</source>
-        <translation>कोई प्रभाव नहीं, आरेख या डेटाबेस चुनें</translation>
-    </message>
-    <message>
-        <source>VeraGrid {version}</source>
-        <translation>VeraGrid {version}</translation>
+        <source>The selected turbine has no design curves</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 </TS>

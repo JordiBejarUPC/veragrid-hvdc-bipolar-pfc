@@ -177,14 +177,17 @@ def get_pv_lib_weather_df(time_array: Sequence[Union[str, datetime, pd.Timestamp
                 data2: pd.DataFrame = interpolated_data.ffill().bfill().reindex(new_ts)
 
                 if bool(data2['P'].isna().any()):
-                    error_msg("PVGIS returned data, but it could not be interpolated to the circuit time profile")
+                    error_msg(QtCore.QCoreApplication.translate(
+                        "MainWindow",
+                        "PVGIS returned data, but it could not be interpolated to the circuit time profile",
+                    ))
                     return False, pd.DataFrame(data=dict(P=np.zeros(len(time_array))))
                 else:
                     pass
 
                 return True, data2
             else:
-                error_msg("PVGIS did not return photovoltaic power data")
+                error_msg(QtCore.QCoreApplication.translate("MainWindow", "PVGIS did not return photovoltaic power data"))
                 return False, pd.DataFrame(data=dict(P=np.zeros(len(time_array))))
 
         except (requests.RequestException, KeyError, ValueError, TypeError) as err:
@@ -197,11 +200,17 @@ def get_pv_lib_weather_df(time_array: Sequence[Union[str, datetime, pd.Timestamp
                 if valid_peak_power:
                     error_msg(f"The time span of your profile is {year_span} year(s), Pvlib's span is 10 years maximum")
                 else:
-                    error_msg("The photovoltaic peak power must be greater than zero")
+                    error_msg(QtCore.QCoreApplication.translate(
+                        "MainWindow",
+                        "The photovoltaic peak power must be greater than zero",
+                    ))
             else:
-                error_msg("The longitude must be between -180 and 180 degrees")
+                error_msg(QtCore.QCoreApplication.translate(
+                    "MainWindow",
+                    "The longitude must be between -180 and 180 degrees",
+                ))
         else:
-            error_msg("The latitude must be between -90 and 90 degrees")
+            error_msg(QtCore.QCoreApplication.translate("MainWindow", "The latitude must be between -90 and 90 degrees"))
 
         return False, pd.DataFrame(data=dict(P=np.zeros(len(time_array))))
 

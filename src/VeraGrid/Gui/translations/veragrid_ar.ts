@@ -459,6 +459,21 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
     </message>
 </context>
 <context>
+    <name>ArrayEditor</name>
+    <message>
+        <source>Add</source>
+        <translation>يضيف</translation>
+    </message>
+    <message>
+        <source>Array Editor</source>
+        <translation>محرر المصفوفة</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>يمسح</translation>
+    </message>
+</context>
+<context>
     <name>BlockEditorWindow</name>
     <message>
         <location filename="../DynamicModelEditor/block_editor.ui" line="14"/>
@@ -486,6 +501,48 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
     <message>
         <source>Equations</source>
         <translation type="vanished">المعادلات</translation>
+    </message>
+</context>
+<context>
+    <name>BlockParameterDraftModel</name>
+    <message>
+        <source>Name</source>
+        <translation>اسم</translation>
+    </message>
+    <message>
+        <source>Numeric value. Changes are staged until Apply changes is pressed.</source>
+        <translation>قيمة رقمية. يتم تأجيل التغييرات حتى يتم الضغط على تطبيق التغييرات.</translation>
+    </message>
+    <message>
+        <source>Real value or symbolic initialization expression. Changes are staged until Apply changes is pressed.</source>
+        <translation>قيمة حقيقية أو تعبير تهيئة رمزي. يتم تأجيل التغييرات حتى يتم الضغط على تطبيق التغييرات.</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>النوع</translation>
+    </message>
+    <message>
+        <source>Value</source>
+        <translation>القيمة</translation>
+    </message>
+</context>
+<context>
+    <name>BlockSymbolFilterProxyModel</name>
+    <message>
+        <source>Initializes a variable through VarPowerFlowReferenceType and block.external_mapping.</source>
+        <translation>يهيئ متغيرًا من خلال VarPowerFlowReferenceType و block.external_mapping.</translation>
+    </message>
+    <message>
+        <source>Maps a static parameter through ParamPowerFlowReferenceType to block.api_obj_mapping. Dynamic parameters are not editable here.</source>
+        <translation>يربط معلمة ثابتة من خلال ParamPowerFlowReferenceType بـ block.api_obj_mapping. المعلمات الديناميكية غير قابلة للتحرير هنا.</translation>
+    </message>
+    <message>
+        <source>Power-flow derived initialization</source>
+        <translation>تهيئة مشتقة من تدفق الطاقة</translation>
+    </message>
+    <message>
+        <source>Static parameter mapping</source>
+        <translation>تخطيط المعلمات الثابتة</translation>
     </message>
 </context>
 <context>
@@ -1272,6 +1329,256 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
     </message>
 </context>
 <context>
+    <name>CorrectInconsistenciesDialogue</name>
+    <message>
+        <source>Accept</source>
+        <translation>يقبل</translation>
+    </message>
+    <message>
+        <source>Correct inconsistencies</source>
+        <translation>تصحيح التناقضات</translation>
+    </message>
+    <message>
+        <source>Maximum generator set point</source>
+        <translation>أقصى نقطة ضبط للمولد</translation>
+    </message>
+    <message>
+        <source>Maximum virtual tap difference</source>
+        <translation>الحد الأقصى لفرق التحويل الافتراضي</translation>
+    </message>
+    <message>
+        <source>Minimum generator set point</source>
+        <translation>أدنى نقطة ضبط للمولد</translation>
+    </message>
+</context>
+<context>
+    <name>DataBaseTableMain</name>
+    <message>
+        <source>Add</source>
+        <translation>يضيف</translation>
+    </message>
+    <message>
+        <source>Add to current diagram</source>
+        <translation>أضف إلى الرسم البياني الحالي</translation>
+    </message>
+    <message>
+        <source>Assign to profile</source>
+        <translation>تعيين إلى الملف الشخصي</translation>
+    </message>
+    <message>
+        <source>Colour branches like this</source>
+        <translation>فروع اللون مثل هذا</translation>
+    </message>
+    <message>
+        <source>Copy idtag</source>
+        <translation>انسخ idtag</translation>
+    </message>
+    <message>
+        <source>Copy table</source>
+        <translation>نسخ الجدول</translation>
+    </message>
+    <message>
+        <source>Crop model to buses selection</source>
+        <translation>قص النموذج إلى اختيار القضبان</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>يمسح</translation>
+    </message>
+    <message>
+        <source>Duplicate object</source>
+        <translation>كائن مكرر</translation>
+    </message>
+    <message>
+        <source>Edit</source>
+        <translation>يحرر</translation>
+    </message>
+    <message>
+        <source>Grid reduction</source>
+        <translation>تخفيض الشبكة</translation>
+    </message>
+    <message>
+        <source>Highlight based on property</source>
+        <translation>تسليط الضوء على أساس الملكية</translation>
+    </message>
+    <message>
+        <source>Highlight buses selection</source>
+        <translation>إبراز اختيار القضبان</translation>
+    </message>
+    <message>
+        <source>Merge</source>
+        <translation>دمج</translation>
+    </message>
+    <message>
+        <source>New diagram from selection</source>
+        <translation>رسم تخطيطي جديد من التحديد</translation>
+    </message>
+    <message>
+        <source>New map from selection</source>
+        <translation>خريطة جديدة من التحديد</translation>
+    </message>
+    <message>
+        <source>New vicinity diagram</source>
+        <translation>مخطط محيط جديد</translation>
+    </message>
+    <message>
+        <source>Set value to column</source>
+        <translation>اضبط القيمة على العمود</translation>
+    </message>
+    <message>
+        <source>Type the object name or a smart filter expression ...</source>
+        <translation>اكتب اسم الكائن أو تعبير تصفية ذكي...</translation>
+    </message>
+    <message>
+        <source>Add selected DB objects to current diagram</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Are you sure that you want to delete_with_dialogue the selected elements?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Are you sure that you want to duplicate the selected elements?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Are you sure that you want to merge the selected substations?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Choose an element from the table</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy profile to clipboard</source>
+        <translation>نسخ الملف الشخصي إلى الحافظة</translation>
+    </message>
+    <message>
+        <source>Create new diagram</source>
+        <translation>إنشاء رسم تخطيطي جديد</translation>
+    </message>
+    <message>
+        <source>Crop model to buses selection?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>DB clean</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>DB clean logger</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Delete inconsistencies</source>
+        <translation>حذف التناقضات</translation>
+    </message>
+    <message>
+        <source>Detect facilities</source>
+        <translation>كشف المرافق</translation>
+    </message>
+    <message>
+        <source>Detect substations</source>
+        <translation>كشف المحطات الفرعية</translation>
+    </message>
+    <message>
+        <source>Do you want to try to detect facilities in the grid model?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Do you want to try to detect substations and voltage levels in the grid model?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Duplicate</source>
+        <translation>ينسخ</translation>
+    </message>
+    <message>
+        <source>Highlight</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>How do you want to represent the merged grid?</source>
+        <translation>كيف تريد تمثيل الشبكة المدمجة؟</translation>
+    </message>
+    <message>
+        <source>New substation</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No editor available.
+The values can be changed from the table or via context menus in the graphical interface.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No object found :(</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Restore investments</source>
+        <translation>استعادة الاستثمارات</translation>
+    </message>
+    <message>
+        <source>Select a catalogue element and then a catalogue object</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select a cell or a column first</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select a data structure</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select some element to serve as source to copy</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select some elements to highlight</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Setting the database buses x,y position from their latitude and longitude values will change the buses values but not the current diagrams. New diagrams will use the new values</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The maximum value is 0, so the coloring cannot be applied</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The selected property must be of a numeric type</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There is no data displayed, please display one</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>This action may delete_with_dialogue unused objects and references, 
+Are you sure?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>This action removes all disconnected devices with no active profile and delete all small islands</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>This action will restore the circuit to the state before the last investment modification. Do you want to proceed?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>This object does not support table-like addition.
+Use the schematic instead.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>This will delete all buses and their connected elements that were not selected.This cannot be undone and it is dangerous if you don't knowwhat you are doing. 
+Are you sure?</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>DcLineEditorDialog</name>
     <message>
         <location filename="../DeviceEditors/DcLineEditor/dc_line_editor_gui.ui" line="14"/>
@@ -1358,6 +1665,153 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
         <location filename="../FileDialogues/DgsDialogue/dgs_import_gui.ui" line="53"/>
         <source>Import</source>
         <translation>يستورد</translation>
+    </message>
+</context>
+<context>
+    <name>DiagramsMain</name>
+    <message>
+        <source>Are you sure that you want to try an automatic layout?</source>
+        <translation>هل أنت متأكد أنك تريد محاولة تخطيط تلقائي؟</translation>
+    </message>
+    <message>
+        <source>Duplicate</source>
+        <translation>ينسخ</translation>
+    </message>
+    <message>
+        <source>Message</source>
+        <translation>رسالة</translation>
+    </message>
+    <message>
+        <source>New map</source>
+        <translation>خريطة جديدة</translation>
+    </message>
+    <message>
+        <source>New schematic</source>
+        <translation>تخطيطي جديد</translation>
+    </message>
+    <message>
+        <source>New schematic from selection</source>
+        <translation>تخطيطي جديد من التحديد</translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation>يزيل</translation>
+    </message>
+    <message>
+        <source>Save image file</source>
+        <translation>حفظ ملف الصورة</translation>
+    </message>
+    <message>
+        <source>Save video file</source>
+        <translation>حفظ ملف الفيديو</translation>
+    </message>
+    <message>
+        <source>Type to search in the current diagram</source>
+        <translation>اكتب للبحث في المخطط الحالي</translation>
+    </message>
+    <message>
+        <source>Add selected to contingency</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Add selected to investment</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Add selected to remedial action</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>All buses will be positioned to a 2D plane projection of their latitude and longitude. This updates the current diagram and the stored bus x, y, so diagrams created afterwards use the new positions. Are you sure of this?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Choose some elements from the schematic</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Consolidate diagram coordinates into the DB</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Duplicate diagram</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Fix buses locations</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>New schematic from substation</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No EMT Events Group</source>
+        <translation>لا توجد مجموعة أحداث EMT</translation>
+    </message>
+    <message>
+        <source>No EMT Events Group found, please create one before adding an event.</source>
+        <translation>لم يتم العثور على مجموعة أحداث EMT، يرجى إنشاء واحدة قبل إضافة حدث.</translation>
+    </message>
+    <message>
+        <source>No RMS Events Group</source>
+        <translation>لا توجد مجموعة أحداث RMS</translation>
+    </message>
+    <message>
+        <source>No RMS Events Group found, please create one before adding an event.</source>
+        <translation>لم يتم العثور على مجموعة أحداث RMS، يرجى إنشاء واحدة قبل إضافة حدث.</translation>
+    </message>
+    <message>
+        <source>No substations selected. Please select some substations</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Remove diagram</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Reset diagram coordinates using the DB</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Rotate diagram</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select a valid diagram</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select some cells</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select some elements in the schematic first</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select the expansion level</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Substations schematic</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The current diagram cannot be automatically layed out</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The diagram coordinates will be reset to its database values. Do you want to do this?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The diagram coordinates will be saved into the corresponding properties of the database, overwriting the existing ones. Do you want to do this?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Vicinity diagram</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -1819,6 +2273,73 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
     </message>
 </context>
 <context>
+    <name>DynamicBlockEditorGUI</name>
+    <message>
+        <source>Block name already exists</source>
+        <translation>اسم الكتلة موجود بالفعل</translation>
+    </message>
+    <message>
+        <source>Block name cannot be empty</source>
+        <translation>لا يمكن أن يكون اسم الكتلة فارغًا</translation>
+    </message>
+    <message>
+        <source>Block name is invalid</source>
+        <translation>اسم الكتلة غير صالح</translation>
+    </message>
+    <message>
+        <source>Change Block Name</source>
+        <translation>تغيير اسم الكتلة</translation>
+    </message>
+    <message>
+        <source>Change Variable Name</source>
+        <translation>تغيير اسم المتغير</translation>
+    </message>
+    <message>
+        <source>Dynamic Model Editor</source>
+        <translation>محرر النموذج الديناميكي</translation>
+    </message>
+    <message>
+        <source>Dynamic Model Editor [{mode}]</source>
+        <translation>محرر النموذج الديناميكي [{mode}]</translation>
+    </message>
+    <message>
+        <source>Library</source>
+        <translation>مكتبة</translation>
+    </message>
+    <message>
+        <source>Variable name already exists</source>
+        <translation>اسم المتغير موجود بالفعل</translation>
+    </message>
+    <message>
+        <source>Variable name cannot be empty</source>
+        <translation>لا يمكن أن يكون اسم المتغير فارغًا</translation>
+    </message>
+    <message>
+        <source>Variable name is invalid</source>
+        <translation>اسم المتغير غير صالح</translation>
+    </message>
+    <message>
+        <source>Delete all</source>
+        <translation>احذف الكل</translation>
+    </message>
+    <message>
+        <source>Inspect Model</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There are unapplied changes. Do you want to close without applying them?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Unsaved changes</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>You are going to delete the complete model and start from scratch. Are you sure?</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>DynamicBlockPropertiesDialog</name>
     <message>
         <location filename="../DynamicModelEditor/dynamic_block_properties.ui" line="14"/>
@@ -2127,8 +2648,8 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
         <translation>التحقق من صحة كل الكود</translation>
     </message>
     <message>
-        <source>Variable renamed to '{name}'.</source>
-        <translation>تمت إعادة تسمية المتغير إلى '{name}'.</translation>
+        <source>Variable renamed to &apos;{name}&apos;.</source>
+        <translation>تمت إعادة تسمية المتغير إلى &apos;{name}&apos;.</translation>
     </message>
     <message>
         <source>Variables</source>
@@ -2137,6 +2658,63 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
     <message>
         <source>{active} / {count}</source>
         <translation>{active} / {count}</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEditorAddButton</name>
+    <message>
+        <source>Open another Dynamic Editor</source>
+        <translation>فتح محرر ديناميكي آخر</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEditorGraphics</name>
+    <message>
+        <source>{direction} {index}: {name}</source>
+        <translation>{direction} {index}: {name}</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEditorPickerDialog</name>
+    <message>
+        <source>Mode</source>
+        <translation>وضع</translation>
+    </message>
+    <message>
+        <source>Modes</source>
+        <translation>وسائط</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>اسم</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation>فتح</translation>
+    </message>
+    <message>
+        <source>Open the current block in the other mode.</source>
+        <translation>فتح الكتلة الحالية في الوضع الآخر.</translation>
+    </message>
+    <message>
+        <source>Open the current block in {mode}.</source>
+        <translation>فتح الكتلة الحالية في {mode}.</translation>
+    </message>
+    <message>
+        <source>Open {mode}</source>
+        <translation>فتح {mode}</translation>
+    </message>
+    <message>
+        <source>Quick Open</source>
+        <translation>فتح سريع</translation>
+    </message>
+    <message>
+        <source>Search dynamic editors</source>
+        <translation>البحث عن المحررات الديناميكية</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>النوع</translation>
     </message>
 </context>
 <context>
@@ -2248,6 +2826,220 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
     </message>
 </context>
 <context>
+    <name>DynamicEventEditor</name>
+    <message>
+        <source>&lt;b&gt;Target device:&lt;/b&gt;</source>
+        <translation>&lt;b&gt;الجهاز المستهدف:&lt;/b&gt;</translation>
+    </message>
+    <message>
+        <source>Align Step</source>
+        <translation>محاذاة الخطوة</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>يلغي</translation>
+    </message>
+    <message>
+        <source>Dynamic Event Editor</source>
+        <translation>محرر الأحداث الديناميكية</translation>
+    </message>
+    <message>
+        <source>EMT Event Editor</source>
+        <translation>محرر أحداث EMT</translation>
+    </message>
+    <message>
+        <source>EMT group Created</source>
+        <translation>تم إنشاء مجموعة EMT</translation>
+    </message>
+    <message>
+        <source>End Time</source>
+        <translation>وقت الانتهاء</translation>
+    </message>
+    <message>
+        <source>Group</source>
+        <translation>مجموعة</translation>
+    </message>
+    <message>
+        <source>Group: {group_name}</source>
+        <translation>المجموعة: {group_name}</translation>
+    </message>
+    <message>
+        <source>Invalid Input</source>
+        <translation>إدخال غير صالح</translation>
+    </message>
+    <message>
+        <source>Missing fields</source>
+        <translation>حقول مفقودة</translation>
+    </message>
+    <message>
+        <source>New Value</source>
+        <translation>قيمة جديدة</translation>
+    </message>
+    <message>
+        <source>New group name</source>
+        <translation>اسم مجموعة جديد</translation>
+    </message>
+    <message>
+        <source>New row {row_number}</source>
+        <translation>صف جديد {row_number}</translation>
+    </message>
+    <message>
+        <source>No EMT Events Group</source>
+        <translation>لا توجد مجموعة أحداث EMT</translation>
+    </message>
+    <message>
+        <source>No EMT Events Group found, please create one before adding an event.</source>
+        <translation>لم يتم العثور على مجموعة أحداث EMT، يرجى إنشاء واحدة قبل إضافة حدث.</translation>
+    </message>
+    <message>
+        <source>No Events</source>
+        <translation>لا توجد أحداث</translation>
+    </message>
+    <message>
+        <source>No RMS Events Group</source>
+        <translation>لا توجد مجموعة أحداث RMS</translation>
+    </message>
+    <message>
+        <source>No RMS Events Group found, please create one before adding an event.</source>
+        <translation>لم يتم العثور على مجموعة أحداث RMS، يرجى إنشاء واحدة قبل إضافة حدث.</translation>
+    </message>
+    <message>
+        <source>No Rows Selected</source>
+        <translation>لم يتم تحديد أي صفوف</translation>
+    </message>
+    <message>
+        <source>No switch EMT mode parameter is available in this device.</source>
+        <translation>لا يتوفر معلمة وضع EMT للتبديل في هذا الجهاز.</translation>
+    </message>
+    <message>
+        <source>Overlapping Events</source>
+        <translation>أحداث متداخلة</translation>
+    </message>
+    <message>
+        <source>Parameter</source>
+        <translation>معلمة</translation>
+    </message>
+    <message>
+        <source>Please add at least one event before confirming.</source>
+        <translation>يرجى إضافة حدث واحد على الأقل قبل التأكيد.</translation>
+    </message>
+    <message>
+        <source>Please check at least one row to remove.</source>
+        <translation>يرجى تحديد صف واحد على الأقل للإزالة.</translation>
+    </message>
+    <message>
+        <source>RMS Event Editor</source>
+        <translation>محرر أحداث RMS</translation>
+    </message>
+    <message>
+        <source>RMS group Created</source>
+        <translation>تم إنشاء مجموعة RMS</translation>
+    </message>
+    <message>
+        <source>Ramp</source>
+        <translation>منحدر</translation>
+    </message>
+    <message>
+        <source>Row {row_number}: {message}</source>
+        <translation>الصف {row_number}: {message}</translation>
+    </message>
+    <message>
+        <source>Some events are overlapped and cannot be applied.</source>
+        <translation>بعض الأحداث متداخلة ولا يمكن تطبيقها.</translation>
+    </message>
+    <message>
+        <source>Step</source>
+        <translation>خطوة</translation>
+    </message>
+    <message>
+        <source>Switch Sequence</source>
+        <translation>تسلسل التبديل</translation>
+    </message>
+    <message>
+        <source>Switch Sequence Wizard</source>
+        <translation>معالج تسلسل التبديل</translation>
+    </message>
+    <message>
+        <source>Target device:</source>
+        <translation>الجهاز المستهدف:</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>الوقت</translation>
+    </message>
+    <message>
+        <source>Transition</source>
+        <translation>انتقال</translation>
+    </message>
+    <message>
+        <source>group has invalid type</source>
+        <translation>المجموعة لها نوع غير صالح</translation>
+    </message>
+    <message>
+        <source>parameter must be Var</source>
+        <translation>يجب أن تكون المعلمة من نوع Var</translation>
+    </message>
+    <message>
+        <source>transition_type must be DynamicEventTransitionType</source>
+        <translation>يجب أن يكون نوع الانتقال من نوع DynamicEventTransitionType</translation>
+    </message>
+    <message>
+        <source>{origin}: {transition}, parameter={parameter}, time={time:.4f} s, end_time={end_time:.4f} s, value={value:.6f}</source>
+        <translation>{origin}: {transition}, المعلمة={parameter}, الوقت={time:.4f} ث, وقت الانتهاء={end_time:.4f} ث, القيمة={value:.6f}</translation>
+    </message>
+    <message>
+        <source>{origin}: {transition}, parameter={parameter}, time={time:.4f} s, value={value:.6f}</source>
+        <translation>{origin}: {transition}, المعلمة={parameter}, الوقت={time:.4f} ث, القيمة={value:.6f}</translation>
+    </message>
+    <message>
+        <source>{prefix}: {group_name}</source>
+        <translation>{prefix}: {group_name}</translation>
+    </message>
+    <message>
+        <source>✅ Add Events</source>
+        <translation>✅ إضافة الأحداث</translation>
+    </message>
+    <message>
+        <source>❌ Remove Selected Rows</source>
+        <translation>❌ إزالة الصفوف المحددة</translation>
+    </message>
+    <message>
+        <source>➕ Add New Event</source>
+        <translation>➕ إضافة حدث جديد</translation>
+    </message>
+    <message>
+        <source>➕ New Event Group</source>
+        <translation>➕ مجموعة حدث جديدة</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventsGroupsDialog</name>
+    <message>
+        <source>Create EMT Events Group</source>
+        <translation>إنشاء مجموعة أحداث EMT</translation>
+    </message>
+    <message>
+        <source>Create RMS Events Group</source>
+        <translation>إنشاء مجموعة أحداث RMS</translation>
+    </message>
+    <message>
+        <source>Enter group name</source>
+        <translation>إدخال اسم المجموعة</translation>
+    </message>
+    <message>
+        <source>Invalid name</source>
+        <translation>اسم غير صالح</translation>
+    </message>
+    <message>
+        <source>Name:</source>
+        <translation>اسم:</translation>
+    </message>
+    <message>
+        <source>The name cannot be empty.</source>
+        <translation>لا يمكن أن يكون الاسم فارغًا.</translation>
+    </message>
+</context>
+<context>
     <name>DynamicsResultsHandler</name>
     <message>
         <source>X-Y plot slot</source>
@@ -2291,6 +3083,17 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
     </message>
 </context>
 <context>
+    <name>EquationLatexModel</name>
+    <message>
+        <source>Equation</source>
+        <translation>معادلة</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>النوع</translation>
+    </message>
+</context>
+<context>
     <name>ExcelSelectionDialog</name>
     <message>
         <location filename="../FileDialogues/ProfilesInput/excel_sheet_selection.ui" line="20"/>
@@ -2313,13 +3116,13 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
         <translation>اختر كيفية تحميل الملف</translation>
     </message>
     <message>
-        <source>You've passed a generic list of files
+        <source>You&apos;ve passed a generic list of files
 select the expected processing format</source>
         <translation>لقد مررت بقائمة عامة من الملفات
 اختر تنسيق المعالجة المتوقع</translation>
     </message>
     <message>
-        <source>You've passed a generic of file
+        <source>You&apos;ve passed a generic of file
 select the expected processing format</source>
         <translation>لقد مررت بتنسيق عام للملف
 اختر تنسيق المعالجة المتوقع</translation>
@@ -2398,6 +3201,121 @@ select the expected processing format</source>
         <location filename="../DeviceEditors/GeneratorEditor/generator_editor_gui.ui" line="95"/>
         <source>Del</source>
         <translation>ديل</translation>
+    </message>
+</context>
+<context>
+    <name>GridGeneratorGUI</name>
+    <message>
+        <source>Grid Generator</source>
+        <translation>مولد الشبكة</translation>
+    </message>
+    <message>
+        <source>Warning</source>
+        <translation>تحذير</translation>
+    </message>
+</context>
+<context>
+    <name>GridMapWidget</name>
+    <message>
+        <source>Connection Error</source>
+        <translation>خطأ في الاتصال</translation>
+    </message>
+    <message>
+        <source>No suitable voltage level ({voltage:.2f} kV) found in substation &quot;{substation_name}&quot;.</source>
+        <translation>لم يتم العثور على مستوى جهد مناسب ({voltage:.2f} كيلوفولت) في المحطة الفرعية &quot;{substation_name}&quot;.</translation>
+    </message>
+    <message>
+        <source>Operation Successful</source>
+        <translation>نجحت العملية</translation>
+    </message>
+    <message>
+        <source>Please select exactly one line and one substation.</source>
+        <translation>يرجى تحديد خط واحد ومحطة فرعية واحدة بالضبط.</translation>
+    </message>
+    <message>
+        <source>Selection Error</source>
+        <translation>خطأ في التحديد</translation>
+    </message>
+    <message>
+        <source>T-joint connection created between {substation_name} and {line_name}.</source>
+        <translation>تم إنشاء وصلة T بين {substation_name} و {line_name}.</translation>
+    </message>
+    <message>
+        <source>The line cannot be connected. Please ensure the target substation has a bus with a matching nominal voltage.</source>
+        <translation>لا يمكن توصيل الخط. يرجى التأكد من أن المحطة الفرعية المستهدفة تحتوي على ناقل بجهد اسمي مطابق.</translation>
+    </message>
+    <message>
+        <source>Waypoint replaced with new substation &apos;{substation_name}&apos;.
+Original line split into two segments:
+- {line1_name}: {length1:.2f} km
+- {line2_name}: {length2:.2f} km
+New connection line: {distance:.2f} km</source>
+        <translation>تم استبدال نقطة الطريق بمحطة فرعية جديدة &apos;{substation_name}&apos;.
+تم تقسيم الخط الأصلي إلى قطاعين:
+- {line1_name}: {length1:.2f} كم
+- {line2_name}: {length2:.2f} كم
+خط التوصيل الجديد: {distance:.2f} كم</translation>
+    </message>
+    <message>
+        <source>Circuit ID</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Create new line</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Do you want to delete the substation where the lines were connecting? This will open the substation deletion menu, with the information of the items that would be removed.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Do you want to finalize the editing of the substation in the schematic?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Do you want to transform to substation the selected waypoint? This operation will split the line at the selected location, and will connect the new ends to the new substation.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Do you want to update lengths of lines? 
+IMPORTANT: This will take into account every movement of substation and line locations. If you are unsure of the effects of this updating, click no and perform the individual length update in a new map or in the specific line.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Please select two substations</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Remove substation?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select circuit ID</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Some of the buses was None :(</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Somehow the two substations are the same :(</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The nominal voltage of the two connecting substations is not the same :(</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Transform waypoint to substation?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Update lengths?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>create substation diagram</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -2867,6 +3785,73 @@ Cancel and retry?</source>
         <location filename="../DeviceEditors/LineLocationsEditor/line_locations_editor_gui.ui" line="89"/>
         <source>Paste</source>
         <translation>لصق</translation>
+    </message>
+    <message>
+        <source>CSV files (*.csv);;All files (*)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>CSV files (*.csv);;Text files (*.txt);;All files (*)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Export coordinates</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Import coordinates</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Locations</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>LogsDialogue</name>
+    <message>
+        <source>Accept</source>
+        <translation>يقبل</translation>
+    </message>
+    <message>
+        <source>CSV (*.csv);;Excel files (*.xlsx)</source>
+        <translation>CSV (*.csv)؛؛ملفات Excel (*.xlsx)</translation>
+    </message>
+    <message>
+        <source>Class</source>
+        <translation>الفئة</translation>
+    </message>
+    <message>
+        <source>Copy</source>
+        <translation>ينسخ</translation>
+    </message>
+    <message>
+        <source>Device</source>
+        <translation>الجهاز</translation>
+    </message>
+    <message>
+        <source>Expected value</source>
+        <translation>القيمة المتوقعة</translation>
+    </message>
+    <message>
+        <source>Export results</source>
+        <translation>تصدير النتائج</translation>
+    </message>
+    <message>
+        <source>Property</source>
+        <translation>الخاصية</translation>
+    </message>
+    <message>
+        <source>Save</source>
+        <translation>يحفظ</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>الوقت</translation>
+    </message>
+    <message>
+        <source>Value</source>
+        <translation>القيمة</translation>
     </message>
 </context>
 <context>
@@ -4096,6 +5081,42 @@ Cancel and retry?</source>
         <source>{status_text} Min distance {min_distance:.3f} p.u. • mean distance {mean_distance:.3f} p.u.</source>
         <translation>{status_text} الحد الأدنى للمسافة {min_distance:.3f} p.u. • متوسط المسافة {mean_distance:.3f} p.u.</translation>
     </message>
+    <message>
+        <source>Open-Meteo did not return hourly weather data</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>PVGIS did not return photovoltaic power data</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>PVGIS returned data, but it could not be interpolated to the circuit time profile</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The hub height must be greater than zero</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The latitude must be between -90 and 90 degrees</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The longitude must be between -180 and 180 degrees</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The photovoltaic peak power must be greater than zero</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The roughness length must be zero or greater</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The wind generator peak power must be greater than zero</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>MatpowerExportDialog</name>
@@ -4123,6 +5144,68 @@ Cancel and retry?</source>
         <location filename="../FileDialogues/MatpowerDialogue/matpower_export_gui.ui" line="72"/>
         <source>Export</source>
         <translation>يصدّر</translation>
+    </message>
+</context>
+<context>
+    <name>NewProfilesStructureDialogue</name>
+    <message>
+        <source>Accept</source>
+        <translation>يقبل</translation>
+    </message>
+    <message>
+        <source>New profiles structure</source>
+        <translation>هيكل الملفات الشخصية الجديد</translation>
+    </message>
+    <message>
+        <source>Number of time steps</source>
+        <translation>عدد الخطوات الزمنية</translation>
+    </message>
+    <message>
+        <source>Start date</source>
+        <translation>تاريخ البدء</translation>
+    </message>
+    <message>
+        <source>Time step length</source>
+        <translation>طول الخطوة الزمنية</translation>
+    </message>
+    <message>
+        <source>Time units</source>
+        <translation>وحدات الوقت</translation>
+    </message>
+</context>
+<context>
+    <name>ObjectColumnFilterDialog</name>
+    <message>
+        <source>Apply</source>
+        <translation>تطبيق</translation>
+    </message>
+    <message>
+        <source>Cancel filter</source>
+        <translation>إلغاء التصفية</translation>
+    </message>
+    <message>
+        <source>Clear filter</source>
+        <translation>مسح التصفية</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>يبحث</translation>
+    </message>
+    <message>
+        <source>Select all visible</source>
+        <translation>تحديد الكل المرئي</translation>
+    </message>
+    <message>
+        <source>Select no visible</source>
+        <translation>تحديد لا شيء مرئي</translation>
+    </message>
+    <message>
+        <source>Sort A to Z</source>
+        <translation>الفرز من أ إلى ي</translation>
+    </message>
+    <message>
+        <source>Sort Z to A</source>
+        <translation>الفرز من ي إلى أ</translation>
     </message>
 </context>
 <context>
@@ -4411,6 +5494,45 @@ Are you ok with potentially waiting a lot?</source>
     </message>
 </context>
 <context>
+    <name>RmsPlotDialog</name>
+    <message>
+        <source>Add</source>
+        <translation>يضيف</translation>
+    </message>
+    <message>
+        <source>Device:</source>
+        <translation>الجهاز:</translation>
+    </message>
+    <message>
+        <source>Plot Variables</source>
+        <translation>رسم المتغيرات</translation>
+    </message>
+    <message>
+        <source>Plot Window</source>
+        <translation>نافذة الرسم</translation>
+    </message>
+    <message>
+        <source>Remove variable</source>
+        <translation>إزالة المتغير</translation>
+    </message>
+    <message>
+        <source>Rms Simulation Results</source>
+        <translation>نتائج محاكاة RMS</translation>
+    </message>
+    <message>
+        <source>Show in new window</source>
+        <translation>عرض في نافذة جديدة</translation>
+    </message>
+    <message>
+        <source>Variable:</source>
+        <translation>المتغير:</translation>
+    </message>
+    <message>
+        <source>time (s)</source>
+        <translation>الوقت (ث)</translation>
+    </message>
+</context>
+<context>
     <name>RosetaExplorer</name>
     <message>
         <location filename="../FileDialogues/RosetaExplorer/roseta_explorer.ui" line="23"/>
@@ -4467,6 +5589,235 @@ Are you ok with potentially waiting a lot?</source>
         <location filename="../FileDialogues/RosetaExplorer/roseta_explorer.ui" line="533"/>
         <source>Save logs</source>
         <translation>حفظ السجلات</translation>
+    </message>
+</context>
+<context>
+    <name>RosetaExplorerGUI</name>
+    <message>
+        <source>Copy</source>
+        <translation>ينسخ</translation>
+    </message>
+    <message>
+        <source>Copied table to clipboard!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Excel files (*.xlsx)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Export logs</source>
+        <translation>سجلات التصدير</translation>
+    </message>
+    <message>
+        <source>Logger</source>
+        <translation>المسجل</translation>
+    </message>
+    <message>
+        <source>There no logs :)</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>RuntimeLogicEditorWidget</name>
+    <message>
+        <source>Add entry</source>
+        <translation>إضافة إدخال</translation>
+    </message>
+    <message>
+        <source>Add retained mode</source>
+        <translation>إضافة وضع محتفظ به</translation>
+    </message>
+    <message>
+        <source>Configuration</source>
+        <translation>الإعدادات</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>يمسح</translation>
+    </message>
+    <message>
+        <source>Delete retained mode</source>
+        <translation>حذف وضع محتفظ به</translation>
+    </message>
+    <message>
+        <source>Documentation</source>
+        <translation>التوثيق</translation>
+    </message>
+    <message>
+        <source>Enter a procedural entry name.</source>
+        <translation>أدخل اسم إدخال إجرائي.</translation>
+    </message>
+    <message>
+        <source>Enter a valid retained-mode symbol name.</source>
+        <translation>أدخل اسم رمز وضع محتفظ به صالح.</translation>
+    </message>
+    <message>
+        <source>Enter an initial value or expression.</source>
+        <translation>أدخل قيمة أولية أو تعبيراً.</translation>
+    </message>
+    <message>
+        <source>Entry name</source>
+        <translation>اسم الإدخال</translation>
+    </message>
+    <message>
+        <source>Initial value or expression</source>
+        <translation>القيمة الأولية أو التعبير</translation>
+    </message>
+    <message>
+        <source>Mode symbol name</source>
+        <translation>اسم رمز الوضع</translation>
+    </message>
+    <message>
+        <source>Move down</source>
+        <translation>النزول</translation>
+    </message>
+    <message>
+        <source>Move up</source>
+        <translation>الصعود</translation>
+    </message>
+    <message>
+        <source>Owner</source>
+        <translation>المالك</translation>
+    </message>
+    <message>
+        <source>Procedural entries</source>
+        <translation>الإدخالات الإجرائية</translation>
+    </message>
+    <message>
+        <source>Retained modes</source>
+        <translation>الأوضاع المحتفظ بها</translation>
+    </message>
+    <message>
+        <source>Runtime logic is valid.</source>
+        <translation>Runtime logic is valid.</translation>
+    </message>
+    <message>
+        <source>Select a valid owner and procedural type.</source>
+        <translation>Select a valid owner and procedural type.</translation>
+    </message>
+    <message>
+        <source>Select a valid owner block.</source>
+        <translation>اختر كتلة مالكة صالحة.</translation>
+    </message>
+    <message>
+        <source>Select one procedural entry to delete.</source>
+        <translation>Select one procedural entry to delete.</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>النوع</translation>
+    </message>
+    <message>
+        <source>Valid runtime logic. Warnings: </source>
+        <translation>Valid runtime logic. Warnings: </translation>
+    </message>
+    <message>
+        <source>Validate runtime logic</source>
+        <translation>التحقق من منطق التشغيل</translation>
+    </message>
+</context>
+<context>
+    <name>ScenariosMain</name>
+    <message>
+        <source>Add child scenario</source>
+        <translation>إضافة سيناريو فرعي</translation>
+    </message>
+    <message>
+        <source>Commit scenario</source>
+        <translation>سيناريو الالتزام</translation>
+    </message>
+    <message>
+        <source>Merge children into scenario</source>
+        <translation>دمج الأطفال في السيناريو</translation>
+    </message>
+    <message>
+        <source>Remove scenario</source>
+        <translation>إزالة السيناريو</translation>
+    </message>
+    <message>
+        <source>Rename scenario</source>
+        <translation>إعادة تسمية السيناريو</translation>
+    </message>
+    <message>
+        <source>Set as current scenario</source>
+        <translation>تعيين كسيناريو حالي</translation>
+    </message>
+    <message>
+        <source>Add Child Scenario</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Commit Scenario</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Enter scenario name:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Failed to merge child scenarios</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Failed to remove scenario</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Invalid parent scenario selected</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Invalid scenario selected</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Merge Children</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Only the current scenario can be committed. Activate it first.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Please select a parent scenario first</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Please select a scenario to commit</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Please select a scenario to merge into</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Please select a scenario to remove</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Please select a scenario to rename</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Please select a scenario to set as current</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Remove Scenario</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Rename Scenario</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Scenario name cannot be empty</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Set Current Scenario</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -4776,6 +6127,29 @@ Monte Carlo power flow results:</source>
     </message>
 </context>
 <context>
+    <name>SelectionDialog</name>
+    <message>
+        <source>Cancel</source>
+        <translation>يلغي</translation>
+    </message>
+    <message>
+        <source>Click on a substation to reconnect branch {branch_name}</source>
+        <translation>انقر على محطة فرعية لإعادة توصيل الفرع {branch_name}</translation>
+    </message>
+    <message>
+        <source>The substation should have a compatible voltage level ({voltage} kV)</source>
+        <translation>يجب أن تحتوي المحطة الفرعية على مستوى جهد متوافق ({voltage} كيلوفولت)</translation>
+    </message>
+    <message>
+        <source>Waiting for Selection</source>
+        <translation>في انتظار التحديد</translation>
+    </message>
+    <message>
+        <source>Waiting for selection...</source>
+        <translation>في انتظار التحديد...</translation>
+    </message>
+</context>
+<context>
     <name>ServerFileDialog</name>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="14"/>
@@ -4902,6 +6276,25 @@ Monte Carlo power flow results:</source>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="309"/>
         <source>Delete the selected file or model from the server database</source>
         <translation>حذف الملف أو النموذج المحدد من قاعدة بيانات الخادم</translation>
+    </message>
+</context>
+<context>
+    <name>ServerFileDialogue</name>
+    <message>
+        <source>Delete server file</source>
+        <translation>حذف ملف الخادم</translation>
+    </message>
+    <message>
+        <source>Delete server model</source>
+        <translation>حذف نموذج الخادم</translation>
+    </message>
+    <message>
+        <source>Delete the selected file and every model inside it?</source>
+        <translation>هل تريد حذف الملف المحدد وجميع النماذج بداخله؟</translation>
+    </message>
+    <message>
+        <source>Delete the selected model from the server database?</source>
+        <translation>هل تريد حذف النموذج المحدد من قاعدة بيانات الخادم؟</translation>
     </message>
 </context>
 <context>
@@ -5172,6 +6565,258 @@ Monte Carlo power flow results:</source>
     </message>
 </context>
 <context>
+    <name>SigmaAnalysisGUI</name>
+    <message>
+        <source>CSV (*.csv);;Excel files (*.xlsx)</source>
+        <translation>CSV (*.csv)؛؛ملفات Excel (*.xlsx)</translation>
+    </message>
+    <message>
+        <source>Export results</source>
+        <translation>تصدير النتائج</translation>
+    </message>
+    <message>
+        <source>HELM-Sigma analysis dialogue</source>
+        <translation>حوار تحليل HELM-Sigma</translation>
+    </message>
+    <message>
+        <source>Sigma analysis completed</source>
+        <translation>اكتمل تحليل سيجما</translation>
+    </message>
+    <message>
+        <source>Sigma analysis did not return results</source>
+        <translation>لم يرجع تحليل سيجما نتائج</translation>
+    </message>
+    <message>
+        <source>Sigma coefficients did not converge :(</source>
+        <translation>لم تتقارب معاملات سيجما :(</translation>
+    </message>
+    <message>
+        <source>Snapshot</source>
+        <translation>لقطة</translation>
+    </message>
+    <message>
+        <source>This window was opened without a circuit/options rerun context.</source>
+        <translation>تم فتح هذه النافذة بدون سياق إعادة تشغيل الدائرة/الخيارات.</translation>
+    </message>
+    <message>
+        <source>Warning</source>
+        <translation>تحذير</translation>
+    </message>
+</context>
+<context>
+    <name>SimulationsMain</name>
+    <message>
+        <source>Compiling the grid...</source>
+        <translation>جاري تجميع الشبكة...</translation>
+    </message>
+    <message>
+        <source>Model v. {model_version}</source>
+        <translation>الموديل ضد {model_version}</translation>
+    </message>
+    <message>
+        <source>Pareto combination</source>
+        <translation>تركيبة باريتو</translation>
+    </message>
+    <message>
+        <source>Pareto combination {index}</source>
+        <translation>تركيبة باريتو {index}</translation>
+    </message>
+    <message>
+        <source>Running power flow...</source>
+        <translation>جاري تشغيل تدفق الطاقة...</translation>
+    </message>
+    <message>
+        <source>Short circuits</source>
+        <translation>الدوائر القصيرة</translation>
+    </message>
+    <message>
+        <source>User: {user_name}</source>
+        <translation>المستخدم: {user_name}</translation>
+    </message>
+    <message>
+        <source>idtag. {idtag}</source>
+        <translation>معرف. {idtag}</translation>
+    </message>
+    <message>
+        <source>Another PTDF time series is being executed now...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Another short circuit is being executed now...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Catalogue optimization</source>
+        <translation>تحسين الكتالوج</translation>
+    </message>
+    <message>
+        <source>Catalogue optimization requires an active schematic diagram with a selection.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Clustering</source>
+        <translation>التجميع</translation>
+    </message>
+    <message>
+        <source>Continuation Power Flow</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Emt simulation</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>For this simulation, you need to select some buses from the interface</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Fuse devices</source>
+        <translation>أجهزة الصمامات</translation>
+    </message>
+    <message>
+        <source>No problems were detected, therefore no storage is suggested</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Nodal hosting capacity</source>
+        <translation>قدرة الاستضافة العقدية</translation>
+    </message>
+    <message>
+        <source>Power flow</source>
+        <translation>تدفق الطاقة</translation>
+    </message>
+    <message>
+        <source>RMS pre simulation check</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Rms simulation</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Run a power flow simulation first.
+The results are needed to initialize this simulation.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select at least one AC line or two-winding transformer in the schematic before running the catalogue optimization.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Small-Signal Stability analysis EMT</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Small-Signal Stability analysis RMS</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Small-signal stability EMT pre simulation check</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Small-signal stability RMS pre simulation check</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no power short circuit results.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>State estimation</source>
+        <translation>تقدير الدولة</translation>
+    </message>
+    <message>
+        <source>Storage location</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The "from" aggregation has no buses!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The area "from" has no buses!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The area "to" has no buses!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The number of clusters in the stored results is different from the specified :(
+Run another clustering analysis.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The simulation time is 0. Change it to a proper time in settings.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There are no OPF results, therefore this operation will not use OPF information.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There are no OPF time series, therefore this operation will not use OPF information.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There are no Small-Signal Stability analysis EMT results.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There are no Small-Signal Stability analysis RMS results.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There are no compatible areas</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There are no emt simulation results.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There are no inter-area Branches!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There are no investment groups, you need to create some so that VeraGrid can evaluate them ;)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There are no power flow results.
+Is there any slack bus or generator?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There are no rms simulation results.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There are no state estimation results.
+Is there any slack bus or generator?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There is no time series simulation.
+ It is needed for this functionality.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There were no power flow values available. Linear flows will be used.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>This action will fuse all the devices per node and per category. Are you sure?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>You have selected a group of buses with no power injection.
+this will result in an infinite continuation, since the loading variation of buses with zero injection will be infinite.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>SubstationDesigner</name>
     <message>
         <source>Substation maker</source>
@@ -5184,6 +6829,134 @@ Monte Carlo power flow results:</source>
     <message>
         <source>There are no voltage levels, so no substation will be created, ok?</source>
         <translation>لا توجد مستويات جهد، لذلك لن يتم إنشاء محطة فرعية، حسنًا؟</translation>
+    </message>
+</context>
+<context>
+    <name>SwitchSequenceDialog</name>
+    <message>
+        <source>Add Sequence Step</source>
+        <translation>إضافة خطوة تسلسل</translation>
+    </message>
+    <message>
+        <source>Add at least one sequence row.</source>
+        <translation>أضف صف تسلسل واحد على الأقل.</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>يغلق</translation>
+    </message>
+    <message>
+        <source>Group</source>
+        <translation>مجموعة</translation>
+    </message>
+    <message>
+        <source>Mode Parameter</source>
+        <translation>معامل النمط</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation>فتح</translation>
+    </message>
+    <message>
+        <source>Please check at least one row to remove.</source>
+        <translation>يرجى تحديد صف واحد على الأقل للإزالة.</translation>
+    </message>
+    <message>
+        <source>Remove Selected Rows</source>
+        <translation>إزالة الصفوف المحددة</translation>
+    </message>
+    <message>
+        <source>Select a mode parameter and an events group.</source>
+        <translation>حدد معامل نمط ومجموعة أحداث.</translation>
+    </message>
+    <message>
+        <source>State</source>
+        <translation>الحالة</translation>
+    </message>
+    <message>
+        <source>Switch Sequence</source>
+        <translation>تسلسل التبديل</translation>
+    </message>
+    <message>
+        <source>Switch Sequence Wizard</source>
+        <translation>معالج تسلسل التبديل</translation>
+    </message>
+    <message>
+        <source>The selected parameter or group is invalid.</source>
+        <translation>المعامل أو المجموعة المحددة غير صالح.</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>الوقت</translation>
+    </message>
+</context>
+<context>
+    <name>SystemScaler</name>
+    <message>
+        <source>Aggregated energy scaling preview</source>
+        <translation>معاينة تحجيم الطاقة المجمعة</translation>
+    </message>
+    <message>
+        <source>Aggregated power scaling preview</source>
+        <translation>معاينة تحجيم القدرة المجمعة</translation>
+    </message>
+    <message>
+        <source>MW</source>
+        <translation>مواط</translation>
+    </message>
+    <message>
+        <source>MWh</source>
+        <translation>مواط ساعة</translation>
+    </message>
+    <message>
+        <source>Original generation</source>
+        <translation>التوليد الأصلي</translation>
+    </message>
+    <message>
+        <source>Original generation energy</source>
+        <translation>طاقة التوليد الأصلية</translation>
+    </message>
+    <message>
+        <source>Original load</source>
+        <translation>الحمل الأصلي</translation>
+    </message>
+    <message>
+        <source>Original load energy</source>
+        <translation>طاقة الحمل الأصلية</translation>
+    </message>
+    <message>
+        <source>Press plot to preview scaling</source>
+        <translation>اضغط على الرسم البياني لمعاينة التحجيم</translation>
+    </message>
+    <message>
+        <source>Scaled generation</source>
+        <translation>التوليد المُقاس</translation>
+    </message>
+    <message>
+        <source>Scaled generation energy</source>
+        <translation>طاقة التوليد المُقاس</translation>
+    </message>
+    <message>
+        <source>Scaled load</source>
+        <translation>الحمل المُقاس</translation>
+    </message>
+    <message>
+        <source>Scaled load energy</source>
+        <translation>طاقة الحمل المُقاس</translation>
+    </message>
+    <message>
+        <source>System scaling</source>
+        <translation>تحجيم النظام</translation>
+    </message>
+    <message>
+        <source>There is no time series to plot.</source>
+        <translation>لا توجد سلسلة زمنية للرسم.</translation>
+    </message>
+    <message>
+        <source>This operation will alter the generation and load composition irreversibly
+Are you sure?</source>
+        <translation>سيؤدي هذا الإجراء إلى تغيير تكوين التوليد والحمل بشكل لا رجعة فيه
+هل أنت متأكد؟</translation>
     </message>
 </context>
 <context>
@@ -5232,6 +7005,29 @@ Monte Carlo power flow results:</source>
         <location filename="../DeviceEditors/TemplateDeviceEditor/template_device_editor_gui.ui" line="240"/>
         <source>Units</source>
         <translation>الوحدات</translation>
+    </message>
+</context>
+<context>
+    <name>TimeReIndexDialogue</name>
+    <message>
+        <source>Accept</source>
+        <translation>يقبل</translation>
+    </message>
+    <message>
+        <source>Start date</source>
+        <translation>تاريخ البدء</translation>
+    </message>
+    <message>
+        <source>Time re-index</source>
+        <translation>إعادة فهرسة الوقت</translation>
+    </message>
+    <message>
+        <source>Time step length</source>
+        <translation>طول الخطوة الزمنية</translation>
+    </message>
+    <message>
+        <source>Time units</source>
+        <translation>وحدات الوقت</translation>
     </message>
 </context>
 <context>
@@ -11169,1136 +12965,1269 @@ Monte Carlo power flow results:</source>
     </message>
 </context>
 <context>
-    <name>ArrayEditor</name>
+    <name>BaseDiagramWidget</name>
     <message>
-        <source>Add</source>
-        <translation>يضيف</translation>
+        <source>No time series results to plot, run some time series results. Even partial results are fine</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Array Editor</source>
-        <translation>محرر المصفوفة</translation>
+        <source>Overwrite the active profile</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Delete</source>
-        <translation>يمسح</translation>
-    </message>
-</context>
-<context>
-    <name>BlockParameterDraftModel</name>
-    <message>
-        <source>Name</source>
-        <translation>اسم</translation>
-    </message>
-    <message>
-        <source>Numeric value. Changes are staged until Apply changes is pressed.</source>
-        <translation>قيمة رقمية. يتم تأجيل التغييرات حتى يتم الضغط على تطبيق التغييرات.</translation>
-    </message>
-    <message>
-        <source>Real value or symbolic initialization expression. Changes are staged until Apply changes is pressed.</source>
-        <translation>قيمة حقيقية أو تعبير تهيئة رمزي. يتم تأجيل التغييرات حتى يتم الضغط على تطبيق التغييرات.</translation>
-    </message>
-    <message>
-        <source>Type</source>
-        <translation>النوع</translation>
-    </message>
-    <message>
-        <source>Value</source>
-        <translation>القيمة</translation>
+        <source>Overwrite the profile</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>BlockSymbolFilterProxyModel</name>
+    <name>BusGraphicItem</name>
     <message>
-        <source>Initializes a variable through VarPowerFlowReferenceType and block.external_mapping.</source>
-        <translation>يهيئ متغيرًا من خلال VarPowerFlowReferenceType و block.external_mapping.</translation>
+        <source>Do you want to update the time series active status accordingly?</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Maps a static parameter through ParamPowerFlowReferenceType to block.api_obj_mapping. Dynamic parameters are not editable here.</source>
-        <translation>يربط معلمة ثابتة من خلال ParamPowerFlowReferenceType بـ block.api_obj_mapping. المعلمات الديناميكية غير قابلة للتحرير هنا.</translation>
+        <source>The api object is none :(</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Power-flow derived initialization</source>
-        <translation>تهيئة مشتقة من تدفق الطاقة</translation>
-    </message>
-    <message>
-        <source>Static parameter mapping</source>
-        <translation>تخطيط المعلمات الثابتة</translation>
+        <source>Update time series active status</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>CorrectInconsistenciesDialogue</name>
+    <name>BusSelectorDialogue</name>
     <message>
-        <source>Accept</source>
-        <translation>يقبل</translation>
-    </message>
-    <message>
-        <source>Correct inconsistencies</source>
-        <translation>تصحيح التناقضات</translation>
-    </message>
-    <message>
-        <source>Maximum generator set point</source>
-        <translation>أقصى نقطة ضبط للمولد</translation>
-    </message>
-    <message>
-        <source>Maximum virtual tap difference</source>
-        <translation>الحد الأقصى لفرق التحويل الافتراضي</translation>
-    </message>
-    <message>
-        <source>Minimum generator set point</source>
-        <translation>أدنى نقطة ضبط للمولد</translation>
+        <source>Bus selection</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>DataBaseTableMain</name>
+    <name>CatalogueGUI</name>
     <message>
-        <source>Add</source>
-        <translation>يضيف</translation>
+        <source>Can't upload file</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Add to current diagram</source>
-        <translation>أضف إلى الرسم البياني الحالي</translation>
+        <source>Custom Catalogue</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>CgmesExportDialogue</name>
+    <message>
+        <source>CGMES export</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Assign to profile</source>
-        <translation>تعيين إلى الملف الشخصي</translation>
+        <source>Export to CGMES</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>CgmesImportDialogue</name>
+    <message>
+        <source>CGMES import</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>ConsoleMainWindow</name>
+    <message>
+        <source>PySide6 Python Console</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>ContingencyPlannerGUI</name>
+    <message>
+        <source>Contingency planner</source>
+        <translation>مخطط الطوارئ</translation>
+    </message>
+</context>
+<context>
+    <name>ControllableShuntDeviceEditor</name>
+    <message>
+        <source>Controllable shunt editor</source>
+        <translation>محرر تحويلة يمكن السيطرة عليها</translation>
+    </message>
+</context>
+<context>
+    <name>ControllableShuntEditor</name>
+    <message>
+        <source>Controllable shunt editor</source>
+        <translation>محرر تحويلة يمكن السيطرة عليها</translation>
+    </message>
+</context>
+<context>
+    <name>CoordinatesInputGUI</name>
+    <message>
+        <source>Coordinates import dialogue</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Colour branches like this</source>
-        <translation>فروع اللون مثل هذا</translation>
+        <source>Duplicated headers</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Copy idtag</source>
-        <translation>انسخ idtag</translation>
+        <source>Only one file accepted :(</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Copy table</source>
-        <translation>نسخ الجدول</translation>
+        <source>Open file</source>
+        <translation>افتح الملف</translation>
+    </message>
+</context>
+<context>
+    <name>DcLineDeviceEditor</name>
+    <message>
+        <source>DC line design widget is not available</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Crop model to buses selection</source>
-        <translation>قص النموذج إلى اختيار القضبان</translation>
+        <source>DC line editor</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>DcLineEditor</name>
+    <message>
+        <source>Line editor</source>
+        <translation>محرر الخط</translation>
     </message>
     <message>
-        <source>Delete</source>
-        <translation>يمسح</translation>
+        <source>Load template</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>DgsExportDialogue</name>
+    <message>
+        <source>DGS export</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Duplicate object</source>
-        <translation>كائن مكرر</translation>
+        <source>Export to Power Factory</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>DgsImportDialogue</name>
+    <message>
+        <source>DGS import</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>DiagramBusSelectorDialogue</name>
+    <message>
+        <source>Bus selection by diagram</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Edit</source>
-        <translation>يحرر</translation>
+        <source>Select</source>
+        <translation>يختار</translation>
     </message>
+</context>
+<context>
+    <name>FluidNodeGraphicItem</name>
+    <message>
+        <source>Are you sure that you want to delete this fluid node</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No DB object attached :/</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No electrical bus attached :/</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Remove fluid node</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>FluidPathGraphicItem</name>
+    <message>
+        <source>Are you sure that you want to convert this fluid path into a line?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Convert fluid path</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>GeneratorEditor</name>
+    <message>
+        <source>Generate a solar profile first</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Generate a wind profile first</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Generator editor</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Solar editor is not available</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Solar profile applied to generator</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Wind editor is not available</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Wind profile applied to generator</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Wrong solar profile length</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Wrong wind profile length</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>GeneratorGraphicItem</name>
+    <message>
+        <source>Are you sure that you want to convert this generator into a battery?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Convert generator</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>GeneratorQCurveEditor</name>
+    <message>
+        <source>Reactive power curve editor</source>
+        <translation>محرر منحنى الطاقة التفاعلي</translation>
+    </message>
+</context>
+<context>
+    <name>GeneratorsProfileOptionsDialogue</name>
+    <message>
+        <source>Generator active power options</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>GenericDiagramWidget</name>
+    <message>
+        <source>Device editor</source>
+        <translation>محرر الجهاز</translation>
+    </message>
+</context>
+<context>
+    <name>GridDiffDialogue</name>
+    <message>
+        <source>Errors while computing the differential :(</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>File not found</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Grid differential</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No diff</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No differential created :(
+Did you load a base grid to compare?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open base grid</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Save file</source>
+        <translation>احفظ الملف</translation>
+    </message>
+    <message>
+        <source>The circuit has duplicated idtags and cannot be differentiated :(</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>VeraGrid diff (*.dveragrid)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Wait for the differential worker to finish before closing this window.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>GridMergeDialogue</name>
+    <message>
+        <source>Grid merges &amp; acquisitions</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The base circuit has duplicated idtags and cannot be merged :(</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The diff circuit has duplicated idtags and cannot be merged :(</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>GridReduceDialogue</name>
     <message>
         <source>Grid reduction</source>
         <translation>تخفيض الشبكة</translation>
     </message>
     <message>
-        <source>Highlight based on property</source>
-        <translation>تسليط الضوء على أساس الملكية</translation>
+        <source>Grid reduction?</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Highlight buses selection</source>
-        <translation>إبراز اختيار القضبان</translation>
+        <source>Import profiles</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Merge</source>
-        <translation>دمج</translation>
+        <source>No reduction happened</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>New diagram from selection</source>
-        <translation>رسم تخطيطي جديد من التحديد</translation>
-    </message>
-    <message>
-        <source>New map from selection</source>
-        <translation>خريطة جديدة من التحديد</translation>
-    </message>
-    <message>
-        <source>New vicinity diagram</source>
-        <translation>مخطط محيط جديد</translation>
-    </message>
-    <message>
-        <source>Set value to column</source>
-        <translation>اضبط القيمة على العمود</translation>
-    </message>
-    <message>
-        <source>Type the object name or a smart filter expression ...</source>
-        <translation>اكتب اسم الكائن أو تعبير تصفية ذكي...</translation>
+        <source>Run a power flow first! or select another method</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>DiagramsMain</name>
+    <name>HvdcGraphicItem</name>
     <message>
-        <source>Are you sure that you want to try an automatic layout?</source>
-        <translation>هل أنت متأكد أنك تريد محاولة تخطيط تلقائي؟</translation>
+        <source>Change by a VSC system</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Duplicate</source>
-        <translation>ينسخ</translation>
+        <source>Do you want to change the HvdcLine by 2 VSC converters + 1 DC Line?</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>InjectionTemplateGraphicItem</name>
+    <message>
+        <source>Do you want to update the time series active status accordingly?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Update time series active status</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>InspectModel</name>
+    <message>
+        <source>Equations</source>
+        <translation>المعادلات</translation>
+    </message>
+    <message>
+        <source>Parameters</source>
+        <translation>المعلمات</translation>
+    </message>
+    <message>
+        <source>Variables</source>
+        <translation>المتغيرات</translation>
+    </message>
+</context>
+<context>
+    <name>JMartiLineEmtDialog</name>
+    <message>
+        <source>Configure EMT J_Marti Line</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>EMT J_Marti line</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Enable at least one phase.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>NumPy archive (*.npz)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open JMARTI Frequency Samples</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select one NPZ file to import frequency samples.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The forced model order must be zero or less than or equal to the maximum model order.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The sweep sample count must be greater than or equal to the minimum frequency sample requirement.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The sweep upper frequency must be greater than the lower frequency.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>LineDeviceEditor</name>
+    <message>
+        <source>Line design widget is not available</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Line editor</source>
+        <translation>محرر الخط</translation>
+    </message>
+</context>
+<context>
+    <name>LineEditor</name>
+    <message>
+        <source>Accept line design values</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Line editor</source>
+        <translation>محرر الخط</translation>
+    </message>
+    <message>
+        <source>Line editor initialization</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Load template</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No Template Selected</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The length cannot be 0!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Warning: You did not load template values. The circuit index will not be updated. Line parameters will be based on the provided values for Length, Max Current, Resistance, Reactance, and Susceptance.
+
+Do you want to continue without a template?</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>LineGraphicItem</name>
+    <message>
+        <source>A template will be generated using this line values per unit of length</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Add sequence line type</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Are you sure that you want to convert this line into a HVDC line?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Are you sure that you want to convert this line into a UPFC device?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Are you sure that you want to convert this line into a VSC device?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Are you sure that you want to convert this line into a series reactance device?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Are you sure that you want to convert this line into a switch device?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Are you sure that you want to convert this line into a transformer?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Convert line</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Unable to convert to VSC. One of the buses must be DC and the other AC.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>LineGraphicTemplateItem</name>
+    <message>
+        <source>Do you want to update the time series active status accordingly?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Update time series active status</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>LineLocationGraphicItem</name>
+    <message>
+        <source>Move substation graphics</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>LoadDesigner</name>
+    <message>
+        <source>Load designer</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>LoadDeviceEditor</name>
+    <message>
+        <source>Generate a profile before applying it</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Load designer is not available</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Load editor</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Wrong load profile length</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>LookupArrayLinearDialog</name>
+    <message>
+        <source>Clipboard is empty.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Configure Lookup Table</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Lookup Table</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Lookup table clipboard data can only have up to two columns.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Lookup table x values must be strictly increasing.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Lookup tables require at least two points.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>LookupMatrixEditorDialog</name>
+    <message>
+        <source>At least two X breakpoints are required.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>At least two Y breakpoints are required.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Invalid X breakpoints</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Invalid Y breakpoints</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Invalid number of X points</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Invalid number of Y points</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Lookup matrix editor</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>X values must be strictly increasing.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Y values must be strictly increasing.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>LookupMatrixLinearDialog</name>
+    <message>
+        <source>At least two X points are required.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>At least two Y points are required.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Clipboard is empty.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Configure Lookup Matrix</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Lookup Matrix</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Lookup matrix requires at least two X points and two Y points.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>X axis values must be strictly increasing.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Y axis values must be strictly increasing.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>MapGeneratorGraphicItem</name>
+    <message>
+        <source>Are you sure that you want to convert this generator into a battery?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Convert generator</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>MapLineContainer</name>
+    <message>
+        <source>Do you want to update the time series active status accordingly?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Index out of range or invalid</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Update time series active status</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>split line</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>MapLineSegment</name>
+    <message>
+        <source>Do you want to update the time series active status accordingly?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Update time series active status</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>MapView</name>
+    <message>
+        <source>Bottom Left Label</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>MapWarningDialog</name>
+    <message>
+        <source>Action Required</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>MatpowerExportDialogue</name>
+    <message>
+        <source>Export to MATPOWER</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>MATPOWER export</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>ModelsInputGUI</name>
+    <message>
+        <source>Add files</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Do you want to clear the import data?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Models import dialogue</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select file</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There is an import procedure running.
+Cancel it and close the window?</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>NewMapLineDialogue</name>
+    <message>
+        <source>New line</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>ProceduralGridWindow</name>
+    <message>
+        <source>Procedural grid expansion</source>
+        <translation>توسيع الشبكة الإجرائية</translation>
+    </message>
+    <message>
+        <source>Procedural grid expansion log</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>ProfileInputGUI</name>
+    <message>
+        <source>Error</source>
+        <translation>خطأ</translation>
+    </message>
+    <message>
+        <source>File open</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Import issues</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Make sure this is a proper comma-separated-value file.
+ Otherwise use excel.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No time profile</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No time profile.
+Consider loading a valid source of data.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open file</source>
+        <translation>افتح الملف</translation>
+    </message>
+    <message>
+        <source>Value error loading CSV file</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>PsseExportDialogue</name>
+    <message>
+        <source>Export to PSS/e</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>PSS/e export</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>PsseImportDialogue</name>
+    <message>
+        <source>PSS/e import</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>ResultsModel</name>
+    <message>
+        <source>Plotting error</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>SchematicWidget</name>
+    <message>
+        <source> %</source>
+        <translation> %</translation>
+    </message>
+    <message>
+        <source> km</source>
+        <translation>كم</translation>
+    </message>
+    <message>
+        <source>Add extra buses?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Branch results length differs from the number of branch results. 
+Did you change the number of devices? If so, re-run the simulation.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Bus results length differs from the number of Bus results. 
+Did you change the number of devices? If so, re-run the simulation.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Change bus</source>
+        <translation>تغيير القضيب</translation>
+    </message>
+    <message>
+        <source>Distance from the splitting point</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Enter the distance from the beginning of the 
+line as a percentage of the total length</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>HVDC results length differs from the number of HVDC results. 
+Did you change the number of devices? If so, re-run the simulation.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Incorrect position</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Line split</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Move behind converter</source>
+        <translation>التحرك خلف المحول</translation>
+    </message>
+    <message>
+        <source>NW transformer</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select the number of windings</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Set VSC control device 1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Set regulation bus</source>
+        <translation>تعيين قضيب التنظيم</translation>
+    </message>
+    <message>
+        <source>Split line</source>
+        <translation>خط الانقسام</translation>
+    </message>
+    <message>
+        <source>The 'from' or 'to' bus to change has not been selected!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The bus to change has not been selected!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>VSC results length differs from the number of VSC results. 
+Did you change the number of devices? If so, re-run the simulation.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>You need to select exactly one bus to be set as the generator regulation bus</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>you have to select the origin and destination buses!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>you must select the origin and destination buses!</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>SequenceEditorDialog</name>
+    <message>
+        <source>Arbitrary source waveform times must be strictly increasing.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>At least two points are required.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Invalid number of points</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Invalid points</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Invalid values</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Invalid waveform</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Sequence editor</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>y points must be strictly increasing.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>SubstationGraphicItem</name>
+    <message>
+        <source>Add voltage level</source>
+        <translation>إضافة مستوى الجهد</translation>
+    </message>
+    <message>
+        <source>Move substation graphics</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No devices to disconnect</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Remove substation from schematic</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Remove substation from schematic and database</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Voltage (kV)</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>SyncDialogueWindow</name>
+    <message>
+        <source>Sync conflicts</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>TemplateDeviceEditor</name>
+    <message>
+        <source>Device editor</source>
+        <translation>محرر الجهاز</translation>
+    </message>
+</context>
+<context>
+    <name>TimeEventsMain</name>
+    <message>
+        <source>Are you sure that you want to crop the profiles to the clustered results?
+This cannot be undone.
+Also, the clustering will be removed after this.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy profile to clipboard</source>
+        <translation>نسخ الملف الشخصي إلى الحافظة</translation>
+    </message>
+    <message>
+        <source>Delete profiles</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Do you want to correct the loads active profile based on the active power profile?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Match</source>
+        <translation>مباراة</translation>
     </message>
     <message>
         <source>Message</source>
         <translation>رسالة</translation>
     </message>
     <message>
-        <source>New map</source>
-        <translation>خريطة جديدة</translation>
+        <source>Paste profile to clipboard</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>New schematic</source>
-        <translation>تخطيطي جديد</translation>
+        <source>Select a time series step to copy to the snapshot</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>New schematic from selection</source>
-        <translation>تخطيطي جديد من التحديد</translation>
+        <source>Set snapshot</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Remove</source>
-        <translation>يزيل</translation>
+        <source>The import of profiles from many grid models can only be done if the grid has not profiles :/</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Save image file</source>
-        <translation>حفظ ملف الصورة</translation>
+        <source>The number of clusters in the stored results is different from the specified :(
+Run another clustering analysis.</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Save video file</source>
-        <translation>حفظ ملف الفيديو</translation>
+        <source>There are no objects to which to assign a profile. 
+You need to load or create a grid!</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Type to search in the current diagram</source>
-        <translation>اكتب للبحث في المخطط الحالي</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicBlockEditorGUI</name>
-    <message>
-        <source>Block name already exists</source>
-        <translation>اسم الكتلة موجود بالفعل</translation>
+        <source>There are no profiles</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Block name cannot be empty</source>
-        <translation>لا يمكن أن يكون اسم الكتلة فارغًا</translation>
-    </message>
-    <message>
-        <source>Block name is invalid</source>
-        <translation>اسم الكتلة غير صالح</translation>
-    </message>
-    <message>
-        <source>Change Block Name</source>
-        <translation>تغيير اسم الكتلة</translation>
-    </message>
-    <message>
-        <source>Change Variable Name</source>
-        <translation>تغيير اسم المتغير</translation>
-    </message>
-    <message>
-        <source>Dynamic Model Editor</source>
-        <translation>محرر النموذج الديناميكي</translation>
-    </message>
-    <message>
-        <source>Dynamic Model Editor [{mode}]</source>
-        <translation>محرر النموذج الديناميكي [{mode}]</translation>
-    </message>
-    <message>
-        <source>Library</source>
-        <translation>مكتبة</translation>
-    </message>
-    <message>
-        <source>Variable name already exists</source>
-        <translation>اسم المتغير موجود بالفعل</translation>
-    </message>
-    <message>
-        <source>Variable name cannot be empty</source>
-        <translation>لا يمكن أن يكون اسم المتغير فارغًا</translation>
-    </message>
-    <message>
-        <source>Variable name is invalid</source>
-        <translation>اسم المتغير غير صالح</translation>
+        <source>There is no profile displayed, please display one</source>
+        <translation>لا يوجد ملف تعريف معروض، يرجى عرض واحد</translation>
     </message>
 </context>
 <context>
-    <name>DynamicEditorAddButton</name>
+    <name>TowerBuilderGUI</name>
     <message>
-        <source>Open another Dynamic Editor</source>
-        <translation>فتح محرر ديناميكي آخر</translation>
+        <source>Line builder</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Tower computation</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>DynamicEditorGraphics</name>
+    <name>Transformer3WDeviceEditor</name>
     <message>
-        <source>{direction} {index}: {name}</source>
-        <translation>{direction} {index}: {name}</translation>
+        <source>Transformer 3W design widget is not available</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Transformer 3W editor</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>DynamicEditorPickerDialog</name>
+    <name>Transformer3WEditor</name>
     <message>
-        <source>Mode</source>
-        <translation>وضع</translation>
-    </message>
-    <message>
-        <source>Modes</source>
-        <translation>وسائط</translation>
-    </message>
-    <message>
-        <source>Name</source>
-        <translation>اسم</translation>
-    </message>
-    <message>
-        <source>Open</source>
-        <translation>فتح</translation>
-    </message>
-    <message>
-        <source>Open the current block in the other mode.</source>
-        <translation>فتح الكتلة الحالية في الوضع الآخر.</translation>
-    </message>
-    <message>
-        <source>Open the current block in {mode}.</source>
-        <translation>فتح الكتلة الحالية في {mode}.</translation>
-    </message>
-    <message>
-        <source>Open {mode}</source>
-        <translation>فتح {mode}</translation>
-    </message>
-    <message>
-        <source>Quick Open</source>
-        <translation>فتح سريع</translation>
-    </message>
-    <message>
-        <source>Search dynamic editors</source>
-        <translation>البحث عن المحررات الديناميكية</translation>
-    </message>
-    <message>
-        <source>Type</source>
-        <translation>النوع</translation>
+        <source>Transformer editor</source>
+        <translation>محرر المحولات</translation>
     </message>
 </context>
 <context>
-    <name>DynamicEventEditor</name>
+    <name>Transformer3WGraphicItem</name>
     <message>
-        <source>&lt;b&gt;Target device:&lt;/b&gt;</source>
-        <translation>&lt;b&gt;الجهاز المستهدف:&lt;/b&gt;</translation>
+        <source>Do you want to update the time series active status accordingly?</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Align Step</source>
-        <translation>محاذاة الخطوة</translation>
+        <source>Update time series active status</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>TransformerDeviceEditor</name>
+    <message>
+        <source>Transformer design widget is not available</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Transformer editor</source>
+        <translation>محرر المحولات</translation>
+    </message>
+</context>
+<context>
+    <name>TransformerEditor</name>
+    <message>
+        <source>Transformer editor</source>
+        <translation>محرر المحولات</translation>
+    </message>
+</context>
+<context>
+    <name>TransformerGraphicItem</name>
+    <message>
+        <source>A template will be generated using this transformer values</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Add transformer type</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>TransformerNWGraphicItem</name>
+    <message>
+        <source>Do you want to update the time series active status accordingly?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Update time series active status</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>UcteExportDialogue</name>
+    <message>
+        <source>Export to UCTE</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>UCTE export</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>ValidationSectionDialog</name>
+    <message>
+        <source>Issues found in this section</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Model Consistency Validation</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Run an informational validation of the edited model structure, mappings, initialization, and port connectivity. This check reports issues but does not block saving the model.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>VoltageLevelConversionWizard</name>
+    <message>
+        <source>+ Add spare position</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>- Remove selected</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Bars with impedance</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Cancel</source>
         <translation>يلغي</translation>
     </message>
     <message>
-        <source>Dynamic Event Editor</source>
-        <translation>محرر الأحداث الديناميكية</translation>
+        <source>Cannot Remove</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>EMT Event Editor</source>
-        <translation>محرر أحداث EMT</translation>
+        <source>Convert Bus to Voltage Level</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>EMT group Created</source>
-        <translation>تم إنشاء مجموعة EMT</translation>
+        <source>Do it</source>
+        <translation>افعلها</translation>
     </message>
     <message>
-        <source>End Time</source>
-        <translation>وقت الانتهاء</translation>
+        <source>Enable transfer bus (JBPT)</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Group</source>
-        <translation>مجموعة</translation>
+        <source>Keep original rates</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Group: {group_name}</source>
-        <translation>المجموعة: {group_name}</translation>
+        <source>Only spare positions can be removed. Actual devices cannot be removed from the list.</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Invalid Input</source>
-        <translation>إدخال غير صالح</translation>
+        <source>Options</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Missing fields</source>
-        <translation>حقول مفقودة</translation>
+        <source>Positions (use arrows to reorder):</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>New Value</source>
-        <translation>قيمة جديدة</translation>
+        <source>Reducible branches</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>New group name</source>
-        <translation>اسم مجموعة جديد</translation>
+        <source>Scheme type:</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>New row {row_number}</source>
-        <translation>صف جديد {row_number}</translation>
+        <source>Use breakers</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>No EMT Events Group</source>
-        <translation>لا توجد مجموعة أحداث EMT</translation>
+        <source>Validation Error</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>No EMT Events Group found, please create one before adding an event.</source>
-        <translation>لم يتم العثور على مجموعة أحداث EMT، يرجى إنشاء واحدة قبل إضافة حدث.</translation>
+        <source>▲</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>No Events</source>
-        <translation>لا توجد أحداث</translation>
-    </message>
-    <message>
-        <source>No RMS Events Group</source>
-        <translation>لا توجد مجموعة أحداث RMS</translation>
-    </message>
-    <message>
-        <source>No RMS Events Group found, please create one before adding an event.</source>
-        <translation>لم يتم العثور على مجموعة أحداث RMS، يرجى إنشاء واحدة قبل إضافة حدث.</translation>
-    </message>
-    <message>
-        <source>No Rows Selected</source>
-        <translation>لم يتم تحديد أي صفوف</translation>
-    </message>
-    <message>
-        <source>No switch EMT mode parameter is available in this device.</source>
-        <translation>لا يتوفر معلمة وضع EMT للتبديل في هذا الجهاز.</translation>
-    </message>
-    <message>
-        <source>Overlapping Events</source>
-        <translation>أحداث متداخلة</translation>
-    </message>
-    <message>
-        <source>Parameter</source>
-        <translation>معلمة</translation>
-    </message>
-    <message>
-        <source>Please add at least one event before confirming.</source>
-        <translation>يرجى إضافة حدث واحد على الأقل قبل التأكيد.</translation>
-    </message>
-    <message>
-        <source>Please check at least one row to remove.</source>
-        <translation>يرجى تحديد صف واحد على الأقل للإزالة.</translation>
-    </message>
-    <message>
-        <source>RMS Event Editor</source>
-        <translation>محرر أحداث RMS</translation>
-    </message>
-    <message>
-        <source>RMS group Created</source>
-        <translation>تم إنشاء مجموعة RMS</translation>
-    </message>
-    <message>
-        <source>Ramp</source>
-        <translation>منحدر</translation>
-    </message>
-    <message>
-        <source>Row {row_number}: {message}</source>
-        <translation>الصف {row_number}: {message}</translation>
-    </message>
-    <message>
-        <source>Some events are overlapped and cannot be applied.</source>
-        <translation>بعض الأحداث متداخلة ولا يمكن تطبيقها.</translation>
-    </message>
-    <message>
-        <source>Step</source>
-        <translation>خطوة</translation>
-    </message>
-    <message>
-        <source>Switch Sequence</source>
-        <translation>تسلسل التبديل</translation>
-    </message>
-    <message>
-        <source>Switch Sequence Wizard</source>
-        <translation>معالج تسلسل التبديل</translation>
-    </message>
-    <message>
-        <source>Target device:</source>
-        <translation>الجهاز المستهدف:</translation>
-    </message>
-    <message>
-        <source>Time</source>
-        <translation>الوقت</translation>
-    </message>
-    <message>
-        <source>Transition</source>
-        <translation>انتقال</translation>
-    </message>
-    <message>
-        <source>group has invalid type</source>
-        <translation>المجموعة لها نوع غير صالح</translation>
-    </message>
-    <message>
-        <source>parameter must be Var</source>
-        <translation>يجب أن تكون المعلمة من نوع Var</translation>
-    </message>
-    <message>
-        <source>transition_type must be DynamicEventTransitionType</source>
-        <translation>يجب أن يكون نوع الانتقال من نوع DynamicEventTransitionType</translation>
-    </message>
-    <message>
-        <source>{origin}: {transition}, parameter={parameter}, time={time:.4f} s, end_time={end_time:.4f} s, value={value:.6f}</source>
-        <translation>{origin}: {transition}, المعلمة={parameter}, الوقت={time:.4f} ث, وقت الانتهاء={end_time:.4f} ث, القيمة={value:.6f}</translation>
-    </message>
-    <message>
-        <source>{origin}: {transition}, parameter={parameter}, time={time:.4f} s, value={value:.6f}</source>
-        <translation>{origin}: {transition}, المعلمة={parameter}, الوقت={time:.4f} ث, القيمة={value:.6f}</translation>
-    </message>
-    <message>
-        <source>{prefix}: {group_name}</source>
-        <translation>{prefix}: {group_name}</translation>
-    </message>
-    <message>
-        <source>✅ Add Events</source>
-        <translation>✅ إضافة الأحداث</translation>
-    </message>
-    <message>
-        <source>❌ Remove Selected Rows</source>
-        <translation>❌ إزالة الصفوف المحددة</translation>
-    </message>
-    <message>
-        <source>➕ Add New Event</source>
-        <translation>➕ إضافة حدث جديد</translation>
-    </message>
-    <message>
-        <source>➕ New Event Group</source>
-        <translation>➕ مجموعة حدث جديدة</translation>
+        <source>▼</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>DynamicEventsGroupsDialog</name>
+    <name>VoltageWarningDialog</name>
     <message>
-        <source>Create EMT Events Group</source>
-        <translation>إنشاء مجموعة أحداث EMT</translation>
-    </message>
-    <message>
-        <source>Create RMS Events Group</source>
-        <translation>إنشاء مجموعة أحداث RMS</translation>
-    </message>
-    <message>
-        <source>Enter group name</source>
-        <translation>إدخال اسم المجموعة</translation>
-    </message>
-    <message>
-        <source>Invalid name</source>
-        <translation>اسم غير صالح</translation>
-    </message>
-    <message>
-        <source>Name:</source>
-        <translation>اسم:</translation>
-    </message>
-    <message>
-        <source>The name cannot be empty.</source>
-        <translation>لا يمكن أن يكون الاسم فارغًا.</translation>
+        <source>Invalid Voltage Levels</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>EquationLatexModel</name>
+    <name>VscDeviceEditor</name>
     <message>
-        <source>Equation</source>
-        <translation>معادلة</translation>
-    </message>
-    <message>
-        <source>Type</source>
-        <translation>النوع</translation>
+        <source>VSC editor</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>GridGeneratorGUI</name>
+    <name>WindFarmWizard</name>
     <message>
-        <source>Grid Generator</source>
-        <translation>مولد الشبكة</translation>
-    </message>
-    <message>
-        <source>Warning</source>
-        <translation>تحذير</translation>
-    </message>
-</context>
-<context>
-    <name>GridMapWidget</name>
-    <message>
-        <source>Connection Error</source>
-        <translation>خطأ في الاتصال</translation>
-    </message>
-    <message>
-        <source>No suitable voltage level ({voltage:.2f} kV) found in substation "{substation_name}".</source>
-        <translation>لم يتم العثور على مستوى جهد مناسب ({voltage:.2f} كيلوفولت) في المحطة الفرعية "{substation_name}".</translation>
-    </message>
-    <message>
-        <source>Operation Successful</source>
-        <translation>نجحت العملية</translation>
-    </message>
-    <message>
-        <source>Please select exactly one line and one substation.</source>
-        <translation>يرجى تحديد خط واحد ومحطة فرعية واحدة بالضبط.</translation>
-    </message>
-    <message>
-        <source>Selection Error</source>
-        <translation>خطأ في التحديد</translation>
-    </message>
-    <message>
-        <source>T-joint connection created between {substation_name} and {line_name}.</source>
-        <translation>تم إنشاء وصلة T بين {substation_name} و {line_name}.</translation>
-    </message>
-    <message>
-        <source>The line cannot be connected. Please ensure the target substation has a bus with a matching nominal voltage.</source>
-        <translation>لا يمكن توصيل الخط. يرجى التأكد من أن المحطة الفرعية المستهدفة تحتوي على ناقل بجهد اسمي مطابق.</translation>
-    </message>
-    <message>
-        <source>Waypoint replaced with new substation '{substation_name}'.
-Original line split into two segments:
-- {line1_name}: {length1:.2f} km
-- {line2_name}: {length2:.2f} km
-New connection line: {distance:.2f} km</source>
-        <translation>تم استبدال نقطة الطريق بمحطة فرعية جديدة '{substation_name}'.
-تم تقسيم الخط الأصلي إلى قطاعين:
-- {line1_name}: {length1:.2f} كم
-- {line2_name}: {length2:.2f} كم
-خط التوصيل الجديد: {distance:.2f} كم</translation>
-    </message>
-</context>
-<context>
-    <name>LogsDialogue</name>
-    <message>
-        <source>Accept</source>
-        <translation>يقبل</translation>
-    </message>
-    <message>
-        <source>CSV (*.csv);;Excel files (*.xlsx)</source>
-        <translation>CSV (*.csv)؛؛ملفات Excel (*.xlsx)</translation>
-    </message>
-    <message>
-        <source>Class</source>
-        <translation>الفئة</translation>
-    </message>
-    <message>
-        <source>Copy</source>
-        <translation>ينسخ</translation>
-    </message>
-    <message>
-        <source>Device</source>
-        <translation>الجهاز</translation>
-    </message>
-    <message>
-        <source>Expected value</source>
-        <translation>القيمة المتوقعة</translation>
-    </message>
-    <message>
-        <source>Export results</source>
-        <translation>تصدير النتائج</translation>
-    </message>
-    <message>
-        <source>Property</source>
-        <translation>الخاصية</translation>
-    </message>
-    <message>
-        <source>Save</source>
-        <translation>يحفظ</translation>
-    </message>
-    <message>
-        <source>Time</source>
-        <translation>الوقت</translation>
-    </message>
-    <message>
-        <source>Value</source>
-        <translation>القيمة</translation>
-    </message>
-</context>
-<context>
-    <name>NewProfilesStructureDialogue</name>
-    <message>
-        <source>Accept</source>
-        <translation>يقبل</translation>
-    </message>
-    <message>
-        <source>New profiles structure</source>
-        <translation>هيكل الملفات الشخصية الجديد</translation>
-    </message>
-    <message>
-        <source>Number of time steps</source>
-        <translation>عدد الخطوات الزمنية</translation>
-    </message>
-    <message>
-        <source>Start date</source>
-        <translation>تاريخ البدء</translation>
-    </message>
-    <message>
-        <source>Time step length</source>
-        <translation>طول الخطوة الزمنية</translation>
-    </message>
-    <message>
-        <source>Time units</source>
-        <translation>وحدات الوقت</translation>
-    </message>
-</context>
-<context>
-    <name>ObjectColumnFilterDialog</name>
-    <message>
-        <source>Apply</source>
-        <translation>تطبيق</translation>
-    </message>
-    <message>
-        <source>Cancel filter</source>
-        <translation>إلغاء التصفية</translation>
-    </message>
-    <message>
-        <source>Clear filter</source>
-        <translation>مسح التصفية</translation>
-    </message>
-    <message>
-        <source>Search</source>
-        <translation>يبحث</translation>
-    </message>
-    <message>
-        <source>Select all visible</source>
-        <translation>تحديد الكل المرئي</translation>
-    </message>
-    <message>
-        <source>Select no visible</source>
-        <translation>تحديد لا شيء مرئي</translation>
-    </message>
-    <message>
-        <source>Sort A to Z</source>
-        <translation>الفرز من أ إلى ي</translation>
-    </message>
-    <message>
-        <source>Sort Z to A</source>
-        <translation>الفرز من ي إلى أ</translation>
-    </message>
-</context>
-<context>
-    <name>RmsPlotDialog</name>
-    <message>
-        <source>Add</source>
-        <translation>يضيف</translation>
-    </message>
-    <message>
-        <source>Device:</source>
-        <translation>الجهاز:</translation>
-    </message>
-    <message>
-        <source>Plot Variables</source>
-        <translation>رسم المتغيرات</translation>
-    </message>
-    <message>
-        <source>Plot Window</source>
-        <translation>نافذة الرسم</translation>
-    </message>
-    <message>
-        <source>Remove variable</source>
-        <translation>إزالة المتغير</translation>
-    </message>
-    <message>
-        <source>Rms Simulation Results</source>
-        <translation>نتائج محاكاة RMS</translation>
-    </message>
-    <message>
-        <source>Show in new window</source>
-        <translation>عرض في نافذة جديدة</translation>
-    </message>
-    <message>
-        <source>Variable:</source>
-        <translation>المتغير:</translation>
-    </message>
-    <message>
-        <source>time (s)</source>
-        <translation>الوقت (ث)</translation>
-    </message>
-</context>
-<context>
-    <name>RosetaExplorerGUI</name>
-    <message>
-        <source>Copy</source>
-        <translation>ينسخ</translation>
-    </message>
-</context>
-<context>
-    <name>RuntimeLogicEditorWidget</name>
-    <message>
-        <source>Add entry</source>
-        <translation>إضافة إدخال</translation>
-    </message>
-    <message>
-        <source>Add retained mode</source>
-        <translation>إضافة وضع محتفظ به</translation>
-    </message>
-    <message>
-        <source>Configuration</source>
-        <translation>الإعدادات</translation>
-    </message>
-    <message>
-        <source>Delete</source>
-        <translation>يمسح</translation>
-    </message>
-    <message>
-        <source>Delete retained mode</source>
-        <translation>حذف وضع محتفظ به</translation>
-    </message>
-    <message>
-        <source>Documentation</source>
-        <translation>التوثيق</translation>
-    </message>
-    <message>
-        <source>Enter a procedural entry name.</source>
-        <translation>أدخل اسم إدخال إجرائي.</translation>
-    </message>
-    <message>
-        <source>Enter a valid retained-mode symbol name.</source>
-        <translation>أدخل اسم رمز وضع محتفظ به صالح.</translation>
-    </message>
-    <message>
-        <source>Enter an initial value or expression.</source>
-        <translation>أدخل قيمة أولية أو تعبيراً.</translation>
-    </message>
-    <message>
-        <source>Entry name</source>
-        <translation>اسم الإدخال</translation>
-    </message>
-    <message>
-        <source>Initial value or expression</source>
-        <translation>القيمة الأولية أو التعبير</translation>
-    </message>
-    <message>
-        <source>Mode symbol name</source>
-        <translation>اسم رمز الوضع</translation>
-    </message>
-    <message>
-        <source>Move down</source>
-        <translation>النزول</translation>
-    </message>
-    <message>
-        <source>Move up</source>
-        <translation>الصعود</translation>
-    </message>
-    <message>
-        <source>Owner</source>
-        <translation>المالك</translation>
-    </message>
-    <message>
-        <source>Procedural entries</source>
-        <translation>الإدخالات الإجرائية</translation>
-    </message>
-    <message>
-        <source>Retained modes</source>
-        <translation>الأوضاع المحتفظ بها</translation>
-    </message>
-    <message>
-        <source>Runtime logic is valid.</source>
-        <translation>Runtime logic is valid.</translation>
-    </message>
-    <message>
-        <source>Select a valid owner and procedural type.</source>
-        <translation>Select a valid owner and procedural type.</translation>
-    </message>
-    <message>
-        <source>Select a valid owner block.</source>
-        <translation>اختر كتلة مالكة صالحة.</translation>
-    </message>
-    <message>
-        <source>Select one procedural entry to delete.</source>
-        <translation>Select one procedural entry to delete.</translation>
-    </message>
-    <message>
-        <source>Type</source>
-        <translation>النوع</translation>
-    </message>
-    <message>
-        <source>Valid runtime logic. Warnings: </source>
-        <translation>Valid runtime logic. Warnings: </translation>
-    </message>
-    <message>
-        <source>Validate runtime logic</source>
-        <translation>التحقق من منطق التشغيل</translation>
-    </message>
-</context>
-<context>
-    <name>ScenariosMain</name>
-    <message>
-        <source>Add child scenario</source>
-        <translation>إضافة سيناريو فرعي</translation>
-    </message>
-    <message>
-        <source>Commit scenario</source>
-        <translation>سيناريو الالتزام</translation>
-    </message>
-    <message>
-        <source>Merge children into scenario</source>
-        <translation>دمج الأطفال في السيناريو</translation>
-    </message>
-    <message>
-        <source>Remove scenario</source>
-        <translation>إزالة السيناريو</translation>
-    </message>
-    <message>
-        <source>Rename scenario</source>
-        <translation>إعادة تسمية السيناريو</translation>
-    </message>
-    <message>
-        <source>Set as current scenario</source>
-        <translation>تعيين كسيناريو حالي</translation>
-    </message>
-</context>
-<context>
-    <name>SelectionDialog</name>
-    <message>
-        <source>Cancel</source>
-        <translation>يلغي</translation>
-    </message>
-    <message>
-        <source>Click on a substation to reconnect branch {branch_name}</source>
-        <translation>انقر على محطة فرعية لإعادة توصيل الفرع {branch_name}</translation>
-    </message>
-    <message>
-        <source>The substation should have a compatible voltage level ({voltage} kV)</source>
-        <translation>يجب أن تحتوي المحطة الفرعية على مستوى جهد متوافق ({voltage} كيلوفولت)</translation>
-    </message>
-    <message>
-        <source>Waiting for Selection</source>
-        <translation>في انتظار التحديد</translation>
-    </message>
-    <message>
-        <source>Waiting for selection...</source>
-        <translation>في انتظار التحديد...</translation>
-    </message>
-</context>
-<context>
-    <name>ServerFileDialogue</name>
-    <message>
-        <source>Delete server file</source>
-        <translation>حذف ملف الخادم</translation>
-    </message>
-    <message>
-        <source>Delete server model</source>
-        <translation>حذف نموذج الخادم</translation>
-    </message>
-    <message>
-        <source>Delete the selected file and every model inside it?</source>
-        <translation>هل تريد حذف الملف المحدد وجميع النماذج بداخله؟</translation>
-    </message>
-    <message>
-        <source>Delete the selected model from the server database?</source>
-        <translation>هل تريد حذف النموذج المحدد من قاعدة بيانات الخادم؟</translation>
-    </message>
-</context>
-<context>
-    <name>SigmaAnalysisGUI</name>
-    <message>
-        <source>CSV (*.csv);;Excel files (*.xlsx)</source>
-        <translation>CSV (*.csv)؛؛ملفات Excel (*.xlsx)</translation>
-    </message>
-    <message>
-        <source>Export results</source>
-        <translation>تصدير النتائج</translation>
-    </message>
-    <message>
-        <source>HELM-Sigma analysis dialogue</source>
-        <translation>حوار تحليل HELM-Sigma</translation>
-    </message>
-    <message>
-        <source>Sigma analysis completed</source>
-        <translation>اكتمل تحليل سيجما</translation>
-    </message>
-    <message>
-        <source>Sigma analysis did not return results</source>
-        <translation>لم يرجع تحليل سيجما نتائج</translation>
-    </message>
-    <message>
-        <source>Sigma coefficients did not converge :(</source>
-        <translation>لم تتقارب معاملات سيجما :(</translation>
-    </message>
-    <message>
-        <source>Snapshot</source>
-        <translation>لقطة</translation>
-    </message>
-    <message>
-        <source>This window was opened without a circuit/options rerun context.</source>
-        <translation>تم فتح هذه النافذة بدون سياق إعادة تشغيل الدائرة/الخيارات.</translation>
-    </message>
-    <message>
-        <source>Warning</source>
-        <translation>تحذير</translation>
-    </message>
-</context>
-<context>
-    <name>SimulationsMain</name>
-    <message>
-        <source>Compiling the grid...</source>
-        <translation>جاري تجميع الشبكة...</translation>
-    </message>
-    <message>
-        <source>Model v. {model_version}</source>
-        <translation>الموديل ضد {model_version}</translation>
-    </message>
-    <message>
-        <source>Pareto combination</source>
-        <translation>تركيبة باريتو</translation>
-    </message>
-    <message>
-        <source>Pareto combination {index}</source>
-        <translation>تركيبة باريتو {index}</translation>
-    </message>
-    <message>
-        <source>Running power flow...</source>
-        <translation>جاري تشغيل تدفق الطاقة...</translation>
-    </message>
-    <message>
-        <source>Short circuits</source>
-        <translation>الدوائر القصيرة</translation>
-    </message>
-    <message>
-        <source>User: {user_name}</source>
-        <translation>المستخدم: {user_name}</translation>
-    </message>
-    <message>
-        <source>idtag. {idtag}</source>
-        <translation>معرف. {idtag}</translation>
-    </message>
-</context>
-<context>
-    <name>SwitchSequenceDialog</name>
-    <message>
-        <source>Add Sequence Step</source>
-        <translation>إضافة خطوة تسلسل</translation>
-    </message>
-    <message>
-        <source>Add at least one sequence row.</source>
-        <translation>أضف صف تسلسل واحد على الأقل.</translation>
-    </message>
-    <message>
-        <source>Close</source>
-        <translation>يغلق</translation>
-    </message>
-    <message>
-        <source>Group</source>
-        <translation>مجموعة</translation>
-    </message>
-    <message>
-        <source>Mode Parameter</source>
-        <translation>معامل النمط</translation>
-    </message>
-    <message>
-        <source>Open</source>
-        <translation>فتح</translation>
-    </message>
-    <message>
-        <source>Please check at least one row to remove.</source>
-        <translation>يرجى تحديد صف واحد على الأقل للإزالة.</translation>
-    </message>
-    <message>
-        <source>Remove Selected Rows</source>
-        <translation>إزالة الصفوف المحددة</translation>
-    </message>
-    <message>
-        <source>Select a mode parameter and an events group.</source>
-        <translation>حدد معامل نمط ومجموعة أحداث.</translation>
-    </message>
-    <message>
-        <source>State</source>
-        <translation>الحالة</translation>
-    </message>
-    <message>
-        <source>Switch Sequence</source>
-        <translation>تسلسل التبديل</translation>
-    </message>
-    <message>
-        <source>Switch Sequence Wizard</source>
-        <translation>معالج تسلسل التبديل</translation>
-    </message>
-    <message>
-        <source>The selected parameter or group is invalid.</source>
-        <translation>المعامل أو المجموعة المحددة غير صالح.</translation>
-    </message>
-    <message>
-        <source>Time</source>
-        <translation>الوقت</translation>
-    </message>
-</context>
-<context>
-    <name>SystemScaler</name>
-    <message>
-        <source>Aggregated energy scaling preview</source>
-        <translation>معاينة تحجيم الطاقة المجمعة</translation>
-    </message>
-    <message>
-        <source>Aggregated power scaling preview</source>
-        <translation>معاينة تحجيم القدرة المجمعة</translation>
-    </message>
-    <message>
-        <source>MW</source>
-        <translation>مواط</translation>
-    </message>
-    <message>
-        <source>MWh</source>
-        <translation>مواط ساعة</translation>
-    </message>
-    <message>
-        <source>Original generation</source>
-        <translation>التوليد الأصلي</translation>
-    </message>
-    <message>
-        <source>Original generation energy</source>
-        <translation>طاقة التوليد الأصلية</translation>
-    </message>
-    <message>
-        <source>Original load</source>
-        <translation>الحمل الأصلي</translation>
-    </message>
-    <message>
-        <source>Original load energy</source>
-        <translation>طاقة الحمل الأصلية</translation>
-    </message>
-    <message>
-        <source>Press plot to preview scaling</source>
-        <translation>اضغط على الرسم البياني لمعاينة التحجيم</translation>
-    </message>
-    <message>
-        <source>Scaled generation</source>
-        <translation>التوليد المُقاس</translation>
-    </message>
-    <message>
-        <source>Scaled generation energy</source>
-        <translation>طاقة التوليد المُقاس</translation>
-    </message>
-    <message>
-        <source>Scaled load</source>
-        <translation>الحمل المُقاس</translation>
-    </message>
-    <message>
-        <source>Scaled load energy</source>
-        <translation>طاقة الحمل المُقاس</translation>
-    </message>
-    <message>
-        <source>System scaling</source>
-        <translation>تحجيم النظام</translation>
-    </message>
-    <message>
-        <source>There is no time series to plot.</source>
-        <translation>لا توجد سلسلة زمنية للرسم.</translation>
-    </message>
-    <message>
-        <source>This operation will alter the generation and load composition irreversibly
-Are you sure?</source>
-        <translation>سيؤدي هذا الإجراء إلى تغيير تكوين التوليد والحمل بشكل لا رجعة فيه
-هل أنت متأكد؟</translation>
-    </message>
-</context>
-<context>
-    <name>TimeReIndexDialogue</name>
-    <message>
-        <source>Accept</source>
-        <translation>يقبل</translation>
-    </message>
-    <message>
-        <source>Start date</source>
-        <translation>تاريخ البدء</translation>
-    </message>
-    <message>
-        <source>Time re-index</source>
-        <translation>إعادة فهرسة الوقت</translation>
-    </message>
-    <message>
-        <source>Time step length</source>
-        <translation>طول الخطوة الزمنية</translation>
-    </message>
-    <message>
-        <source>Time units</source>
-        <translation>وحدات الوقت</translation>
+        <source>The selected turbine has no design curves</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 </TS>

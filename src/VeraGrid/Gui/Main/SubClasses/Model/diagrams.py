@@ -422,7 +422,7 @@ class DiagramsMain(CompiledArraysMain):
 
                 return model.get_objects_at_proxy_rows(proxy_rows=sorted(unique))
             else:
-                info_msg('Select some cells')
+                info_msg(self.tr('Select some cells'))
                 return list()
         else:
             return list()
@@ -464,7 +464,7 @@ class DiagramsMain(CompiledArraysMain):
                     diagram_widget.auto_layout(sel=self.ui.automatic_layout_comboBox.currentData())
 
             else:
-                info_msg("The current diagram cannot be automatically layed out")
+                info_msg(self.tr("The current diagram cannot be automatically layed out"))
         else:
             pass  # asked and decided ot to change the layout
 
@@ -2440,8 +2440,8 @@ class DiagramsMain(CompiledArraysMain):
 
                 dlg = InputNumberDialogue(min_value=1, max_value=99,
                                           default_value=1, is_int=True,
-                                          title='Vicinity diagram',
-                                          text='Select the expansion level')
+                                          title=self.tr('Vicinity diagram'),
+                                          text=self.tr('Select the expansion level'))
 
                 if dlg.exec():
                     diagram = make_vicinity_diagram(circuit=self.circuit,
@@ -2472,7 +2472,7 @@ class DiagramsMain(CompiledArraysMain):
         """
         dlg = InputNumberDialogue(min_value=1, max_value=99,
                                   default_value=1, is_int=True,
-                                  title='Vicinity diagram',
+                                  title=self.tr('Vicinity diagram'),
                                   text=f'Set the expansion level from {root_bus.name}')
 
         if dlg.exec():
@@ -2498,8 +2498,8 @@ class DiagramsMain(CompiledArraysMain):
         """
 
         if len(substations) == 0:
-            info_msg(text="No substations selected. Please select some substations",
-                     title="Substations schematic")
+            info_msg(text=self.tr("No substations selected. Please select some substations"),
+                     title=self.tr("Substations schematic"))
             return
 
         selected_buses = self.circuit.get_buses_from_objects(elements=substations,
@@ -2526,10 +2526,10 @@ class DiagramsMain(CompiledArraysMain):
         else:
             if len(substations) == 1:
                 info_msg(text=f"No buses were found associated with the substation {substations[0].name}",
-                         title="New schematic from substation")
+                         title=self.tr("New schematic from substation"))
             else:
                 info_msg(text=f"No buses were found associated with the substations",
-                         title="New schematic from substation")
+                         title=self.tr("New schematic from substation"))
 
     def add_substation_to_current_diagram(self, substations: List[dev.Substation]):
         """
@@ -2537,8 +2537,8 @@ class DiagramsMain(CompiledArraysMain):
         """
 
         if len(substations) == 0:
-            info_msg(text="No substations selected. Please select some substations",
-                     title="Substations schematic")
+            info_msg(text=self.tr("No substations selected. Please select some substations"),
+                     title=self.tr("Substations schematic"))
             return
 
         diagram_widget = self.get_selected_diagram_widget()
@@ -2556,10 +2556,10 @@ class DiagramsMain(CompiledArraysMain):
         else:
             if len(substations) == 1:
                 info_msg(text=f"No buses were found associated with the substation {substations[0].name}",
-                         title="New schematic from substation")
+                         title=self.tr("New schematic from substation"))
             else:
                 info_msg(text=f"No buses were found associated with the substations",
-                         title="New schematic from substation")
+                         title=self.tr("New schematic from substation"))
 
     def create_circuit_stored_diagrams(self):
         """
@@ -2698,7 +2698,7 @@ class DiagramsMain(CompiledArraysMain):
         else:
             question = f"Are you sure that you want to delete {len(selected_rows)} selected diagrams?"
 
-        ok = yes_no_question(question, "Remove diagram")
+        ok = yes_no_question(question, self.tr("Remove diagram"))
         if not ok:
             return
 
@@ -2739,7 +2739,7 @@ class DiagramsMain(CompiledArraysMain):
             # refresh the list view
             self.set_diagrams_list_view()
         else:
-            info_msg(text="Select a valid diagram", title="Duplicate diagram")
+            info_msg(text=self.tr("Select a valid diagram"), title=self.tr("Duplicate diagram"))
 
     def remove_all_diagrams(self) -> None:
         """
@@ -2979,10 +2979,10 @@ class DiagramsMain(CompiledArraysMain):
             if diagram is not None:
                 if isinstance(diagram, SchematicWidget):
 
-                    if yes_no_question("All buses will be positioned to a 2D plane projection of their "
+                    if yes_no_question(self.tr("All buses will be positioned to a 2D plane projection of their "
                                        "latitude and longitude. This updates the current diagram and the "
                                        "stored bus x, y, so diagrams created afterwards use the new positions. "
-                                       "Are you sure of this?"):
+                                       "Are you sure of this?")):
                         diagram.fill_xy_from_lat_lon(destructive=True)
                         diagram.center_nodes()
                 else:
@@ -3065,7 +3065,7 @@ class DiagramsMain(CompiledArraysMain):
             if len(selected_buses) > 0:
                 diagram_widget.try_to_fix_buses_location(buses_selection=selected_buses)
             else:
-                info_msg('Choose some elements from the schematic', 'Fix buses locations')
+                info_msg(self.tr('Choose some elements from the schematic'), self.tr('Fix buses locations'))
 
     def get_selected_devices(self) -> List[ALL_DEV_TYPES]:
         """
@@ -3121,7 +3121,7 @@ class DiagramsMain(CompiledArraysMain):
                                               group=group)
                         self.circuit.add_contingency(con)
             else:
-                info_msg("Select some elements in the schematic first", "Add selected to contingency")
+                info_msg(self.tr("Select some elements in the schematic first"), self.tr("Add selected to contingency"))
 
     def add_selected_to_remedial_action(self):
         """
@@ -3160,7 +3160,7 @@ class DiagramsMain(CompiledArraysMain):
                                                 group=ra_group)
                         self.circuit.add_remedial_action(ra)
             else:
-                info_msg("Select some elements in the schematic first", "Add selected to remedial action")
+                info_msg(self.tr("Select some elements in the schematic first"), self.tr("Add selected to remedial action"))
 
     def add_selected_to_investment(self) -> None:
         """
@@ -3203,7 +3203,7 @@ class DiagramsMain(CompiledArraysMain):
                                              group=group)
                         self.circuit.add_investment(con)
             else:
-                info_msg("Select some elements in the schematic first", "Add selected to investment")
+                info_msg(self.tr("Select some elements in the schematic first"), self.tr("Add selected to investment"))
 
     def add_rms_event_to_selected(self) -> None:
         """
@@ -3225,8 +3225,8 @@ class DiagramsMain(CompiledArraysMain):
 
                     QtWidgets.QMessageBox.information(
                         self,
-                        "No RMS Events Group",
-                        "No RMS Events Group found, please create one before adding an event."
+                        self.tr("No RMS Events Group"),
+                        self.tr("No RMS Events Group found, please create one before adding an event.")
                     )
 
                     dialog = DynamicEventsGroupsDialog(mode=mode,
@@ -3297,8 +3297,8 @@ class DiagramsMain(CompiledArraysMain):
 
                     QtWidgets.QMessageBox.information(
                         self,
-                        "No EMT Events Group",
-                        "No EMT Events Group found, please create one before adding an event."
+                        self.tr("No EMT Events Group"),
+                        self.tr("No EMT Events Group found, please create one before adding an event.")
                     )
 
                     dialog = DynamicEventsGroupsDialog(parent=self,
@@ -3756,9 +3756,9 @@ class DiagramsMain(CompiledArraysMain):
         diagram_widget = self.get_selected_diagram_widget()
 
         if diagram_widget is not None:
-            ok = yes_no_question(text="The diagram coordinates will be saved into the corresponding properties "
-                                      "of the database, overwriting the existing ones. Do you want to do this?",
-                                 title="Consolidate diagram coordinates into the DB")
+            ok = yes_no_question(text=self.tr("The diagram coordinates will be saved into the corresponding properties "
+                                      "of the database, overwriting the existing ones. Do you want to do this?"),
+                                 title=self.tr("Consolidate diagram coordinates into the DB"))
             if ok:
                 diagram_widget.consolidate_coordinates()
 
@@ -4023,9 +4023,9 @@ class DiagramsMain(CompiledArraysMain):
         diagram_widget = self.get_selected_diagram_widget()
 
         if diagram_widget is not None:
-            ok = yes_no_question(text="The diagram coordinates will be reset to its database values. "
-                                      "Do you want to do this?",
-                                 title="Reset diagram coordinates using the DB")
+            ok = yes_no_question(text=self.tr("The diagram coordinates will be reset to its database values. "
+                                      "Do you want to do this?"),
+                                 title=self.tr("Reset diagram coordinates using the DB"))
             if ok:
                 diagram_widget.reset_coordinates()
                 self.show_info_toast(message='Coordinates of substations and line '
@@ -4041,7 +4041,7 @@ class DiagramsMain(CompiledArraysMain):
         if diagram_widget is not None:
             dlg = InputNumberDialogue(min_value=-180, max_value=180,
                                       default_value=-90, is_int=False,
-                                      title='Rotate diagram',
+                                      title=self.tr('Rotate diagram'),
                                       text=f'Rotation angle (degrees)')
 
             if dlg.exec():

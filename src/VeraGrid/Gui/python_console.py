@@ -447,7 +447,7 @@ if __name__ == "__main__":
     class ConsoleMainWindow(QMainWindow):
         def __init__(self):
             super().__init__()
-            self.setWindowTitle("PySide6 Python Console")
+            self.setWindowTitle(self.tr("PySide6 Python Console"))
             console = PythonConsole(banner="Welcome to Python Console!")
             self.setCentralWidget(console)
 

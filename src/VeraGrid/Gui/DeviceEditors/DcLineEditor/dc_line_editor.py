@@ -42,7 +42,7 @@ class DcLineEditor(QtWidgets.QDialog):
         super().__init__()
         self.ui = Ui_DcLineEditorDialog()
         self.ui.setupUi(self)
-        self.setWindowTitle("Line editor")
+        self.setWindowTitle(self.tr("Line editor"))
 
         self.branch: DcLine = branch
         self.sbase: float = Sbase
@@ -101,7 +101,7 @@ class DcLineEditor(QtWidgets.QDialog):
                     else:
                         warning_msg(
                             text=f"The template {self.current_template.name} contains errors",
-                            title="Load template",
+                            title=self.tr("Load template"),
                         )
                 else:
                     pass
@@ -166,7 +166,7 @@ class DcLineEditor(QtWidgets.QDialog):
                 self.ui.resistanceSpinBox.setValue(sequence_values[0])
                 self.selected_template = template
             else:
-                warning_msg(text=f"The template {template.name} contains errors", title="Load template")
+                warning_msg(text=f"The template {template.name} contains errors", title=self.tr("Load template"))
         else:
             pass
 

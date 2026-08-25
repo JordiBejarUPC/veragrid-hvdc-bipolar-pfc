@@ -8417,8 +8417,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return: None.
         """
         confirmed: bool = yes_no_question(
-            text="You are going to delete the complete model and start from scratch. Are you sure?",
-            title="Delete all"
+            text=self.tr("You are going to delete the complete model and start from scratch. Are you sure?"),
+            title=self.tr("Delete all")
         )
 
         if confirmed:
@@ -9664,7 +9664,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
         # Create dialog
         dialog = QDialog(self)
-        dialog.setWindowTitle("Inspect Model")
+        dialog.setWindowTitle(self.tr("Inspect Model"))
         dialog.resize(600, 400)
 
         # create layout
@@ -10883,8 +10883,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         reply = QtWidgets.QMessageBox.question(
             parent if parent is not None else self,
-            "Unsaved changes",
-            "There are unapplied changes. Do you want to close without applying them?",
+            self.tr("Unsaved changes"),
+            self.tr("There are unapplied changes. Do you want to close without applying them?"),
             QtWidgets.QMessageBox.StandardButton.Yes,
             QtWidgets.QMessageBox.StandardButton.No,
         )

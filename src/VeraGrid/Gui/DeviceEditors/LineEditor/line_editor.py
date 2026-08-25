@@ -35,7 +35,7 @@ class LineEditor(QtWidgets.QDialog):
         super().__init__()
         self.ui = Ui_LineEditorDialog()
         self.ui.setupUi(self)
-        self.setWindowTitle("Line editor")
+        self.setWindowTitle(self.tr("Line editor"))
 
         self.line: Line = line
         self.sbase: float = grid.Sbase
@@ -80,7 +80,7 @@ class LineEditor(QtWidgets.QDialog):
                 "That causes an infinite base admittance.\n"
                 "The process has been aborted.\n"
                 "Please correct the data and try again.",
-                title="Line editor initialization",
+                title=self.tr("Line editor initialization"),
             )
         else:
             zbase: float = (voltage_from * voltage_from) / self.sbase
@@ -133,7 +133,7 @@ class LineEditor(QtWidgets.QDialog):
                 else:
                     warning_msg(
                         text=f"The template {self.current_template.name} contains errors",
-                        title="Load template",
+                        title=self.tr("Load template"),
                     )
             else:
                 pass
@@ -174,7 +174,7 @@ class LineEditor(QtWidgets.QDialog):
         """
         length: float = self.ui.lengthSpinBox.value()
         if length == 0.0:
-            error_msg(text="The length cannot be 0!", title="Accept line design values")
+            error_msg(text=self.tr("The length cannot be 0!"), title=self.tr("Accept line design values"))
             return
         else:
             pass
@@ -188,10 +188,10 @@ class LineEditor(QtWidgets.QDialog):
             self.accept()
         else:
             response: bool = yes_no_question(
-                text="Warning: You did not load template values. The circuit index will not be updated. "
+                text=self.tr("Warning: You did not load template values. The circuit index will not be updated. "
                 "Line parameters will be based on the provided values for Length, Max Current, Resistance, "
-                "Reactance, and Susceptance.\n\nDo you want to continue without a template?",
-                title="No Template Selected",
+                "Reactance, and Susceptance.\n\nDo you want to continue without a template?"),
+                title=self.tr("No Template Selected"),
             )
 
             if response:
@@ -236,7 +236,7 @@ class LineEditor(QtWidgets.QDialog):
                 self.ui.circuitIndexSpinBox.setMaximum(max(1, int(template.n_circuits)))
                 self.selected_template = template
             else:
-                warning_msg(text=f"The template {template.name} contains errors", title="Load template")
+                warning_msg(text=f"The template {template.name} contains errors", title=self.tr("Load template"))
         else:
             pass
 
