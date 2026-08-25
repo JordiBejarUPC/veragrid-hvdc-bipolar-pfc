@@ -1,6 +1,6 @@
-# Investment_demo.veragrid — client discovery demo
+# VeraGrid demo - Investments Evaluation
 
-A self-contained IEEE39 (New England) snapshot carrying 25 preloaded candidate investments with costs so that **Investments Evaluation** produces a well-populated Pareto curve in
+IEEE39 (New England) snapshot carrying 25 preloaded candidate investments with costs so that **Investments Evaluation** produces a densely-populated Pareto curve in
 about 15 seconds.
 
 ---
@@ -20,7 +20,7 @@ about 15 seconds.
    | Max. evaluations | `1250` |
 
 4. **Run.** It takes ~15 s.
-5. Open the **Pareto plot** result. Click points on the curve — each click applies that portfolio
+5. Open the **Pareto plot** result. Click points on the curve: each click applies that combination
    to the grid, so the one-line diagram updates live.
 
 ---
@@ -36,14 +36,14 @@ about 15 seconds.
 | Technical score | 1272 with nothing built → ~57 at the best point |
 | CAPEX span | 0 → ~760 |
 
-The knee sits at roughly **CAPEX 110**, where the technical score falls from 1272 to about 104 —
+The knee sits at roughly **CAPEX 110**, where the technical score falls from 1272 to about 104, which is
 around 9% of the maximum spend removes about 92% of the problem. That single fact is the demo.
 
-Two portfolios worth naming out loud:
+Two combinations worth naming out loud:
 
-- **Cheapest portfolio that clears every thermal overload**: ~CAPEX 423, 8 groups.
-- **Cheapest portfolio that clears everything, thermal and voltage**: ~CAPEX 608, 10 groups —
-  a genuine mix of two new circuits, reconductoring, two capacitor banks and a reactor.
+- **Cheapest combination that clears every thermal overload**: ~CAPEX 423, 8 groups.
+- **Cheapest combination that clears everything, thermal and voltage**: ~CAPEX 608, 10 groups:
+  a mix of two new circuits, reconductoring, two capacitor banks and a reactor.
 
 Exact numbers move slightly between runs because NSGA3 is stochastic. The shape does not.
 
@@ -73,7 +73,7 @@ Buses below 0.95 pu: **bus 11** (0.941), **bus 6** (0.944), **bus 7** (0.945).
 
 ---
 
-## The candidate portfolio
+## The candidate combination
 
 | Family | Groups | What it is |
 |---|---|---|
@@ -95,11 +95,11 @@ saying explicitly, because most planning tools cannot do it.
 
 ## Talking points
 
-- **The output is a curve, not a number.** Classical MIP planning returns one "optimal" portfolio
+- **The output is a curve, not a number.** Classical MIP planning returns one "optimal" combination
   and no way to interrogate it. Here the client sees the whole efficient frontier and picks their
   own risk appetite.
 - **Low-regret vs high-regret.** Use the frequency report: candidates appearing in many
-  Pareto-optimal portfolios are low-regret.
+  Pareto-optimal combinations are low-regret.
 - **Every point is a real AC power flow**, not a linear surrogate. 1251 of them in 15 seconds.
 - **Storage competes with wires** on equal footing in the same run.
 
@@ -107,6 +107,7 @@ saying explicitly, because most planning tools cannot do it.
 
 ## Caveats to take into account in the demo
 
+- The Pareto plot projects a 6-objective front onto 2 axes, so a few points look dominated in the plot while being non-dominated in full.
 - CAPEX values are calibrated, dimensionless planning units, not euros. They are scaled so total
   spend is commensurate with total technical benefit — without that the front collapses into a
   single cluster, which is the normalisation problem documented in
