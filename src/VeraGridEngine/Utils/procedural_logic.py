@@ -4446,7 +4446,11 @@ class ProceduralLogicCodec(ProceduralLogicCodecContract[Expr]):
 
 def build_boundary_updater_from_block(problem: ProceduralProblem) -> Optional[BlockProceduralLogicUpdater]:
     """
-    Build a boundary updater from the full procedural logic attached to ``problem.sys_block``.
+    Build an isolated runtime updater from the logic attached to ``problem.sys_block``.
+
+    The block hierarchy is canonical persistent model data. Runtime binding
+    must therefore target reconstructed entries so solver-owned objects, such
+    as progress signals, cannot become reachable from the persistent model.
 
     :param problem: EMT problem containing the root block.
     :return: Boundary updater or None.
@@ -4465,4 +4469,11 @@ def build_boundary_updater_from_block(problem: ProceduralProblem) -> Optional[Bl
 
     if len(entries) == 0:
         return None
-    return BlockProceduralLogicUpdater(problem, procedural_logic_from_dict(entries))
+
+    # Cross the declarative codec boundary to obtain solver-owned state
+    # machines without copying the problem or any GUI signal it may contain.
+    serialized_entries: List[ProceduralLogicData] = procedural_logic_to_dict(entries)
+    runtime_entries: List[ProceduralLogicBase] = procedural_logic_from_dict(
+        serialized_entries,
+    )
+    return BlockProceduralLogicUpdater(problem, runtime_entries)

@@ -730,10 +730,12 @@ def test_boundary_updater_builds_from_block_logic() -> None:
         glob_time=vf.add_var("t_glob"),
         static_parameter_values_mapping=static_parameter_values_mapping,
     )
+    canonical_logic: object = block.procedural_logic[0]
 
     updater = build_boundary_updater_from_block(problem)
     assert updater is not None
     assert len(updater.logic_entries) == 1
+    assert updater.logic_entries[0] is not canonical_logic
 
     params = problem.event_params_values.copy()
     x = problem.get_x0().copy()

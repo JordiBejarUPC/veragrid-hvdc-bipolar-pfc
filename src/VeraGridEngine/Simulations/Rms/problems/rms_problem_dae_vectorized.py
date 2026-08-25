@@ -1598,7 +1598,8 @@ class RmsProblemDaeVec(RmsProblemTemplate):
 
         self._constant_params = np.array([const.value for const in self._parameters_values])
 
-        self._block_boundary_updater = build_boundary_updater_from_block(self)
+        # Both RMS update paths must share the same isolated runtime state.
+        self._block_boundary_updater = self._procedural_logic_updater
 
         if self.options.verbose > 0:
             print(f"\nTotal compile time: {sum(timings.values()):.4f} s")
@@ -1727,15 +1728,11 @@ class RmsProblemDaeVec(RmsProblemTemplate):
         return min(t_mode, t_proc)
 
     def _initialize_procedural_logic_updater(self) -> None:
-        entries: List = list()
-        for blk in self.sys_block.get_all_blocks():
-            if blk.procedural_logic:
-                entries.extend(blk.procedural_logic)
-        if len(entries) == 0:
-            self._procedural_logic_updater = None
-            return
+        """Build solver-owned procedural state without binding model entries.
 
-        self._procedural_logic_updater = BlockProceduralLogicUpdater(self, entries)
+        :return: None.
+        """
+        self._procedural_logic_updater = build_boundary_updater_from_block(self)
 
     def _register_runtime_event_parameters(self, dev: ALL_DEV_TYPES, mdl: Block) -> None:
         """
