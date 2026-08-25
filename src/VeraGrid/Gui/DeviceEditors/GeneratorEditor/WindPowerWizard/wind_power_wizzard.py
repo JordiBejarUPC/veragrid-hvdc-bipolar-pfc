@@ -249,7 +249,10 @@ def get_open_meteo_wind_weather_df(time_index: pd.DatetimeIndex,
             return False, pd.DataFrame()
 
     except (requests.RequestException, KeyError, ValueError, TypeError) as err:
-        error_msg("Open-Meteo weather request failed :(\n" + str(err))
+        error_msg(QtCore.QCoreApplication.translate(
+            "MainWindow",
+            "Open-Meteo weather request failed :(\n{error_text}",
+        ).format(error_text=str(err)))
         return False, pd.DataFrame()
 
 
@@ -296,14 +299,20 @@ def load_windpowerlib_turbine_templates() -> Tuple[bool, pd.DataFrame]:
     try:
         from windpowerlib import data as wt
     except ImportError as err:
-        error_msg("windpowerlib is required to load turbine templates:\n" + str(err))
+        error_msg(QtCore.QCoreApplication.translate(
+            "MainWindow",
+            "windpowerlib is required to load turbine templates:\n{error_text}",
+        ).format(error_text=str(err)))
         return False, pd.DataFrame()
 
     try:
         templates_df: pd.DataFrame = wt.get_turbine_types(print_out=False)
         return True, templates_df
     except (KeyError, ValueError, TypeError) as err:
-        error_msg("windpowerlib turbine template loading failed :(\n" + str(err))
+        error_msg(QtCore.QCoreApplication.translate(
+            "MainWindow",
+            "windpowerlib turbine template loading failed :(\n{error_text}",
+        ).format(error_text=str(err)))
         return False, pd.DataFrame()
 
 
@@ -469,7 +478,10 @@ def calculate_wind_power_with_windpowerlib(weather_df: pd.DataFrame,
     try:
         from windpowerlib import ModelChain
     except ImportError as err:
-        error_msg("windpowerlib is required to generate wind power profiles:\n" + str(err))
+        error_msg(QtCore.QCoreApplication.translate(
+            "MainWindow",
+            "windpowerlib is required to generate wind power profiles:\n{error_text}",
+        ).format(error_text=str(err)))
         return False, pd.Series(dtype=float)
 
     nominal_power_w: float = peak_power * 1e6
@@ -499,7 +511,10 @@ def calculate_wind_power_with_windpowerlib(weather_df: pd.DataFrame,
                                                                                            upper=nominal_power_w)
         return True, power_output
     except (KeyError, ValueError, TypeError) as err:
-        error_msg("windpowerlib wind calculation failed :(\n" + str(err))
+        error_msg(QtCore.QCoreApplication.translate(
+            "MainWindow",
+            "windpowerlib wind calculation failed :(\n{error_text}",
+        ).format(error_text=str(err)))
         return False, pd.Series(dtype=float)
 
 
@@ -863,7 +878,9 @@ class WindFarmWizard(QtWidgets.QDialog):
                                                   turbine_type=self.get_selected_turbine_type())
             return turbine
         except (ImportError, KeyError, ValueError, TypeError) as err:
-            error_msg("The selected wind turbine could not be created:\n" + str(err))
+            error_msg(self.tr("The selected wind turbine could not be created:\n{error_text}").format(
+                error_text=str(err),
+            ))
             return None
 
     def plot_design_curves(self) -> None:
