@@ -4568,6 +4568,18 @@ class DynamicBlockVisualRole(Enum):
     DEVICE_TEMPLATE = 2
 
 
+class DynamicProjectionLayoutRole(Enum):
+    """Identify one stable item in a derived dynamic-editor projection."""
+
+    LOCAL_MEASUREMENTS = 0
+    PHYSICAL_DEVICE = 1
+    NETWORK_EXCHANGE = 2
+    FROM_TAG = 3
+    GOTO_TAG = 4
+    MEASUREMENT_STATION_FROM = 5
+    MEASUREMENT_STATION_TO = 6
+
+
 class ProjectionTagConnectionSide(Enum):
     """Identify the real endpoint represented by a transient signal tag."""
 

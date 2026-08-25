@@ -11,7 +11,7 @@ from typing import Dict, List, Optional, Tuple
 
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtCore import QPointF, Qt
-from PySide6.QtGui import QColor, QBrush, QPainter, QPainterPath, QPen, QAction, QPolygonF
+from PySide6.QtGui import QColor, QBrush, QPainter, QPainterPath, QPainterPathStroker, QPen, QAction, QPolygonF
 from PySide6.QtWidgets import QAbstractGraphicsShapeItem, QApplication, QColorDialog, QGraphicsEllipseItem, \
     QGraphicsItem, \
     QGraphicsPathItem, QGraphicsPolygonItem, QGraphicsRectItem, QGraphicsScene, QGraphicsTextItem, \
@@ -326,14 +326,23 @@ def _handle_block_item_change(item: GenericBlockItem | PairedItem | BlockItem
                               | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem,
                               change: QGraphicsItem.GraphicsItemChange,
                               value: object) -> object:
-    """Persist the latest collision-free position reported by Qt.
+    """Snap proposed moves and retain the latest committed valid position.
 
     :param item: Dynamic block item reporting the change.
     :param change: Qt graphics-item change kind.
-    :param value: Opaque Qt change payload returned unchanged.
-    :return: Original Qt change payload.
+    :param value: Opaque Qt change payload, normally a proposed position.
+    :return: Snapped proposed position or the unchanged Qt payload.
     """
-    if change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged:
+    if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
+        if (
+                isinstance(value, QPointF)
+                and item.editor is not None
+                and item.scene() is not None
+        ):
+            return item.editor.get_snapped_scene_position(position=value)
+        else:
+            return value
+    elif change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged:
         if not _position_collides_with_blocks(item, item.pos(), 6.0):
             item._last_valid_pos = QPointF(item.pos())
         else:
@@ -405,12 +414,9 @@ def _finalize_block_drop(item: GenericBlockItem | PairedItem | BlockItem
     current_pos = item.pos()
     corrected_pos = _resolve_non_overlapping_position(item, current_pos, margin)
     if corrected_pos != current_pos:
+        # ``setPos`` triggers ``ItemPositionHasChanged``, which owns both
+        # persistence and route refresh from the final snapped coordinate.
         item.setPos(corrected_pos)
-        position_changed_callback: BlockPositionChangedCallback | None = item.position_changed_callback
-        if position_changed_callback is not None:
-            position_changed_callback(corrected_pos.x(), corrected_pos.y())
-        else:
-            pass
     else:
         pass
     _refresh_block_item_connections(item)
@@ -565,6 +571,35 @@ class BlockPositionChangedCallback:
         :return: None.
         """
         self._editor.on_block_position_changed(self._block_uid, x_pos, y_pos)
+
+
+class ProjectionPositionChangedCallback(BlockPositionChangedCallback):
+    """Forward derived projection movement through a typed callback object."""
+
+    __slots__ = ("_projection_editor", "_layout_uid")
+
+    def __init__(self, editor: DynamicBlockEditorGUI, layout_uid: int) -> None:
+        """Bind one editor and deterministic projection identifier.
+
+        :param editor: Editor that persists projection coordinates.
+        :param layout_uid: Stable semantic projection identifier.
+        :return: None.
+        """
+        self._projection_editor: DynamicBlockEditorGUI = editor
+        self._layout_uid: int = layout_uid
+
+    def __call__(self, x_pos: float, y_pos: float) -> None:
+        """Forward one derived projection position update.
+
+        :param x_pos: New scene x coordinate.
+        :param y_pos: New scene y coordinate.
+        :return: None.
+        """
+        self._projection_editor.on_projection_position_changed(
+            layout_uid=self._layout_uid,
+            x=x_pos,
+            y=y_pos,
+        )
 
 
 def _build_rounded_triangle_path(v0: QPointF,
@@ -911,6 +946,7 @@ class BranchingItem(QGraphicsEllipseItem):
         self.setZValue(3)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable)
+        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemSendsScenePositionChanges)
         self.setAcceptHoverEvents(True)
         self.subsystem: BlockItem = subsystem
         self.index: int = index
@@ -918,6 +954,34 @@ class BranchingItem(QGraphicsEllipseItem):
         self.base_var: Var | None = None
         self.owner_connection: ConnectionItem | None = None
         self.routing_node_id: int | None = None
+
+    def itemChange(
+            self,
+            change: QGraphicsItem.GraphicsItemChange,
+            value: object,
+    ) -> object:
+        """Snap a moved junction and keep every incident cable attached.
+
+        :param change: Qt graphics-item change kind.
+        :param value: Proposed position or other opaque Qt payload.
+        :return: Snapped position or the unchanged payload.
+        """
+        if (
+                change == QGraphicsItem.GraphicsItemChange.ItemPositionChange
+                and isinstance(value, QPointF)
+                and self.scene() is not None
+        ):
+            return self.editor.get_snapped_scene_position(position=value)
+        elif change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged:
+            if self.connections is not None:
+                connection: ConnectionItem
+                for connection in list(self.connections):
+                    connection.update_path()
+            else:
+                pass
+        else:
+            pass
+        return super().itemChange(change, value)
 
     def hoverEnterEvent(self, event: QtWidgets.QGraphicsSceneHoverEvent) -> None:
         """Apply the hover interaction state when the pointer enters the item.
@@ -1085,8 +1149,172 @@ class ConnectionItem(QGraphicsPathItem):
                     return
             else:
                 return
+        elif self.diagram is None:
+            # Semantic-projection connections are deliberately not persisted,
+            # but their live endpoints must still follow movable projection
+            # blocks without rebuilding the authoritative symbolic model.
+            self._sync_transient_projection_path_endpoints()
         else:
+            pass
+
+    def _build_transient_projection_route(
+            self,
+            source_position: QPointF,
+            target_position: QPointF,
+    ) -> List[QPointF]:
+        """Build a compact orthogonal path between two live projection endpoints.
+
+        The fallback is used only when an old transient route has fewer than
+        four points or endpoint repair would otherwise introduce a diagonal.
+        Port-to-port routes receive a central grid-aligned movable corridor;
+        branching endpoints need only one deterministic elbow.
+
+        :param source_position: Current producer endpoint in scene coordinates.
+        :param target_position: Current consumer endpoint in scene coordinates.
+        :return: Ordered orthogonal route including both endpoints.
+        """
+        route_points: List[QPointF] = list()
+        route_points.append(QPointF(source_position))
+        x_aligned: bool = abs(source_position.x() - target_position.x()) <= 1.0e-6
+        y_aligned: bool = abs(source_position.y() - target_position.y()) <= 1.0e-6
+        if x_aligned or y_aligned:
+            pass
+        elif isinstance(self.source_port, PortItem) and isinstance(self.target_port, PortItem):
+            corridor_x: float = (source_position.x() + target_position.x()) * 0.5
+            if self.editor is not None and self.editor.is_snap_to_grid_enabled():
+                corridor_x = self.editor.snap_scene_coordinate_to_grid(corridor_x)
+            else:
+                pass
+            route_points.append(QPointF(corridor_x, source_position.y()))
+            route_points.append(QPointF(corridor_x, target_position.y()))
+        elif isinstance(self.source_port, PortItem):
+            route_points.append(QPointF(target_position.x(), source_position.y()))
+        elif isinstance(self.target_port, PortItem):
+            route_points.append(QPointF(source_position.x(), target_position.y()))
+        else:
+            route_points.append(QPointF(target_position.x(), source_position.y()))
+        route_points.append(QPointF(target_position))
+        return route_points
+
+    def _sync_transient_projection_path_endpoints(self) -> None:
+        """Attach a transient projection route to its current live ports.
+
+        Interior bends remain fixed whenever the existing route has independent
+        terminal stubs. Only each endpoint and its adjacent stub coordinate are
+        updated, preserving orthogonality and the user's visible route shape.
+
+        :return: None.
+        """
+        current_path: QPainterPath = self.path()
+        source_position: QPointF = self.source_port.scenePos()
+        target_position: QPointF = self.target_port.scenePos()
+        route_points: List[QPointF] = list()
+        if current_path.elementCount() < 2:
+            # A new transient association has no persisted bends to repair.
+            # Seed its first orthogonal route from the live endpoints so block
+            # movement can subsequently preserve the independent stubs.
+            route_points = self._build_transient_projection_route(
+                source_position=source_position,
+                target_position=target_position,
+            )
+        else:
+            point_index: int
+            for point_index in range(current_path.elementCount()):
+                path_element: QPainterPath.Element = current_path.elementAt(
+                    point_index
+                )
+                route_points.append(QPointF(path_element.x, path_element.y))
+
+        if len(route_points) >= 4:
+            old_source_position: QPointF = QPointF(route_points[0])
+            old_target_position: QPointF = QPointF(route_points[-1])
+            route_points[0] = QPointF(source_position)
+            route_points[-1] = QPointF(target_position)
+
+            source_stub_is_horizontal: bool = (
+                abs(route_points[1].y() - old_source_position.y()) <= 1.0e-6
+            )
+            if source_stub_is_horizontal:
+                route_points[1].setY(source_position.y())
+            else:
+                route_points[1].setX(source_position.x())
+
+            target_stub_is_horizontal: bool = (
+                abs(route_points[-2].y() - old_target_position.y()) <= 1.0e-6
+            )
+            if target_stub_is_horizontal:
+                route_points[-2].setY(target_position.y())
+            else:
+                route_points[-2].setX(target_position.x())
+
+            route_is_orthogonal: bool = True
+            for point_index in range(len(route_points) - 1):
+                segment_is_horizontal: bool = (
+                    abs(route_points[point_index].y() - route_points[point_index + 1].y())
+                    <= 1.0e-6
+                )
+                segment_is_vertical: bool = (
+                    abs(route_points[point_index].x() - route_points[point_index + 1].x())
+                    <= 1.0e-6
+                )
+                if segment_is_horizontal or segment_is_vertical:
+                    pass
+                else:
+                    route_is_orthogonal = False
+            if route_is_orthogonal:
+                pass
+            else:
+                route_points = self._build_transient_projection_route(
+                    source_position=source_position,
+                    target_position=target_position,
+                )
+        else:
+            route_points = self._build_transient_projection_route(
+                source_position=source_position,
+                target_position=target_position,
+            )
+
+        normalized_route_points: List[QPointF] = list()
+        route_point: QPointF
+        for route_point in route_points:
+            if (
+                    len(normalized_route_points) == 0
+                    or abs(normalized_route_points[-1].x() - route_point.x()) > 1.0e-6
+                    or abs(normalized_route_points[-1].y() - route_point.y()) > 1.0e-6
+            ):
+                normalized_route_points.append(QPointF(route_point))
+            else:
+                pass
+        if len(normalized_route_points) < 2:
             return
+        else:
+            pass
+        synchronized_path: QPainterPath = QPainterPath(normalized_route_points[0])
+        for route_point in normalized_route_points[1:]:
+            synchronized_path.lineTo(route_point)
+        self.setPath(synchronized_path)
+        self._sync_elbow_items()
+
+    def shape(self) -> QPainterPath:
+        """Return the one-grid-cell interaction band traversed by the cable.
+
+        An open ``QPainterPath`` can otherwise be interpreted as a filled
+        polygon by Qt, making every point inside a large L-shaped bounding box
+        selectable. Stroking the segments gives the cable a precise local
+        neighbourhood without claiming the rectangle enclosed by its bends.
+
+        :return: Stroked cable path used for hit testing and selection.
+        """
+        grid_size: float = 20.0
+        if self.editor is not None:
+            grid_size = float(self.editor.get_grid_size())
+        else:
+            pass
+        path_stroker: QPainterPathStroker = QPainterPathStroker()
+        path_stroker.setWidth(max(1.0, grid_size))
+        path_stroker.setCapStyle(Qt.PenCapStyle.RoundCap)
+        path_stroker.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        return path_stroker.createStroke(self.path())
 
     def begin_manual_block_drag(self, port: PortItem | BranchingItem) -> None:
         """
@@ -1186,17 +1414,16 @@ class ConnectionItem(QGraphicsPathItem):
 
         editable_segment_indices: List[int] = list()
         if editable_only:
-            if len(ordered_segments) >= 3:
-                if len(ordered_segments) == 3:
-                    editable_segment_indices.append(1)
+            candidate_index: int
+            for candidate_index in range(len(ordered_segments)):
+                candidate_segment_id: int = ordered_segments[candidate_index][0]
+                if self.editor.is_connection_routing_graph_segment_movable(
+                        item=self,
+                        segment_id=candidate_segment_id,
+                ):
+                    editable_segment_indices.append(candidate_index)
                 else:
                     pass
-
-                interior_segment_index: int
-                for interior_segment_index in range(2, len(ordered_segments) - 2):
-                    editable_segment_indices.append(interior_segment_index)
-            else:
-                pass
         else:
             segment_index: int
             for segment_index in range(len(ordered_segments)):
@@ -1389,7 +1616,26 @@ class ConnectionItem(QGraphicsPathItem):
         :param widget: Optional target widget.
         :return: None.
         """
-        super().paint(painter, option, widget)
+        # Draw the open cable directly. Calling QGraphicsPathItem.paint() with
+        # ItemIsSelected asks Qt to decorate the complete rectangular bounds,
+        # which falsely suggests that an L-shaped route owns that whole area.
+        cable_pen: QPen = QPen(self.pen())
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.setPen(cable_pen)
+        painter.drawPath(self.path())
+        if self.isSelected():
+            selected_pen: QPen = QPen(
+                EditorGraphicsCommonFeatures.BLOCK_BORDER_SELECTED,
+                max(1.5, cable_pen.widthF()),
+                Qt.PenStyle.DashLine,
+                Qt.PenCapStyle.RoundCap,
+                Qt.PenJoinStyle.RoundJoin,
+            )
+            painter.setPen(selected_pen)
+            painter.drawPath(self.path())
+        else:
+            pass
 
         # Junction topology is already represented by its branch item. Drawing
         # an arrow on a trunk ending at that junction produces isolated white
@@ -1569,6 +1815,8 @@ class GenericBlockItem(QGraphicsRectItem):
     __slots__ = (
         "_visible_input_vars",
         "_visible_output_vars",
+        "_child_summary_labels",
+        "_output_group_split_index",
     )
 
     def __init__(self,
@@ -1579,9 +1827,10 @@ class GenericBlockItem(QGraphicsRectItem):
                  mode: DynamicSimulationMode,
                  name: str,
                  position_changed_callback: BlockPositionChangedCallback | None = None,
-                 visual_role: DynamicBlockVisualRole | None = None,
-                 visible_input_vars: List[Var] | None = None,
-                 visible_output_vars: List[Var] | None = None) -> None:
+                  visual_role: DynamicBlockVisualRole | None = None,
+                  visible_input_vars: List[Var] | None = None,
+                  visible_output_vars: List[Var] | None = None,
+                  output_group_split_index: int | None = None) -> None:
         """
         Create one resizable graphics item for a symbolic block.
 
@@ -1595,6 +1844,7 @@ class GenericBlockItem(QGraphicsRectItem):
         :param visual_role: Optional semantic colour role; inferred when omitted.
         :param visible_input_vars: Optional transient input-port projection.
         :param visible_output_vars: Optional transient output-port projection.
+        :param output_group_split_index: Optional first output row after a visual gap.
         :return: None.
         """
         super().__init__(0, 0, 100, 60)
@@ -1614,6 +1864,7 @@ class GenericBlockItem(QGraphicsRectItem):
             self._visible_output_vars: List[Var] = list(subsys.out_vars)
         else:
             self._visible_output_vars = list(visible_output_vars)
+        self._output_group_split_index: int | None = output_group_split_index
         if visual_role is None:
             self.visual_role: DynamicBlockVisualRole = get_dynamic_block_visual_role(
                 block_model=subsys,
@@ -1656,6 +1907,18 @@ class GenericBlockItem(QGraphicsRectItem):
             port_item.recolour()
         self.input_labels = [self.create_port_label_item() for _ in range(n_inputs)]
         self.output_labels = [self.create_port_label_item() for _ in range(n_outputs)]
+        self._child_summary_labels: List[QGraphicsTextItem] = list()
+        if (
+                self.visual_role is DynamicBlockVisualRole.MEASUREMENT
+                and len(self.subsys.children) > 0
+        ):
+            child_block: Block
+            for child_block in self.subsys.children:
+                child_summary_label: QGraphicsTextItem = self.create_port_label_item()
+                child_summary_label.setPlainText(child_block.name)
+                self._child_summary_labels.append(child_summary_label)
+        else:
+            pass
 
         self.refresh_port_metadata()
         self.resize_handle = ResizeHandle(self, self.editor)
@@ -1690,6 +1953,8 @@ class GenericBlockItem(QGraphicsRectItem):
             input_label_item.setDefaultTextColor(block_title)
         for output_label_item in self.output_labels:
             output_label_item.setDefaultTextColor(block_title)
+        for child_summary_label in self._child_summary_labels:
+            child_summary_label.setDefaultTextColor(block_title)
 
     def recolour(self, use_custom_color: bool = False) -> None:
         """Refresh this graphics item unless a custom colour must be preserved.
@@ -1898,7 +2163,18 @@ class GenericBlockItem(QGraphicsRectItem):
 
         :return: Value produced by the graphics operation.
         """
-        port_rows: int = max(len(self.inputs), len(self.outputs), 1)
+        separated_output_rows: int = len(self.outputs)
+        if (
+                self._output_group_split_index is not None
+                and 0 < self._output_group_split_index < len(self.outputs)
+        ):
+            # Reserve one full port row between physical inputs (Vm/Va) and
+            # physical outputs (P/Q).  The gap prevents either label group from
+            # reading as if it belonged to the station body or to its neighbour.
+            separated_output_rows += 1
+        else:
+            pass
+        port_rows: int = max(len(self.inputs), separated_output_rows, 1)
         min_height: float = max(
             EditorGraphicsCommonFeatures.BLOCK_MIN_HEIGHT,
             EditorGraphicsCommonFeatures.BLOCK_HEADER_HEIGHT + EditorGraphicsCommonFeatures.BLOCK_PORT_SECTION_PADDING +
@@ -1915,11 +2191,28 @@ class GenericBlockItem(QGraphicsRectItem):
 
         padding: float = 28.0
         title_width: float = self.name_item.boundingRect().width() + 12.0
+        child_summary_width: float = 0.0
+        child_summary_label: QGraphicsTextItem
+        for child_summary_label in self._child_summary_labels:
+            child_summary_width = max(
+                child_summary_width,
+                child_summary_label.boundingRect().width(),
+            )
+        if len(self._child_summary_labels) > 0:
+            child_summary_height: float = (
+                EditorGraphicsCommonFeatures.BLOCK_PORT_SECTION_PADDING
+                + len(self._child_summary_labels)
+                * EditorGraphicsCommonFeatures.BLOCK_PORT_ROW_HEIGHT
+            )
+            min_height = max(min_height, child_summary_height)
+        else:
+            pass
 
         min_width: float = max(
             EditorGraphicsCommonFeatures.BLOCK_MIN_WIDTH,
             input_label_width + output_label_width + padding,
             title_width,
+            input_label_width + child_summary_width + output_label_width + 54.0,
         )
         return min_width, min_height
 
@@ -1987,8 +2280,20 @@ class GenericBlockItem(QGraphicsRectItem):
             spacing = self.rect().height() / (len(self.inputs) + 1)
             port.setPos(0, spacing * (i + 1))
         for i, port in enumerate(self.outputs):
-            spacing = self.rect().height() / (len(self.outputs) + 1)
-            port.setPos(self.rect().width(), spacing * (i + 1))
+            if (
+                    self._output_group_split_index is not None
+                    and 0 < self._output_group_split_index < len(self.outputs)
+            ):
+                spacing = self.rect().height() / (len(self.outputs) + 2)
+                output_row: int = i + 1
+                if i >= self._output_group_split_index:
+                    output_row += 1
+                else:
+                    pass
+            else:
+                spacing = self.rect().height() / (len(self.outputs) + 1)
+                output_row = i + 1
+            port.setPos(self.rect().width(), spacing * output_row)
 
         label_item: QGraphicsTextItem
         for i, label_item in enumerate(self.input_labels):
@@ -2003,6 +2308,18 @@ class GenericBlockItem(QGraphicsRectItem):
             label_item.setPos(
                 self.rect().width() - label_width - 14.0,
                 port.pos().y() - label_height / 2
+            )
+
+        child_summary_count: int = len(self._child_summary_labels)
+        for i, label_item in enumerate(self._child_summary_labels):
+            child_label_width: float = label_item.boundingRect().width()
+            child_label_height: float = label_item.boundingRect().height()
+            child_row_spacing: float = self.rect().height() / (
+                child_summary_count + 1
+            )
+            label_item.setPos(
+                (self.rect().width() - child_label_width) / 2.0,
+                child_row_spacing * float(i + 1) - child_label_height / 2.0,
             )
 
         self.update_handle_position()
@@ -2065,21 +2382,14 @@ class GenericBlockItem(QGraphicsRectItem):
         :return: Value produced by the graphics operation.
         """
         value = _handle_block_item_change(self, change, value)
-        if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
+        if change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged:
             if self.position_changed_callback is not None:
-                self.position_changed_callback(value.x(), value.y())
+                self.position_changed_callback(self.pos().x(), self.pos().y())
             else:
                 pass
-            port: PortItem
-            port_collection: List[PortItem]
-            for port_collection in (self.inputs, self.outputs):
-                for port in port_collection:
-                    if port.connections:
-                        conn: ConnectionItem
-                        for conn in port.connections:
-                            conn.update_path()
-                    else:
-                        pass
+            # Persistence is optional for semantic projection items, but every
+            # live port must follow the committed graphics position.
+            _refresh_block_item_connections(self)
         else:
             pass
         return super().itemChange(change, value)
@@ -2432,21 +2742,12 @@ class PairedItem(QGraphicsPolygonItem):
         :return: Value produced by the graphics operation.
         """
         value = _handle_block_item_change(self, change, value)
-        if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
+        if change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged:
             if self.position_changed_callback is not None:
-                self.position_changed_callback(value.x(), value.y())
+                self.position_changed_callback(self.pos().x(), self.pos().y())
             else:
                 pass
-            port: PortItem
-            port_collection: List[PortItem]
-            for port_collection in (self.inputs, self.outputs):
-                for port in port_collection:
-                    if port.connections:
-                        conn: ConnectionItem
-                        for conn in port.connections:
-                            conn.update_path()
-                    else:
-                        pass
+            _refresh_block_item_connections(self)
         else:
             pass
         return super().itemChange(change, value)
@@ -2843,21 +3144,12 @@ class BlockItem(QGraphicsRectItem):
         :return: Value produced by the graphics operation.
         """
         value = _handle_block_item_change(self, change, value)
-        if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
+        if change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged:
             if self.position_changed_callback is not None:
-                self.position_changed_callback(value.x(), value.y())
+                self.position_changed_callback(self.pos().x(), self.pos().y())
             else:
                 pass
-            port: PortItem
-            port_collection: List[PortItem]
-            for port_collection in (self.inputs, self.outputs):
-                for port in port_collection:
-                    if port.connections:
-                        conn: ConnectionItem
-                        for conn in port.connections:
-                            conn.update_path()
-                    else:
-                        pass
+            _refresh_block_item_connections(self)
             return super().itemChange(change, value)
         else:
             return super().itemChange(change, value)
@@ -3086,6 +3378,7 @@ class RoundBaseArithmeticOpItem(QGraphicsEllipseItem):
         self.subsys: Block = subsys
         self.var_factory: VarFactory = var_factory
         self.editor: DynamicBlockEditorGUI = editor
+        self.position_changed_callback: BlockPositionChangedCallback | None = position_changed_callback
         self.inputs: List[PortItem] = list()
         self.outputs: List[PortItem] = list()
         self.input_labels: List[QGraphicsTextItem] = list()
@@ -3387,15 +3680,12 @@ class RoundBaseArithmeticOpItem(QGraphicsEllipseItem):
         :return: Value produced by the graphics operation.
         """
         value = _handle_block_item_change(self, change, value)
-        if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
-            port_collection: List[PortItem]
-            for port_collection in (self.inputs, self.outputs):
-                for port in port_collection:
-                    if port.connections:
-                        for conn in port.connections:
-                            conn.update_path()
-                    else:
-                        pass
+        if change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged:
+            if self.position_changed_callback is not None:
+                self.position_changed_callback(self.pos().x(), self.pos().y())
+            else:
+                pass
+            _refresh_block_item_connections(self)
             return super().itemChange(change, value)
         else:
             return super().itemChange(change, value)
@@ -3430,6 +3720,7 @@ class RectBaseArithmeticOpItem(QGraphicsRectItem):
         self.subsys: Block = subsys
         self.var_factory: VarFactory = var_factory
         self.editor: DynamicBlockEditorGUI = editor
+        self.position_changed_callback: BlockPositionChangedCallback | None = position_changed_callback
         self.inputs: List[PortItem] = list()
         self.outputs: List[PortItem] = list()
         self.input_labels: List[QGraphicsTextItem] = list()
@@ -3686,15 +3977,12 @@ class RectBaseArithmeticOpItem(QGraphicsRectItem):
         :return: Value produced by the graphics operation.
         """
         value = _handle_block_item_change(self, change, value)
-        if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
-            port_collection: List[PortItem]
-            for port_collection in (self.inputs, self.outputs):
-                for port in port_collection:
-                    if port.connections:
-                        for conn in port.connections:
-                            conn.update_path()
-                    else:
-                        pass
+        if change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged:
+            if self.position_changed_callback is not None:
+                self.position_changed_callback(self.pos().x(), self.pos().y())
+            else:
+                pass
+            _refresh_block_item_connections(self)
             return super().itemChange(change, value)
         else:
             return super().itemChange(change, value)
@@ -3849,6 +4137,43 @@ class DiagramScene(QGraphicsScene):
         self.temp_line: QGraphicsPathItem | None = None
         self.source_port: PortItem | BranchingItem | None = None
         self.context_item: BlockItem | GenericBlockItem | ConnectionItem | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem | PairedItem | None = None
+
+    def drawBackground(self, painter: QPainter, rect: QtCore.QRectF) -> None:
+        """Paint the optional square mesh behind all dynamic-model items.
+
+        Grid lines are derived only from the exposed scene rectangle, keeping
+        redraw cost bounded while panning or zooming across a large diagram.
+
+        :param painter: Painter supplied by the graphics view.
+        :param rect: Scene rectangle requiring background repainting.
+        :return: None.
+        """
+        super().drawBackground(painter, rect)
+        if self.editor is None or not self.editor.is_grid_visible():
+            return
+        else:
+            pass
+
+        grid_size: float = float(self.editor.get_grid_size())
+        first_x: float = math.floor(rect.left() / grid_size) * grid_size
+        first_y: float = math.floor(rect.top() / grid_size) * grid_size
+        current_x: float = first_x
+        current_y: float = first_y
+        grid_color: QColor = QColor(self.editor.colors_palet.WIRE_COLOR)
+        grid_color.setAlpha(42)
+        grid_pen: QPen = QPen(grid_color, 0.0)
+
+        # Cosmetic zero-width lines remain one screen pixel at every zoom, so
+        # the mesh guides placement without competing visually with wires.
+        painter.save()
+        painter.setPen(grid_pen)
+        while current_x <= rect.right():
+            painter.drawLine(QtCore.QLineF(current_x, rect.top(), current_x, rect.bottom()))
+            current_x += grid_size
+        while current_y <= rect.bottom():
+            painter.drawLine(QtCore.QLineF(rect.left(), current_y, rect.right(), current_y))
+            current_y += grid_size
+        painter.restore()
 
     def prepare_to_delete(self) -> None:
         """

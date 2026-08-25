@@ -4521,6 +4521,9 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         "_block_info_button",
         "_measurement_target_name",
         "_measurement_edit_options",
+        "_measurement_blocks",
+        "_measurement_active_block",
+        "_measurement_block_combo",
         "_measurement_selected_option",
         "_measurement_target_released",
         "_dock_hosted",
@@ -4537,7 +4540,8 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                  structural_block_type: BlockType | None = None,
                  structural_builder: TemplateDefinition | None = None,
                  measurement_target_name: str | None = None,
-                 measurement_edit_options: Sequence[RmsMeasurementEditOption] | None = None) -> None:
+                 measurement_edit_options: Sequence[RmsMeasurementEditOption] | None = None,
+                 measurement_blocks: Sequence[Block] | None = None) -> None:
         """
         Create the modal around a detached parameter and equation draft.
 
@@ -4549,6 +4553,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         :param structural_builder: Value supplied for ``structural_builder``.
         :param measurement_target_name: Resolved physical target name for a meter.
         :param measurement_edit_options: Bounded valid configurations for this editor device.
+        :param measurement_blocks: Optional configured meter children owned by a station.
         :return: None.
         """
         super().__init__(parent)
@@ -4571,6 +4576,20 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             self._measurement_edit_options: List[RmsMeasurementEditOption] = list()
         else:
             self._measurement_edit_options = list(measurement_edit_options)
+        if measurement_blocks is None:
+            self._measurement_blocks: List[Block] = list()
+        else:
+            self._measurement_blocks = list(measurement_blocks)
+        direct_measurement_point: RmsPhysicalMeasurementPoint | None = (
+            block.dynamic_model_contract.rms_physical_measurement_point
+        )
+        if direct_measurement_point is not None:
+            self._measurement_active_block: Block | None = block
+        elif len(self._measurement_blocks) > 0:
+            self._measurement_active_block = self._measurement_blocks[0]
+        else:
+            self._measurement_active_block = None
+        self._measurement_block_combo: QtWidgets.QComboBox | None = None
         self._measurement_selected_option: RmsMeasurementEditOption | None = None
         self._measurement_target_released: bool = False
         general_structural_properties: List[TemplateProp] = list()
@@ -4903,10 +4922,37 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         identity_layout.addRow(self.tr("Online documentation"), documentation_button_layout)
         layout.addWidget(identity_group)
 
-        measurement_point: RmsPhysicalMeasurementPoint | None = (
-            self._block.dynamic_model_contract.rms_physical_measurement_point
-        )
+        measurement_block: Block | None = self._measurement_active_block
+        measurement_point: RmsPhysicalMeasurementPoint | None
+        if measurement_block is None:
+            measurement_point = None
+        else:
+            measurement_point = (
+                measurement_block.dynamic_model_contract.rms_physical_measurement_point
+            )
         if measurement_point is not None:
+            if len(self._measurement_blocks) > 1:
+                self._measurement_block_combo = QtWidgets.QComboBox(measurement_group)
+                self._measurement_block_combo.setObjectName("measurement_block_combo")
+                configured_block: Block
+                for configured_block in self._measurement_blocks:
+                    configured_point: RmsPhysicalMeasurementPoint | None = (
+                        configured_block.dynamic_model_contract.rms_physical_measurement_point
+                    )
+                    if configured_point is not None:
+                        self._measurement_block_combo.addItem(
+                            configured_point.get_meter_kind().value.replace("_", " ").title(),
+                            self._measurement_block_combo.count(),
+                        )
+                    else:
+                        pass
+                self.ui.measurement_configuration_layout.insertRow(
+                    0,
+                    self.tr("Configured meter"),
+                    self._measurement_block_combo,
+                )
+            else:
+                pass
             self._configure_measurement_controls(measurement_point)
             layout.addWidget(measurement_group)
         else:
@@ -4957,7 +5003,13 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         available_kinds: set[RmsPhysicalMeterKind] = set((current_kind,))
         edit_option: RmsMeasurementEditOption
         for edit_option in self._measurement_edit_options:
-            available_kinds.add(edit_option.get_meter_kind())
+            if len(self._measurement_blocks) == 0:
+                available_kinds.add(edit_option.get_meter_kind())
+            else:
+                # A station selector edits the target of one configured child;
+                # changing its family would create duplicate/missing families
+                # instead of editing the declared station composition.
+                pass
         meter_kind: RmsPhysicalMeterKind
         current_mode_index: int = 0
         for meter_kind in RmsPhysicalMeterKind:
@@ -4978,15 +5030,58 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self.ui.measurement_configuration_group.show()
         self.refresh_measurement_target_options()
 
+    @QtCore.Slot(int)
+    def select_configured_measurement_block(self, combo_index: int) -> None:
+        """Select one real meter child from the station composition.
+
+        The selector enumerates only children supplied by the owning editor;
+        it cannot manufacture an unsupported family. Target controls are then
+        filtered by the selected child's immutable typed meter contract.
+
+        :param combo_index: Current station-meter selector row.
+        :return: None.
+        """
+        if self._measurement_block_combo is None:
+            return
+        else:
+            selected_index_data: object = self._measurement_block_combo.itemData(
+                combo_index
+            )
+        selected_block: Block | None = None
+        if (
+                isinstance(selected_index_data, int)
+                and 0 <= selected_index_data < len(self._measurement_blocks)
+        ):
+            selected_block = self._measurement_blocks[selected_index_data]
+        else:
+            pass
+        if selected_block is None:
+            return
+        else:
+            measurement_point: RmsPhysicalMeasurementPoint | None = (
+                selected_block.dynamic_model_contract.rms_physical_measurement_point
+            )
+        if measurement_point is None:
+            return
+        else:
+            self._measurement_active_block = selected_block
+            self._measurement_target_released = False
+            self._configure_measurement_controls(measurement_point)
+
     @QtCore.Slot()
     def refresh_measurement_target_options(self) -> None:
         """Filter valid VeraGrid targets for the selected measurement mode.
 
         :return: None.
         """
-        measurement_point: RmsPhysicalMeasurementPoint | None = (
-            self._block.dynamic_model_contract.rms_physical_measurement_point
-        )
+        measurement_block: Block | None = self._measurement_active_block
+        measurement_point: RmsPhysicalMeasurementPoint | None
+        if measurement_block is None:
+            measurement_point = None
+        else:
+            measurement_point = (
+                measurement_block.dynamic_model_contract.rms_physical_measurement_point
+            )
         selected_kind_data: object = self.ui.measurement_mode_combo.currentData()
         matching_options: List[RmsMeasurementEditOption] = list()
         selected_option: RmsMeasurementEditOption | None = None
@@ -5154,9 +5249,14 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                 selected_option_data.get_source_terminal_side().value.upper()
             )
         else:
-            measurement_point: RmsPhysicalMeasurementPoint | None = (
-                self._block.dynamic_model_contract.rms_physical_measurement_point
-            )
+            measurement_block: Block | None = self._measurement_active_block
+            measurement_point: RmsPhysicalMeasurementPoint | None
+            if measurement_block is None:
+                measurement_point = None
+            else:
+                measurement_point = (
+                    measurement_block.dynamic_model_contract.rms_physical_measurement_point
+                )
             if measurement_point is None:
                 terminal_text = ""
             else:
@@ -5175,9 +5275,14 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
 
         :return: Pending native meter configuration state.
         """
-        measurement_point: RmsPhysicalMeasurementPoint | None = (
-            self._block.dynamic_model_contract.rms_physical_measurement_point
-        )
+        measurement_block: Block | None = self._measurement_active_block
+        measurement_point: RmsPhysicalMeasurementPoint | None
+        if measurement_block is None:
+            measurement_point = None
+        else:
+            measurement_point = (
+                measurement_block.dynamic_model_contract.rms_physical_measurement_point
+            )
         selected_option: RmsMeasurementEditOption | None = (
             self.get_selected_measurement_option()
         )
@@ -5525,6 +5630,12 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self.ui.measurement_target_release_button.clicked.connect(
             self.release_measurement_target
         )
+        if self._measurement_block_combo is not None:
+            self._measurement_block_combo.currentIndexChanged.connect(
+                self.select_configured_measurement_block
+            )
+        else:
+            pass
         self._variable_symbol_search.textChanged.connect(self.filter_variables)
         self._parameter_symbol_search.textChanged.connect(self.filter_parameters)
         self._dae_code_search.textChanged.connect(self.update_dae_code_search)
@@ -6714,9 +6825,16 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             )
             return
         else:
+            measurement_block: Block | None = self._measurement_active_block
+        if measurement_block is None:
+            self._show_validation_error(
+                self.tr("The configured measurement block is unavailable.")
+            )
+            return
+        else:
             measurement_request: RmsMeasurementEditRequest = (
                 RmsMeasurementEditRequest(
-                    block=self._block,
+                    block=measurement_block,
                     option=selected_measurement_option,
                 )
             )

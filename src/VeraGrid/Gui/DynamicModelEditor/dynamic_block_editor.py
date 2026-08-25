@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 import copy
+import uuid
 from typing import List, Dict, Optional, Any, Tuple, Union, Set, Mapping
 from PySide6 import QtWidgets, QtGui, QtCore
 from PySide6.QtWidgets import (QGraphicsItem, QDialog, QVBoxLayout, QDialogButtonBox, QLineEdit)
@@ -24,6 +25,8 @@ from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.fmu_template import FmuTemplate
 from VeraGridEngine.Devices.Dynamic.template_classification import (
+    block_declares_closed_measurement_station_contract,
+    block_declares_physical_device_contract,
     classify_dynamic_template_block,
 )
 from VeraGridEngine.Templates.BasicBlockCatalog.predefined_blocks import signal_pair
@@ -31,6 +34,10 @@ from VeraGridEngine.Templates.BasicBlockCatalog import BasicBlockTemplateDescrip
 
 from VeraGridEngine.Templates.BasicBlockCatalog import load_basic_block_catalog_template
 from VeraGridEngine.Templates.Rms.rms_meter_templates import (
+    RMS_BALANCED_BASIC_CURRENT_OUTPUT_NAMES,
+    RMS_BALANCED_BASIC_PLL_OUTPUT_NAMES,
+    RMS_BALANCED_BASIC_POWER_OUTPUT_NAMES,
+    RMS_BALANCED_BASIC_VOLTAGE_OUTPUT_NAMES,
     build_rms_current_meter_outputs_from_pq,
     build_rms_physical_signal_meter_block,
     build_rms_pll_meter_outputs,
@@ -67,6 +74,7 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_library import (
     DynamicEditorLibrary,
     LibraryTreeFilterProxyModel,
     MeasurementBlockDescriptor,
+    MeasurementStationDescriptor,
 )
 import VeraGrid.Gui.DynamicModelEditor.dynamic_editor_models as dialog_models
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_properties import (
@@ -118,17 +126,19 @@ from VeraGrid.Gui.DynamicModelEditor.Routing.route_builder import (
     OrthogonalVisibilityRouteBuilder,
     orthogonal_routing_segments_collide,
 )
-from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingPoint
+from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingPoint, RoutingSegment
+from VeraGrid.Gui.DynamicModelEditor.Routing.routing_graph import RoutingGraph
 from VeraGridEngine.enumerations import (
     BlockType,
     DynamicTemplateCategory,
+    DynamicProjectionLayoutRole,
     ProjectionTagConnectionSide,
     RmsPhysicalMeterKind,
     RmsTerminalSide,
     RoutingAxis,
 )
 from VeraGridEngine.Devices.Diagrams.block_diagram import (
-    BlockDiagram, BlockDiagramConnection, BlockDiagramNode,
+    BlockDiagram, BlockDiagramConnection, BlockDiagramNode, BlockDiagramProjectionNode,
 )
 
 DynamicBlockGraphicsItem = Union[
@@ -139,6 +149,33 @@ DynamicBlockGraphicsItem = Union[
         | graph.UnOpItem
         | graph.PairedItem
 ]
+
+
+def build_dynamic_projection_layout_uid(
+        root_uid: int,
+        role: DynamicProjectionLayoutRole,
+        source_uid: int = 0,
+        target_uid: int = 0,
+) -> int:
+    """Build one deterministic identifier for derived projection geometry.
+
+    :param root_uid: Canonical root block identifier.
+    :param role: Stable semantic role of the projected item.
+    :param source_uid: Optional producer block or variable identifier.
+    :param target_uid: Optional consumer block or variable identifier.
+    :return: Deterministic 128-bit integer identifier.
+    """
+    identity_text: str = (
+        "veragrid-dynamic-projection:"
+        + str(root_uid)
+        + ":"
+        + role.name
+        + ":"
+        + str(source_uid)
+        + ":"
+        + str(target_uid)
+    )
+    return uuid.uuid5(uuid.NAMESPACE_URL, identity_text).int
 
 
 def get_rms_measurement_kind_for_reference(
@@ -271,6 +308,130 @@ def get_rms_reference_for_terminal(
     else:
         result = bus_reference
     return result
+
+
+def get_rms_boundary_var_reference(
+        root_block: Block,
+        boundary_var: Var,
+) -> VarPowerFlowReferenceType | None:
+    """Resolve one root variable's typed public power-flow reference.
+
+    Imported legacy shells can retain the reference in ``external_mapping``
+    while the canonical root ``Var`` itself has no ``ref``. The declarative
+    mapping remains authoritative and avoids mutating or guessing that model.
+
+    :param root_block: Canonical dynamic-model boundary.
+    :param boundary_var: Root variable whose public meaning is requested.
+    :return: Typed reference, or ``None`` when the contract does not declare one.
+    """
+    if isinstance(boundary_var.ref, VarPowerFlowReferenceType):
+        return boundary_var.ref
+    else:
+        pass
+
+    reference: VarPowerFlowReferenceType
+    mapped_var: Var | None
+    for reference, mapped_var in root_block.external_mapping.items():
+        if mapped_var is None:
+            pass
+        elif (
+                mapped_var is boundary_var
+                or mapped_var.uid == boundary_var.uid
+                or mapped_var.non_mutable_uid == boundary_var.non_mutable_uid
+        ):
+            return reference
+        else:
+            pass
+    return None
+
+
+def get_measurement_station_terminal_boundary_vars(
+        root_block: Block,
+        terminal_side: RmsTerminalSide,
+) -> List[Var]:
+    """Return every canonical root port owned by one branch terminal.
+
+    The typed power-flow reference determines the side. Both input quantities
+    such as voltage and output quantities such as terminal power are retained,
+    allowing the station to expose output handles while every physical port
+    remains visibly associated through From/Goto.
+
+    :param root_block: Canonical two-terminal RMS model boundary.
+    :param terminal_side: FROM or TO terminal requested by topology.
+    :return: Ordered canonical variables belonging to the terminal.
+    """
+    result: List[Var] = list()
+    boundary_var_collections: tuple[List[Var], List[Var]] = (
+        root_block.in_vars,
+        root_block.out_vars,
+    )
+    boundary_vars: List[Var]
+    boundary_var: Var
+    for boundary_vars in boundary_var_collections:
+        for boundary_var in boundary_vars:
+            boundary_reference: VarPowerFlowReferenceType | None = (
+                get_rms_boundary_var_reference(
+                    root_block=root_block,
+                    boundary_var=boundary_var,
+                )
+            )
+            if boundary_reference is not None:
+                if (
+                        get_rms_measurement_terminal_side_for_reference(
+                            reference=boundary_reference,
+                        )
+                        is terminal_side
+                ):
+                    result.append(boundary_var)
+                else:
+                    pass
+            else:
+                pass
+    return result
+
+
+def get_measurement_station_terminal_input_count(
+        root_block: Block,
+        terminal_side: RmsTerminalSide,
+        station_vars: List[Var] | None = None,
+) -> int:
+    """Count physical input requirements placed before station output tags.
+
+    :param root_block: Canonical RMS model boundary.
+    :param terminal_side: BUS, FROM, or TO terminal represented by the station.
+    :param station_vars: Optional configured station requirements to restrict.
+    :return: Number of leading boundary variables originating in root inputs.
+    """
+    input_count: int = 0
+    station_var_uids: set[int] = set()
+    station_var: Var
+    if station_vars is not None:
+        for station_var in station_vars:
+            station_var_uids.add(station_var.uid)
+    else:
+        pass
+    boundary_var: Var
+    for boundary_var in root_block.in_vars:
+        boundary_reference: VarPowerFlowReferenceType | None = (
+            get_rms_boundary_var_reference(
+                root_block=root_block,
+                boundary_var=boundary_var,
+            )
+        )
+        if (
+                boundary_reference is not None
+                and get_rms_measurement_terminal_side_for_reference(
+                    reference=boundary_reference,
+                ) is terminal_side
+                and (
+                    station_vars is None
+                    or boundary_var.uid in station_var_uids
+                )
+        ):
+            input_count += 1
+        else:
+            pass
+    return input_count
 
 
 def build_native_rms_measurement_expressions(
@@ -425,6 +586,255 @@ def build_native_rms_measurement_expressions(
         else:
             result = None
     return result
+
+
+def build_rms_measurement_station_projection_block(
+        root_block: Block,
+        physical_device: BranchParent | InjectionParent,
+        terminal_side: RmsTerminalSide,
+        nominal_frequency_hz: float,
+        station_var_factory: VarFactory,
+        station_instance_uid: int | None = None,
+) -> Block | None:
+    """Build one derived station from the four established RMS meter blocks.
+
+    The same composition is used for both branch terminals. Only the typed
+    physical-selection contracts and boundary references differ between the
+    FROM and TO instances. The returned block is a deterministic editor
+    projection and is never attached to the canonical imported model.
+
+    :param root_block: Canonical two-terminal RMS model boundary.
+    :param physical_device: Physical device selected by every station meter.
+    :param terminal_side: Topology-derived BUS, FROM, or TO terminal.
+    :param nominal_frequency_hz: Circuit nominal frequency in hertz.
+    :param station_var_factory: Detached factory owning projection-only outputs.
+    :param station_instance_uid: Optional persistent identity for a user station.
+    :return: Complete station block, or ``None`` when a meter is unavailable.
+    """
+    if isinstance(physical_device, BranchParent):
+        if terminal_side is RmsTerminalSide.FROM:
+            terminal_bus: Bus | None = physical_device.bus_from
+        elif terminal_side is RmsTerminalSide.TO:
+            terminal_bus = physical_device.bus_to
+        else:
+            return None
+    elif isinstance(physical_device, InjectionParent):
+        if terminal_side is RmsTerminalSide.BUS:
+            terminal_bus = physical_device.bus
+        else:
+            return None
+    else:
+        return None
+    if terminal_bus is None:
+        return None
+    else:
+        pass
+
+    # Port references are the authoritative editor boundary. Overlay them on
+    # any pre-existing mapping so fresh DGS roots and reopened roots produce
+    # the same complete measurement source lookup.
+    station_external_mapping: Dict[VarPowerFlowReferenceType, Var | None] = dict(
+        root_block.external_mapping
+    )
+    boundary_var: Var
+    for boundary_var in root_block.in_vars:
+        if isinstance(boundary_var.ref, VarPowerFlowReferenceType):
+            station_external_mapping[boundary_var.ref] = boundary_var
+        else:
+            pass
+    for boundary_var in root_block.out_vars:
+        if isinstance(boundary_var.ref, VarPowerFlowReferenceType):
+            station_external_mapping[boundary_var.ref] = boundary_var
+        else:
+            pass
+
+    meter_kinds: tuple[RmsPhysicalMeterKind, ...] = (
+        RmsPhysicalMeterKind.POWER,
+        RmsPhysicalMeterKind.CURRENT,
+        RmsPhysicalMeterKind.VOLTAGE,
+        RmsPhysicalMeterKind.PHASE_LOCKED_LOOP,
+    )
+    measurement_blocks: List[Block] = list()
+    meter_kind: RmsPhysicalMeterKind
+    for meter_kind in meter_kinds:
+        signal_expressions: Dict[str, Expr] | None = (
+            build_native_rms_measurement_expressions(
+                external_mapping=station_external_mapping,
+                meter_kind=meter_kind,
+                terminal_side=terminal_side,
+                nominal_frequency_hz=nominal_frequency_hz,
+            )
+        )
+        if signal_expressions is None:
+            # A station groups up to the four real meter families. DC and
+            # reduced physical contracts legitimately omit unavailable
+            # quantities such as an angle-driven PLL.
+            pass
+        else:
+            if meter_kind is RmsPhysicalMeterKind.POWER:
+                basic_output_names: tuple[str, ...] = (
+                    RMS_BALANCED_BASIC_POWER_OUTPUT_NAMES
+                )
+            elif meter_kind is RmsPhysicalMeterKind.CURRENT:
+                basic_output_names = RMS_BALANCED_BASIC_CURRENT_OUTPUT_NAMES
+            elif meter_kind is RmsPhysicalMeterKind.VOLTAGE:
+                basic_output_names = RMS_BALANCED_BASIC_VOLTAGE_OUTPUT_NAMES
+            else:
+                basic_output_names = RMS_BALANCED_BASIC_PLL_OUTPUT_NAMES
+            has_complete_balanced_outputs: bool = all(
+                output_name in signal_expressions
+                for output_name in basic_output_names
+            )
+            if has_complete_balanced_outputs:
+                signal_expressions = select_basic_balanced_rms_meter_outputs(
+                    signal_expressions=signal_expressions,
+                    meter_kind=meter_kind,
+                )
+            else:
+                pass
+            if meter_kind is RmsPhysicalMeterKind.POWER:
+                meter_name: str = "Power meter — P, Q"
+            elif meter_kind is RmsPhysicalMeterKind.CURRENT:
+                meter_name = "Current meter — I"
+            elif meter_kind is RmsPhysicalMeterKind.VOLTAGE:
+                meter_name = "Voltage meter — V"
+            else:
+                meter_name = "PLL"
+            if station_instance_uid is None:
+                meter_identity_name: str = meter_name
+                station_identity_suffix: str = ""
+            else:
+                station_identity_suffix = ":" + str(station_instance_uid)
+                meter_identity_name = (
+                    meter_name + " [" + str(station_instance_uid) + "]"
+                )
+
+            if meter_kind in (
+                    RmsPhysicalMeterKind.VOLTAGE,
+                    RmsPhysicalMeterKind.PHASE_LOCKED_LOOP,
+            ):
+                target_fid: str = terminal_bus.idtag
+                contract_terminal_side: RmsTerminalSide = RmsTerminalSide.BUS
+            else:
+                target_fid = physical_device.idtag
+                contract_terminal_side = terminal_side
+
+            measurement_block: Block
+            output_by_signal_name: Dict[str, Var]
+            measurement_block, output_by_signal_name = (
+                build_rms_physical_signal_meter_block(
+                    vf=station_var_factory,
+                    signal_expressions=signal_expressions,
+                    output_signal_names=tuple(signal_expressions.keys()),
+                    name=meter_identity_name,
+                    source_fid=(
+                        "veragrid-measurement-station:"
+                        + physical_device.idtag
+                        + ":"
+                        + terminal_side.value
+                        + ":"
+                        + meter_kind.value
+                        + station_identity_suffix
+                    ),
+                    target_fid=target_fid,
+                    terminal_side=contract_terminal_side,
+                    meter_kind=meter_kind,
+                    symbol_suffix=normalize_rms_meter_symbol_fragment(
+                        meter_identity_name
+                    ),
+                )
+            )
+            del output_by_signal_name
+            validate_dynamic_model_contract(block=measurement_block)
+            measurement_blocks.append(measurement_block)
+
+    # Derive the station interface from the equations of the configured meter
+    # children.  This keeps General options honest: only physical quantities
+    # actually consumed by Power/Current/Voltage/PLL are inputs, while the real
+    # meter outputs form the public station output boundary.
+    terminal_boundary_vars: List[Var] = (
+        get_measurement_station_terminal_boundary_vars(
+            root_block=root_block,
+            terminal_side=terminal_side,
+        )
+    )
+    required_terminal_uids: set[int] = set()
+    station_measurement_outputs: List[Var] = list()
+    measurement_block: Block
+    for measurement_block in measurement_blocks:
+        measurement_equation: Expr
+        for measurement_equation in measurement_block.algebraic_eqs:
+            equation_var: Var
+            for equation_var in measurement_equation.get_vars():
+                required_terminal_uids.add(equation_var.uid)
+        for equation_var in measurement_block.out_vars:
+            station_measurement_outputs.append(equation_var)
+    station_requirement_vars: List[Var] = list()
+    terminal_boundary_var: Var
+    for terminal_boundary_var in terminal_boundary_vars:
+        if terminal_boundary_var.uid in required_terminal_uids:
+            station_requirement_vars.append(terminal_boundary_var)
+        else:
+            pass
+    if len(station_requirement_vars) == 0 or len(station_measurement_outputs) == 0:
+        return None
+    else:
+        return Block(
+            children=measurement_blocks,
+            in_vars=station_requirement_vars,
+            out_vars=station_measurement_outputs,
+            external_mapping=dict(),
+            is_decomposable=True,
+            name="Measurement station",
+            uid=station_instance_uid,
+        )
+
+
+def refresh_rms_measurement_station_boundary(station: Block) -> None:
+    """Refresh a station boundary from its configured native meter children.
+
+    Child meter equations are authoritative after a General-options target
+    edit. Their external dependencies become station requirements and their
+    declared outputs become station results. Variables solved or parameterized
+    inside a child are excluded from requirements.
+
+    :param station: Persistent station whose child meter changed.
+    :return: None.
+    """
+    child_owned_uids: set[int] = set()
+    station_outputs: List[Var] = list()
+    child_block: Block
+    for child_block in station.children:
+        owned_var: Var
+        for owned_var in child_block.state_vars:
+            child_owned_uids.add(owned_var.uid)
+        for owned_var in child_block.algebraic_vars:
+            child_owned_uids.add(owned_var.uid)
+        for owned_var in child_block.diff_vars:
+            child_owned_uids.add(owned_var.uid)
+        for owned_var in child_block.parameters.keys():
+            child_owned_uids.add(owned_var.uid)
+        for owned_var in child_block.out_vars:
+            child_owned_uids.add(owned_var.uid)
+            station_outputs.append(owned_var)
+
+    station_inputs: List[Var] = list()
+    seen_input_uids: set[int] = set()
+    for child_block in station.children:
+        child_equation: Expr
+        for child_equation in child_block.algebraic_eqs:
+            dependency_var: Var
+            for dependency_var in child_equation.get_vars():
+                if (
+                        dependency_var.uid not in child_owned_uids
+                        and dependency_var.uid not in seen_input_uids
+                ):
+                    station_inputs.append(dependency_var)
+                    seen_input_uids.add(dependency_var.uid)
+                else:
+                    pass
+    station.in_vars = station_inputs
+    station.out_vars = station_outputs
 
 
 def build_native_emt_measurement_expressions(
@@ -2201,6 +2611,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self._emt_bus_fallback_warning_shown: bool = False
         self._validation_issue_overlay_active: bool = False
         self._initial_scene_fit_pending: bool = False
+        self._grid_visible: bool = True
+        self._snap_to_grid_enabled: bool = True
+        self._grid_size: int = 20
         self.setWindowTitle(self.tr("Dynamic Model Editor [{mode}]").format(mode=self.mode.name))
         self.block_counters: Dict[BlockType, int] = dict()
         self.scene: graph.DiagramScene = graph.DiagramScene(self)
@@ -2208,7 +2621,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.has_unapplied_changes: bool = False
         self.dynamic_editor_entry: DynamicEditorEntry | None = None
         self._prepared_to_delete: bool = False
-        self._qt_routing_session: QtRoutingSession = QtRoutingSession()
+        self._qt_routing_session: QtRoutingSession = QtRoutingSession(grid_size=float(self._grid_size))
         self.colors_palet: graph.EditorGraphicsDefaultsDark | graph.EditorGraphicsDefaultsLight = graph.EditorGraphicsDefaultsDark()
         self.current_theme: DynEditorGraphicsModes = current_theme
         self.set_colors_palet()
@@ -2496,6 +2909,23 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             # here we add the connection variables to the main block
             if self.is_root_editor:
                 self.add_connection_vars()
+                if (
+                        self._direct_physical_template_block is None
+                        and isinstance(self.api_object, InjectionParent)
+                        and len(self.main_block.children) == 0
+                        and len(self.main_block.in_vars) > 0
+                        and len(self.main_block.out_vars) > 0
+                        and block_declares_physical_device_contract(
+                            block=self.main_block
+                        )
+                ):
+                    # A fresh injection model owns only Vm/Va/P/Q. Its typed
+                    # boundary is already sufficient for a real measurement
+                    # station, while a branch must retain wrapper mappings that
+                    # distinguish FROM and TO bus-variable aliases.
+                    self._direct_physical_template_block = self.main_block
+                else:
+                    pass
             else:
                 pass
                 # self.add_api_obj_mapping()
@@ -2536,13 +2966,37 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-        self._initializing_scene = False
         if self._physical_root_control_container is not None:
             self._materialize_physical_root_projection()
         elif self._direct_physical_template_block is not None:
             self._materialize_direct_physical_template_projection()
         else:
             pass
+        # User snap begins only after both the persisted scene and its derived
+        # semantic projection are complete. Projection tags often need precise
+        # half-row offsets that must not be quantized during construction.
+        self._initializing_scene = False
+
+        # Keep editor-local state actions for programmatic and standalone use.
+        # The visible controls belong to the workspace toolbar so an embedded
+        # editor never consumes a second horizontal strip above the canvas.
+        self.grid_visibility_action: QtGui.QAction = QtGui.QAction(self.tr("Grid"), self)
+        self.grid_visibility_action.setCheckable(True)
+        self.grid_visibility_action.setChecked(self._grid_visible)
+        self.grid_visibility_action.toggled.connect(self.set_grid_visible)
+        self.snap_to_grid_action: QtGui.QAction = QtGui.QAction(self.tr("Snap blocks"), self)
+        self.snap_to_grid_action.setCheckable(True)
+        self.snap_to_grid_action.setChecked(self._snap_to_grid_enabled)
+        self.snap_to_grid_action.toggled.connect(self.set_snap_to_grid_enabled)
+        self.grid_size_spin_box: QtWidgets.QSpinBox = QtWidgets.QSpinBox(self)
+        self.grid_size_spin_box.setObjectName("dynamicEditorGridSizeSpinBox")
+        self.grid_size_spin_box.setRange(5, 200)
+        self.grid_size_spin_box.setSingleStep(5)
+        self.grid_size_spin_box.setSuffix(" px")
+        self.grid_size_spin_box.setToolTip(self.tr("Grid spacing"))
+        self.grid_size_spin_box.setValue(self._grid_size)
+        self.grid_size_spin_box.valueChanged.connect(self.set_grid_size)
+        self.grid_size_spin_box.setVisible(False)
         self._initial_scene_fit_pending = True
 
     def showEvent(self, event: QtGui.QShowEvent) -> None:
@@ -2754,6 +3208,17 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         if can_open:
             self.close_block_properties_dock()
+            measurement_blocks: List[Block] = list()
+            measurement_options_block: Block = properties_block
+            if block_declares_closed_measurement_station_contract(
+                    block=properties_block
+            ):
+                configured_meter: Block
+                for configured_meter in properties_block.children:
+                    measurement_blocks.append(configured_meter)
+                measurement_options_block = measurement_blocks[0]
+            else:
+                pass
             dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
                 block=properties_block,
                 block_type_name=block_type_name,
@@ -2762,12 +3227,13 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 structural_block_type=structural_block_type,
                 structural_builder=structural_builder,
                 measurement_target_name=resolve_rms_measurement_target_name(
-                    block=properties_block,
+                    block=measurement_options_block,
                     circuit=self.circuit,
                 ),
                 measurement_edit_options=self.build_rms_measurement_edit_options(
-                    block=properties_block,
+                    block=measurement_options_block,
                 ),
+                measurement_blocks=measurement_blocks,
             )
             if (
                     block is self._physical_view_block
@@ -3127,7 +3593,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.reset_library_tree_expansion()
 
     def get_library_payload_from_mime_data(self,
-                                           mime_data: QtCore.QMimeData) -> BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | MeasurementBlockDescriptor | None:
+                                           mime_data: QtCore.QMimeData) -> BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | MeasurementBlockDescriptor | MeasurementStationDescriptor | None:
         """
         Decode the dragged library payload from the tree-view mime payload.
 
@@ -3143,7 +3609,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
             if isinstance(payload,
                           (BlockType, BasicBlockTemplateDescriptor, RmsModelTemplate, EmtModelTemplate,
-                           FmuTemplate, MeasurementBlockDescriptor)):
+                           FmuTemplate, MeasurementBlockDescriptor,
+                           MeasurementStationDescriptor)):
                 return payload
             else:
                 return None
@@ -3159,6 +3626,72 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
 
         return graph.BlockPositionChangedCallback(self, block_uid)
+
+    def build_projection_position_changed_callback(
+            self,
+            layout_uid: int,
+    ) -> graph.ProjectionPositionChangedCallback:
+        """Build a typed callback for one derived projection item.
+
+        :param layout_uid: Deterministic semantic projection identifier.
+        :return: Position-change callback wrapper.
+        """
+        return graph.ProjectionPositionChangedCallback(self, layout_uid)
+
+    def get_projection_position(
+            self,
+            layout_uid: int,
+            default_x: float,
+            default_y: float,
+    ) -> QtCore.QPointF:
+        """Return a declared projection position or its deterministic default.
+
+        :param layout_uid: Deterministic semantic projection identifier.
+        :param default_x: Default scene x coordinate.
+        :param default_y: Default scene y coordinate.
+        :return: Declared or default scene position.
+        """
+        projection_node: BlockDiagramProjectionNode | None = (
+            self.diagram.get_projection_node(layout_uid=layout_uid)
+        )
+        if projection_node is None:
+            return QtCore.QPointF(default_x, default_y)
+        else:
+            return QtCore.QPointF(projection_node.get_x(), projection_node.get_y())
+
+    def on_projection_position_changed(
+            self,
+            layout_uid: int,
+            x: float,
+            y: float,
+    ) -> None:
+        """Persist movement of one derived semantic projection item.
+
+        :param layout_uid: Deterministic semantic projection identifier.
+        :param x: New scene x coordinate.
+        :param y: New scene y coordinate.
+        :return: None.
+        """
+        projection_node: BlockDiagramProjectionNode | None = (
+            self.diagram.get_projection_node(layout_uid=layout_uid)
+        )
+        position_changed: bool = (
+            projection_node is None
+            or projection_node.get_x() != x
+            or projection_node.get_y() != y
+        )
+        if position_changed:
+            self.diagram.set_projection_node_position(
+                layout_uid=layout_uid,
+                x=x,
+                y=y,
+            )
+            if self._initializing_scene:
+                pass
+            else:
+                self.mark_unapplied_changes()
+        else:
+            pass
 
     def create_item_using_blocktype_wizard(self,
                                            block_type: BlockType,
@@ -3304,8 +3837,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     block_model.uid))
 
             self.block_counters[block_type] = count
-            graph.RoundBaseArithmeticOpItem.position_changed_callback = self.build_position_changed_callback(
-                block_model.uid)
             self.main_block.add(block_model)
             self.scene.addItem(round_base_op_item)
             round_base_op_item.setPos(QtCore.QPointF(x_pos, y_pos))
@@ -3330,8 +3861,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     block_model.uid))
 
             self.block_counters[block_type] = count
-            graph.RoundBaseArithmeticOpItem.position_changed_callback = self.build_position_changed_callback(
-                block_model.uid)
             self.main_block.add(block_model)
             self.scene.addItem(rect_base_op_item)
             rect_base_op_item.setPos(QtCore.QPointF(x_pos, y_pos))
@@ -4298,7 +4827,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     # TODO: create PV power plant block item
 
     def create_library_payload_item(self,
-                                    payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | MeasurementBlockDescriptor,
+                                    payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | MeasurementBlockDescriptor | MeasurementStationDescriptor,
                                     x_pos: float,
                                     y_pos: float) -> graph.BlockItem | graph.GenericBlockItem | graph.RoundBaseArithmeticOpItem | graph.RectBaseArithmeticOpItem | graph.PairedItem | None:
         """
@@ -4309,37 +4838,64 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param y_pos: Target scene y coordinate.
         :return: Diagram item created from the library payload, or ``None`` when unsupported.
         """
+        snapped_position: QtCore.QPointF = self.get_snapped_scene_position(
+            position=QtCore.QPointF(x_pos, y_pos),
+        )
+        snapped_x_pos: float = snapped_position.x()
+        snapped_y_pos: float = snapped_position.y()
         if isinstance(payload, BlockType) and payload in self.blocktype2templatebuilder:
-            return self.create_item_using_blocktype_wizard(payload, x_pos, y_pos)
+            return self.create_item_using_blocktype_wizard(payload, snapped_x_pos, snapped_y_pos)
 
         # this ones cannot be included above because they are represented by a different item in the scene
         elif isinstance(payload, BlockType) and payload == BlockType.FROM_GOTO:
-            items = self.create_signal_pair_item(x_pos=x_pos, y_pos=y_pos)
+            items = self.create_signal_pair_item(x_pos=snapped_x_pos, y_pos=snapped_y_pos)
             return items[0] if items else None
 
         elif isinstance(payload, BlockType) and payload == BlockType.SUM:
-            return self.create_basic_arithmetic_op_item(BlockType.SUM, x_pos, y_pos)
+            return self.create_basic_arithmetic_op_item(BlockType.SUM, snapped_x_pos, snapped_y_pos)
 
         elif isinstance(payload, BlockType) and payload == BlockType.PRODUCT:
-            return self.create_basic_arithmetic_op_item(BlockType.PRODUCT, x_pos, y_pos)
+            return self.create_basic_arithmetic_op_item(BlockType.PRODUCT, snapped_x_pos, snapped_y_pos)
 
         elif isinstance(payload, BlockType) and payload == BlockType.GENERIC:
-            return self.create_generic_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
+            return self.create_generic_block_item(
+                block_type=payload,
+                x_pos=snapped_x_pos,
+                y_pos=snapped_y_pos,
+            )
 
         elif isinstance(payload, BlockType):
-            return self.create_block_item_from_blocktype(block_type=payload, x_pos=x_pos, y_pos=y_pos)
+            return self.create_block_item_from_blocktype(
+                block_type=payload,
+                x_pos=snapped_x_pos,
+                y_pos=snapped_y_pos,
+            )
 
         elif isinstance(payload, BasicBlockTemplateDescriptor):
             template: EmtModelTemplate = load_basic_block_catalog_template(payload, self.var_factory)
-            return self.create_template_block_item(template=template, x_pos=x_pos, y_pos=y_pos)
+            return self.create_template_block_item(
+                template=template,
+                x_pos=snapped_x_pos,
+                y_pos=snapped_y_pos,
+            )
 
         elif isinstance(payload, (RmsModelTemplate, EmtModelTemplate, FmuTemplate)):
-            return self.create_template_block_item(template=payload, x_pos=x_pos, y_pos=y_pos)
+            return self.create_template_block_item(
+                template=payload,
+                x_pos=snapped_x_pos,
+                y_pos=snapped_y_pos,
+            )
+        elif isinstance(payload, MeasurementStationDescriptor):
+            return self.place_measurement_station_projection_item(
+                descriptor=payload,
+                x_pos=snapped_x_pos,
+                y_pos=snapped_y_pos,
+            )
         elif isinstance(payload, MeasurementBlockDescriptor):
             return self.create_measurements_block_item(
                 descriptor=payload,
-                x_pos=x_pos,
-                y_pos=y_pos,
+                x_pos=snapped_x_pos,
+                y_pos=snapped_y_pos,
             )
         else:
             return None
@@ -5782,22 +6338,49 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     source_port=item.source_port,
                     destination_port=item.target_port,
                 )
-                ordered_segments = self._qt_routing_session.get_ordered_segments(item.con_uid)
+                ordered_segments: List[RoutingSegment] = self._qt_routing_session.get_ordered_segments(item.con_uid)
                 if 0 <= segment_index < len(ordered_segments):
-                    route_segment = ordered_segments[segment_index]
+                    route_segment: RoutingSegment = ordered_segments[segment_index]
                 else:
                     return False
 
                 coordinate_offset: float
-                segment_axis = self._qt_routing_session.get_graph(item.con_uid).get_segment_axis(
-                    route_segment.get_segment_id()
-                ) if self._qt_routing_session.get_graph(item.con_uid) is not None else None
+                routing_graph: RoutingGraph | None = self._qt_routing_session.get_graph(item.con_uid)
+                segment_axis: RoutingAxis | None
+                if routing_graph is not None:
+                    segment_axis = routing_graph.get_segment_axis(route_segment.get_segment_id())
+                else:
+                    segment_axis = None
                 if segment_axis is None:
                     return False
-                elif segment_axis == RoutingAxis.HORIZONTAL:
-                    coordinate_offset = float(delta_y)
                 else:
-                    coordinate_offset = float(delta_x)
+                    pass
+
+                segment_points: tuple[QPointF, QPointF] | None = (
+                    self._qt_routing_session.get_segment_path_points(
+                        connection_uid=item.con_uid,
+                        segment_id=route_segment.get_segment_id(),
+                    )
+                )
+                if segment_points is None:
+                    return False
+                else:
+                    pass
+
+                current_coordinate: float
+                requested_coordinate: float
+                if segment_axis == RoutingAxis.HORIZONTAL:
+                    current_coordinate = segment_points[0].y()
+                    requested_coordinate = current_coordinate + float(delta_y)
+                else:
+                    current_coordinate = segment_points[0].x()
+                    requested_coordinate = current_coordinate + float(delta_x)
+
+                # Cable segments always advance on mesh coordinates. The Snap
+                # option applies to block bodies; permitting a free cable
+                # coordinate would break the orthogonal grid-routing contract.
+                requested_coordinate = self.snap_scene_coordinate_to_grid(requested_coordinate)
+                coordinate_offset = requested_coordinate - current_coordinate
 
                 moved = self._qt_routing_session.move_segment(
                     connection_uid=item.con_uid,
@@ -5857,6 +6440,25 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             return segment_entries
         else:
             return segment_entries
+
+    def is_connection_routing_graph_segment_movable(
+            self,
+            item: graph.ConnectionItem,
+            segment_id: int,
+    ) -> bool:
+        """Return whether one rendered segment is editable through the router.
+
+        :param item: Connection item owning the routing graph.
+        :param segment_id: Stable routing-graph segment identifier.
+        :return: Segment editability.
+        """
+        if self.supports_routing_graph_connection(item):
+            return self._qt_routing_session.is_segment_movable(
+                connection_uid=item.con_uid,
+                segment_id=segment_id,
+            )
+        else:
+            return False
 
     def persist_connection_routing_graph_payload(self, item: graph.ConnectionItem) -> bool:
         """
@@ -6583,6 +7185,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             y_pos: float,
             visible_input_vars: List[Var] | None = None,
             visible_output_vars: List[Var] | None = None,
+            projection_layout_uid: int | None = None,
+            output_group_split_index: int | None = None,
     ) -> graph.GenericBlockItem:
         """Create one transient item for the derived physical-root view.
 
@@ -6592,8 +7196,17 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param y_pos: Deterministic scene Y coordinate.
         :param visible_input_vars: Optional transient input-port projection.
         :param visible_output_vars: Optional transient output-port projection.
+        :param projection_layout_uid: Optional stable derived-layout identifier.
+        :param output_group_split_index: Optional first output after a visual gap.
         :return: Added full-size block item.
         """
+        position_changed_callback: graph.BlockPositionChangedCallback | None
+        if projection_layout_uid is None:
+            position_changed_callback = None
+        else:
+            position_changed_callback = self.build_projection_position_changed_callback(
+                layout_uid=projection_layout_uid
+            )
         item: graph.GenericBlockItem = graph.GenericBlockItem(
             editor=self,
             var_factory=self.var_factory,
@@ -6601,12 +7214,21 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             api_object=self.api_object,
             mode=self.mode,
             name=block_model.name,
-            position_changed_callback=None,
+            position_changed_callback=position_changed_callback,
             visual_role=visual_role,
             visible_input_vars=visible_input_vars,
             visible_output_vars=visible_output_vars,
+            output_group_split_index=output_group_split_index,
         )
-        item.setPos(QtCore.QPointF(x_pos, y_pos))
+        if projection_layout_uid is None:
+            projection_position: QtCore.QPointF = QtCore.QPointF(x_pos, y_pos)
+        else:
+            projection_position = self.get_projection_position(
+                layout_uid=projection_layout_uid,
+                default_x=x_pos,
+                default_y=y_pos,
+            )
+        item.setPos(projection_position)
         item.recolour()
         self.scene.addItem(item)
         return item
@@ -6835,6 +7457,118 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             else:
                 pass
         return result
+
+    def place_measurement_station_projection_item(
+            self,
+            descriptor: MeasurementStationDescriptor,
+            x_pos: float,
+            y_pos: float,
+    ) -> graph.GenericBlockItem | None:
+        """Create one independent typed measurement station at the drop point.
+
+        The physical anchor determines BUS, FROM, or TO.  Every supported child
+        is a canonical RMS meter with its own persisted measurement contract;
+        repeated drops therefore create separate blocks and variables instead
+        of moving the automatic station projection.
+
+        :param descriptor: Neutral RMS station placement request.
+        :param x_pos: Snapped scene X coordinate.
+        :param y_pos: Snapped scene Y coordinate.
+        :return: Newly created station item, or ``None`` when unsupported.
+        """
+        if (
+                descriptor.get_mode() is not self.mode
+                or self.mode is not DynamicSimulationMode.RMS
+                or not isinstance(self.api_object, (BranchParent, InjectionParent))
+        ):
+            return None
+        else:
+            pass
+
+        physical_item: graph.GenericBlockItem | None = None
+        scene_item: QGraphicsItem
+        for scene_item in self.scene.items():
+            if isinstance(scene_item, graph.GenericBlockItem):
+                if (
+                        scene_item.visual_role
+                        is graph.DynamicBlockVisualRole.DEVICE_TEMPLATE
+                ):
+                    physical_item = scene_item
+                else:
+                    pass
+            else:
+                pass
+        if physical_item is None:
+            return None
+        else:
+            pass
+
+        if isinstance(self.api_object, InjectionParent):
+            terminal_side: RmsTerminalSide = RmsTerminalSide.BUS
+        elif y_pos <= physical_item.pos().y():
+            terminal_side = RmsTerminalSide.FROM
+        else:
+            terminal_side = RmsTerminalSide.TO
+
+        station_uid: int = uuid.uuid4().int
+        station: Block | None = build_rms_measurement_station_projection_block(
+            root_block=self.main_block,
+            physical_device=self.api_object,
+            terminal_side=terminal_side,
+            nominal_frequency_hz=self.circuit.fBase,
+            station_var_factory=self.var_factory,
+            station_instance_uid=station_uid,
+        )
+        terminal_vars: List[Var] = get_measurement_station_terminal_boundary_vars(
+            root_block=self.main_block,
+            terminal_side=terminal_side,
+        )
+        if station is None or len(station.children) == 0 or len(terminal_vars) == 0:
+            return None
+        else:
+            terminal_vars = list(station.in_vars)
+
+        self.main_block.add(station)
+        self._local_measurement_view_blocks.append(station)
+        station_item: graph.GenericBlockItem = graph.GenericBlockItem(
+            editor=self,
+            var_factory=self.var_factory,
+            subsys=station,
+            api_object=self.api_object,
+            mode=self.mode,
+            name=station.name,
+            position_changed_callback=self.build_position_changed_callback(station.uid),
+            visual_role=graph.DynamicBlockVisualRole.MEASUREMENT,
+            visible_input_vars=list(),
+            visible_output_vars=terminal_vars,
+            output_group_split_index=(
+                get_measurement_station_terminal_input_count(
+                    root_block=self.main_block,
+                    terminal_side=terminal_side,
+                    station_vars=station.in_vars,
+                )
+            ),
+        )
+        station_item.setPos(QtCore.QPointF(x_pos, y_pos))
+        station_item.recolour()
+        self.scene.addItem(station_item)
+        self.diagram.add_node(
+            name=station.name,
+            x=x_pos,
+            y=y_pos,
+            tpe=graph.EditorGraphicsCommonFeatures.TEMPLATE_NODE_TYPE,
+            device_uid=station.uid,
+        )
+        terminal_var: Var
+        for terminal_var in terminal_vars:
+            self._attach_measurement_station_terminal_association(
+                physical_item=physical_item,
+                station_item=station_item,
+                terminal_var=terminal_var,
+                association_scope_uid=station.uid,
+            )
+        self.mark_unapplied_changes()
+        return station_item
 
     def create_measurements_block_item(
             self,
@@ -7830,6 +8564,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             consumes_signal: bool,
             x_pos: float,
             y_pos: float,
+            projection_layout_uid: int | None = None,
     ) -> graph.PairedItem:
         """Create one transient From/To tag for a collision-prone signal.
 
@@ -7842,6 +8577,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param consumes_signal: Whether this is the source-side From tag.
         :param x_pos: Deterministic scene X coordinate.
         :param y_pos: Deterministic scene Y coordinate.
+        :param projection_layout_uid: Optional stable derived-layout identifier.
         :return: Added transient paired graphics item.
         """
         if consumes_signal:
@@ -7855,6 +8591,13 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 out_vars=list((signal_var,)),
             )
 
+        position_changed_callback: graph.BlockPositionChangedCallback | None
+        if projection_layout_uid is None:
+            position_changed_callback = None
+        else:
+            position_changed_callback = self.build_projection_position_changed_callback(
+                layout_uid=projection_layout_uid
+            )
         tag_item: graph.PairedItem = graph.PairedItem(
             editor=self,
             var_factory=self.var_factory,
@@ -7862,10 +8605,18 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             api_object=self.api_object,
             mode=self.mode,
             name=display_name,
-            position_changed_callback=None,
+            position_changed_callback=position_changed_callback,
         )
         tag_item.set_display_name(display_name)
-        tag_item.setPos(QtCore.QPointF(x_pos, y_pos))
+        if projection_layout_uid is None:
+            projection_position: QtCore.QPointF = QtCore.QPointF(x_pos, y_pos)
+        else:
+            projection_position = self.get_projection_position(
+                layout_uid=projection_layout_uid,
+                default_x=x_pos,
+                default_y=y_pos,
+            )
+        tag_item.setPos(projection_position)
         tag_item.recolour()
         self.scene.addItem(tag_item)
         return tag_item
@@ -8270,6 +9021,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             target_var: Var,
             source_tags: List[tuple[int, graph.PairedItem]],
             reserved_segments: List[tuple[QtCore.QPointF, QtCore.QPointF]],
+            require_local_connections: bool = True,
+            use_fixed_tag_columns: bool = False,
+            source_tag_layout_uid: int | None = None,
+            target_tag_layout_uid: int | None = None,
     ) -> None:
         """Replace one long or reverse visual wire with linked From/Goto tags.
 
@@ -8283,6 +9038,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param target_var: Consumer-side alias.
         :param source_tags: Existing source-variable-to-From-tag associations.
         :param reserved_segments: Segments already accepted by the global pass.
+        :param require_local_connections: Whether a deterministic short stub
+            must be created when obstacle routing rejects the local tag lane.
+        :param use_fixed_tag_columns: Whether tags retain their deterministic
+            port-index columns instead of using global collision relocation.
+        :param source_tag_layout_uid: Optional stable From-tag layout identifier.
+        :param target_tag_layout_uid: Optional stable Goto-tag layout identifier.
         :return: None.
         """
         source_port: graph.PortItem | None = self._find_output_port_for_var(
@@ -8352,6 +9113,13 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             display_name = display_name[:-len(source_owner_suffix)]
         else:
             pass
+        if (
+                use_fixed_tag_columns
+                and isinstance(source_var.ref, VarPowerFlowReferenceType)
+        ):
+            display_name = source_var.ref.name
+        else:
+            pass
 
         source_tag: graph.PairedItem | None = None
         source_tag_entry: tuple[int, graph.PairedItem]
@@ -8362,6 +9130,20 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 pass
 
         if source_tag is None:
+            source_declared_position: QtCore.QPointF | None = None
+            if source_tag_layout_uid is not None:
+                source_projection_node: BlockDiagramProjectionNode | None = (
+                    self.diagram.get_projection_node(source_tag_layout_uid)
+                )
+                if source_projection_node is not None:
+                    source_declared_position = QtCore.QPointF(
+                        source_projection_node.get_x(),
+                        source_projection_node.get_y(),
+                    )
+                else:
+                    pass
+            else:
+                pass
             source_attachment_y_offset: float = 0.0
             source_tag_x: float = (
                     source_attachment.scenePos().x()
@@ -8379,6 +9161,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 consumes_signal=True,
                 x_pos=source_tag_x,
                 y_pos=source_tag_y,
+                projection_layout_uid=source_tag_layout_uid,
             )
             if len(source_tag.inputs) == 1:
                 source_tag.setY(
@@ -8421,11 +9204,18 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 + emergency_attachment_offset
                 - source_tag_input.scenePos()
             )
-            self._place_projection_tag_in_free_outward_column(
-                tag_item=source_tag,
-                tag_endpoint=source_tag_input,
-                direction=1.0,
-            )
+            if use_fixed_tag_columns:
+                pass
+            else:
+                self._place_projection_tag_in_free_outward_column(
+                    tag_item=source_tag,
+                    tag_endpoint=source_tag_input,
+                    direction=1.0,
+                )
+            if source_declared_position is not None:
+                source_tag.setPos(source_declared_position)
+            else:
+                pass
             source_tags.append((source_var.uid, source_tag))
             # From/Goto is already the fallback for an impossible global edge.
             # Its short endpoint wire therefore uses only the atomic local row.
@@ -8448,9 +9238,42 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 )
             else:
                 pass
+            if source_connection is None and require_local_connections:
+                source_connection = self._attach_projection_straight_connection(
+                    source_endpoint=source_attachment,
+                    target_endpoint=source_tag_input,
+                    reserved_segments=reserved_segments,
+                )
+            else:
+                pass
+            # Bounded routing may temporarily relocate the tag while searching
+            # for a clear lane. A saved public layout is authoritative, so put
+            # it back after connection construction and repair the live route.
+            if source_declared_position is not None:
+                source_tag.setPos(source_declared_position)
+                if source_connection is not None:
+                    source_connection.update_path()
+                else:
+                    pass
+            else:
+                pass
         else:
             pass
 
+        target_declared_position: QtCore.QPointF | None = None
+        if target_tag_layout_uid is not None:
+            target_projection_node: BlockDiagramProjectionNode | None = (
+                self.diagram.get_projection_node(target_tag_layout_uid)
+            )
+            if target_projection_node is not None:
+                target_declared_position = QtCore.QPointF(
+                    target_projection_node.get_x(),
+                    target_projection_node.get_y(),
+                )
+            else:
+                pass
+        else:
+            pass
         target_tag_x: float = (
                 target_port.scenePos().x()
                 - 104.0
@@ -8463,6 +9286,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             consumes_signal=False,
             x_pos=target_tag_x,
             y_pos=target_tag_y,
+            projection_layout_uid=target_tag_layout_uid,
         )
         if len(target_tag.outputs) == 1:
             target_tag.setY(
@@ -8498,11 +9322,18 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             + target_endpoint_position
             - target_tag_output.scenePos()
         )
-        self._place_projection_tag_in_free_outward_column(
-            tag_item=target_tag,
-            tag_endpoint=target_tag_output,
-            direction=-1.0,
-        )
+        if use_fixed_tag_columns:
+            pass
+        else:
+            self._place_projection_tag_in_free_outward_column(
+                tag_item=target_tag,
+                tag_endpoint=target_tag_output,
+                direction=-1.0,
+            )
+        if target_declared_position is not None:
+            target_tag.setPos(target_declared_position)
+        else:
+            pass
         source_tag.set_paired_item(target_tag)
         target_tag.set_paired_item(source_tag)
         target_connection: graph.ConnectionItem | None = (
@@ -8522,6 +9353,25 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 side=ProjectionTagConnectionSide.TARGET,
                 reserved_segments=reserved_segments,
             )
+        else:
+            pass
+        if target_connection is None and require_local_connections:
+            target_connection = self._attach_projection_straight_connection(
+                source_endpoint=target_tag_output,
+                target_endpoint=target_port,
+                reserved_segments=reserved_segments,
+            )
+        else:
+            pass
+        # The persisted tag coordinate wins over every construction-time lane
+        # candidate. Endpoint synchronization retains an orthogonal live cable
+        # without changing the canonical symbolic connection.
+        if target_declared_position is not None:
+            target_tag.setPos(target_declared_position)
+            if target_connection is not None:
+                target_connection.update_path()
+            else:
+                pass
         else:
             pass
 
@@ -8650,6 +9500,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     def _route_projection_items(
             self,
             visible_items: List[DynamicBlockGraphicsItem],
+            use_signal_pairs_for_all_edges: bool = False,
     ) -> None:
         """Route one source-independent semantic projection.
 
@@ -8659,6 +9510,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         identical obstacle, fan-out and per-edge fallback behaviour.
 
         :param visible_items: Ordered scene blocks participating in the view.
+        :param use_signal_pairs_for_all_edges: Whether every logical edge is
+            represented by one scalar From/Goto pair instead of a long cable.
         :return: None.
         """
         # Collect every logical edge before accepting geometry so the stable
@@ -8695,6 +9548,55 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         )
 
         projection_edges.sort(key=get_projection_edge_sort_key)
+        if use_signal_pairs_for_all_edges:
+            # Direct physical branch projections have a small number of clear
+            # scalar boundary signals. Give every one its own standard From/Goto
+            # identity so no bundled cable can be mistaken for one signal.
+            signal_pair_reserved_segments: List[
+                tuple[QtCore.QPointF, QtCore.QPointF]
+            ] = list()
+            signal_pair_source_tags: List[tuple[int, graph.PairedItem]] = list()
+            signal_pair_edge: tuple[
+                DynamicBlockGraphicsItem,
+                DynamicBlockGraphicsItem,
+                Var,
+                Var,
+            ]
+            for signal_pair_edge in projection_edges:
+                source_tag_layout_uid: int = build_dynamic_projection_layout_uid(
+                    root_uid=self.main_block.uid,
+                    role=DynamicProjectionLayoutRole.FROM_TAG,
+                    source_uid=signal_pair_edge[2].uid,
+                )
+                target_tag_layout_uid: int = build_dynamic_projection_layout_uid(
+                    root_uid=self.main_block.uid,
+                    role=DynamicProjectionLayoutRole.GOTO_TAG,
+                    source_uid=signal_pair_edge[2].uid,
+                    target_uid=signal_pair_edge[3].uid,
+                )
+                self._attach_projection_signal_pair(
+                    source_item=signal_pair_edge[0],
+                    target_item=signal_pair_edge[1],
+                    source_var=signal_pair_edge[2],
+                    target_var=signal_pair_edge[3],
+                    source_tags=signal_pair_source_tags,
+                    reserved_segments=signal_pair_reserved_segments,
+                    require_local_connections=True,
+                    use_fixed_tag_columns=True,
+                    source_tag_layout_uid=source_tag_layout_uid,
+                    target_tag_layout_uid=target_tag_layout_uid,
+                )
+
+            signal_pair_projection_rect: QtCore.QRectF = self.scene.itemsBoundingRect()
+            if signal_pair_projection_rect.isNull():
+                pass
+            else:
+                self.scene.setSceneRect(
+                    signal_pair_projection_rect.adjusted(-45.0, -45.0, 45.0, 45.0)
+                )
+            return
+        else:
+            pass
         source_edge_counts: Dict[int, int] = dict()
         target_edge_counts: Dict[tuple[int, int], int] = dict()
         counted_edge: tuple[
@@ -8822,6 +9724,565 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             projection_rect = projection_rect.adjusted(-45.0, -45.0, 45.0, 45.0)
             self.scene.setSceneRect(projection_rect)
 
+    def _attach_measurement_station_terminal_association(
+            self,
+            physical_item: graph.GenericBlockItem,
+            station_item: graph.GenericBlockItem,
+            terminal_var: Var,
+            association_scope_uid: int = 0,
+    ) -> bool:
+        """Associate one station output handle with its physical root port.
+
+        Station endpoints are always outputs. A physical input receives that
+        output normally; a physical output is associated output-to-output.
+        From/Goto shortens both forms without asking General options to select
+        a terminal.
+
+        :param physical_item: Visible equation-owning physical block.
+        :param station_item: Visible station containing four real meters.
+        :param terminal_var: Canonical terminal variable shared by both endpoints.
+        :param association_scope_uid: Optional user-station identity separating tags.
+        :return: ``True`` when both short association wires were created.
+        """
+        physical_port: graph.PortItem | None = self._find_output_port_for_var(
+            item_source=physical_item,
+            source_var=terminal_var,
+        )
+        if physical_port is None:
+            physical_port = self._find_input_port_for_var(
+                item_dest=physical_item,
+                target_var=terminal_var,
+            )
+        else:
+            pass
+        station_port: graph.PortItem | None = self._find_output_port_for_var(
+            item_source=station_item,
+            source_var=terminal_var,
+        )
+        if physical_port is None or station_port is None:
+            return False
+        else:
+            pass
+
+        terminal_reference: VarPowerFlowReferenceType | None = (
+            get_rms_boundary_var_reference(
+                root_block=self.main_block,
+                boundary_var=terminal_var,
+            )
+        )
+        terminal_side: RmsTerminalSide
+        if terminal_reference is not None:
+            terminal_side = get_rms_measurement_terminal_side_for_reference(
+                reference=terminal_reference,
+            )
+        else:
+            return False
+
+        # Voltage enters the physical model, whereas terminal powers leave it.
+        # Preserve that signal direction while keeping the station boundary
+        # uniformly output-only for control-system readability.
+        source_port: graph.PortItem
+        target_port: graph.PortItem
+        if physical_port.is_input:
+            source_port = station_port
+            target_port = physical_port
+        else:
+            source_port = physical_port
+            target_port = station_port
+
+        if association_scope_uid == 0:
+            association_target_uid: int = terminal_var.non_mutable_uid
+        else:
+            association_target_uid = association_scope_uid
+        from_layout_uid: int = build_dynamic_projection_layout_uid(
+            root_uid=self.main_block.uid,
+            role=DynamicProjectionLayoutRole.FROM_TAG,
+            source_uid=terminal_var.non_mutable_uid,
+            target_uid=association_target_uid,
+        )
+        goto_layout_uid: int = build_dynamic_projection_layout_uid(
+            root_uid=self.main_block.uid,
+            role=DynamicProjectionLayoutRole.GOTO_TAG,
+            source_uid=terminal_var.non_mutable_uid,
+            target_uid=association_target_uid,
+        )
+        from_position_was_declared: bool = (
+            self.diagram.get_projection_node(from_layout_uid) is not None
+        )
+        goto_position_was_declared: bool = (
+            self.diagram.get_projection_node(goto_layout_uid) is not None
+        )
+        display_name: str = terminal_side.name + " " + terminal_reference.name
+        # Keep the tag column beyond one complete routing-grid cell. The extra
+        # pixel absorbs the half-width outline used by Qt scene bounds.
+        tag_stub_length: float = max(
+            72.0,
+            float(self.get_grid_size()) + 1.0,
+        )
+        target_tag_offset_x: float
+        if target_port.is_input:
+            # Input ports face left, so the Goto output must remain in the
+            # free corridor before the physical body instead of crossing it.
+            target_tag_offset_x = -tag_stub_length
+        else:
+            # Output-to-output station associations stay in the outward lane.
+            target_tag_offset_x = tag_stub_length
+
+        from_tag: graph.PairedItem = self._create_projection_signal_tag_item(
+            signal_var=terminal_var,
+            display_name=display_name,
+            consumes_signal=True,
+            x_pos=source_port.scenePos().x() + tag_stub_length,
+            y_pos=source_port.scenePos().y() - 14.0,
+            projection_layout_uid=from_layout_uid,
+        )
+        goto_tag: graph.PairedItem = self._create_projection_signal_tag_item(
+            signal_var=terminal_var,
+            display_name=display_name,
+            consumes_signal=False,
+            x_pos=target_port.scenePos().x() + target_tag_offset_x,
+            y_pos=target_port.scenePos().y() - 14.0,
+            projection_layout_uid=goto_layout_uid,
+        )
+        if len(from_tag.inputs) != 1 or len(goto_tag.outputs) != 1:
+            return False
+        else:
+            from_input: graph.PortItem = from_tag.inputs[0]
+            goto_output: graph.PortItem = goto_tag.outputs[0]
+
+        physical_body_rect: QtCore.QRectF = physical_item.mapRectToScene(
+            physical_item.rect()
+        )
+        from_tag_overlaps_physical: bool = physical_body_rect.intersects(
+            from_tag.sceneBoundingRect()
+        )
+        if not from_position_was_declared or from_tag_overlaps_physical:
+            from_tag.setPos(
+                from_tag.pos()
+                + QtCore.QPointF(
+                    source_port.scenePos().x() + tag_stub_length,
+                    source_port.scenePos().y(),
+                )
+                - from_input.scenePos()
+            )
+        else:
+            pass
+        goto_tag_overlaps_physical: bool = physical_body_rect.intersects(
+            goto_tag.sceneBoundingRect()
+        )
+        station_body_rect: QtCore.QRectF = station_item.mapRectToScene(
+            station_item.rect()
+        )
+        station_right_boundary: float = max(
+            station_body_rect.right(),
+            target_port.scenePos().x(),
+        )
+        goto_tag_has_station_clearance: bool = (
+            target_port.is_input
+            or goto_tag.sceneBoundingRect().left() - station_right_boundary
+            >= float(self.get_grid_size())
+        )
+        if (
+                not goto_position_was_declared
+                or goto_tag_overlaps_physical
+                or not goto_tag_has_station_clearance
+        ):
+            if target_port.is_input:
+                # A physical input is reached from the tag's right-side output,
+                # so preserve the short leftward endpoint stub.
+                goto_tag.setPos(
+                    goto_tag.pos()
+                    + QtCore.QPointF(
+                        target_port.scenePos().x() + target_tag_offset_x,
+                        target_port.scenePos().y(),
+                    )
+                    - goto_output.scenePos()
+                )
+            else:
+                # P/Q are output-to-output associations. Align their polygon's
+                # left edge with the Vm/Va tag column instead of aligning the
+                # far-right output tip, which previously consumed the corridor.
+                goto_tag_body_rect: QtCore.QRectF = goto_tag.mapRectToScene(
+                    goto_tag.rect()
+                )
+                goto_tag.setPos(
+                    goto_tag.pos()
+                    + QtCore.QPointF(
+                        target_port.scenePos().x() + tag_stub_length
+                        - goto_tag_body_rect.left(),
+                        target_port.scenePos().y() - goto_output.scenePos().y(),
+                    )
+                )
+        else:
+            pass
+
+        from_tag.set_paired_item(goto_tag)
+        goto_tag.set_paired_item(from_tag)
+
+        # ConnectionItem's transient path builder keeps these short stubs
+        # orthogonal while either the physical block, station, or tag moves.
+        physical_connection: graph.ConnectionItem = graph.ConnectionItem(
+            source_port=source_port,
+            target_port=from_input,
+            diagram=None,
+            editor=self,
+        )
+        physical_connection.recolour()
+        self.scene.addItem(physical_connection)
+        station_connection: graph.ConnectionItem = graph.ConnectionItem(
+            source_port=goto_output,
+            target_port=target_port,
+            diagram=None,
+            editor=self,
+        )
+        station_connection.recolour()
+        self.scene.addItem(station_connection)
+        return True
+
+    def _materialize_user_measurement_station_items(
+            self,
+            physical_item: graph.GenericBlockItem,
+    ) -> None:
+        """Restore persisted user stations in a derived physical projection.
+
+        :param physical_item: Visible physical device receiving station anchors.
+        :return: None.
+        """
+        station_index: int = 0
+        candidate_station: Block
+        for candidate_station in self.main_block.children:
+            is_station: bool = (
+                candidate_station.dynamic_model_contract.rms_physical_measurement_point
+                is None
+                and len(candidate_station.children) > 0
+                and classify_dynamic_template_block(candidate_station)
+                is DynamicTemplateCategory.MEASUREMENT
+                and candidate_station.name == "Measurement station"
+            )
+            if is_station:
+                terminal_sides: set[RmsTerminalSide] = set()
+                station_boundary_var: Var
+                for station_boundary_var in candidate_station.in_vars:
+                    boundary_reference: VarPowerFlowReferenceType | None = (
+                        get_rms_boundary_var_reference(
+                            root_block=self.main_block,
+                            boundary_var=station_boundary_var,
+                        )
+                    )
+                    if boundary_reference is not None:
+                        terminal_sides.add(
+                            get_rms_measurement_terminal_side_for_reference(
+                                reference=boundary_reference,
+                            )
+                        )
+                    else:
+                        pass
+                if len(terminal_sides) == 1:
+                    terminal_side: RmsTerminalSide = next(iter(terminal_sides))
+                    diagram_node: BlockDiagramNode | None = self.diagram.node_data.get(
+                        candidate_station.uid,
+                        None,
+                    )
+                    if diagram_node is None:
+                        station_x: float = -360.0
+                        station_y: float = 320.0 + float(station_index) * 180.0
+                    else:
+                        station_x = diagram_node.x
+                        station_y = diagram_node.y
+                    station_item: graph.GenericBlockItem = graph.GenericBlockItem(
+                        editor=self,
+                        var_factory=self.var_factory,
+                        subsys=candidate_station,
+                        api_object=self.api_object,
+                        mode=self.mode,
+                        name=candidate_station.name,
+                        position_changed_callback=self.build_position_changed_callback(
+                            candidate_station.uid
+                        ),
+                        visual_role=graph.DynamicBlockVisualRole.MEASUREMENT,
+                        visible_input_vars=list(),
+                        visible_output_vars=list(candidate_station.in_vars),
+                        output_group_split_index=(
+                            get_measurement_station_terminal_input_count(
+                                root_block=self.main_block,
+                                terminal_side=terminal_side,
+                                station_vars=candidate_station.in_vars,
+                            )
+                        ),
+                    )
+                    station_item.setPos(QtCore.QPointF(station_x, station_y))
+                    station_item.recolour()
+                    self.scene.addItem(station_item)
+                    self._local_measurement_view_blocks.append(candidate_station)
+                    terminal_var: Var
+                    for terminal_var in candidate_station.in_vars:
+                        self._attach_measurement_station_terminal_association(
+                            physical_item=physical_item,
+                            station_item=station_item,
+                            terminal_var=terminal_var,
+                            association_scope_uid=candidate_station.uid,
+                        )
+                    station_index += 1
+                else:
+                    pass
+            else:
+                pass
+
+    def _materialize_two_terminal_measurement_station_projection(
+            self,
+            physical_block: Block,
+    ) -> bool:
+        """Render identical FROM and TO measurement-station compositions.
+
+        Each station selects the real meters supported by its own typed
+        terminal boundary. Voltage-only transformer shells therefore still
+        receive separate FROM and TO stations without inventing P/Q signals.
+        Short From/Goto pairs expose the association without hiding outputs.
+
+        :param physical_block: Equation-owning block shown as the physical device.
+        :return: ``True`` when both complete stations were materialized.
+        """
+        if (
+                self.mode is not DynamicSimulationMode.RMS
+                or not isinstance(self.api_object, BranchParent)
+        ):
+            return False
+        else:
+            pass
+
+        from_terminal_vars: List[Var] = (
+            get_measurement_station_terminal_boundary_vars(
+                root_block=self.main_block,
+                terminal_side=RmsTerminalSide.FROM,
+            )
+        )
+        to_terminal_vars: List[Var] = (
+            get_measurement_station_terminal_boundary_vars(
+                root_block=self.main_block,
+                terminal_side=RmsTerminalSide.TO,
+            )
+        )
+        if len(from_terminal_vars) == 0 or len(to_terminal_vars) == 0:
+            return False
+        else:
+            pass
+
+        # Each instance receives an independent detached output factory. This
+        # retains identical meter names and port signatures without sharing
+        # runtime variables between the FROM and TO station instances.
+        from_station_var_factory: VarFactory = VarFactory()
+        to_station_var_factory: VarFactory = VarFactory()
+        from_station: Block | None = build_rms_measurement_station_projection_block(
+            root_block=self.main_block,
+            physical_device=self.api_object,
+            terminal_side=RmsTerminalSide.FROM,
+            nominal_frequency_hz=self.circuit.fBase,
+            station_var_factory=from_station_var_factory,
+        )
+        to_station: Block | None = build_rms_measurement_station_projection_block(
+            root_block=self.main_block,
+            physical_device=self.api_object,
+            terminal_side=RmsTerminalSide.TO,
+            nominal_frequency_hz=self.circuit.fBase,
+            station_var_factory=to_station_var_factory,
+        )
+        if from_station is None or to_station is None:
+            return False
+        else:
+            from_terminal_vars = list(from_station.in_vars)
+            to_terminal_vars = list(to_station.in_vars)
+
+        self.scene.clear()
+        self._local_measurement_view_blocks = list((from_station, to_station))
+        from_station_item: graph.GenericBlockItem = self._create_projection_block_item(
+            block_model=from_station,
+            visual_role=graph.DynamicBlockVisualRole.MEASUREMENT,
+            x_pos=0.0,
+            y_pos=-180.0,
+            visible_input_vars=list(),
+            visible_output_vars=from_terminal_vars,
+            projection_layout_uid=build_dynamic_projection_layout_uid(
+                root_uid=self.main_block.uid,
+                role=DynamicProjectionLayoutRole.MEASUREMENT_STATION_FROM,
+            ),
+            output_group_split_index=(
+                get_measurement_station_terminal_input_count(
+                    root_block=self.main_block,
+                    terminal_side=RmsTerminalSide.FROM,
+                    station_vars=from_station.in_vars,
+                )
+            ),
+        )
+        to_station_item: graph.GenericBlockItem = self._create_projection_block_item(
+            block_model=to_station,
+            visual_role=graph.DynamicBlockVisualRole.MEASUREMENT,
+            x_pos=0.0,
+            y_pos=180.0,
+            visible_input_vars=list(),
+            visible_output_vars=to_terminal_vars,
+            projection_layout_uid=build_dynamic_projection_layout_uid(
+                root_uid=self.main_block.uid,
+                role=DynamicProjectionLayoutRole.MEASUREMENT_STATION_TO,
+            ),
+            output_group_split_index=(
+                get_measurement_station_terminal_input_count(
+                    root_block=self.main_block,
+                    terminal_side=RmsTerminalSide.TO,
+                    station_vars=to_station.in_vars,
+                )
+            ),
+        )
+        physical_item: graph.GenericBlockItem = self._create_projection_block_item(
+            block_model=physical_block,
+            visual_role=graph.DynamicBlockVisualRole.DEVICE_TEMPLATE,
+            x_pos=640.0,
+            y_pos=0.0,
+            projection_layout_uid=build_dynamic_projection_layout_uid(
+                root_uid=self.main_block.uid,
+                role=DynamicProjectionLayoutRole.PHYSICAL_DEVICE,
+            ),
+        )
+        from_association_created: bool = len(from_terminal_vars) > 0
+        terminal_var: Var
+        for terminal_var in from_terminal_vars:
+            association_created: bool = (
+                self._attach_measurement_station_terminal_association(
+                    physical_item=physical_item,
+                    station_item=from_station_item,
+                    terminal_var=terminal_var,
+                )
+            )
+            if association_created:
+                pass
+            else:
+                from_association_created = False
+        to_association_created: bool = len(to_terminal_vars) > 0
+        for terminal_var in to_terminal_vars:
+            association_created = (
+                self._attach_measurement_station_terminal_association(
+                    physical_item=physical_item,
+                    station_item=to_station_item,
+                    terminal_var=terminal_var,
+                )
+            )
+            if association_created:
+                pass
+            else:
+                to_association_created = False
+        if not from_association_created or not to_association_created:
+            return False
+        else:
+            self._materialize_user_measurement_station_items(
+                physical_item=physical_item,
+            )
+            projection_rect: QtCore.QRectF = self.scene.itemsBoundingRect()
+            if projection_rect.isNull():
+                pass
+            else:
+                self.scene.setSceneRect(
+                    projection_rect.adjusted(-45.0, -45.0, 45.0, 45.0)
+                )
+            return True
+
+    def _materialize_single_terminal_measurement_station_projection(
+            self,
+            physical_block: Block,
+    ) -> bool:
+        """Render one BUS measurement station beside an injection device.
+
+        The station owns the same four real meter families used by branch
+        stations. Its public boundary contains only the canonical variables
+        required by the visible physical block, all exposed as outputs.
+
+        :param physical_block: Equation-owning physical injection block.
+        :return: ``True`` when the station and every association were created.
+        """
+        if (
+                self.mode is not DynamicSimulationMode.RMS
+                or not isinstance(self.api_object, InjectionParent)
+        ):
+            return False
+        else:
+            pass
+
+        station_var_factory: VarFactory = VarFactory()
+        station: Block | None = build_rms_measurement_station_projection_block(
+            root_block=self.main_block,
+            physical_device=self.api_object,
+            terminal_side=RmsTerminalSide.BUS,
+            nominal_frequency_hz=self.circuit.fBase,
+            station_var_factory=station_var_factory,
+        )
+        terminal_vars: List[Var] = get_measurement_station_terminal_boundary_vars(
+            root_block=self.main_block,
+            terminal_side=RmsTerminalSide.BUS,
+        )
+        if station is None or len(terminal_vars) == 0:
+            return False
+        else:
+            terminal_vars = list(station.in_vars)
+
+        self.scene.clear()
+        self._local_measurement_view_blocks = list((station,))
+        station_item: graph.GenericBlockItem = self._create_projection_block_item(
+            block_model=station,
+            visual_role=graph.DynamicBlockVisualRole.MEASUREMENT,
+            x_pos=0.0,
+            y_pos=0.0,
+            visible_input_vars=list(),
+            visible_output_vars=terminal_vars,
+            projection_layout_uid=build_dynamic_projection_layout_uid(
+                root_uid=self.main_block.uid,
+                role=DynamicProjectionLayoutRole.LOCAL_MEASUREMENTS,
+            ),
+            output_group_split_index=(
+                get_measurement_station_terminal_input_count(
+                    root_block=self.main_block,
+                    terminal_side=RmsTerminalSide.BUS,
+                    station_vars=station.in_vars,
+                )
+            ),
+        )
+        physical_item: graph.GenericBlockItem = self._create_projection_block_item(
+            block_model=physical_block,
+            visual_role=graph.DynamicBlockVisualRole.DEVICE_TEMPLATE,
+            x_pos=640.0,
+            y_pos=0.0,
+            projection_layout_uid=build_dynamic_projection_layout_uid(
+                root_uid=self.main_block.uid,
+                role=DynamicProjectionLayoutRole.PHYSICAL_DEVICE,
+            ),
+        )
+
+        all_associations_created: bool = True
+        terminal_var: Var
+        for terminal_var in terminal_vars:
+            association_created: bool = (
+                self._attach_measurement_station_terminal_association(
+                    physical_item=physical_item,
+                    station_item=station_item,
+                    terminal_var=terminal_var,
+                )
+            )
+            if association_created:
+                pass
+            else:
+                all_associations_created = False
+        if all_associations_created:
+            self._materialize_user_measurement_station_items(
+                physical_item=physical_item,
+            )
+            projection_rect: QtCore.QRectF = self.scene.itemsBoundingRect()
+            if projection_rect.isNull():
+                pass
+            else:
+                self.scene.setSceneRect(
+                    projection_rect.adjusted(-45.0, -45.0, 45.0, 45.0)
+                )
+            return True
+        else:
+            return False
+
     def _materialize_direct_physical_template_projection(self) -> None:
         """Render one direct device template with its local measurements.
 
@@ -8837,61 +10298,75 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             return
         else:
             pass
-
-        self.scene.clear()
-        self._local_measurement_view_blocks = list()
-        visible_items: List[DynamicBlockGraphicsItem] = list()
-
-        # Root inputs are physical quantities supplied by the associated
-        # MultiCircuit object. A local measurement view owns their visible
-        # source ports; the canonical physical block remains their consumer.
-        if len(self.main_block.in_vars) > 0:
-            measurement_view_block: Block = Block(
-                name=f"Local measurements - {self.api_object.name}",
-                in_vars=list(),
-                out_vars=list(self.main_block.in_vars),
-            )
-            self._local_measurement_view_blocks.append(measurement_view_block)
-            measurement_item: graph.GenericBlockItem = self._create_projection_block_item(
-                block_model=measurement_view_block,
-                visual_role=graph.DynamicBlockVisualRole.MEASUREMENT,
-                x_pos=0.0,
-                y_pos=0.0,
-            )
-            visible_items.append(measurement_item)
+        if self._materialize_two_terminal_measurement_station_projection(
+                physical_block=physical_block,
+        ):
+            return
+        else:
+            pass
+        if self._materialize_single_terminal_measurement_station_projection(
+                physical_block=physical_block,
+        ):
+            return
         else:
             pass
 
+        # A partial physical contract still receives one output-only station.
+        # This fallback keeps every required canonical port visible without
+        # reviving the misleading Local measurements / Network exchange split.
+        self.scene.clear()
+        station_output_vars: List[Var] = list()
+        boundary_vars: List[Var]
+        boundary_var_collections: tuple[List[Var], List[Var]] = (
+            physical_block.in_vars,
+            physical_block.out_vars,
+        )
+        for boundary_vars in boundary_var_collections:
+            boundary_var: Var
+            for boundary_var in boundary_vars:
+                station_output_vars.append(boundary_var)
+        station: Block = Block(
+            children=list(),
+            in_vars=list(),
+            out_vars=station_output_vars,
+            external_mapping=dict(),
+            is_decomposable=True,
+            name="Measurement station",
+        )
+        self._local_measurement_view_blocks = list((station,))
+        station_item: graph.GenericBlockItem = self._create_projection_block_item(
+            block_model=station,
+            visual_role=graph.DynamicBlockVisualRole.MEASUREMENT,
+            x_pos=0.0,
+            y_pos=0.0,
+            projection_layout_uid=build_dynamic_projection_layout_uid(
+                root_uid=self.main_block.uid,
+                role=DynamicProjectionLayoutRole.LOCAL_MEASUREMENTS,
+            ),
+        )
         physical_item: graph.GenericBlockItem = self._create_projection_block_item(
             block_model=physical_block,
             visual_role=graph.DynamicBlockVisualRole.DEVICE_TEMPLATE,
-            x_pos=560.0,
+            x_pos=640.0,
             y_pos=0.0,
+            projection_layout_uid=build_dynamic_projection_layout_uid(
+                root_uid=self.main_block.uid,
+                role=DynamicProjectionLayoutRole.PHYSICAL_DEVICE,
+            ),
         )
-        visible_items.append(physical_item)
-
-        # Root outputs are physical injections consumed by the circuit-wide
-        # nodal problem. Materialize that public network boundary as a transient
-        # sink so every visible physical output has an inspectable connection.
-        if len(self.main_block.out_vars) > 0:
-            network_exchange_block: Block = Block(
-                name=f"Network exchange - {self.api_object.name}",
-                in_vars=list(self.main_block.out_vars),
-                out_vars=list(),
+        for boundary_var in station_output_vars:
+            self._attach_measurement_station_terminal_association(
+                physical_item=physical_item,
+                station_item=station_item,
+                terminal_var=boundary_var,
             )
-            self._local_measurement_view_blocks.append(network_exchange_block)
-            network_exchange_item: graph.GenericBlockItem = (
-                self._create_projection_block_item(
-                    block_model=network_exchange_block,
-                    visual_role=graph.DynamicBlockVisualRole.CONTROL,
-                    x_pos=1120.0,
-                    y_pos=0.0,
-                )
-            )
-            visible_items.append(network_exchange_item)
-        else:
+        projection_rect: QtCore.QRectF = self.scene.itemsBoundingRect()
+        if projection_rect.isNull():
             pass
-        self._route_projection_items(visible_items=visible_items)
+        else:
+            self.scene.setSceneRect(
+                projection_rect.adjusted(-45.0, -45.0, 45.0, 45.0)
+            )
 
     def _materialize_physical_root_projection(self) -> None:
         """Render a compact physical-device view without changing the model.
@@ -11718,6 +13193,98 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         return None
 
+    def set_grid_visible(self, visible: bool) -> None:
+        """Set whether the dynamic-editor mesh is painted behind the model.
+
+        :param visible: Requested mesh visibility.
+        :return: None.
+        """
+        self._grid_visible = bool(visible)
+        if self.grid_visibility_action.isChecked() != self._grid_visible:
+            self.grid_visibility_action.setChecked(self._grid_visible)
+        else:
+            pass
+        self.scene.update()
+
+    def is_grid_visible(self) -> bool:
+        """Return whether the dynamic-editor mesh is currently visible.
+
+        :return: Current mesh visibility.
+        """
+        return self._grid_visible
+
+    def set_snap_to_grid_enabled(self, enabled: bool) -> None:
+        """Enable or disable snapping canvas edits to the active mesh.
+
+        :param enabled: Requested snap-to-grid state.
+        :return: None.
+        """
+        self._snap_to_grid_enabled = bool(enabled)
+        if self.snap_to_grid_action.isChecked() != self._snap_to_grid_enabled:
+            self.snap_to_grid_action.setChecked(self._snap_to_grid_enabled)
+        else:
+            pass
+
+    def is_snap_to_grid_enabled(self) -> bool:
+        """Return whether canvas edits currently snap to the mesh.
+
+        :return: Current snap-to-grid state.
+        """
+        return self._snap_to_grid_enabled
+
+    def set_grid_size(self, grid_size: int) -> None:
+        """Set the square mesh spacing used for painting and snapping.
+
+        The toolbar bounds the normal user range.  The public API applies the
+        same bounds so automated callers cannot create a zero-sized mesh.
+
+        :param grid_size: Requested spacing in scene pixels.
+        :return: None.
+        """
+        bounded_grid_size: int = max(5, min(200, int(grid_size)))
+        self._grid_size = bounded_grid_size
+        self._qt_routing_session.set_grid_size(float(bounded_grid_size))
+        if self.grid_size_spin_box.value() != bounded_grid_size:
+            self.grid_size_spin_box.setValue(bounded_grid_size)
+        else:
+            pass
+        self.scene.update()
+
+    def get_grid_size(self) -> int:
+        """Return the active square mesh spacing in scene pixels.
+
+        :return: Positive mesh spacing.
+        """
+        return self._grid_size
+
+    def snap_scene_coordinate_to_grid(self, coordinate: float) -> float:
+        """Snap one scene coordinate to the closest active mesh line.
+
+        :param coordinate: Unsnapped scene coordinate.
+        :return: Coordinate aligned to the current mesh.
+        """
+        grid_size: float = float(self._grid_size)
+        snapped_coordinate: float = round(float(coordinate) / grid_size) * grid_size
+        return snapped_coordinate
+
+    def get_snapped_scene_position(self, position: QtCore.QPointF) -> QtCore.QPointF:
+        """Return the block position permitted by the current snap setting.
+
+        Persisted positions are replayed while the scene initializes and must
+        remain byte-for-byte stable.  Snapping therefore applies only after the
+        initial declarative projection has been reconstructed.
+
+        :param position: Proposed scene position.
+        :return: Snapped position, or an unchanged copy when snapping is off.
+        """
+        if self._snap_to_grid_enabled and not self._initializing_scene:
+            return QtCore.QPointF(
+                self.snap_scene_coordinate_to_grid(position.x()),
+                self.snap_scene_coordinate_to_grid(position.y()),
+            )
+        else:
+            return QtCore.QPointF(position)
+
     def on_block_position_changed(self, device_uid: int, x: float, y: float) -> None:
         """
         Update the diagram node position when a block is moved by the user.
@@ -11728,9 +13295,17 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return:
         """
         if device_uid in self.diagram.node_data:
-            self.diagram.node_data[device_uid].x = x
-            self.diagram.node_data[device_uid].y = y
-            print("")
+            diagram_node: BlockDiagramNode = self.diagram.node_data[device_uid]
+            position_changed: bool = diagram_node.x != x or diagram_node.y != y
+            if position_changed:
+                diagram_node.x = x
+                diagram_node.y = y
+                if self._initializing_scene:
+                    pass
+                else:
+                    self.mark_unapplied_changes()
+            else:
+                pass
         else:
             pass
 
@@ -12959,6 +14534,19 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         apply_generated_block_state(candidate_block, target_block)
         target_block.dynamic_model_contract = candidate_block.dynamic_model_contract
+        station_block: Block
+        for station_block in self.main_block.children:
+            owns_target_meter: bool = False
+            station_child: Block
+            for station_child in station_block.children:
+                if station_child is target_block:
+                    owns_target_meter = True
+                else:
+                    pass
+            if owns_target_meter:
+                refresh_rms_measurement_station_boundary(station=station_block)
+            else:
+                pass
         request.set_result(True, "")
 
     @QtCore.Slot(object)
@@ -13593,6 +15181,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 # A native meter acquires its physical quantities through its
                 # typed measurement point. Its outputs are independent signals,
                 # and users may intentionally leave any subset unused.
+                pass
+            elif block_declares_closed_measurement_station_contract(block=block):
+                # A station boundary is closed by its child meter contracts:
+                # requirements feed child equations and results are the exact
+                # child outputs.  Projection tags visualize those bindings,
+                # but no synthetic canonical diagram wires are necessary.
                 pass
             elif block.uid not in visible_block_uids:
                 # Derived projections intentionally hide structural containers.
@@ -14834,7 +16428,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param event:
         :return:
         """
-        payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | MeasurementBlockDescriptor | None = self.get_library_payload_from_mime_data(
+        payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | MeasurementBlockDescriptor | MeasurementStationDescriptor | None = self.get_library_payload_from_mime_data(
             event.mimeData()
         )
 
@@ -14850,7 +16444,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param event:
         :return:
         """
-        payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | MeasurementBlockDescriptor | None = self.get_library_payload_from_mime_data(
+        payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | MeasurementBlockDescriptor | MeasurementStationDescriptor | None = self.get_library_payload_from_mime_data(
             event.mimeData()
         )
 
@@ -14866,7 +16460,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param event:
         :return:
         """
-        payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | MeasurementBlockDescriptor | None = self.get_library_payload_from_mime_data(
+        payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | MeasurementBlockDescriptor | MeasurementStationDescriptor | None = self.get_library_payload_from_mime_data(
             event.mimeData()
         )
         scene_position: QtCore.QPointF = self.ui.graphicsView.mapToScene(

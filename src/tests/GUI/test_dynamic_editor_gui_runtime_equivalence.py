@@ -11,6 +11,7 @@ from VeraGrid.Gui.DynamicEventsDialog.dynamic_events_editor_support import colle
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import (
     DynamicBlockEditorGUI,
     block_has_internal_equation_content,
+    get_rms_measurement_terminal_side_for_reference,
     get_single_interface_var,
     is_root_interface_wrapper_block,
 )
@@ -23,6 +24,7 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_block_preparation import prepare_bl
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_library import (
     DynamicEditorLibrary,
     MeasurementBlockDescriptor,
+    MeasurementStationDescriptor,
 )
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_tab import DynamicEditorTab
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_window import (
@@ -42,6 +44,7 @@ from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Branches.vsc import VSC
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagramConnection
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Parents.dynamic_parent import DynamicDevice
 from VeraGridEngine.IO.file_open import FileOpen, FileOpenOptions
@@ -89,6 +92,15 @@ from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_mod
 from VeraGridEngine.Utils.procedural_logic import ProceduralLogicCodec
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.enumerations import BlockType, BranchImpedanceMode, DeviceType, DynamicIntegrationMethod, DynamicSimulationMode, DynEditorGraphicsModes, EmtInitializationMethod, EmtSolverTypes, FileType, RmsInitializationMethod, ShuntConnectionType, SolverType, VarPowerFlowReferenceType
+
+
+class RmsGuiSignalBridge(QtCore.QObject):
+    """Expose the Qt signals assigned by the real GUI simulation session."""
+
+    __slots__ = ()
+
+    progress_signal = QtCore.Signal(float)
+    progress_text = QtCore.Signal(str)
 
 
 def _collect_block_signature(block: Block) -> Dict[str, Any]:
@@ -721,10 +733,12 @@ def _collect_rms_variable_values(
 
 def _run_nuactis_short_rms(
         grid: MultiCircuit,
+        signal_bridge: RmsGuiSignalBridge | None = None,
 ) -> Tuple[PowerFlowResults, RmsResults, RmsProblemDae]:
     """Run PF and a short RMS trajectory for one Nuactis circuit.
 
     :param grid: Imported circuit to initialize and integrate.
+    :param signal_bridge: Optional real GUI signals attached to the RMS driver.
     :return: Converged power-flow results, RMS results, and compiled problem.
     """
     power_flow_driver: PowerFlowDriver = PowerFlowDriver(
@@ -750,10 +764,72 @@ def _run_nuactis_short_rms(
         options=rms_options,
         pf_results=power_flow_results,
     )
+    if signal_bridge is None:
+        pass
+    else:
+        # Match SessionThread, which replaces the engine's DummySignal objects
+        # with Qt SignalInstance objects before executing the simulation.
+        rms_driver.progress_signal = signal_bridge.progress_signal
+        rms_driver.progress_text = signal_bridge.progress_text
     rms_driver.run()
     assert rms_driver.results is not None
     assert rms_driver.problem is not None
+    assert rms_driver.logger.error_count() == 0
+    assert rms_driver.logger.warning_count() == 0
     return power_flow_results, rms_driver.results, rms_driver.problem
+
+
+def test_nuactis_v1_rms_qt_signals_keep_vsc_editors_openable(
+        qt_app: QtWidgets.QApplication,
+) -> None:
+    """Reopen both VSC editors after an RMS run driven by real Qt signals.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    grid: MultiCircuit = _load_nuactis_rms_grid(
+        fixture_name="hvdc_vsc_v1_complete_static_dynamic.dgs",
+    )
+    signal_bridge: RmsGuiSignalBridge = RmsGuiSignalBridge()
+    _power_flow_results: PowerFlowResults
+    rms_results: RmsResults
+    _rms_problem: RmsProblemDae
+    _power_flow_results, rms_results, _rms_problem = _run_nuactis_short_rms(
+        grid=grid,
+        signal_bridge=signal_bridge,
+    )
+    assert np.all(rms_results.well_initialized)
+    assert np.all(rms_results.converged)
+
+    open_editors: List[DynamicBlockEditorGUI] = list()
+    try:
+        vsc: VSC
+        for vsc in grid.get_vsc():
+            assert isinstance(vsc.rms_model, Block)
+            editor: DynamicBlockEditorGUI = _build_gui_editor(
+                qt_app=qt_app,
+                grid=grid,
+                api_object=vsc,
+                mode=DynamicSimulationMode.RMS,
+                root_block=vsc.rms_model,
+            )
+            open_editors.append(editor)
+            _assert_nuactis_vsc_projection(
+                editor=editor,
+                expected_protected_count=0,
+            )
+            _assert_editor_dynamic_check_is_clean(editor=editor)
+        else:
+            pass
+    finally:
+        editor_to_close: DynamicBlockEditorGUI
+        for editor_to_close in open_editors:
+            editor_to_close.prepare_to_delete()
+            editor_to_close.close()
+            editor_to_close.deleteLater()
+        else:
+            pass
+        qt_app.processEvents()
 
 
 def _run_emt_power_flow(grid: MultiCircuit) -> Any:
@@ -1581,12 +1657,19 @@ def test_generator_template_selector_and_library_use_typed_categories(
     assert bbsex1_template in [leaf.payload for leaf in component_leaves]
     assert measurement_template not in [leaf.payload for leaf in physical_leaves]
     assert measurement_template not in [leaf.payload for leaf in component_leaves]
-    assert len(rms_measurement_leaves) == 4
+    assert len(rms_measurement_leaves) == 5
     measurement_descriptors: List[MeasurementBlockDescriptor] = list()
+    station_descriptors: List[MeasurementStationDescriptor] = list()
     measurement_leaf: object
     for measurement_leaf in rms_measurement_leaves:
-        assert isinstance(measurement_leaf.payload, MeasurementBlockDescriptor)
-        measurement_descriptors.append(measurement_leaf.payload)
+        if isinstance(measurement_leaf.payload, MeasurementBlockDescriptor):
+            measurement_descriptors.append(measurement_leaf.payload)
+        elif isinstance(measurement_leaf.payload, MeasurementStationDescriptor):
+            station_descriptors.append(measurement_leaf.payload)
+        else:
+            raise AssertionError("Unexpected RMS measurement library payload")
+    assert len(measurement_descriptors) == 4
+    assert len(station_descriptors) == 1
     assert set(
         descriptor.get_meter_kind() for descriptor in measurement_descriptors
     ) == set(RmsPhysicalMeterKind)
@@ -3079,10 +3162,20 @@ def test_nuactis_v1_real_workspace_route_preserves_physical_projections(
                     list(physical_items[0].inputs)
                     + list(physical_items[0].outputs)
                 )
+                required_physical_refs: set[VarPowerFlowReferenceType] = set(
+                    measurement_port.base_var.ref
+                    for measurement_item in measurement_items
+                    for measurement_port in measurement_item.outputs
+                    if isinstance(
+                        measurement_port.base_var.ref,
+                        VarPowerFlowReferenceType,
+                    )
+                )
                 assert all(
                     port.connections is not None
                     and len(port.connections) > 0
                     for port in physical_ports
+                    if port.base_var.ref in required_physical_refs
                 ), (
                     api_object.name,
                     list(
@@ -3220,7 +3313,7 @@ def test_nuactis_v1_captures_every_rms_equipment_editor(
                         measurement_parent.get("RMS (balanced)", None)
                     )
                     assert isinstance(consolidated_measurements, list)
-                    assert len(consolidated_measurements) == 4
+                    assert len(consolidated_measurements) == 5
                 else:
                     pass
                 assert len(editor.scene.items()) > 0, api_object.name
@@ -3967,6 +4060,1074 @@ def test_rms_editor_open_materializes_connection_vars(qt_app: QtWidgets.QApplica
             editor.deleteLater()
 
 
+def test_injection_projection_uses_one_required_port_measurement_station(
+        qt_app: QtWidgets.QApplication,
+) -> None:
+    """Replace Network exchange with one draggable BUS measurement station.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    grid: MultiCircuit = _load_nuactis_rms_grid(
+        fixture_name="hvdc_vsc_v1_complete_static_dynamic.dgs",
+    )
+    generators: List[Generator] = list(grid.get_generators())
+    assert len(generators) > 0
+    generator: Generator = generators[0]
+    assert isinstance(generator.rms_template, RmsModelTemplate)
+    assert isinstance(generator.rms_model, Block)
+    editor: DynamicBlockEditorGUI = _build_gui_editor(
+        qt_app=qt_app,
+        grid=grid,
+        api_object=generator,
+        mode=DynamicSimulationMode.RMS,
+        root_block=generator.rms_model,
+    )
+    try:
+        generic_items: List[graph.GenericBlockItem] = list(
+            scene_item for scene_item in editor.scene.items()
+            if isinstance(scene_item, graph.GenericBlockItem)
+        )
+        assert len(generic_items) == 2
+        assert all(
+            "Network exchange" not in generic_item.subsys.name
+            for generic_item in generic_items
+        )
+        physical_items: List[graph.GenericBlockItem] = list(
+            generic_item for generic_item in generic_items
+            if generic_item.visual_role
+            is graph.DynamicBlockVisualRole.DEVICE_TEMPLATE
+        )
+        station_items: List[graph.GenericBlockItem] = list(
+            generic_item for generic_item in generic_items
+            if generic_item.visual_role
+            is graph.DynamicBlockVisualRole.MEASUREMENT
+        )
+        assert len(physical_items) == 1
+        assert len(station_items) == 1
+        physical_item: graph.GenericBlockItem = physical_items[0]
+        station_item: graph.GenericBlockItem = station_items[0]
+        assert station_item.subsys.name == "Measurement station"
+        assert len(station_item.subsys.children) == 4
+        assert len(station_item.subsys.in_vars) == 4
+        assert len(station_item.inputs) == 0
+        station_refs: set[VarPowerFlowReferenceType] = set(
+            station_port.base_var.ref for station_port in station_item.outputs
+            if isinstance(station_port.base_var.ref, VarPowerFlowReferenceType)
+        )
+        required_refs: set[VarPowerFlowReferenceType] = set((
+            VarPowerFlowReferenceType.Vm,
+            VarPowerFlowReferenceType.Va,
+            VarPowerFlowReferenceType.P,
+            VarPowerFlowReferenceType.Q,
+        ))
+        assert station_refs == required_refs
+        assert len(station_item.outputs) == len(required_refs)
+        station_port_y_by_ref: Dict[VarPowerFlowReferenceType, float] = dict()
+        station_port: graph.PortItem
+        for station_port in station_item.outputs:
+            if isinstance(station_port.base_var.ref, VarPowerFlowReferenceType):
+                station_port_y_by_ref[station_port.base_var.ref] = station_port.pos().y()
+            else:
+                pass
+        input_tag_bottom: float = max(
+            station_port_y_by_ref[VarPowerFlowReferenceType.Vm],
+            station_port_y_by_ref[VarPowerFlowReferenceType.Va],
+        )
+        output_tag_top: float = min(
+            station_port_y_by_ref[VarPowerFlowReferenceType.P],
+            station_port_y_by_ref[VarPowerFlowReferenceType.Q],
+        )
+        assert output_tag_top - input_tag_bottom >= editor.get_grid_size()
+        assert all(
+            physical_port.connections is not None
+            and len(physical_port.connections) > 0
+            for physical_port in list(physical_item.inputs) + list(physical_item.outputs)
+            if physical_port.base_var.ref in required_refs
+        )
+        physical_body_rect: QtCore.QRectF = physical_item.mapRectToScene(
+            physical_item.rect()
+        )
+        station_body_rect: QtCore.QRectF = station_item.mapRectToScene(
+            station_item.rect()
+        )
+        station_port_by_ref: Dict[VarPowerFlowReferenceType, graph.PortItem] = dict()
+        for station_port in station_item.outputs:
+            if isinstance(station_port.base_var.ref, VarPowerFlowReferenceType):
+                station_port_by_ref[station_port.base_var.ref] = station_port
+            else:
+                pass
+        station_tag_rect_by_ref: Dict[VarPowerFlowReferenceType, QtCore.QRectF] = dict()
+        signal_tag: graph.PairedItem
+        for signal_tag in list(
+                scene_item for scene_item in editor.scene.items()
+                if isinstance(scene_item, graph.PairedItem)
+        ):
+            assert not physical_body_rect.intersects(
+                signal_tag.sceneBoundingRect()
+            ), signal_tag.name
+            signal_var: Var | None = signal_tag.get_signal_var()
+            if signal_var is not None and isinstance(
+                    signal_var.ref,
+                    VarPowerFlowReferenceType,
+            ):
+                signal_ref: VarPowerFlowReferenceType = signal_var.ref
+                belongs_to_station_column: bool = (
+                    signal_tag.is_signal_in
+                    and signal_ref in (
+                        VarPowerFlowReferenceType.Vm,
+                        VarPowerFlowReferenceType.Va,
+                    )
+                ) or (
+                    not signal_tag.is_signal_in
+                    and signal_ref in (
+                        VarPowerFlowReferenceType.P,
+                        VarPowerFlowReferenceType.Q,
+                    )
+                )
+                if belongs_to_station_column:
+                    station_tag_rect: QtCore.QRectF = signal_tag.sceneBoundingRect()
+                    station_port = station_port_by_ref[signal_ref]
+                    station_right_boundary: float = max(
+                        station_body_rect.right(),
+                        station_port.scenePos().x(),
+                    )
+                    # A complete routing-grid cell must remain visible between
+                    # the station/port boundary and every tag in its outer column.
+                    assert (
+                        station_tag_rect.left() - station_right_boundary
+                        >= float(editor.get_grid_size())
+                    ), signal_tag.name
+                    station_tag_rect_by_ref[signal_ref] = station_tag_rect
+
+                    # Every station stub must remain a sequence of visible
+                    # orthogonal segments after tag placement.
+                    assert station_port.connections is not None
+                    station_connection: graph.ConnectionItem | None = None
+                    port_connection: graph.ConnectionItem
+                    for port_connection in station_port.connections:
+                        if (
+                                port_connection.source_port.subsystem is signal_tag
+                                or port_connection.target_port.subsystem is signal_tag
+                        ):
+                            station_connection = port_connection
+                        else:
+                            pass
+                    assert station_connection is not None
+                    station_path: QtGui.QPainterPath = station_connection.path()
+                    path_index: int
+                    for path_index in range(1, station_path.elementCount()):
+                        previous_element: QtGui.QPainterPath.Element = (
+                            station_path.elementAt(path_index - 1)
+                        )
+                        current_element: QtGui.QPainterPath.Element = (
+                            station_path.elementAt(path_index)
+                        )
+                        assert (
+                            previous_element.x == current_element.x
+                            or previous_element.y == current_element.y
+                        ), signal_tag.name
+                else:
+                    pass
+            else:
+                pass
+
+        assert set(station_tag_rect_by_ref.keys()) == required_refs
+        station_tag_column_lefts: List[float] = list(
+            station_tag_rect.left()
+            for station_tag_rect in station_tag_rect_by_ref.values()
+        )
+        assert (
+            max(station_tag_column_lefts) - min(station_tag_column_lefts)
+            <= 1.0
+        )
+        input_tag_bottom: float = max(
+            station_tag_rect_by_ref[VarPowerFlowReferenceType.Vm].bottom(),
+            station_tag_rect_by_ref[VarPowerFlowReferenceType.Va].bottom(),
+        )
+        output_tag_top: float = min(
+            station_tag_rect_by_ref[VarPowerFlowReferenceType.P].top(),
+            station_tag_rect_by_ref[VarPowerFlowReferenceType.Q].top(),
+        )
+        assert output_tag_top >= input_tag_bottom
+
+        measurement_parent: object | None = editor.library.tree_structure.get(
+            "Measurements",
+            None,
+        )
+        assert isinstance(measurement_parent, dict)
+        measurement_leaves: object | None = measurement_parent.get(
+            "RMS (balanced)",
+            None,
+        )
+        assert isinstance(measurement_leaves, list)
+        station_descriptors: List[MeasurementStationDescriptor] = list(
+            measurement_leaf.payload for measurement_leaf in measurement_leaves
+            if isinstance(
+                measurement_leaf.payload,
+                MeasurementStationDescriptor,
+            )
+        )
+        assert len(station_descriptors) == 1
+        station_model_indexes: List[QtCore.QModelIndex] = (
+            editor.library.library_model.match(
+                editor.library.library_model.index(0, 0),
+                QtCore.Qt.ItemDataRole.DisplayRole,
+                "Measurement station",
+                1,
+                (
+                    QtCore.Qt.MatchFlag.MatchExactly
+                    | QtCore.Qt.MatchFlag.MatchRecursive
+                ),
+            )
+        )
+        assert len(station_model_indexes) == 1
+        station_mime_data: QtCore.QMimeData = (
+            editor.library.library_model.mimeData(station_model_indexes)
+        )
+        decoded_station_payload: object | None = (
+            editor.get_library_payload_from_mime_data(station_mime_data)
+        )
+        assert decoded_station_payload is station_descriptors[0]
+        passive_branch_library: DynamicEditorLibrary = DynamicEditorLibrary(
+            api_object=generator,
+            mode=DynamicSimulationMode.RMS,
+            templates_list=grid.get_rms_templates_for_editor(
+                DeviceType.LineDevice
+            ),
+        )
+        physical_library_leaves: object | None = (
+            passive_branch_library.tree_structure.get(
+            "Physical devices/templates",
+            None,
+            )
+        )
+        assert isinstance(physical_library_leaves, list)
+        passive_shell_leaves: list[object] = list(
+            library_leaf for library_leaf in physical_library_leaves
+            if library_leaf.label == "DGS passive branch RMS shell"
+        )
+        assert len(passive_shell_leaves) == 1
+        placed_station: object | None = editor.create_library_payload_item(
+            payload=station_descriptors[0],
+            x_pos=station_item.pos().x() + 37.0,
+            y_pos=station_item.pos().y() + 43.0,
+        )
+        assert isinstance(placed_station, graph.GenericBlockItem)
+        assert placed_station is not station_item
+        assert placed_station.subsys in editor.main_block.children
+        assert len(placed_station.subsys.children) == 4
+        assert set(
+            station_var.ref for station_var in placed_station.subsys.in_vars
+            if isinstance(station_var.ref, VarPowerFlowReferenceType)
+        ) == required_refs
+        editor.request_open_block_properties(placed_station.subsys)
+        assert isinstance(
+            editor._block_properties_dialogue,
+            DynamicBlockPropertiesDialog,
+        )
+        station_dialogue: DynamicBlockPropertiesDialog = (
+            editor._block_properties_dialogue
+        )
+        station_meter_combo: QtWidgets.QComboBox | None = (
+            station_dialogue.findChild(
+                QtWidgets.QComboBox,
+                "measurement_block_combo",
+            )
+        )
+        assert station_meter_combo is not None
+        assert station_meter_combo.count() == len(placed_station.subsys.children)
+        configured_kinds: set[RmsPhysicalMeterKind] = set()
+        meter_combo_index: int
+        for meter_combo_index in range(station_meter_combo.count()):
+            station_meter_combo.setCurrentIndex(meter_combo_index)
+            qt_app.processEvents()
+            assert station_dialogue.ui.measurement_mode_combo.count() == 1
+            active_kind_data: object = (
+                station_dialogue.ui.measurement_mode_combo.currentData()
+            )
+            assert isinstance(active_kind_data, RmsPhysicalMeterKind)
+            configured_kinds.add(active_kind_data)
+            selected_target: RmsMeasurementEditOption | None = (
+                station_dialogue.get_selected_measurement_option()
+            )
+            assert selected_target is not None
+            if active_kind_data in (
+                    RmsPhysicalMeterKind.VOLTAGE,
+                    RmsPhysicalMeterKind.PHASE_LOCKED_LOOP,
+            ):
+                assert (
+                    selected_target.get_source_terminal_side()
+                    is RmsTerminalSide.BUS
+                )
+                assert selected_target.get_target_fid() in set(
+                    bus.idtag for bus in grid.buses
+                )
+            else:
+                assert selected_target.get_target_fid() == generator.idtag
+                assert (
+                    selected_target.get_source_terminal_side()
+                    is RmsTerminalSide.BUS
+                )
+        assert configured_kinds == set(RmsPhysicalMeterKind)
+        editor.close_block_properties_dock()
+        qt_app.processEvents()
+        station_output: graph.PortItem
+        for station_output in station_item.outputs:
+            assert station_output.connections is not None
+            assert len(station_output.connections) > 0
+            station_connection: graph.ConnectionItem
+            for station_connection in station_output.connections:
+                station_path: QtGui.QPainterPath = station_connection.path()
+                assert station_path.elementCount() >= 2
+                first_element: QtGui.QPainterPath.Element = station_path.elementAt(0)
+                last_element: QtGui.QPainterPath.Element = station_path.elementAt(
+                    station_path.elementCount() - 1
+                )
+                assert (
+                    first_element.x
+                    == station_connection.source_port.scenePos().x()
+                )
+                assert (
+                    first_element.y
+                    == station_connection.source_port.scenePos().y()
+                )
+                assert (
+                    last_element.x
+                    == station_connection.target_port.scenePos().x()
+                )
+                assert (
+                    last_element.y
+                    == station_connection.target_port.scenePos().y()
+                )
+        assert len(
+            list(
+                scene_item for scene_item in editor.scene.items()
+                if isinstance(scene_item, graph.GenericBlockItem)
+                and scene_item.visual_role
+                is graph.DynamicBlockVisualRole.MEASUREMENT
+            )
+        ) == 2
+        _assert_editor_dynamic_check_is_clean(editor=editor)
+    finally:
+        editor.prepare_to_delete()
+        editor.close()
+        editor.deleteLater()
+        qt_app.processEvents()
+
+
+def test_new_injection_boundary_materializes_station_before_first_drop(
+        qt_app: QtWidgets.QApplication,
+) -> None:
+    """Project a fresh Vm/Va/P/Q device boundary as a measurement station.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    grid: MultiCircuit
+    generator: Generator
+    line: Line
+    load: Load
+    grid, generator, line, load = _build_two_bus_rms_grid()
+    del line
+    del load
+    new_root: Block = Block(name="New generator RMS model")
+    editor: DynamicBlockEditorGUI = _build_gui_editor(
+        qt_app=qt_app,
+        grid=grid,
+        api_object=generator,
+        mode=DynamicSimulationMode.RMS,
+        root_block=new_root,
+    )
+    try:
+        assert set(input_var.name for input_var in new_root.in_vars) == set((
+            "Vm",
+            "Va",
+        ))
+        assert set(output_var.name for output_var in new_root.out_vars) == set((
+            "net_conn_P",
+            "net_conn_Q",
+        ))
+        automatic_stations: List[graph.GenericBlockItem] = list(
+            scene_item for scene_item in editor.scene.items()
+            if isinstance(scene_item, graph.GenericBlockItem)
+            and scene_item.visual_role
+            is graph.DynamicBlockVisualRole.MEASUREMENT
+        )
+        assert len(automatic_stations) == 1
+        assert len(automatic_stations[0].inputs) == 0
+        assert set(
+            station_port.base_var.ref
+            for station_port in automatic_stations[0].outputs
+        ) == set((
+            VarPowerFlowReferenceType.Vm,
+            VarPowerFlowReferenceType.Va,
+            VarPowerFlowReferenceType.P,
+            VarPowerFlowReferenceType.Q,
+        ))
+
+        measurement_parent: object | None = editor.library.tree_structure.get(
+            "Measurements",
+            None,
+        )
+        assert isinstance(measurement_parent, dict)
+        measurement_leaves: object | None = measurement_parent.get(
+            "RMS (balanced)",
+            None,
+        )
+        assert isinstance(measurement_leaves, list)
+        station_descriptor: MeasurementStationDescriptor | None = None
+        measurement_leaf: object
+        for measurement_leaf in measurement_leaves:
+            if isinstance(
+                    measurement_leaf.payload,
+                    MeasurementStationDescriptor,
+            ):
+                station_descriptor = measurement_leaf.payload
+            else:
+                pass
+        assert station_descriptor is not None
+        dropped_station: object | None = editor.create_library_payload_item(
+            payload=station_descriptor,
+            x_pos=automatic_stations[0].pos().x() + 80.0,
+            y_pos=automatic_stations[0].pos().y() + 80.0,
+        )
+        assert isinstance(dropped_station, graph.GenericBlockItem)
+        assert dropped_station is not automatic_stations[0]
+        assert dropped_station.subsys in new_root.children
+        assert len(
+            list(
+                scene_item for scene_item in editor.scene.items()
+                if isinstance(scene_item, graph.GenericBlockItem)
+                and scene_item.visual_role
+                is graph.DynamicBlockVisualRole.MEASUREMENT
+            )
+        ) == 2
+        _assert_editor_dynamic_check_is_clean(editor=editor)
+    finally:
+        editor.prepare_to_delete()
+        editor.close()
+        editor.deleteLater()
+        qt_app.processEvents()
+
+
+def test_transformer_projection_splits_measurements_by_terminal_without_collisions(
+        qt_app: QtWidgets.QApplication,
+) -> None:
+    """Give every two-winding transformer separate FROM and TO stations.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    grid: MultiCircuit = _load_nuactis_rms_grid(
+        fixture_name="hvdc_vsc_v1_complete_static_dynamic.dgs",
+    )
+    transformer_devices: Sequence[DynamicDevice] = grid.get_transformers2w()
+    assert len(transformer_devices) > 0
+    transformer: DynamicDevice = transformer_devices[0]
+    assert isinstance(transformer.rms_model, Block)
+    editor: DynamicBlockEditorGUI = _build_gui_editor(
+        qt_app=qt_app,
+        grid=grid,
+        api_object=transformer,
+        mode=DynamicSimulationMode.RMS,
+        root_block=transformer.rms_model,
+    )
+    try:
+        physical_items: List[graph.GenericBlockItem] = list(
+            scene_item for scene_item in editor.scene.items()
+            if isinstance(scene_item, graph.GenericBlockItem)
+            and scene_item.visual_role
+            is graph.DynamicBlockVisualRole.DEVICE_TEMPLATE
+        )
+        station_items: List[graph.GenericBlockItem] = list(
+            scene_item for scene_item in editor.scene.items()
+            if isinstance(scene_item, graph.GenericBlockItem)
+            and scene_item.visual_role
+            is graph.DynamicBlockVisualRole.MEASUREMENT
+        )
+        assert len(physical_items) == 1
+        assert len(station_items) == 2
+        assert station_items[0].pos().x() == station_items[1].pos().x()
+        assert station_items[0].pos().y() != station_items[1].pos().y()
+
+        station_sides: set[RmsTerminalSide] = set()
+        station_item: graph.GenericBlockItem
+        for station_item in station_items:
+            reference_sides: set[RmsTerminalSide] = set(
+                get_rms_measurement_terminal_side_for_reference(
+                    reference=station_port.base_var.ref,
+                )
+                for station_port in station_item.outputs
+                if isinstance(
+                    station_port.base_var.ref,
+                    VarPowerFlowReferenceType,
+                )
+            )
+            assert len(reference_sides) == 1
+            station_side: RmsTerminalSide = next(iter(reference_sides))
+            assert station_side in (
+                RmsTerminalSide.FROM,
+                RmsTerminalSide.TO,
+            )
+            station_sides.add(station_side)
+        assert station_sides == set((
+            RmsTerminalSide.FROM,
+            RmsTerminalSide.TO,
+        ))
+
+        physical_item: graph.GenericBlockItem = physical_items[0]
+        physical_body_rect: QtCore.QRectF = physical_item.mapRectToScene(
+            physical_item.rect()
+        )
+        signal_tag: graph.PairedItem
+        for signal_tag in list(
+                scene_item for scene_item in editor.scene.items()
+                if isinstance(scene_item, graph.PairedItem)
+        ):
+            assert not physical_body_rect.intersects(
+                signal_tag.sceneBoundingRect()
+            ), signal_tag.name
+        _assert_editor_dynamic_check_is_clean(editor=editor)
+    finally:
+        editor.prepare_to_delete()
+        editor.close()
+        editor.deleteLater()
+        qt_app.processEvents()
+
+
+def test_line_projection_uses_standard_blocks_and_scalar_from_goto_pairs(
+        qt_app: QtWidgets.QApplication,
+        tmp_path: Path,
+) -> None:
+    """Group four real meters per terminal and shorten scalar wiring with tags.
+
+    :param qt_app: Shared Qt application fixture.
+    :param tmp_path: Isolated save/reopen directory.
+    :return: None.
+    """
+    grid: MultiCircuit = _load_nuactis_rms_grid(
+        fixture_name="hvdc_vsc_v1_complete_static_dynamic.dgs",
+    )
+    line_devices: List[Line] = list(grid.get_lines())
+    assert len(line_devices) > 0
+    line: Line = line_devices[0]
+    assert isinstance(line.rms_template, RmsModelTemplate)
+    assert isinstance(line.rms_model, Block)
+    editor: DynamicBlockEditorGUI = _build_gui_editor(
+        qt_app=qt_app,
+        grid=grid,
+        api_object=line,
+        mode=DynamicSimulationMode.RMS,
+        root_block=line.rms_model,
+    )
+    try:
+        generic_items: List[graph.GenericBlockItem] = list(
+            scene_item for scene_item in editor.scene.items()
+            if isinstance(scene_item, graph.GenericBlockItem)
+        )
+        assert len(generic_items) == 3
+        station_items: List[graph.GenericBlockItem] = list(
+            scene_item for scene_item in generic_items
+            if scene_item.visual_role is graph.DynamicBlockVisualRole.MEASUREMENT
+        )
+        assert len(station_items) == 2
+        station_by_side: Dict[RmsTerminalSide, graph.GenericBlockItem] = dict()
+        station_item: graph.GenericBlockItem
+        for station_item in station_items:
+            station_anchor_refs: set[VarPowerFlowReferenceType] = set(
+                station_port.base_var.ref for station_port in station_item.outputs
+                if isinstance(
+                    station_port.base_var.ref,
+                    VarPowerFlowReferenceType,
+                )
+            )
+            if (
+                    VarPowerFlowReferenceType.Pf in station_anchor_refs
+                    and VarPowerFlowReferenceType.Pt not in station_anchor_refs
+            ):
+                station_by_side[RmsTerminalSide.FROM] = station_item
+            elif (
+                    VarPowerFlowReferenceType.Pt in station_anchor_refs
+                    and VarPowerFlowReferenceType.Pf not in station_anchor_refs
+            ):
+                station_by_side[RmsTerminalSide.TO] = station_item
+            else:
+                pass
+        assert set(station_by_side.keys()) == set((
+            RmsTerminalSide.FROM,
+            RmsTerminalSide.TO,
+        ))
+        assert (
+            station_by_side[RmsTerminalSide.FROM].pos().x()
+            == station_by_side[RmsTerminalSide.TO].pos().x()
+        )
+        assert (
+            station_by_side[RmsTerminalSide.FROM].pos().y()
+            < station_by_side[RmsTerminalSide.TO].pos().y()
+        )
+
+        expected_meter_kinds: set[RmsPhysicalMeterKind] = set((
+            RmsPhysicalMeterKind.POWER,
+            RmsPhysicalMeterKind.CURRENT,
+            RmsPhysicalMeterKind.VOLTAGE,
+            RmsPhysicalMeterKind.PHASE_LOCKED_LOOP,
+        ))
+        meter_signatures_by_side: Dict[
+            RmsTerminalSide,
+            Dict[RmsPhysicalMeterKind, Tuple[str, Tuple[str, ...]]],
+        ] = dict()
+        expected_station_anchor_refs: Dict[
+            RmsTerminalSide,
+            set[VarPowerFlowReferenceType],
+        ] = dict((
+            (
+                RmsTerminalSide.FROM,
+                set((
+                    VarPowerFlowReferenceType.Vmf,
+                    VarPowerFlowReferenceType.Vaf,
+                    VarPowerFlowReferenceType.Pf,
+                    VarPowerFlowReferenceType.Qf,
+                )),
+            ),
+            (
+                RmsTerminalSide.TO,
+                set((
+                    VarPowerFlowReferenceType.Vmt,
+                    VarPowerFlowReferenceType.Vat,
+                    VarPowerFlowReferenceType.Pt,
+                    VarPowerFlowReferenceType.Qt,
+                )),
+            ),
+        ))
+        station_side: RmsTerminalSide
+        for station_side, station_item in station_by_side.items():
+            assert len(station_item.subsys.children) == 4
+            assert len(station_item.subsys.in_vars) == 4
+            assert len(station_item.inputs) == 0
+            assert len(station_item.subsys.out_vars) > 4
+            assert len(station_item.outputs) == 4
+            assert set(
+                station_port.base_var.ref for station_port in station_item.outputs
+                if isinstance(
+                    station_port.base_var.ref,
+                    VarPowerFlowReferenceType,
+                )
+            ) == expected_station_anchor_refs[station_side]
+            meter_kinds: set[RmsPhysicalMeterKind] = set()
+            meter_signatures: Dict[
+                RmsPhysicalMeterKind,
+                Tuple[str, Tuple[str, ...]],
+            ] = dict()
+            meter_block: Block
+            for meter_block in station_item.subsys.children:
+                measurement_point: RmsPhysicalMeasurementPoint | None = (
+                    meter_block.dynamic_model_contract.rms_physical_measurement_point
+                )
+                assert measurement_point is not None
+                meter_kind: RmsPhysicalMeterKind = measurement_point.get_meter_kind()
+                meter_kinds.add(meter_kind)
+                meter_signatures[meter_kind] = (
+                    meter_block.name,
+                    measurement_point.get_output_signal_names(),
+                )
+                if meter_kind in (
+                        RmsPhysicalMeterKind.VOLTAGE,
+                        RmsPhysicalMeterKind.PHASE_LOCKED_LOOP,
+                ):
+                    expected_bus: Bus | None
+                    if station_side is RmsTerminalSide.FROM:
+                        expected_bus = line.bus_from
+                    else:
+                        expected_bus = line.bus_to
+                    assert expected_bus is not None
+                    assert measurement_point.get_target_fid() == expected_bus.idtag
+                    assert measurement_point.get_terminal_side() is RmsTerminalSide.BUS
+                else:
+                    assert measurement_point.get_target_fid() == line.idtag
+                    assert measurement_point.get_terminal_side() is station_side
+            assert meter_kinds == expected_meter_kinds
+            meter_signatures_by_side[station_side] = meter_signatures
+        assert (
+            meter_signatures_by_side[RmsTerminalSide.FROM]
+            == meter_signatures_by_side[RmsTerminalSide.TO]
+        )
+        physical_items: List[graph.GenericBlockItem] = list(
+            scene_item for scene_item in generic_items
+            if scene_item.visual_role is graph.DynamicBlockVisualRole.DEVICE_TEMPLATE
+        )
+        assert len(physical_items) == 1
+        assert all(
+            station_item.pos().x() < physical_items[0].pos().x()
+            for station_item in station_items
+        )
+        measurement_parent: object | None = editor.library.tree_structure.get(
+            "Measurements",
+            None,
+        )
+        assert isinstance(measurement_parent, dict)
+        rms_measurement_leaves: object | None = measurement_parent.get(
+            "RMS (balanced)",
+            None,
+        )
+        assert isinstance(rms_measurement_leaves, list)
+        station_descriptors: List[MeasurementStationDescriptor] = list(
+            leaf.payload for leaf in rms_measurement_leaves
+            if isinstance(leaf.payload, MeasurementStationDescriptor)
+        )
+        assert len(station_descriptors) == 1
+
+        tag_items: List[graph.PairedItem] = list(
+            scene_item for scene_item in editor.scene.items()
+            if isinstance(scene_item, graph.PairedItem)
+        )
+        from_tags: List[graph.PairedItem] = list(
+            tag_item for tag_item in tag_items
+            if tag_item.subsys is not None and tag_item.subsys.name.startswith("From ")
+        )
+        goto_tags: List[graph.PairedItem] = list(
+            tag_item for tag_item in tag_items
+            if tag_item.subsys is not None and tag_item.subsys.name.startswith("Goto ")
+        )
+        expected_association_count: int = 8
+        assert len(from_tags) == expected_association_count
+        assert len(goto_tags) == expected_association_count
+        assert all(
+            any(
+                port_item.connections is not None and len(port_item.connections) > 0
+                for port_item in list(tag_item.inputs) + list(tag_item.outputs)
+            )
+            for tag_item in tag_items
+        )
+
+        scalar_connections: List[graph.ConnectionItem] = list(
+            scene_item for scene_item in editor.scene.items()
+            if isinstance(scene_item, graph.ConnectionItem)
+        )
+        assert len(scalar_connections) == expected_association_count * 2
+        output_to_output_connections: List[graph.ConnectionItem] = list(
+            connection for connection in scalar_connections
+            if (
+                isinstance(connection.source_port, graph.PortItem)
+                and isinstance(connection.target_port, graph.PortItem)
+                and not connection.source_port.is_input
+                and not connection.target_port.is_input
+            )
+        )
+        expected_output_to_output_count: int = len(physical_items[0].outputs)
+        assert len(output_to_output_connections) == expected_output_to_output_count
+        assert all(
+            connection.target_port.subsystem in station_items
+            for connection in output_to_output_connections
+        )
+        scalar_connection: graph.ConnectionItem
+        for scalar_connection in scalar_connections:
+            source_subsystem: object = scalar_connection.source_port.subsystem
+            target_subsystem: object = scalar_connection.target_port.subsystem
+            assert (
+                isinstance(source_subsystem, graph.PairedItem)
+                or isinstance(target_subsystem, graph.PairedItem)
+            )
+
+        # Every normal boundary block remains movable. Its local From/Goto
+        # stubs must follow the real port and stay orthogonal on the mesh.
+        generic_item: graph.GenericBlockItem
+        for generic_item in generic_items:
+            incident_connections: set[graph.ConnectionItem] = set()
+            generic_port: graph.PortItem
+            for generic_port in list(generic_item.inputs) + list(generic_item.outputs):
+                if generic_port.connections is not None:
+                    incident_connection: graph.ConnectionItem
+                    for incident_connection in generic_port.connections:
+                        incident_connections.add(incident_connection)
+                else:
+                    pass
+            assert len(incident_connections) > 0
+            generic_item.setPos(generic_item.pos() + QtCore.QPointF(37.0, 43.0))
+            qt_app.processEvents()
+            assert generic_item.pos().x() % editor.get_grid_size() == 0.0
+            assert generic_item.pos().y() % editor.get_grid_size() == 0.0
+            for incident_connection in incident_connections:
+                incident_path: QtGui.QPainterPath = incident_connection.path()
+                assert incident_path.elementCount() >= 2
+                first_element: QtGui.QPainterPath.Element = incident_path.elementAt(0)
+                last_element: QtGui.QPainterPath.Element = incident_path.elementAt(
+                    incident_path.elementCount() - 1
+                )
+                source_position: QtCore.QPointF = incident_connection.source_port.scenePos()
+                target_position: QtCore.QPointF = incident_connection.target_port.scenePos()
+                assert first_element.x == source_position.x()
+                assert first_element.y == source_position.y()
+                assert last_element.x == target_position.x()
+                assert last_element.y == target_position.y()
+                path_element_index: int
+                for path_element_index in range(incident_path.elementCount() - 1):
+                    segment_start: QtGui.QPainterPath.Element = incident_path.elementAt(
+                        path_element_index
+                    )
+                    segment_end: QtGui.QPainterPath.Element = incident_path.elementAt(
+                        path_element_index + 1
+                    )
+                    assert (
+                        segment_start.x == segment_end.x
+                        or segment_start.y == segment_end.y
+                    )
+
+        canonical_block_uids: set[int] = set(
+            block_model.uid for block_model in line.rms_model.get_all_blocks()
+        )
+        assert all(
+            tag_item.subsys is not None
+            and tag_item.subsys.uid not in canonical_block_uids
+            for tag_item in tag_items
+        )
+
+        # Persist one moved tag and all three derived block positions through
+        # the public declarative archive. Reopening must rebuild the same view
+        # without generating symbolic placeholder blocks.
+        moved_tag: graph.PairedItem = from_tags[0]
+        assert moved_tag.subsys is not None
+        moved_tag_name: str = moved_tag.subsys.name
+        moved_tag.setPos(moved_tag.pos() + QtCore.QPointF(40.0, 60.0))
+        qt_app.processEvents()
+        moved_tag_position: QtCore.QPointF = QtCore.QPointF(moved_tag.pos())
+        saved_station_positions: Dict[RmsTerminalSide, QtCore.QPointF] = dict(
+            (station_side, QtCore.QPointF(station_item.pos()))
+            for station_side, station_item in station_by_side.items()
+        )
+        saved_physical_position: QtCore.QPointF = QtCore.QPointF(
+            physical_items[0].pos()
+        )
+        assert len(editor.diagram.projection_node_data) == 19
+
+        saved_path: Path = tmp_path / "line_from_goto_layout.veragrid"
+        save_logger: Logger = FileSave(
+            circuit=grid,
+            file_name=str(saved_path),
+        ).save()
+        assert save_logger.error_count() == 0
+        assert save_logger.warning_count() == 0
+        reopened_file: FileOpen = FileOpen(file_name=str(saved_path))
+        reopened_grid: MultiCircuit | None = reopened_file.open()
+        assert reopened_grid is not None
+        assert reopened_file.logger.error_count() == 0
+        assert reopened_file.logger.warning_count() == 0
+        reopened_line: Line | None = None
+        candidate_line: Line
+        for candidate_line in reopened_grid.get_lines():
+            if candidate_line.idtag == line.idtag:
+                reopened_line = candidate_line
+            else:
+                pass
+        assert reopened_line is not None
+        assert isinstance(reopened_line.rms_model, Block)
+        reopened_editor: DynamicBlockEditorGUI = _build_gui_editor(
+            qt_app=qt_app,
+            grid=reopened_grid,
+            api_object=reopened_line,
+            mode=DynamicSimulationMode.RMS,
+            root_block=reopened_line.rms_model,
+        )
+        try:
+            assert (
+                reopened_editor.diagram.get_projection_node_data_dict()
+                == editor.diagram.get_projection_node_data_dict()
+            )
+            reopened_station_count: int = 0
+            reopened_generic_item: graph.GenericBlockItem
+            for reopened_generic_item in list(
+                    scene_item for scene_item in reopened_editor.scene.items()
+                    if isinstance(scene_item, graph.GenericBlockItem)
+            ):
+                if (
+                        reopened_generic_item.visual_role
+                        is graph.DynamicBlockVisualRole.MEASUREMENT
+                ):
+                    reopened_anchor_refs: set[VarPowerFlowReferenceType] = set(
+                        station_port.base_var.ref
+                        for station_port in reopened_generic_item.outputs
+                        if isinstance(
+                            station_port.base_var.ref,
+                            VarPowerFlowReferenceType,
+                        )
+                    )
+                    if (
+                            VarPowerFlowReferenceType.Pf in reopened_anchor_refs
+                            and VarPowerFlowReferenceType.Pt not in reopened_anchor_refs
+                    ):
+                        reopened_side: RmsTerminalSide = RmsTerminalSide.FROM
+                    elif (
+                            VarPowerFlowReferenceType.Pt in reopened_anchor_refs
+                            and VarPowerFlowReferenceType.Pf not in reopened_anchor_refs
+                    ):
+                        reopened_side = RmsTerminalSide.TO
+                    else:
+                        raise AssertionError(
+                            "Reopened station has no typed terminal anchor"
+                        )
+                    assert (
+                        reopened_generic_item.pos()
+                        == saved_station_positions[reopened_side]
+                    )
+                    reopened_station_count += 1
+                else:
+                    assert reopened_generic_item.pos() == saved_physical_position
+            assert reopened_station_count == 2
+            reopened_moved_tags: List[graph.PairedItem] = list(
+                scene_item for scene_item in reopened_editor.scene.items()
+                if isinstance(scene_item, graph.PairedItem)
+                and scene_item.subsys is not None
+                and scene_item.subsys.name == moved_tag_name
+            )
+            assert len(reopened_moved_tags) == 1
+            assert reopened_moved_tags[0].pos() == moved_tag_position
+        finally:
+            reopened_editor.prepare_to_delete()
+            reopened_editor.close()
+            reopened_editor.deleteLater()
+            qt_app.processEvents()
+    finally:
+        editor.prepare_to_delete()
+        editor.close()
+        editor.deleteLater()
+        qt_app.processEvents()
+
+
+def test_line_direct_model_without_template_keeps_physical_measurement_projection(
+        qt_app: QtWidgets.QApplication,
+) -> None:
+    """Open the same physical and measurement view without a template link.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    grid: MultiCircuit
+    generator: Generator
+    candidate_line: Any
+    load: Load
+    grid, generator, candidate_line, load = _build_two_bus_rms_grid()
+    del generator
+    del load
+    assert isinstance(candidate_line, Line)
+    line: Line = candidate_line
+    direct_model: Block = get_line_rms_template(grid.var_factory).block
+    set_rms_model(
+        device=line,
+        model=direct_model,
+        var_factory=grid.var_factory,
+    )
+    line.rms_template = None
+    assert line.rms_template is None
+    assert line.rms_model is direct_model
+
+    editor: DynamicBlockEditorGUI = _build_gui_editor(
+        qt_app=qt_app,
+        grid=grid,
+        api_object=line,
+        mode=DynamicSimulationMode.RMS,
+        root_block=line.rms_model,
+    )
+    try:
+        physical_items: List[graph.GenericBlockItem] = list(
+            scene_item for scene_item in editor.scene.items()
+            if isinstance(scene_item, graph.GenericBlockItem)
+            and scene_item.visual_role
+            is graph.DynamicBlockVisualRole.DEVICE_TEMPLATE
+        )
+        station_items: List[graph.GenericBlockItem] = list(
+            scene_item for scene_item in editor.scene.items()
+            if isinstance(scene_item, graph.GenericBlockItem)
+            and scene_item.visual_role
+            is graph.DynamicBlockVisualRole.MEASUREMENT
+        )
+        assert len(physical_items) == 1
+        assert len(station_items) == 2
+        assert all(len(station_item.subsys.children) == 4 for station_item in station_items)
+        physical_ports: List[graph.PortItem] = (
+            list(physical_items[0].inputs) + list(physical_items[0].outputs)
+        )
+        assert all(
+            physical_port.connections is not None
+            and len(physical_port.connections) > 0
+            for physical_port in physical_ports
+        )
+        _assert_editor_dynamic_check_is_clean(editor=editor)
+    finally:
+        editor.prepare_to_delete()
+        editor.close()
+        editor.deleteLater()
+        qt_app.processEvents()
+
+
+def test_workspace_grid_split_button_controls_active_editor(
+        qt_app: QtWidgets.QApplication,
+) -> None:
+    """Place all mesh controls in one split button on the workspace toolbar.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    grid: MultiCircuit = _load_nuactis_rms_grid(
+        fixture_name="hvdc_vsc_v1_complete_static_dynamic.dgs",
+    )
+    line_devices: List[Line] = list(grid.get_lines())
+    assert len(line_devices) > 0
+    session: DynamicEditorWorkspaceSession = DynamicEditorWorkspaceSession()
+    workspace: DynamicEditorWorkspaceWindow = DynamicEditorWorkspaceWindow(
+        session=session,
+    )
+    workspace.show()
+    page: DynamicEditorTab | None = workspace.open_dynamic_editor_for(
+        api_object=line_devices[0],
+        circuit=grid,
+        preferred_mode=DynamicSimulationMode.RMS,
+    )
+    qt_app.processEvents()
+    assert isinstance(page, DynamicEditorTab)
+    editor: DynamicBlockEditorGUI = page.editor
+    try:
+        grid_button: QtWidgets.QToolButton | None = workspace.findChild(
+            QtWidgets.QToolButton,
+            "dynamicEditorGridToolButton",
+        )
+        assert isinstance(grid_button, QtWidgets.QToolButton)
+        assert grid_button.parent() is workspace.ui.toolBar
+        assert (
+            grid_button.popupMode()
+            is QtWidgets.QToolButton.ToolButtonPopupMode.MenuButtonPopup
+        )
+        assert editor.findChild(
+            QtWidgets.QToolBar,
+            "dynamicEditorCanvasToolbar",
+        ) is None
+
+        assert editor.is_grid_visible() is True
+        workspace._grid_visibility_action.trigger()
+        qt_app.processEvents()
+        assert editor.is_grid_visible() is False
+        workspace._grid_visibility_action.trigger()
+        assert editor.is_grid_visible() is True
+
+        workspace._snap_to_grid_action.setChecked(False)
+        assert editor.is_snap_to_grid_enabled() is False
+        workspace._snap_to_grid_action.setChecked(True)
+        assert editor.is_snap_to_grid_enabled() is True
+        workspace._grid_size_spin_box.setValue(35)
+        assert editor.get_grid_size() == 35
+        assert "cable segments always move by grid cells" in (
+            workspace._grid_size_spin_box.toolTip()
+        )
+    finally:
+        page.prepare_to_delete()
+        workspace.session.unregister_page(page)
+        workspace.remove_page(page)
+        page.setParent(None)
+        page.deleteLater()
+        workspace.close()
+        workspace.deleteLater()
+        qt_app.processEvents()
+
+
 def test_rms_editor_reopen_preserves_persisted_connection_arrows(
         qt_app: QtWidgets.QApplication,
 ) -> None:
@@ -4024,8 +5185,8 @@ def test_rms_editor_reopen_preserves_persisted_connection_arrows(
     # no GUI-only wrapper state before exercising the persisted diagram path.
     for device in devices:
         for child_block in device.rms_model.children:
-            assert "is_root_interface_wrapper" not in child_block.__dict__
-            assert "is_root_interface_wrapper" not in child_block.to_dict()
+            child_data: Dict[str, Any] = child_block.to_dict()
+            assert "is_root_interface_wrapper" not in child_data
 
     reopened_editors: List[DynamicBlockEditorGUI] = list()
     try:
@@ -4312,6 +5473,356 @@ def test_canvas_copy_paste_clones_blocks_without_parent_connections(
         assert all(child.uid != pasted_block.uid for child in root_block.children)
         assert pasted_block.uid not in editor.diagram.node_data
         assert len(editor.diagram.con_data) == connection_count_before_copy
+    finally:
+        editor.prepare_to_delete()
+        editor.close()
+        editor.deleteLater()
+        qt_app.processEvents()
+
+
+def test_connected_block_programmatic_move_keeps_wire_endpoint_attached(
+        qt_app: QtWidgets.QApplication,
+) -> None:
+    """Keep one persisted wire attached when its source block moves.
+
+    Programmatic ``setPos`` exercises the same public graphics-item API used by
+    Qt drag handling while avoiding mouse-event timing in the regression.  The
+    route must be recomputed from the committed scene position, and the moved
+    block must remain a child of the authoritative symbolic model.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    circuit: MultiCircuit = MultiCircuit()
+    generator: Generator = Generator(name="Routing owner")
+    root_block: Block = Block(name="routing_root")
+    editor: DynamicBlockEditorGUI = DynamicBlockEditorGUI(
+        var_factory=circuit.var_factory,
+        root_block=root_block,
+        current_block=root_block,
+        api_object=generator,
+        circuit=circuit,
+        mode=DynamicSimulationMode.RMS,
+        current_theme=DynEditorGraphicsModes.LIGHT,
+        templates_list=list(),
+        is_root_editor=False,
+        modal=False,
+        workspace_embedded=False,
+        block2blocktype=dict(),
+    )
+    editor.show()
+    qt_app.processEvents()
+
+    try:
+        source_item: graph.GenericBlockItem | None = editor.create_generic_block_item(
+            block_type=BlockType.GENERIC,
+            x_pos=100.0,
+            y_pos=120.0,
+        )
+        target_item: graph.GenericBlockItem | None = editor.create_generic_block_item(
+            block_type=BlockType.GENERIC,
+            x_pos=420.0,
+            y_pos=260.0,
+        )
+        assert source_item is not None
+        assert target_item is not None
+
+        editor.scene.connect_ports(source_item.outputs[0], target_item.inputs[0])
+        qt_app.processEvents()
+        connections: List[graph.ConnectionItem] = [
+            scene_item for scene_item in editor.scene.items()
+            if isinstance(scene_item, graph.ConnectionItem)
+        ]
+        assert len(connections) == 1
+        connection: graph.ConnectionItem = connections[0]
+
+        # Moving through the public Qt item API must update both the persisted
+        # diagram position and the live route after Qt commits the new scene pos.
+        source_item.setPos(QtCore.QPointF(180.0, 200.0))
+        qt_app.processEvents()
+        source_endpoint: QtCore.QPointF = source_item.outputs[0].scenePos()
+        path_start: QtGui.QPainterPath.Element = connection.path().elementAt(0)
+        assert path_start.x == source_endpoint.x()
+        assert path_start.y == source_endpoint.y()
+        assert editor.diagram.node_data[source_item.subsys.uid].x == source_item.pos().x()
+        assert editor.diagram.node_data[source_item.subsys.uid].y == source_item.pos().y()
+        assert source_item.subsys in root_block.children
+        assert target_item.subsys in root_block.children
+        assert connection.con_uid in editor.diagram.con_data
+
+        # Toolbar state is mirrored by public APIs, and block placement snaps
+        # independently from whether the visual mesh is currently painted.
+        assert editor.is_grid_visible() is True
+        editor.set_grid_visible(False)
+        assert editor.grid_visibility_action.isChecked() is False
+        editor.set_grid_visible(True)
+        editor.set_grid_size(20)
+        editor.set_snap_to_grid_enabled(False)
+        assert editor.snap_to_grid_action.isChecked() is False
+        source_item.setPos(QtCore.QPointF(223.0, 247.0))
+        qt_app.processEvents()
+        assert source_item.pos() == QtCore.QPointF(223.0, 247.0)
+        editor.set_snap_to_grid_enabled(True)
+        source_item.setPos(QtCore.QPointF(224.0, 248.0))
+        qt_app.processEvents()
+        assert source_item.pos() == QtCore.QPointF(220.0, 240.0)
+        snapped_source_endpoint: QtCore.QPointF = source_item.outputs[0].scenePos()
+        snapped_path_start: QtGui.QPainterPath.Element = connection.path().elementAt(0)
+        assert snapped_path_start.x == snapped_source_endpoint.x()
+        assert snapped_path_start.y == snapped_source_endpoint.y()
+
+        # A bent cable owns only the one-cell band traversed by its segments,
+        # never the complete rectangle enclosed by the route.  This is also the
+        # interaction shape used by Qt for pointer selection.
+        original_path: QtGui.QPainterPath = connection.path()
+        neighborhood_path: QtGui.QPainterPath = QtGui.QPainterPath(
+            QtCore.QPointF(0.0, 0.0)
+        )
+        neighborhood_path.lineTo(QtCore.QPointF(100.0, 0.0))
+        neighborhood_path.lineTo(QtCore.QPointF(100.0, 100.0))
+        connection.setPath(neighborhood_path)
+        assert connection.shape().contains(QtCore.QPointF(50.0, 5.0))
+        assert not connection.shape().contains(QtCore.QPointF(50.0, 50.0))
+
+        # Selected painting decorates the traversed cable itself. The bottom
+        # edge of the enclosing 100x100 rectangle must remain fully transparent.
+        selection_image: QtGui.QImage = QtGui.QImage(
+            130,
+            130,
+            QtGui.QImage.Format.Format_ARGB32_Premultiplied,
+        )
+        selection_image.fill(QtCore.Qt.GlobalColor.transparent)
+        selection_painter: QtGui.QPainter = QtGui.QPainter(selection_image)
+        selection_painter.translate(15.0, 15.0)
+        connection.setSelected(True)
+        paint_option: QtWidgets.QStyleOptionGraphicsItem = (
+            QtWidgets.QStyleOptionGraphicsItem()
+        )
+        connection.paint(selection_painter, paint_option, None)
+        selection_painter.end()
+        selection_sample_x: int
+        for selection_sample_x in range(30, 90):
+            assert selection_image.pixelColor(selection_sample_x, 115).alpha() == 0
+        connection.setSelected(False)
+        connection.setPath(original_path)
+
+        # The routing graph exposes a real ELBOW-to-ELBOW segment.  Its hit-test
+        # and public move API must agree, and the displaced coordinate must land
+        # on the same mesh used by block snapping.
+        route_segments: List[Tuple[int, QtCore.QPointF, QtCore.QPointF]] = (
+            editor.get_connection_routing_graph_segments(connection)
+        )
+        editable_segment_index: int = -1
+        route_segment_index: int
+        for route_segment_index in range(len(route_segments)):
+            route_segment_id: int = route_segments[route_segment_index][0]
+            if (
+                    editable_segment_index < 0
+                    and editor.is_connection_routing_graph_segment_movable(
+                item=connection,
+                segment_id=route_segment_id,
+            )
+            ):
+                editable_segment_index = route_segment_index
+            else:
+                pass
+        assert editable_segment_index >= 0
+        editable_start: QtCore.QPointF = route_segments[editable_segment_index][1]
+        editable_end: QtCore.QPointF = route_segments[editable_segment_index][2]
+        editable_midpoint: QtCore.QPointF = QtCore.QPointF(
+            (editable_start.x() + editable_end.x()) * 0.5,
+            (editable_start.y() + editable_end.y()) * 0.5,
+        )
+        hit_segment_index: int
+        hit_is_horizontal: bool
+        hit_segment_index, hit_is_horizontal = connection.find_segment_at_scene_position(
+            pos=editable_midpoint,
+            threshold=4.0,
+            editable_only=True,
+        )
+        assert hit_segment_index == editable_segment_index
+        assert hit_is_horizontal == (abs(editable_start.y() - editable_end.y()) < 1.0)
+        # Block snap may be disabled, but cable corridors are mesh-owned and
+        # must still move only by complete grid coordinates.
+        editor.set_snap_to_grid_enabled(False)
+        if hit_is_horizontal:
+            moved: bool = editor.move_connection_segment_with_routing_graph(
+                item=connection,
+                segment_index=editable_segment_index,
+                delta_x=0.0,
+                delta_y=-13.0,
+            )
+        else:
+            moved = editor.move_connection_segment_with_routing_graph(
+                item=connection,
+                segment_index=editable_segment_index,
+                delta_x=-13.0,
+                delta_y=0.0,
+            )
+        assert moved is True
+        moved_segments: List[Tuple[int, QtCore.QPointF, QtCore.QPointF]] = (
+            editor.get_connection_routing_graph_segments(connection)
+        )
+        moved_start: QtCore.QPointF = moved_segments[editable_segment_index][1]
+        if hit_is_horizontal:
+            assert moved_start.y() != editable_start.y()
+            assert moved_start.y() % float(editor.get_grid_size()) == 0.0
+        else:
+            assert moved_start.x() != editable_start.x()
+            assert moved_start.x() % float(editor.get_grid_size()) == 0.0
+
+        # The canonical Block declaration owns node positions, connectivity and
+        # the complete routing graph.  Reconstructing from that public contract
+        # must preserve the user-authored segment displacement exactly.
+        connection_record: BlockDiagramConnection = editor.diagram.con_data[connection.con_uid]
+        assert connection_record.routing_payload is not None
+        persisted_routing_payload: Dict[str, object] = dict(connection_record.routing_payload)
+        block_data: Dict[str, object] = root_block.to_dict()
+        restored_root: Block = Block.parse(
+            data=block_data,
+            procedural_logic_codec=ProceduralLogicCodec(),
+        )
+        restored_record: BlockDiagramConnection = restored_root.diagram.con_data[connection.con_uid]
+        assert restored_record.routing_payload == persisted_routing_payload
+        assert restored_root.diagram.node_data[source_item.subsys.uid].x == 220.0
+        assert restored_root.diagram.node_data[source_item.subsys.uid].y == 240.0
+        assert len(restored_root.children) == 2
+
+        reopened_circuit: MultiCircuit = MultiCircuit()
+        reopened_generator: Generator = Generator(name="Reopened routing owner")
+        reopened_block_types: Dict[int, BlockType] = dict()
+        restored_child: Block
+        for restored_child in restored_root.children:
+            reopened_block_types[restored_child.uid] = BlockType.GENERIC
+        reopened_editor: DynamicBlockEditorGUI = DynamicBlockEditorGUI(
+            var_factory=reopened_circuit.var_factory,
+            root_block=restored_root,
+            current_block=restored_root,
+            api_object=reopened_generator,
+            circuit=reopened_circuit,
+            mode=DynamicSimulationMode.RMS,
+            current_theme=DynEditorGraphicsModes.LIGHT,
+            templates_list=list(),
+            is_root_editor=False,
+            modal=False,
+            workspace_embedded=False,
+            block2blocktype=reopened_block_types,
+        )
+        reopened_editor.show()
+        qt_app.processEvents()
+        try:
+            reopened_connections: List[graph.ConnectionItem] = [
+                scene_item for scene_item in reopened_editor.scene.items()
+                if isinstance(scene_item, graph.ConnectionItem)
+            ]
+            assert len(reopened_connections) == 1
+            reopened_connection: graph.ConnectionItem = reopened_connections[0]
+            reopened_path_start: QtGui.QPainterPath.Element = reopened_connection.path().elementAt(0)
+            reopened_source_endpoint: QtCore.QPointF = reopened_connection.source_port.scenePos()
+            assert reopened_path_start.x == reopened_source_endpoint.x()
+            assert reopened_path_start.y == reopened_source_endpoint.y()
+            assert (
+                reopened_editor.diagram.con_data[reopened_connection.con_uid].routing_payload
+                == persisted_routing_payload
+            )
+        finally:
+            reopened_editor.prepare_to_delete()
+            reopened_editor.close()
+            reopened_editor.deleteLater()
+            qt_app.processEvents()
+    finally:
+        editor.prepare_to_delete()
+        editor.close()
+        editor.deleteLater()
+        qt_app.processEvents()
+
+
+def test_nuactis_transient_projection_move_keeps_every_wire_attached(
+        qt_app: QtWidgets.QApplication,
+) -> None:
+    """Keep transient semantic-projection routes attached after a block move.
+
+    Projected device, measurement and control items intentionally have no
+    diagram-position callback because they are reconstructed from canonical
+    model semantics. Their visible routes must nevertheless follow live port
+    coordinates when the user moves one of those items.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    grid: MultiCircuit = _load_nuactis_rms_grid(
+        fixture_name="hvdc_vsc_v1_complete_static_dynamic.dgs",
+    )
+    vsc_devices: List[VSC] = grid.get_vsc()
+    assert len(vsc_devices) > 0
+    vsc: VSC = vsc_devices[0]
+    assert isinstance(vsc.rms_model, Block)
+    editor: DynamicBlockEditorGUI = _build_gui_editor(
+        qt_app=qt_app,
+        grid=grid,
+        api_object=vsc,
+        mode=DynamicSimulationMode.RMS,
+        root_block=vsc.rms_model,
+    )
+    try:
+        projected_items: List[graph.GenericBlockItem] = list(
+            scene_item for scene_item in editor.scene.items()
+            if isinstance(scene_item, graph.GenericBlockItem)
+            and scene_item.position_changed_callback is None
+        )
+        moved_item: graph.GenericBlockItem | None = None
+        incident_connections: List[graph.ConnectionItem] = list()
+        projected_item: graph.GenericBlockItem
+        for projected_item in projected_items:
+            projected_connections: List[graph.ConnectionItem] = list()
+            projected_port: graph.PortItem
+            for projected_port in projected_item.inputs:
+                if projected_port.connections is not None:
+                    projected_connections.extend(projected_port.connections)
+                else:
+                    pass
+            for projected_port in projected_item.outputs:
+                if projected_port.connections is not None:
+                    projected_connections.extend(projected_port.connections)
+                else:
+                    pass
+            if moved_item is None and len(projected_connections) > 0:
+                moved_item = projected_item
+                incident_connections = projected_connections
+            else:
+                pass
+        assert moved_item is not None
+        assert len(incident_connections) > 0
+
+        moved_item.setPos(moved_item.pos() + QtCore.QPointF(37.0, 43.0))
+        qt_app.processEvents()
+
+        connection: graph.ConnectionItem
+        for connection in incident_connections:
+            connection_path: QtGui.QPainterPath = connection.path()
+            assert connection_path.elementCount() >= 2
+            first_element: QtGui.QPainterPath.Element = connection_path.elementAt(0)
+            last_element: QtGui.QPainterPath.Element = connection_path.elementAt(
+                connection_path.elementCount() - 1
+            )
+            source_position: QtCore.QPointF = connection.source_port.scenePos()
+            target_position: QtCore.QPointF = connection.target_port.scenePos()
+            assert first_element.x == source_position.x()
+            assert first_element.y == source_position.y()
+            assert last_element.x == target_position.x()
+            assert last_element.y == target_position.y()
+
+            element_index: int
+            for element_index in range(connection_path.elementCount() - 1):
+                segment_start: QtGui.QPainterPath.Element = connection_path.elementAt(
+                    element_index
+                )
+                segment_end: QtGui.QPainterPath.Element = connection_path.elementAt(
+                    element_index + 1
+                )
+                horizontal: bool = abs(segment_start.y - segment_end.y) <= 1.0e-6
+                vertical: bool = abs(segment_start.x - segment_end.x) <= 1.0e-6
+                assert horizontal or vertical
     finally:
         editor.prepare_to_delete()
         editor.close()

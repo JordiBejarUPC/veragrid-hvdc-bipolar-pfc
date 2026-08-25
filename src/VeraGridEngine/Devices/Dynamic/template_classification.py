@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.symbolic import Var
+from VeraGridEngine.Utils.Symbolic.symbolic import Expr, Var
 from VeraGridEngine.enumerations import DynamicTemplateCategory, VarPowerFlowReferenceType
 
 
@@ -104,3 +104,77 @@ def block_declares_physical_measurement_contract(block: Block) -> bool:
         else:
             pass
     return False
+
+
+def block_declares_closed_measurement_station_contract(block: Block) -> bool:
+    """Return whether a composite block is fully bound by native RMS meters.
+
+    A measurement station is a structural owner for physical meter contracts,
+    not an ordinary wire-connected computational block.  Its declared inputs
+    are the physical quantities consumed by child meter equations, while its
+    outputs are exactly the signals produced by those children.  Verifying
+    both boundaries keeps connectivity validation strict without inventing
+    external diagram wires for an internally closed measurement composition.
+
+    :param block: Candidate composite measurement station.
+    :return: Whether every declared boundary variable is bound internally.
+    """
+    if block.dynamic_model_contract.rms_physical_measurement_point is None:
+        pass
+    else:
+        return False
+    if len(block.children) > 0:
+        pass
+    else:
+        return False
+
+    # Collect the exact child contracts and equation dependencies.  A mixed
+    # control/measurement composite remains an ordinary connectable block.
+    consumed_var_uids: set[int] = set()
+    child_owned_var_uids: set[int] = set()
+    produced_var_uids: set[int] = set()
+    child_block: Block
+    for child_block in block.children:
+        if child_block.dynamic_model_contract.rms_physical_measurement_point is not None:
+            pass
+        else:
+            return False
+
+        child_equation: Expr
+        for child_equation in child_block.algebraic_eqs:
+            equation_var: Var
+            for equation_var in child_equation.get_vars():
+                consumed_var_uids.add(equation_var.uid)
+        child_owned_var: Var
+        for child_owned_var in child_block.state_vars:
+            child_owned_var_uids.add(child_owned_var.uid)
+        for child_owned_var in child_block.algebraic_vars:
+            child_owned_var_uids.add(child_owned_var.uid)
+        for child_owned_var in child_block.diff_vars:
+            child_owned_var_uids.add(child_owned_var.uid)
+        for child_owned_var in child_block.parameters.keys():
+            child_owned_var_uids.add(child_owned_var.uid)
+        child_output_var: Var
+        for child_output_var in child_block.out_vars:
+            child_owned_var_uids.add(child_output_var.uid)
+            produced_var_uids.add(child_output_var.uid)
+
+    # The complete external dependency set must equal the station requirements.
+    # This rejects both unused options and hidden physical inputs.
+    external_dependency_uids: set[int] = consumed_var_uids.difference(
+        child_owned_var_uids
+    )
+    station_input_uids: set[int] = set()
+    station_input_var: Var
+    for station_input_var in block.in_vars:
+        station_input_uids.add(station_input_var.uid)
+
+    station_output_uids: set[int] = set()
+    station_output_var: Var
+    for station_output_var in block.out_vars:
+        station_output_uids.add(station_output_var.uid)
+    return (
+            len(block.in_vars) > 0
+            and station_input_uids == external_dependency_uids
+            and station_output_uids == produced_var_uids
+    )

@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import uuid
 
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Set
 
 from PySide6 import QtCore, QtGui
 
 from VeraGrid.Gui.Icons.icon_associations import device_type_icons
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
+from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 from VeraGridEngine.enumerations import (
     DeviceType,
     DynamicSimulationMode,
@@ -21,10 +22,70 @@ from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.template_classification import (
     classify_dynamic_template_block,
 )
+from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.Templates.BasicBlockCatalog import BasicBlockTemplateDescriptor, \
     get_editor_ready_basic_block_catalog_descriptors
 from VeraGridEngine.Templates.BasicBlockCatalog.catalog import build_basic_block_catalog_branch_skeleton
 from VeraGridEngine.enumerations import BlockType, DynamicTemplateCategory
+
+
+def build_library_template_semantic_key(
+        template: RmsModelTemplate | EmtModelTemplate | FmuTemplate,
+) -> tuple[object, ...]:
+    """Build a bounded key for one visually equivalent template leaf.
+
+    The library is a projection of canonical templates, so this key never
+    removes or merges circuit objects.  RMS and EMT blocks are distinguished by
+    their compatible device type, typed category, public interface, equation
+    shape, and direct-child shape.  Instance identifiers and diagram geometry
+    are deliberately excluded because they do not change draggable semantics.
+
+    :param template: Canonical template considered for one library leaf.
+    :return: Hashable semantic key used only by the library projection.
+    """
+    if isinstance(template, FmuTemplate):
+        result: tuple[object, ...] = (
+            FmuTemplate,
+            template.idtag,
+        )
+    else:
+        block: Block = template.block
+        input_signature_list: List[tuple[str, object]] = list()
+        output_signature_list: List[tuple[str, object]] = list()
+        variable: Var
+        for variable in block.in_vars:
+            input_signature_list.append((variable.name, variable.ref))
+        for variable in block.out_vars:
+            output_signature_list.append((variable.name, variable.ref))
+        child_signature_list: List[tuple[str, int, int, int, int]] = list()
+        child: Block
+        for child in block.children:
+            child_signature_list.append((
+                child.name,
+                len(child.in_vars),
+                len(child.out_vars),
+                len(child.algebraic_eqs),
+                len(child.children),
+            ))
+        input_signature: tuple[tuple[str, object], ...] = tuple(input_signature_list)
+        output_signature: tuple[tuple[str, object], ...] = tuple(output_signature_list)
+        child_signature: tuple[tuple[str, int, int, int, int], ...] = tuple(
+            child_signature_list
+        )
+        result = (
+            template.__class__,
+            template.name.casefold(),
+            template.tpe,
+            classify_dynamic_template_block(block=block),
+            input_signature,
+            output_signature,
+            len(block.state_eqs),
+            len(block.algebraic_eqs),
+            len(block.differential_eqs),
+            child_signature,
+        )
+    return result
 
 
 def _new_uid() -> int:
@@ -96,6 +157,27 @@ class MeasurementBlockDescriptor:
         :return: Bus, from-terminal, or to-terminal selection.
         """
         return self._terminal_side
+
+
+class MeasurementStationDescriptor:
+    """Describe the neutral measurement-station placement tool."""
+
+    __slots__ = ("_mode",)
+
+    def __init__(self, mode: DynamicSimulationMode) -> None:
+        """Create one station tool without embedding a terminal selection.
+
+        :param mode: Dynamic simulation domain of the receiving editor.
+        :return: None.
+        """
+        self._mode: DynamicSimulationMode = mode
+
+    def get_mode(self) -> DynamicSimulationMode:
+        """Return the dynamic domain supported by the station tool.
+
+        :return: RMS simulation mode.
+        """
+        return self._mode
 
 
 class DynamicsLibraryTreeModel(QtGui.QStandardItemModel):
@@ -368,28 +450,39 @@ class DynamicEditorLibrary:
             pass
 
         if self.templates_list:
+            # Several imported devices can register independent instances of
+            # one reusable shell.  Keep every canonical object in the circuit,
+            # but project only the first equivalent drag choice in this tree.
+            seen_template_keys: Set[tuple[object, ...]] = set()
             template: RmsModelTemplate | EmtModelTemplate | FmuTemplate
             for template in self.templates_list:
-                leaf: LibraryLeafSpec = LibraryLeafSpec(
-                    template.name,
-                    template,
-                    template.name,
+                template_key: tuple[object, ...] = (
+                    build_library_template_semantic_key(template=template)
                 )
-                if isinstance(template, FmuTemplate):
-                    template_category: DynamicTemplateCategory = (
-                        DynamicTemplateCategory.DEVICE
-                    )
-                else:
-                    template_category = classify_dynamic_template_block(
-                        block=template.block
-                    )
-
-                if template_category is DynamicTemplateCategory.DEVICE:
-                    physical_entries.append(leaf)
-                elif template_category is DynamicTemplateCategory.MEASUREMENT:
+                if template_key in seen_template_keys:
                     pass
                 else:
-                    control_entries.append(leaf)
+                    seen_template_keys.add(template_key)
+                    leaf: LibraryLeafSpec = LibraryLeafSpec(
+                        template.name,
+                        template,
+                        template.name,
+                    )
+                    if isinstance(template, FmuTemplate):
+                        template_category: DynamicTemplateCategory = (
+                            DynamicTemplateCategory.DEVICE
+                        )
+                    else:
+                        template_category = classify_dynamic_template_block(
+                            block=template.block
+                        )
+
+                    if template_category is DynamicTemplateCategory.DEVICE:
+                        physical_entries.append(leaf)
+                    elif template_category is DynamicTemplateCategory.MEASUREMENT:
+                        pass
+                    else:
+                        control_entries.append(leaf)
         else:
             pass
 
@@ -444,6 +537,21 @@ class DynamicEditorLibrary:
                             ),
                         ),
                     )
+        else:
+            pass
+        if (
+                mode is DynamicSimulationMode.RMS
+                and isinstance(self.api_object, (BranchParent, InjectionParent))
+        ):
+            measurement_entries.append(
+                LibraryLeafSpec(
+                    label="Measurement station",
+                    payload=MeasurementStationDescriptor(mode=mode),
+                    search_text=(
+                        "measurements station power current voltage pll from to"
+                    ),
+                )
+            )
         else:
             pass
         if mode is DynamicSimulationMode.RMS:
@@ -606,7 +714,7 @@ def is_supported_library_payload(item_data: object) -> bool:
         return True
     elif isinstance(item_data, (RmsModelTemplate, EmtModelTemplate, FmuTemplate)):
         return True
-    elif isinstance(item_data, MeasurementBlockDescriptor):
+    elif isinstance(item_data, (MeasurementBlockDescriptor, MeasurementStationDescriptor)):
         return True
     else:
         return False
@@ -652,7 +760,7 @@ def set_library_item_icon(item: QtGui.QStandardItem, payload: object) -> None:
         item.setIcon(QtGui.QIcon(device_type_icons[DeviceType.RmsModelTemplateDevice.value]))
     elif isinstance(payload, (EmtModelTemplate, BasicBlockTemplateDescriptor)):
         item.setIcon(QtGui.QIcon(device_type_icons[DeviceType.EmtModelTemplateDevice.value]))
-    elif isinstance(payload, MeasurementBlockDescriptor):
+    elif isinstance(payload, (MeasurementBlockDescriptor, MeasurementStationDescriptor)):
         measurement_icon_path: str | None = device_type_icons.get("Measurements", None)
         if measurement_icon_path is not None:
             item.setIcon(QtGui.QIcon(measurement_icon_path))

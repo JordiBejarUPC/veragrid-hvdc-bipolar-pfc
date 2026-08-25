@@ -97,6 +97,7 @@ class RouteBuilder:
         "_source_port_side",
         "_destination_port_side",
         "_geometry",
+        "_grid_size",
     )
 
     def __init__(
@@ -105,6 +106,7 @@ class RouteBuilder:
             destination_position: RoutingPoint,
             source_port_side: RoutingPortSide,
             destination_port_side: RoutingPortSide,
+            grid_size: float = 20.0,
     ) -> None:
         """
         Build one route builder.
@@ -113,6 +115,7 @@ class RouteBuilder:
         :param destination_position: Destination port position.
         :param source_port_side: Physical side of the source port on its block.
         :param destination_port_side: Physical side of the destination port on its block.
+        :param grid_size: Positive mesh spacing used for editable route corridors.
         :return: None.
         """
         self._source_position: RoutingPoint = source_position.copy()
@@ -120,6 +123,7 @@ class RouteBuilder:
         self._source_port_side: RoutingPortSide = source_port_side
         self._destination_port_side: RoutingPortSide = destination_port_side
         self._geometry: RoutingGeometry = RoutingGeometry()
+        self._grid_size: float = max(1.0, float(grid_size))
 
     def build(self) -> RoutingGraph:
         """
@@ -183,9 +187,8 @@ class RouteBuilder:
             port_position=self._destination_position,
             port_side=self._destination_port_side,
         )
-        # The central route keeps the legacy minimal dogleg algorithm. Only the
-        # effective endpoints change from the ports themselves to the stub
-        # endpoints, so the visible construction policy stays simple.
+        # The central route owns two or more elbows so at least one full segment
+        # can be moved perpendicular to itself without changing endpoint stubs.
         inner_route_points: list[RoutingPoint] = self._build_minimal_route_points(
             start_position=source_stub,
             end_position=destination_stub,
@@ -206,7 +209,7 @@ class RouteBuilder:
             end_position: RoutingPoint,
     ) -> list[RoutingPoint]:
         """
-        Build the existing minimal orthogonal route between two endpoints.
+        Build an editable orthogonal route between two endpoint stubs.
 
         :param start_position: Effective route start.
         :param end_position: Effective route end.
@@ -214,21 +217,47 @@ class RouteBuilder:
         """
         route_points: list[RoutingPoint] = list()
         route_points.append(start_position.copy())
+        source_x: float = start_position.get_x()
+        source_y: float = start_position.get_y()
+        destination_x: float = end_position.get_x()
+        destination_y: float = end_position.get_y()
+        x_aligned: bool = self._geometry.are_x_aligned(start_position, end_position)
+        y_aligned: bool = self._geometry.are_y_aligned(start_position, end_position)
 
-        if self._geometry.are_x_aligned(start_position, end_position):
-            route_points.append(end_position.copy())
-        elif self._geometry.are_y_aligned(start_position, end_position):
-            route_points.append(end_position.copy())
-        else:
-            # The minimal non-aligned route still uses one deterministic elbow.
-            # More advanced path construction belongs to future routing phases,
-            # not to this foundational builder.
-            elbow_point: RoutingPoint = RoutingPoint(
-                x_pos=end_position.get_x(),
-                y_pos=start_position.get_y(),
+        if not x_aligned:
+            # A horizontal corridor above both stubs gives the editor one
+            # ELBOW-to-ELBOW segment whose y coordinate belongs to the mesh.
+            corridor_y: float = (
+                round((min(source_y, destination_y) - self._grid_size) / self._grid_size)
+                * self._grid_size
             )
-            route_points.append(elbow_point)
-            route_points.append(end_position.copy())
+            route_points.append(RoutingPoint(source_x, corridor_y))
+            route_points.append(RoutingPoint(destination_x, corridor_y))
+        elif not y_aligned:
+            # Vertically separated aligned stubs use the symmetric left-side
+            # corridor so the movable segment has one mesh-aligned x coordinate.
+            corridor_x: float = (
+                round((min(source_x, destination_x) - self._grid_size) / self._grid_size)
+                * self._grid_size
+            )
+            route_points.append(RoutingPoint(corridor_x, source_y))
+            route_points.append(RoutingPoint(corridor_x, destination_y))
+        else:
+            # Coincident or visually coincident stubs need a three-elbow detour
+            # to avoid a zero-length central segment while preserving orthogonality.
+            detour_x: float = (
+                round((max(source_x, destination_x) + self._grid_size) / self._grid_size)
+                * self._grid_size
+            )
+            detour_y: float = (
+                round((min(source_y, destination_y) - self._grid_size) / self._grid_size)
+                * self._grid_size
+            )
+            route_points.append(RoutingPoint(source_x, detour_y))
+            route_points.append(RoutingPoint(detour_x, detour_y))
+            route_points.append(RoutingPoint(detour_x, destination_y))
+
+        route_points.append(end_position.copy())
 
         return route_points
 
