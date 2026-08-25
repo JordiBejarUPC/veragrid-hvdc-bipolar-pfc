@@ -52,15 +52,17 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_latex_renderer import (
 )
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
+from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.enumerations import (
     BlockType,
     ParamPowerFlowReferenceType,
     VarPowerFlowReferenceType,
 )
-from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var, symbolic_to_string
+from VeraGridEngine.Utils.Symbolic.block import Block, normalize_event_parameter_initialization
+from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var, get_expression_vars, symbolic_to_string
 from VeraGridEngine.Templates.Emt.generator_emt_type_template import get_governor_emt
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template_v2 import get_genqec_rms
+from VeraGridEngine.Templates.Rms.genrow_rms_template import get_genrow_rms_template
 from VeraGridEngine.Templates.template_definition import TemplateDefinition
 from VeraGridEngine.Templates.BasicBlockCatalog import (
     BasicBlockTemplateDescriptor,
@@ -862,11 +864,13 @@ def test_new_input_is_applied_without_offering_external_mapping() -> None:
     assert dialogue._new_external_reference_label.isHidden()
     assert dialogue._new_external_reference.isHidden()
     dialogue.add_staged_symbol()
+    assert "additional_input" in dialogue._dae_editor.get_language_context().get_namespace()
     dialogue.apply_changes()
 
     assert "Changes applied" in dialogue._status_label.text()
     assert len(block.in_vars) == initial_input_count + 1
     assert block.in_vars[-1].name == "additional_input"
+    assert "additional_input" in dialogue._dae_editor.get_language_context().get_namespace()
     assert all(mapped_variable is not block.in_vars[-1] for mapped_variable in block.external_mapping.values())
     dialogue.close()
 
@@ -1048,7 +1052,7 @@ def test_input_and_parameter_cannot_be_exported() -> None:
 
 
 def test_load_rms_operating_point_event_parameters_are_editable() -> None:
-    """Expose Pl0 and Ql0 overrides without losing automatic initialization."""
+    """Expose event expressions and allow replacing them with numeric overrides."""
     application: QtWidgets.QApplication = get_qt_application()
     _unused_application: QtWidgets.QApplication = application
     var_factory: VarFactory = VarFactory()
@@ -1061,10 +1065,10 @@ def test_load_rms_operating_point_event_parameters_are_editable() -> None:
     assert isinstance(block, Block)
     child: Block = block.children[0]
     event_variables: dict[str, Var] = dict((variable.name, variable) for variable in child.event_dict.keys())
-    assert child.event_dict[event_variables["Pl0"]].value is None
-    assert child.event_dict[event_variables["Ql0"]].value is None
-    assert child.init_eqs[event_variables["Pl0"]].name == "Pl"
-    assert child.init_eqs[event_variables["Ql0"]].name == "Ql"
+    assert symbolic_to_string(child.event_dict[event_variables["Pl0"]]) == "Pl"
+    assert symbolic_to_string(child.event_dict[event_variables["Ql0"]]) == "Ql"
+    assert event_variables["Pl0"] not in child.init_eqs
+    assert event_variables["Ql0"] not in child.init_eqs
 
     dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
         block,
@@ -1081,9 +1085,11 @@ def test_load_rms_operating_point_event_parameters_are_editable() -> None:
             pass
 
     assert set(row_by_name.keys()) == set(["Pl0", "Ql0"])
+    assert dialogue._parameter_model.index(row_by_name["Pl0"], 2).data() == "Pl"
+    assert dialogue._parameter_model.index(row_by_name["Ql0"], 2).data() == "Ql"
     assert dialogue._parameter_model.setData(
         dialogue._parameter_model.index(row_by_name["Pl0"], 2),
-        "-0.75",
+        "Pl + 0.1",
     )
     assert dialogue._parameter_model.setData(
         dialogue._parameter_model.index(row_by_name["Ql0"], 2),
@@ -1091,11 +1097,40 @@ def test_load_rms_operating_point_event_parameters_are_editable() -> None:
     )
     dialogue.apply_changes()
 
-    assert child.event_dict[event_variables["Pl0"]].value == -0.75
+    pl0_expression: Expr = child.event_dict[event_variables["Pl0"]]
+    assert not isinstance(pl0_expression, Const)
+    assert set(variable.name for variable in get_expression_vars(pl0_expression)) == set(["Pl"])
     assert child.event_dict[event_variables["Ql0"]].value == -0.2
-    assert child.init_eqs[event_variables["Pl0"]].name == "Pl"
-    assert child.init_eqs[event_variables["Ql0"]].name == "Ql"
+    assert event_variables["Pl0"] not in child.init_eqs
+    assert event_variables["Ql0"] not in child.init_eqs
     dialogue.close()
+
+
+def test_legacy_event_parameter_initialization_is_normalized_once() -> None:
+    """Move a legacy init expression while preserving an explicit event value."""
+    inherited_event: Var = Var("inherited_event")
+    explicit_event: Var = Var("explicit_event")
+    source_variable: Var = Var("source_variable")
+    inherited_expression: Expr = source_variable + Const(1.0)
+    child: Block = Block(
+        name="legacy_child",
+        event_dict=dict({
+            inherited_event: Const(None),
+            explicit_event: Const(4.0),
+        }),
+        init_eqs=dict({
+            inherited_event: inherited_expression,
+            explicit_event: source_variable,
+        }),
+    )
+    root: Block = Block(name="legacy_root", children=list([child]))
+
+    normalize_event_parameter_initialization(block=root)
+
+    assert child.event_dict[inherited_event] is inherited_expression
+    assert child.event_dict[explicit_event].value == 4.0
+    assert inherited_event not in child.init_eqs
+    assert explicit_event not in child.init_eqs
 
 
 def test_validate_button_rejects_unknown_symbols_and_python_syntax_errors() -> None:
@@ -1312,6 +1347,20 @@ def test_emt_generator_binary_functions_validate_in_dialogue() -> None:
     assert dialogue._status_label.text() == "DAE code is valid."
     assert dialogue._dae_editor.get_diagnostics() == list()
     dialogue.close()
+
+
+def test_genraw_initialization_keys_are_only_dae_unknowns() -> None:
+    """GENRAW event parameters must not be duplicated in ``init_eqs``.
+
+    :return: None.
+    """
+    var_factory: VarFactory = VarFactory()
+    template: RmsModelTemplate = get_genrow_rms_template(var_factory)
+    owner: Block
+    for owner in template.block.get_all_blocks():
+        allowed_variables: set[Var] = set(owner.state_vars)
+        allowed_variables.update(owner.algebraic_vars)
+        assert set(owner.init_eqs).issubset(allowed_variables)
 
 
 def test_rlc_combo_library_block_has_a_default_constructor() -> None:

@@ -42,17 +42,12 @@ def VoltageSourceBuild(
     Qmin_G = vfactory.add_var("Qmin_G")
 
     event_dict = {
-        Vg0: vfactory.add_const(None),
-        Ag0: vfactory.add_const(None),
+        Vg0: Vm,
+        Ag0: Va,
         Pmax_G: vfactory.add_const(9.999),
         Pmin_G: vfactory.add_const(-9.999),
         Qmax_G: vfactory.add_const(9.999),
         Qmin_G: vfactory.add_const(-9.999),
-    }
-
-    init_eqs = {
-        Vg0: Vm,
-        Ag0: Va,
     }
 
     p_within_limits = ((Pmax_G - P) >= 0).to_expression() * (0 <= (P - Pmin_G)).to_expression()
@@ -67,7 +62,6 @@ def VoltageSourceBuild(
             (Vm - Vg0) * q_within_limits + (Q - q_sat) * (1 - q_within_limits),
         ],
         algebraic_vars=[P, Q],
-        init_eqs=init_eqs,
         event_dict=event_dict,
     )
 
