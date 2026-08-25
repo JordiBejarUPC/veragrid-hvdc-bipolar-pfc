@@ -113,6 +113,42 @@ li.checked::マーカー { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:11pt;&quot;&gt;|networkx     | BSD |&lt;/span&gt;&lt;/p&gt;
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:11pt;&quot;&gt;+--------------+------------------------------------------+&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
+    <message>
+        <source>Dependencies</source>
+        <translation>依存関係</translation>
+    </message>
+    <message>
+        <source>Installation Path</source>
+        <translation>インストールパス</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>名前</translation>
+    </message>
+    <message>
+        <source>Not installed</source>
+        <translation>未インストール</translation>
+    </message>
+    <message>
+        <source>Package</source>
+        <translation>パッケージ</translation>
+    </message>
+    <message>
+        <source>True</source>
+        <translation>真</translation>
+    </message>
+    <message>
+        <source>Version</source>
+        <translation>バージョン</translation>
+    </message>
+    <message>
+        <source>licensed</source>
+        <translation>ライセンス</translation>
+    </message>
+    <message>
+        <source>supported version</source>
+        <translation>サポートされているバージョン</translation>
+    </message>
 </context>
 <context>
     <name>AdmittanceMatrixEditorWidget</name>
@@ -335,91 +371,91 @@ li.checked::マーカー { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&
     <name>AiChatDialogue</name>
     <message>
         <source>VeraGrid AI dialogue</source>
-        <translation type="vanished">VeraGrid AI ダイアログ</translation>
+        <translation>VeraGrid AI ダイアログ</translation>
     </message>
     <message>
         <source>Pick or type a GGUF file name</source>
-        <translation type="vanished">GGUF ファイル名を選択または入力します</translation>
+        <translation>GGUF ファイル名を選択または入力します</translation>
     </message>
     <message>
         <source>Provider model name</source>
-        <translation type="vanished">プロバイダーのモデル名</translation>
+        <translation>プロバイダーのモデル名</translation>
     </message>
     <message>
         <source>VeraGrid AI</source>
-        <translation type="vanished">VeraGrid AI</translation>
+        <translation>VeraGrid AI</translation>
     </message>
     <message>
         <source>Scan the configured path for GGUF files.</source>
-        <translation type="vanished">GGUF ファイルの構成されたパスをスキャンします。</translation>
+        <translation>GGUF ファイルの構成されたパスをスキャンします。</translation>
     </message>
     <message>
         <source>API key</source>
-        <translation type="vanished">APIキー</translation>
+        <translation>APIキー</translation>
     </message>
     <message>
         <source>Leave empty for unauthenticated endpoints</source>
-        <translation type="vanished">認証されていないエンドポイントの場合は空のままにします</translation>
+        <translation>認証されていないエンドポイントの場合は空のままにします</translation>
     </message>
     <message>
         <source>Query the configured backend for models.</source>
-        <translation type="vanished">構成されたバックエンドにモデルを問い合わせます。</translation>
+        <translation>構成されたバックエンドにモデルを問い合わせます。</translation>
     </message>
     <message>
         <source>Type a message before sending.</source>
-        <translation type="vanished">送信する前にメッセージを入力してください。</translation>
+        <translation>送信する前にメッセージを入力してください。</translation>
     </message>
     <message>
         <source>Resolve the pending tool approval or clear the chat first.</source>
-        <translation type="vanished">まず保留中のツールの承認を解決するか、チャットをクリアしてください。</translation>
+        <translation>まず保留中のツールの承認を解決するか、チャットをクリアしてください。</translation>
     </message>
     <message>
         <source>Stopping AI turn...</source>
-        <translation type="vanished">AI ターンを停止しています...</translation>
+        <translation>AI ターンを停止しています...</translation>
     </message>
     <message>
         <source>There is no running AI turn to stop.</source>
-        <translation type="vanished">実行中の AI に停止するターンはありません。</translation>
+        <translation>実行中の AI に停止するターンはありません。</translation>
     </message>
     <message>
         <source>Running simulation and analyzing the results...</source>
-        <translation type="vanished">シミュレーションを実行して結果を分析しています...</translation>
+        <translation>シミュレーションを実行して結果を分析しています...</translation>
     </message>
     <message>
         <source>There is no pending tool call to approve.</source>
-        <translation type="vanished">承認が必要な保留中のツール呼び出しはありません。</translation>
+        <translation>承認が必要な保留中のツール呼び出しはありません。</translation>
     </message>
     <message>
         <source>Wait for the current AI turn to finish.</source>
-        <translation type="vanished">現在の AI ターンが終了するまで待ちます。</translation>
+        <translation>現在の AI ターンが終了するまで待ちます。</translation>
     </message>
     <message>
         <source>Running AI turn...</source>
-        <translation type="vanished">AI ターンを実行中...</translation>
+        <translation>AI ターンを実行中...</translation>
     </message>
     <message>
         <source>Generating response</source>
-        <translation type="vanished">応答の生成</translation>
+        <translation>応答の生成</translation>
     </message>
     <message>
         <source>Running AI turn</source>
-        <translation type="vanished">AI ターンを実行中</translation>
+        <translation>AI ターンを実行中</translation>
     </message>
     <message>
         <source>Stop</source>
-        <translation type="vanished">停止</translation>
+        <translation>停止</translation>
     </message>
     <message>
         <source>Send</source>
-        <translation type="vanished">送信</translation>
+        <translation>送信</translation>
     </message>
     <message>
         <source>You</source>
-        <translation type="vanished">あなた</translation>
+        <translation>あなた</translation>
     </message>
     <message>
         <source>Tool</source>
-        <translation type="vanished">道具</translation>
+        <translation>道具</translation>
     </message>
 </context>
 <context>
@@ -615,11 +651,15 @@ li.checked::マーカー { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&
     <name>CgmesOptionsSelector</name>
     <message>
         <source>CGMES Version:</source>
-        <translation type="vanished">CGMES バージョン:</translation>
+        <translation>CGMES バージョン:</translation>
     </message>
     <message>
         <source>Accept</source>
-        <translation type="vanished">受け入れる</translation>
+        <translation>受け入れる</translation>
+    </message>
+    <message>
+        <source>Select the CGMES options</source>
+        <translation>CGMESオプションを選択</translation>
     </message>
 </context>
 <context>
@@ -1794,6 +1834,310 @@ li.checked::マーカー { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&
         <source>Close</source>
         <translation type="obsolete">近い</translation>
     </message>
+    <message>
+        <source>1 / {count}</source>
+        <translation>1 / {count}</translation>
+    </message>
+    <message>
+        <source>Add symbol</source>
+        <translation>シンボルを追加</translation>
+    </message>
+    <message>
+        <source>Add symbol to selected block</source>
+        <translation>選択されたブロックにシンボルを追加</translation>
+    </message>
+    <message>
+        <source>Advanced runtime logic</source>
+        <translation>高度な実行時ロジック</translation>
+    </message>
+    <message>
+        <source>Apply structural settings separately from DAE-code or symbol-interface changes.</source>
+        <translation>構造設定をDAEコードまたはシンボルインターフェースの変更とは別に適用します。</translation>
+    </message>
+    <message>
+        <source>Block / equation group</source>
+        <translation>ブロック / 方程式グループ</translation>
+    </message>
+    <message>
+        <source>Block configuration</source>
+        <translation>ブロック設定</translation>
+    </message>
+    <message>
+        <source>Block info</source>
+        <translation>ブロック情報</translation>
+    </message>
+    <message>
+        <source>Block properties - {name}</source>
+        <translation>ブロックプロパティ - {name}</translation>
+    </message>
+    <message>
+        <source>Block structure rebuilt with the selected settings.</source>
+        <translation>選択された設定でブロック構造が再構築されました。</translation>
+    </message>
+    <message>
+        <source>Catalogue type</source>
+        <translation>カタログタイプ</translation>
+    </message>
+    <message>
+        <source>Changes applied to the editor working copy.</source>
+        <translation>エディタの作業コピーに変更が適用されました。</translation>
+    </message>
+    <message>
+        <source>Changes applied. Advanced inequalities/discrete/boolean logic was preserved unchanged.</source>
+        <translation>変更が適用されました。高度な不等式/離散/ブールロジックは変更されずに保持されました。</translation>
+    </message>
+    <message>
+        <source>Clear</source>
+        <translation>クリア</translation>
+    </message>
+    <message>
+        <source>Create derivative variable</source>
+        <translation>微分変数を作成</translation>
+    </message>
+    <message>
+        <source>DAE and runtime-logic changes applied to the editor working copy.</source>
+        <translation>DAEおよび実行時ロジックの変更がエディタの作業コピーに適用されました。</translation>
+    </message>
+    <message>
+        <source>DAE code is valid.</source>
+        <translation>DAEコードは有効です。</translation>
+    </message>
+    <message>
+        <source>DAE model</source>
+        <translation>DAEモデル</translation>
+    </message>
+    <message>
+        <source>DAE validation failed at line {line}: {message}</source>
+        <translation>DAEの検証が{line}行目で失敗しました: {message}</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>消去</translation>
+    </message>
+    <message>
+        <source>Download rendered PDF</source>
+        <translation>レンダリングされたPDFをダウンロード</translation>
+    </message>
+    <message>
+        <source>Enter a name</source>
+        <translation>名前を入力</translation>
+    </message>
+    <message>
+        <source>Enter a valid Python symbol name.</source>
+        <translation>有効なPythonシンボル名を入力してください。</translation>
+    </message>
+    <message>
+        <source>Equation PDF created: {path}</source>
+        <translation>方程式PDFが作成されました: {path}</translation>
+    </message>
+    <message>
+        <source>Equation owner</source>
+        <translation>方程式の所有者</translation>
+    </message>
+    <message>
+        <source>Equations</source>
+        <translation>方程式</translation>
+    </message>
+    <message>
+        <source>General options</source>
+        <translation>一般オプション</translation>
+    </message>
+    <message>
+        <source>Generated structure</source>
+        <translation>生成された構造</translation>
+    </message>
+    <message>
+        <source>Initial numeric value</source>
+        <translation>初期数値</translation>
+    </message>
+    <message>
+        <source>Inputs</source>
+        <translation>入力</translation>
+    </message>
+    <message>
+        <source>Invalid DAE code.</source>
+        <translation>無効なDAEコードです。</translation>
+    </message>
+    <message>
+        <source>LaTeX</source>
+        <translation>LaTeX</translation>
+    </message>
+    <message>
+        <source>LaTeX source</source>
+        <translation>LaTeXソース</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>名前</translation>
+    </message>
+    <message>
+        <source>New symbol name</source>
+        <translation>新しいシンボル名</translation>
+    </message>
+    <message>
+        <source>Next</source>
+        <translation>次へ</translation>
+    </message>
+    <message>
+        <source>No matches</source>
+        <translation>マッチなし</translation>
+    </message>
+    <message>
+        <source>No online catalogue documentation is available for this custom block.</source>
+        <translation>このカスタムブロックのオンラインカタログドキュメントは利用できません。</translation>
+    </message>
+    <message>
+        <source>None</source>
+        <translation>なし</translation>
+    </message>
+    <message>
+        <source>Nothing was applied: {message}</source>
+        <translation>何も適用されませんでした: {message}</translation>
+    </message>
+    <message>
+        <source>Online documentation</source>
+        <translation>オンラインドキュメント</translation>
+    </message>
+    <message>
+        <source>Opens the documentation for the original predefined library block. If this block has been modified in the editor, its current equations, symbols, parameters, or runtime logic may differ from the online documentation.</source>
+        <translation>元の定義済みライブラリブロックのドキュメントを開きます。このブロックがエディタで変更されている場合、現在の方程式、シンボル、パラメータ、または実行時ロジックはオンラインドキュメントと異なる場合があります。</translation>
+    </message>
+    <message>
+        <source>Output</source>
+        <translation>出力</translation>
+    </message>
+    <message>
+        <source>Outputs</source>
+        <translation>出力</translation>
+    </message>
+    <message>
+        <source>Owner block</source>
+        <translation>所有ブロック</translation>
+    </message>
+    <message>
+        <source>PDF documents (*.pdf)</source>
+        <translation>PDFドキュメント (*.pdf)</translation>
+    </message>
+    <message>
+        <source>Parameter whose value may change during the simulation.</source>
+        <translation>シミュレーション中に値が変化する可能性のあるパラメータ。</translation>
+    </message>
+    <message>
+        <source>Parameters</source>
+        <translation>パラメータ</translation>
+    </message>
+    <message>
+        <source>Power-flow variable</source>
+        <translation>電力潮流変数</translation>
+    </message>
+    <message>
+        <source>Power-flow variable used to initialize this dynamic variable.</source>
+        <translation>この動的変数を初期化するために使用される電力潮流変数。</translation>
+    </message>
+    <message>
+        <source>Previous</source>
+        <translation>前の</translation>
+    </message>
+    <message>
+        <source>Python code</source>
+        <translation>Pythonコード</translation>
+    </message>
+    <message>
+        <source>Rename...</source>
+        <translation>名前変更...</translation>
+    </message>
+    <message>
+        <source>Runtime logic</source>
+        <translation>実行時ロジック</translation>
+    </message>
+    <message>
+        <source>Save dynamic equations PDF</source>
+        <translation>動的方程式をPDFとして保存</translation>
+    </message>
+    <message>
+        <source>Search Python code...</source>
+        <translation>Pythonコードを検索...</translation>
+    </message>
+    <message>
+        <source>Search parameters...</source>
+        <translation>パラメータを検索...</translation>
+    </message>
+    <message>
+        <source>Search variables...</source>
+        <translation>変数を検索...</translation>
+    </message>
+    <message>
+        <source>Select a valid owner block.</source>
+        <translation>有効な所有ブロックを選択してください。</translation>
+    </message>
+    <message>
+        <source>Select a valid symbol type.</source>
+        <translation>有効なシンボルタイプを選択してください。</translation>
+    </message>
+    <message>
+        <source>Select all</source>
+        <translation>すべて選択</translation>
+    </message>
+    <message>
+        <source>Select at least one non-empty equation group.</source>
+        <translation>空でない方程式グループを少なくとも1つ選択してください。</translation>
+    </message>
+    <message>
+        <source>Select equation groups to generate copyable LaTeX source.</source>
+        <translation>コピー可能なLaTeXソースを生成する方程式グループを選択してください。</translation>
+    </message>
+    <message>
+        <source>Select the equation groups to include. Each internal block and each DAE section can be selected independently.</source>
+        <translation>含める方程式グループを選択してください。各内部ブロックおよび各DAEセクションは個別に選択できます。</translation>
+    </message>
+    <message>
+        <source>Special settings</source>
+        <translation>特別な設定</translation>
+    </message>
+    <message>
+        <source>Static device mapping</source>
+        <translation>静的デバイスマッピング</translation>
+    </message>
+    <message>
+        <source>Symbol category</source>
+        <translation>シンボルカテゴリ</translation>
+    </message>
+    <message>
+        <source>The PDF could not be created: {message}</source>
+        <translation>PDFを作成できませんでした: {message}</translation>
+    </message>
+    <message>
+        <source>The online block documentation could not be opened in the system browser.</source>
+        <translation>オンラインブロックドキュメントをシステムブラウザで開けませんでした。</translation>
+    </message>
+    <message>
+        <source>These settings contain structured data used to regenerate the block. Edit sequences with valid Python tuple/list syntax.</source>
+        <translation>これらの設定には、ブロックを再生成するために使用される構造化データが含まれています。有効なPythonタプル/リスト構文でシーケンスを編集してください。</translation>
+    </message>
+    <message>
+        <source>This block has no safe structural rebuild adapter.</source>
+        <translation>このブロックには安全な構造再構築アダプターがありません。</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>種類</translation>
+    </message>
+    <message>
+        <source>Validate all code</source>
+        <translation>すべてのコードを検証</translation>
+    </message>
+    <message>
+        <source>Variable renamed to '{name}'.</source>
+        <translation>変数が「{name}」に名前変更されました。</translation>
+    </message>
+    <message>
+        <source>Variables</source>
+        <translation>変数</translation>
+    </message>
+    <message>
+        <source>{active} / {count}</source>
+        <translation>{active} / {count}</translation>
+    </message>
 </context>
 <context>
     <name>DynamicEditorWorkspaceWindow</name>
@@ -1857,6 +2201,18 @@ li.checked::マーカー { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&
         <source>view tree</source>
         <translation>ビューツリー</translation>
     </message>
+    <message>
+        <source>Dynamic Editor - {title}</source>
+        <translation>動的エディタ - {title}</translation>
+    </message>
+    <message>
+        <source>Open EMT editor</source>
+        <translation>EMT エディターを開く</translation>
+    </message>
+    <message>
+        <source>Open RMS editor</source>
+        <translation>RMS エディターを開く</translation>
+    </message>
 </context>
 <context>
     <name>DynamicEventDialogue</name>
@@ -1895,35 +2251,43 @@ li.checked::マーカー { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&
     <name>DynamicsResultsHandler</name>
     <message>
         <source>X-Y plot slot</source>
-        <translation type="vanished">X-Y プロット スロット</translation>
+        <translation>X-Y プロット スロット</translation>
     </message>
     <message>
         <source>Choose whether to place the dropped signal on the X axis or Y axis.</source>
-        <translation type="vanished">ドロップされた信号を X 軸に配置するか Y 軸に配置するかを選択します。</translation>
+        <translation>ドロップされた信号を X 軸に配置するか Y 軸に配置するかを選択します。</translation>
     </message>
     <message>
         <source>X axis</source>
-        <translation type="vanished">X軸</translation>
+        <translation>X軸</translation>
     </message>
     <message>
         <source>Y axis</source>
-        <translation type="vanished">Y軸</translation>
+        <translation>Y軸</translation>
     </message>
     <message>
         <source>Cancel</source>
-        <translation type="vanished">キャンセル</translation>
+        <translation>キャンセル</translation>
     </message>
     <message>
         <source>This X-Y plot already has X and Y signals. Replace X, replace Y, or cancel?</source>
-        <translation type="vanished">この X-Y プロットには、すでに X 信号と Y 信号が含まれています。 X を置き換えますか、Y を置き換えますか、それともキャンセルしますか?</translation>
+        <translation>この X-Y プロットには、すでに X 信号と Y 信号が含まれています。 X を置き換えますか、Y を置き換えますか、それともキャンセルしますか?</translation>
     </message>
     <message>
         <source>Replace X</source>
-        <translation type="vanished">Xを置き換える</translation>
+        <translation>Xを置き換える</translation>
     </message>
     <message>
         <source>Replace Y</source>
-        <translation type="vanished">Yを置き換えます</translation>
+        <translation>Yを置き換えます</translation>
+    </message>
+    <message>
+        <source>Dynamic plots</source>
+        <translation>動的プロット</translation>
+    </message>
+    <message>
+        <source>Dynamics results</source>
+        <translation>ダイナミクス結果</translation>
     </message>
 </context>
 <context>
@@ -1938,68 +2302,84 @@ li.checked::マーカー { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&
     <name>FileTypeSelector</name>
     <message>
         <source>Format:</source>
-        <translation type="vanished">形式：</translation>
+        <translation>形式：</translation>
     </message>
     <message>
         <source>Accept</source>
-        <translation type="vanished">受け入れる</translation>
+        <translation>受け入れる</translation>
+    </message>
+    <message>
+        <source>Select how to load the file</source>
+        <translation>ファイルの読み込み方法を選択してください</translation>
+    </message>
+    <message>
+        <source>You've passed a generic list of files
+select the expected processing format</source>
+        <translation>ファイルの一般的なリストを渡しました
+期待される処理形式を選択してください</translation>
+    </message>
+    <message>
+        <source>You've passed a generic of file
+select the expected processing format</source>
+        <translation>ファイルの一般的なリストを渡しました
+期待される処理形式を選択してください</translation>
     </message>
 </context>
 <context>
     <name>FmuTemplateEditorDialog</name>
     <message>
         <source>FMU Template Editor</source>
-        <translation type="vanished">FMU テンプレート エディター</translation>
+        <translation>FMU テンプレート エディター</translation>
     </message>
     <message>
         <source>Browse...</source>
-        <translation type="vanished">ブラウズ...</translation>
+        <translation>ブラウズ...</translation>
     </message>
     <message>
         <source>Choose an FMU archive to load its metadata and build the visual block.</source>
-        <translation type="vanished">FMU アーカイブを選択してメタデータをロードし、ビジュアル ブロックを構築します。</translation>
+        <translation>FMU アーカイブを選択してメタデータをロードし、ビジュアル ブロックを構築します。</translation>
     </message>
     <message>
         <source>Name</source>
-        <translation type="vanished">名前</translation>
+        <translation>名前</translation>
     </message>
     <message>
         <source>FMU file</source>
-        <translation type="vanished">FMUファイル</translation>
+        <translation>FMUファイル</translation>
     </message>
     <message>
         <source>Device type</source>
-        <translation type="vanished">デバイスの種類</translation>
+        <translation>デバイスの種類</translation>
     </message>
     <message>
         <source>Domain</source>
-        <translation type="vanished">ドメイン</translation>
+        <translation>ドメイン</translation>
     </message>
     <message>
         <source>Mode</source>
-        <translation type="vanished">モード</translation>
+        <translation>モード</translation>
     </message>
     <message>
         <source>Metadata</source>
-        <translation type="vanished">メタデータ</translation>
+        <translation>メタデータ</translation>
     </message>
     <message>
         <source>Select FMU file</source>
-        <translation type="vanished">FMUファイルを選択してください</translation>
+        <translation>FMUファイルを選択してください</translation>
     </message>
     <message>
         <source>FMU files (*.fmu)</source>
-        <translation type="vanished">FMU ファイル (*.fmu)</translation>
+        <translation>FMU ファイル (*.fmu)</translation>
     </message>
     <message>
         <source>FMU file not found:
 {path}</source>
-        <translation type="vanished">FMU ファイルが見つかりません:
+        <translation>FMU ファイルが見つかりません:
 {path}</translation>
     </message>
     <message>
         <source>Choose an FMU file first.</source>
-        <translation type="vanished">最初に FMU ファイルを選択します。</translation>
+        <translation>最初に FMU ファイルを選択します。</translation>
     </message>
 </context>
 <context>
@@ -2024,103 +2404,103 @@ li.checked::マーカー { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&
     <name>IoMain</name>
     <message>
         <source>The file type {file_extension} is not accepted :(</source>
-        <translation type="vanished">ファイルタイプ {file_extension} は受け入れられません:(</translation>
+        <translation>ファイルタイプ {file_extension} は受け入れられません:(</translation>
     </message>
     <message>
         <source>Message</source>
-        <translation type="vanished">メッセージ</translation>
+        <translation>メッセージ</translation>
     </message>
     <message>
         <source>Are you sure that you want to quit the current grid and open a new one?
  If the process is cancelled the grid will remain.</source>
-        <translation type="vanished">現在のグリッドを終了して、新しいグリッドを開きますか?
+        <translation>現在のグリッドを終了して、新しいグリッドを開きますか?
  プロセスがキャンセルされた場合、グリッドは残ります。</translation>
     </message>
     <message>
         <source>Are you sure that you want to quit the current grid and create a new one?</source>
-        <translation type="vanished">現在のグリッドを終了して、新しいグリッドを作成してもよろしいですか?</translation>
+        <translation>現在のグリッドを終了して、新しいグリッドを作成してもよろしいですか?</translation>
     </message>
     <message>
         <source>There is a file being processed now.</source>
-        <translation type="vanished">現在処理中のファイルがあります。</translation>
+        <translation>現在処理中のファイルがあります。</translation>
     </message>
     <message>
         <source>Formats ({files_types})</source>
-        <translation type="vanished">フォーマット ({files_types})</translation>
+        <translation>フォーマット ({files_types})</translation>
     </message>
     <message>
         <source>The file does not exist :( 
  {file_name}</source>
-        <translation type="vanished">ファイルは存在しません:( 
+        <translation>ファイルは存在しません:( 
  {file_name}</translation>
     </message>
     <message>
         <source>File opening</source>
-        <translation type="vanished">ファイルを開く</translation>
+        <translation>ファイルを開く</translation>
     </message>
     <message>
         <source>No grid to load :(</source>
-        <translation type="vanished">ロードするグリッドがありません:(</translation>
+        <translation>ロードするグリッドがありません:(</translation>
     </message>
     <message>
         <source>Current: {circuit_name}</source>
-        <translation type="vanished">現在: {circuit_name}</translation>
+        <translation>現在: {circuit_name}</translation>
     </message>
     <message>
         <source>The grid is quite big, no diagram is automatically created</source>
-        <translation type="vanished">グリッドが非常に大きいため、図は自動的に作成されません</translation>
+        <translation>グリッドが非常に大きいため、図は自動的に作成されません</translation>
     </message>
     <message>
         <source>Sessions</source>
-        <translation type="vanished">セッション</translation>
+        <translation>セッション</translation>
     </message>
     <message>
         <source>Show Rosetta</source>
-        <translation type="vanished">ロゼッタを表示する</translation>
+        <translation>ロゼッタを表示する</translation>
     </message>
     <message>
         <source>Do you want to open the Rosetta CGMES browser?</source>
-        <translation type="vanished">Rosetta CGMES ブラウザを開きますか?</translation>
+        <translation>Rosetta CGMES ブラウザを開きますか?</translation>
     </message>
     <message>
         <source>Open CGMES file logger</source>
-        <translation type="vanished">CGMES ファイルロガーを開く</translation>
+        <translation>CGMES ファイルロガーを開く</translation>
     </message>
     <message>
         <source>Open file logger</source>
-        <translation type="vanished">ファイルロガーを開く</translation>
+        <translation>ファイルロガーを開く</translation>
     </message>
     <message>
         <source>Error while loading the file(s)</source>
-        <translation type="vanished">ファイルのロード中にエラーが発生しました</translation>
+        <translation>ファイルのロード中にエラーが発生しました</translation>
     </message>
     <message>
         <source>{name} {version} requires VeraGrid {veragrid_version}</source>
-        <translation type="vanished">{name} {version} には VeraGrid {veragrid_version} が必要です</translation>
+        <translation>{name} {version} には VeraGrid {veragrid_version} が必要です</translation>
     </message>
     <message>
         <source>Plugin install</source>
-        <translation type="vanished">プラグインのインストール</translation>
+        <translation>プラグインのインストール</translation>
     </message>
     <message>
         <source>There is already a plugin: {plugin_name} {plugin_version}. The new plugin is {new_version}. Install?</source>
-        <translation type="vanished">すでにプラグインがあります: {plugin_name} {plugin_version}。新しいプラグインは {new_version} です。インストール？</translation>
+        <translation>すでにプラグインがあります: {plugin_name} {plugin_version}。新しいプラグインは {new_version} です。インストール？</translation>
     </message>
     <message>
         <source>{name} {version} installed!</source>
-        <translation type="vanished">{name} {version} がインストールされました!</translation>
+        <translation>{name} {version} がインストールされました!</translation>
     </message>
     <message>
         <source>There is no manifest :(</source>
-        <translation type="vanished">マニフェストがありません:(</translation>
+        <translation>マニフェストがありません:(</translation>
     </message>
     <message>
         <source>Does not seem to be a plugin :/</source>
-        <translation type="vanished">プラグインではないようです:/</translation>
+        <translation>プラグインではないようです:/</translation>
     </message>
     <message>
         <source>CSV (*.csv)</source>
-        <translation type="vanished">CSV (*.csv)</translation>
+        <translation>CSV (*.csv)</translation>
     </message>
     <message>
         <source>Open CSV file</source>
@@ -2128,233 +2508,253 @@ li.checked::マーカー { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&
     </message>
     <message>
         <source>Grid merge</source>
-        <translation type="vanished">グリッドのマージ</translation>
+        <translation>グリッドのマージ</translation>
     </message>
     <message>
         <source>How do you want to represent the merged grid?</source>
-        <translation type="vanished">結合されたグリッドをどのように表現したいですか?</translation>
+        <translation>結合されたグリッドをどのように表現したいですか?</translation>
     </message>
     <message>
         <source>Create new diagram</source>
-        <translation type="vanished">新しい図を作成する</translation>
+        <translation>新しい図を作成する</translation>
     </message>
     <message>
         <source>Add to current diagram</source>
-        <translation type="vanished">現在の図に追加</translation>
+        <translation>現在の図に追加</translation>
     </message>
     <message>
         <source>No schematic diagram was selected...</source>
-        <translation type="vanished">回路図が選択されていません...</translation>
+        <translation>回路図が選択されていません...</translation>
     </message>
     <message>
         <source>Save file</source>
-        <translation type="vanished">ファイルの保存</translation>
+        <translation>ファイルの保存</translation>
     </message>
     <message>
         <source>VeraGrid zip (*.veragrid)</source>
-        <translation type="vanished">VeraGrid ジップ (*.veragrid)</translation>
+        <translation>VeraGrid ジップ (*.veragrid)</translation>
     </message>
     <message>
         <source>There is a saving procedure running.
 Cancel and retry?</source>
-        <translation type="vanished">保存手順が実行中です。
+        <translation>保存手順が実行中です。
 キャンセルして再試行しますか?</translation>
     </message>
     <message>
         <source>There is a file being processed..</source>
-        <translation type="vanished">処理中のファイルがあります。</translation>
+        <translation>処理中のファイルがあります。</translation>
     </message>
     <message>
         <source>Save file logger</source>
-        <translation type="vanished">保存ファイルロガー</translation>
+        <translation>保存ファイルロガー</translation>
     </message>
     <message>
         <source>Are you sure that you want to delete the current grid and replace it?</source>
-        <translation type="vanished">現在のグリッドを削除して置き換えてもよろしいですか?</translation>
+        <translation>現在のグリッドを削除して置き換えてもよろしいですか?</translation>
     </message>
     <message>
         <source>Model v. {model_version}</source>
-        <translation type="vanished">モデルと{model_version}</translation>
+        <translation>モデルと{model_version}</translation>
     </message>
     <message>
         <source>idtag. {idtag}</source>
-        <translation type="vanished">IDタグ。 {idtag}</translation>
+        <translation>IDタグ。 {idtag}</translation>
     </message>
     <message>
         <source>Random grid {bus_count} buses</source>
-        <translation type="vanished">ランダム グリッド {bus_count} バス</translation>
+        <translation>ランダム グリッド {bus_count} バス</translation>
     </message>
     <message>
         <source>Grid generated randomly using the RPGM algorithm.</source>
-        <translation type="vanished">RPGM アルゴリズムを使用してランダムに生成されたグリッド。</translation>
+        <translation>RPGM アルゴリズムを使用してランダムに生成されたグリッド。</translation>
     </message>
     <message>
         <source>Excel file (*.xlsx)</source>
-        <translation type="vanished">Excelファイル(*.xlsx)</translation>
+        <translation>Excelファイル(*.xlsx)</translation>
     </message>
     <message>
         <source>profiles of </source>
-        <translation type="vanished">のプロフィール</translation>
+        <translation>のプロフィール</translation>
     </message>
     <message>
         <source>There are no profiles!</source>
-        <translation type="vanished">プロフィールはありません！</translation>
+        <translation>プロフィールはありません！</translation>
     </message>
     <message>
         <source>Export object profiles</source>
-        <translation type="vanished">オブジェクトプロファイルのエクスポート</translation>
+        <translation>オブジェクトプロファイルのエクスポート</translation>
     </message>
     <message>
         <source>Zip file (*.zip)</source>
-        <translation type="vanished">ZIP ファイル (*.zip)</translation>
+        <translation>ZIP ファイル (*.zip)</translation>
     </message>
     <message>
         <source>Results of </source>
-        <translation type="vanished">の結果</translation>
+        <translation>の結果</translation>
     </message>
     <message>
         <source>There are no results available :/</source>
-        <translation type="vanished">利用可能な結果はありません:/</translation>
+        <translation>利用可能な結果はありません:/</translation>
     </message>
     <message>
         <source>Export all</source>
-        <translation type="vanished">すべてエクスポート</translation>
+        <translation>すべてエクスポート</translation>
     </message>
     <message>
         <source>Done!</source>
-        <translation type="vanished">終わり！</translation>
+        <translation>終わり！</translation>
     </message>
     <message>
         <source>Results parsing</source>
-        <translation type="vanished">結果の解析</translation>
+        <translation>結果の解析</translation>
     </message>
     <message>
         <source>Loaded &apos;{study_name}&apos; results from disk</source>
-        <translation type="vanished">ディスクからロードされた「{study_name}」の結果</translation>
+        <translation>ディスクからロードされた「{study_name}」の結果</translation>
     </message>
     <message>
         <source>No file driver declared :/</source>
-        <translation type="vanished">ファイルドライバーが宣言されていません:/</translation>
+        <translation>ファイルドライバーが宣言されていません:/</translation>
     </message>
     <message>
         <source>Select a driver inside a session</source>
-        <translation type="vanished">セッション内でドライバーを選択する</translation>
+        <translation>セッション内でドライバーを選択する</translation>
     </message>
     <message>
         <source>Driver load from disk</source>
-        <translation type="vanished">ディスクからのドライバーのロード</translation>
+        <translation>ディスクからのドライバーのロード</translation>
     </message>
     <message>
         <source>Load results from disk</source>
-        <translation type="vanished">ディスクから結果をロードする</translation>
+        <translation>ディスクから結果をロードする</translation>
     </message>
     <message>
         <source>Formats (*.json)</source>
-        <translation type="vanished">フォーマット (*.json)</translation>
+        <translation>フォーマット (*.json)</translation>
     </message>
     <message>
         <source>Open file</source>
-        <translation type="vanished">ファイルを開く</translation>
+        <translation>ファイルを開く</translation>
     </message>
     <message>
         <source>Contingencies import</source>
-        <translation type="vanished">緊急事態のインポート</translation>
+        <translation>緊急事態のインポート</translation>
     </message>
     <message>
         <source>JSON file (*.json)</source>
-        <translation type="vanished">JSON ファイル (*.json)</translation>
+        <translation>JSON ファイル (*.json)</translation>
     </message>
     <message>
         <source>Catalogue added!</source>
-        <translation type="vanished">カタログ追加しました！</translation>
+        <translation>カタログ追加しました！</translation>
     </message>
     <message>
         <source>Load catalogue</source>
-        <translation type="vanished">カタログをロードする</translation>
+        <translation>カタログをロードする</translation>
     </message>
     <message>
         <source>Open catalogue logger</source>
-        <translation type="vanished">カタログロガーを開く</translation>
+        <translation>カタログロガーを開く</translation>
     </message>
     <message>
         <source>Catalogue loaded!</source>
-        <translation type="vanished">カタログが読み込まれました！</translation>
+        <translation>カタログが読み込まれました！</translation>
     </message>
     <message>
         <source>Catalogue file (*.xlsx)</source>
-        <translation type="vanished">カタログファイル(*.xlsx)</translation>
+        <translation>カタログファイル(*.xlsx)</translation>
     </message>
     <message>
         <source>Catalogue Excel file (*.xlsx)</source>
-        <translation type="vanished">カタログExcelファイル(*.xlsx)</translation>
+        <translation>カタログExcelファイル(*.xlsx)</translation>
     </message>
     <message>
         <source>Save catalogue</source>
-        <translation type="vanished">カタログの保存</translation>
+        <translation>カタログの保存</translation>
     </message>
     <message>
         <source>Catalogue saved!</source>
-        <translation type="vanished">カタログ保存しました！</translation>
+        <translation>カタログ保存しました！</translation>
     </message>
     <message>
         <source>CIM (*.xml)</source>
-        <translation type="vanished">CIM (*.xml)</translation>
+        <translation>CIM (*.xml)</translation>
     </message>
     <message>
         <source>Export to CIM</source>
-        <translation type="vanished">CIM にエクスポート</translation>
+        <translation>CIM にエクスポート</translation>
     </message>
     <message>
         <source>Power Grid Models (*.pgm)</source>
-        <translation type="vanished">パワーグリッドモデル (*.pgm)</translation>
+        <translation>パワーグリッドモデル (*.pgm)</translation>
     </message>
     <message>
         <source>Export to Power Grid Models</source>
-        <translation type="vanished">パワーグリッドモデルへのエクスポート</translation>
+        <translation>パワーグリッドモデルへのエクスポート</translation>
     </message>
     <message>
         <source>Power Grid Models not installed :/</source>
-        <translation type="vanished">パワーグリッド モデルがインストールされていません :/</translation>
+        <translation>パワーグリッド モデルがインストールされていません :/</translation>
     </message>
     <message>
         <source>Electrical Json V3 (*.ejson3)</source>
-        <translation type="vanished">電気 Json V3 (*.ejson3)</translation>
+        <translation>電気 Json V3 (*.ejson3)</translation>
     </message>
     <message>
         <source>Export to JSON</source>
-        <translation type="vanished">JSON にエクスポート</translation>
+        <translation>JSON にエクスポート</translation>
     </message>
     <message>
         <source>VeraGrid HDF5 (*.gch5)</source>
-        <translation type="vanished">VeraGrid HDF5 (*.gch5)</translation>
+        <translation>VeraGrid HDF5 (*.gch5)</translation>
     </message>
     <message>
         <source>Export to VeraGrid HDF5</source>
-        <translation type="vanished">VeraGrid HDF5 にエクスポート</translation>
+        <translation>VeraGrid HDF5 にエクスポート</translation>
     </message>
     <message>
         <source>Excel (*.xlsx)</source>
-        <translation type="vanished">エクセル (*.xlsx)</translation>
+        <translation>エクセル (*.xlsx)</translation>
     </message>
     <message>
         <source>Export to Microsoft Excel</source>
-        <translation type="vanished">Microsoft Excelにエクスポート</translation>
+        <translation>Microsoft Excelにエクスポート</translation>
     </message>
     <message>
         <source>Sqlite (*.sqlite)</source>
-        <translation type="vanished">スクライト (*.sqlite)</translation>
+        <translation>スクライト (*.sqlite)</translation>
     </message>
     <message>
         <source>Export to Sqlite</source>
-        <translation type="vanished">Sqlite にエクスポート</translation>
+        <translation>Sqlite にエクスポート</translation>
     </message>
     <message>
         <source>VeraGrid (*.veragrid)</source>
-        <translation type="vanished">VeraGrid (*.veragrid)</translation>
+        <translation>VeraGrid (*.veragrid)</translation>
     </message>
     <message>
         <source>Export VeraGrid scenario</source>
-        <translation type="vanished">VeraGrid シナリオのエクスポート</translation>
+        <translation>VeraGrid シナリオのエクスポート</translation>
+    </message>
+    <message>
+        <source>Server file deleted.</source>
+        <translation>サーバーファイルが削除されました。</translation>
+    </message>
+    <message>
+        <source>Server file saved.</source>
+        <translation>サーバーファイルが保存されました。</translation>
+    </message>
+    <message>
+        <source>Server model deleted.</source>
+        <translation>サーバーモデルが削除されました。</translation>
+    </message>
+    <message>
+        <source>Server save cancelled.</source>
+        <translation>サーバーの保存がキャンセルされました。</translation>
+    </message>
+    <message>
+        <source>The file was loaded but the current project was kept because closing a dynamic editor was cancelled.</source>
+        <translation>ファイルは読み込まれましたが、動的エディタを閉じる操作がキャンセルされたため、現在のプロジェクトが保持されました。</translation>
     </message>
 </context>
 <context>
@@ -3140,6 +3540,562 @@ Cancel and retry?</source>
         <source>Data</source>
         <translation>データ</translation>
     </message>
+    <message>
+        <source>&lt;b&gt;{error_count}&lt;/b&gt; errors and &lt;b&gt;{divergence_count}&lt;/b&gt; divergences are blocking the score most strongly.</source>
+        <translation>「{error_count}」個のエラーと「{divergence_count}」個の分岐がスコアを最も強く妨げています。</translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;{fixable_count}&lt;/b&gt; findings can be auto-corrected safely from this dashboard.</source>
+        <translation>「{fixable_count}」個の所見は、このダッシュボードから安全に自動修正できます。</translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;{warning_count}&lt;/b&gt; warnings and &lt;b&gt;{information_count}&lt;/b&gt; informational findings still reduce confidence.</source>
+        <translation>「{warning_count}」個の警告と「{information_count}」個の情報的な所見は、依然として信頼性を低下させます。</translation>
+    </message>
+    <message>
+        <source>Action Narrative</source>
+        <translation>アクションの記述</translation>
+    </message>
+    <message>
+        <source>Aggregation</source>
+        <translation>集計</translation>
+    </message>
+    <message>
+        <source>All object types</source>
+        <translation>すべてのオブジェクトタイプ</translation>
+    </message>
+    <message>
+        <source>All severities</source>
+        <translation>すべての深刻度</translation>
+    </message>
+    <message>
+        <source>Analyzed assets</source>
+        <translation>分析されたアセット</translation>
+    </message>
+    <message>
+        <source>Apply fixes to time series</source>
+        <translation>時系列に修正を適用</translation>
+    </message>
+    <message>
+        <source>Area</source>
+        <translation>エリア</translation>
+    </message>
+    <message>
+        <source>Auto-fix</source>
+        <translation>自動修正</translation>
+    </message>
+    <message>
+        <source>Auto-fix ready</source>
+        <translation>自動修正可能</translation>
+    </message>
+    <message>
+        <source>Balance Explorer</source>
+        <translation>バランスエクスプローラー</translation>
+    </message>
+    <message>
+        <source>Collapse All</source>
+        <translation>全て折りたたむ</translation>
+    </message>
+    <message>
+        <source>Community</source>
+        <translation>コミュニティ</translation>
+    </message>
+    <message>
+        <source>Converged</source>
+        <translation>収束</translation>
+    </message>
+    <message>
+        <source>Country</source>
+        <translation>国</translation>
+    </message>
+    <message>
+        <source>Critical findings</source>
+        <translation>重大な所見</translation>
+    </message>
+    <message>
+        <source>Dashboard refreshed: {issue_count} findings, score {overall_score}/100.</source>
+        <translation>ダッシュボードを更新しました：{issue_count}件の所見、スコア {overall_score}/100。</translation>
+    </message>
+    <message>
+        <source>Divergence</source>
+        <translation>発散</translation>
+    </message>
+    <message>
+        <source>Divergences</source>
+        <translation>発散</translation>
+    </message>
+    <message>
+        <source>Error</source>
+        <translation>エラー</translation>
+    </message>
+    <message>
+        <source>Errors</source>
+        <translation>エラー</translation>
+    </message>
+    <message>
+        <source>Excel (*.xlsx)</source>
+        <translation>エクセル (*.xlsx)</translation>
+    </message>
+    <message>
+        <source>Excel (*.xlsx);;HTML (*.html);;PDF (*.pdf)</source>
+        <translation>Excel (*.xlsx);;HTML (*.html);;PDF (*.pdf)</translation>
+    </message>
+    <message>
+        <source>Executive Overview</source>
+        <translation>エグゼクティブ概要</translation>
+    </message>
+    <message>
+        <source>Expand All</source>
+        <translation>全て展開する</translation>
+    </message>
+    <message>
+        <source>Export the full report once the score and findings reflect the scenario you want to share.</source>
+        <translation>スコアと所見が共有したいシナリオを反映したら、完全なレポートをエクスポートしてください。</translation>
+    </message>
+    <message>
+        <source>Field</source>
+        <translation>フィールド</translation>
+    </message>
+    <message>
+        <source>Findings ({count})</source>
+        <translation>所見 ({count})</translation>
+    </message>
+    <message>
+        <source>Findings Explorer</source>
+        <translation>所見エクスプローラー</translation>
+    </message>
+    <message>
+        <source>Findings Explorer ({count})</source>
+        <translation>所見エクスプローラー ({count})</translation>
+    </message>
+    <message>
+        <source>Fixed issues</source>
+        <translation>修正された問題</translation>
+    </message>
+    <message>
+        <source>Full dashboard report exported to {file_name}.</source>
+        <translation>完全なダッシュボードレポートを {file_name} にエクスポートしました。</translation>
+    </message>
+    <message>
+        <source>Generator Vset max</source>
+        <translation>発電機 Vset 最大値</translation>
+    </message>
+    <message>
+        <source>Generator Vset min</source>
+        <translation>発電機 Vset 最小値</translation>
+    </message>
+    <message>
+        <source>Global</source>
+        <translation>グローバル</translation>
+    </message>
+    <message>
+        <source>Grade</source>
+        <translation>グレード</translation>
+    </message>
+    <message>
+        <source>Grade {grade}</source>
+        <translation>グレード {grade}</translation>
+    </message>
+    <message>
+        <source>Grid Health Dashboard Report</source>
+        <translation>グリッド健全性ダッシュボードレポート</translation>
+    </message>
+    <message>
+        <source>Index</source>
+        <translation>インデックス</translation>
+    </message>
+    <message>
+        <source>Information</source>
+        <translation>情報</translation>
+    </message>
+    <message>
+        <source>Inputs analysis is unavailable for the current grid.</source>
+        <translation>現在のグリッドでは入力分析が利用できません。</translation>
+    </message>
+    <message>
+        <source>Inputs analysis pending.</source>
+        <translation>入力分析保留中。</translation>
+    </message>
+    <message>
+        <source>Inputs analysis unavailable</source>
+        <translation>入力分析が利用できません</translation>
+    </message>
+    <message>
+        <source>Investigate buses with the smallest sigma distances because the current stability margin is tight.</source>
+        <translation>現在の安定余裕がタイトなため、最も小さいシグマ距離のバスを調査してください。</translation>
+    </message>
+    <message>
+        <source>Issue score</source>
+        <translation>問題スコア</translation>
+    </message>
+    <message>
+        <source>Issue score {issue_score:.1f}/100 • sigma score unavailable.</source>
+        <translation>問題スコア {issue_score:.1f}/100 • シグマスコアは利用できません。</translation>
+    </message>
+    <message>
+        <source>Issue score {issue_score:.1f}/100 • sigma score {sigma_score:.1f}/100.</source>
+        <translation>問題スコア {issue_score:.1f}/100 • シグマスコア {sigma_score:.1f}/100。</translation>
+    </message>
+    <message>
+        <source>Issues</source>
+        <translation>問題</translation>
+    </message>
+    <message>
+        <source>Issues exported to {file_name}.</source>
+        <translation>問題を {file_name} にエクスポートしました。</translation>
+    </message>
+    <message>
+        <source>Item</source>
+        <translation>アイテム</translation>
+    </message>
+    <message>
+        <source>Lower</source>
+        <translation>低い</translation>
+    </message>
+    <message>
+        <source>Make the grid simulation-ready and rerun the dashboard so sigma margin can join the report.</source>
+        <translation>シグママージンがレポートに含まれるように、グリッドをシミュレーション準備状態にし、ダッシュボードを再実行してください。</translation>
+    </message>
+    <message>
+        <source>Mean sigma distance</source>
+        <translation>平均シグマ距離</translation>
+    </message>
+    <message>
+        <source>Mean {mean_distance:.3f} p.u.</source>
+        <translation>平均 {mean_distance:.3f} p.u.</translation>
+    </message>
+    <message>
+        <source>Message</source>
+        <translation>メッセージ</translation>
+    </message>
+    <message>
+        <source>Metric</source>
+        <translation>指標</translation>
+    </message>
+    <message>
+        <source>Minimum distance {min_distance:.3f} p.u. • mean distance {mean_distance:.3f} p.u.</source>
+        <translation>最小距離 {min_distance:.3f} p.u. • 平均距離 {mean_distance:.3f} p.u.</translation>
+    </message>
+    <message>
+        <source>Minimum sigma distance</source>
+        <translation>最小シグマ距離</translation>
+    </message>
+    <message>
+        <source>Most Repeated Finding</source>
+        <translation>最も頻繁な所見</translation>
+    </message>
+    <message>
+        <source>Most repeated finding</source>
+        <translation>最も頻繁な所見</translation>
+    </message>
+    <message>
+        <source>Most repeated finding count</source>
+        <translation>最も頻繁な所見の回数</translation>
+    </message>
+    <message>
+        <source>Municipality</source>
+        <translation>市町村</translation>
+    </message>
+    <message>
+        <source>N/A</source>
+        <translation>N/A</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>名前</translation>
+    </message>
+    <message>
+        <source>Net balance (MW)</source>
+        <translation>純バランス (MW)</translation>
+    </message>
+    <message>
+        <source>No</source>
+        <translation>なし</translation>
+    </message>
+    <message>
+        <source>No balance series available</source>
+        <translation>バランス系列が利用できません</translation>
+    </message>
+    <message>
+        <source>No findings were produced by the current analysis settings.</source>
+        <translation>現在の分析設定では、所見は生成されませんでした。</translation>
+    </message>
+    <message>
+        <source>No safe automatic fixes were detected, so the next step is a manual review of the highest-severity findings.</source>
+        <translation>安全な自動修正は検出されなかったため、次のステップは最も深刻な所見の手動レビューです。</translation>
+    </message>
+    <message>
+        <source>No snapshot balances available</source>
+        <translation>スナップショットのバランスが利用できません。</translation>
+    </message>
+    <message>
+        <source>No {aggregation} balances are available to plot.</source>
+        <translation>プロットできる{aggregation}のバランスが利用できません。</translation>
+    </message>
+    <message>
+        <source>Object</source>
+        <translation>オブジェクト</translation>
+    </message>
+    <message>
+        <source>Overall score</source>
+        <translation>総合スコア</translation>
+    </message>
+    <message>
+        <source>Prioritize errors and divergences before warnings, especially the rows tagged with severe numerical or connectivity issues.</source>
+        <translation>警告の前に、エラーと逸脱を優先してください。特に、深刻な数値的または接続性の問題がタグ付けされている行に注意してください。</translation>
+    </message>
+    <message>
+        <source>Property</source>
+        <translation>プロパティ</translation>
+    </message>
+    <message>
+        <source>Recommended Next Actions</source>
+        <translation>推奨される次のアクション</translation>
+    </message>
+    <message>
+        <source>Region</source>
+        <translation>地域</translation>
+    </message>
+    <message>
+        <source>Safe corrections available</source>
+        <translation>安全な修正が利用可能</translation>
+    </message>
+    <message>
+        <source>Score Rationale</source>
+        <translation>スコアの根拠</translation>
+    </message>
+    <message>
+        <source>Severity</source>
+        <translation>深刻度</translation>
+    </message>
+    <message>
+        <source>Showing the {count} strongest {aggregation} balance traces. Largest absolute balance: {column_name} at {column_value:.3f} MW.</source>
+        <translation>{count}個の最も強い{aggregation}バランストレースを表示しています。最大の絶対バランス: {column_name} は {column_value:.3f} MW です。</translation>
+    </message>
+    <message>
+        <source>Sigma</source>
+        <translation>シグマ</translation>
+    </message>
+    <message>
+        <source>Sigma Plot</source>
+        <translation>シグマプロット</translation>
+    </message>
+    <message>
+        <source>Sigma Table</source>
+        <translation>シグマ表</translation>
+    </message>
+    <message>
+        <source>Sigma analysis</source>
+        <translation>シグマ解析</translation>
+    </message>
+    <message>
+        <source>Sigma analysis converged.</source>
+        <translation>シグマ分析は収束しました。</translation>
+    </message>
+    <message>
+        <source>Sigma analysis could not be produced for the current grid state.</source>
+        <translation>現在のグリッド状態ではシグマ分析を生成できません。</translation>
+    </message>
+    <message>
+        <source>Sigma analysis did not converge</source>
+        <translation>シグマ分析は収束しませんでした。</translation>
+    </message>
+    <message>
+        <source>Sigma analysis failed: {exception}</source>
+        <translation>シグマ分析が失敗しました: {exception}</translation>
+    </message>
+    <message>
+        <source>Sigma analysis returned no results.</source>
+        <translation>シグマ分析は結果を返しませんでした。</translation>
+    </message>
+    <message>
+        <source>Sigma analysis unavailable because the grid is not valid for simulation.</source>
+        <translation>グリッドがシミュレーションに適さないため、シグマ分析は利用できません。</translation>
+    </message>
+    <message>
+        <source>Sigma available</source>
+        <translation>シグマが利用可能</translation>
+    </message>
+    <message>
+        <source>Sigma coefficients did not fully converge.</source>
+        <translation>シグマ係数が完全に収束しませんでした。</translation>
+    </message>
+    <message>
+        <source>Sigma data unavailable</source>
+        <translation>シグマデータが利用できません</translation>
+    </message>
+    <message>
+        <source>Sigma distance</source>
+        <translation>シグマ距離</translation>
+    </message>
+    <message>
+        <source>Sigma distance is not available</source>
+        <translation>シグマ距離は利用できません</translation>
+    </message>
+    <message>
+        <source>Sigma margin is acceptable, so focus on structural cleanup before attempting aggressive operational studies.</source>
+        <translation>シグママージンは許容範囲内です。積極的な運用研究を試みる前に、構造的なクリーンアップに焦点を当ててください。</translation>
+    </message>
+    <message>
+        <source>Sigma plot</source>
+        <translation>シグマプロット</translation>
+    </message>
+    <message>
+        <source>Sigma plot is unavailable for the current grid state.</source>
+        <translation>現在のグリッド状態ではシグマプロットは利用できません。</translation>
+    </message>
+    <message>
+        <source>Sigma point is outside the stability curve</source>
+        <translation>シグマ点が安定性曲線外にあります</translation>
+    </message>
+    <message>
+        <source>Sigma score</source>
+        <translation>シグマスコア</translation>
+    </message>
+    <message>
+        <source>Sigma stability could not be included in the score because the simulation could not be produced.</source>
+        <translation>シミュレーションを生成できなかったため、シグマ安定性はスコアに含めることができませんでした。</translation>
+    </message>
+    <message>
+        <source>Sigma stability margin is available with minimum distance &lt;b&gt;{min_distance:.3f} p.u.&lt;/b&gt; and mean distance &lt;b&gt;{mean_distance:.3f} p.u.&lt;/b&gt;.</source>
+        <translation>シグマ安定マージンは、最小距離が &lt;b&gt;{min_distance:.3f} p.u.&lt;/b&gt;、平均距離が &lt;b&gt;{mean_distance:.3f} p.u.&lt;/b&gt; の場合に利用可能です。</translation>
+    </message>
+    <message>
+        <source>Sigma status</source>
+        <translation>シグマステータス</translation>
+    </message>
+    <message>
+        <source>Sigma table</source>
+        <translation>シグマ表</translation>
+    </message>
+    <message>
+        <source>Sigma table copied to clipboard.</source>
+        <translation>シグマ表をクリップボードにコピーしました。</translation>
+    </message>
+    <message>
+        <source>Snapshot net balances by {aggregation}. Largest exporter: {exporter_name} ({exporter_value:.3f} MW). Largest importer: {importer_name} ({importer_value:.3f} MW).</source>
+        <translation>{aggregation}ごとのスナップショット純バランス。最大の輸出国: {exporter_name} ({exporter_value:.3f} MW)。最大の輸入国: {importer_name} ({importer_value:.3f} MW)。</translation>
+    </message>
+    <message>
+        <source>Status</source>
+        <translation>ステータス</translation>
+    </message>
+    <message>
+        <source>Summary</source>
+        <translation>要約</translation>
+    </message>
+    <message>
+        <source>The current dashboard state does not expose any safe automatic fixes.</source>
+        <translation>現在のダッシュボードの状態では、安全な自動修正は適用されません。</translation>
+    </message>
+    <message>
+        <source>The grid scores &lt;b&gt;{overall_score}/100&lt;/b&gt; (&lt;b&gt;grade {grade}&lt;/b&gt;) across &lt;b&gt;{asset_count}&lt;/b&gt; analyzed assets.</source>
+        <translation>グリッドは、分析された &lt;b&gt;{asset_count}&lt;/b&gt; のアセット全体で &lt;b&gt;{overall_score}/100&lt;/b&gt; (&lt;b&gt;グレード {grade}&lt;/b&gt;) のスコアを獲得しています。</translation>
+    </message>
+    <message>
+        <source>There are no critical findings, so the remaining work is mainly quality hardening and model cleanup.</source>
+        <translation>重大な所見はありません。残りの作業は主に品質強化とモデルのクリーンアップになります。</translation>
+    </message>
+    <message>
+        <source>There is no sigma table available to copy.</source>
+        <translation>コピーできるシグマ表がありません。</translation>
+    </message>
+    <message>
+        <source>Threshold</source>
+        <translation>閾値</translation>
+    </message>
+    <message>
+        <source>Thresholds</source>
+        <translation>閾値</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>時間</translation>
+    </message>
+    <message>
+        <source>Top N</source>
+        <translation>トップN</translation>
+    </message>
+    <message>
+        <source>Top {count} {aggregation} balances over time</source>
+        <translation>時間経過に伴うトップ {count} の{aggregation}バランス</translation>
+    </message>
+    <message>
+        <source>Top {count} {aggregation} snapshot balances</source>
+        <translation>トップ {count} の{aggregation}スナップショットバランス</translation>
+    </message>
+    <message>
+        <source>Total findings</source>
+        <translation>総所見</translation>
+    </message>
+    <message>
+        <source>Transformer Vcc max (%)</source>
+        <translation>変圧器 Vcc 最大 (%)</translation>
+    </message>
+    <message>
+        <source>Transformer Vcc min (%)</source>
+        <translation>変圧器 Vcc 最小 (%)</translation>
+    </message>
+    <message>
+        <source>Transformer tap module max</source>
+        <translation>変圧器タップモジュール最大</translation>
+    </message>
+    <message>
+        <source>Transformer tap module min</source>
+        <translation>変圧器タップモジュール最小</translation>
+    </message>
+    <message>
+        <source>Unnamed grid</source>
+        <translation>名前なしグリッド</translation>
+    </message>
+    <message>
+        <source>Upper</source>
+        <translation>上部</translation>
+    </message>
+    <message>
+        <source>Use &lt;b&gt;Fix Safe Issues&lt;/b&gt; to correct the problems already covered by automatic repairs, then refresh the score.</source>
+        <translation>自動修復によってすでにカバーされている問題を修正するには、&lt;b&gt;安全な問題の修正&lt;/b&gt;を使用し、その後スコアを更新してください。</translation>
+    </message>
+    <message>
+        <source>Use the tabs below to review the executive overview, detailed findings, action narrative, sigma stability view and threshold controls.</source>
+        <translation>下のタブを使用して、エグゼクティブ概要、詳細な所見、アクションナラティブ、シグマ安定性ビュー、およびしきい値コントロールを確認してください。</translation>
+    </message>
+    <message>
+        <source>Value</source>
+        <translation>値</translation>
+    </message>
+    <message>
+        <source>VoltageLevel</source>
+        <translation>電圧レベル</translation>
+    </message>
+    <message>
+        <source>Warning</source>
+        <translation>警告</translation>
+    </message>
+    <message>
+        <source>Warnings</source>
+        <translation>警告</translation>
+    </message>
+    <message>
+        <source>Yes</source>
+        <translation>はい</translation>
+    </message>
+    <message>
+        <source>Zone</source>
+        <translation>ゾーン</translation>
+    </message>
+    <message>
+        <source>{critical_count} critical findings</source>
+        <translation>{critical_count} の重大な所見</translation>
+    </message>
+    <message>
+        <source>{grid_name}  •  {bus_count} buses  •  {line_count} lines  •  {transformer_count} transformers</source>
+        <translation>{grid_name} • {bus_count} バス • {line_count} ライン • {transformer_count} 変圧器</translation>
+    </message>
+    <message>
+        <source>{status_text} Min distance {min_distance:.3f} p.u. • mean distance {mean_distance:.3f} p.u.</source>
+        <translation>{status_text} 最小距離 {min_distance:.3f} p.u. • 平均距離 {mean_distance:.3f} p.u.</translation>
+    </message>
 </context>
 <context>
     <name>MatpowerExportDialog</name>
@@ -3297,149 +4253,161 @@ Cancel and retry?</source>
     <name>ResultsMain</name>
     <message>
         <source>Delete driver</source>
-        <translation type="vanished">ドライバーの削除</translation>
+        <translation>ドライバーの削除</translation>
     </message>
     <message>
         <source>Rename group</source>
-        <translation type="vanished">グループ名の変更</translation>
+        <translation>グループ名の変更</translation>
     </message>
     <message>
         <source>Rename variable</source>
-        <translation type="vanished">変数の名前を変更する</translation>
+        <translation>変数の名前を変更する</translation>
     </message>
     <message>
         <source>Rename dynamic plot</source>
-        <translation type="vanished">動的プロットの名前を変更する</translation>
+        <translation>動的プロットの名前を変更する</translation>
     </message>
     <message>
         <source>Plot name</source>
-        <translation type="vanished">プロット名</translation>
+        <translation>プロット名</translation>
     </message>
     <message>
         <source>The plot group name is empty or already exists.</source>
-        <translation type="vanished">印刷グループ名が空であるか、すでに存在します。</translation>
+        <translation>印刷グループ名が空であるか、すでに存在します。</translation>
     </message>
     <message>
         <source>Select a plot group first.</source>
-        <translation type="vanished">最初にプロット グループを選択します。</translation>
+        <translation>最初にプロット グループを選択します。</translation>
     </message>
     <message>
         <source>There are no RMS dynamics results loaded.</source>
-        <translation type="vanished">RMS ダイナミクス結果がロードされていません。</translation>
+        <translation>RMS ダイナミクス結果がロードされていません。</translation>
     </message>
     <message>
         <source>Rename dynamic variable</source>
-        <translation type="vanished">動的変数の名前を変更する</translation>
+        <translation>動的変数の名前を変更する</translation>
     </message>
     <message>
         <source>Variable name</source>
-        <translation type="vanished">変数名</translation>
+        <translation>変数名</translation>
     </message>
     <message>
         <source>The variable name is empty or could not be changed.</source>
-        <translation type="vanished">変数名が空であるか、変更できませんでした。</translation>
+        <translation>変数名が空であるか、変更できませんでした。</translation>
     </message>
     <message>
         <source>New dynamic plot</source>
-        <translation type="vanished">新しい動的プロット</translation>
+        <translation>新しい動的プロット</translation>
     </message>
     <message>
         <source>Plot mode</source>
-        <translation type="vanished">プロットモード</translation>
+        <translation>プロットモード</translation>
     </message>
     <message>
         <source>Time Series (Y vs Time)</source>
-        <translation type="vanished">時系列 (Y 対 時間)</translation>
+        <translation>時系列 (Y 対 時間)</translation>
     </message>
     <message>
         <source>X-Y Plot (Y vs X)</source>
-        <translation type="vanished">X-Y プロット (Y 対 X)</translation>
+        <translation>X-Y プロット (Y 対 X)</translation>
     </message>
     <message>
         <source>The selected dynamic plot entry could not be deleted.</source>
-        <translation type="vanished">選択した動的プロット エントリを削除できませんでした。</translation>
+        <translation>選択した動的プロット エントリを削除できませんでした。</translation>
     </message>
     <message>
         <source>Select a plot group or variable first.</source>
-        <translation type="vanished">最初にプロット グループまたは変数を選択します。</translation>
+        <translation>最初にプロット グループまたは変数を選択します。</translation>
     </message>
     <message>
         <source>The selected dynamic plot entry could not be plotted.</source>
-        <translation type="vanished">選択した動的プロット エントリをプロットできませんでした。</translation>
+        <translation>選択した動的プロット エントリをプロットできませんでした。</translation>
     </message>
     <message>
         <source>There are {columns} columns, the plot might take a lot to render.
 Are you ok with potentially waiting a lot?</source>
-        <translation type="vanished">{columns} 列があるため、プロットのレンダリングに時間がかかる可能性があります。
+        <translation>{columns} 列があるため、プロットのレンダリングに時間がかかる可能性があります。
 かなり待たされる可能性がありますが、大丈夫ですか?</translation>
     </message>
     <message>
         <source>Plot</source>
-        <translation type="vanished">プロット</translation>
+        <translation>プロット</translation>
     </message>
     <message>
         <source>Export results</source>
-        <translation type="vanished">結果のエクスポート</translation>
+        <translation>結果のエクスポート</translation>
     </message>
     <message>
         <source>CSV (*.csv);;Excel files (*.xlsx)</source>
-        <translation type="vanished">CSV (*.csv);;Excel ファイル (*.xlsx)</translation>
+        <translation>CSV (*.csv);;Excel ファイル (*.xlsx)</translation>
     </message>
     <message>
         <source> is not valid :(</source>
-        <translation type="vanished">は無効です:(</translation>
+        <translation>は無効です:(</translation>
     </message>
     <message>
         <source>There is no profile displayed, please display one</source>
-        <translation type="vanished">プロフィールが表示されていません。プロフィールを表示してください</translation>
+        <translation>プロフィールが表示されていません。プロフィールを表示してください</translation>
     </message>
     <message>
         <source>Copy profile to clipboard</source>
-        <translation type="vanished">プロファイルをクリップボードにコピー</translation>
+        <translation>プロファイルをクリップボードにコピー</translation>
     </message>
     <message>
         <source>Copied!</source>
-        <translation type="vanished">コピーしました！</translation>
+        <translation>コピーしました！</translation>
     </message>
     <message>
         <source>Filter parse</source>
-        <translation type="vanished">フィルター解析</translation>
+        <translation>フィルター解析</translation>
     </message>
     <message>
         <source>Do you want to delete the results driver {study_name}?</source>
-        <translation type="vanished">結果ドライバー {study_name} を削除しますか?</translation>
+        <translation>結果ドライバー {study_name} を削除しますか?</translation>
     </message>
     <message>
         <source>Message</source>
-        <translation type="vanished">メッセージ</translation>
+        <translation>メッセージ</translation>
     </message>
     <message>
         <source>Are you sure that you want to overwrite the generation, batteries and load snapshot values with the OPF results?</source>
-        <translation type="vanished">世代、バッテリー、ロード スナップショットの値を OPF の結果で上書きしてもよろしいですか?</translation>
+        <translation>世代、バッテリー、ロード スナップショットの値を OPF の結果で上書きしてもよろしいですか?</translation>
     </message>
     <message>
         <source>Overwrite profiles with OPF results</source>
-        <translation type="vanished">OPF の結果でプロファイルを上書きする</translation>
+        <translation>OPF の結果でプロファイルを上書きする</translation>
     </message>
     <message>
         <source>P snapshot set from the OPF results</source>
-        <translation type="vanished">OPF の結果から設定された P スナップショット</translation>
+        <translation>OPF の結果から設定された P スナップショット</translation>
     </message>
     <message>
         <source>The OPF time series has no results :(</source>
-        <translation type="vanished">OPF 時系列には結果がありません:(</translation>
+        <translation>OPF 時系列には結果がありません:(</translation>
     </message>
     <message>
         <source>Are you sure that you want to overwrite the generation, batteries and load profiles with the OPF time series results?</source>
-        <translation type="vanished">発電、バッテリー、負荷プロファイルを OPF 時系列結果で上書きしてもよろしいですか?</translation>
+        <translation>発電、バッテリー、負荷プロファイルを OPF 時系列結果で上書きしてもよろしいですか?</translation>
     </message>
     <message>
         <source>P profiles set from the OPF results</source>
-        <translation type="vanished">OPF の結果から設定された P プロファイル</translation>
+        <translation>OPF の結果から設定された P プロファイル</translation>
     </message>
     <message>
         <source>Export logs</source>
-        <translation type="vanished">ログのエクスポート</translation>
+        <translation>ログのエクスポート</translation>
+    </message>
+    <message>
+        <source>Plot results</source>
+        <translation>結果をプロット</translation>
+    </message>
+    <message>
+        <source>Select a variable first.</source>
+        <translation>最初に変数を選択してください。</translation>
+    </message>
+    <message>
+        <source>There are no results available to plot.</source>
+        <translation>プロットできる結果がありません。</translation>
     </message>
 </context>
 <context>
@@ -3506,305 +4474,305 @@ Are you ok with potentially waiting a lot?</source>
     <message>
         <source>VeraGrid internal commands.
 </source>
-        <translation type="vanished">VeraGrid 内部コマンド。</translation>
+        <translation>VeraGrid 内部コマンド。</translation>
     </message>
     <message>
         <source>If a command is unavailable is because the study has not been executed yet.</source>
-        <translation type="vanished">コマンドが使用できない場合は、スタディがまだ実行されていないためです。</translation>
+        <translation>コマンドが使用できない場合は、スタディがまだ実行されていないためです。</translation>
     </message>
     <message>
         <source>
 
 clc():	clear the console.</source>
-        <translation type="vanished">clc(): コンソールをクリアします。</translation>
+        <translation>clc(): コンソールをクリアします。</translation>
     </message>
     <message>
         <source>
 
 App functions:</source>
-        <translation type="vanished">アプリの機能:</translation>
+        <translation>アプリの機能:</translation>
     </message>
     <message>
         <source>	app.new_project(): Clear all.</source>
-        <translation type="vanished">app.new_project(): すべてクリアします。</translation>
+        <translation>app.new_project(): すべてクリアします。</translation>
     </message>
     <message>
         <source>	app.open_file(): Prompt to load VeraGrid compatible file</source>
-        <translation type="vanished">app.open_file(): VeraGrid 互換ファイルのロードを求めるプロンプト</translation>
+        <translation>app.open_file(): VeraGrid 互換ファイルのロードを求めるプロンプト</translation>
     </message>
     <message>
         <source>	app.save_file(): Prompt to save VeraGrid file</source>
-        <translation type="vanished">app.save_file(): VeraGrid ファイルの保存を求めるプロンプト</translation>
+        <translation>app.save_file(): VeraGrid ファイルの保存を求めるプロンプト</translation>
     </message>
     <message>
         <source>	app.export_diagram(): Prompt to export the diagram in png.</source>
-        <translation type="vanished">app.export_diagram(): 図を png でエクスポートするかどうかを確認するプロンプトが表示されます。</translation>
+        <translation>app.export_diagram(): 図を png でエクスポートするかどうかを確認するプロンプトが表示されます。</translation>
     </message>
     <message>
         <source>	app.create_schematic_from_api(): Create the schematic from the circuit information.</source>
-        <translation type="vanished">app.create_schematic_from_api(): 回路情報から回路図を作成します。</translation>
+        <translation>app.create_schematic_from_api(): 回路情報から回路図を作成します。</translation>
     </message>
     <message>
         <source>	app.adjust_all_node_width(): Adjust the width of all the nodes according to their name.</source>
-        <translation type="vanished">app.adjust_all_node_width(): 名前に従ってすべてのノードの幅を調整します。</translation>
+        <translation>app.adjust_all_node_width(): 名前に従ってすべてのノードの幅を調整します。</translation>
     </message>
     <message>
         <source>	app.numerical_circuit: get compilation of the assets.</source>
-        <translation type="vanished">app.numerical_circuit: アセットのコンパイルを取得します。</translation>
+        <translation>app.numerical_circuit: アセットのコンパイルを取得します。</translation>
     </message>
     <message>
         <source>	app.islands: get compilation of the assets split into the topological islands.</source>
-        <translation type="vanished">app.islands: トポロジーアイランドに分割されたアセットのコンパイルを取得します。</translation>
+        <translation>app.islands: トポロジーアイランドに分割されたアセットのコンパイルを取得します。</translation>
     </message>
     <message>
         <source>
 
 Circuit functions:</source>
-        <translation type="vanished">回路機能:</translation>
+        <translation>回路機能:</translation>
     </message>
     <message>
         <source>	app.circuit.plot_graph(): Plot a graph in a Matplotlib window. Call plt.show() after.</source>
-        <translation type="vanished">app.circuit.plot_graph(): Matplotlib ウィンドウにグラフをプロットします。その後、plt.show() に電話してください。</translation>
+        <translation>app.circuit.plot_graph(): Matplotlib ウィンドウにグラフをプロットします。その後、plt.show() に電話してください。</translation>
     </message>
     <message>
         <source>
 
 Power flow results:</source>
-        <translation type="vanished">電力の流れの結果:</translation>
+        <translation>電力の流れの結果:</translation>
     </message>
     <message>
         <source>	app.session.power_flow.voltage:	 the nodal voltages in per unit</source>
-        <translation type="vanished">app.session.power_flow.voltage: 単位あたりのノード電圧</translation>
+        <translation>app.session.power_flow.voltage: 単位あたりのノード電圧</translation>
     </message>
     <message>
         <source>	app.session.power_flow.current:	 the branch currents in per unit</source>
-        <translation type="vanished">app.session.power_flow.current: ユニットあたりの分岐電流</translation>
+        <translation>app.session.power_flow.current: ユニットあたりの分岐電流</translation>
     </message>
     <message>
         <source>	app.session.power_flow.loading:	 the branch loading in %</source>
-        <translation type="vanished">app.session.power_flow.loading: ブランチのロード率 (%)</translation>
+        <translation>app.session.power_flow.loading: ブランチのロード率 (%)</translation>
     </message>
     <message>
         <source>	app.session.power_flow.losses:	 the branch losses in per unit</source>
-        <translation type="vanished">app.session.power_flow.losses: ユニットあたりの分岐損失</translation>
+        <translation>app.session.power_flow.losses: ユニットあたりの分岐損失</translation>
     </message>
     <message>
         <source>	app.session.power_flow.power:	 the nodal power Injections in per unit</source>
-        <translation type="vanished">app.session.power_flow.power: ユニットあたりのノード電力注入</translation>
+        <translation>app.session.power_flow.power: ユニットあたりのノード電力注入</translation>
     </message>
     <message>
         <source>	app.session.power_flow.Sf:	 the branch power Injections in per unit at the &quot;from&quot; side</source>
-        <translation type="vanished">app.session.power_flow.Sf: 「送信元」側のユニットごとのブランチ電力注入</translation>
+        <translation>app.session.power_flow.Sf: 「送信元」側のユニットごとのブランチ電力注入</translation>
     </message>
     <message>
         <source>	app.session.power_flow.St:	 the branch power Injections in per unit at the &quot;to&quot; side</source>
-        <translation type="vanished">app.session.power_flow.St: 「to」側のユニットごとのブランチ電力注入</translation>
+        <translation>app.session.power_flow.St: 「to」側のユニットごとのブランチ電力注入</translation>
     </message>
     <message>
         <source>
 
 Short circuit results:</source>
-        <translation type="vanished">短絡の結果:</translation>
+        <translation>短絡の結果:</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.voltage:	 the nodal voltages in per unit</source>
-        <translation type="vanished">app.session.short_circuit.voltage: ユニットごとのノード電圧</translation>
+        <translation>app.session.short_circuit.voltage: ユニットごとのノード電圧</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.current:	 the branch currents in per unit</source>
-        <translation type="vanished">app.session.short_circuit.current: ユニットごとの分岐電流</translation>
+        <translation>app.session.short_circuit.current: ユニットごとの分岐電流</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.loading:	 the branch loading in %</source>
-        <translation type="vanished">app.session.short_circuit.loading: ブランチのロード (%)</translation>
+        <translation>app.session.short_circuit.loading: ブランチのロード (%)</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.losses:	 the branch losses in per unit</source>
-        <translation type="vanished">app.session.short_circuit.losses: ユニットあたりの分岐損失</translation>
+        <translation>app.session.short_circuit.losses: ユニットあたりの分岐損失</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.power:	 the nodal power Injections in per unit</source>
-        <translation type="vanished">app.session.short_circuit.power: ユニットあたりのノード電力注入</translation>
+        <translation>app.session.short_circuit.power: ユニットあたりのノード電力注入</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.power_from:	 the branch power Injections in per unit at the &quot;from&quot; side</source>
-        <translation type="vanished">app.session.short_circuit.power_from: 「from」側のユニットごとのブランチ電力注入</translation>
+        <translation>app.session.short_circuit.power_from: 「from」側のユニットごとのブランチ電力注入</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.power_to:	 the branch power Injections in per unit at the &quot;to&quot; side</source>
-        <translation type="vanished">app.session.short_circuit.power_to: 「to」側のユニットごとのブランチ電力注入</translation>
+        <translation>app.session.short_circuit.power_to: 「to」側のユニットごとのブランチ電力注入</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.short_circuit_power:	 Short circuit power in MVA of the grid nodes</source>
-        <translation type="vanished">app.session.short_circuit.short_circuit_power: グリッド ノードの MVA の短絡電力</translation>
+        <translation>app.session.short_circuit.short_circuit_power: グリッド ノードの MVA の短絡電力</translation>
     </message>
     <message>
         <source>
 
 Optimal power flow results:</source>
-        <translation type="vanished">最適な電力の流れの結果:</translation>
+        <translation>最適な電力の流れの結果:</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.voltage:	 the nodal voltages angles in rad</source>
-        <translation type="vanished">app.session.optimal_power_flow.voltage: ノード電圧の角度 (rad)</translation>
+        <translation>app.session.optimal_power_flow.voltage: ノード電圧の角度 (rad)</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.load_shedding:	 the branch loading in %</source>
-        <translation type="vanished">app.session.optimal_power_flow.load_shedding: ブランチのロード率 (%)</translation>
+        <translation>app.session.optimal_power_flow.load_shedding: ブランチのロード率 (%)</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.losses:	 the branch losses in per unit</source>
-        <translation type="vanished">app.session.optimal_power_flow.losses: ユニットあたりの分岐損失</translation>
+        <translation>app.session.optimal_power_flow.losses: ユニットあたりの分岐損失</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.Sbus:	 the nodal power Injections in MW</source>
-        <translation type="vanished">app.session.optimal_power_flow.Sbus: MW のノード電力注入</translation>
+        <translation>app.session.optimal_power_flow.Sbus: MW のノード電力注入</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.Sf:	 the branch power Sf</source>
-        <translation type="vanished">app.session.optimal_power_flow.Sf: ブランチ電力 Sf</translation>
+        <translation>app.session.optimal_power_flow.Sf: ブランチ電力 Sf</translation>
     </message>
     <message>
         <source>
 
 Time series power flow results:</source>
-        <translation type="vanished">時系列の電力潮流結果:</translation>
+        <translation>時系列の電力潮流結果:</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.time:	 Profiles time index (pandas DateTimeIndex object)</source>
-        <translation type="vanished">app.session.power_flow_ts.time: プロファイル時間インデックス (パンダ DateTimeIndex オブジェクト)</translation>
+        <translation>app.session.power_flow_ts.time: プロファイル時間インデックス (パンダ DateTimeIndex オブジェクト)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.load_profiles:	 Load profiles matrix (row: time, col: node)</source>
-        <translation type="vanished">app.session.power_flow_ts.load_profiles: 負荷プロファイル行列 (行: 時間、列: ノード)</translation>
+        <translation>app.session.power_flow_ts.load_profiles: 負荷プロファイル行列 (行: 時間、列: ノード)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.gen_profiles:	 Generation profiles matrix (row: time, col: node)</source>
-        <translation type="vanished">app.session.power_flow_ts.gen_profiles: 生成プロファイル マトリックス (行: 時間、列: ノード)</translation>
+        <translation>app.session.power_flow_ts.gen_profiles: 生成プロファイル マトリックス (行: 時間、列: ノード)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.voltages:	 nodal voltages results matrix (row: time, col: node)</source>
-        <translation type="vanished">app.session.power_flow_ts.voltages: ノード電圧結果行列 (行: 時間、列: ノード)</translation>
+        <translation>app.session.power_flow_ts.voltages: ノード電圧結果行列 (行: 時間、列: ノード)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.currents:	 Branches currents results matrix (row: time, col: branch)</source>
-        <translation type="vanished">app.session.power_flow_ts.currents: 分岐電流結果行列 (行: 時間、列: 分岐)</translation>
+        <translation>app.session.power_flow_ts.currents: 分岐電流結果行列 (行: 時間、列: 分岐)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.loadings:	 Branches loadings results matrix (row: time, col: branch)</source>
-        <translation type="vanished">app.session.power_flow_ts.loadings: ブランチ負荷結果マトリックス (行: 時間、列: ブランチ)</translation>
+        <translation>app.session.power_flow_ts.loadings: ブランチ負荷結果マトリックス (行: 時間、列: ブランチ)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.losses:	 Branches losses results matrix (row: time, col: branch)</source>
-        <translation type="vanished">app.session.power_flow_ts.losses: ブランチ損失結果マトリックス (行: 時間、列: ブランチ)</translation>
+        <translation>app.session.power_flow_ts.losses: ブランチ損失結果マトリックス (行: 時間、列: ブランチ)</translation>
     </message>
     <message>
         <source>
 
 Voltage stability power flow results:</source>
-        <translation type="vanished">電圧安定性電力潮流の結果:</translation>
+        <translation>電圧安定性電力潮流の結果:</translation>
     </message>
     <message>
         <source>	app.session.continuation_power_flow.voltage:	 Voltage values for every power multiplication factor.</source>
-        <translation type="vanished">app.session.continuation_power_flow.voltage: すべての電力乗算係数の電圧値。</translation>
+        <translation>app.session.continuation_power_flow.voltage: すべての電力乗算係数の電圧値。</translation>
     </message>
     <message>
         <source>	app.session.continuation_power_flow.lambda:	 Value of power multiplication factor applied</source>
-        <translation type="vanished">app.session.continuation_power_flow.lambda: 適用されるべき乗算係数の値</translation>
+        <translation>app.session.continuation_power_flow.lambda: 適用されるべき乗算係数の値</translation>
     </message>
     <message>
         <source>	app.session.continuation_power_flow.Sf:	 Power values for every power multiplication factor.</source>
-        <translation type="vanished">app.session.continuation_power_flow.Sf: すべての電力乗算係数の電力値。</translation>
+        <translation>app.session.continuation_power_flow.Sf: すべての電力乗算係数の電力値。</translation>
     </message>
     <message>
         <source>
 
 Monte Carlo power flow results:</source>
-        <translation type="vanished">モンテカルロ電力潮流の結果:</translation>
+        <translation>モンテカルロ電力潮流の結果:</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.V_avg:	 nodal voltage average result.</source>
-        <translation type="vanished">app.session.stochastic_power_flow.V_avg: ノード電圧の平均結果。</translation>
+        <translation>app.session.stochastic_power_flow.V_avg: ノード電圧の平均結果。</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.I_avg:	 branch current average result.</source>
-        <translation type="vanished">app.session.stochastic_power_flow.I_avg: ブランチ電流の平均結果。</translation>
+        <translation>app.session.stochastic_power_flow.I_avg: ブランチ電流の平均結果。</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.Loading_avg:	 branch loading average result.</source>
-        <translation type="vanished">app.session.stochastic_power_flow.Loading_avg: ブランチ負荷平均結果。</translation>
+        <translation>app.session.stochastic_power_flow.Loading_avg: ブランチ負荷平均結果。</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.Losses_avg:	 branch losses average result.</source>
-        <translation type="vanished">app.session.stochastic_power_flow.Losses_avg: 分岐損失の平均結果。</translation>
+        <translation>app.session.stochastic_power_flow.Losses_avg: 分岐損失の平均結果。</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.V_std:	 nodal voltage standard deviation result.</source>
-        <translation type="vanished">app.session.stochastic_power_flow.V_std: ノード電圧の標準偏差の結果。</translation>
+        <translation>app.session.stochastic_power_flow.V_std: ノード電圧の標準偏差の結果。</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.I_std:	 branch current standard deviation result.</source>
-        <translation type="vanished">app.session.stochastic_power_flow.I_std: 分岐電流の標準偏差の結果。</translation>
+        <translation>app.session.stochastic_power_flow.I_std: 分岐電流の標準偏差の結果。</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.Loading_std:	 branch loading standard deviation result.</source>
-        <translation type="vanished">app.session.stochastic_power_flow.Loading_std: ブランチ ロードの標準偏差の結果。</translation>
+        <translation>app.session.stochastic_power_flow.Loading_std: ブランチ ロードの標準偏差の結果。</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.Losses_std:	 branch losses standard deviation result.</source>
-        <translation type="vanished">app.session.stochastic_power_flow.Losses_std: 分岐損失の標準偏差の結果。</translation>
+        <translation>app.session.stochastic_power_flow.Losses_std: 分岐損失の標準偏差の結果。</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.V_avg_series:	 nodal voltage average series.</source>
-        <translation type="vanished">app.session.stochastic_power_flow.V_avg_series: ノード電圧平均シリーズ。</translation>
+        <translation>app.session.stochastic_power_flow.V_avg_series: ノード電圧平均シリーズ。</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.V_std_series:	 branch current standard deviation series.</source>
-        <translation type="vanished">app.session.stochastic_power_flow.V_std_series: 分岐電流標準偏差系列。</translation>
+        <translation>app.session.stochastic_power_flow.V_std_series: 分岐電流標準偏差系列。</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.error_series:	 Monte Carlo error series (the convergence value).</source>
-        <translation type="vanished">app.session.stochastic_power_flow.error_series: モンテカルロ誤差系列 (収束値)。</translation>
+        <translation>app.session.stochastic_power_flow.error_series: モンテカルロ誤差系列 (収束値)。</translation>
     </message>
     <message>
         <source>The same for app.latin_hypercube_sampling</source>
-        <translation type="vanished">app.latin_hypercube_sampling についても同様です</translation>
+        <translation>app.latin_hypercube_sampling についても同様です</translation>
     </message>
     <message>
         <source> does not exist :/</source>
-        <translation type="vanished">存在しません:/</translation>
+        <translation>存在しません:/</translation>
     </message>
     <message>
         <source>Open script</source>
-        <translation type="vanished">スクリプトを開く</translation>
+        <translation>スクリプトを開く</translation>
     </message>
     <message>
         <source>Are you sure you want to clear source code?</source>
-        <translation type="vanished">ソースコードをクリアしてもよろしいですか?</translation>
+        <translation>ソースコードをクリアしてもよろしいですか?</translation>
     </message>
     <message>
         <source>Clear source code</source>
-        <translation type="vanished">明確なソースコード</translation>
+        <translation>明確なソースコード</translation>
     </message>
     <message>
         <source>Please enter a name for the script</source>
-        <translation type="vanished">スクリプトの名前を入力してください</translation>
+        <translation>スクリプトの名前を入力してください</translation>
     </message>
     <message>
         <source>Save script</source>
-        <translation type="vanished">スクリプトの保存</translation>
+        <translation>スクリプトの保存</translation>
     </message>
     <message>
         <source>Do you want to delete {path}?</source>
-        <translation type="vanished">{path} を削除しますか?</translation>
+        <translation>{path} を削除しますか?</translation>
     </message>
     <message>
         <source>Delete source code file</source>
-        <translation type="vanished">ソースコードファイルを削除する</translation>
+        <translation>ソースコードファイルを削除する</translation>
     </message>
     <message>
         <source>Delete</source>
-        <translation type="vanished">消去</translation>
+        <translation>消去</translation>
     </message>
 </context>
 <context>
@@ -3940,34 +4908,38 @@ Monte Carlo power flow results:</source>
     <name>ServerMain</name>
     <message>
         <source>Server config file was erroneous, wrote a new one</source>
-        <translation type="vanished">サーバー構成ファイルが間違っていたため、新しいファイルを作成しました</translation>
+        <translation>サーバー構成ファイルが間違っていたため、新しいファイルを作成しました</translation>
     </message>
     <message>
         <source>The server connection is running, are you sure that you want to stop it?</source>
-        <translation type="vanished">サーバー接続が実行中です。停止してもよろしいですか?</translation>
+        <translation>サーバー接続が実行中です。停止してもよろしいですか?</translation>
     </message>
     <message>
         <source>Stop Server</source>
-        <translation type="vanished">サーバーを停止する</translation>
+        <translation>サーバーを停止する</translation>
     </message>
     <message>
         <source>Could not connect to the server :/</source>
-        <translation type="vanished">サーバーに接続できませんでした:/</translation>
+        <translation>サーバーに接続できませんでした:/</translation>
     </message>
     <message>
         <source>Connected!</source>
-        <translation type="vanished">つながりました！</translation>
+        <translation>つながりました！</translation>
     </message>
     <message>
         <source>Results received!</source>
-        <translation type="vanished">結果を受け取りました！</translation>
+        <translation>結果を受け取りました！</translation>
+    </message>
+    <message>
+        <source>Could not connect to the server: {error}</source>
+        <translation>サーバーに接続できませんでした: {error}</translation>
     </message>
 </context>
 <context>
     <name>ShortCircuitSelector</name>
     <message>
         <source>Short Circuit Configuration</source>
-        <translation type="vanished">短絡構成</translation>
+        <translation>短絡構成</translation>
     </message>
     <message>
         <source>Custom</source>
@@ -4203,15 +5175,15 @@ Monte Carlo power flow results:</source>
     <name>SubstationDesigner</name>
     <message>
         <source>Substation maker</source>
-        <translation type="vanished">変電所メーカー</translation>
+        <translation>変電所メーカー</translation>
     </message>
     <message>
         <source>Substation {number}</source>
-        <translation type="vanished">変電所 {number}</translation>
+        <translation>変電所 {number}</translation>
     </message>
     <message>
         <source>There are no voltage levels, so no substation will be created, ok?</source>
-        <translation type="vanished">電圧レベルがないので、変電所は作成されませんね?</translation>
+        <translation>電圧レベルがないので、変電所は作成されませんね?</translation>
     </message>
 </context>
 <context>
@@ -4565,19 +5537,19 @@ Monte Carlo power flow results:</source>
     <name>VeraGridMainGUI</name>
     <message>
         <source>VeraGrid {version}</source>
-        <translation type="vanished">VeraGrid {version}</translation>
+        <translation>VeraGrid {version}</translation>
     </message>
     <message>
         <source>Are you sure that you want to exit VeraGrid?</source>
-        <translation type="vanished">VeraGrid を終了してもよろしいですか?</translation>
+        <translation>VeraGrid を終了してもよろしいですか?</translation>
     </message>
     <message>
         <source>Close</source>
-        <translation type="vanished">近い</translation>
+        <translation>近い</translation>
     </message>
     <message>
         <source>No effect, select diagrams or database</source>
-        <translation type="vanished">影響はありません。図またはデータベースを選択してください</translation>
+        <translation>影響はありません。図またはデータベースを選択してください</translation>
     </message>
 </context>
 <context>
@@ -10194,6 +11166,1139 @@ Monte Carlo power flow results:</source>
     <message>
         <source>Question</source>
         <translation>質問</translation>
+    </message>
+</context>
+<context>
+    <name>ArrayEditor</name>
+    <message>
+        <source>Add</source>
+        <translation>追加</translation>
+    </message>
+    <message>
+        <source>Array Editor</source>
+        <translation>配列エディタ</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>消去</translation>
+    </message>
+</context>
+<context>
+    <name>BlockParameterDraftModel</name>
+    <message>
+        <source>Name</source>
+        <translation>名前</translation>
+    </message>
+    <message>
+        <source>Numeric value. Changes are staged until Apply changes is pressed.</source>
+        <translation>数値。変更は「変更を適用」が押されるまで保留されます。</translation>
+    </message>
+    <message>
+        <source>Real value or symbolic initialization expression. Changes are staged until Apply changes is pressed.</source>
+        <translation>実値またはシンボリックな初期化式。変更は「変更を適用」が押されるまで保留されます。</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>種類</translation>
+    </message>
+    <message>
+        <source>Value</source>
+        <translation>値</translation>
+    </message>
+</context>
+<context>
+    <name>BlockSymbolFilterProxyModel</name>
+    <message>
+        <source>Initializes a variable through VarPowerFlowReferenceType and block.external_mapping.</source>
+        <translation>VarPowerFlowReferenceType および block.external_mapping を介して変数を初期化します。</translation>
+    </message>
+    <message>
+        <source>Maps a static parameter through ParamPowerFlowReferenceType to block.api_obj_mapping. Dynamic parameters are not editable here.</source>
+        <translation>ParamPowerFlowReferenceType を介して静的パラメータを block.api_obj_mapping にマッピングします。動的パラメータはここで編集できません。</translation>
+    </message>
+    <message>
+        <source>Power-flow derived initialization</source>
+        <translation>電力潮流から導出された初期化</translation>
+    </message>
+    <message>
+        <source>Static parameter mapping</source>
+        <translation>静的パラメータマッピング</translation>
+    </message>
+</context>
+<context>
+    <name>CorrectInconsistenciesDialogue</name>
+    <message>
+        <source>Accept</source>
+        <translation>受け入れる</translation>
+    </message>
+    <message>
+        <source>Correct inconsistencies</source>
+        <translation>不整合を修正</translation>
+    </message>
+    <message>
+        <source>Maximum generator set point</source>
+        <translation>最大発電機設定点</translation>
+    </message>
+    <message>
+        <source>Maximum virtual tap difference</source>
+        <translation>最大仮想タップ差</translation>
+    </message>
+    <message>
+        <source>Minimum generator set point</source>
+        <translation>最小発電機設定点</translation>
+    </message>
+</context>
+<context>
+    <name>DataBaseTableMain</name>
+    <message>
+        <source>Add</source>
+        <translation>追加</translation>
+    </message>
+    <message>
+        <source>Add to current diagram</source>
+        <translation>現在の図に追加</translation>
+    </message>
+    <message>
+        <source>Assign to profile</source>
+        <translation>プロファイルに割り当てる</translation>
+    </message>
+    <message>
+        <source>Colour branches like this</source>
+        <translation>こんな感じで枝に色を付けます</translation>
+    </message>
+    <message>
+        <source>Copy idtag</source>
+        <translation>idtag をコピーします</translation>
+    </message>
+    <message>
+        <source>Copy table</source>
+        <translation>テーブルのコピー</translation>
+    </message>
+    <message>
+        <source>Crop model to buses selection</source>
+        <translation>母線選択に合わせてモデルを切り抜く</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>消去</translation>
+    </message>
+    <message>
+        <source>Duplicate object</source>
+        <translation>オブジェクトの複製</translation>
+    </message>
+    <message>
+        <source>Edit</source>
+        <translation>編集</translation>
+    </message>
+    <message>
+        <source>Grid reduction</source>
+        <translation>グリッド削減</translation>
+    </message>
+    <message>
+        <source>Highlight based on property</source>
+        <translation>プロパティに基づいたハイライト</translation>
+    </message>
+    <message>
+        <source>Highlight buses selection</source>
+        <translation>母線選択を強調表示</translation>
+    </message>
+    <message>
+        <source>Merge</source>
+        <translation>マージ</translation>
+    </message>
+    <message>
+        <source>New diagram from selection</source>
+        <translation>選択範囲からの新しい図</translation>
+    </message>
+    <message>
+        <source>New map from selection</source>
+        <translation>選択範囲からの新しいマップ</translation>
+    </message>
+    <message>
+        <source>New vicinity diagram</source>
+        <translation>新しい周辺図</translation>
+    </message>
+    <message>
+        <source>Set value to column</source>
+        <translation>列に値を設定します</translation>
+    </message>
+    <message>
+        <source>Type the object name or a smart filter expression ...</source>
+        <translation>オブジェクト名またはスマートフィルター式を入力...</translation>
+    </message>
+</context>
+<context>
+    <name>DiagramsMain</name>
+    <message>
+        <source>Are you sure that you want to try an automatic layout?</source>
+        <translation>自動レイアウトを試行してもよろしいですか？</translation>
+    </message>
+    <message>
+        <source>Duplicate</source>
+        <translation>重複</translation>
+    </message>
+    <message>
+        <source>Message</source>
+        <translation>メッセージ</translation>
+    </message>
+    <message>
+        <source>New map</source>
+        <translation>新しい地図</translation>
+    </message>
+    <message>
+        <source>New schematic</source>
+        <translation>新しい回路図</translation>
+    </message>
+    <message>
+        <source>New schematic from selection</source>
+        <translation>選択したものからの新しい回路図</translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation>取り除く</translation>
+    </message>
+    <message>
+        <source>Save image file</source>
+        <translation>画像ファイルを保存</translation>
+    </message>
+    <message>
+        <source>Save video file</source>
+        <translation>ビデオファイルを保存</translation>
+    </message>
+    <message>
+        <source>Type to search in the current diagram</source>
+        <translation>現在のダイアグラムで検索するには入力してください</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicBlockEditorGUI</name>
+    <message>
+        <source>Block name already exists</source>
+        <translation>ブロック名がすでに存在します</translation>
+    </message>
+    <message>
+        <source>Block name cannot be empty</source>
+        <translation>ブロック名は空にできません</translation>
+    </message>
+    <message>
+        <source>Block name is invalid</source>
+        <translation>ブロック名が無効です</translation>
+    </message>
+    <message>
+        <source>Change Block Name</source>
+        <translation>ブロック名の変更</translation>
+    </message>
+    <message>
+        <source>Change Variable Name</source>
+        <translation>変数名の変更</translation>
+    </message>
+    <message>
+        <source>Dynamic Model Editor</source>
+        <translation>動的モデルエディタ</translation>
+    </message>
+    <message>
+        <source>Dynamic Model Editor [{mode}]</source>
+        <translation>動的モデルエディタ [{mode}]</translation>
+    </message>
+    <message>
+        <source>Library</source>
+        <translation>図書館</translation>
+    </message>
+    <message>
+        <source>Variable name already exists</source>
+        <translation>変数名がすでに存在します</translation>
+    </message>
+    <message>
+        <source>Variable name cannot be empty</source>
+        <translation>変数名は空にできません</translation>
+    </message>
+    <message>
+        <source>Variable name is invalid</source>
+        <translation>変数名が無効です</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEditorAddButton</name>
+    <message>
+        <source>Open another Dynamic Editor</source>
+        <translation>別の動的エディタを開く</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEditorGraphics</name>
+    <message>
+        <source>{direction} {index}: {name}</source>
+        <translation>{direction} {index}: {name}</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEditorPickerDialog</name>
+    <message>
+        <source>Mode</source>
+        <translation>モード</translation>
+    </message>
+    <message>
+        <source>Modes</source>
+        <translation>モード</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>名前</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation>開く</translation>
+    </message>
+    <message>
+        <source>Open the current block in the other mode.</source>
+        <translation>現在のブロックを別のモードで開きます。</translation>
+    </message>
+    <message>
+        <source>Open the current block in {mode}.</source>
+        <translation>現在のブロックを {mode} で開きます。</translation>
+    </message>
+    <message>
+        <source>Open {mode}</source>
+        <translation>{mode}を開く</translation>
+    </message>
+    <message>
+        <source>Quick Open</source>
+        <translation>クイックオープン</translation>
+    </message>
+    <message>
+        <source>Search dynamic editors</source>
+        <translation>ダイナミックエディタを検索</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>種類</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventEditor</name>
+    <message>
+        <source>&lt;b&gt;Target device:&lt;/b&gt;</source>
+        <translation>&lt;b&gt;対象デバイス:&lt;/b&gt;</translation>
+    </message>
+    <message>
+        <source>Align Step</source>
+        <translation>ステップを整列</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>キャンセル</translation>
+    </message>
+    <message>
+        <source>Dynamic Event Editor</source>
+        <translation>動的イベントエディタ</translation>
+    </message>
+    <message>
+        <source>EMT Event Editor</source>
+        <translation>EMTイベントエディタ</translation>
+    </message>
+    <message>
+        <source>EMT group Created</source>
+        <translation>EMTグループが作成されました</translation>
+    </message>
+    <message>
+        <source>End Time</source>
+        <translation>終了時間</translation>
+    </message>
+    <message>
+        <source>Group</source>
+        <translation>グループ</translation>
+    </message>
+    <message>
+        <source>Group: {group_name}</source>
+        <translation>グループ: {group_name}</translation>
+    </message>
+    <message>
+        <source>Invalid Input</source>
+        <translation>無効な入力</translation>
+    </message>
+    <message>
+        <source>Missing fields</source>
+        <translation>必須フィールドが不足しています</translation>
+    </message>
+    <message>
+        <source>New Value</source>
+        <translation>新しい値</translation>
+    </message>
+    <message>
+        <source>New group name</source>
+        <translation>新しいグループ名</translation>
+    </message>
+    <message>
+        <source>New row {row_number}</source>
+        <translation>新しい行 {row_number}</translation>
+    </message>
+    <message>
+        <source>No EMT Events Group</source>
+        <translation>EMTイベントグループがありません</translation>
+    </message>
+    <message>
+        <source>No EMT Events Group found, please create one before adding an event.</source>
+        <translation>EMTイベントグループが見つかりません。イベントを追加する前に作成してください。</translation>
+    </message>
+    <message>
+        <source>No Events</source>
+        <translation>イベントがありません</translation>
+    </message>
+    <message>
+        <source>No RMS Events Group</source>
+        <translation>RMSイベントグループがありません</translation>
+    </message>
+    <message>
+        <source>No RMS Events Group found, please create one before adding an event.</source>
+        <translation>RMSイベントグループが見つかりません。イベントを追加する前に作成してください。</translation>
+    </message>
+    <message>
+        <source>No Rows Selected</source>
+        <translation>行が選択されていません</translation>
+    </message>
+    <message>
+        <source>No switch EMT mode parameter is available in this device.</source>
+        <translation>このデバイスには、スイッチのEMTモードパラメータがありません。</translation>
+    </message>
+    <message>
+        <source>Overlapping Events</source>
+        <translation>重複するイベント</translation>
+    </message>
+    <message>
+        <source>Parameter</source>
+        <translation>パラメータ</translation>
+    </message>
+    <message>
+        <source>Please add at least one event before confirming.</source>
+        <translation>確認する前に、少なくとも1つのイベントを追加してください。</translation>
+    </message>
+    <message>
+        <source>Please check at least one row to remove.</source>
+        <translation>削除するには、少なくとも1行を選択してください。</translation>
+    </message>
+    <message>
+        <source>RMS Event Editor</source>
+        <translation>RMSイベントエディタ</translation>
+    </message>
+    <message>
+        <source>RMS group Created</source>
+        <translation>RMSグループが作成されました</translation>
+    </message>
+    <message>
+        <source>Ramp</source>
+        <translation>ランプ</translation>
+    </message>
+    <message>
+        <source>Row {row_number}: {message}</source>
+        <translation>行 {row_number}: {message}</translation>
+    </message>
+    <message>
+        <source>Some events are overlapped and cannot be applied.</source>
+        <translation>一部のイベントが重複しているため、適用できません。</translation>
+    </message>
+    <message>
+        <source>Step</source>
+        <translation>ステップ</translation>
+    </message>
+    <message>
+        <source>Switch Sequence</source>
+        <translation>スイッチシーケンス</translation>
+    </message>
+    <message>
+        <source>Switch Sequence Wizard</source>
+        <translation>シーケンスウィザードの切り替え</translation>
+    </message>
+    <message>
+        <source>Target device:</source>
+        <translation>対象デバイス:</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>時間</translation>
+    </message>
+    <message>
+        <source>Transition</source>
+        <translation>遷移</translation>
+    </message>
+    <message>
+        <source>group has invalid type</source>
+        <translation>グループのタイプが無効です</translation>
+    </message>
+    <message>
+        <source>parameter must be Var</source>
+        <translation>パラメータはVarである必要があります</translation>
+    </message>
+    <message>
+        <source>transition_type must be DynamicEventTransitionType</source>
+        <translation>transition_typeはDynamicEventTransitionTypeである必要があります</translation>
+    </message>
+    <message>
+        <source>{origin}: {transition}, parameter={parameter}, time={time:.4f} s, end_time={end_time:.4f} s, value={value:.6f}</source>
+        <translation>{origin}: {transition}, パラメータ={parameter}, 時間={time:.4f} s, 終了時間={end_time:.4f} s, 値={value:.6f}</translation>
+    </message>
+    <message>
+        <source>{origin}: {transition}, parameter={parameter}, time={time:.4f} s, value={value:.6f}</source>
+        <translation>{origin}: {transition}, パラメータ={parameter}, 時間={time:.4f} s, 値={value:.6f}</translation>
+    </message>
+    <message>
+        <source>{prefix}: {group_name}</source>
+        <translation>{prefix}: {group_name}</translation>
+    </message>
+    <message>
+        <source>✅ Add Events</source>
+        <translation>✅ イベントを追加</translation>
+    </message>
+    <message>
+        <source>❌ Remove Selected Rows</source>
+        <translation>❌ 選択した行を削除</translation>
+    </message>
+    <message>
+        <source>➕ Add New Event</source>
+        <translation>➕ 新しいイベントを追加</translation>
+    </message>
+    <message>
+        <source>➕ New Event Group</source>
+        <translation>➕ 新しいイベントグループ</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventsGroupsDialog</name>
+    <message>
+        <source>Create EMT Events Group</source>
+        <translation>EMTイベントグループを作成</translation>
+    </message>
+    <message>
+        <source>Create RMS Events Group</source>
+        <translation>RMSイベントグループを作成</translation>
+    </message>
+    <message>
+        <source>Enter group name</source>
+        <translation>グループ名を入力</translation>
+    </message>
+    <message>
+        <source>Invalid name</source>
+        <translation>無効な名前</translation>
+    </message>
+    <message>
+        <source>Name:</source>
+        <translation>名前：</translation>
+    </message>
+    <message>
+        <source>The name cannot be empty.</source>
+        <translation>名前は空にできません。</translation>
+    </message>
+</context>
+<context>
+    <name>EquationLatexModel</name>
+    <message>
+        <source>Equation</source>
+        <translation>方程式</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>種類</translation>
+    </message>
+</context>
+<context>
+    <name>GridGeneratorGUI</name>
+    <message>
+        <source>Grid Generator</source>
+        <translation>グリッドジェネレータ</translation>
+    </message>
+    <message>
+        <source>Warning</source>
+        <translation>警告</translation>
+    </message>
+</context>
+<context>
+    <name>GridMapWidget</name>
+    <message>
+        <source>Connection Error</source>
+        <translation>接続エラー</translation>
+    </message>
+    <message>
+        <source>No suitable voltage level ({voltage:.2f} kV) found in substation "{substation_name}".</source>
+        <translation>変電所「{substation_name}」で適切な電圧レベル（{voltage:.2f} kV）が見つかりません。</translation>
+    </message>
+    <message>
+        <source>Operation Successful</source>
+        <translation>操作が成功しました</translation>
+    </message>
+    <message>
+        <source>Please select exactly one line and one substation.</source>
+        <translation>ラインと変電所をそれぞれ1つずつ選択してください。</translation>
+    </message>
+    <message>
+        <source>Selection Error</source>
+        <translation>選択エラー</translation>
+    </message>
+    <message>
+        <source>T-joint connection created between {substation_name} and {line_name}.</source>
+        <translation>{substation_name} と {line_name} の間にT字接合が作成されました。</translation>
+    </message>
+    <message>
+        <source>The line cannot be connected. Please ensure the target substation has a bus with a matching nominal voltage.</source>
+        <translation>ラインを接続できません。ターゲットの変電所に、適切な定格電圧を持つバスがあることを確認してください。</translation>
+    </message>
+    <message>
+        <source>Waypoint replaced with new substation '{substation_name}'.
+Original line split into two segments:
+- {line1_name}: {length1:.2f} km
+- {line2_name}: {length2:.2f} km
+New connection line: {distance:.2f} km</source>
+        <translation>ウェイポイントが新しい変電所「{substation_name}」に置き換えられました。
+元のラインは2つのセグメントに分割されました：
+- {line1_name}: {length1:.2f} km
+- {line2_name}: {length2:.2f} km
+新しい接続ライン: {distance:.2f} km</translation>
+    </message>
+</context>
+<context>
+    <name>LogsDialogue</name>
+    <message>
+        <source>Accept</source>
+        <translation>受け入れる</translation>
+    </message>
+    <message>
+        <source>CSV (*.csv);;Excel files (*.xlsx)</source>
+        <translation>CSV (*.csv);;Excel ファイル (*.xlsx)</translation>
+    </message>
+    <message>
+        <source>Class</source>
+        <translation>クラス</translation>
+    </message>
+    <message>
+        <source>Copy</source>
+        <translation>コピー</translation>
+    </message>
+    <message>
+        <source>Device</source>
+        <translation>デバイス</translation>
+    </message>
+    <message>
+        <source>Expected value</source>
+        <translation>期待値</translation>
+    </message>
+    <message>
+        <source>Export results</source>
+        <translation>結果のエクスポート</translation>
+    </message>
+    <message>
+        <source>Property</source>
+        <translation>プロパティ</translation>
+    </message>
+    <message>
+        <source>Save</source>
+        <translation>保存</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>時間</translation>
+    </message>
+    <message>
+        <source>Value</source>
+        <translation>値</translation>
+    </message>
+</context>
+<context>
+    <name>NewProfilesStructureDialogue</name>
+    <message>
+        <source>Accept</source>
+        <translation>受け入れる</translation>
+    </message>
+    <message>
+        <source>New profiles structure</source>
+        <translation>新しいプロファイル構造</translation>
+    </message>
+    <message>
+        <source>Number of time steps</source>
+        <translation>時間ステップ数</translation>
+    </message>
+    <message>
+        <source>Start date</source>
+        <translation>開始日</translation>
+    </message>
+    <message>
+        <source>Time step length</source>
+        <translation>時間ステップ長</translation>
+    </message>
+    <message>
+        <source>Time units</source>
+        <translation>時間単位</translation>
+    </message>
+</context>
+<context>
+    <name>ObjectColumnFilterDialog</name>
+    <message>
+        <source>Apply</source>
+        <translation>適用</translation>
+    </message>
+    <message>
+        <source>Cancel filter</source>
+        <translation>フィルターをキャンセル</translation>
+    </message>
+    <message>
+        <source>Clear filter</source>
+        <translation>フィルターをクリア</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>検索</translation>
+    </message>
+    <message>
+        <source>Select all visible</source>
+        <translation>表示されているすべてを選択</translation>
+    </message>
+    <message>
+        <source>Select no visible</source>
+        <translation>表示されているものを選択しない</translation>
+    </message>
+    <message>
+        <source>Sort A to Z</source>
+        <translation>AからZへ並べ替え</translation>
+    </message>
+    <message>
+        <source>Sort Z to A</source>
+        <translation>ZからAへ並べ替え</translation>
+    </message>
+</context>
+<context>
+    <name>RmsPlotDialog</name>
+    <message>
+        <source>Add</source>
+        <translation>追加</translation>
+    </message>
+    <message>
+        <source>Device:</source>
+        <translation>デバイス:</translation>
+    </message>
+    <message>
+        <source>Plot Variables</source>
+        <translation>プロットする変数</translation>
+    </message>
+    <message>
+        <source>Plot Window</source>
+        <translation>プロットウィンドウ</translation>
+    </message>
+    <message>
+        <source>Remove variable</source>
+        <translation>変数を削除</translation>
+    </message>
+    <message>
+        <source>Rms Simulation Results</source>
+        <translation>RMSシミュレーション結果</translation>
+    </message>
+    <message>
+        <source>Show in new window</source>
+        <translation>新しいウィンドウで表示</translation>
+    </message>
+    <message>
+        <source>Variable:</source>
+        <translation>変数:</translation>
+    </message>
+    <message>
+        <source>time (s)</source>
+        <translation>時間 (s)</translation>
+    </message>
+</context>
+<context>
+    <name>RosetaExplorerGUI</name>
+    <message>
+        <source>Copy</source>
+        <translation>コピー</translation>
+    </message>
+</context>
+<context>
+    <name>RuntimeLogicEditorWidget</name>
+    <message>
+        <source>Add entry</source>
+        <translation>エントリを追加</translation>
+    </message>
+    <message>
+        <source>Add retained mode</source>
+        <translation>保持モードを追加</translation>
+    </message>
+    <message>
+        <source>Configuration</source>
+        <translation>設定</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>消去</translation>
+    </message>
+    <message>
+        <source>Delete retained mode</source>
+        <translation>保持モードを削除</translation>
+    </message>
+    <message>
+        <source>Documentation</source>
+        <translation>ドキュメント</translation>
+    </message>
+    <message>
+        <source>Enter a procedural entry name.</source>
+        <translation>手続き型エントリ名を入力してください。</translation>
+    </message>
+    <message>
+        <source>Enter a valid retained-mode symbol name.</source>
+        <translation>有効な保持モードシンボル名を入力してください。</translation>
+    </message>
+    <message>
+        <source>Enter an initial value or expression.</source>
+        <translation>初期値または式を入力してください。</translation>
+    </message>
+    <message>
+        <source>Entry name</source>
+        <translation>エントリ名</translation>
+    </message>
+    <message>
+        <source>Initial value or expression</source>
+        <translation>初期値または式</translation>
+    </message>
+    <message>
+        <source>Mode symbol name</source>
+        <translation>モードシンボル名</translation>
+    </message>
+    <message>
+        <source>Move down</source>
+        <translation>下へ移動</translation>
+    </message>
+    <message>
+        <source>Move up</source>
+        <translation>上へ移動</translation>
+    </message>
+    <message>
+        <source>Owner</source>
+        <translation>所有者</translation>
+    </message>
+    <message>
+        <source>Procedural entries</source>
+        <translation>手続き型エントリ</translation>
+    </message>
+    <message>
+        <source>Retained modes</source>
+        <translation>保持モード</translation>
+    </message>
+    <message>
+        <source>Runtime logic is valid.</source>
+        <translation>実行時ロジックは有効です。</translation>
+    </message>
+    <message>
+        <source>Select a valid owner and procedural type.</source>
+        <translation>有効な所有者と手続き型タイプを選択してください。</translation>
+    </message>
+    <message>
+        <source>Select a valid owner block.</source>
+        <translation>有効な所有ブロックを選択してください。</translation>
+    </message>
+    <message>
+        <source>Select one procedural entry to delete.</source>
+        <translation>削除する手続き型エントリを1つ選択してください。</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>種類</translation>
+    </message>
+    <message>
+        <source>Valid runtime logic. Warnings: </source>
+        <translation>実行時ロジックは有効です。警告:</translation>
+    </message>
+    <message>
+        <source>Validate runtime logic</source>
+        <translation>実行時ロジックを検証</translation>
+    </message>
+</context>
+<context>
+    <name>ScenariosMain</name>
+    <message>
+        <source>Add child scenario</source>
+        <translation>子シナリオの追加</translation>
+    </message>
+    <message>
+        <source>Commit scenario</source>
+        <translation>コミットシナリオ</translation>
+    </message>
+    <message>
+        <source>Merge children into scenario</source>
+        <translation>子をシナリオに結合する</translation>
+    </message>
+    <message>
+        <source>Remove scenario</source>
+        <translation>シナリオの削除</translation>
+    </message>
+    <message>
+        <source>Rename scenario</source>
+        <translation>シナリオ名の変更</translation>
+    </message>
+    <message>
+        <source>Set as current scenario</source>
+        <translation>現在のシナリオとして設定</translation>
+    </message>
+</context>
+<context>
+    <name>SelectionDialog</name>
+    <message>
+        <source>Cancel</source>
+        <translation>キャンセル</translation>
+    </message>
+    <message>
+        <source>Click on a substation to reconnect branch {branch_name}</source>
+        <translation>ブランチ {branch_name} を再接続するには、変電所をクリックしてください。</translation>
+    </message>
+    <message>
+        <source>The substation should have a compatible voltage level ({voltage} kV)</source>
+        <translation>変電所は互換性のある電圧レベル（{voltage} kV）である必要があります</translation>
+    </message>
+    <message>
+        <source>Waiting for Selection</source>
+        <translation>選択待ち</translation>
+    </message>
+    <message>
+        <source>Waiting for selection...</source>
+        <translation>選択待ち...</translation>
+    </message>
+</context>
+<context>
+    <name>ServerFileDialogue</name>
+    <message>
+        <source>Delete server file</source>
+        <translation>サーバーファイル削除</translation>
+    </message>
+    <message>
+        <source>Delete server model</source>
+        <translation>サーバーモデル削除</translation>
+    </message>
+    <message>
+        <source>Delete the selected file and every model inside it?</source>
+        <translation>選択したファイルとその内部のすべてのモデルを削除しますか？</translation>
+    </message>
+    <message>
+        <source>Delete the selected model from the server database?</source>
+        <translation>選択したモデルをサーバーデータベースから削除しますか？</translation>
+    </message>
+</context>
+<context>
+    <name>SigmaAnalysisGUI</name>
+    <message>
+        <source>CSV (*.csv);;Excel files (*.xlsx)</source>
+        <translation>CSV (*.csv);;Excel ファイル (*.xlsx)</translation>
+    </message>
+    <message>
+        <source>Export results</source>
+        <translation>結果のエクスポート</translation>
+    </message>
+    <message>
+        <source>HELM-Sigma analysis dialogue</source>
+        <translation>HELM-シグマ解析ダイアログ</translation>
+    </message>
+    <message>
+        <source>Sigma analysis completed</source>
+        <translation>シグマ解析が完了しました</translation>
+    </message>
+    <message>
+        <source>Sigma analysis did not return results</source>
+        <translation>シグマ解析は結果を返しませんでした</translation>
+    </message>
+    <message>
+        <source>Sigma coefficients did not converge :(</source>
+        <translation>シグマ係数が収束しませんでした :(</translation>
+    </message>
+    <message>
+        <source>Snapshot</source>
+        <translation>スナップショット</translation>
+    </message>
+    <message>
+        <source>This window was opened without a circuit/options rerun context.</source>
+        <translation>このウィンドウは、回路/オプションの再実行コンテキストなしで開かれました。</translation>
+    </message>
+    <message>
+        <source>Warning</source>
+        <translation>警告</translation>
+    </message>
+</context>
+<context>
+    <name>SimulationsMain</name>
+    <message>
+        <source>Compiling the grid...</source>
+        <translation>グリッドをコンパイル中...</translation>
+    </message>
+    <message>
+        <source>Model v. {model_version}</source>
+        <translation>モデルと{model_version}</translation>
+    </message>
+    <message>
+        <source>Pareto combination</source>
+        <translation>パレート組み合わせ</translation>
+    </message>
+    <message>
+        <source>Pareto combination {index}</source>
+        <translation>パレート組み合わせ {index}</translation>
+    </message>
+    <message>
+        <source>Running power flow...</source>
+        <translation>電力潮流計算を実行中...</translation>
+    </message>
+    <message>
+        <source>Short circuits</source>
+        <translation>短絡回路</translation>
+    </message>
+    <message>
+        <source>User: {user_name}</source>
+        <translation>ユーザー: {user_name}</translation>
+    </message>
+    <message>
+        <source>idtag. {idtag}</source>
+        <translation>IDタグ。 {idtag}</translation>
+    </message>
+</context>
+<context>
+    <name>SwitchSequenceDialog</name>
+    <message>
+        <source>Add Sequence Step</source>
+        <translation>シーケンスステップを追加</translation>
+    </message>
+    <message>
+        <source>Add at least one sequence row.</source>
+        <translation>少なくとも1つのシーケンス行を追加してください。</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>近い</translation>
+    </message>
+    <message>
+        <source>Group</source>
+        <translation>グループ</translation>
+    </message>
+    <message>
+        <source>Mode Parameter</source>
+        <translation>モードパラメータ</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation>開く</translation>
+    </message>
+    <message>
+        <source>Please check at least one row to remove.</source>
+        <translation>削除するには、少なくとも1行を選択してください。</translation>
+    </message>
+    <message>
+        <source>Remove Selected Rows</source>
+        <translation>選択した行を削除</translation>
+    </message>
+    <message>
+        <source>Select a mode parameter and an events group.</source>
+        <translation>モードパラメータとイベントグループを選択してください。</translation>
+    </message>
+    <message>
+        <source>State</source>
+        <translation>ステータス</translation>
+    </message>
+    <message>
+        <source>Switch Sequence</source>
+        <translation>スイッチシーケンス</translation>
+    </message>
+    <message>
+        <source>Switch Sequence Wizard</source>
+        <translation>シーケンスウィザードの切り替え</translation>
+    </message>
+    <message>
+        <source>The selected parameter or group is invalid.</source>
+        <translation>選択されたパラメータまたはグループは無効です。</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>時間</translation>
+    </message>
+</context>
+<context>
+    <name>SystemScaler</name>
+    <message>
+        <source>Aggregated energy scaling preview</source>
+        <translation>集計エネルギースケーリングプレビュー</translation>
+    </message>
+    <message>
+        <source>Aggregated power scaling preview</source>
+        <translation>集計電力スケーリングプレビュー</translation>
+    </message>
+    <message>
+        <source>MW</source>
+        <translation>MW</translation>
+    </message>
+    <message>
+        <source>MWh</source>
+        <translation>MWh</translation>
+    </message>
+    <message>
+        <source>Original generation</source>
+        <translation>元の発電量</translation>
+    </message>
+    <message>
+        <source>Original generation energy</source>
+        <translation>元の発電エネルギー</translation>
+    </message>
+    <message>
+        <source>Original load</source>
+        <translation>元の負荷</translation>
+    </message>
+    <message>
+        <source>Original load energy</source>
+        <translation>元の負荷エネルギー</translation>
+    </message>
+    <message>
+        <source>Press plot to preview scaling</source>
+        <translation>スケーリングのプレビューにはプロットを押してください。</translation>
+    </message>
+    <message>
+        <source>Scaled generation</source>
+        <translation>スケーリングされた発電量</translation>
+    </message>
+    <message>
+        <source>Scaled generation energy</source>
+        <translation>スケーリングされた発電エネルギー</translation>
+    </message>
+    <message>
+        <source>Scaled load</source>
+        <translation>スケーリングされた負荷</translation>
+    </message>
+    <message>
+        <source>Scaled load energy</source>
+        <translation>スケーリングされた負荷エネルギー</translation>
+    </message>
+    <message>
+        <source>System scaling</source>
+        <translation>システムスケーリング</translation>
+    </message>
+    <message>
+        <source>There is no time series to plot.</source>
+        <translation>プロットする時系列データがありません。</translation>
+    </message>
+    <message>
+        <source>This operation will alter the generation and load composition irreversibly
+Are you sure?</source>
+        <translation>この操作により、発電量と負荷の構成が不可逆的に変更されます
+よろしいですか？</translation>
+    </message>
+</context>
+<context>
+    <name>TimeReIndexDialogue</name>
+    <message>
+        <source>Accept</source>
+        <translation>受け入れる</translation>
+    </message>
+    <message>
+        <source>Start date</source>
+        <translation>開始日</translation>
+    </message>
+    <message>
+        <source>Time re-index</source>
+        <translation>時間再インデックス</translation>
+    </message>
+    <message>
+        <source>Time step length</source>
+        <translation>時間ステップ長</translation>
+    </message>
+    <message>
+        <source>Time units</source>
+        <translation>時間単位</translation>
     </message>
 </context>
 </TS>

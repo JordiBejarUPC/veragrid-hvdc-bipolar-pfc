@@ -115,6 +115,42 @@ li.checked::标记 { content: &quot;\2612&quot;; }
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:11pt;&quot;&gt;|networkx     | BSD |&lt;/span&gt;&lt;/p&gt;
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:11pt;&quot;&gt;+--------------+------------------------------------------+&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
+    <message>
+        <source>Dependencies</source>
+        <translation>依赖项</translation>
+    </message>
+    <message>
+        <source>Installation Path</source>
+        <translation>安装路径</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>名称</translation>
+    </message>
+    <message>
+        <source>Not installed</source>
+        <translation>未安装</translation>
+    </message>
+    <message>
+        <source>Package</source>
+        <translation>包</translation>
+    </message>
+    <message>
+        <source>True</source>
+        <translation>真</translation>
+    </message>
+    <message>
+        <source>Version</source>
+        <translation>版本</translation>
+    </message>
+    <message>
+        <source>licensed</source>
+        <translation>许可</translation>
+    </message>
+    <message>
+        <source>supported version</source>
+        <translation>支持版本</translation>
+    </message>
 </context>
 <context>
     <name>AdmittanceMatrixEditorWidget</name>
@@ -337,91 +373,91 @@ li.checked::标记 { content: &quot;\2612&quot;; }
     <name>AiChatDialogue</name>
     <message>
         <source>VeraGrid AI dialogue</source>
-        <translation type="vanished">VeraGrid AI 对话</translation>
+        <translation>VeraGrid AI 对话</translation>
     </message>
     <message>
         <source>Pick or type a GGUF file name</source>
-        <translation type="vanished">选择或键入 GGUF 文件名</translation>
+        <translation>选择或键入 GGUF 文件名</translation>
     </message>
     <message>
         <source>Provider model name</source>
-        <translation type="vanished">提供商型号名称</translation>
+        <translation>提供商型号名称</translation>
     </message>
     <message>
         <source>VeraGrid AI</source>
-        <translation type="vanished">VeraGrid AI</translation>
+        <translation>VeraGrid AI</translation>
     </message>
     <message>
         <source>Scan the configured path for GGUF files.</source>
-        <translation type="vanished">扫描 GGUF 文件的配置路径。</translation>
+        <translation>扫描 GGUF 文件的配置路径。</translation>
     </message>
     <message>
         <source>API key</source>
-        <translation type="vanished">API 钥匙</translation>
+        <translation>API 钥匙</translation>
     </message>
     <message>
         <source>Leave empty for unauthenticated endpoints</source>
-        <translation type="vanished">对于未经身份验证的端点留空</translation>
+        <translation>对于未经身份验证的端点留空</translation>
     </message>
     <message>
         <source>Query the configured backend for models.</source>
-        <translation type="vanished">查询配置的后端模型。</translation>
+        <translation>查询配置的后端模型。</translation>
     </message>
     <message>
         <source>Type a message before sending.</source>
-        <translation type="vanished">发送前输入消息。</translation>
+        <translation>发送前输入消息。</translation>
     </message>
     <message>
         <source>Resolve the pending tool approval or clear the chat first.</source>
-        <translation type="vanished">解决待批准的工具或先清除聊天。</translation>
+        <translation>解决待批准的工具或先清除聊天。</translation>
     </message>
     <message>
         <source>Stopping AI turn...</source>
-        <translation type="vanished">正在停止 AI 转动...</translation>
+        <translation>正在停止 AI 转动...</translation>
     </message>
     <message>
         <source>There is no running AI turn to stop.</source>
-        <translation type="vanished">AI 运行中没有转停止。</translation>
+        <translation>AI 运行中没有转停止。</translation>
     </message>
     <message>
         <source>Running simulation and analyzing the results...</source>
-        <translation type="vanished">运行模拟并分析结果...</translation>
+        <translation>运行模拟并分析结果...</translation>
     </message>
     <message>
         <source>There is no pending tool call to approve.</source>
-        <translation type="vanished">没有等待批准的工具调用。</translation>
+        <translation>没有等待批准的工具调用。</translation>
     </message>
     <message>
         <source>Wait for the current AI turn to finish.</source>
-        <translation type="vanished">等待当前 AI 回合结束。</translation>
+        <translation>等待当前 AI 回合结束。</translation>
     </message>
     <message>
         <source>Running AI turn...</source>
-        <translation type="vanished">运行AI转...</translation>
+        <translation>运行AI转...</translation>
     </message>
     <message>
         <source>Generating response</source>
-        <translation type="vanished">生成响应</translation>
+        <translation>生成响应</translation>
     </message>
     <message>
         <source>Running AI turn</source>
-        <translation type="vanished">运行 AI 转</translation>
+        <translation>运行 AI 转</translation>
     </message>
     <message>
         <source>Stop</source>
-        <translation type="vanished">停止</translation>
+        <translation>停止</translation>
     </message>
     <message>
         <source>Send</source>
-        <translation type="vanished">发送</translation>
+        <translation>发送</translation>
     </message>
     <message>
         <source>You</source>
-        <translation type="vanished">你</translation>
+        <translation>你</translation>
     </message>
     <message>
         <source>Tool</source>
-        <translation type="vanished">工具</translation>
+        <translation>工具</translation>
     </message>
 </context>
 <context>
@@ -617,11 +653,15 @@ li.checked::标记 { content: &quot;\2612&quot;; }
     <name>CgmesOptionsSelector</name>
     <message>
         <source>CGMES Version:</source>
-        <translation type="vanished">CGMES 版本：</translation>
+        <translation>CGMES 版本：</translation>
     </message>
     <message>
         <source>Accept</source>
-        <translation type="vanished">接受</translation>
+        <translation>接受</translation>
+    </message>
+    <message>
+        <source>Select the CGMES options</source>
+        <translation>选择 CGMES 选项</translation>
     </message>
 </context>
 <context>
@@ -1804,6 +1844,310 @@ li.checked::标记 { content: &quot;\2612&quot;; }
         <source>Close</source>
         <translation type="obsolete">关闭</translation>
     </message>
+    <message>
+        <source>1 / {count}</source>
+        <translation>1 / {count}</translation>
+    </message>
+    <message>
+        <source>Add symbol</source>
+        <translation>添加符号</translation>
+    </message>
+    <message>
+        <source>Add symbol to selected block</source>
+        <translation>将符号添加到选定的块</translation>
+    </message>
+    <message>
+        <source>Advanced runtime logic</source>
+        <translation>高级运行时逻辑</translation>
+    </message>
+    <message>
+        <source>Apply structural settings separately from DAE-code or symbol-interface changes.</source>
+        <translation>将结构设置与 DAE 代码或符号接口更改分开应用。</translation>
+    </message>
+    <message>
+        <source>Block / equation group</source>
+        <translation>块 / 方程组</translation>
+    </message>
+    <message>
+        <source>Block configuration</source>
+        <translation>块配置</translation>
+    </message>
+    <message>
+        <source>Block info</source>
+        <translation>块信息</translation>
+    </message>
+    <message>
+        <source>Block properties - {name}</source>
+        <translation>块属性 - {name}</translation>
+    </message>
+    <message>
+        <source>Block structure rebuilt with the selected settings.</source>
+        <translation>块结构已使用选定的设置重建。</translation>
+    </message>
+    <message>
+        <source>Catalogue type</source>
+        <translation>目录类型</translation>
+    </message>
+    <message>
+        <source>Changes applied to the editor working copy.</source>
+        <translation>已将更改应用到编辑器工作副本。</translation>
+    </message>
+    <message>
+        <source>Changes applied. Advanced inequalities/discrete/boolean logic was preserved unchanged.</source>
+        <translation>已应用更改。高级不等式/离散/布尔逻辑已保持不变。</translation>
+    </message>
+    <message>
+        <source>Clear</source>
+        <translation>清除</translation>
+    </message>
+    <message>
+        <source>Create derivative variable</source>
+        <translation>创建导数变量</translation>
+    </message>
+    <message>
+        <source>DAE and runtime-logic changes applied to the editor working copy.</source>
+        <translation>DAE 和运行时逻辑更改已应用到编辑器工作副本。</translation>
+    </message>
+    <message>
+        <source>DAE code is valid.</source>
+        <translation>DAE 代码有效。</translation>
+    </message>
+    <message>
+        <source>DAE model</source>
+        <translation>DAE 模型</translation>
+    </message>
+    <message>
+        <source>DAE validation failed at line {line}: {message}</source>
+        <translation>DAE 验证在第 {line} 行失败: {message}</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>删除</translation>
+    </message>
+    <message>
+        <source>Download rendered PDF</source>
+        <translation>下载渲染的 PDF</translation>
+    </message>
+    <message>
+        <source>Enter a name</source>
+        <translation>输入名称</translation>
+    </message>
+    <message>
+        <source>Enter a valid Python symbol name.</source>
+        <translation>输入有效的 Python 符号名称。</translation>
+    </message>
+    <message>
+        <source>Equation PDF created: {path}</source>
+        <translation>方程 PDF 已创建: {path}</translation>
+    </message>
+    <message>
+        <source>Equation owner</source>
+        <translation>方程所有者</translation>
+    </message>
+    <message>
+        <source>Equations</source>
+        <translation>方程</translation>
+    </message>
+    <message>
+        <source>General options</source>
+        <translation>通用选项</translation>
+    </message>
+    <message>
+        <source>Generated structure</source>
+        <translation>生成的结构</translation>
+    </message>
+    <message>
+        <source>Initial numeric value</source>
+        <translation>初始数值</translation>
+    </message>
+    <message>
+        <source>Inputs</source>
+        <translation>输入</translation>
+    </message>
+    <message>
+        <source>Invalid DAE code.</source>
+        <translation>无效的 DAE 代码。</translation>
+    </message>
+    <message>
+        <source>LaTeX</source>
+        <translation>LaTeX</translation>
+    </message>
+    <message>
+        <source>LaTeX source</source>
+        <translation>LaTeX 源</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>名称</translation>
+    </message>
+    <message>
+        <source>New symbol name</source>
+        <translation>新符号名称</translation>
+    </message>
+    <message>
+        <source>Next</source>
+        <translation>下一个</translation>
+    </message>
+    <message>
+        <source>No matches</source>
+        <translation>没有匹配项</translation>
+    </message>
+    <message>
+        <source>No online catalogue documentation is available for this custom block.</source>
+        <translation>此自定义块没有在线目录文档。</translation>
+    </message>
+    <message>
+        <source>None</source>
+        <translation>无</translation>
+    </message>
+    <message>
+        <source>Nothing was applied: {message}</source>
+        <translation>未应用任何更改: {message}</translation>
+    </message>
+    <message>
+        <source>Online documentation</source>
+        <translation>在线文档</translation>
+    </message>
+    <message>
+        <source>Opens the documentation for the original predefined library block. If this block has been modified in the editor, its current equations, symbols, parameters, or runtime logic may differ from the online documentation.</source>
+        <translation>打开原始预定义库块的文档。如果此块已在编辑器中修改，其当前方程、符号、参数或运行时逻辑可能与在线文档不同。</translation>
+    </message>
+    <message>
+        <source>Output</source>
+        <translation>输出</translation>
+    </message>
+    <message>
+        <source>Outputs</source>
+        <translation>输出</translation>
+    </message>
+    <message>
+        <source>Owner block</source>
+        <translation>所有者块</translation>
+    </message>
+    <message>
+        <source>PDF documents (*.pdf)</source>
+        <translation>PDF 文档 (*.pdf)</translation>
+    </message>
+    <message>
+        <source>Parameter whose value may change during the simulation.</source>
+        <translation>参数，其值在仿真过程中可能会改变。</translation>
+    </message>
+    <message>
+        <source>Parameters</source>
+        <translation>参数</translation>
+    </message>
+    <message>
+        <source>Power-flow variable</source>
+        <translation>电网潮流变量</translation>
+    </message>
+    <message>
+        <source>Power-flow variable used to initialize this dynamic variable.</source>
+        <translation>用于初始化此动态变量的潮流变量。</translation>
+    </message>
+    <message>
+        <source>Previous</source>
+        <translation>上一个</translation>
+    </message>
+    <message>
+        <source>Python code</source>
+        <translation>Python 代码</translation>
+    </message>
+    <message>
+        <source>Rename...</source>
+        <translation>重命名...</translation>
+    </message>
+    <message>
+        <source>Runtime logic</source>
+        <translation>运行时逻辑</translation>
+    </message>
+    <message>
+        <source>Save dynamic equations PDF</source>
+        <translation>保存动态方程 PDF</translation>
+    </message>
+    <message>
+        <source>Search Python code...</source>
+        <translation>搜索 Python 代码...</translation>
+    </message>
+    <message>
+        <source>Search parameters...</source>
+        <translation>搜索参数...</translation>
+    </message>
+    <message>
+        <source>Search variables...</source>
+        <translation>搜索变量...</translation>
+    </message>
+    <message>
+        <source>Select a valid owner block.</source>
+        <translation>选择一个有效的所属块。</translation>
+    </message>
+    <message>
+        <source>Select a valid symbol type.</source>
+        <translation>选择一个有效的符号类型。</translation>
+    </message>
+    <message>
+        <source>Select all</source>
+        <translation>选择全部</translation>
+    </message>
+    <message>
+        <source>Select at least one non-empty equation group.</source>
+        <translation>选择至少一个非空的方程组。</translation>
+    </message>
+    <message>
+        <source>Select equation groups to generate copyable LaTeX source.</source>
+        <translation>选择用于生成可复制 LaTeX 源的方程组。</translation>
+    </message>
+    <message>
+        <source>Select the equation groups to include. Each internal block and each DAE section can be selected independently.</source>
+        <translation>选择要包含的方程组。每个内部块和每个 DAE 部分都可以独立选择。</translation>
+    </message>
+    <message>
+        <source>Special settings</source>
+        <translation>特殊设置</translation>
+    </message>
+    <message>
+        <source>Static device mapping</source>
+        <translation>静态设备映射</translation>
+    </message>
+    <message>
+        <source>Symbol category</source>
+        <translation>符号类别</translation>
+    </message>
+    <message>
+        <source>The PDF could not be created: {message}</source>
+        <translation>无法创建 PDF：{message}</translation>
+    </message>
+    <message>
+        <source>The online block documentation could not be opened in the system browser.</source>
+        <translation>无法在系统浏览器中打开在线块文档。</translation>
+    </message>
+    <message>
+        <source>These settings contain structured data used to regenerate the block. Edit sequences with valid Python tuple/list syntax.</source>
+        <translation>这些设置包含用于重新生成块的结构化数据。请使用有效的 Python 元组/列表语法编辑序列。</translation>
+    </message>
+    <message>
+        <source>This block has no safe structural rebuild adapter.</source>
+        <translation>此块没有安全的结构重建适配器。</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>类型</translation>
+    </message>
+    <message>
+        <source>Validate all code</source>
+        <translation>验证所有代码</translation>
+    </message>
+    <message>
+        <source>Variable renamed to '{name}'.</source>
+        <translation>变量已重命名为 '{name}'。</translation>
+    </message>
+    <message>
+        <source>Variables</source>
+        <translation>变量</translation>
+    </message>
+    <message>
+        <source>{active} / {count}</source>
+        <translation>{active} / {count}</translation>
+    </message>
 </context>
 <context>
     <name>DynamicEditorWorkspaceWindow</name>
@@ -1867,6 +2211,18 @@ li.checked::标记 { content: &quot;\2612&quot;; }
         <source>view tree</source>
         <translation>查看树</translation>
     </message>
+    <message>
+        <source>Dynamic Editor - {title}</source>
+        <translation>动态编辑器 - {title}</translation>
+    </message>
+    <message>
+        <source>Open EMT editor</source>
+        <translation>打开EMT编辑器</translation>
+    </message>
+    <message>
+        <source>Open RMS editor</source>
+        <translation>打开RMS编辑器</translation>
+    </message>
 </context>
 <context>
     <name>DynamicEventDialogue</name>
@@ -1905,35 +2261,43 @@ li.checked::标记 { content: &quot;\2612&quot;; }
     <name>DynamicsResultsHandler</name>
     <message>
         <source>X-Y plot slot</source>
-        <translation type="vanished">X-Y 绘图槽</translation>
+        <translation>X-Y 绘图槽</translation>
     </message>
     <message>
         <source>Choose whether to place the dropped signal on the X axis or Y axis.</source>
-        <translation type="vanished">选择是将丢弃的信号放置在 X 轴还是 Y 轴上。</translation>
+        <translation>选择是将丢弃的信号放置在 X 轴还是 Y 轴上。</translation>
     </message>
     <message>
         <source>X axis</source>
-        <translation type="vanished">X轴</translation>
+        <translation>X轴</translation>
     </message>
     <message>
         <source>Y axis</source>
-        <translation type="vanished">Y轴</translation>
+        <translation>Y轴</translation>
     </message>
     <message>
         <source>Cancel</source>
-        <translation type="vanished">取消</translation>
+        <translation>取消</translation>
     </message>
     <message>
         <source>This X-Y plot already has X and Y signals. Replace X, replace Y, or cancel?</source>
-        <translation type="vanished">该 X-Y 图已经有 X 和 Y 信号。替换 X、替换 Y，还是取消？</translation>
+        <translation>该 X-Y 图已经有 X 和 Y 信号。替换 X、替换 Y，还是取消？</translation>
     </message>
     <message>
         <source>Replace X</source>
-        <translation type="vanished">替换 X</translation>
+        <translation>替换 X</translation>
     </message>
     <message>
         <source>Replace Y</source>
-        <translation type="vanished">替换 Y</translation>
+        <translation>替换 Y</translation>
+    </message>
+    <message>
+        <source>Dynamic plots</source>
+        <translation>动态图表</translation>
+    </message>
+    <message>
+        <source>Dynamics results</source>
+        <translation>动态结果</translation>
     </message>
 </context>
 <context>
@@ -1948,68 +2312,84 @@ li.checked::标记 { content: &quot;\2612&quot;; }
     <name>FileTypeSelector</name>
     <message>
         <source>Format:</source>
-        <translation type="vanished">格式：</translation>
+        <translation>格式：</translation>
     </message>
     <message>
         <source>Accept</source>
-        <translation type="vanished">接受</translation>
+        <translation>接受</translation>
+    </message>
+    <message>
+        <source>Select how to load the file</source>
+        <translation>选择加载文件的方式</translation>
+    </message>
+    <message>
+        <source>You've passed a generic list of files
+select the expected processing format</source>
+        <translation>您提供了一个通用文件列表
+请选择预期的处理格式</translation>
+    </message>
+    <message>
+        <source>You've passed a generic of file
+select the expected processing format</source>
+        <translation>您提供了一个通用文件
+请选择预期的处理格式</translation>
     </message>
 </context>
 <context>
     <name>FmuTemplateEditorDialog</name>
     <message>
         <source>FMU Template Editor</source>
-        <translation type="vanished">FMU 模板编辑器</translation>
+        <translation>FMU 模板编辑器</translation>
     </message>
     <message>
         <source>Browse...</source>
-        <translation type="vanished">浏览...</translation>
+        <translation>浏览...</translation>
     </message>
     <message>
         <source>Choose an FMU archive to load its metadata and build the visual block.</source>
-        <translation type="vanished">选择一个 FMU 存档来加载其元数据并构建可视化块。</translation>
+        <translation>选择一个 FMU 存档来加载其元数据并构建可视化块。</translation>
     </message>
     <message>
         <source>Name</source>
-        <translation type="vanished">名称</translation>
+        <translation>名称</translation>
     </message>
     <message>
         <source>FMU file</source>
-        <translation type="vanished">FMU文件</translation>
+        <translation>FMU文件</translation>
     </message>
     <message>
         <source>Device type</source>
-        <translation type="vanished">设备类型</translation>
+        <translation>设备类型</translation>
     </message>
     <message>
         <source>Domain</source>
-        <translation type="vanished">域名</translation>
+        <translation>域名</translation>
     </message>
     <message>
         <source>Mode</source>
-        <translation type="vanished">模式</translation>
+        <translation>模式</translation>
     </message>
     <message>
         <source>Metadata</source>
-        <translation type="vanished">元数据</translation>
+        <translation>元数据</translation>
     </message>
     <message>
         <source>Select FMU file</source>
-        <translation type="vanished">选择FMU文件</translation>
+        <translation>选择FMU文件</translation>
     </message>
     <message>
         <source>FMU files (*.fmu)</source>
-        <translation type="vanished">FMU 文件 (*.fmu)</translation>
+        <translation>FMU 文件 (*.fmu)</translation>
     </message>
     <message>
         <source>FMU file not found:
 {path}</source>
-        <translation type="vanished">未找到 FMU 文件：
+        <translation>未找到 FMU 文件：
 {path}</translation>
     </message>
     <message>
         <source>Choose an FMU file first.</source>
-        <translation type="vanished">首先选择一个 FMU 文件。</translation>
+        <translation>首先选择一个 FMU 文件。</translation>
     </message>
 </context>
 <context>
@@ -2034,103 +2414,103 @@ li.checked::标记 { content: &quot;\2612&quot;; }
     <name>IoMain</name>
     <message>
         <source>The file type {file_extension} is not accepted :(</source>
-        <translation type="vanished">不接受文件类型 {file_extension} :(</translation>
+        <translation>不接受文件类型 {file_extension} :(</translation>
     </message>
     <message>
         <source>Message</source>
-        <translation type="vanished">留言</translation>
+        <translation>留言</translation>
     </message>
     <message>
         <source>Are you sure that you want to quit the current grid and open a new one?
  If the process is cancelled the grid will remain.</source>
-        <translation type="vanished">您确定要退出当前网格并打开一个新网格吗？
+        <translation>您确定要退出当前网格并打开一个新网格吗？
  如果该过程被取消，网格将保留。</translation>
     </message>
     <message>
         <source>Are you sure that you want to quit the current grid and create a new one?</source>
-        <translation type="vanished">您确定要退出当前网格并创建一个新网格吗？</translation>
+        <translation>您确定要退出当前网格并创建一个新网格吗？</translation>
     </message>
     <message>
         <source>There is a file being processed now.</source>
-        <translation type="vanished">现在有一个文件正在处理。</translation>
+        <translation>现在有一个文件正在处理。</translation>
     </message>
     <message>
         <source>Formats ({files_types})</source>
-        <translation type="vanished">格式 ({files_types})</translation>
+        <translation>格式 ({files_types})</translation>
     </message>
     <message>
         <source>The file does not exist :( 
  {file_name}</source>
-        <translation type="vanished">该文件不存在:( 
+        <translation>该文件不存在:( 
  {file_name}</translation>
     </message>
     <message>
         <source>File opening</source>
-        <translation type="vanished">文件打开</translation>
+        <translation>文件打开</translation>
     </message>
     <message>
         <source>No grid to load :(</source>
-        <translation type="vanished">没有要加载的网格:(</translation>
+        <translation>没有要加载的网格:(</translation>
     </message>
     <message>
         <source>Current: {circuit_name}</source>
-        <translation type="vanished">当前：{circuit_name}</translation>
+        <translation>当前：{circuit_name}</translation>
     </message>
     <message>
         <source>The grid is quite big, no diagram is automatically created</source>
-        <translation type="vanished">网格很大，没有自动创建图表</translation>
+        <translation>网格很大，没有自动创建图表</translation>
     </message>
     <message>
         <source>Sessions</source>
-        <translation type="vanished">会议</translation>
+        <translation>会议</translation>
     </message>
     <message>
         <source>Show Rosetta</source>
-        <translation type="vanished">显示罗塞塔</translation>
+        <translation>显示罗塞塔</translation>
     </message>
     <message>
         <source>Do you want to open the Rosetta CGMES browser?</source>
-        <translation type="vanished">您想打开Rosetta CGMES浏览器吗？</translation>
+        <translation>您想打开Rosetta CGMES浏览器吗？</translation>
     </message>
     <message>
         <source>Open CGMES file logger</source>
-        <translation type="vanished">打开 CGMES 文件记录器</translation>
+        <translation>打开 CGMES 文件记录器</translation>
     </message>
     <message>
         <source>Open file logger</source>
-        <translation type="vanished">打开文件记录器</translation>
+        <translation>打开文件记录器</translation>
     </message>
     <message>
         <source>Error while loading the file(s)</source>
-        <translation type="vanished">加载文件时出错</translation>
+        <translation>加载文件时出错</translation>
     </message>
     <message>
         <source>{name} {version} requires VeraGrid {veragrid_version}</source>
-        <translation type="vanished">{name} {version} 需要 VeraGrid {veragrid_version}</translation>
+        <translation>{name} {version} 需要 VeraGrid {veragrid_version}</translation>
     </message>
     <message>
         <source>Plugin install</source>
-        <translation type="vanished">插件安装</translation>
+        <translation>插件安装</translation>
     </message>
     <message>
         <source>There is already a plugin: {plugin_name} {plugin_version}. The new plugin is {new_version}. Install?</source>
-        <translation type="vanished">已经有一个插件：{plugin_name} {plugin_version}。新插件是 {new_version}。安装？</translation>
+        <translation>已经有一个插件：{plugin_name} {plugin_version}。新插件是 {new_version}。安装？</translation>
     </message>
     <message>
         <source>{name} {version} installed!</source>
-        <translation type="vanished">{name} {version} 已安装！</translation>
+        <translation>{name} {version} 已安装！</translation>
     </message>
     <message>
         <source>There is no manifest :(</source>
-        <translation type="vanished">没有清单:(</translation>
+        <translation>没有清单:(</translation>
     </message>
     <message>
         <source>Does not seem to be a plugin :/</source>
-        <translation type="vanished">似乎不是一个插件：/</translation>
+        <translation>似乎不是一个插件：/</translation>
     </message>
     <message>
         <source>CSV (*.csv)</source>
-        <translation type="vanished">CSV (*.csv)</translation>
+        <translation>CSV (*.csv)</translation>
     </message>
     <message>
         <source>Open CSV file</source>
@@ -2138,233 +2518,253 @@ li.checked::标记 { content: &quot;\2612&quot;; }
     </message>
     <message>
         <source>Grid merge</source>
-        <translation type="vanished">网格合并</translation>
+        <translation>网格合并</translation>
     </message>
     <message>
         <source>How do you want to represent the merged grid?</source>
-        <translation type="vanished">您想如何表示合并的网格？</translation>
+        <translation>您想如何表示合并的网格？</translation>
     </message>
     <message>
         <source>Create new diagram</source>
-        <translation type="vanished">创建新图表</translation>
+        <translation>创建新图表</translation>
     </message>
     <message>
         <source>Add to current diagram</source>
-        <translation type="vanished">添加到当前图表</translation>
+        <translation>添加到当前图表</translation>
     </message>
     <message>
         <source>No schematic diagram was selected...</source>
-        <translation type="vanished">没有选择原理图...</translation>
+        <translation>没有选择原理图...</translation>
     </message>
     <message>
         <source>Save file</source>
-        <translation type="vanished">保存文件</translation>
+        <translation>保存文件</translation>
     </message>
     <message>
         <source>VeraGrid zip (*.veragrid)</source>
-        <translation type="vanished">VeraGrid zip (*.veragrid)</translation>
+        <translation>VeraGrid zip (*.veragrid)</translation>
     </message>
     <message>
         <source>There is a saving procedure running.
 Cancel and retry?</source>
-        <translation type="vanished">正在运行保存程序。
+        <translation>正在运行保存程序。
 取消并重试？</translation>
     </message>
     <message>
         <source>There is a file being processed..</source>
-        <translation type="vanished">有一个文件正在处理..</translation>
+        <translation>有一个文件正在处理..</translation>
     </message>
     <message>
         <source>Save file logger</source>
-        <translation type="vanished">保存文件记录器</translation>
+        <translation>保存文件记录器</translation>
     </message>
     <message>
         <source>Are you sure that you want to delete the current grid and replace it?</source>
-        <translation type="vanished">您确定要删除当前网格并替换它吗？</translation>
+        <translation>您确定要删除当前网格并替换它吗？</translation>
     </message>
     <message>
         <source>Model v. {model_version}</source>
-        <translation type="vanished">型号 v.{model_version}</translation>
+        <translation>型号 v.{model_version}</translation>
     </message>
     <message>
         <source>idtag. {idtag}</source>
-        <translation type="vanished">身份标签。 {idtag}</translation>
+        <translation>身份标签。 {idtag}</translation>
     </message>
     <message>
         <source>Random grid {bus_count} buses</source>
-        <translation type="vanished">随机发车 {bus_count} 公交车</translation>
+        <translation>随机发车 {bus_count} 公交车</translation>
     </message>
     <message>
         <source>Grid generated randomly using the RPGM algorithm.</source>
-        <translation type="vanished">使用RPGM算法随机生成的网格。</translation>
+        <translation>使用RPGM算法随机生成的网格。</translation>
     </message>
     <message>
         <source>Excel file (*.xlsx)</source>
-        <translation type="vanished">Excel 文件 (*.xlsx)</translation>
+        <translation>Excel 文件 (*.xlsx)</translation>
     </message>
     <message>
         <source>profiles of </source>
-        <translation type="vanished">的简介 </translation>
+        <translation>的简介 </translation>
     </message>
     <message>
         <source>There are no profiles!</source>
-        <translation type="vanished">没有个人资料！</translation>
+        <translation>没有个人资料！</translation>
     </message>
     <message>
         <source>Export object profiles</source>
-        <translation type="vanished">导出对象配置文件</translation>
+        <translation>导出对象配置文件</translation>
     </message>
     <message>
         <source>Zip file (*.zip)</source>
-        <translation type="vanished">压缩文件 (*.zip)</translation>
+        <translation>压缩文件 (*.zip)</translation>
     </message>
     <message>
         <source>Results of </source>
-        <translation type="vanished">结果 </translation>
+        <translation>结果 </translation>
     </message>
     <message>
         <source>There are no results available :/</source>
-        <translation type="vanished">没有可用的结果：/</translation>
+        <translation>没有可用的结果：/</translation>
     </message>
     <message>
         <source>Export all</source>
-        <translation type="vanished">全部导出</translation>
+        <translation>全部导出</translation>
     </message>
     <message>
         <source>Done!</source>
-        <translation type="vanished">完成！</translation>
+        <translation>完成！</translation>
     </message>
     <message>
         <source>Results parsing</source>
-        <translation type="vanished">结果解析</translation>
+        <translation>结果解析</translation>
     </message>
     <message>
         <source>Loaded &apos;{study_name}&apos; results from disk</source>
-        <translation type="vanished">从磁盘加载“{study_name}”结果</translation>
+        <translation>从磁盘加载“{study_name}”结果</translation>
     </message>
     <message>
         <source>No file driver declared :/</source>
-        <translation type="vanished">没有声明文件驱动程序：/</translation>
+        <translation>没有声明文件驱动程序：/</translation>
     </message>
     <message>
         <source>Select a driver inside a session</source>
-        <translation type="vanished">选择会话内的驱动程序</translation>
+        <translation>选择会话内的驱动程序</translation>
     </message>
     <message>
         <source>Driver load from disk</source>
-        <translation type="vanished">从磁盘加载驱动程序</translation>
+        <translation>从磁盘加载驱动程序</translation>
     </message>
     <message>
         <source>Load results from disk</source>
-        <translation type="vanished">从磁盘加载结果</translation>
+        <translation>从磁盘加载结果</translation>
     </message>
     <message>
         <source>Formats (*.json)</source>
-        <translation type="vanished">格式 (*.json)</translation>
+        <translation>格式 (*.json)</translation>
     </message>
     <message>
         <source>Open file</source>
-        <translation type="vanished">打开文件</translation>
+        <translation>打开文件</translation>
     </message>
     <message>
         <source>Contingencies import</source>
-        <translation type="vanished">意外事件进口</translation>
+        <translation>意外事件进口</translation>
     </message>
     <message>
         <source>JSON file (*.json)</source>
-        <translation type="vanished">JSON 文件 (*.json)</translation>
+        <translation>JSON 文件 (*.json)</translation>
     </message>
     <message>
         <source>Catalogue added!</source>
-        <translation type="vanished">目录已添加！</translation>
+        <translation>目录已添加！</translation>
     </message>
     <message>
         <source>Load catalogue</source>
-        <translation type="vanished">加载目录</translation>
+        <translation>加载目录</translation>
     </message>
     <message>
         <source>Open catalogue logger</source>
-        <translation type="vanished">打开目录记录器</translation>
+        <translation>打开目录记录器</translation>
     </message>
     <message>
         <source>Catalogue loaded!</source>
-        <translation type="vanished">目录已加载！</translation>
+        <translation>目录已加载！</translation>
     </message>
     <message>
         <source>Catalogue file (*.xlsx)</source>
-        <translation type="vanished">目录文件 (*.xlsx)</translation>
+        <translation>目录文件 (*.xlsx)</translation>
     </message>
     <message>
         <source>Catalogue Excel file (*.xlsx)</source>
-        <translation type="vanished">目录 Excel 文件 (*.xlsx)</translation>
+        <translation>目录 Excel 文件 (*.xlsx)</translation>
     </message>
     <message>
         <source>Save catalogue</source>
-        <translation type="vanished">保存目录</translation>
+        <translation>保存目录</translation>
     </message>
     <message>
         <source>Catalogue saved!</source>
-        <translation type="vanished">目录已保存！</translation>
+        <translation>目录已保存！</translation>
     </message>
     <message>
         <source>CIM (*.xml)</source>
-        <translation type="vanished">CIM (*.xml)</translation>
+        <translation>CIM (*.xml)</translation>
     </message>
     <message>
         <source>Export to CIM</source>
-        <translation type="vanished">导出至 CIM</translation>
+        <translation>导出至 CIM</translation>
     </message>
     <message>
         <source>Power Grid Models (*.pgm)</source>
-        <translation type="vanished">电网型号（*.pgm）</translation>
+        <translation>电网型号（*.pgm）</translation>
     </message>
     <message>
         <source>Export to Power Grid Models</source>
-        <translation type="vanished">导出到电网模型</translation>
+        <translation>导出到电网模型</translation>
     </message>
     <message>
         <source>Power Grid Models not installed :/</source>
-        <translation type="vanished">未安装的电网模型：/</translation>
+        <translation>未安装的电网模型：/</translation>
     </message>
     <message>
         <source>Electrical Json V3 (*.ejson3)</source>
-        <translation type="vanished">电气 Json V3 (*.ejson3)</translation>
+        <translation>电气 Json V3 (*.ejson3)</translation>
     </message>
     <message>
         <source>Export to JSON</source>
-        <translation type="vanished">导出至 JSON</translation>
+        <translation>导出至 JSON</translation>
     </message>
     <message>
         <source>VeraGrid HDF5 (*.gch5)</source>
-        <translation type="vanished">VeraGrid HDF5 (*.gch5)</translation>
+        <translation>VeraGrid HDF5 (*.gch5)</translation>
     </message>
     <message>
         <source>Export to VeraGrid HDF5</source>
-        <translation type="vanished">导出至 VeraGrid HDF5</translation>
+        <translation>导出至 VeraGrid HDF5</translation>
     </message>
     <message>
         <source>Excel (*.xlsx)</source>
-        <translation type="vanished">Excel (*.xlsx)</translation>
+        <translation>Excel (*.xlsx)</translation>
     </message>
     <message>
         <source>Export to Microsoft Excel</source>
-        <translation type="vanished">导出到 Microsoft Excel</translation>
+        <translation>导出到 Microsoft Excel</translation>
     </message>
     <message>
         <source>Sqlite (*.sqlite)</source>
-        <translation type="vanished">SQLite (*.sqlite)</translation>
+        <translation>SQLite (*.sqlite)</translation>
     </message>
     <message>
         <source>Export to Sqlite</source>
-        <translation type="vanished">导出到 SQLite</translation>
+        <translation>导出到 SQLite</translation>
     </message>
     <message>
         <source>VeraGrid (*.veragrid)</source>
-        <translation type="vanished">VeraGrid (*.veragrid)</translation>
+        <translation>VeraGrid (*.veragrid)</translation>
     </message>
     <message>
         <source>Export VeraGrid scenario</source>
-        <translation type="vanished">导出 VeraGrid 场景</translation>
+        <translation>导出 VeraGrid 场景</translation>
+    </message>
+    <message>
+        <source>Server file deleted.</source>
+        <translation>服务器文件已删除。</translation>
+    </message>
+    <message>
+        <source>Server file saved.</source>
+        <translation>服务器文件已保存。</translation>
+    </message>
+    <message>
+        <source>Server model deleted.</source>
+        <translation>服务器模型已删除。</translation>
+    </message>
+    <message>
+        <source>Server save cancelled.</source>
+        <translation>服务器保存已取消。</translation>
+    </message>
+    <message>
+        <source>The file was loaded but the current project was kept because closing a dynamic editor was cancelled.</source>
+        <translation>文件已加载，但由于取消关闭动态编辑器，当前项目已保留。</translation>
     </message>
 </context>
 <context>
@@ -3150,6 +3550,562 @@ Cancel and retry?</source>
         <source>Data</source>
         <translation>数据</translation>
     </message>
+    <message>
+        <source>&lt;b&gt;{error_count}&lt;/b&gt; errors and &lt;b&gt;{divergence_count}&lt;/b&gt; divergences are blocking the score most strongly.</source>
+        <translation>&lt;b&gt;{error_count}&lt;/b&gt; 个错误和 &lt;b&gt;{divergence_count}&lt;/b&gt; 个发散严重阻碍了得分。</translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;{fixable_count}&lt;/b&gt; findings can be auto-corrected safely from this dashboard.</source>
+        <translation>&lt;b&gt;{fixable_count}&lt;/b&gt; 个发现可以从此仪表板安全地自动更正。</translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;{warning_count}&lt;/b&gt; warnings and &lt;b&gt;{information_count}&lt;/b&gt; informational findings still reduce confidence.</source>
+        <translation>&lt;b&gt;{warning_count}&lt;/b&gt; 个警告和 &lt;b&gt;{information_count}&lt;/b&gt; 个信息性发现仍然降低了置信度。</translation>
+    </message>
+    <message>
+        <source>Action Narrative</source>
+        <translation>操作描述</translation>
+    </message>
+    <message>
+        <source>Aggregation</source>
+        <translation>聚合</translation>
+    </message>
+    <message>
+        <source>All object types</source>
+        <translation>所有对象类型</translation>
+    </message>
+    <message>
+        <source>All severities</source>
+        <translation>所有严重性</translation>
+    </message>
+    <message>
+        <source>Analyzed assets</source>
+        <translation>已分析的资产</translation>
+    </message>
+    <message>
+        <source>Apply fixes to time series</source>
+        <translation>对时间序列应用修复</translation>
+    </message>
+    <message>
+        <source>Area</source>
+        <translation>区域</translation>
+    </message>
+    <message>
+        <source>Auto-fix</source>
+        <translation>自动修复</translation>
+    </message>
+    <message>
+        <source>Auto-fix ready</source>
+        <translation>自动修复就绪</translation>
+    </message>
+    <message>
+        <source>Balance Explorer</source>
+        <translation>平衡探索器</translation>
+    </message>
+    <message>
+        <source>Collapse All</source>
+        <translation>折叠全部</translation>
+    </message>
+    <message>
+        <source>Community</source>
+        <translation>社区</translation>
+    </message>
+    <message>
+        <source>Converged</source>
+        <translation>收敛</translation>
+    </message>
+    <message>
+        <source>Country</source>
+        <translation>国家</translation>
+    </message>
+    <message>
+        <source>Critical findings</source>
+        <translation>关键发现</translation>
+    </message>
+    <message>
+        <source>Dashboard refreshed: {issue_count} findings, score {overall_score}/100.</source>
+        <translation>仪表板已刷新：{issue_count} 个发现，得分 {overall_score}/100。</translation>
+    </message>
+    <message>
+        <source>Divergence</source>
+        <translation>发散</translation>
+    </message>
+    <message>
+        <source>Divergences</source>
+        <translation>发散情况</translation>
+    </message>
+    <message>
+        <source>Error</source>
+        <translation>错误</translation>
+    </message>
+    <message>
+        <source>Errors</source>
+        <translation>错误</translation>
+    </message>
+    <message>
+        <source>Excel (*.xlsx)</source>
+        <translation>Excel (*.xlsx)</translation>
+    </message>
+    <message>
+        <source>Excel (*.xlsx);;HTML (*.html);;PDF (*.pdf)</source>
+        <translation>Excel (*.xlsx);;HTML (*.html);;PDF (*.pdf)</translation>
+    </message>
+    <message>
+        <source>Executive Overview</source>
+        <translation>执行摘要</translation>
+    </message>
+    <message>
+        <source>Expand All</source>
+        <translation>展开全部</translation>
+    </message>
+    <message>
+        <source>Export the full report once the score and findings reflect the scenario you want to share.</source>
+        <translation>一旦得分和发现反映了您想要分享的场景，即可导出完整报告。</translation>
+    </message>
+    <message>
+        <source>Field</source>
+        <translation>字段</translation>
+    </message>
+    <message>
+        <source>Findings ({count})</source>
+        <translation>发现 ({count})</translation>
+    </message>
+    <message>
+        <source>Findings Explorer</source>
+        <translation>发现探索器</translation>
+    </message>
+    <message>
+        <source>Findings Explorer ({count})</source>
+        <translation>发现探索器 ({count})</translation>
+    </message>
+    <message>
+        <source>Fixed issues</source>
+        <translation>已修复问题</translation>
+    </message>
+    <message>
+        <source>Full dashboard report exported to {file_name}.</source>
+        <translation>完整仪表板报告已导出到 {file_name}。</translation>
+    </message>
+    <message>
+        <source>Generator Vset max</source>
+        <translation>发电机 Vset 最大值</translation>
+    </message>
+    <message>
+        <source>Generator Vset min</source>
+        <translation>发电机 Vset 最小值</translation>
+    </message>
+    <message>
+        <source>Global</source>
+        <translation>全局</translation>
+    </message>
+    <message>
+        <source>Grade</source>
+        <translation>等级</translation>
+    </message>
+    <message>
+        <source>Grade {grade}</source>
+        <translation>等级 {grade}</translation>
+    </message>
+    <message>
+        <source>Grid Health Dashboard Report</source>
+        <translation>电网健康仪表板报告</translation>
+    </message>
+    <message>
+        <source>Index</source>
+        <translation>索引</translation>
+    </message>
+    <message>
+        <source>Information</source>
+        <translation>信息</translation>
+    </message>
+    <message>
+        <source>Inputs analysis is unavailable for the current grid.</source>
+        <translation>当前电网无法进行输入分析。</translation>
+    </message>
+    <message>
+        <source>Inputs analysis pending.</source>
+        <translation>输入分析待处理。</translation>
+    </message>
+    <message>
+        <source>Inputs analysis unavailable</source>
+        <translation>输入分析不可用</translation>
+    </message>
+    <message>
+        <source>Investigate buses with the smallest sigma distances because the current stability margin is tight.</source>
+        <translation>调查具有最小 sigma 距离的母线，因为当前的稳定性裕度很小。</translation>
+    </message>
+    <message>
+        <source>Issue score</source>
+        <translation>问题得分</translation>
+    </message>
+    <message>
+        <source>Issue score {issue_score:.1f}/100 • sigma score unavailable.</source>
+        <translation>问题得分 {issue_score:.1f}/100 • sigma 得分不可用。</translation>
+    </message>
+    <message>
+        <source>Issue score {issue_score:.1f}/100 • sigma score {sigma_score:.1f}/100.</source>
+        <translation>问题得分 {issue_score:.1f}/100 • sigma 得分 {sigma_score:.1f}/100。</translation>
+    </message>
+    <message>
+        <source>Issues</source>
+        <translation>问题</translation>
+    </message>
+    <message>
+        <source>Issues exported to {file_name}.</source>
+        <translation>问题已导出到 {file_name}。</translation>
+    </message>
+    <message>
+        <source>Item</source>
+        <translation>项目</translation>
+    </message>
+    <message>
+        <source>Lower</source>
+        <translation>更低</translation>
+    </message>
+    <message>
+        <source>Make the grid simulation-ready and rerun the dashboard so sigma margin can join the report.</source>
+        <translation>使电网准备就绪并重新运行仪表板，以便 sigma 裕度可以加入报告。</translation>
+    </message>
+    <message>
+        <source>Mean sigma distance</source>
+        <translation>平均 sigma 距离</translation>
+    </message>
+    <message>
+        <source>Mean {mean_distance:.3f} p.u.</source>
+        <translation>平均 {mean_distance:.3f} p.u.</translation>
+    </message>
+    <message>
+        <source>Message</source>
+        <translation>留言</translation>
+    </message>
+    <message>
+        <source>Metric</source>
+        <translation>指标</translation>
+    </message>
+    <message>
+        <source>Minimum distance {min_distance:.3f} p.u. • mean distance {mean_distance:.3f} p.u.</source>
+        <translation>最小距离 {min_distance:.3f} p.u. • 平均距离 {mean_distance:.3f} p.u.</translation>
+    </message>
+    <message>
+        <source>Minimum sigma distance</source>
+        <translation>最小 sigma 距离</translation>
+    </message>
+    <message>
+        <source>Most Repeated Finding</source>
+        <translation>最常出现的发现</translation>
+    </message>
+    <message>
+        <source>Most repeated finding</source>
+        <translation>最常出现的发现</translation>
+    </message>
+    <message>
+        <source>Most repeated finding count</source>
+        <translation>最常出现的发现次数</translation>
+    </message>
+    <message>
+        <source>Municipality</source>
+        <translation>市政区</translation>
+    </message>
+    <message>
+        <source>N/A</source>
+        <translation>不适用</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>名称</translation>
+    </message>
+    <message>
+        <source>Net balance (MW)</source>
+        <translation>净平衡 (MW)</translation>
+    </message>
+    <message>
+        <source>No</source>
+        <translation>否</translation>
+    </message>
+    <message>
+        <source>No balance series available</source>
+        <translation>没有平衡序列可用</translation>
+    </message>
+    <message>
+        <source>No findings were produced by the current analysis settings.</source>
+        <translation>当前分析设置未生成任何发现。</translation>
+    </message>
+    <message>
+        <source>No safe automatic fixes were detected, so the next step is a manual review of the highest-severity findings.</source>
+        <translation>未检测到安全的自动修复，因此下一步是手动审查最高严重性发现。</translation>
+    </message>
+    <message>
+        <source>No snapshot balances available</source>
+        <translation>没有快照平衡数据可用</translation>
+    </message>
+    <message>
+        <source>No {aggregation} balances are available to plot.</source>
+        <translation>没有 {aggregation} 平衡数据可供绘图。</translation>
+    </message>
+    <message>
+        <source>Object</source>
+        <translation>对象</translation>
+    </message>
+    <message>
+        <source>Overall score</source>
+        <translation>总体得分</translation>
+    </message>
+    <message>
+        <source>Prioritize errors and divergences before warnings, especially the rows tagged with severe numerical or connectivity issues.</source>
+        <translation>优先处理错误和偏差，然后再处理警告，特别是标记有严重数值或连接问题的行。</translation>
+    </message>
+    <message>
+        <source>Property</source>
+        <translation>属性</translation>
+    </message>
+    <message>
+        <source>Recommended Next Actions</source>
+        <translation>推荐后续操作</translation>
+    </message>
+    <message>
+        <source>Region</source>
+        <translation>区域</translation>
+    </message>
+    <message>
+        <source>Safe corrections available</source>
+        <translation>可用的安全修正</translation>
+    </message>
+    <message>
+        <source>Score Rationale</source>
+        <translation>得分依据</translation>
+    </message>
+    <message>
+        <source>Severity</source>
+        <translation>严重性</translation>
+    </message>
+    <message>
+        <source>Showing the {count} strongest {aggregation} balance traces. Largest absolute balance: {column_name} at {column_value:.3f} MW.</source>
+        <translation>显示 {count} 个最强的 {aggregation} 平衡曲线。最大绝对平衡值：{column_name} 在 {column_value:.3f} MW。</translation>
+    </message>
+    <message>
+        <source>Sigma</source>
+        <translation>西格玛</translation>
+    </message>
+    <message>
+        <source>Sigma Plot</source>
+        <translation>西格玛图</translation>
+    </message>
+    <message>
+        <source>Sigma Table</source>
+        <translation>西格玛表</translation>
+    </message>
+    <message>
+        <source>Sigma analysis</source>
+        <translation>西格玛分析</translation>
+    </message>
+    <message>
+        <source>Sigma analysis converged.</source>
+        <translation>西格玛分析已收敛。</translation>
+    </message>
+    <message>
+        <source>Sigma analysis could not be produced for the current grid state.</source>
+        <translation>当前电网状态无法生成西格玛分析。</translation>
+    </message>
+    <message>
+        <source>Sigma analysis did not converge</source>
+        <translation>西格玛分析未收敛</translation>
+    </message>
+    <message>
+        <source>Sigma analysis failed: {exception}</source>
+        <translation>西格玛分析失败：{exception}</translation>
+    </message>
+    <message>
+        <source>Sigma analysis returned no results.</source>
+        <translation>西格玛分析未返回结果。</translation>
+    </message>
+    <message>
+        <source>Sigma analysis unavailable because the grid is not valid for simulation.</source>
+        <translation>由于电网不适合模拟，无法进行西格玛分析。</translation>
+    </message>
+    <message>
+        <source>Sigma available</source>
+        <translation>可用西格玛</translation>
+    </message>
+    <message>
+        <source>Sigma coefficients did not fully converge.</source>
+        <translation>西格玛系数未完全收敛。</translation>
+    </message>
+    <message>
+        <source>Sigma data unavailable</source>
+        <translation>西格玛数据不可用</translation>
+    </message>
+    <message>
+        <source>Sigma distance</source>
+        <translation>西格玛距离</translation>
+    </message>
+    <message>
+        <source>Sigma distance is not available</source>
+        <translation>西格玛距离不可用</translation>
+    </message>
+    <message>
+        <source>Sigma margin is acceptable, so focus on structural cleanup before attempting aggressive operational studies.</source>
+        <translation>西格玛裕度可接受，因此在尝试激进运行研究之前，请关注结构清理。</translation>
+    </message>
+    <message>
+        <source>Sigma plot</source>
+        <translation>西格玛图</translation>
+    </message>
+    <message>
+        <source>Sigma plot is unavailable for the current grid state.</source>
+        <translation>当前电网状态无法生成西格玛图。</translation>
+    </message>
+    <message>
+        <source>Sigma point is outside the stability curve</source>
+        <translation>西格玛点超出稳定曲线</translation>
+    </message>
+    <message>
+        <source>Sigma score</source>
+        <translation>西格玛得分</translation>
+    </message>
+    <message>
+        <source>Sigma stability could not be included in the score because the simulation could not be produced.</source>
+        <translation>由于无法生成模拟，因此无法将西格玛稳定性计入得分。</translation>
+    </message>
+    <message>
+        <source>Sigma stability margin is available with minimum distance &lt;b&gt;{min_distance:.3f} p.u.&lt;/b&gt; and mean distance &lt;b&gt;{mean_distance:.3f} p.u.&lt;/b&gt;.</source>
+        <translation>西格玛稳定性裕度可用，最小距离 &lt;b&gt;{min_distance:.3f} p.u.&lt;/b&gt;，平均距离 &lt;b&gt;{mean_distance:.3f} p.u.&lt;/b&gt;。</translation>
+    </message>
+    <message>
+        <source>Sigma status</source>
+        <translation>西格玛状态</translation>
+    </message>
+    <message>
+        <source>Sigma table</source>
+        <translation>西格玛表</translation>
+    </message>
+    <message>
+        <source>Sigma table copied to clipboard.</source>
+        <translation>西格玛表已复制到剪贴板。</translation>
+    </message>
+    <message>
+        <source>Snapshot net balances by {aggregation}. Largest exporter: {exporter_name} ({exporter_value:.3f} MW). Largest importer: {importer_name} ({importer_value:.3f} MW).</source>
+        <translation>按 {aggregation} 的快照净平衡。最大出口商：{exporter_name} ({exporter_value:.3f} MW)。最大进口商：{importer_name} ({importer_value:.3f} MW)。</translation>
+    </message>
+    <message>
+        <source>Status</source>
+        <translation>状态</translation>
+    </message>
+    <message>
+        <source>Summary</source>
+        <translation>摘要</translation>
+    </message>
+    <message>
+        <source>The current dashboard state does not expose any safe automatic fixes.</source>
+        <translation>当前仪表板状态未暴露任何安全的自动修复。</translation>
+    </message>
+    <message>
+        <source>The grid scores &lt;b&gt;{overall_score}/100&lt;/b&gt; (&lt;b&gt;grade {grade}&lt;/b&gt;) across &lt;b&gt;{asset_count}&lt;/b&gt; analyzed assets.</source>
+        <translation>电网在 &lt;b&gt;{asset_count}&lt;/b&gt; 个分析资产中的得分是 &lt;b&gt;{overall_score}/100&lt;/b&gt; (&lt;b&gt;等级 {grade}&lt;/b&gt;)。</translation>
+    </message>
+    <message>
+        <source>There are no critical findings, so the remaining work is mainly quality hardening and model cleanup.</source>
+        <translation>没有关键发现，因此剩余工作主要是质量加固和模型清理。</translation>
+    </message>
+    <message>
+        <source>There is no sigma table available to copy.</source>
+        <translation>没有可供复制的西格玛表。</translation>
+    </message>
+    <message>
+        <source>Threshold</source>
+        <translation>阈值</translation>
+    </message>
+    <message>
+        <source>Thresholds</source>
+        <translation>阈值</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>时间</translation>
+    </message>
+    <message>
+        <source>Top N</source>
+        <translation>前 N 个</translation>
+    </message>
+    <message>
+        <source>Top {count} {aggregation} balances over time</source>
+        <translation>随时间变化的 {count} 个 {aggregation} 平衡值</translation>
+    </message>
+    <message>
+        <source>Top {count} {aggregation} snapshot balances</source>
+        <translation>{count} 个 {aggregation} 快照平衡值</translation>
+    </message>
+    <message>
+        <source>Total findings</source>
+        <translation>总发现数</translation>
+    </message>
+    <message>
+        <source>Transformer Vcc max (%)</source>
+        <translation>变压器 Vcc 最大值 (%)</translation>
+    </message>
+    <message>
+        <source>Transformer Vcc min (%)</source>
+        <translation>变压器 Vcc 最小值 (%)</translation>
+    </message>
+    <message>
+        <source>Transformer tap module max</source>
+        <translation>变压器分接模块最大值</translation>
+    </message>
+    <message>
+        <source>Transformer tap module min</source>
+        <translation>变压器分接模块最小值</translation>
+    </message>
+    <message>
+        <source>Unnamed grid</source>
+        <translation>未命名电网</translation>
+    </message>
+    <message>
+        <source>Upper</source>
+        <translation>上部</translation>
+    </message>
+    <message>
+        <source>Use &lt;b&gt;Fix Safe Issues&lt;/b&gt; to correct the problems already covered by automatic repairs, then refresh the score.</source>
+        <translation>使用 &lt;b&gt;修复安全问题&lt;/b&gt; 来修正已由自动修复覆盖的问题，然后刷新分数。</translation>
+    </message>
+    <message>
+        <source>Use the tabs below to review the executive overview, detailed findings, action narrative, sigma stability view and threshold controls.</source>
+        <translation>使用下面的选项卡查看执行摘要、详细发现、行动叙述、西格玛稳定性视图和阈值控制。</translation>
+    </message>
+    <message>
+        <source>Value</source>
+        <translation>值</translation>
+    </message>
+    <message>
+        <source>VoltageLevel</source>
+        <translation>电压等级</translation>
+    </message>
+    <message>
+        <source>Warning</source>
+        <translation>警告</translation>
+    </message>
+    <message>
+        <source>Warnings</source>
+        <translation>警告</translation>
+    </message>
+    <message>
+        <source>Yes</source>
+        <translation>是</translation>
+    </message>
+    <message>
+        <source>Zone</source>
+        <translation>区域</translation>
+    </message>
+    <message>
+        <source>{critical_count} critical findings</source>
+        <translation>{critical_count} 个关键发现</translation>
+    </message>
+    <message>
+        <source>{grid_name}  •  {bus_count} buses  •  {line_count} lines  •  {transformer_count} transformers</source>
+        <translation>{grid_name} • {bus_count} 个母线 • {line_count} 条线路 • {transformer_count} 个变压器</translation>
+    </message>
+    <message>
+        <source>{status_text} Min distance {min_distance:.3f} p.u. • mean distance {mean_distance:.3f} p.u.</source>
+        <translation>{status_text} 最小距离 {min_distance:.3f} p.u. • 平均距离 {mean_distance:.3f} p.u.</translation>
+    </message>
 </context>
 <context>
     <name>MatpowerExportDialog</name>
@@ -3307,149 +4263,161 @@ Cancel and retry?</source>
     <name>ResultsMain</name>
     <message>
         <source>Delete driver</source>
-        <translation type="vanished">删除驱动程序</translation>
+        <translation>删除驱动程序</translation>
     </message>
     <message>
         <source>Rename group</source>
-        <translation type="vanished">重命名组</translation>
+        <translation>重命名组</translation>
     </message>
     <message>
         <source>Rename variable</source>
-        <translation type="vanished">重命名变量</translation>
+        <translation>重命名变量</translation>
     </message>
     <message>
         <source>Rename dynamic plot</source>
-        <translation type="vanished">重命名动态图</translation>
+        <translation>重命名动态图</translation>
     </message>
     <message>
         <source>Plot name</source>
-        <translation type="vanished">地块名称</translation>
+        <translation>地块名称</translation>
     </message>
     <message>
         <source>The plot group name is empty or already exists.</source>
-        <translation type="vanished">绘图组名称为空或已存在。</translation>
+        <translation>绘图组名称为空或已存在。</translation>
     </message>
     <message>
         <source>Select a plot group first.</source>
-        <translation type="vanished">首先选择一个绘图组。</translation>
+        <translation>首先选择一个绘图组。</translation>
     </message>
     <message>
         <source>There are no RMS dynamics results loaded.</source>
-        <translation type="vanished">没有加载 RMS 动态结果。</translation>
+        <translation>没有加载 RMS 动态结果。</translation>
     </message>
     <message>
         <source>Rename dynamic variable</source>
-        <translation type="vanished">重命名动态变量</translation>
+        <translation>重命名动态变量</translation>
     </message>
     <message>
         <source>Variable name</source>
-        <translation type="vanished">变量名</translation>
+        <translation>变量名</translation>
     </message>
     <message>
         <source>The variable name is empty or could not be changed.</source>
-        <translation type="vanished">变量名称为空或无法更改。</translation>
+        <translation>变量名称为空或无法更改。</translation>
     </message>
     <message>
         <source>New dynamic plot</source>
-        <translation type="vanished">新动态剧情</translation>
+        <translation>新动态剧情</translation>
     </message>
     <message>
         <source>Plot mode</source>
-        <translation type="vanished">情节模式</translation>
+        <translation>情节模式</translation>
     </message>
     <message>
         <source>Time Series (Y vs Time)</source>
-        <translation type="vanished">时间序列（Y 与时间）</translation>
+        <translation>时间序列（Y 与时间）</translation>
     </message>
     <message>
         <source>X-Y Plot (Y vs X)</source>
-        <translation type="vanished">X-Y 图（Y 与 X）</translation>
+        <translation>X-Y 图（Y 与 X）</translation>
     </message>
     <message>
         <source>The selected dynamic plot entry could not be deleted.</source>
-        <translation type="vanished">无法删除选定的动态绘图条目。</translation>
+        <translation>无法删除选定的动态绘图条目。</translation>
     </message>
     <message>
         <source>Select a plot group or variable first.</source>
-        <translation type="vanished">首先选择绘图组或变量。</translation>
+        <translation>首先选择绘图组或变量。</translation>
     </message>
     <message>
         <source>The selected dynamic plot entry could not be plotted.</source>
-        <translation type="vanished">无法绘制所选的动态绘图条目。</translation>
+        <translation>无法绘制所选的动态绘图条目。</translation>
     </message>
     <message>
         <source>There are {columns} columns, the plot might take a lot to render.
 Are you ok with potentially waiting a lot?</source>
-        <translation type="vanished">有 {columns} 列，绘图可能需要很长时间才能渲染。
+        <translation>有 {columns} 列，绘图可能需要很长时间才能渲染。
 您愿意等待很长时间吗？</translation>
     </message>
     <message>
         <source>Plot</source>
-        <translation type="vanished">情节</translation>
+        <translation>情节</translation>
     </message>
     <message>
         <source>Export results</source>
-        <translation type="vanished">导出结果</translation>
+        <translation>导出结果</translation>
     </message>
     <message>
         <source>CSV (*.csv);;Excel files (*.xlsx)</source>
-        <translation type="vanished">CSV (*.csv);;Excel 文件 (*.xlsx)</translation>
+        <translation>CSV (*.csv);;Excel 文件 (*.xlsx)</translation>
     </message>
     <message>
         <source> is not valid :(</source>
-        <translation type="vanished"> 无效:(</translation>
+        <translation> 无效:(</translation>
     </message>
     <message>
         <source>There is no profile displayed, please display one</source>
-        <translation type="vanished">没有显示个人资料，请显示一个</translation>
+        <translation>没有显示个人资料，请显示一个</translation>
     </message>
     <message>
         <source>Copy profile to clipboard</source>
-        <translation type="vanished">将配置文件复制到剪贴板</translation>
+        <translation>将配置文件复制到剪贴板</translation>
     </message>
     <message>
         <source>Copied!</source>
-        <translation type="vanished">复制了！</translation>
+        <translation>复制了！</translation>
     </message>
     <message>
         <source>Filter parse</source>
-        <translation type="vanished">过滤解析</translation>
+        <translation>过滤解析</translation>
     </message>
     <message>
         <source>Do you want to delete the results driver {study_name}?</source>
-        <translation type="vanished">您想删除结果驱动程序{study_name}吗？</translation>
+        <translation>您想删除结果驱动程序{study_name}吗？</translation>
     </message>
     <message>
         <source>Message</source>
-        <translation type="vanished">留言</translation>
+        <translation>留言</translation>
     </message>
     <message>
         <source>Are you sure that you want to overwrite the generation, batteries and load snapshot values with the OPF results?</source>
-        <translation type="vanished">您确定要使用 OPF 结果覆盖发电量、电池和负载快照值吗？</translation>
+        <translation>您确定要使用 OPF 结果覆盖发电量、电池和负载快照值吗？</translation>
     </message>
     <message>
         <source>Overwrite profiles with OPF results</source>
-        <translation type="vanished">使用 OPF 结果覆盖配置文件</translation>
+        <translation>使用 OPF 结果覆盖配置文件</translation>
     </message>
     <message>
         <source>P snapshot set from the OPF results</source>
-        <translation type="vanished">P快照集来自OPF结果</translation>
+        <translation>P快照集来自OPF结果</translation>
     </message>
     <message>
         <source>The OPF time series has no results :(</source>
-        <translation type="vanished">OPF 时间序列没有结果:(</translation>
+        <translation>OPF 时间序列没有结果:(</translation>
     </message>
     <message>
         <source>Are you sure that you want to overwrite the generation, batteries and load profiles with the OPF time series results?</source>
-        <translation type="vanished">您确定要使用 OPF 时间序列结果覆盖发电量、电池和负载曲线吗？</translation>
+        <translation>您确定要使用 OPF 时间序列结果覆盖发电量、电池和负载曲线吗？</translation>
     </message>
     <message>
         <source>P profiles set from the OPF results</source>
-        <translation type="vanished">根据 OPF 结果设置的 P 型材</translation>
+        <translation>根据 OPF 结果设置的 P 型材</translation>
     </message>
     <message>
         <source>Export logs</source>
-        <translation type="vanished">导出日志</translation>
+        <translation>导出日志</translation>
+    </message>
+    <message>
+        <source>Plot results</source>
+        <translation>绘制结果</translation>
+    </message>
+    <message>
+        <source>Select a variable first.</source>
+        <translation>请先选择一个变量。</translation>
+    </message>
+    <message>
+        <source>There are no results available to plot.</source>
+        <translation>没有可供绘制的结果。</translation>
     </message>
 </context>
 <context>
@@ -3516,18 +4484,18 @@ Are you ok with potentially waiting a lot?</source>
     <message>
         <source>VeraGrid internal commands.
 </source>
-        <translation type="vanished">VeraGrid 内部命令。
+        <translation>VeraGrid 内部命令。
 </translation>
     </message>
     <message>
         <source>If a command is unavailable is because the study has not been executed yet.</source>
-        <translation type="vanished">如果命令不可用，是因为研究尚未执行。</translation>
+        <translation>如果命令不可用，是因为研究尚未执行。</translation>
     </message>
     <message>
         <source>
 
 clc():	clear the console.</source>
-        <translation type="vanished">
+        <translation>
 
 clc()：清除控制台。</translation>
     </message>
@@ -3535,305 +4503,305 @@ clc()：清除控制台。</translation>
         <source>
 
 App functions:</source>
-        <translation type="vanished">
+        <translation>
 
 应用程序功能：</translation>
     </message>
     <message>
         <source>	app.new_project(): Clear all.</source>
-        <translation type="vanished">	app.new_project()：全部清除。</translation>
+        <translation>	app.new_project()：全部清除。</translation>
     </message>
     <message>
         <source>	app.open_file(): Prompt to load VeraGrid compatible file</source>
-        <translation type="vanished">	app.open_file()：提示加载VeraGrid兼容文件</translation>
+        <translation>	app.open_file()：提示加载VeraGrid兼容文件</translation>
     </message>
     <message>
         <source>	app.save_file(): Prompt to save VeraGrid file</source>
-        <translation type="vanished">	app.save_file()：提示保存VeraGrid文件</translation>
+        <translation>	app.save_file()：提示保存VeraGrid文件</translation>
     </message>
     <message>
         <source>	app.export_diagram(): Prompt to export the diagram in png.</source>
-        <translation type="vanished">	app.export_diagram()：提示导出png格式的图表。</translation>
+        <translation>	app.export_diagram()：提示导出png格式的图表。</translation>
     </message>
     <message>
         <source>	app.create_schematic_from_api(): Create the schematic from the circuit information.</source>
-        <translation type="vanished">	app.create_schematic_from_api()：根据电路信息创建原理图。</translation>
+        <translation>	app.create_schematic_from_api()：根据电路信息创建原理图。</translation>
     </message>
     <message>
         <source>	app.adjust_all_node_width(): Adjust the width of all the nodes according to their name.</source>
-        <translation type="vanished">	app.adjust_all_node_width()：根据名称调整所有节点的宽度。</translation>
+        <translation>	app.adjust_all_node_width()：根据名称调整所有节点的宽度。</translation>
     </message>
     <message>
         <source>	app.numerical_circuit: get compilation of the assets.</source>
-        <translation type="vanished">	app.numeric_ Circuit：获取资产的编译。</translation>
+        <translation>	app.numeric_ Circuit：获取资产的编译。</translation>
     </message>
     <message>
         <source>	app.islands: get compilation of the assets split into the topological islands.</source>
-        <translation type="vanished">	app.islands：获取分成拓扑岛的资产的编译。</translation>
+        <translation>	app.islands：获取分成拓扑岛的资产的编译。</translation>
     </message>
     <message>
         <source>
 
 Circuit functions:</source>
-        <translation type="vanished">
+        <translation>
 
 电路功能：</translation>
     </message>
     <message>
         <source>	app.circuit.plot_graph(): Plot a graph in a Matplotlib window. Call plt.show() after.</source>
-        <translation type="vanished">app.circuit.plot_graph()：在 Matplotlib 窗口中绘制图形。之后拨打plt.show()。</translation>
+        <translation>app.circuit.plot_graph()：在 Matplotlib 窗口中绘制图形。之后拨打plt.show()。</translation>
     </message>
     <message>
         <source>
 
 Power flow results:</source>
-        <translation type="vanished">
+        <translation>
 
 潮流结果：</translation>
     </message>
     <message>
         <source>	app.session.power_flow.voltage:	 the nodal voltages in per unit</source>
-        <translation type="vanished">	app.session.power_flow.Voltage：每单位的节点电压</translation>
+        <translation>	app.session.power_flow.Voltage：每单位的节点电压</translation>
     </message>
     <message>
         <source>	app.session.power_flow.current:	 the branch currents in per unit</source>
-        <translation type="vanished">	app.session.power_flow.current：每单位的支路电流</translation>
+        <translation>	app.session.power_flow.current：每单位的支路电流</translation>
     </message>
     <message>
         <source>	app.session.power_flow.loading:	 the branch loading in %</source>
-        <translation type="vanished">	app.session.power_flow.loading：分支加载百分比</translation>
+        <translation>	app.session.power_flow.loading：分支加载百分比</translation>
     </message>
     <message>
         <source>	app.session.power_flow.losses:	 the branch losses in per unit</source>
-        <translation type="vanished">	app.session.power_flow.losses：每单位的支路损耗</translation>
+        <translation>	app.session.power_flow.losses：每单位的支路损耗</translation>
     </message>
     <message>
         <source>	app.session.power_flow.power:	 the nodal power Injections in per unit</source>
-        <translation type="vanished">	app.session.power_flow.power：每单位的节点功率注入</translation>
+        <translation>	app.session.power_flow.power：每单位的节点功率注入</translation>
     </message>
     <message>
         <source>	app.session.power_flow.Sf:	 the branch power Injections in per unit at the &quot;from&quot; side</source>
-        <translation type="vanished">	app.session.power_flow.Sf：“来自”侧每单位的分支功率注入</translation>
+        <translation>	app.session.power_flow.Sf：“来自”侧每单位的分支功率注入</translation>
     </message>
     <message>
         <source>	app.session.power_flow.St:	 the branch power Injections in per unit at the &quot;to&quot; side</source>
-        <translation type="vanished">	app.session.power_flow.St：“到”侧每单位的分支功率注入</translation>
+        <translation>	app.session.power_flow.St：“到”侧每单位的分支功率注入</translation>
     </message>
     <message>
         <source>
 
 Short circuit results:</source>
-        <translation type="vanished">
+        <translation>
 
 短路结果：</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.voltage:	 the nodal voltages in per unit</source>
-        <translation type="vanished">	app.session.short_ Circuit.Voltage：每单位的节点电压</translation>
+        <translation>	app.session.short_ Circuit.Voltage：每单位的节点电压</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.current:	 the branch currents in per unit</source>
-        <translation type="vanished">	app.session.short_ Circuit.current：每单位的支路电流</translation>
+        <translation>	app.session.short_ Circuit.current：每单位的支路电流</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.loading:	 the branch loading in %</source>
-        <translation type="vanished">	app.session.short_ Circuit.loading：分支加载百分比</translation>
+        <translation>	app.session.short_ Circuit.loading：分支加载百分比</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.losses:	 the branch losses in per unit</source>
-        <translation type="vanished">	app.session.short_ Circuit.losses：每单位的支路损耗</translation>
+        <translation>	app.session.short_ Circuit.losses：每单位的支路损耗</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.power:	 the nodal power Injections in per unit</source>
-        <translation type="vanished">	app.session.short_ Circuit.power：每单位的节点功率注入</translation>
+        <translation>	app.session.short_ Circuit.power：每单位的节点功率注入</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.power_from:	 the branch power Injections in per unit at the &quot;from&quot; side</source>
-        <translation type="vanished">	app.session.short_ Circuit.power_from：“来自”侧每单元的分支功率注入</translation>
+        <translation>	app.session.short_ Circuit.power_from：“来自”侧每单元的分支功率注入</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.power_to:	 the branch power Injections in per unit at the &quot;to&quot; side</source>
-        <translation type="vanished">	app.session.short_ Circuit.power_to：“to”侧每单元的分支功率注入</translation>
+        <translation>	app.session.short_ Circuit.power_to：“to”侧每单元的分支功率注入</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.short_circuit_power:	 Short circuit power in MVA of the grid nodes</source>
-        <translation type="vanished">	app.session.short_Circuit.short_Circuit_power：电网节点MVA的短路功率</translation>
+        <translation>	app.session.short_Circuit.short_Circuit_power：电网节点MVA的短路功率</translation>
     </message>
     <message>
         <source>
 
 Optimal power flow results:</source>
-        <translation type="vanished">
+        <translation>
 
 最佳潮流结果：</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.voltage:	 the nodal voltages angles in rad</source>
-        <translation type="vanished">	app.session.optimal_power_flow.Voltage：节点电压角度（以 rad 为单位）</translation>
+        <translation>	app.session.optimal_power_flow.Voltage：节点电压角度（以 rad 为单位）</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.load_shedding:	 the branch loading in %</source>
-        <translation type="vanished">app.session.optimal_power_flow.load_shedding：分支加载百分比</translation>
+        <translation>app.session.optimal_power_flow.load_shedding：分支加载百分比</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.losses:	 the branch losses in per unit</source>
-        <translation type="vanished">	app.session.optimal_power_flow.losses：每单位的分支损耗</translation>
+        <translation>	app.session.optimal_power_flow.losses：每单位的分支损耗</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.Sbus:	 the nodal power Injections in MW</source>
-        <translation type="vanished">	app.session.optimal_power_flow.Sbus：MW 中的节点功率注入</translation>
+        <translation>	app.session.optimal_power_flow.Sbus：MW 中的节点功率注入</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.Sf:	 the branch power Sf</source>
-        <translation type="vanished">	app.session.optimal_power_flow.Sf：分支功率Sf</translation>
+        <translation>	app.session.optimal_power_flow.Sf：分支功率Sf</translation>
     </message>
     <message>
         <source>
 
 Time series power flow results:</source>
-        <translation type="vanished">
+        <translation>
 
 时间序列潮流结果：</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.time:	 Profiles time index (pandas DateTimeIndex object)</source>
-        <translation type="vanished">	app.session.power_flow_ts.time：配置文件时间索引（pandas DateTimeIndex 对象）</translation>
+        <translation>	app.session.power_flow_ts.time：配置文件时间索引（pandas DateTimeIndex 对象）</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.load_profiles:	 Load profiles matrix (row: time, col: node)</source>
-        <translation type="vanished">	app.session.power_flow_ts.load_profiles：负载配置文件矩阵（行：时间，列：节点）</translation>
+        <translation>	app.session.power_flow_ts.load_profiles：负载配置文件矩阵（行：时间，列：节点）</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.gen_profiles:	 Generation profiles matrix (row: time, col: node)</source>
-        <translation type="vanished">	app.session.power_flow_ts.gen_profiles：生成配置文件矩阵（行：时间，列：节点）</translation>
+        <translation>	app.session.power_flow_ts.gen_profiles：生成配置文件矩阵（行：时间，列：节点）</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.voltages:	 nodal voltages results matrix (row: time, col: node)</source>
-        <translation type="vanished">	app.session.power_flow_ts.volts：节点电压结果矩阵（行：时间，列：节点）</translation>
+        <translation>	app.session.power_flow_ts.volts：节点电压结果矩阵（行：时间，列：节点）</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.currents:	 Branches currents results matrix (row: time, col: branch)</source>
-        <translation type="vanished">	app.session.power_flow_ts.currents：分支电流结果矩阵（行：时间，列：分支）</translation>
+        <translation>	app.session.power_flow_ts.currents：分支电流结果矩阵（行：时间，列：分支）</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.loadings:	 Branches loadings results matrix (row: time, col: branch)</source>
-        <translation type="vanished">	app.session.power_flow_ts.loadings：分支加载结果矩阵（行：时间，列：分支）</translation>
+        <translation>	app.session.power_flow_ts.loadings：分支加载结果矩阵（行：时间，列：分支）</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.losses:	 Branches losses results matrix (row: time, col: branch)</source>
-        <translation type="vanished">	app.session.power_flow_ts.losses：分支损失结果矩阵（行：时间，列：分支）</translation>
+        <translation>	app.session.power_flow_ts.losses：分支损失结果矩阵（行：时间，列：分支）</translation>
     </message>
     <message>
         <source>
 
 Voltage stability power flow results:</source>
-        <translation type="vanished">
+        <translation>
 
 电压稳定性潮流结果：</translation>
     </message>
     <message>
         <source>	app.session.continuation_power_flow.voltage:	 Voltage values for every power multiplication factor.</source>
-        <translation type="vanished">	app.session.continuation_power_flow.Voltage：每个功率倍增因子的电压值。</translation>
+        <translation>	app.session.continuation_power_flow.Voltage：每个功率倍增因子的电压值。</translation>
     </message>
     <message>
         <source>	app.session.continuation_power_flow.lambda:	 Value of power multiplication factor applied</source>
-        <translation type="vanished">	app.session.continuation_power_flow.lambda：应用的功率倍增因子的值</translation>
+        <translation>	app.session.continuation_power_flow.lambda：应用的功率倍增因子的值</translation>
     </message>
     <message>
         <source>	app.session.continuation_power_flow.Sf:	 Power values for every power multiplication factor.</source>
-        <translation type="vanished">	app.session.continuation_power_flow.Sf：每个功率倍增因子的功率值。</translation>
+        <translation>	app.session.continuation_power_flow.Sf：每个功率倍增因子的功率值。</translation>
     </message>
     <message>
         <source>
 
 Monte Carlo power flow results:</source>
-        <translation type="vanished">
+        <translation>
 
 蒙特卡罗潮流结果：</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.V_avg:	 nodal voltage average result.</source>
-        <translation type="vanished">	app.session.stochastic_power_flow.V_avg：节点电压平均结果。</translation>
+        <translation>	app.session.stochastic_power_flow.V_avg：节点电压平均结果。</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.I_avg:	 branch current average result.</source>
-        <translation type="vanished">	app.session.stochastic_power_flow.I_avg：分支电流平均结果。</translation>
+        <translation>	app.session.stochastic_power_flow.I_avg：分支电流平均结果。</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.Loading_avg:	 branch loading average result.</source>
-        <translation type="vanished">	app.session.stochastic_power_flow.Loading_avg：分支加载平均结果。</translation>
+        <translation>	app.session.stochastic_power_flow.Loading_avg：分支加载平均结果。</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.Losses_avg:	 branch losses average result.</source>
-        <translation type="vanished">app.session.stochastic_power_flow.Losses_avg：分支损失平均结果。</translation>
+        <translation>app.session.stochastic_power_flow.Losses_avg：分支损失平均结果。</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.V_std:	 nodal voltage standard deviation result.</source>
-        <translation type="vanished">	app.session.stochastic_power_flow.V_std：节点电压标准偏差结果。</translation>
+        <translation>	app.session.stochastic_power_flow.V_std：节点电压标准偏差结果。</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.I_std:	 branch current standard deviation result.</source>
-        <translation type="vanished">	app.session.stochastic_power_flow.I_std：分支当前标准差结果。</translation>
+        <translation>	app.session.stochastic_power_flow.I_std：分支当前标准差结果。</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.Loading_std:	 branch loading standard deviation result.</source>
-        <translation type="vanished">	app.session.stochastic_power_flow.Loading_std：分支加载标准差结果。</translation>
+        <translation>	app.session.stochastic_power_flow.Loading_std：分支加载标准差结果。</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.Losses_std:	 branch losses standard deviation result.</source>
-        <translation type="vanished">	app.session.stochastic_power_flow.Losses_std：分支损失标准差结果。</translation>
+        <translation>	app.session.stochastic_power_flow.Losses_std：分支损失标准差结果。</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.V_avg_series:	 nodal voltage average series.</source>
-        <translation type="vanished">	app.session.stochastic_power_flow.V_avg_series：节点电压平均系列。</translation>
+        <translation>	app.session.stochastic_power_flow.V_avg_series：节点电压平均系列。</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.V_std_series:	 branch current standard deviation series.</source>
-        <translation type="vanished">	app.session.stochastic_power_flow.V_std_series：支路电流标准差系列。</translation>
+        <translation>	app.session.stochastic_power_flow.V_std_series：支路电流标准差系列。</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.error_series:	 Monte Carlo error series (the convergence value).</source>
-        <translation type="vanished">	app.session.stochastic_power_flow.error_series：蒙特卡罗误差序列（收敛值）。</translation>
+        <translation>	app.session.stochastic_power_flow.error_series：蒙特卡罗误差序列（收敛值）。</translation>
     </message>
     <message>
         <source>The same for app.latin_hypercube_sampling</source>
-        <translation type="vanished">app.latin_hypercube_sampling 相同</translation>
+        <translation>app.latin_hypercube_sampling 相同</translation>
     </message>
     <message>
         <source> does not exist :/</source>
-        <translation type="vanished"> 不存在：/</translation>
+        <translation> 不存在：/</translation>
     </message>
     <message>
         <source>Open script</source>
-        <translation type="vanished">打开脚本</translation>
+        <translation>打开脚本</translation>
     </message>
     <message>
         <source>Are you sure you want to clear source code?</source>
-        <translation type="vanished">您确定要清除源代码吗？</translation>
+        <translation>您确定要清除源代码吗？</translation>
     </message>
     <message>
         <source>Clear source code</source>
-        <translation type="vanished">清晰的源代码</translation>
+        <translation>清晰的源代码</translation>
     </message>
     <message>
         <source>Please enter a name for the script</source>
-        <translation type="vanished">请输入脚本的名称</translation>
+        <translation>请输入脚本的名称</translation>
     </message>
     <message>
         <source>Save script</source>
-        <translation type="vanished">保存脚本</translation>
+        <translation>保存脚本</translation>
     </message>
     <message>
         <source>Do you want to delete {path}?</source>
-        <translation type="vanished">您要删除 {path} 吗？</translation>
+        <translation>您要删除 {path} 吗？</translation>
     </message>
     <message>
         <source>Delete source code file</source>
-        <translation type="vanished">删除源代码文件</translation>
+        <translation>删除源代码文件</translation>
     </message>
     <message>
         <source>Delete</source>
-        <translation type="vanished">删除</translation>
+        <translation>删除</translation>
     </message>
 </context>
 <context>
@@ -3969,34 +4937,38 @@ Monte Carlo power flow results:</source>
     <name>ServerMain</name>
     <message>
         <source>Server config file was erroneous, wrote a new one</source>
-        <translation type="vanished">服务器配置文件错误，重新编写一个</translation>
+        <translation>服务器配置文件错误，重新编写一个</translation>
     </message>
     <message>
         <source>The server connection is running, are you sure that you want to stop it?</source>
-        <translation type="vanished">服务器连接正在运行，您确定要停止它吗？</translation>
+        <translation>服务器连接正在运行，您确定要停止它吗？</translation>
     </message>
     <message>
         <source>Stop Server</source>
-        <translation type="vanished">停止服务器</translation>
+        <translation>停止服务器</translation>
     </message>
     <message>
         <source>Could not connect to the server :/</source>
-        <translation type="vanished">无法连接到服务器：/</translation>
+        <translation>无法连接到服务器：/</translation>
     </message>
     <message>
         <source>Connected!</source>
-        <translation type="vanished">已连接！</translation>
+        <translation>已连接！</translation>
     </message>
     <message>
         <source>Results received!</source>
-        <translation type="vanished">结果收到！</translation>
+        <translation>结果收到！</translation>
+    </message>
+    <message>
+        <source>Could not connect to the server: {error}</source>
+        <translation>无法连接到服务器: {error}</translation>
     </message>
 </context>
 <context>
     <name>ShortCircuitSelector</name>
     <message>
         <source>Short Circuit Configuration</source>
-        <translation type="vanished">短路配置</translation>
+        <translation>短路配置</translation>
     </message>
     <message>
         <source>Custom</source>
@@ -4232,15 +5204,15 @@ Monte Carlo power flow results:</source>
     <name>SubstationDesigner</name>
     <message>
         <source>Substation maker</source>
-        <translation type="vanished">变电站制造商</translation>
+        <translation>变电站制造商</translation>
     </message>
     <message>
         <source>Substation {number}</source>
-        <translation type="vanished">变电站{number}</translation>
+        <translation>变电站{number}</translation>
     </message>
     <message>
         <source>There are no voltage levels, so no substation will be created, ok?</source>
-        <translation type="vanished">没有电压等级，所以不会创建变电站，好吗？</translation>
+        <translation>没有电压等级，所以不会创建变电站，好吗？</translation>
     </message>
 </context>
 <context>
@@ -4594,19 +5566,19 @@ Monte Carlo power flow results:</source>
     <name>VeraGridMainGUI</name>
     <message>
         <source>VeraGrid {version}</source>
-        <translation type="vanished">VeraGrid {version}</translation>
+        <translation>VeraGrid {version}</translation>
     </message>
     <message>
         <source>Are you sure that you want to exit VeraGrid?</source>
-        <translation type="vanished">您确定要退出 VeraGrid 吗？</translation>
+        <translation>您确定要退出 VeraGrid 吗？</translation>
     </message>
     <message>
         <source>Close</source>
-        <translation type="vanished">关闭</translation>
+        <translation>关闭</translation>
     </message>
     <message>
         <source>No effect, select diagrams or database</source>
-        <translation type="vanished">没有效果，选择图表或数据库</translation>
+        <translation>没有效果，选择图表或数据库</translation>
     </message>
 </context>
 <context>
@@ -10223,6 +11195,1139 @@ Monte Carlo power flow results:</source>
     <message>
         <source>Question</source>
         <translation>问题</translation>
+    </message>
+</context>
+<context>
+    <name>ArrayEditor</name>
+    <message>
+        <source>Add</source>
+        <translation>添加</translation>
+    </message>
+    <message>
+        <source>Array Editor</source>
+        <translation>数组编辑器</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>删除</translation>
+    </message>
+</context>
+<context>
+    <name>BlockParameterDraftModel</name>
+    <message>
+        <source>Name</source>
+        <translation>名称</translation>
+    </message>
+    <message>
+        <source>Numeric value. Changes are staged until Apply changes is pressed.</source>
+        <translation>数值。更改将在按下应用更改之前暂存。</translation>
+    </message>
+    <message>
+        <source>Real value or symbolic initialization expression. Changes are staged until Apply changes is pressed.</source>
+        <translation>实时值或符号初始化表达式。更改将在按下应用更改之前暂存。</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>类型</translation>
+    </message>
+    <message>
+        <source>Value</source>
+        <translation>值</translation>
+    </message>
+</context>
+<context>
+    <name>BlockSymbolFilterProxyModel</name>
+    <message>
+        <source>Initializes a variable through VarPowerFlowReferenceType and block.external_mapping.</source>
+        <translation>通过 VarPowerFlowReferenceType 和 block.external_mapping 初始化变量。</translation>
+    </message>
+    <message>
+        <source>Maps a static parameter through ParamPowerFlowReferenceType to block.api_obj_mapping. Dynamic parameters are not editable here.</source>
+        <translation>通过 ParamPowerFlowReferenceType 将静态参数映射到 block.api_obj_mapping。动态参数无法在此处编辑。</translation>
+    </message>
+    <message>
+        <source>Power-flow derived initialization</source>
+        <translation>潮流推导初始化</translation>
+    </message>
+    <message>
+        <source>Static parameter mapping</source>
+        <translation>静态参数映射</translation>
+    </message>
+</context>
+<context>
+    <name>CorrectInconsistenciesDialogue</name>
+    <message>
+        <source>Accept</source>
+        <translation>接受</translation>
+    </message>
+    <message>
+        <source>Correct inconsistencies</source>
+        <translation>修正不一致性</translation>
+    </message>
+    <message>
+        <source>Maximum generator set point</source>
+        <translation>最大发电机设定点</translation>
+    </message>
+    <message>
+        <source>Maximum virtual tap difference</source>
+        <translation>最大虚拟分接差</translation>
+    </message>
+    <message>
+        <source>Minimum generator set point</source>
+        <translation>最小发电机设定点</translation>
+    </message>
+</context>
+<context>
+    <name>DataBaseTableMain</name>
+    <message>
+        <source>Add</source>
+        <translation>添加</translation>
+    </message>
+    <message>
+        <source>Add to current diagram</source>
+        <translation>添加到当前图表</translation>
+    </message>
+    <message>
+        <source>Assign to profile</source>
+        <translation>分配给个人资料</translation>
+    </message>
+    <message>
+        <source>Colour branches like this</source>
+        <translation>像这样给树枝上色</translation>
+    </message>
+    <message>
+        <source>Copy idtag</source>
+        <translation>复制idtag</translation>
+    </message>
+    <message>
+        <source>Copy table</source>
+        <translation>复制表</translation>
+    </message>
+    <message>
+        <source>Crop model to buses selection</source>
+        <translation>按母线选择裁剪模型</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>删除</translation>
+    </message>
+    <message>
+        <source>Duplicate object</source>
+        <translation>重复对象</translation>
+    </message>
+    <message>
+        <source>Edit</source>
+        <translation>编辑</translation>
+    </message>
+    <message>
+        <source>Grid reduction</source>
+        <translation>网格缩减</translation>
+    </message>
+    <message>
+        <source>Highlight based on property</source>
+        <translation>根据属性突出显示</translation>
+    </message>
+    <message>
+        <source>Highlight buses selection</source>
+        <translation>高亮母线选择</translation>
+    </message>
+    <message>
+        <source>Merge</source>
+        <translation>合并</translation>
+    </message>
+    <message>
+        <source>New diagram from selection</source>
+        <translation>选择的新图表</translation>
+    </message>
+    <message>
+        <source>New map from selection</source>
+        <translation>新地图选择</translation>
+    </message>
+    <message>
+        <source>New vicinity diagram</source>
+        <translation>新的邻近图</translation>
+    </message>
+    <message>
+        <source>Set value to column</source>
+        <translation>将值设置为列</translation>
+    </message>
+    <message>
+        <source>Type the object name or a smart filter expression ...</source>
+        <translation>输入对象名称或智能过滤器表达式...</translation>
+    </message>
+</context>
+<context>
+    <name>DiagramsMain</name>
+    <message>
+        <source>Are you sure that you want to try an automatic layout?</source>
+        <translation>您确定要尝试自动布局吗？</translation>
+    </message>
+    <message>
+        <source>Duplicate</source>
+        <translation>复制</translation>
+    </message>
+    <message>
+        <source>Message</source>
+        <translation>留言</translation>
+    </message>
+    <message>
+        <source>New map</source>
+        <translation>新地图</translation>
+    </message>
+    <message>
+        <source>New schematic</source>
+        <translation>新原理图</translation>
+    </message>
+    <message>
+        <source>New schematic from selection</source>
+        <translation>选择的新原理图</translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation>消除</translation>
+    </message>
+    <message>
+        <source>Save image file</source>
+        <translation>保存图像文件</translation>
+    </message>
+    <message>
+        <source>Save video file</source>
+        <translation>保存视频文件</translation>
+    </message>
+    <message>
+        <source>Type to search in the current diagram</source>
+        <translation>在当前图中输入搜索内容</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicBlockEditorGUI</name>
+    <message>
+        <source>Block name already exists</source>
+        <translation>块名称已存在</translation>
+    </message>
+    <message>
+        <source>Block name cannot be empty</source>
+        <translation>块名称不能为空</translation>
+    </message>
+    <message>
+        <source>Block name is invalid</source>
+        <translation>块名称无效</translation>
+    </message>
+    <message>
+        <source>Change Block Name</source>
+        <translation>更改块名称</translation>
+    </message>
+    <message>
+        <source>Change Variable Name</source>
+        <translation>更改变量名称</translation>
+    </message>
+    <message>
+        <source>Dynamic Model Editor</source>
+        <translation>动态模型编辑器</translation>
+    </message>
+    <message>
+        <source>Dynamic Model Editor [{mode}]</source>
+        <translation>动态模型编辑器 [{mode}]</translation>
+    </message>
+    <message>
+        <source>Library</source>
+        <translation>图书馆</translation>
+    </message>
+    <message>
+        <source>Variable name already exists</source>
+        <translation>变量名称已存在</translation>
+    </message>
+    <message>
+        <source>Variable name cannot be empty</source>
+        <translation>变量名称不能为空</translation>
+    </message>
+    <message>
+        <source>Variable name is invalid</source>
+        <translation>变量名称无效</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEditorAddButton</name>
+    <message>
+        <source>Open another Dynamic Editor</source>
+        <translation>打开另一个动态编辑器</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEditorGraphics</name>
+    <message>
+        <source>{direction} {index}: {name}</source>
+        <translation>{direction} {index}: {name}</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEditorPickerDialog</name>
+    <message>
+        <source>Mode</source>
+        <translation>模式</translation>
+    </message>
+    <message>
+        <source>Modes</source>
+        <translation>模式</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>名称</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation>打开</translation>
+    </message>
+    <message>
+        <source>Open the current block in the other mode.</source>
+        <translation>在其他模式下打开当前块。</translation>
+    </message>
+    <message>
+        <source>Open the current block in {mode}.</source>
+        <translation>在 {mode} 模式下打开当前块。</translation>
+    </message>
+    <message>
+        <source>Open {mode}</source>
+        <translation>打开 {mode}</translation>
+    </message>
+    <message>
+        <source>Quick Open</source>
+        <translation>快速打开</translation>
+    </message>
+    <message>
+        <source>Search dynamic editors</source>
+        <translation>搜索动态编辑器</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>类型</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventEditor</name>
+    <message>
+        <source>&lt;b&gt;Target device:&lt;/b&gt;</source>
+        <translation>&lt;b&gt;目标设备:&lt;/b&gt;</translation>
+    </message>
+    <message>
+        <source>Align Step</source>
+        <translation>对齐步进</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>取消</translation>
+    </message>
+    <message>
+        <source>Dynamic Event Editor</source>
+        <translation>动态事件编辑器</translation>
+    </message>
+    <message>
+        <source>EMT Event Editor</source>
+        <translation>EMT 事件编辑器</translation>
+    </message>
+    <message>
+        <source>EMT group Created</source>
+        <translation>EMT 组创建</translation>
+    </message>
+    <message>
+        <source>End Time</source>
+        <translation>结束时间</translation>
+    </message>
+    <message>
+        <source>Group</source>
+        <translation>组</translation>
+    </message>
+    <message>
+        <source>Group: {group_name}</source>
+        <translation>组: {group_name}</translation>
+    </message>
+    <message>
+        <source>Invalid Input</source>
+        <translation>无效输入</translation>
+    </message>
+    <message>
+        <source>Missing fields</source>
+        <translation>缺少字段</translation>
+    </message>
+    <message>
+        <source>New Value</source>
+        <translation>新值</translation>
+    </message>
+    <message>
+        <source>New group name</source>
+        <translation>新组名称</translation>
+    </message>
+    <message>
+        <source>New row {row_number}</source>
+        <translation>新行 {row_number}</translation>
+    </message>
+    <message>
+        <source>No EMT Events Group</source>
+        <translation>没有 EMT 事件组</translation>
+    </message>
+    <message>
+        <source>No EMT Events Group found, please create one before adding an event.</source>
+        <translation>未找到 EMT 事件组，请先创建一个再添加事件。</translation>
+    </message>
+    <message>
+        <source>No Events</source>
+        <translation>没有事件</translation>
+    </message>
+    <message>
+        <source>No RMS Events Group</source>
+        <translation>没有 RMS 事件组</translation>
+    </message>
+    <message>
+        <source>No RMS Events Group found, please create one before adding an event.</source>
+        <translation>未找到 RMS 事件组，请先创建一个再添加事件。</translation>
+    </message>
+    <message>
+        <source>No Rows Selected</source>
+        <translation>未选择行</translation>
+    </message>
+    <message>
+        <source>No switch EMT mode parameter is available in this device.</source>
+        <translation>此设备没有可用的开关 EMT 模式参数。</translation>
+    </message>
+    <message>
+        <source>Overlapping Events</source>
+        <translation>重叠事件</translation>
+    </message>
+    <message>
+        <source>Parameter</source>
+        <translation>参数</translation>
+    </message>
+    <message>
+        <source>Please add at least one event before confirming.</source>
+        <translation>请在确认前至少添加一个事件。</translation>
+    </message>
+    <message>
+        <source>Please check at least one row to remove.</source>
+        <translation>请勾选至少一行以删除。</translation>
+    </message>
+    <message>
+        <source>RMS Event Editor</source>
+        <translation>RMS 事件编辑器</translation>
+    </message>
+    <message>
+        <source>RMS group Created</source>
+        <translation>RMS 组创建</translation>
+    </message>
+    <message>
+        <source>Ramp</source>
+        <translation>斜坡</translation>
+    </message>
+    <message>
+        <source>Row {row_number}: {message}</source>
+        <translation>行 {row_number}: {message}</translation>
+    </message>
+    <message>
+        <source>Some events are overlapped and cannot be applied.</source>
+        <translation>部分事件重叠，无法应用。</translation>
+    </message>
+    <message>
+        <source>Step</source>
+        <translation>步进</translation>
+    </message>
+    <message>
+        <source>Switch Sequence</source>
+        <translation>开关序列</translation>
+    </message>
+    <message>
+        <source>Switch Sequence Wizard</source>
+        <translation>开关序列向导</translation>
+    </message>
+    <message>
+        <source>Target device:</source>
+        <translation>目标设备:</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>时间</translation>
+    </message>
+    <message>
+        <source>Transition</source>
+        <translation>过渡</translation>
+    </message>
+    <message>
+        <source>group has invalid type</source>
+        <translation>组类型无效</translation>
+    </message>
+    <message>
+        <source>parameter must be Var</source>
+        <translation>参数必须是 Var</translation>
+    </message>
+    <message>
+        <source>transition_type must be DynamicEventTransitionType</source>
+        <translation>transition_type 必须是 DynamicEventTransitionType</translation>
+    </message>
+    <message>
+        <source>{origin}: {transition}, parameter={parameter}, time={time:.4f} s, end_time={end_time:.4f} s, value={value:.6f}</source>
+        <translation>{origin}: {transition}, 参数={parameter}, 时间={time:.4f} s, 结束时间={end_time:.4f} s, 值={value:.6f}</translation>
+    </message>
+    <message>
+        <source>{origin}: {transition}, parameter={parameter}, time={time:.4f} s, value={value:.6f}</source>
+        <translation>{origin}: {transition}, 参数={parameter}, 时间={time:.4f} s, 值={value:.6f}</translation>
+    </message>
+    <message>
+        <source>{prefix}: {group_name}</source>
+        <translation>{prefix}: {group_name}</translation>
+    </message>
+    <message>
+        <source>✅ Add Events</source>
+        <translation>✅ 添加事件</translation>
+    </message>
+    <message>
+        <source>❌ Remove Selected Rows</source>
+        <translation>❌ 删除选定行</translation>
+    </message>
+    <message>
+        <source>➕ Add New Event</source>
+        <translation>➕ 添加新事件</translation>
+    </message>
+    <message>
+        <source>➕ New Event Group</source>
+        <translation>➕ 新事件组</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventsGroupsDialog</name>
+    <message>
+        <source>Create EMT Events Group</source>
+        <translation>创建 EMT 事件组</translation>
+    </message>
+    <message>
+        <source>Create RMS Events Group</source>
+        <translation>创建 RMS 事件组</translation>
+    </message>
+    <message>
+        <source>Enter group name</source>
+        <translation>输入组名称</translation>
+    </message>
+    <message>
+        <source>Invalid name</source>
+        <translation>名称无效</translation>
+    </message>
+    <message>
+        <source>Name:</source>
+        <translation>姓名：</translation>
+    </message>
+    <message>
+        <source>The name cannot be empty.</source>
+        <translation>名称不能为空。</translation>
+    </message>
+</context>
+<context>
+    <name>EquationLatexModel</name>
+    <message>
+        <source>Equation</source>
+        <translation>方程</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>类型</translation>
+    </message>
+</context>
+<context>
+    <name>GridGeneratorGUI</name>
+    <message>
+        <source>Grid Generator</source>
+        <translation>网格生成器</translation>
+    </message>
+    <message>
+        <source>Warning</source>
+        <translation>警告</translation>
+    </message>
+</context>
+<context>
+    <name>GridMapWidget</name>
+    <message>
+        <source>Connection Error</source>
+        <translation>连接错误</translation>
+    </message>
+    <message>
+        <source>No suitable voltage level ({voltage:.2f} kV) found in substation "{substation_name}".</source>
+        <translation>在变电站 "{substation_name}" 中未找到合适的电压等级 ({voltage:.2f} kV)。</translation>
+    </message>
+    <message>
+        <source>Operation Successful</source>
+        <translation>操作成功</translation>
+    </message>
+    <message>
+        <source>Please select exactly one line and one substation.</source>
+        <translation>请选择精确的一条线路和一个变电站。</translation>
+    </message>
+    <message>
+        <source>Selection Error</source>
+        <translation>选择错误</translation>
+    </message>
+    <message>
+        <source>T-joint connection created between {substation_name} and {line_name}.</source>
+        <translation>已在 {substation_name} 和 {line_name} 之间创建T型接线。</translation>
+    </message>
+    <message>
+        <source>The line cannot be connected. Please ensure the target substation has a bus with a matching nominal voltage.</source>
+        <translation>无法连接该线路。请确保目标变电站具有具有匹配额定电压的母线。</translation>
+    </message>
+    <message>
+        <source>Waypoint replaced with new substation '{substation_name}'.
+Original line split into two segments:
+- {line1_name}: {length1:.2f} km
+- {line2_name}: {length2:.2f} km
+New connection line: {distance:.2f} km</source>
+        <translation>路径点已替换为新变电站 '{substation_name}'。
+原始线路已分割成两个段落：
+- {line1_name}: {length1:.2f} km
+- {line2_name}: {length2:.2f} km
+新连接线路: {distance:.2f} km</translation>
+    </message>
+</context>
+<context>
+    <name>LogsDialogue</name>
+    <message>
+        <source>Accept</source>
+        <translation>接受</translation>
+    </message>
+    <message>
+        <source>CSV (*.csv);;Excel files (*.xlsx)</source>
+        <translation>CSV (*.csv);;Excel 文件 (*.xlsx)</translation>
+    </message>
+    <message>
+        <source>Class</source>
+        <translation>类别</translation>
+    </message>
+    <message>
+        <source>Copy</source>
+        <translation>复制</translation>
+    </message>
+    <message>
+        <source>Device</source>
+        <translation>设备</translation>
+    </message>
+    <message>
+        <source>Expected value</source>
+        <translation>预期值</translation>
+    </message>
+    <message>
+        <source>Export results</source>
+        <translation>导出结果</translation>
+    </message>
+    <message>
+        <source>Property</source>
+        <translation>属性</translation>
+    </message>
+    <message>
+        <source>Save</source>
+        <translation>保存</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>时间</translation>
+    </message>
+    <message>
+        <source>Value</source>
+        <translation>值</translation>
+    </message>
+</context>
+<context>
+    <name>NewProfilesStructureDialogue</name>
+    <message>
+        <source>Accept</source>
+        <translation>接受</translation>
+    </message>
+    <message>
+        <source>New profiles structure</source>
+        <translation>新剖面结构</translation>
+    </message>
+    <message>
+        <source>Number of time steps</source>
+        <translation>时间步数</translation>
+    </message>
+    <message>
+        <source>Start date</source>
+        <translation>开始日期</translation>
+    </message>
+    <message>
+        <source>Time step length</source>
+        <translation>时间步长</translation>
+    </message>
+    <message>
+        <source>Time units</source>
+        <translation>时间单位</translation>
+    </message>
+</context>
+<context>
+    <name>ObjectColumnFilterDialog</name>
+    <message>
+        <source>Apply</source>
+        <translation>应用</translation>
+    </message>
+    <message>
+        <source>Cancel filter</source>
+        <translation>取消筛选</translation>
+    </message>
+    <message>
+        <source>Clear filter</source>
+        <translation>清除筛选</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>搜索</translation>
+    </message>
+    <message>
+        <source>Select all visible</source>
+        <translation>选择所有可见项</translation>
+    </message>
+    <message>
+        <source>Select no visible</source>
+        <translation>不选择可见项</translation>
+    </message>
+    <message>
+        <source>Sort A to Z</source>
+        <translation>按A到Z排序</translation>
+    </message>
+    <message>
+        <source>Sort Z to A</source>
+        <translation>按Z到A排序</translation>
+    </message>
+</context>
+<context>
+    <name>RmsPlotDialog</name>
+    <message>
+        <source>Add</source>
+        <translation>添加</translation>
+    </message>
+    <message>
+        <source>Device:</source>
+        <translation>设备:</translation>
+    </message>
+    <message>
+        <source>Plot Variables</source>
+        <translation>绘制变量</translation>
+    </message>
+    <message>
+        <source>Plot Window</source>
+        <translation>绘图窗口</translation>
+    </message>
+    <message>
+        <source>Remove variable</source>
+        <translation>移除变量</translation>
+    </message>
+    <message>
+        <source>Rms Simulation Results</source>
+        <translation>RMS仿真结果</translation>
+    </message>
+    <message>
+        <source>Show in new window</source>
+        <translation>在新窗口显示</translation>
+    </message>
+    <message>
+        <source>Variable:</source>
+        <translation>变量:</translation>
+    </message>
+    <message>
+        <source>time (s)</source>
+        <translation>时间 (s)</translation>
+    </message>
+</context>
+<context>
+    <name>RosetaExplorerGUI</name>
+    <message>
+        <source>Copy</source>
+        <translation>复制</translation>
+    </message>
+</context>
+<context>
+    <name>RuntimeLogicEditorWidget</name>
+    <message>
+        <source>Add entry</source>
+        <translation>添加条目</translation>
+    </message>
+    <message>
+        <source>Add retained mode</source>
+        <translation>添加保持模式</translation>
+    </message>
+    <message>
+        <source>Configuration</source>
+        <translation>配置</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>删除</translation>
+    </message>
+    <message>
+        <source>Delete retained mode</source>
+        <translation>删除保持模式</translation>
+    </message>
+    <message>
+        <source>Documentation</source>
+        <translation>文档</translation>
+    </message>
+    <message>
+        <source>Enter a procedural entry name.</source>
+        <translation>请输入过程条目名称。</translation>
+    </message>
+    <message>
+        <source>Enter a valid retained-mode symbol name.</source>
+        <translation>请输入有效的保持模式符号名称。</translation>
+    </message>
+    <message>
+        <source>Enter an initial value or expression.</source>
+        <translation>请输入初始值或表达式。</translation>
+    </message>
+    <message>
+        <source>Entry name</source>
+        <translation>条目名称</translation>
+    </message>
+    <message>
+        <source>Initial value or expression</source>
+        <translation>初始值或表达式</translation>
+    </message>
+    <message>
+        <source>Mode symbol name</source>
+        <translation>模式符号名称</translation>
+    </message>
+    <message>
+        <source>Move down</source>
+        <translation>向下移动</translation>
+    </message>
+    <message>
+        <source>Move up</source>
+        <translation>向上移动</translation>
+    </message>
+    <message>
+        <source>Owner</source>
+        <translation>所有者</translation>
+    </message>
+    <message>
+        <source>Procedural entries</source>
+        <translation>过程条目</translation>
+    </message>
+    <message>
+        <source>Retained modes</source>
+        <translation>保持模式</translation>
+    </message>
+    <message>
+        <source>Runtime logic is valid.</source>
+        <translation>运行时逻辑有效。</translation>
+    </message>
+    <message>
+        <source>Select a valid owner and procedural type.</source>
+        <translation>请选择有效的所属对象和过程类型。</translation>
+    </message>
+    <message>
+        <source>Select a valid owner block.</source>
+        <translation>选择一个有效的所属块。</translation>
+    </message>
+    <message>
+        <source>Select one procedural entry to delete.</source>
+        <translation>请选择一个要删除的过程条目。</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>类型</translation>
+    </message>
+    <message>
+        <source>Valid runtime logic. Warnings: </source>
+        <translation>运行时逻辑有效。警告:</translation>
+    </message>
+    <message>
+        <source>Validate runtime logic</source>
+        <translation>验证运行时逻辑</translation>
+    </message>
+</context>
+<context>
+    <name>ScenariosMain</name>
+    <message>
+        <source>Add child scenario</source>
+        <translation>添加子场景</translation>
+    </message>
+    <message>
+        <source>Commit scenario</source>
+        <translation>提交场景</translation>
+    </message>
+    <message>
+        <source>Merge children into scenario</source>
+        <translation>将子项合并到场景中</translation>
+    </message>
+    <message>
+        <source>Remove scenario</source>
+        <translation>删除场景</translation>
+    </message>
+    <message>
+        <source>Rename scenario</source>
+        <translation>重命名场景</translation>
+    </message>
+    <message>
+        <source>Set as current scenario</source>
+        <translation>设置为当前场景</translation>
+    </message>
+</context>
+<context>
+    <name>SelectionDialog</name>
+    <message>
+        <source>Cancel</source>
+        <translation>取消</translation>
+    </message>
+    <message>
+        <source>Click on a substation to reconnect branch {branch_name}</source>
+        <translation>请点击变电站以重新连接分支 {branch_name}</translation>
+    </message>
+    <message>
+        <source>The substation should have a compatible voltage level ({voltage} kV)</source>
+        <translation>该变电站应具有兼容的电压等级 ({voltage} kV)</translation>
+    </message>
+    <message>
+        <source>Waiting for Selection</source>
+        <translation>等待选择</translation>
+    </message>
+    <message>
+        <source>Waiting for selection...</source>
+        <translation>等待选择...</translation>
+    </message>
+</context>
+<context>
+    <name>ServerFileDialogue</name>
+    <message>
+        <source>Delete server file</source>
+        <translation>删除服务器文件</translation>
+    </message>
+    <message>
+        <source>Delete server model</source>
+        <translation>删除服务器模型</translation>
+    </message>
+    <message>
+        <source>Delete the selected file and every model inside it?</source>
+        <translation>删除选定的文件及其内部的所有模型？</translation>
+    </message>
+    <message>
+        <source>Delete the selected model from the server database?</source>
+        <translation>从服务器数据库删除选定的模型？</translation>
+    </message>
+</context>
+<context>
+    <name>SigmaAnalysisGUI</name>
+    <message>
+        <source>CSV (*.csv);;Excel files (*.xlsx)</source>
+        <translation>CSV (*.csv);;Excel 文件 (*.xlsx)</translation>
+    </message>
+    <message>
+        <source>Export results</source>
+        <translation>导出结果</translation>
+    </message>
+    <message>
+        <source>HELM-Sigma analysis dialogue</source>
+        <translation>HELM-Sigma 分析对话框</translation>
+    </message>
+    <message>
+        <source>Sigma analysis completed</source>
+        <translation>Sigma 分析完成</translation>
+    </message>
+    <message>
+        <source>Sigma analysis did not return results</source>
+        <translation>Sigma 分析未返回结果</translation>
+    </message>
+    <message>
+        <source>Sigma coefficients did not converge :(</source>
+        <translation>Sigma 系数未收敛 :(</translation>
+    </message>
+    <message>
+        <source>Snapshot</source>
+        <translation>快照</translation>
+    </message>
+    <message>
+        <source>This window was opened without a circuit/options rerun context.</source>
+        <translation>此窗口是在没有电路/选项重新运行上下文的情况下打开的。</translation>
+    </message>
+    <message>
+        <source>Warning</source>
+        <translation>警告</translation>
+    </message>
+</context>
+<context>
+    <name>SimulationsMain</name>
+    <message>
+        <source>Compiling the grid...</source>
+        <translation>正在编译电网...</translation>
+    </message>
+    <message>
+        <source>Model v. {model_version}</source>
+        <translation>型号 v.{model_version}</translation>
+    </message>
+    <message>
+        <source>Pareto combination</source>
+        <translation>帕累托组合</translation>
+    </message>
+    <message>
+        <source>Pareto combination {index}</source>
+        <translation>帕累托组合 {index}</translation>
+    </message>
+    <message>
+        <source>Running power flow...</source>
+        <translation>正在运行潮流计算...</translation>
+    </message>
+    <message>
+        <source>Short circuits</source>
+        <translation>短路</translation>
+    </message>
+    <message>
+        <source>User: {user_name}</source>
+        <translation>用户: {user_name}</translation>
+    </message>
+    <message>
+        <source>idtag. {idtag}</source>
+        <translation>身份标签。 {idtag}</translation>
+    </message>
+</context>
+<context>
+    <name>SwitchSequenceDialog</name>
+    <message>
+        <source>Add Sequence Step</source>
+        <translation>添加序列步</translation>
+    </message>
+    <message>
+        <source>Add at least one sequence row.</source>
+        <translation>至少添加一行序列数据。</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>关闭</translation>
+    </message>
+    <message>
+        <source>Group</source>
+        <translation>组</translation>
+    </message>
+    <message>
+        <source>Mode Parameter</source>
+        <translation>模式参数</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation>打开</translation>
+    </message>
+    <message>
+        <source>Please check at least one row to remove.</source>
+        <translation>请勾选至少一行以删除。</translation>
+    </message>
+    <message>
+        <source>Remove Selected Rows</source>
+        <translation>移除选定行</translation>
+    </message>
+    <message>
+        <source>Select a mode parameter and an events group.</source>
+        <translation>选择一个模式参数和一个事件组。</translation>
+    </message>
+    <message>
+        <source>State</source>
+        <translation>状态</translation>
+    </message>
+    <message>
+        <source>Switch Sequence</source>
+        <translation>开关序列</translation>
+    </message>
+    <message>
+        <source>Switch Sequence Wizard</source>
+        <translation>开关序列向导</translation>
+    </message>
+    <message>
+        <source>The selected parameter or group is invalid.</source>
+        <translation>所选参数或组无效。</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>时间</translation>
+    </message>
+</context>
+<context>
+    <name>SystemScaler</name>
+    <message>
+        <source>Aggregated energy scaling preview</source>
+        <translation>聚合能量缩放预览</translation>
+    </message>
+    <message>
+        <source>Aggregated power scaling preview</source>
+        <translation>聚合功率缩放预览</translation>
+    </message>
+    <message>
+        <source>MW</source>
+        <translation>MW</translation>
+    </message>
+    <message>
+        <source>MWh</source>
+        <translation>MWh</translation>
+    </message>
+    <message>
+        <source>Original generation</source>
+        <translation>原始发电量</translation>
+    </message>
+    <message>
+        <source>Original generation energy</source>
+        <translation>原始发电能</translation>
+    </message>
+    <message>
+        <source>Original load</source>
+        <translation>原始负荷</translation>
+    </message>
+    <message>
+        <source>Original load energy</source>
+        <translation>原始负荷能</translation>
+    </message>
+    <message>
+        <source>Press plot to preview scaling</source>
+        <translation>按下绘图预览缩放</translation>
+    </message>
+    <message>
+        <source>Scaled generation</source>
+        <translation>缩放发电量</translation>
+    </message>
+    <message>
+        <source>Scaled generation energy</source>
+        <translation>缩放发电能</translation>
+    </message>
+    <message>
+        <source>Scaled load</source>
+        <translation>缩放负荷</translation>
+    </message>
+    <message>
+        <source>Scaled load energy</source>
+        <translation>缩放负荷能</translation>
+    </message>
+    <message>
+        <source>System scaling</source>
+        <translation>系统缩放</translation>
+    </message>
+    <message>
+        <source>There is no time series to plot.</source>
+        <translation>没有时间序列可供绘图。</translation>
+    </message>
+    <message>
+        <source>This operation will alter the generation and load composition irreversibly
+Are you sure?</source>
+        <translation>此操作将不可逆地改变发电和负荷组成
+您确定吗？</translation>
+    </message>
+</context>
+<context>
+    <name>TimeReIndexDialogue</name>
+    <message>
+        <source>Accept</source>
+        <translation>接受</translation>
+    </message>
+    <message>
+        <source>Start date</source>
+        <translation>开始日期</translation>
+    </message>
+    <message>
+        <source>Time re-index</source>
+        <translation>时间重索引</translation>
+    </message>
+    <message>
+        <source>Time step length</source>
+        <translation>时间步长</translation>
+    </message>
+    <message>
+        <source>Time units</source>
+        <translation>时间单位</translation>
     </message>
 </context>
 </TS>

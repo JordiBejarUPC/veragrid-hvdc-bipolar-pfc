@@ -113,6 +113,42 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:11pt;&quot;&gt;| networkx     | BSD |&lt;/span&gt;&lt;/p&gt;
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:11pt;&quot;&gt;+--------------+------------------------------------------+&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
+    <message>
+        <source>Dependencies</source>
+        <translation>Εξαρτήσεις</translation>
+    </message>
+    <message>
+        <source>Installation Path</source>
+        <translation>Διαδρομή Εγκατάστασης</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>Ονομα</translation>
+    </message>
+    <message>
+        <source>Not installed</source>
+        <translation>Δεν είναι εγκατεστημένο</translation>
+    </message>
+    <message>
+        <source>Package</source>
+        <translation>Πaket</translation>
+    </message>
+    <message>
+        <source>True</source>
+        <translation>Αληθές</translation>
+    </message>
+    <message>
+        <source>Version</source>
+        <translation>Έκδοση</translation>
+    </message>
+    <message>
+        <source>licensed</source>
+        <translation>με άδεια</translation>
+    </message>
+    <message>
+        <source>supported version</source>
+        <translation>υποστηριζόμενη έκδοση</translation>
+    </message>
 </context>
 <context>
     <name>AdmittanceMatrixEditorWidget</name>
@@ -335,91 +371,91 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
     <name>AiChatDialogue</name>
     <message>
         <source>VeraGrid AI dialogue</source>
-        <translation type="vanished">Διάλογος VeraGrid AI</translation>
+        <translation>Διάλογος VeraGrid AI</translation>
     </message>
     <message>
         <source>Pick or type a GGUF file name</source>
-        <translation type="vanished">Επιλέξτε ή πληκτρολογήστε ένα όνομα αρχείου GGUF</translation>
+        <translation>Επιλέξτε ή πληκτρολογήστε ένα όνομα αρχείου GGUF</translation>
     </message>
     <message>
         <source>Provider model name</source>
-        <translation type="vanished">Όνομα μοντέλου παρόχου</translation>
+        <translation>Όνομα μοντέλου παρόχου</translation>
     </message>
     <message>
         <source>VeraGrid AI</source>
-        <translation type="vanished">VeraGrid AI</translation>
+        <translation>VeraGrid AI</translation>
     </message>
     <message>
         <source>Scan the configured path for GGUF files.</source>
-        <translation type="vanished">Σαρώστε τη διαμορφωμένη διαδρομή για αρχεία GGUF.</translation>
+        <translation>Σαρώστε τη διαμορφωμένη διαδρομή για αρχεία GGUF.</translation>
     </message>
     <message>
         <source>API key</source>
-        <translation type="vanished">Κλειδί API</translation>
+        <translation>Κλειδί API</translation>
     </message>
     <message>
         <source>Leave empty for unauthenticated endpoints</source>
-        <translation type="vanished">Αφήστε κενό για μη επαληθευμένα τελικά σημεία</translation>
+        <translation>Αφήστε κενό για μη επαληθευμένα τελικά σημεία</translation>
     </message>
     <message>
         <source>Query the configured backend for models.</source>
-        <translation type="vanished">Ερώτηση για το διαμορφωμένο backend για μοντέλα.</translation>
+        <translation>Ερώτηση για το διαμορφωμένο backend για μοντέλα.</translation>
     </message>
     <message>
         <source>Type a message before sending.</source>
-        <translation type="vanished">Πληκτρολογήστε ένα μήνυμα πριν στείλετε.</translation>
+        <translation>Πληκτρολογήστε ένα μήνυμα πριν στείλετε.</translation>
     </message>
     <message>
         <source>Resolve the pending tool approval or clear the chat first.</source>
-        <translation type="vanished">Επιλύστε την εκκρεμή έγκριση του εργαλείου ή διαγράψτε πρώτα τη συνομιλία.</translation>
+        <translation>Επιλύστε την εκκρεμή έγκριση του εργαλείου ή διαγράψτε πρώτα τη συνομιλία.</translation>
     </message>
     <message>
         <source>Stopping AI turn...</source>
-        <translation type="vanished">Διακοπή στροφής AI...</translation>
+        <translation>Διακοπή στροφής AI...</translation>
     </message>
     <message>
         <source>There is no running AI turn to stop.</source>
-        <translation type="vanished">Δεν υπάρχει στροφή AI για διακοπή.</translation>
+        <translation>Δεν υπάρχει στροφή AI για διακοπή.</translation>
     </message>
     <message>
         <source>Running simulation and analyzing the results...</source>
-        <translation type="vanished">Εκτέλεση προσομοίωσης και ανάλυση των αποτελεσμάτων...</translation>
+        <translation>Εκτέλεση προσομοίωσης και ανάλυση των αποτελεσμάτων...</translation>
     </message>
     <message>
         <source>There is no pending tool call to approve.</source>
-        <translation type="vanished">Δεν υπάρχει κλήση εργαλείου σε εκκρεμότητα για έγκριση.</translation>
+        <translation>Δεν υπάρχει κλήση εργαλείου σε εκκρεμότητα για έγκριση.</translation>
     </message>
     <message>
         <source>Wait for the current AI turn to finish.</source>
-        <translation type="vanished">Περιμένετε να τελειώσει η τρέχουσα στροφή AI.</translation>
+        <translation>Περιμένετε να τελειώσει η τρέχουσα στροφή AI.</translation>
     </message>
     <message>
         <source>Running AI turn...</source>
-        <translation type="vanished">Εκτέλεση στροφής AI...</translation>
+        <translation>Εκτέλεση στροφής AI...</translation>
     </message>
     <message>
         <source>Generating response</source>
-        <translation type="vanished">Δημιουργία ανταπόκρισης</translation>
+        <translation>Δημιουργία ανταπόκρισης</translation>
     </message>
     <message>
         <source>Running AI turn</source>
-        <translation type="vanished">Εκτέλεση στροφής AI</translation>
+        <translation>Εκτέλεση στροφής AI</translation>
     </message>
     <message>
         <source>Stop</source>
-        <translation type="vanished">Στάση</translation>
+        <translation>Στάση</translation>
     </message>
     <message>
         <source>Send</source>
-        <translation type="vanished">Στέλνω</translation>
+        <translation>Στέλνω</translation>
     </message>
     <message>
         <source>You</source>
-        <translation type="vanished">Εσείς</translation>
+        <translation>Εσείς</translation>
     </message>
     <message>
         <source>Tool</source>
-        <translation type="vanished">Εργαλείο</translation>
+        <translation>Εργαλείο</translation>
     </message>
 </context>
 <context>
@@ -615,11 +651,15 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
     <name>CgmesOptionsSelector</name>
     <message>
         <source>CGMES Version:</source>
-        <translation type="vanished">Έκδοση CGMES:</translation>
+        <translation>Έκδοση CGMES:</translation>
     </message>
     <message>
         <source>Accept</source>
-        <translation type="vanished">Αποδέχομαι</translation>
+        <translation>Αποδέχομαι</translation>
+    </message>
+    <message>
+        <source>Select the CGMES options</source>
+        <translation>Επιλέξτε τις επιλογές CGMES</translation>
     </message>
 </context>
 <context>
@@ -1794,6 +1834,310 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
         <source>Close</source>
         <translation type="obsolete">Κοντά</translation>
     </message>
+    <message>
+        <source>1 / {count}</source>
+        <translation>1 / {count}</translation>
+    </message>
+    <message>
+        <source>Add symbol</source>
+        <translation>Προσθήκη συμβόλου</translation>
+    </message>
+    <message>
+        <source>Add symbol to selected block</source>
+        <translation>Προσθήκη συμβόλου στο επιλεγμένο μπλοκ</translation>
+    </message>
+    <message>
+        <source>Advanced runtime logic</source>
+        <translation>Προηγική λογική εκτέλεσης χρόνου</translation>
+    </message>
+    <message>
+        <source>Apply structural settings separately from DAE-code or symbol-interface changes.</source>
+        <translation>Εφαρμόστε τις δομικές ρυθμίσεις ξεχωριστά από τον κώδικα DAE ή τις αλλαγές διεπαφής συμβόλου.</translation>
+    </message>
+    <message>
+        <source>Block / equation group</source>
+        <translation>Μπλοκ / ομάδα εξισώσεων</translation>
+    </message>
+    <message>
+        <source>Block configuration</source>
+        <translation>Διαμόρφωση μπλοκ</translation>
+    </message>
+    <message>
+        <source>Block info</source>
+        <translation>Πληροφορίες μπλοκ</translation>
+    </message>
+    <message>
+        <source>Block properties - {name}</source>
+        <translation>Ιδιότητες μπλοκ - {name}</translation>
+    </message>
+    <message>
+        <source>Block structure rebuilt with the selected settings.</source>
+        <translation>Η δομή του μπλοκ ανακατασκευάστηκε με τις επιλεγμένες ρυθμίσεις.</translation>
+    </message>
+    <message>
+        <source>Catalogue type</source>
+        <translation>Τύπος καταλόγου</translation>
+    </message>
+    <message>
+        <source>Changes applied to the editor working copy.</source>
+        <translation>Οι αλλαγές εφαρμόστηκαν στην εργατική αντίγραφο του επεξεργαστή.</translation>
+    </message>
+    <message>
+        <source>Changes applied. Advanced inequalities/discrete/boolean logic was preserved unchanged.</source>
+        <translation>Οι αλλαγές εφαρμόστηκαν. Η προηγμένη ανισότητα/διακριτή/boolean λογική διατηρήθηκε χωρίς αλλαγές.</translation>
+    </message>
+    <message>
+        <source>Clear</source>
+        <translation>Σαφής</translation>
+    </message>
+    <message>
+        <source>Create derivative variable</source>
+        <translation>Δημιουργία μεταβλητής παραγώγου</translation>
+    </message>
+    <message>
+        <source>DAE and runtime-logic changes applied to the editor working copy.</source>
+        <translation>Οι αλλαγές DAE και λογικής εκτέλεσης χρόνου εφαρμόστηκαν στην εργατική αντίγραφο του επεξεργαστή.</translation>
+    </message>
+    <message>
+        <source>DAE code is valid.</source>
+        <translation>Ο κώδικας DAE είναι έγκυρος.</translation>
+    </message>
+    <message>
+        <source>DAE model</source>
+        <translation>Μοντέλο DAE</translation>
+    </message>
+    <message>
+        <source>DAE validation failed at line {line}: {message}</source>
+        <translation>Η επικύρωση DAE απέτυχε στην γραμμή {line}: {message}</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>Διαγράφω</translation>
+    </message>
+    <message>
+        <source>Download rendered PDF</source>
+        <translation>Λήψη ψηφιοποιημένου PDF</translation>
+    </message>
+    <message>
+        <source>Enter a name</source>
+        <translation>Εισάγετε ένα όνομα</translation>
+    </message>
+    <message>
+        <source>Enter a valid Python symbol name.</source>
+        <translation>Εισάγετε ένα έγκυρο όνομα συμβόλου Python.</translation>
+    </message>
+    <message>
+        <source>Equation PDF created: {path}</source>
+        <translation>Δημιουργήθηκε PDF εξίσωσης: {path}</translation>
+    </message>
+    <message>
+        <source>Equation owner</source>
+        <translation>Ιδιοκτήτης εξίσωσης</translation>
+    </message>
+    <message>
+        <source>Equations</source>
+        <translation>Εξισώσεις</translation>
+    </message>
+    <message>
+        <source>General options</source>
+        <translation>Γενικές επιλογές</translation>
+    </message>
+    <message>
+        <source>Generated structure</source>
+        <translation>Δημιουργημένη δομή</translation>
+    </message>
+    <message>
+        <source>Initial numeric value</source>
+        <translation>Αρχική αριθμητική τιμή</translation>
+    </message>
+    <message>
+        <source>Inputs</source>
+        <translation>Είσοδοι</translation>
+    </message>
+    <message>
+        <source>Invalid DAE code.</source>
+        <translation>Η κώδικα DAE είναι μη έγκυρη.</translation>
+    </message>
+    <message>
+        <source>LaTeX</source>
+        <translation>LaTeX</translation>
+    </message>
+    <message>
+        <source>LaTeX source</source>
+        <translation>Πηγή LaTeX</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>Ονομα</translation>
+    </message>
+    <message>
+        <source>New symbol name</source>
+        <translation>Νέο όνομα συμβόλου</translation>
+    </message>
+    <message>
+        <source>Next</source>
+        <translation>Επόμενο</translation>
+    </message>
+    <message>
+        <source>No matches</source>
+        <translation>Καμία αντιστοιχία</translation>
+    </message>
+    <message>
+        <source>No online catalogue documentation is available for this custom block.</source>
+        <translation>Δεν είναι διαθέσιμη online τεκμηρίωση καταλόγου για αυτό το προσαρμοσμένο μπλοκ.</translation>
+    </message>
+    <message>
+        <source>None</source>
+        <translation>Κανένα</translation>
+    </message>
+    <message>
+        <source>Nothing was applied: {message}</source>
+        <translation>Δεν εφαρμόστηκε τίποτα: {message}</translation>
+    </message>
+    <message>
+        <source>Online documentation</source>
+        <translation>Ηλεκτρονική τεκμηρίωση</translation>
+    </message>
+    <message>
+        <source>Opens the documentation for the original predefined library block. If this block has been modified in the editor, its current equations, symbols, parameters, or runtime logic may differ from the online documentation.</source>
+        <translation>Ανοίγει την τεκμηρίωση για το αρχικό προκαθορισμένο βιβλιοθηκίου μπλοκ. Εάν αυτό το μπλοκ έχει τροποποιηθεί στον επεξεργαστή, οι τρέχουσες εξισώσεις, σύμβολα, παράμετροι ή λογική εκτέλεσης χρόνου του μπορεί να διαφέρουν από την online τεκμηρίωση.</translation>
+    </message>
+    <message>
+        <source>Output</source>
+        <translation>Εξόδους</translation>
+    </message>
+    <message>
+        <source>Outputs</source>
+        <translation>Εξόδους</translation>
+    </message>
+    <message>
+        <source>Owner block</source>
+        <translation>Μπλοκ ιδιοκτήτης</translation>
+    </message>
+    <message>
+        <source>PDF documents (*.pdf)</source>
+        <translation>Έγγραφα PDF (*.pdf)</translation>
+    </message>
+    <message>
+        <source>Parameter whose value may change during the simulation.</source>
+        <translation>Παράμετρος η τιμή του οποίου μπορεί να αλλάξει κατά τη διάρκεια της προσομοίωσης.</translation>
+    </message>
+    <message>
+        <source>Parameters</source>
+        <translation>Παράμετροι</translation>
+    </message>
+    <message>
+        <source>Power-flow variable</source>
+        <translation>Μεταβλητή ροής ισχύος</translation>
+    </message>
+    <message>
+        <source>Power-flow variable used to initialize this dynamic variable.</source>
+        <translation>Μεταβλητή ροής ισχύος που χρησιμοποιείται για την αρχικοποίηση αυτής της δυναμικής μεταβλητής.</translation>
+    </message>
+    <message>
+        <source>Previous</source>
+        <translation>Προηγούμενο</translation>
+    </message>
+    <message>
+        <source>Python code</source>
+        <translation>Κώδικας Python</translation>
+    </message>
+    <message>
+        <source>Rename...</source>
+        <translation>Μετονομάστε...</translation>
+    </message>
+    <message>
+        <source>Runtime logic</source>
+        <translation>Λογική εκτέλεσης</translation>
+    </message>
+    <message>
+        <source>Save dynamic equations PDF</source>
+        <translation>Αποθήκευση PDF δυναμικών εξισώσεων</translation>
+    </message>
+    <message>
+        <source>Search Python code...</source>
+        <translation>Αναζήτηση κώδικα Python...</translation>
+    </message>
+    <message>
+        <source>Search parameters...</source>
+        <translation>Αναζήτηση παραμέτρων...</translation>
+    </message>
+    <message>
+        <source>Search variables...</source>
+        <translation>Αναζήτηση μεταβλητών...</translation>
+    </message>
+    <message>
+        <source>Select a valid owner block.</source>
+        <translation>Επιλέξτε ένα έγκυρο μπλοκ ιδιοκτήτη.</translation>
+    </message>
+    <message>
+        <source>Select a valid symbol type.</source>
+        <translation>Επιλέξτε έναν έγκυρο τύπο συμβόλου.</translation>
+    </message>
+    <message>
+        <source>Select all</source>
+        <translation>Επιλέξτε όλα</translation>
+    </message>
+    <message>
+        <source>Select at least one non-empty equation group.</source>
+        <translation>Επιλέξτε τουλάχιστον μία μη κενή ομάδα εξισώσεων.</translation>
+    </message>
+    <message>
+        <source>Select equation groups to generate copyable LaTeX source.</source>
+        <translation>Επιλέξτε ομάδες εξισώσεων για τη δημιουργία αντιγράφσιμου κώδικα LaTeX.</translation>
+    </message>
+    <message>
+        <source>Select the equation groups to include. Each internal block and each DAE section can be selected independently.</source>
+        <translation>Επιλέξτε τις ομάδες εξισώσεων που θέλετε να συμπεριλάβετε. Κάθε εσωτερικό μπλοκ και κάθε 섹션 DAE μπορούν να επιλεγούν ανεξάρτητα.</translation>
+    </message>
+    <message>
+        <source>Special settings</source>
+        <translation>Ειδικές ρυθμίσεις</translation>
+    </message>
+    <message>
+        <source>Static device mapping</source>
+        <translation>Στατικό χαρτογράφημα συσκευών</translation>
+    </message>
+    <message>
+        <source>Symbol category</source>
+        <translation>Κατηγορία συμβόλου</translation>
+    </message>
+    <message>
+        <source>The PDF could not be created: {message}</source>
+        <translation>Δεν ήταν δυνατή η δημιουργία του PDF: {message}</translation>
+    </message>
+    <message>
+        <source>The online block documentation could not be opened in the system browser.</source>
+        <translation>Η online τεκμηρίωση του μπλοκ δεν μπορούσε να ανοίξει στον φυλλομετρητή του συστήματος.</translation>
+    </message>
+    <message>
+        <source>These settings contain structured data used to regenerate the block. Edit sequences with valid Python tuple/list syntax.</source>
+        <translation>Αυτές οι ρυθμίσεις περιέχουν δομημένα δεδομένα που χρησιμοποιούνται για την επαναδημιουργία του μπλοκ. Επεξεργαστείτε τις ακολουθίες με έγκυρη σύνταξη tuple/list Python.</translation>
+    </message>
+    <message>
+        <source>This block has no safe structural rebuild adapter.</source>
+        <translation>Αυτό το μπλοκ δεν έχει προσαρ신기 αποκατάστασης δομής με ασφάλεια.</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>Τύπος</translation>
+    </message>
+    <message>
+        <source>Validate all code</source>
+        <translation>Επικύρωση όλ κώδικα</translation>
+    </message>
+    <message>
+        <source>Variable renamed to '{name}'.</source>
+        <translation>Η μεταβλητή μετονομάστηκε σε '{name}'.</translation>
+    </message>
+    <message>
+        <source>Variables</source>
+        <translation>Μεταβλητές</translation>
+    </message>
+    <message>
+        <source>{active} / {count}</source>
+        <translation>{active} / {count}</translation>
+    </message>
 </context>
 <context>
     <name>DynamicEditorWorkspaceWindow</name>
@@ -1857,6 +2201,18 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
         <source>view tree</source>
         <translation>θέα δέντρο</translation>
     </message>
+    <message>
+        <source>Dynamic Editor - {title}</source>
+        <translation>Δυναμικός Επεξεργαστής - {title}</translation>
+    </message>
+    <message>
+        <source>Open EMT editor</source>
+        <translation>Ανοίξτε τον επεξεργαστή EMT</translation>
+    </message>
+    <message>
+        <source>Open RMS editor</source>
+        <translation>Ανοίξτε τον επεξεργαστή RMS</translation>
+    </message>
 </context>
 <context>
     <name>DynamicEventDialogue</name>
@@ -1895,35 +2251,43 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
     <name>DynamicsResultsHandler</name>
     <message>
         <source>X-Y plot slot</source>
-        <translation type="vanished">Υποδοχή πλοκής X-Y</translation>
+        <translation>Υποδοχή πλοκής X-Y</translation>
     </message>
     <message>
         <source>Choose whether to place the dropped signal on the X axis or Y axis.</source>
-        <translation type="vanished">Επιλέξτε εάν θα τοποθετήσετε το πεσμένο σήμα στον άξονα X ή στον άξονα Y.</translation>
+        <translation>Επιλέξτε εάν θα τοποθετήσετε το πεσμένο σήμα στον άξονα X ή στον άξονα Y.</translation>
     </message>
     <message>
         <source>X axis</source>
-        <translation type="vanished">Άξονας Χ</translation>
+        <translation>Άξονας Χ</translation>
     </message>
     <message>
         <source>Y axis</source>
-        <translation type="vanished">Άξονας Υ</translation>
+        <translation>Άξονας Υ</translation>
     </message>
     <message>
         <source>Cancel</source>
-        <translation type="vanished">Ματαίωση</translation>
+        <translation>Ματαίωση</translation>
     </message>
     <message>
         <source>This X-Y plot already has X and Y signals. Replace X, replace Y, or cancel?</source>
-        <translation type="vanished">Αυτή η γραφική παράσταση X-Y έχει ήδη σήματα X και Y. Αντικατάσταση X, αντικατάσταση Y ή ακύρωση;</translation>
+        <translation>Αυτή η γραφική παράσταση X-Y έχει ήδη σήματα X και Y. Αντικατάσταση X, αντικατάσταση Y ή ακύρωση;</translation>
     </message>
     <message>
         <source>Replace X</source>
-        <translation type="vanished">Αντικαταστήστε το X</translation>
+        <translation>Αντικαταστήστε το X</translation>
     </message>
     <message>
         <source>Replace Y</source>
-        <translation type="vanished">Αντικαταστήστε το Υ</translation>
+        <translation>Αντικαταστήστε το Υ</translation>
+    </message>
+    <message>
+        <source>Dynamic plots</source>
+        <translation>Δυναμικές γραφικές εκτυπώσεις</translation>
+    </message>
+    <message>
+        <source>Dynamics results</source>
+        <translation>Αποτελέσματα δυναμικής</translation>
     </message>
 </context>
 <context>
@@ -1938,68 +2302,84 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
     <name>FileTypeSelector</name>
     <message>
         <source>Format:</source>
-        <translation type="vanished">Σχήμα και διάταξις βιβλίου:</translation>
+        <translation>Σχήμα και διάταξις βιβλίου:</translation>
     </message>
     <message>
         <source>Accept</source>
-        <translation type="vanished">Αποδέχομαι</translation>
+        <translation>Αποδέχομαι</translation>
+    </message>
+    <message>
+        <source>Select how to load the file</source>
+        <translation>Επιλέξτε πώς να φορτώσετε το αρχείο</translation>
+    </message>
+    <message>
+        <source>You've passed a generic list of files
+select the expected processing format</source>
+        <translation>Παρατίθετε μια γενική λίστα αρχείων
+επιλέξτε το αναμενόμενο μορφότυπο επεξεργασίας</translation>
+    </message>
+    <message>
+        <source>You've passed a generic of file
+select the expected processing format</source>
+        <translation>Παρατίθετε ένα γενικό αρχείο
+επιλέξτε το αναμενόμενο μορφότυπο επεξεργασίας</translation>
     </message>
 </context>
 <context>
     <name>FmuTemplateEditorDialog</name>
     <message>
         <source>FMU Template Editor</source>
-        <translation type="vanished">Επεξεργαστής προτύπων FMU</translation>
+        <translation>Επεξεργαστής προτύπων FMU</translation>
     </message>
     <message>
         <source>Browse...</source>
-        <translation type="vanished">Ξεφυλλίζω...</translation>
+        <translation>Ξεφυλλίζω...</translation>
     </message>
     <message>
         <source>Choose an FMU archive to load its metadata and build the visual block.</source>
-        <translation type="vanished">Επιλέξτε ένα αρχείο FMU για να φορτώσετε τα μεταδεδομένα του και να δημιουργήσετε το οπτικό μπλοκ.</translation>
+        <translation>Επιλέξτε ένα αρχείο FMU για να φορτώσετε τα μεταδεδομένα του και να δημιουργήσετε το οπτικό μπλοκ.</translation>
     </message>
     <message>
         <source>Name</source>
-        <translation type="vanished">Ονομα</translation>
+        <translation>Ονομα</translation>
     </message>
     <message>
         <source>FMU file</source>
-        <translation type="vanished">αρχείο FMU</translation>
+        <translation>αρχείο FMU</translation>
     </message>
     <message>
         <source>Device type</source>
-        <translation type="vanished">Τύπος συσκευής</translation>
+        <translation>Τύπος συσκευής</translation>
     </message>
     <message>
         <source>Domain</source>
-        <translation type="vanished">Πεδίο ορισμού</translation>
+        <translation>Πεδίο ορισμού</translation>
     </message>
     <message>
         <source>Mode</source>
-        <translation type="vanished">Τρόπος</translation>
+        <translation>Τρόπος</translation>
     </message>
     <message>
         <source>Metadata</source>
-        <translation type="vanished">Μεταδεδομένα</translation>
+        <translation>Μεταδεδομένα</translation>
     </message>
     <message>
         <source>Select FMU file</source>
-        <translation type="vanished">Επιλέξτε αρχείο FMU</translation>
+        <translation>Επιλέξτε αρχείο FMU</translation>
     </message>
     <message>
         <source>FMU files (*.fmu)</source>
-        <translation type="vanished">Αρχεία FMU (*.fmu)</translation>
+        <translation>Αρχεία FMU (*.fmu)</translation>
     </message>
     <message>
         <source>FMU file not found:
 {path}</source>
-        <translation type="vanished">Το αρχείο FMU δεν βρέθηκε:
+        <translation>Το αρχείο FMU δεν βρέθηκε:
 {path}</translation>
     </message>
     <message>
         <source>Choose an FMU file first.</source>
-        <translation type="vanished">Επιλέξτε πρώτα ένα αρχείο FMU.</translation>
+        <translation>Επιλέξτε πρώτα ένα αρχείο FMU.</translation>
     </message>
 </context>
 <context>
@@ -2024,103 +2404,103 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
     <name>IoMain</name>
     <message>
         <source>The file type {file_extension} is not accepted :(</source>
-        <translation type="vanished">Ο τύπος αρχείου {file_extension} δεν είναι αποδεκτός :(</translation>
+        <translation>Ο τύπος αρχείου {file_extension} δεν είναι αποδεκτός :(</translation>
     </message>
     <message>
         <source>Message</source>
-        <translation type="vanished">Μήνυμα</translation>
+        <translation>Μήνυμα</translation>
     </message>
     <message>
         <source>Are you sure that you want to quit the current grid and open a new one?
  If the process is cancelled the grid will remain.</source>
-        <translation type="vanished">Είστε βέβαιοι ότι θέλετε να κλείσετε το τρέχον πλέγμα και να ανοίξετε ένα νέο;
+        <translation>Είστε βέβαιοι ότι θέλετε να κλείσετε το τρέχον πλέγμα και να ανοίξετε ένα νέο;
  Εάν η διαδικασία ακυρωθεί, το πλέγμα θα παραμείνει.</translation>
     </message>
     <message>
         <source>Are you sure that you want to quit the current grid and create a new one?</source>
-        <translation type="vanished">Είστε βέβαιοι ότι θέλετε να κλείσετε το τρέχον πλέγμα και να δημιουργήσετε ένα νέο;</translation>
+        <translation>Είστε βέβαιοι ότι θέλετε να κλείσετε το τρέχον πλέγμα και να δημιουργήσετε ένα νέο;</translation>
     </message>
     <message>
         <source>There is a file being processed now.</source>
-        <translation type="vanished">Υπάρχει ένα αρχείο υπό επεξεργασία τώρα.</translation>
+        <translation>Υπάρχει ένα αρχείο υπό επεξεργασία τώρα.</translation>
     </message>
     <message>
         <source>Formats ({files_types})</source>
-        <translation type="vanished">Μορφές ({files_types})</translation>
+        <translation>Μορφές ({files_types})</translation>
     </message>
     <message>
         <source>The file does not exist :( 
  {file_name}</source>
-        <translation type="vanished">Το αρχείο δεν υπάρχει :( 
+        <translation>Το αρχείο δεν υπάρχει :( 
  {file_name}</translation>
     </message>
     <message>
         <source>File opening</source>
-        <translation type="vanished">Άνοιγμα αρχείου</translation>
+        <translation>Άνοιγμα αρχείου</translation>
     </message>
     <message>
         <source>No grid to load :(</source>
-        <translation type="vanished">Δεν υπάρχει πλέγμα για φόρτωση :(</translation>
+        <translation>Δεν υπάρχει πλέγμα για φόρτωση :(</translation>
     </message>
     <message>
         <source>Current: {circuit_name}</source>
-        <translation type="vanished">Τρέχον: {circuit_name}</translation>
+        <translation>Τρέχον: {circuit_name}</translation>
     </message>
     <message>
         <source>The grid is quite big, no diagram is automatically created</source>
-        <translation type="vanished">Το πλέγμα είναι αρκετά μεγάλο, δεν δημιουργείται αυτόματα διάγραμμα</translation>
+        <translation>Το πλέγμα είναι αρκετά μεγάλο, δεν δημιουργείται αυτόματα διάγραμμα</translation>
     </message>
     <message>
         <source>Sessions</source>
-        <translation type="vanished">Συνεδρίες</translation>
+        <translation>Συνεδρίες</translation>
     </message>
     <message>
         <source>Show Rosetta</source>
-        <translation type="vanished">Εμφάνιση Rosetta</translation>
+        <translation>Εμφάνιση Rosetta</translation>
     </message>
     <message>
         <source>Do you want to open the Rosetta CGMES browser?</source>
-        <translation type="vanished">Θέλετε να ανοίξετε το πρόγραμμα περιήγησης Rosetta CGMES;</translation>
+        <translation>Θέλετε να ανοίξετε το πρόγραμμα περιήγησης Rosetta CGMES;</translation>
     </message>
     <message>
         <source>Open CGMES file logger</source>
-        <translation type="vanished">Ανοίξτε το αρχείο καταγραφής CGMES</translation>
+        <translation>Ανοίξτε το αρχείο καταγραφής CGMES</translation>
     </message>
     <message>
         <source>Open file logger</source>
-        <translation type="vanished">Άνοιγμα αρχείου καταγραφής</translation>
+        <translation>Άνοιγμα αρχείου καταγραφής</translation>
     </message>
     <message>
         <source>Error while loading the file(s)</source>
-        <translation type="vanished">Σφάλμα κατά τη φόρτωση των αρχείων</translation>
+        <translation>Σφάλμα κατά τη φόρτωση των αρχείων</translation>
     </message>
     <message>
         <source>{name} {version} requires VeraGrid {veragrid_version}</source>
-        <translation type="vanished">{name} {version} απαιτεί VeraGrid {veragrid_version}</translation>
+        <translation>{name} {version} απαιτεί VeraGrid {veragrid_version}</translation>
     </message>
     <message>
         <source>Plugin install</source>
-        <translation type="vanished">Εγκατάσταση πρόσθετου</translation>
+        <translation>Εγκατάσταση πρόσθετου</translation>
     </message>
     <message>
         <source>There is already a plugin: {plugin_name} {plugin_version}. The new plugin is {new_version}. Install?</source>
-        <translation type="vanished">Υπάρχει ήδη ένα πρόσθετο: {plugin_name} {plugin_version}. Το νέο πρόσθετο είναι το {new_version}. Εγκαθιστώ;</translation>
+        <translation>Υπάρχει ήδη ένα πρόσθετο: {plugin_name} {plugin_version}. Το νέο πρόσθετο είναι το {new_version}. Εγκαθιστώ;</translation>
     </message>
     <message>
         <source>{name} {version} installed!</source>
-        <translation type="vanished">Εγκαταστάθηκε το {name} {version}!</translation>
+        <translation>Εγκαταστάθηκε το {name} {version}!</translation>
     </message>
     <message>
         <source>There is no manifest :(</source>
-        <translation type="vanished">Δεν υπάρχει μανιφέστο :(</translation>
+        <translation>Δεν υπάρχει μανιφέστο :(</translation>
     </message>
     <message>
         <source>Does not seem to be a plugin :/</source>
-        <translation type="vanished">Δεν φαίνεται να είναι πρόσθετο :/</translation>
+        <translation>Δεν φαίνεται να είναι πρόσθετο :/</translation>
     </message>
     <message>
         <source>CSV (*.csv)</source>
-        <translation type="vanished">CSV (*.csv)</translation>
+        <translation>CSV (*.csv)</translation>
     </message>
     <message>
         <source>Open CSV file</source>
@@ -2128,233 +2508,253 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
     </message>
     <message>
         <source>Grid merge</source>
-        <translation type="vanished">Συγχώνευση πλέγματος</translation>
+        <translation>Συγχώνευση πλέγματος</translation>
     </message>
     <message>
         <source>How do you want to represent the merged grid?</source>
-        <translation type="vanished">Πώς θέλετε να αντιπροσωπεύσετε το συγχωνευμένο πλέγμα;</translation>
+        <translation>Πώς θέλετε να αντιπροσωπεύσετε το συγχωνευμένο πλέγμα;</translation>
     </message>
     <message>
         <source>Create new diagram</source>
-        <translation type="vanished">Δημιουργία νέου διαγράμματος</translation>
+        <translation>Δημιουργία νέου διαγράμματος</translation>
     </message>
     <message>
         <source>Add to current diagram</source>
-        <translation type="vanished">Προσθήκη στο τρέχον διάγραμμα</translation>
+        <translation>Προσθήκη στο τρέχον διάγραμμα</translation>
     </message>
     <message>
         <source>No schematic diagram was selected...</source>
-        <translation type="vanished">Δεν επιλέχθηκε σχηματικό διάγραμμα...</translation>
+        <translation>Δεν επιλέχθηκε σχηματικό διάγραμμα...</translation>
     </message>
     <message>
         <source>Save file</source>
-        <translation type="vanished">Αποθήκευση αρχείου</translation>
+        <translation>Αποθήκευση αρχείου</translation>
     </message>
     <message>
         <source>VeraGrid zip (*.veragrid)</source>
-        <translation type="vanished">VeraGrid zip (*.veragrid)</translation>
+        <translation>VeraGrid zip (*.veragrid)</translation>
     </message>
     <message>
         <source>There is a saving procedure running.
 Cancel and retry?</source>
-        <translation type="vanished">Εκτελείται μια διαδικασία αποθήκευσης.
+        <translation>Εκτελείται μια διαδικασία αποθήκευσης.
 Ακύρωση και προσπάθεια επανάληψης;</translation>
     </message>
     <message>
         <source>There is a file being processed..</source>
-        <translation type="vanished">Υπάρχει ένα αρχείο υπό επεξεργασία..</translation>
+        <translation>Υπάρχει ένα αρχείο υπό επεξεργασία..</translation>
     </message>
     <message>
         <source>Save file logger</source>
-        <translation type="vanished">Αποθήκευση αρχείου καταγραφής</translation>
+        <translation>Αποθήκευση αρχείου καταγραφής</translation>
     </message>
     <message>
         <source>Are you sure that you want to delete the current grid and replace it?</source>
-        <translation type="vanished">Είστε βέβαιοι ότι θέλετε να διαγράψετε το τρέχον πλέγμα και να το αντικαταστήσετε;</translation>
+        <translation>Είστε βέβαιοι ότι θέλετε να διαγράψετε το τρέχον πλέγμα και να το αντικαταστήσετε;</translation>
     </message>
     <message>
         <source>Model v. {model_version}</source>
-        <translation type="vanished">Μοντέλο v. {model_version}</translation>
+        <translation>Μοντέλο v. {model_version}</translation>
     </message>
     <message>
         <source>idtag. {idtag}</source>
-        <translation type="vanished">idtag. {idtag}</translation>
+        <translation>idtag. {idtag}</translation>
     </message>
     <message>
         <source>Random grid {bus_count} buses</source>
-        <translation type="vanished">Τυχαίο πλέγμα {bus_count} λεωφορεία</translation>
+        <translation>Τυχαίο πλέγμα {bus_count} λεωφορεία</translation>
     </message>
     <message>
         <source>Grid generated randomly using the RPGM algorithm.</source>
-        <translation type="vanished">Πλέγμα που δημιουργήθηκε τυχαία χρησιμοποιώντας τον αλγόριθμο RPGM.</translation>
+        <translation>Πλέγμα που δημιουργήθηκε τυχαία χρησιμοποιώντας τον αλγόριθμο RPGM.</translation>
     </message>
     <message>
         <source>Excel file (*.xlsx)</source>
-        <translation type="vanished">Αρχείο Excel (*.xlsx)</translation>
+        <translation>Αρχείο Excel (*.xlsx)</translation>
     </message>
     <message>
         <source>profiles of </source>
-        <translation type="vanished">προφίλ του</translation>
+        <translation>προφίλ του</translation>
     </message>
     <message>
         <source>There are no profiles!</source>
-        <translation type="vanished">Δεν υπάρχουν προφίλ!</translation>
+        <translation>Δεν υπάρχουν προφίλ!</translation>
     </message>
     <message>
         <source>Export object profiles</source>
-        <translation type="vanished">Εξαγωγή προφίλ αντικειμένων</translation>
+        <translation>Εξαγωγή προφίλ αντικειμένων</translation>
     </message>
     <message>
         <source>Zip file (*.zip)</source>
-        <translation type="vanished">Αρχείο zip (*.zip)</translation>
+        <translation>Αρχείο zip (*.zip)</translation>
     </message>
     <message>
         <source>Results of </source>
-        <translation type="vanished">Αποτελέσματα του</translation>
+        <translation>Αποτελέσματα του</translation>
     </message>
     <message>
         <source>There are no results available :/</source>
-        <translation type="vanished">Δεν υπάρχουν διαθέσιμα αποτελέσματα :/</translation>
+        <translation>Δεν υπάρχουν διαθέσιμα αποτελέσματα :/</translation>
     </message>
     <message>
         <source>Export all</source>
-        <translation type="vanished">Εξαγωγή όλων</translation>
+        <translation>Εξαγωγή όλων</translation>
     </message>
     <message>
         <source>Done!</source>
-        <translation type="vanished">Γινώμενος!</translation>
+        <translation>Γινώμενος!</translation>
     </message>
     <message>
         <source>Results parsing</source>
-        <translation type="vanished">Ανάλυση αποτελεσμάτων</translation>
+        <translation>Ανάλυση αποτελεσμάτων</translation>
     </message>
     <message>
         <source>Loaded &apos;{study_name}&apos; results from disk</source>
-        <translation type="vanished">Τα αποτελέσματα &quot;{study_name}&quot; φορτώθηκαν από το δίσκο</translation>
+        <translation>Τα αποτελέσματα &quot;{study_name}&quot; φορτώθηκαν από το δίσκο</translation>
     </message>
     <message>
         <source>No file driver declared :/</source>
-        <translation type="vanished">Δεν δηλώθηκε πρόγραμμα οδήγησης αρχείου :/</translation>
+        <translation>Δεν δηλώθηκε πρόγραμμα οδήγησης αρχείου :/</translation>
     </message>
     <message>
         <source>Select a driver inside a session</source>
-        <translation type="vanished">Επιλέξτε ένα πρόγραμμα οδήγησης μέσα σε μια περίοδο λειτουργίας</translation>
+        <translation>Επιλέξτε ένα πρόγραμμα οδήγησης μέσα σε μια περίοδο λειτουργίας</translation>
     </message>
     <message>
         <source>Driver load from disk</source>
-        <translation type="vanished">Φόρτωση προγράμματος οδήγησης από το δίσκο</translation>
+        <translation>Φόρτωση προγράμματος οδήγησης από το δίσκο</translation>
     </message>
     <message>
         <source>Load results from disk</source>
-        <translation type="vanished">Φόρτωση αποτελεσμάτων από το δίσκο</translation>
+        <translation>Φόρτωση αποτελεσμάτων από το δίσκο</translation>
     </message>
     <message>
         <source>Formats (*.json)</source>
-        <translation type="vanished">Μορφές (*.json)</translation>
+        <translation>Μορφές (*.json)</translation>
     </message>
     <message>
         <source>Open file</source>
-        <translation type="vanished">Άνοιγμα αρχείου</translation>
+        <translation>Άνοιγμα αρχείου</translation>
     </message>
     <message>
         <source>Contingencies import</source>
-        <translation type="vanished">Εισαγωγή απρόβλεπτων</translation>
+        <translation>Εισαγωγή απρόβλεπτων</translation>
     </message>
     <message>
         <source>JSON file (*.json)</source>
-        <translation type="vanished">Αρχείο JSON (*.json)</translation>
+        <translation>Αρχείο JSON (*.json)</translation>
     </message>
     <message>
         <source>Catalogue added!</source>
-        <translation type="vanished">Προστέθηκε κατάλογος!</translation>
+        <translation>Προστέθηκε κατάλογος!</translation>
     </message>
     <message>
         <source>Load catalogue</source>
-        <translation type="vanished">Φόρτωση καταλόγου</translation>
+        <translation>Φόρτωση καταλόγου</translation>
     </message>
     <message>
         <source>Open catalogue logger</source>
-        <translation type="vanished">Άνοιγμα καταγραφικού καταλόγου</translation>
+        <translation>Άνοιγμα καταγραφικού καταλόγου</translation>
     </message>
     <message>
         <source>Catalogue loaded!</source>
-        <translation type="vanished">Ο κατάλογος φορτώθηκε!</translation>
+        <translation>Ο κατάλογος φορτώθηκε!</translation>
     </message>
     <message>
         <source>Catalogue file (*.xlsx)</source>
-        <translation type="vanished">Αρχείο καταλόγου (*.xlsx)</translation>
+        <translation>Αρχείο καταλόγου (*.xlsx)</translation>
     </message>
     <message>
         <source>Catalogue Excel file (*.xlsx)</source>
-        <translation type="vanished">Αρχείο Excel καταλόγου (*.xlsx)</translation>
+        <translation>Αρχείο Excel καταλόγου (*.xlsx)</translation>
     </message>
     <message>
         <source>Save catalogue</source>
-        <translation type="vanished">Αποθήκευση καταλόγου</translation>
+        <translation>Αποθήκευση καταλόγου</translation>
     </message>
     <message>
         <source>Catalogue saved!</source>
-        <translation type="vanished">Ο κατάλογος αποθηκεύτηκε!</translation>
+        <translation>Ο κατάλογος αποθηκεύτηκε!</translation>
     </message>
     <message>
         <source>CIM (*.xml)</source>
-        <translation type="vanished">CIM (*.xml)</translation>
+        <translation>CIM (*.xml)</translation>
     </message>
     <message>
         <source>Export to CIM</source>
-        <translation type="vanished">Εξαγωγή σε CIM</translation>
+        <translation>Εξαγωγή σε CIM</translation>
     </message>
     <message>
         <source>Power Grid Models (*.pgm)</source>
-        <translation type="vanished">Μοντέλα ηλεκτρικού δικτύου (*.pgm)</translation>
+        <translation>Μοντέλα ηλεκτρικού δικτύου (*.pgm)</translation>
     </message>
     <message>
         <source>Export to Power Grid Models</source>
-        <translation type="vanished">Εξαγωγή σε μοντέλα ηλεκτρικού δικτύου</translation>
+        <translation>Εξαγωγή σε μοντέλα ηλεκτρικού δικτύου</translation>
     </message>
     <message>
         <source>Power Grid Models not installed :/</source>
-        <translation type="vanished">Μη εγκατεστημένα μοντέλα ηλεκτρικού δικτύου :/</translation>
+        <translation>Μη εγκατεστημένα μοντέλα ηλεκτρικού δικτύου :/</translation>
     </message>
     <message>
         <source>Electrical Json V3 (*.ejson3)</source>
-        <translation type="vanished">Electrical Json V3 (*.ejson3)</translation>
+        <translation>Electrical Json V3 (*.ejson3)</translation>
     </message>
     <message>
         <source>Export to JSON</source>
-        <translation type="vanished">Εξαγωγή σε JSON</translation>
+        <translation>Εξαγωγή σε JSON</translation>
     </message>
     <message>
         <source>VeraGrid HDF5 (*.gch5)</source>
-        <translation type="vanished">VeraGrid HDF5 (*.gch5)</translation>
+        <translation>VeraGrid HDF5 (*.gch5)</translation>
     </message>
     <message>
         <source>Export to VeraGrid HDF5</source>
-        <translation type="vanished">Εξαγωγή σε VeraGrid HDF5</translation>
+        <translation>Εξαγωγή σε VeraGrid HDF5</translation>
     </message>
     <message>
         <source>Excel (*.xlsx)</source>
-        <translation type="vanished">Excel (*.xlsx)</translation>
+        <translation>Excel (*.xlsx)</translation>
     </message>
     <message>
         <source>Export to Microsoft Excel</source>
-        <translation type="vanished">Εξαγωγή στο Microsoft Excel</translation>
+        <translation>Εξαγωγή στο Microsoft Excel</translation>
     </message>
     <message>
         <source>Sqlite (*.sqlite)</source>
-        <translation type="vanished">Sqlite (*.sqlite)</translation>
+        <translation>Sqlite (*.sqlite)</translation>
     </message>
     <message>
         <source>Export to Sqlite</source>
-        <translation type="vanished">Εξαγωγή σε Sqlite</translation>
+        <translation>Εξαγωγή σε Sqlite</translation>
     </message>
     <message>
         <source>VeraGrid (*.veragrid)</source>
-        <translation type="vanished">VeraGrid (*.veragrid)</translation>
+        <translation>VeraGrid (*.veragrid)</translation>
     </message>
     <message>
         <source>Export VeraGrid scenario</source>
-        <translation type="vanished">Εξαγωγή σεναρίου VeraGrid</translation>
+        <translation>Εξαγωγή σεναρίου VeraGrid</translation>
+    </message>
+    <message>
+        <source>Server file deleted.</source>
+        <translation>Το αρχείο του server διαγράφηκε.</translation>
+    </message>
+    <message>
+        <source>Server file saved.</source>
+        <translation>Το αρχείο του server αποθηκεύτηκε.</translation>
+    </message>
+    <message>
+        <source>Server model deleted.</source>
+        <translation>Το μοντέλο του server διαγράφηκε.</translation>
+    </message>
+    <message>
+        <source>Server save cancelled.</source>
+        <translation>Η αποθήκευση του server ακυρώθηκε.</translation>
+    </message>
+    <message>
+        <source>The file was loaded but the current project was kept because closing a dynamic editor was cancelled.</source>
+        <translation>Το αρχείο φορτώθηκε, αλλά το τρέχον έργο διατηρήθηκε επειδή η κλείσιμο ενός δυναμικού επεξεργαστή ακυρώθηκε.</translation>
     </message>
 </context>
 <context>
@@ -3140,6 +3540,562 @@ Cancel and retry?</source>
         <source>Data</source>
         <translation>Δεδομένα</translation>
     </message>
+    <message>
+        <source>&lt;b&gt;{error_count}&lt;/b&gt; errors and &lt;b&gt;{divergence_count}&lt;/b&gt; divergences are blocking the score most strongly.</source>
+        <translation>&lt;b&gt;{error_count}&lt;/b&gt; σφάλματα και &lt;b&gt;{divergence_count}&lt;/b&gt; αποκλίσεις μπλοκάρουν το σκορ πιο έντονα.</translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;{fixable_count}&lt;/b&gt; findings can be auto-corrected safely from this dashboard.</source>
+        <translation>&lt;b&gt;{fixable_count}&lt;/b&gt; ευρήματα μπορούν να διορθωθούν αυτόματα με ασφάλεια από αυτό το dashboard.</translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;{warning_count}&lt;/b&gt; warnings and &lt;b&gt;{information_count}&lt;/b&gt; informational findings still reduce confidence.</source>
+        <translation>&lt;b&gt;{warning_count}&lt;/b&gt; προειδοποιήσεις και &lt;b&gt;{information_count}&lt;/b&gt; πληροφοριακά ευρήματα μειώνουν ακόμα την εμπιστοσύνη.</translation>
+    </message>
+    <message>
+        <source>Action Narrative</source>
+        <translation>Περιγραφή Δράσης</translation>
+    </message>
+    <message>
+        <source>Aggregation</source>
+        <translation>Συγκέντρωση</translation>
+    </message>
+    <message>
+        <source>All object types</source>
+        <translation>Όλοι οι τύποι αντικειμένων</translation>
+    </message>
+    <message>
+        <source>All severities</source>
+        <translation>Όλες οι σοβαρότητες</translation>
+    </message>
+    <message>
+        <source>Analyzed assets</source>
+        <translation>Αναλυμένα περιουσιακά στοιχεία</translation>
+    </message>
+    <message>
+        <source>Apply fixes to time series</source>
+        <translation>Εφαρμογή διορθώσεων σε σειρές χρόνου</translation>
+    </message>
+    <message>
+        <source>Area</source>
+        <translation>Περιοχή</translation>
+    </message>
+    <message>
+        <source>Auto-fix</source>
+        <translation>Αυτόματη διόρθωση</translation>
+    </message>
+    <message>
+        <source>Auto-fix ready</source>
+        <translation>Έτοιμο για αυτόματη διόρθωση</translation>
+    </message>
+    <message>
+        <source>Balance Explorer</source>
+        <translation>Εξερεύνηση Ισορροπίας</translation>
+    </message>
+    <message>
+        <source>Collapse All</source>
+        <translation>Συμπίεση Όλων</translation>
+    </message>
+    <message>
+        <source>Community</source>
+        <translation>Κοινότητα</translation>
+    </message>
+    <message>
+        <source>Converged</source>
+        <translation>Συγκρίθηκε</translation>
+    </message>
+    <message>
+        <source>Country</source>
+        <translation>Χώρα</translation>
+    </message>
+    <message>
+        <source>Critical findings</source>
+        <translation>Κρίσιμα ευρήματα</translation>
+    </message>
+    <message>
+        <source>Dashboard refreshed: {issue_count} findings, score {overall_score}/100.</source>
+        <translation>Ανανεώθηκε το Dashboard: {issue_count} ευρήματα, βαθμολογία {overall_score}/100.</translation>
+    </message>
+    <message>
+        <source>Divergence</source>
+        <translation>Διακλάδωση</translation>
+    </message>
+    <message>
+        <source>Divergences</source>
+        <translation>Διακλαδώσεις</translation>
+    </message>
+    <message>
+        <source>Error</source>
+        <translation>Σφάλμα</translation>
+    </message>
+    <message>
+        <source>Errors</source>
+        <translation>Σφάλματα</translation>
+    </message>
+    <message>
+        <source>Excel (*.xlsx)</source>
+        <translation>Excel (*.xlsx)</translation>
+    </message>
+    <message>
+        <source>Excel (*.xlsx);;HTML (*.html);;PDF (*.pdf)</source>
+        <translation>Excel (*.xlsx);;HTML (*.html);;PDF (*.pdf)</translation>
+    </message>
+    <message>
+        <source>Executive Overview</source>
+        <translation>Εκτελεστική Επισκόπηση</translation>
+    </message>
+    <message>
+        <source>Expand All</source>
+        <translation>Εκστολή Όλων</translation>
+    </message>
+    <message>
+        <source>Export the full report once the score and findings reflect the scenario you want to share.</source>
+        <translation>Экспортеτε την πλήρη έκθεση μόλις η βαθμολογία και τα ευρήματα αντικατοπτρίζουν το σενάριο που θέλετε να μοιραστείτε.</translation>
+    </message>
+    <message>
+        <source>Field</source>
+        <translation>Πεδίο</translation>
+    </message>
+    <message>
+        <source>Findings ({count})</source>
+        <translation>Ευρήματα ({count})</translation>
+    </message>
+    <message>
+        <source>Findings Explorer</source>
+        <translation>Εξερεύνηση Ευρημάτων</translation>
+    </message>
+    <message>
+        <source>Findings Explorer ({count})</source>
+        <translation>Εξερεύνηση Ευρημάτων ({count})</translation>
+    </message>
+    <message>
+        <source>Fixed issues</source>
+        <translation>Διορθωμένα προβλήματα</translation>
+    </message>
+    <message>
+        <source>Full dashboard report exported to {file_name}.</source>
+        <translation>Η πλήρης έκθεση του dashboard εξэкспортеρήθηκε στο {file_name}.</translation>
+    </message>
+    <message>
+        <source>Generator Vset max</source>
+        <translation>Μέγιστο Vset Γεννήτριας</translation>
+    </message>
+    <message>
+        <source>Generator Vset min</source>
+        <translation>Ελάχιστο Vset Γεννήτριας</translation>
+    </message>
+    <message>
+        <source>Global</source>
+        <translation>Γενικό</translation>
+    </message>
+    <message>
+        <source>Grade</source>
+        <translation>Βαθμός</translation>
+    </message>
+    <message>
+        <source>Grade {grade}</source>
+        <translation>Βαθμός {grade}</translation>
+    </message>
+    <message>
+        <source>Grid Health Dashboard Report</source>
+        <translation>Έκθεση Dashboard Υγείας Δικτύου</translation>
+    </message>
+    <message>
+        <source>Index</source>
+        <translation>Δείκτης</translation>
+    </message>
+    <message>
+        <source>Information</source>
+        <translation>Πληροφορίες</translation>
+    </message>
+    <message>
+        <source>Inputs analysis is unavailable for the current grid.</source>
+        <translation>Η ανάλυση εισόδων δεν είναι διαθέσιμη για το τρέχον δίκτυο.</translation>
+    </message>
+    <message>
+        <source>Inputs analysis pending.</source>
+        <translation>Αναμένεται η ανάλυση εισόδων.</translation>
+    </message>
+    <message>
+        <source>Inputs analysis unavailable</source>
+        <translation>Η ανάλυση εισόδων δεν είναι διαθέσιμη</translation>
+    </message>
+    <message>
+        <source>Investigate buses with the smallest sigma distances because the current stability margin is tight.</source>
+        <translation>Ερευνήστε τους υποσταθμούς με τις μικρότερες αποστάσεις sigma επειδή το τρέχον περιθώριο σταθερότητας είναι περιοριστικό.</translation>
+    </message>
+    <message>
+        <source>Issue score</source>
+        <translation>Βαθμός προβλήματος</translation>
+    </message>
+    <message>
+        <source>Issue score {issue_score:.1f}/100 • sigma score unavailable.</source>
+        <translation>Βαθμός προβλήματος {issue_score:.1f}/100 • Βαθμός sigma μη διαθέσιμος.</translation>
+    </message>
+    <message>
+        <source>Issue score {issue_score:.1f}/100 • sigma score {sigma_score:.1f}/100.</source>
+        <translation>Βαθμός προβλήματος {issue_score:.1f}/100 • Βαθμός sigma {sigma_score:.1f}/100.</translation>
+    </message>
+    <message>
+        <source>Issues</source>
+        <translation>Προβλήματα</translation>
+    </message>
+    <message>
+        <source>Issues exported to {file_name}.</source>
+        <translation>Τα προβλήματα εξэкспортеρήθηκαν στο {file_name}.</translation>
+    </message>
+    <message>
+        <source>Item</source>
+        <translation>στοιχείο</translation>
+    </message>
+    <message>
+        <source>Lower</source>
+        <translation>Χαμηλότερο</translation>
+    </message>
+    <message>
+        <source>Make the grid simulation-ready and rerun the dashboard so sigma margin can join the report.</source>
+        <translation>Κάντε το δίκτυο έτοιμο για môδελισμα και επανατρέξτε το dashboard ώστε το περιθώριο sigma να ενσωματωθεί στην έκθεση.</translation>
+    </message>
+    <message>
+        <source>Mean sigma distance</source>
+        <translation>Μέση απόσταση sigma</translation>
+    </message>
+    <message>
+        <source>Mean {mean_distance:.3f} p.u.</source>
+        <translation>Μέση {mean_distance:.3f} p.u.</translation>
+    </message>
+    <message>
+        <source>Message</source>
+        <translation>Μήνυμα</translation>
+    </message>
+    <message>
+        <source>Metric</source>
+        <translation>Μετρική</translation>
+    </message>
+    <message>
+        <source>Minimum distance {min_distance:.3f} p.u. • mean distance {mean_distance:.3f} p.u.</source>
+        <translation>Ελάχιστη απόσταση {min_distance:.3f} p.u. • μέση απόσταση {mean_distance:.3f} p.u.</translation>
+    </message>
+    <message>
+        <source>Minimum sigma distance</source>
+        <translation>Ελάχιστη απόσταση sigma</translation>
+    </message>
+    <message>
+        <source>Most Repeated Finding</source>
+        <translation>Το πιο συχνό ευρήμα</translation>
+    </message>
+    <message>
+        <source>Most repeated finding</source>
+        <translation>Το πιο συχνό ευρηματικό αποτέλεσμα</translation>
+    </message>
+    <message>
+        <source>Most repeated finding count</source>
+        <translation>Αριθμός πιο συχνού ευρηματικού αποτελέσματος</translation>
+    </message>
+    <message>
+        <source>Municipality</source>
+        <translation>Δήμος</translation>
+    </message>
+    <message>
+        <source>N/A</source>
+        <translation>N/A</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>Ονομα</translation>
+    </message>
+    <message>
+        <source>Net balance (MW)</source>
+        <translation>Καθαρή ισορροπία (MW)</translation>
+    </message>
+    <message>
+        <source>No</source>
+        <translation>Όχι</translation>
+    </message>
+    <message>
+        <source>No balance series available</source>
+        <translation>Δεν είναι διαθέσιμη σειρά ισορροπίας</translation>
+    </message>
+    <message>
+        <source>No findings were produced by the current analysis settings.</source>
+        <translation>Δεν παραχθηκαν ευρήματα από τις τρέχουσες ρυθμίσεις ανάλυσης.</translation>
+    </message>
+    <message>
+        <source>No safe automatic fixes were detected, so the next step is a manual review of the highest-severity findings.</source>
+        <translation>Δεν ανιχνεύθηκαν ασφαλείς αυτόματες διορθώσεις, οπότε το επόμενο βήμα είναι μια χειροκίνητη επισκόπηση των ευρημάτων υψηλότερης σοβαρότητας.</translation>
+    </message>
+    <message>
+        <source>No snapshot balances available</source>
+        <translation>Δεν είναι διαθέσιμες ισοβάσεις στιγμιότυπου</translation>
+    </message>
+    <message>
+        <source>No {aggregation} balances are available to plot.</source>
+        <translation>Δεν είναι διαθέσιμες ισοβάσεις {aggregation} για σχεδίαση.</translation>
+    </message>
+    <message>
+        <source>Object</source>
+        <translation>Αντικείμενο</translation>
+    </message>
+    <message>
+        <source>Overall score</source>
+        <translation>Συνολική βαθμολογία</translation>
+    </message>
+    <message>
+        <source>Prioritize errors and divergences before warnings, especially the rows tagged with severe numerical or connectivity issues.</source>
+        <translation>Δώστε προτεραιότητα στα σφάλματα και τις διακυμάνσεις πριν από τις προειδοποιήσεις, ειδικά στις γραμμές που φέρουν ετικέτα σοβαρών αριθμητικών ή συνδετικότητας προβλημάτων.</translation>
+    </message>
+    <message>
+        <source>Property</source>
+        <translation>Ιδιότητα</translation>
+    </message>
+    <message>
+        <source>Recommended Next Actions</source>
+        <translation>Συνιστώμενες Επόμενες Ενέργειες</translation>
+    </message>
+    <message>
+        <source>Region</source>
+        <translation>Περιοχή</translation>
+    </message>
+    <message>
+        <source>Safe corrections available</source>
+        <translation>Διαθέσιμες ασφαλείς διορθώσεις</translation>
+    </message>
+    <message>
+        <source>Score Rationale</source>
+        <translation>Λογική Βαθμολογίας</translation>
+    </message>
+    <message>
+        <source>Severity</source>
+        <translation>Σοβαρότητα</translation>
+    </message>
+    <message>
+        <source>Showing the {count} strongest {aggregation} balance traces. Largest absolute balance: {column_name} at {column_value:.3f} MW.</source>
+        <translation>Εμφανίζονται οι {count} ισχυρότερες ίσοβασεις {aggregation} հետք. Η μεγαλύτερη απόλυτη ισορροπία είναι: {column_name} σε {column_value:.3f} MW.</translation>
+    </message>
+    <message>
+        <source>Sigma</source>
+        <translation>Σίγμα</translation>
+    </message>
+    <message>
+        <source>Sigma Plot</source>
+        <translation>Γραφήμα Σίγμα</translation>
+    </message>
+    <message>
+        <source>Sigma Table</source>
+        <translation>Πίνακας Σίγμα</translation>
+    </message>
+    <message>
+        <source>Sigma analysis</source>
+        <translation>Ανάλυση Sigma</translation>
+    </message>
+    <message>
+        <source>Sigma analysis converged.</source>
+        <translation>Η ανάλυση Σίγμα συγκρίθηκε.</translation>
+    </message>
+    <message>
+        <source>Sigma analysis could not be produced for the current grid state.</source>
+        <translation>Η ανάλυση Σίγμα δεν μπορούσε να παραχθεί για την τρέχουσα κατάσταση του δικτύου.</translation>
+    </message>
+    <message>
+        <source>Sigma analysis did not converge</source>
+        <translation>Η ανάλυση Σίγμα δεν συγκlρίθηκε</translation>
+    </message>
+    <message>
+        <source>Sigma analysis failed: {exception}</source>
+        <translation>Η ανάλυση Σίγμα απέτυχε: {exception}</translation>
+    </message>
+    <message>
+        <source>Sigma analysis returned no results.</source>
+        <translation>Η ανάλυση Σίγμα δεν επιστράφηκαν αποτελέσματα.</translation>
+    </message>
+    <message>
+        <source>Sigma analysis unavailable because the grid is not valid for simulation.</source>
+        <translation>Η ανάλυση Σίγμα δεν είναι διαθέσιμη επειδή το δίκτυο δεν είναι έγκυρο για τα μοντέλα.</translation>
+    </message>
+    <message>
+        <source>Sigma available</source>
+        <translation>Διαθέσιμο Σίγμα</translation>
+    </message>
+    <message>
+        <source>Sigma coefficients did not fully converge.</source>
+        <translation>Οι συντελεστές Σίγμα δεν συγκlρίθηκαν πλήρως.</translation>
+    </message>
+    <message>
+        <source>Sigma data unavailable</source>
+        <translation>Δεν είναι διαθέσιμα δεδομένα Σίγμα</translation>
+    </message>
+    <message>
+        <source>Sigma distance</source>
+        <translation>Στατιστική απόσταση</translation>
+    </message>
+    <message>
+        <source>Sigma distance is not available</source>
+        <translation>Η στατιστική απόσταση δεν είναι διαθέσιμη.</translation>
+    </message>
+    <message>
+        <source>Sigma margin is acceptable, so focus on structural cleanup before attempting aggressive operational studies.</source>
+        <translation>Η στατιστική περιθώριο είναι αποδεκτό, οπότε επικεντρωθείτε στην δομική καθαρισμό πριν επιχειρήσετε επιθετικές λειτουργικές μελέτες.</translation>
+    </message>
+    <message>
+        <source>Sigma plot</source>
+        <translation>Στατιστικό διάγραμμα</translation>
+    </message>
+    <message>
+        <source>Sigma plot is unavailable for the current grid state.</source>
+        <translation>Το στατιστικό διάγραμμα δεν είναι διαθέσιμο για την τρέχουσα κατάσταση του δικτύου.</translation>
+    </message>
+    <message>
+        <source>Sigma point is outside the stability curve</source>
+        <translation>Το στατιστικό σημείο είναι εκτός της καμπύλης σταθερότητας.</translation>
+    </message>
+    <message>
+        <source>Sigma score</source>
+        <translation>Στατιστικό σκορ</translation>
+    </message>
+    <message>
+        <source>Sigma stability could not be included in the score because the simulation could not be produced.</source>
+        <translation>Η στατιστική σταθερότητα δεν μπορούσε να συμπεριληφθεί στο σκορ επειδή δεν μπορούσε να παραχθεί η προσομοίωση.</translation>
+    </message>
+    <message>
+        <source>Sigma stability margin is available with minimum distance &lt;b&gt;{min_distance:.3f} p.u.&lt;/b&gt; and mean distance &lt;b&gt;{mean_distance:.3f} p.u.&lt;/b&gt;.</source>
+        <translation>Το στατιστικό περιθώριο σταθερότητας είναι διαθέσιμο με ελάχιστη απόσταση &lt;b&gt;{min_distance:.3f} p.u.&lt;/b&gt; και μέση απόσταση &lt;b&gt;{mean_distance:.3f} p.u.&lt;/b&gt;.</translation>
+    </message>
+    <message>
+        <source>Sigma status</source>
+        <translation>Στατιστική κατάσταση</translation>
+    </message>
+    <message>
+        <source>Sigma table</source>
+        <translation>Στατιστικός πίνακας</translation>
+    </message>
+    <message>
+        <source>Sigma table copied to clipboard.</source>
+        <translation>Ο στατιστικός πίνακας αντιγράφηκε στο clipboard.</translation>
+    </message>
+    <message>
+        <source>Snapshot net balances by {aggregation}. Largest exporter: {exporter_name} ({exporter_value:.3f} MW). Largest importer: {importer_name} ({importer_value:.3f} MW).</source>
+        <translation>Ανακοίνωση καθαρών ισορροπιών ανά {aggregation}. Μεγαλύτερος εξάπ exporter: {exporter_name} ({exporter_value:.3f} MW). Μεγαλύτερος εισαγωγέας: {importer_name} ({importer_value:.3f} MW).</translation>
+    </message>
+    <message>
+        <source>Status</source>
+        <translation>Κατάσταση</translation>
+    </message>
+    <message>
+        <source>Summary</source>
+        <translation>Περίληψη</translation>
+    </message>
+    <message>
+        <source>The current dashboard state does not expose any safe automatic fixes.</source>
+        <translation>Η τρέχουσα κατάσταση του πίνακα ελέγχου δεν εκθέτει καμία ασφαλή αυτόματη διόρθωση.</translation>
+    </message>
+    <message>
+        <source>The grid scores &lt;b&gt;{overall_score}/100&lt;/b&gt; (&lt;b&gt;grade {grade}&lt;/b&gt;) across &lt;b&gt;{asset_count}&lt;/b&gt; analyzed assets.</source>
+        <translation>Το δίκτυο έχει σκορ &lt;b&gt;{overall_score}/100&lt;/b&gt; (&lt;b&gt;βαθμός {grade}&lt;/b&gt;) σε &lt;b&gt;{asset_count}&lt;/b&gt; αναλυμένα περιουσιακά στοιχεία.</translation>
+    </message>
+    <message>
+        <source>There are no critical findings, so the remaining work is mainly quality hardening and model cleanup.</source>
+        <translation>Δεν υπάρχουν κρίσιμα ευρήματα, οπότε η υπόλοιπη εργασία αφορά κυρίως τη βελτίωση ποιότητας και τον καθαρισμό του μοντέλου.</translation>
+    </message>
+    <message>
+        <source>There is no sigma table available to copy.</source>
+        <translation>Δεν υπάρχει στατιστικός πίνακας για αντιγραφή.</translation>
+    </message>
+    <message>
+        <source>Threshold</source>
+        <translation>Κατώφλι</translation>
+    </message>
+    <message>
+        <source>Thresholds</source>
+        <translation>Κατώφλια</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>Χρόνος</translation>
+    </message>
+    <message>
+        <source>Top N</source>
+        <translation>Οι κορυφαίοι N</translation>
+    </message>
+    <message>
+        <source>Top {count} {aggregation} balances over time</source>
+        <translation>Οι κορυφαίες {count} ισορροπίες {aggregation} με την πάροδο του χρόνου</translation>
+    </message>
+    <message>
+        <source>Top {count} {aggregation} snapshot balances</source>
+        <translation>Οι κορυφαίες {count} στιγμιότυπες ισορροπίες {aggregation}</translation>
+    </message>
+    <message>
+        <source>Total findings</source>
+        <translation>Συνολικά ευρήματα</translation>
+    </message>
+    <message>
+        <source>Transformer Vcc max (%)</source>
+        <translation>Μετασχηματιστής Vcc max (%)</translation>
+    </message>
+    <message>
+        <source>Transformer Vcc min (%)</source>
+        <translation>Μετασχηματιστής Vcc min (%)</translation>
+    </message>
+    <message>
+        <source>Transformer tap module max</source>
+        <translation>Μέγιστο τμήμα μετασχηματιστή</translation>
+    </message>
+    <message>
+        <source>Transformer tap module min</source>
+        <translation>Ελάχιστο τμήμα μετασχηματιστή</translation>
+    </message>
+    <message>
+        <source>Unnamed grid</source>
+        <translation>ΑFromNameίκης Δίκτυο</translation>
+    </message>
+    <message>
+        <source>Upper</source>
+        <translation>Άνω</translation>
+    </message>
+    <message>
+        <source>Use &lt;b&gt;Fix Safe Issues&lt;/b&gt; to correct the problems already covered by automatic repairs, then refresh the score.</source>
+        <translation>Χρησιμοποιήστε το &lt;b&gt;Διόρθωση Ασφαλών Προβλημάτων&lt;/b&gt; για να διορθώσετε τα προβλήματα που καλύπτονται ήδη από τις αυτόματες επισκευές, και μετά ανανεώστε το σκορ.</translation>
+    </message>
+    <message>
+        <source>Use the tabs below to review the executive overview, detailed findings, action narrative, sigma stability view and threshold controls.</source>
+        <translation>Χρησιμοποιήστε τις καρτέλες παρακάτω για να αναθεωρήσετε την εκτελεστική επισκόπηση, τις λεπτομερείς ανακρίσεις, τη διήγημα δράσης, τη θέα σταθερότητας sigma και τους έλεγχους κατώφλίου.</translation>
+    </message>
+    <message>
+        <source>Value</source>
+        <translation>Τιμή</translation>
+    </message>
+    <message>
+        <source>VoltageLevel</source>
+        <translation>Επίπεδο Τάσης</translation>
+    </message>
+    <message>
+        <source>Warning</source>
+        <translation>Προειδοποίηση</translation>
+    </message>
+    <message>
+        <source>Warnings</source>
+        <translation>Προειδοποιήσεις</translation>
+    </message>
+    <message>
+        <source>Yes</source>
+        <translation>Ναι</translation>
+    </message>
+    <message>
+        <source>Zone</source>
+        <translation>Ζώνη</translation>
+    </message>
+    <message>
+        <source>{critical_count} critical findings</source>
+        <translation>{critical_count} κρίσιμες ανακρίσεις</translation>
+    </message>
+    <message>
+        <source>{grid_name}  •  {bus_count} buses  •  {line_count} lines  •  {transformer_count} transformers</source>
+        <translation>{grid_name} • {bus_count} υποσταθμοί • {line_count} γραμμές • {transformer_count} μετασχηματιστές</translation>
+    </message>
+    <message>
+        <source>{status_text} Min distance {min_distance:.3f} p.u. • mean distance {mean_distance:.3f} p.u.</source>
+        <translation>{status_text} Ελάχιστη απόσταση {min_distance:.3f} p.u. • μέση απόσταση {mean_distance:.3f} p.u.</translation>
+    </message>
 </context>
 <context>
     <name>MatpowerExportDialog</name>
@@ -3297,149 +4253,161 @@ Cancel and retry?</source>
     <name>ResultsMain</name>
     <message>
         <source>Delete driver</source>
-        <translation type="vanished">Διαγραφή προγράμματος οδήγησης</translation>
+        <translation>Διαγραφή προγράμματος οδήγησης</translation>
     </message>
     <message>
         <source>Rename group</source>
-        <translation type="vanished">Μετονομασία ομάδας</translation>
+        <translation>Μετονομασία ομάδας</translation>
     </message>
     <message>
         <source>Rename variable</source>
-        <translation type="vanished">Μετονομασία μεταβλητής</translation>
+        <translation>Μετονομασία μεταβλητής</translation>
     </message>
     <message>
         <source>Rename dynamic plot</source>
-        <translation type="vanished">Μετονομασία δυναμικής πλοκής</translation>
+        <translation>Μετονομασία δυναμικής πλοκής</translation>
     </message>
     <message>
         <source>Plot name</source>
-        <translation type="vanished">Όνομα οικοπέδου</translation>
+        <translation>Όνομα οικοπέδου</translation>
     </message>
     <message>
         <source>The plot group name is empty or already exists.</source>
-        <translation type="vanished">Το όνομα της ομάδας γραφικής παράστασης είναι κενό ή υπάρχει ήδη.</translation>
+        <translation>Το όνομα της ομάδας γραφικής παράστασης είναι κενό ή υπάρχει ήδη.</translation>
     </message>
     <message>
         <source>Select a plot group first.</source>
-        <translation type="vanished">Επιλέξτε πρώτα μια ομάδα πλοκών.</translation>
+        <translation>Επιλέξτε πρώτα μια ομάδα πλοκών.</translation>
     </message>
     <message>
         <source>There are no RMS dynamics results loaded.</source>
-        <translation type="vanished">Δεν έχουν φορτωθεί αποτελέσματα δυναμικής RMS.</translation>
+        <translation>Δεν έχουν φορτωθεί αποτελέσματα δυναμικής RMS.</translation>
     </message>
     <message>
         <source>Rename dynamic variable</source>
-        <translation type="vanished">Μετονομασία δυναμικής μεταβλητής</translation>
+        <translation>Μετονομασία δυναμικής μεταβλητής</translation>
     </message>
     <message>
         <source>Variable name</source>
-        <translation type="vanished">Όνομα μεταβλητής</translation>
+        <translation>Όνομα μεταβλητής</translation>
     </message>
     <message>
         <source>The variable name is empty or could not be changed.</source>
-        <translation type="vanished">Το όνομα της μεταβλητής είναι κενό ή δεν ήταν δυνατό να αλλάξει.</translation>
+        <translation>Το όνομα της μεταβλητής είναι κενό ή δεν ήταν δυνατό να αλλάξει.</translation>
     </message>
     <message>
         <source>New dynamic plot</source>
-        <translation type="vanished">Νέα δυναμική πλοκή</translation>
+        <translation>Νέα δυναμική πλοκή</translation>
     </message>
     <message>
         <source>Plot mode</source>
-        <translation type="vanished">Λειτουργία σχεδίασης</translation>
+        <translation>Λειτουργία σχεδίασης</translation>
     </message>
     <message>
         <source>Time Series (Y vs Time)</source>
-        <translation type="vanished">Χρονοσειρά (Y vs Time)</translation>
+        <translation>Χρονοσειρά (Y vs Time)</translation>
     </message>
     <message>
         <source>X-Y Plot (Y vs X)</source>
-        <translation type="vanished">Οικόπεδο X-Y (Y vs X)</translation>
+        <translation>Οικόπεδο X-Y (Y vs X)</translation>
     </message>
     <message>
         <source>The selected dynamic plot entry could not be deleted.</source>
-        <translation type="vanished">Δεν ήταν δυνατή η διαγραφή της επιλεγμένης καταχώρισης δυναμικής γραφικής παράστασης.</translation>
+        <translation>Δεν ήταν δυνατή η διαγραφή της επιλεγμένης καταχώρισης δυναμικής γραφικής παράστασης.</translation>
     </message>
     <message>
         <source>Select a plot group or variable first.</source>
-        <translation type="vanished">Επιλέξτε πρώτα μια ομάδα γραφικών ή μια μεταβλητή.</translation>
+        <translation>Επιλέξτε πρώτα μια ομάδα γραφικών ή μια μεταβλητή.</translation>
     </message>
     <message>
         <source>The selected dynamic plot entry could not be plotted.</source>
-        <translation type="vanished">Δεν ήταν δυνατή η γραφική παράσταση της επιλεγμένης καταχώρισης δυναμικής γραφικής παράστασης.</translation>
+        <translation>Δεν ήταν δυνατή η γραφική παράσταση της επιλεγμένης καταχώρισης δυναμικής γραφικής παράστασης.</translation>
     </message>
     <message>
         <source>There are {columns} columns, the plot might take a lot to render.
 Are you ok with potentially waiting a lot?</source>
-        <translation type="vanished">Υπάρχουν στήλες {columns}, η πλοκή μπορεί να χρειαστεί πολύ για να αποδοθεί.
+        <translation>Υπάρχουν στήλες {columns}, η πλοκή μπορεί να χρειαστεί πολύ για να αποδοθεί.
 Είσαι εντάξει με το ενδεχόμενο να περιμένεις πολύ;</translation>
     </message>
     <message>
         <source>Plot</source>
-        <translation type="vanished">Οικόπεδο</translation>
+        <translation>Οικόπεδο</translation>
     </message>
     <message>
         <source>Export results</source>
-        <translation type="vanished">Εξαγωγή αποτελεσμάτων</translation>
+        <translation>Εξαγωγή αποτελεσμάτων</translation>
     </message>
     <message>
         <source>CSV (*.csv);;Excel files (*.xlsx)</source>
-        <translation type="vanished">CSV (*.csv);;Αρχεία Excel (*.xlsx)</translation>
+        <translation>CSV (*.csv);;Αρχεία Excel (*.xlsx)</translation>
     </message>
     <message>
         <source> is not valid :(</source>
-        <translation type="vanished">δεν ισχύει :(</translation>
+        <translation>δεν ισχύει :(</translation>
     </message>
     <message>
         <source>There is no profile displayed, please display one</source>
-        <translation type="vanished">Δεν εμφανίζεται κανένα προφίλ, εμφανίστε ένα</translation>
+        <translation>Δεν εμφανίζεται κανένα προφίλ, εμφανίστε ένα</translation>
     </message>
     <message>
         <source>Copy profile to clipboard</source>
-        <translation type="vanished">Αντιγραφή προφίλ στο πρόχειρο</translation>
+        <translation>Αντιγραφή προφίλ στο πρόχειρο</translation>
     </message>
     <message>
         <source>Copied!</source>
-        <translation type="vanished">Αντιγράφηκε!</translation>
+        <translation>Αντιγράφηκε!</translation>
     </message>
     <message>
         <source>Filter parse</source>
-        <translation type="vanished">Ανάλυση φίλτρου</translation>
+        <translation>Ανάλυση φίλτρου</translation>
     </message>
     <message>
         <source>Do you want to delete the results driver {study_name}?</source>
-        <translation type="vanished">Θέλετε να διαγράψετε το πρόγραμμα οδήγησης αποτελεσμάτων {study_name};</translation>
+        <translation>Θέλετε να διαγράψετε το πρόγραμμα οδήγησης αποτελεσμάτων {study_name};</translation>
     </message>
     <message>
         <source>Message</source>
-        <translation type="vanished">Μήνυμα</translation>
+        <translation>Μήνυμα</translation>
     </message>
     <message>
         <source>Are you sure that you want to overwrite the generation, batteries and load snapshot values with the OPF results?</source>
-        <translation type="vanished">Είστε βέβαιοι ότι θέλετε να αντικαταστήσετε τις τιμές παραγωγής, μπαταριών και στιγμιότυπου φορτίου με τα αποτελέσματα OPF;</translation>
+        <translation>Είστε βέβαιοι ότι θέλετε να αντικαταστήσετε τις τιμές παραγωγής, μπαταριών και στιγμιότυπου φορτίου με τα αποτελέσματα OPF;</translation>
     </message>
     <message>
         <source>Overwrite profiles with OPF results</source>
-        <translation type="vanished">Αντικαταστήστε τα προφίλ με αποτελέσματα OPF</translation>
+        <translation>Αντικαταστήστε τα προφίλ με αποτελέσματα OPF</translation>
     </message>
     <message>
         <source>P snapshot set from the OPF results</source>
-        <translation type="vanished">Σύνολο στιγμιότυπου από τα αποτελέσματα OPF</translation>
+        <translation>Σύνολο στιγμιότυπου από τα αποτελέσματα OPF</translation>
     </message>
     <message>
         <source>The OPF time series has no results :(</source>
-        <translation type="vanished">Η χρονολογική σειρά OPF δεν έχει αποτελέσματα :(</translation>
+        <translation>Η χρονολογική σειρά OPF δεν έχει αποτελέσματα :(</translation>
     </message>
     <message>
         <source>Are you sure that you want to overwrite the generation, batteries and load profiles with the OPF time series results?</source>
-        <translation type="vanished">Είστε βέβαιοι ότι θέλετε να αντικαταστήσετε τα προφίλ παραγωγής, μπαταριών και φόρτωσης με τα αποτελέσματα της χρονολογικής σειράς OPF;</translation>
+        <translation>Είστε βέβαιοι ότι θέλετε να αντικαταστήσετε τα προφίλ παραγωγής, μπαταριών και φόρτωσης με τα αποτελέσματα της χρονολογικής σειράς OPF;</translation>
     </message>
     <message>
         <source>P profiles set from the OPF results</source>
-        <translation type="vanished">Σετ προφίλ P από τα αποτελέσματα OPF</translation>
+        <translation>Σετ προφίλ P από τα αποτελέσματα OPF</translation>
     </message>
     <message>
         <source>Export logs</source>
-        <translation type="vanished">Εξαγωγή αρχείων καταγραφής</translation>
+        <translation>Εξαγωγή αρχείων καταγραφής</translation>
+    </message>
+    <message>
+        <source>Plot results</source>
+        <translation>Σχεδιάστε τα αποτελέσματα</translation>
+    </message>
+    <message>
+        <source>Select a variable first.</source>
+        <translation>Επιλέξτε πρώτα ένα μεταβλητό.</translation>
+    </message>
+    <message>
+        <source>There are no results available to plot.</source>
+        <translation>Δεν υπάρχουν διαθέσιμα αποτελέσματα για σχεδίαση.</translation>
     </message>
 </context>
 <context>
@@ -3506,305 +4474,305 @@ Are you ok with potentially waiting a lot?</source>
     <message>
         <source>VeraGrid internal commands.
 </source>
-        <translation type="vanished">VeraGrid εσωτερικές εντολές.</translation>
+        <translation>VeraGrid εσωτερικές εντολές.</translation>
     </message>
     <message>
         <source>If a command is unavailable is because the study has not been executed yet.</source>
-        <translation type="vanished">Εάν μια εντολή δεν είναι διαθέσιμη, οφείλεται στο ότι η μελέτη δεν έχει εκτελεστεί ακόμη.</translation>
+        <translation>Εάν μια εντολή δεν είναι διαθέσιμη, οφείλεται στο ότι η μελέτη δεν έχει εκτελεστεί ακόμη.</translation>
     </message>
     <message>
         <source>
 
 clc():	clear the console.</source>
-        <translation type="vanished">clc(): διαγράψτε την κονσόλα.</translation>
+        <translation>clc(): διαγράψτε την κονσόλα.</translation>
     </message>
     <message>
         <source>
 
 App functions:</source>
-        <translation type="vanished">Λειτουργίες εφαρμογής:</translation>
+        <translation>Λειτουργίες εφαρμογής:</translation>
     </message>
     <message>
         <source>	app.new_project(): Clear all.</source>
-        <translation type="vanished">app.new_project(): Εκκαθάριση όλων.</translation>
+        <translation>app.new_project(): Εκκαθάριση όλων.</translation>
     </message>
     <message>
         <source>	app.open_file(): Prompt to load VeraGrid compatible file</source>
-        <translation type="vanished">app.open_file(): Προτροπή για φόρτωση συμβατού αρχείου VeraGrid</translation>
+        <translation>app.open_file(): Προτροπή για φόρτωση συμβατού αρχείου VeraGrid</translation>
     </message>
     <message>
         <source>	app.save_file(): Prompt to save VeraGrid file</source>
-        <translation type="vanished">app.save_file(): Προτροπή για αποθήκευση του αρχείου VeraGrid</translation>
+        <translation>app.save_file(): Προτροπή για αποθήκευση του αρχείου VeraGrid</translation>
     </message>
     <message>
         <source>	app.export_diagram(): Prompt to export the diagram in png.</source>
-        <translation type="vanished">app.export_diagram(): Προτροπή για εξαγωγή του διαγράμματος σε png.</translation>
+        <translation>app.export_diagram(): Προτροπή για εξαγωγή του διαγράμματος σε png.</translation>
     </message>
     <message>
         <source>	app.create_schematic_from_api(): Create the schematic from the circuit information.</source>
-        <translation type="vanished">app.create_schematic_from_api(): Δημιουργήστε το σχηματικό από τις πληροφορίες του κυκλώματος.</translation>
+        <translation>app.create_schematic_from_api(): Δημιουργήστε το σχηματικό από τις πληροφορίες του κυκλώματος.</translation>
     </message>
     <message>
         <source>	app.adjust_all_node_width(): Adjust the width of all the nodes according to their name.</source>
-        <translation type="vanished">app.adjust_all_node_width(): Προσαρμόστε το πλάτος όλων των κόμβων σύμφωνα με το όνομά τους.</translation>
+        <translation>app.adjust_all_node_width(): Προσαρμόστε το πλάτος όλων των κόμβων σύμφωνα με το όνομά τους.</translation>
     </message>
     <message>
         <source>	app.numerical_circuit: get compilation of the assets.</source>
-        <translation type="vanished">app.numerical_circuit: λάβετε τη συλλογή των στοιχείων.</translation>
+        <translation>app.numerical_circuit: λάβετε τη συλλογή των στοιχείων.</translation>
     </message>
     <message>
         <source>	app.islands: get compilation of the assets split into the topological islands.</source>
-        <translation type="vanished">app.islands: λάβετε τη συλλογή των στοιχείων ενεργητικού που χωρίζονται στα τοπολογικά νησιά.</translation>
+        <translation>app.islands: λάβετε τη συλλογή των στοιχείων ενεργητικού που χωρίζονται στα τοπολογικά νησιά.</translation>
     </message>
     <message>
         <source>
 
 Circuit functions:</source>
-        <translation type="vanished">Λειτουργίες κυκλώματος:</translation>
+        <translation>Λειτουργίες κυκλώματος:</translation>
     </message>
     <message>
         <source>	app.circuit.plot_graph(): Plot a graph in a Matplotlib window. Call plt.show() after.</source>
-        <translation type="vanished">app.circuit.plot_graph(): Σχεδιάστε ένα γράφημα σε ένα παράθυρο Matplotlib. Καλέστε το plt.show() μετά.</translation>
+        <translation>app.circuit.plot_graph(): Σχεδιάστε ένα γράφημα σε ένα παράθυρο Matplotlib. Καλέστε το plt.show() μετά.</translation>
     </message>
     <message>
         <source>
 
 Power flow results:</source>
-        <translation type="vanished">Αποτελέσματα ροής ισχύος:</translation>
+        <translation>Αποτελέσματα ροής ισχύος:</translation>
     </message>
     <message>
         <source>	app.session.power_flow.voltage:	 the nodal voltages in per unit</source>
-        <translation type="vanished">app.session.power_flow.voltage: οι κομβικές τάσεις ανά μονάδα</translation>
+        <translation>app.session.power_flow.voltage: οι κομβικές τάσεις ανά μονάδα</translation>
     </message>
     <message>
         <source>	app.session.power_flow.current:	 the branch currents in per unit</source>
-        <translation type="vanished">app.session.power_flow.current: τα ρεύματα διακλάδωσης ανά μονάδα</translation>
+        <translation>app.session.power_flow.current: τα ρεύματα διακλάδωσης ανά μονάδα</translation>
     </message>
     <message>
         <source>	app.session.power_flow.loading:	 the branch loading in %</source>
-        <translation type="vanished">app.session.power_flow.loading: η φόρτωση κλάδου σε %</translation>
+        <translation>app.session.power_flow.loading: η φόρτωση κλάδου σε %</translation>
     </message>
     <message>
         <source>	app.session.power_flow.losses:	 the branch losses in per unit</source>
-        <translation type="vanished">app.session.power_flow.losses: οι απώλειες κλάδου ανά μονάδα</translation>
+        <translation>app.session.power_flow.losses: οι απώλειες κλάδου ανά μονάδα</translation>
     </message>
     <message>
         <source>	app.session.power_flow.power:	 the nodal power Injections in per unit</source>
-        <translation type="vanished">app.session.power_flow.power: η κομβική ισχύς Ενέσεις ανά μονάδα</translation>
+        <translation>app.session.power_flow.power: η κομβική ισχύς Ενέσεις ανά μονάδα</translation>
     </message>
     <message>
         <source>	app.session.power_flow.Sf:	 the branch power Injections in per unit at the &quot;from&quot; side</source>
-        <translation type="vanished">app.session.power_flow.Sf: η ισχύς διακλάδωσης Ενέσεις ανά μονάδα στην πλευρά &quot;από&quot;</translation>
+        <translation>app.session.power_flow.Sf: η ισχύς διακλάδωσης Ενέσεις ανά μονάδα στην πλευρά &quot;από&quot;</translation>
     </message>
     <message>
         <source>	app.session.power_flow.St:	 the branch power Injections in per unit at the &quot;to&quot; side</source>
-        <translation type="vanished">app.session.power_flow.St: η ισχύς διακλάδωσης Ενέσεις ανά μονάδα στην πλευρά &quot;προς&quot;</translation>
+        <translation>app.session.power_flow.St: η ισχύς διακλάδωσης Ενέσεις ανά μονάδα στην πλευρά &quot;προς&quot;</translation>
     </message>
     <message>
         <source>
 
 Short circuit results:</source>
-        <translation type="vanished">Αποτελέσματα βραχυκυκλώματος:</translation>
+        <translation>Αποτελέσματα βραχυκυκλώματος:</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.voltage:	 the nodal voltages in per unit</source>
-        <translation type="vanished">app.session.short_circuit.voltage: οι κομβικές τάσεις ανά μονάδα</translation>
+        <translation>app.session.short_circuit.voltage: οι κομβικές τάσεις ανά μονάδα</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.current:	 the branch currents in per unit</source>
-        <translation type="vanished">app.session.short_circuit.current: τα ρεύματα διακλάδωσης ανά μονάδα</translation>
+        <translation>app.session.short_circuit.current: τα ρεύματα διακλάδωσης ανά μονάδα</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.loading:	 the branch loading in %</source>
-        <translation type="vanished">app.session.short_circuit.loading: η φόρτωση κλάδου σε %</translation>
+        <translation>app.session.short_circuit.loading: η φόρτωση κλάδου σε %</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.losses:	 the branch losses in per unit</source>
-        <translation type="vanished">app.session.short_circuit.losses: οι απώλειες κλάδου ανά μονάδα</translation>
+        <translation>app.session.short_circuit.losses: οι απώλειες κλάδου ανά μονάδα</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.power:	 the nodal power Injections in per unit</source>
-        <translation type="vanished">app.session.short_circuit.power: η κομβική ισχύς Ενέσεις ανά μονάδα</translation>
+        <translation>app.session.short_circuit.power: η κομβική ισχύς Ενέσεις ανά μονάδα</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.power_from:	 the branch power Injections in per unit at the &quot;from&quot; side</source>
-        <translation type="vanished">app.session.short_circuit.power_from: η ισχύς διακλάδωσης Ενέσεις ανά μονάδα στην πλευρά &quot;από&quot;</translation>
+        <translation>app.session.short_circuit.power_from: η ισχύς διακλάδωσης Ενέσεις ανά μονάδα στην πλευρά &quot;από&quot;</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.power_to:	 the branch power Injections in per unit at the &quot;to&quot; side</source>
-        <translation type="vanished">app.session.short_circuit.power_to: η ισχύς διακλάδωσης Ενέσεις ανά μονάδα στην πλευρά &quot;προς&quot;</translation>
+        <translation>app.session.short_circuit.power_to: η ισχύς διακλάδωσης Ενέσεις ανά μονάδα στην πλευρά &quot;προς&quot;</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.short_circuit_power:	 Short circuit power in MVA of the grid nodes</source>
-        <translation type="vanished">app.session.short_circuit.short_circuit_power: Ισχύς βραχυκυκλώματος σε MVA των κόμβων δικτύου</translation>
+        <translation>app.session.short_circuit.short_circuit_power: Ισχύς βραχυκυκλώματος σε MVA των κόμβων δικτύου</translation>
     </message>
     <message>
         <source>
 
 Optimal power flow results:</source>
-        <translation type="vanished">Βέλτιστα αποτελέσματα ροής ισχύος:</translation>
+        <translation>Βέλτιστα αποτελέσματα ροής ισχύος:</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.voltage:	 the nodal voltages angles in rad</source>
-        <translation type="vanished">app.session.optimal_power_flow.voltage: οι γωνίες των κομβικών τάσεων σε rad</translation>
+        <translation>app.session.optimal_power_flow.voltage: οι γωνίες των κομβικών τάσεων σε rad</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.load_shedding:	 the branch loading in %</source>
-        <translation type="vanished">app.session.optimal_power_flow.load_shedding: η φόρτωση του κλάδου σε %</translation>
+        <translation>app.session.optimal_power_flow.load_shedding: η φόρτωση του κλάδου σε %</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.losses:	 the branch losses in per unit</source>
-        <translation type="vanished">app.session.optimal_power_flow.losses: οι απώλειες κλάδου ανά μονάδα</translation>
+        <translation>app.session.optimal_power_flow.losses: οι απώλειες κλάδου ανά μονάδα</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.Sbus:	 the nodal power Injections in MW</source>
-        <translation type="vanished">app.session.optimal_power_flow.Sbus: οι κομβικές εγχύσεις ισχύος στο MW</translation>
+        <translation>app.session.optimal_power_flow.Sbus: οι κομβικές εγχύσεις ισχύος στο MW</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.Sf:	 the branch power Sf</source>
-        <translation type="vanished">app.session.optimal_power_flow.Sf: η ισχύς διακλάδωσης Sf</translation>
+        <translation>app.session.optimal_power_flow.Sf: η ισχύς διακλάδωσης Sf</translation>
     </message>
     <message>
         <source>
 
 Time series power flow results:</source>
-        <translation type="vanished">Αποτελέσματα ροής ισχύος χρονοσειράς:</translation>
+        <translation>Αποτελέσματα ροής ισχύος χρονοσειράς:</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.time:	 Profiles time index (pandas DateTimeIndex object)</source>
-        <translation type="vanished">app.session.power_flow_ts.time: Ευρετήριο χρόνου προφίλ (αντικείμενο pandas DateTimeIndex)</translation>
+        <translation>app.session.power_flow_ts.time: Ευρετήριο χρόνου προφίλ (αντικείμενο pandas DateTimeIndex)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.load_profiles:	 Load profiles matrix (row: time, col: node)</source>
-        <translation type="vanished">app.session.power_flow_ts.load_profiles: Φόρτωση μήτρας προφίλ (σειρά: χρόνος, στήλη: κόμβος)</translation>
+        <translation>app.session.power_flow_ts.load_profiles: Φόρτωση μήτρας προφίλ (σειρά: χρόνος, στήλη: κόμβος)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.gen_profiles:	 Generation profiles matrix (row: time, col: node)</source>
-        <translation type="vanished">app.session.power_flow_ts.gen_profiles: Πίνακας προφίλ γενιάς (σειρά: χρόνος, στήλη: κόμβος)</translation>
+        <translation>app.session.power_flow_ts.gen_profiles: Πίνακας προφίλ γενιάς (σειρά: χρόνος, στήλη: κόμβος)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.voltages:	 nodal voltages results matrix (row: time, col: node)</source>
-        <translation type="vanished">app.session.power_flow_ts.voltages: κομβική μήτρα αποτελεσμάτων τάσεων (σειρά: χρόνος, στήλη: κόμβος)</translation>
+        <translation>app.session.power_flow_ts.voltages: κομβική μήτρα αποτελεσμάτων τάσεων (σειρά: χρόνος, στήλη: κόμβος)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.currents:	 Branches currents results matrix (row: time, col: branch)</source>
-        <translation type="vanished">app.session.power_flow_ts.currents: Πίνακας αποτελεσμάτων ρευμάτων διακλαδώσεων (σειρά: χρόνος, στήλη: κλάδος)</translation>
+        <translation>app.session.power_flow_ts.currents: Πίνακας αποτελεσμάτων ρευμάτων διακλαδώσεων (σειρά: χρόνος, στήλη: κλάδος)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.loadings:	 Branches loadings results matrix (row: time, col: branch)</source>
-        <translation type="vanished">app.session.power_flow_ts.loadings: Πίνακας αποτελεσμάτων φόρτωσης διακλαδώσεων (σειρά: χρόνος, στήλη: κλάδος)</translation>
+        <translation>app.session.power_flow_ts.loadings: Πίνακας αποτελεσμάτων φόρτωσης διακλαδώσεων (σειρά: χρόνος, στήλη: κλάδος)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.losses:	 Branches losses results matrix (row: time, col: branch)</source>
-        <translation type="vanished">app.session.power_flow_ts.losses: Πίνακας αποτελεσμάτων απωλειών κλάδων (σειρά: χρόνος, στήλη: κλάδος)</translation>
+        <translation>app.session.power_flow_ts.losses: Πίνακας αποτελεσμάτων απωλειών κλάδων (σειρά: χρόνος, στήλη: κλάδος)</translation>
     </message>
     <message>
         <source>
 
 Voltage stability power flow results:</source>
-        <translation type="vanished">Αποτελέσματα ροής ισχύος σταθερότητας τάσης:</translation>
+        <translation>Αποτελέσματα ροής ισχύος σταθερότητας τάσης:</translation>
     </message>
     <message>
         <source>	app.session.continuation_power_flow.voltage:	 Voltage values for every power multiplication factor.</source>
-        <translation type="vanished">app.session.continuation_power_flow.voltage: Τιμές τάσης για κάθε συντελεστή πολλαπλασιασμού ισχύος.</translation>
+        <translation>app.session.continuation_power_flow.voltage: Τιμές τάσης για κάθε συντελεστή πολλαπλασιασμού ισχύος.</translation>
     </message>
     <message>
         <source>	app.session.continuation_power_flow.lambda:	 Value of power multiplication factor applied</source>
-        <translation type="vanished">app.session.continuation_power_flow.lambda: Εφαρμόστηκε η τιμή του συντελεστή πολλαπλασιασμού ισχύος</translation>
+        <translation>app.session.continuation_power_flow.lambda: Εφαρμόστηκε η τιμή του συντελεστή πολλαπλασιασμού ισχύος</translation>
     </message>
     <message>
         <source>	app.session.continuation_power_flow.Sf:	 Power values for every power multiplication factor.</source>
-        <translation type="vanished">app.session.continuation_power_flow.Sf: Τιμές ισχύος για κάθε συντελεστή πολλαπλασιασμού ισχύος.</translation>
+        <translation>app.session.continuation_power_flow.Sf: Τιμές ισχύος για κάθε συντελεστή πολλαπλασιασμού ισχύος.</translation>
     </message>
     <message>
         <source>
 
 Monte Carlo power flow results:</source>
-        <translation type="vanished">Αποτελέσματα ροής ισχύος στο Μόντε Κάρλο:</translation>
+        <translation>Αποτελέσματα ροής ισχύος στο Μόντε Κάρλο:</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.V_avg:	 nodal voltage average result.</source>
-        <translation type="vanished">app.session.stochastic_power_flow.V_avg: μέσο αποτέλεσμα κομβικής τάσης.</translation>
+        <translation>app.session.stochastic_power_flow.V_avg: μέσο αποτέλεσμα κομβικής τάσης.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.I_avg:	 branch current average result.</source>
-        <translation type="vanished">app.session.stochastic_power_flow.I_avg: υποκατάστημα τρέχον μέσο αποτέλεσμα.</translation>
+        <translation>app.session.stochastic_power_flow.I_avg: υποκατάστημα τρέχον μέσο αποτέλεσμα.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.Loading_avg:	 branch loading average result.</source>
-        <translation type="vanished">app.session.stochastic_power_flow.Loading_avg: μέσο αποτέλεσμα φόρτωσης κλάδου.</translation>
+        <translation>app.session.stochastic_power_flow.Loading_avg: μέσο αποτέλεσμα φόρτωσης κλάδου.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.Losses_avg:	 branch losses average result.</source>
-        <translation type="vanished">app.session.stochastic_power_flow.Losses_avg: μέσο αποτέλεσμα απωλειών υποκαταστημάτων.</translation>
+        <translation>app.session.stochastic_power_flow.Losses_avg: μέσο αποτέλεσμα απωλειών υποκαταστημάτων.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.V_std:	 nodal voltage standard deviation result.</source>
-        <translation type="vanished">app.session.stochastic_power_flow.V_std: αποτέλεσμα τυπικής απόκλισης κομβικής τάσης.</translation>
+        <translation>app.session.stochastic_power_flow.V_std: αποτέλεσμα τυπικής απόκλισης κομβικής τάσης.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.I_std:	 branch current standard deviation result.</source>
-        <translation type="vanished">app.session.stochastic_power_flow.I_std: αποτέλεσμα τυπικής απόκλισης ρεύματος διακλάδωσης.</translation>
+        <translation>app.session.stochastic_power_flow.I_std: αποτέλεσμα τυπικής απόκλισης ρεύματος διακλάδωσης.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.Loading_std:	 branch loading standard deviation result.</source>
-        <translation type="vanished">app.session.stochastic_power_flow.Loading_std: αποτέλεσμα τυπικής απόκλισης φόρτωσης κλάδου.</translation>
+        <translation>app.session.stochastic_power_flow.Loading_std: αποτέλεσμα τυπικής απόκλισης φόρτωσης κλάδου.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.Losses_std:	 branch losses standard deviation result.</source>
-        <translation type="vanished">app.session.stochastic_power_flow.Losses_std: Απώλειες κλάδου αποτέλεσμα τυπικής απόκλισης.</translation>
+        <translation>app.session.stochastic_power_flow.Losses_std: Απώλειες κλάδου αποτέλεσμα τυπικής απόκλισης.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.V_avg_series:	 nodal voltage average series.</source>
-        <translation type="vanished">app.session.stochastic_power_flow.V_avg_series: κομβική σειρά μέσης τάσης.</translation>
+        <translation>app.session.stochastic_power_flow.V_avg_series: κομβική σειρά μέσης τάσης.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.V_std_series:	 branch current standard deviation series.</source>
-        <translation type="vanished">app.session.stochastic_power_flow.V_std_series: διακλάδωση τρέχουσας σειράς τυπικής απόκλισης.</translation>
+        <translation>app.session.stochastic_power_flow.V_std_series: διακλάδωση τρέχουσας σειράς τυπικής απόκλισης.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.error_series:	 Monte Carlo error series (the convergence value).</source>
-        <translation type="vanished">app.session.stochastic_power_flow.error_series: Σειρά σφαλμάτων Monte Carlo (η τιμή σύγκλισης).</translation>
+        <translation>app.session.stochastic_power_flow.error_series: Σειρά σφαλμάτων Monte Carlo (η τιμή σύγκλισης).</translation>
     </message>
     <message>
         <source>The same for app.latin_hypercube_sampling</source>
-        <translation type="vanished">Το ίδιο και για το app.latin_hypercube_sampling</translation>
+        <translation>Το ίδιο και για το app.latin_hypercube_sampling</translation>
     </message>
     <message>
         <source> does not exist :/</source>
-        <translation type="vanished">δεν υπαρχει :/</translation>
+        <translation>δεν υπαρχει :/</translation>
     </message>
     <message>
         <source>Open script</source>
-        <translation type="vanished">Ανοίξτε το σενάριο</translation>
+        <translation>Ανοίξτε το σενάριο</translation>
     </message>
     <message>
         <source>Are you sure you want to clear source code?</source>
-        <translation type="vanished">Είστε βέβαιοι ότι θέλετε να διαγράψετε τον πηγαίο κώδικα;</translation>
+        <translation>Είστε βέβαιοι ότι θέλετε να διαγράψετε τον πηγαίο κώδικα;</translation>
     </message>
     <message>
         <source>Clear source code</source>
-        <translation type="vanished">Διαγράψτε τον πηγαίο κώδικα</translation>
+        <translation>Διαγράψτε τον πηγαίο κώδικα</translation>
     </message>
     <message>
         <source>Please enter a name for the script</source>
-        <translation type="vanished">Εισαγάγετε ένα όνομα για το σενάριο</translation>
+        <translation>Εισαγάγετε ένα όνομα για το σενάριο</translation>
     </message>
     <message>
         <source>Save script</source>
-        <translation type="vanished">Αποθήκευση σεναρίου</translation>
+        <translation>Αποθήκευση σεναρίου</translation>
     </message>
     <message>
         <source>Do you want to delete {path}?</source>
-        <translation type="vanished">Θέλετε να διαγράψετε το {path};</translation>
+        <translation>Θέλετε να διαγράψετε το {path};</translation>
     </message>
     <message>
         <source>Delete source code file</source>
-        <translation type="vanished">Διαγραφή αρχείου πηγαίου κώδικα</translation>
+        <translation>Διαγραφή αρχείου πηγαίου κώδικα</translation>
     </message>
     <message>
         <source>Delete</source>
-        <translation type="vanished">Διαγράφω</translation>
+        <translation>Διαγράφω</translation>
     </message>
 </context>
 <context>
@@ -3940,34 +4908,38 @@ Monte Carlo power flow results:</source>
     <name>ServerMain</name>
     <message>
         <source>Server config file was erroneous, wrote a new one</source>
-        <translation type="vanished">Το αρχείο διαμόρφωσης διακομιστή ήταν λανθασμένο, έγραψε ένα νέο</translation>
+        <translation>Το αρχείο διαμόρφωσης διακομιστή ήταν λανθασμένο, έγραψε ένα νέο</translation>
     </message>
     <message>
         <source>The server connection is running, are you sure that you want to stop it?</source>
-        <translation type="vanished">Η σύνδεση διακομιστή εκτελείται, είστε βέβαιοι ότι θέλετε να τη διακόψετε;</translation>
+        <translation>Η σύνδεση διακομιστή εκτελείται, είστε βέβαιοι ότι θέλετε να τη διακόψετε;</translation>
     </message>
     <message>
         <source>Stop Server</source>
-        <translation type="vanished">Διακοπή διακομιστή</translation>
+        <translation>Διακοπή διακομιστή</translation>
     </message>
     <message>
         <source>Could not connect to the server :/</source>
-        <translation type="vanished">Δεν ήταν δυνατή η σύνδεση με τον διακομιστή :/</translation>
+        <translation>Δεν ήταν δυνατή η σύνδεση με τον διακομιστή :/</translation>
     </message>
     <message>
         <source>Connected!</source>
-        <translation type="vanished">Συνδεδεμένος!</translation>
+        <translation>Συνδεδεμένος!</translation>
     </message>
     <message>
         <source>Results received!</source>
-        <translation type="vanished">Λήφθηκαν τα αποτελέσματα!</translation>
+        <translation>Λήφθηκαν τα αποτελέσματα!</translation>
+    </message>
+    <message>
+        <source>Could not connect to the server: {error}</source>
+        <translation>Δεν ήταν δυνατή η σύνδεση στον διακομιστή: {error}</translation>
     </message>
 </context>
 <context>
     <name>ShortCircuitSelector</name>
     <message>
         <source>Short Circuit Configuration</source>
-        <translation type="vanished">Διαμόρφωση βραχυκυκλώματος</translation>
+        <translation>Διαμόρφωση βραχυκυκλώματος</translation>
     </message>
     <message>
         <source>Custom</source>
@@ -4203,15 +5175,15 @@ Monte Carlo power flow results:</source>
     <name>SubstationDesigner</name>
     <message>
         <source>Substation maker</source>
-        <translation type="vanished">Κατασκευαστής υποσταθμού</translation>
+        <translation>Κατασκευαστής υποσταθμού</translation>
     </message>
     <message>
         <source>Substation {number}</source>
-        <translation type="vanished">Υποσταθμός {number}</translation>
+        <translation>Υποσταθμός {number}</translation>
     </message>
     <message>
         <source>There are no voltage levels, so no substation will be created, ok?</source>
-        <translation type="vanished">Δεν υπάρχουν επίπεδα τάσης, άρα δεν θα δημιουργηθεί υποσταθμός, εντάξει;</translation>
+        <translation>Δεν υπάρχουν επίπεδα τάσης, άρα δεν θα δημιουργηθεί υποσταθμός, εντάξει;</translation>
     </message>
 </context>
 <context>
@@ -4565,19 +5537,19 @@ Monte Carlo power flow results:</source>
     <name>VeraGridMainGUI</name>
     <message>
         <source>VeraGrid {version}</source>
-        <translation type="vanished">VeraGrid {version}</translation>
+        <translation>VeraGrid {version}</translation>
     </message>
     <message>
         <source>Are you sure that you want to exit VeraGrid?</source>
-        <translation type="vanished">Είστε βέβαιοι ότι θέλετε να βγείτε από το VeraGrid;</translation>
+        <translation>Είστε βέβαιοι ότι θέλετε να βγείτε από το VeraGrid;</translation>
     </message>
     <message>
         <source>Close</source>
-        <translation type="vanished">Κοντά</translation>
+        <translation>Κοντά</translation>
     </message>
     <message>
         <source>No effect, select diagrams or database</source>
-        <translation type="vanished">Χωρίς εφέ, επιλέξτε διαγράμματα ή βάση δεδομένων</translation>
+        <translation>Χωρίς εφέ, επιλέξτε διαγράμματα ή βάση δεδομένων</translation>
     </message>
 </context>
 <context>
@@ -10194,6 +11166,1139 @@ Monte Carlo power flow results:</source>
     <message>
         <source>Question</source>
         <translation>Ερώτηση</translation>
+    </message>
+</context>
+<context>
+    <name>ArrayEditor</name>
+    <message>
+        <source>Add</source>
+        <translation>Προσθέτω</translation>
+    </message>
+    <message>
+        <source>Array Editor</source>
+        <translation>Επεξεργαστής Πίνακα</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>Διαγράφω</translation>
+    </message>
+</context>
+<context>
+    <name>BlockParameterDraftModel</name>
+    <message>
+        <source>Name</source>
+        <translation>Ονομα</translation>
+    </message>
+    <message>
+        <source>Numeric value. Changes are staged until Apply changes is pressed.</source>
+        <translation>Αριθμητική τιμή. Οι αλλαγές είναι σε στάδιο μέχρι να πατηθεί Εφαρμογή αλλαγών.</translation>
+    </message>
+    <message>
+        <source>Real value or symbolic initialization expression. Changes are staged until Apply changes is pressed.</source>
+        <translation>Πραγματική τιμή ή συμβολική έκφραση αρχικοποίησης. Οι αλλαγές είναι σε στάδιο μέχρι να πατηθεί Εφαρμογή αλλαγών.</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>Τύπος</translation>
+    </message>
+    <message>
+        <source>Value</source>
+        <translation>Τιμή</translation>
+    </message>
+</context>
+<context>
+    <name>BlockSymbolFilterProxyModel</name>
+    <message>
+        <source>Initializes a variable through VarPowerFlowReferenceType and block.external_mapping.</source>
+        <translation>Αρχικοποιεί ένα μεταβλητό μέσω VarPowerFlowReferenceType και block.external_mapping.</translation>
+    </message>
+    <message>
+        <source>Maps a static parameter through ParamPowerFlowReferenceType to block.api_obj_mapping. Dynamic parameters are not editable here.</source>
+        <translation>Χαρτογραφεί έναν στατικό παράγοντα μέσω ParamPowerFlowReferenceType στο block.api_obj_mapping. Οι δυναμικοί παράγοντες δεν είναι επεξεργαστέιμους εδώ.</translation>
+    </message>
+    <message>
+        <source>Power-flow derived initialization</source>
+        <translation>Αρχικοποίηση που προκύπτει από τη ροή ισχύος</translation>
+    </message>
+    <message>
+        <source>Static parameter mapping</source>
+        <translation>Χαρτογράφηση στατικού παράγοντα</translation>
+    </message>
+</context>
+<context>
+    <name>CorrectInconsistenciesDialogue</name>
+    <message>
+        <source>Accept</source>
+        <translation>Αποδέχομαι</translation>
+    </message>
+    <message>
+        <source>Correct inconsistencies</source>
+        <translation>Διόρθωση ασυμφωνιών</translation>
+    </message>
+    <message>
+        <source>Maximum generator set point</source>
+        <translation>Μέγιστο σημείο ρύθμισης γεννήτριας</translation>
+    </message>
+    <message>
+        <source>Maximum virtual tap difference</source>
+        <translation>Μέγιση εικονική διαφορά τάπ</translation>
+    </message>
+    <message>
+        <source>Minimum generator set point</source>
+        <translation>Ελάχιστο σημείο ρύθμισης γεννήτριας</translation>
+    </message>
+</context>
+<context>
+    <name>DataBaseTableMain</name>
+    <message>
+        <source>Add</source>
+        <translation>Προσθέτω</translation>
+    </message>
+    <message>
+        <source>Add to current diagram</source>
+        <translation>Προσθήκη στο τρέχον διάγραμμα</translation>
+    </message>
+    <message>
+        <source>Assign to profile</source>
+        <translation>Αντιστοίχιση στο προφίλ</translation>
+    </message>
+    <message>
+        <source>Colour branches like this</source>
+        <translation>Χρωματίστε τα κλαδιά όπως αυτό</translation>
+    </message>
+    <message>
+        <source>Copy idtag</source>
+        <translation>Αντιγράψτε το idtag</translation>
+    </message>
+    <message>
+        <source>Copy table</source>
+        <translation>Αντιγραφή πίνακα</translation>
+    </message>
+    <message>
+        <source>Crop model to buses selection</source>
+        <translation>Περικοπή μοντέλου στην επιλογή ζυγών</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>Διαγράφω</translation>
+    </message>
+    <message>
+        <source>Duplicate object</source>
+        <translation>Διπλότυπο αντικείμενο</translation>
+    </message>
+    <message>
+        <source>Edit</source>
+        <translation>Εκδίδω</translation>
+    </message>
+    <message>
+        <source>Grid reduction</source>
+        <translation>Μείωση πλέγματος</translation>
+    </message>
+    <message>
+        <source>Highlight based on property</source>
+        <translation>Επισήμανση με βάση την ιδιοκτησία</translation>
+    </message>
+    <message>
+        <source>Highlight buses selection</source>
+        <translation>Επισήμανση επιλογής ζυγών</translation>
+    </message>
+    <message>
+        <source>Merge</source>
+        <translation>Συγχώνευση</translation>
+    </message>
+    <message>
+        <source>New diagram from selection</source>
+        <translation>Νέο διάγραμμα από την επιλογή</translation>
+    </message>
+    <message>
+        <source>New map from selection</source>
+        <translation>Νέος χάρτης από την επιλογή</translation>
+    </message>
+    <message>
+        <source>New vicinity diagram</source>
+        <translation>Νέο διάγραμμα γειτνίασης</translation>
+    </message>
+    <message>
+        <source>Set value to column</source>
+        <translation>Ορίστε την τιμή στη στήλη</translation>
+    </message>
+    <message>
+        <source>Type the object name or a smart filter expression ...</source>
+        <translation>Πληκτρολογήστε το όνομα του αντικειμένου ή μια έκφραση έξυπνου φίλτρου...</translation>
+    </message>
+</context>
+<context>
+    <name>DiagramsMain</name>
+    <message>
+        <source>Are you sure that you want to try an automatic layout?</source>
+        <translation>Είστε βέβαιοι ότι θέλετε να δοκιμάσετε μια αυτόματη διάταξη;</translation>
+    </message>
+    <message>
+        <source>Duplicate</source>
+        <translation>Αντίγραφο</translation>
+    </message>
+    <message>
+        <source>Message</source>
+        <translation>Μήνυμα</translation>
+    </message>
+    <message>
+        <source>New map</source>
+        <translation>Νέος χάρτης</translation>
+    </message>
+    <message>
+        <source>New schematic</source>
+        <translation>Νέο σχηματικό</translation>
+    </message>
+    <message>
+        <source>New schematic from selection</source>
+        <translation>Νέο σχηματικό από την επιλογή</translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation>Αφαιρώ</translation>
+    </message>
+    <message>
+        <source>Save image file</source>
+        <translation>Αποθήκευση αρχείου εικόνας</translation>
+    </message>
+    <message>
+        <source>Save video file</source>
+        <translation>Αποθήκευση αρχείου βίντεο</translation>
+    </message>
+    <message>
+        <source>Type to search in the current diagram</source>
+        <translation>Πληκτρολογήστε για αναζήτηση στο τρέχον διάγραμμα</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicBlockEditorGUI</name>
+    <message>
+        <source>Block name already exists</source>
+        <translation>Το όνομα του μπλοκ υπάρχει ήδη</translation>
+    </message>
+    <message>
+        <source>Block name cannot be empty</source>
+        <translation>Το όνομα του μπλοκ δεν μπορεί να είναι κενό</translation>
+    </message>
+    <message>
+        <source>Block name is invalid</source>
+        <translation>Το όνομα του μπλοκ είναι μη έγκυρο</translation>
+    </message>
+    <message>
+        <source>Change Block Name</source>
+        <translation>Αλλαγή Ονόματος Μπλοκ</translation>
+    </message>
+    <message>
+        <source>Change Variable Name</source>
+        <translation>Αλλαγή Ονόματος Μεταβλητού</translation>
+    </message>
+    <message>
+        <source>Dynamic Model Editor</source>
+        <translation>Επεξεργαστής Δυναμικού Μοντέλου</translation>
+    </message>
+    <message>
+        <source>Dynamic Model Editor [{mode}]</source>
+        <translation>Επεξεργαστής Δυναμικού Μοντέλου [{mode}]</translation>
+    </message>
+    <message>
+        <source>Library</source>
+        <translation>Βιβλιοθήκη</translation>
+    </message>
+    <message>
+        <source>Variable name already exists</source>
+        <translation>Το όνομα του μεταβλητού υπάρχει ήδη</translation>
+    </message>
+    <message>
+        <source>Variable name cannot be empty</source>
+        <translation>Το όνομα του μεταβλητού δεν μπορεί να είναι κενό</translation>
+    </message>
+    <message>
+        <source>Variable name is invalid</source>
+        <translation>Το όνομα του μεταβλητού είναι μη έγκυρο</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEditorAddButton</name>
+    <message>
+        <source>Open another Dynamic Editor</source>
+        <translation>Άνοιγμα άλλου Δυναμικού Επεξεργαστή</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEditorGraphics</name>
+    <message>
+        <source>{direction} {index}: {name}</source>
+        <translation>{direction} {index}: {name}</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEditorPickerDialog</name>
+    <message>
+        <source>Mode</source>
+        <translation>Τρόπος</translation>
+    </message>
+    <message>
+        <source>Modes</source>
+        <translation>Λειτουργίες</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>Ονομα</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation>Άνοιγμα</translation>
+    </message>
+    <message>
+        <source>Open the current block in the other mode.</source>
+        <translation>Άνοιγμα του τρέχοντος μπλοκ σε άλλό τρόπο.</translation>
+    </message>
+    <message>
+        <source>Open the current block in {mode}.</source>
+        <translation>Άνοιγμα του τρέχοντος μπλοκ σε {mode}.</translation>
+    </message>
+    <message>
+        <source>Open {mode}</source>
+        <translation>Άνοιγμα {mode}</translation>
+    </message>
+    <message>
+        <source>Quick Open</source>
+        <translation>Γρήγορο Άνοιγμα</translation>
+    </message>
+    <message>
+        <source>Search dynamic editors</source>
+        <translation>Αναζήτηση δυναμικών επεξεργαστών</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>Τύπος</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventEditor</name>
+    <message>
+        <source>&lt;b&gt;Target device:&lt;/b&gt;</source>
+        <translation>&lt;b&gt;Στόχο συσκευής:&lt;/b&gt;</translation>
+    </message>
+    <message>
+        <source>Align Step</source>
+        <translation>Ευθυγράμμιση Βήματος</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Ματαίωση</translation>
+    </message>
+    <message>
+        <source>Dynamic Event Editor</source>
+        <translation>Επεξεργαστής Δυναμικών Γεγονότων</translation>
+    </message>
+    <message>
+        <source>EMT Event Editor</source>
+        <translation>Επεξεργαστής Εκδηλώσεων EMT</translation>
+    </message>
+    <message>
+        <source>EMT group Created</source>
+        <translation>Ομάδα EMT Δημιουργήθηκε</translation>
+    </message>
+    <message>
+        <source>End Time</source>
+        <translation>Τελικός Χρόνος</translation>
+    </message>
+    <message>
+        <source>Group</source>
+        <translation>Ομάδα</translation>
+    </message>
+    <message>
+        <source>Group: {group_name}</source>
+        <translation>Ομάδα: {group_name}</translation>
+    </message>
+    <message>
+        <source>Invalid Input</source>
+        <translation>Μη έγκυρη Είσοδος</translation>
+    </message>
+    <message>
+        <source>Missing fields</source>
+        <translation>Απαιτούμενα πεδία λείπουν</translation>
+    </message>
+    <message>
+        <source>New Value</source>
+        <translation>Νέα Τιμή</translation>
+    </message>
+    <message>
+        <source>New group name</source>
+        <translation>Όνομα νέας ομάδας</translation>
+    </message>
+    <message>
+        <source>New row {row_number}</source>
+        <translation>Νέα γραμμή {row_number}</translation>
+    </message>
+    <message>
+        <source>No EMT Events Group</source>
+        <translation>Καμία Ομάδα Εκδηλώσεων EMT</translation>
+    </message>
+    <message>
+        <source>No EMT Events Group found, please create one before adding an event.</source>
+        <translation>Δεν βρέθηκε Ομάδα Εκδηλώσεων EMT, παρακαλώ δημιουργήστε μία πριν προσθέσετε μια εκδήλωση.</translation>
+    </message>
+    <message>
+        <source>No Events</source>
+        <translation>Καμία Εκδήλωση</translation>
+    </message>
+    <message>
+        <source>No RMS Events Group</source>
+        <translation>Καμία Ομάδα Εκδηλώσεων RMS</translation>
+    </message>
+    <message>
+        <source>No RMS Events Group found, please create one before adding an event.</source>
+        <translation>Δεν βρέθηκε Ομάδα Εκδηλώσεων RMS, παρακαλώ δημιουργήστε μία πριν προσθέσετε μια εκδήλωση.</translation>
+    </message>
+    <message>
+        <source>No Rows Selected</source>
+        <translation>Δεν επιλέχθηκαν Γραμμές</translation>
+    </message>
+    <message>
+        <source>No switch EMT mode parameter is available in this device.</source>
+        <translation>Δεν είναι διαθέσιμο παράμετρος λειτουργίας EMT σε αυτή τη συσκευή.</translation>
+    </message>
+    <message>
+        <source>Overlapping Events</source>
+        <translation>Επικάλληλες Εκδηλώσεις</translation>
+    </message>
+    <message>
+        <source>Parameter</source>
+        <translation>Παράμετρος</translation>
+    </message>
+    <message>
+        <source>Please add at least one event before confirming.</source>
+        <translation>Παρακαλώ προσθέστε τουλάχιστον μία εκδήλωση πριν επιβεβαιώσετε.</translation>
+    </message>
+    <message>
+        <source>Please check at least one row to remove.</source>
+        <translation>Παρακαλώ επιλέξτε τουλάχιστον μία γραμμή για να αφαιρέσετε.</translation>
+    </message>
+    <message>
+        <source>RMS Event Editor</source>
+        <translation>Επεξεργαστής Εκδηλώσεων RMS</translation>
+    </message>
+    <message>
+        <source>RMS group Created</source>
+        <translation>Ομάδα RMS Δημιουργήθηκε</translation>
+    </message>
+    <message>
+        <source>Ramp</source>
+        <translation>Ράμπη</translation>
+    </message>
+    <message>
+        <source>Row {row_number}: {message}</source>
+        <translation>Γραμμή {row_number}: {message}</translation>
+    </message>
+    <message>
+        <source>Some events are overlapped and cannot be applied.</source>
+        <translation>Ορισμένες εκδηλώσεις επικαλύπτονται και δεν μπορούν να εφαρμοστούν.</translation>
+    </message>
+    <message>
+        <source>Step</source>
+        <translation>Βήμα</translation>
+    </message>
+    <message>
+        <source>Switch Sequence</source>
+        <translation>Ακολουθία Μεταγωγής</translation>
+    </message>
+    <message>
+        <source>Switch Sequence Wizard</source>
+        <translation>Εναλλαγή Εργασιακού Βοηθήματος Ακολουθίας</translation>
+    </message>
+    <message>
+        <source>Target device:</source>
+        <translation>Στόχος συσκευής:</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>Χρόνος</translation>
+    </message>
+    <message>
+        <source>Transition</source>
+        <translation>Μετάβαση</translation>
+    </message>
+    <message>
+        <source>group has invalid type</source>
+        <translation>Η ομάδα έχει μη έγκυρο τύπο</translation>
+    </message>
+    <message>
+        <source>parameter must be Var</source>
+        <translation>Η παράμετρος πρέπει να είναι Var</translation>
+    </message>
+    <message>
+        <source>transition_type must be DynamicEventTransitionType</source>
+        <translation>Ο τύπος μετάβασης πρέπει να είναι DynamicEventTransitionType</translation>
+    </message>
+    <message>
+        <source>{origin}: {transition}, parameter={parameter}, time={time:.4f} s, end_time={end_time:.4f} s, value={value:.6f}</source>
+        <translation>{origin}: {transition}, παράμετρος={parameter}, χρόνος={time:.4f} s, τελικός χρόνος={end_time:.4f} s, τιμή={value:.6f}</translation>
+    </message>
+    <message>
+        <source>{origin}: {transition}, parameter={parameter}, time={time:.4f} s, value={value:.6f}</source>
+        <translation>{origin}: {transition}, παράμετρος={parameter}, χρόνος={time:.4f} s, τιμή={value:.6f}</translation>
+    </message>
+    <message>
+        <source>{prefix}: {group_name}</source>
+        <translation>{prefix}: {group_name}</translation>
+    </message>
+    <message>
+        <source>✅ Add Events</source>
+        <translation>✅ Προσθήκη Εκδηλώσεων</translation>
+    </message>
+    <message>
+        <source>❌ Remove Selected Rows</source>
+        <translation>❌ Αφαίρεση Επιλεγμένων Γραμμών</translation>
+    </message>
+    <message>
+        <source>➕ Add New Event</source>
+        <translation>➕ Προσθήκη Νέου Γεγονότος</translation>
+    </message>
+    <message>
+        <source>➕ New Event Group</source>
+        <translation>➕ Νέα Ομάδα Γεγονότων</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventsGroupsDialog</name>
+    <message>
+        <source>Create EMT Events Group</source>
+        <translation>Δημιουργία Ομάδας Εκδηλώσεων EMT</translation>
+    </message>
+    <message>
+        <source>Create RMS Events Group</source>
+        <translation>Δημιουργία Ομάδας Εκδηλώσεων RMS</translation>
+    </message>
+    <message>
+        <source>Enter group name</source>
+        <translation>Εισάγετε όνομα ομάδας</translation>
+    </message>
+    <message>
+        <source>Invalid name</source>
+        <translation>Μη έγκυρο όνομα</translation>
+    </message>
+    <message>
+        <source>Name:</source>
+        <translation>Ονομα:</translation>
+    </message>
+    <message>
+        <source>The name cannot be empty.</source>
+        <translation>Το όνομα δεν μπορεί να είναι κενό.</translation>
+    </message>
+</context>
+<context>
+    <name>EquationLatexModel</name>
+    <message>
+        <source>Equation</source>
+        <translation>Εξίσωση</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>Τύπος</translation>
+    </message>
+</context>
+<context>
+    <name>GridGeneratorGUI</name>
+    <message>
+        <source>Grid Generator</source>
+        <translation>Γεννήτρια Πλέγματος</translation>
+    </message>
+    <message>
+        <source>Warning</source>
+        <translation>Προειδοποίηση</translation>
+    </message>
+</context>
+<context>
+    <name>GridMapWidget</name>
+    <message>
+        <source>Connection Error</source>
+        <translation>Σφάλμα Σύνδεσης</translation>
+    </message>
+    <message>
+        <source>No suitable voltage level ({voltage:.2f} kV) found in substation "{substation_name}".</source>
+        <translation>Δεν βρέθηκε κατάλληλο επίπεδο τάσης ({voltage:.2f} kV) στον υποσταθμικό "{substation_name}".</translation>
+    </message>
+    <message>
+        <source>Operation Successful</source>
+        <translation>Επιτυχής Λειτουργία</translation>
+    </message>
+    <message>
+        <source>Please select exactly one line and one substation.</source>
+        <translation>Παρακαλώ επιλέξτε ακριβώς μία γραμμή και έναν υποσταθμό.</translation>
+    </message>
+    <message>
+        <source>Selection Error</source>
+        <translation>Σφάλμα επιλογής</translation>
+    </message>
+    <message>
+        <source>T-joint connection created between {substation_name} and {line_name}.</source>
+        <translation>Δημιουργήθηκε σύνδεση T μεταξύ του {substation_name} και του {line_name}.</translation>
+    </message>
+    <message>
+        <source>The line cannot be connected. Please ensure the target substation has a bus with a matching nominal voltage.</source>
+        <translation>Η γραμμή δεν μπορεί να συνδεθεί. Παρακαλώ βεβαιωθείτε ότι ο στόχος υποσταθμός έχει έναν κύκλωμα με αντίστοιχη ονομαστική τάση.</translation>
+    </message>
+    <message>
+        <source>Waypoint replaced with new substation '{substation_name}'.
+Original line split into two segments:
+- {line1_name}: {length1:.2f} km
+- {line2_name}: {length2:.2f} km
+New connection line: {distance:.2f} km</source>
+        <translation>Ο σημείο διαδρομής αντικαταστάθηκε με νέο υποσταθμό '{substation_name}'.
+Η αρχική γραμμή χωρίστηκε σε δύο τμήματα:
+- {line1_name}: {length1:.2f} km
+- {line2_name}: {length2:.2f} km
+Νέα γραμμή σύνδεσης: {distance:.2f} km</translation>
+    </message>
+</context>
+<context>
+    <name>LogsDialogue</name>
+    <message>
+        <source>Accept</source>
+        <translation>Αποδέχομαι</translation>
+    </message>
+    <message>
+        <source>CSV (*.csv);;Excel files (*.xlsx)</source>
+        <translation>CSV (*.csv);;Αρχεία Excel (*.xlsx)</translation>
+    </message>
+    <message>
+        <source>Class</source>
+        <translation>Κατηγορία</translation>
+    </message>
+    <message>
+        <source>Copy</source>
+        <translation>Αντίγραφο</translation>
+    </message>
+    <message>
+        <source>Device</source>
+        <translation>Συσκευή</translation>
+    </message>
+    <message>
+        <source>Expected value</source>
+        <translation>Αναμενόμενη τιμή</translation>
+    </message>
+    <message>
+        <source>Export results</source>
+        <translation>Εξαγωγή αποτελεσμάτων</translation>
+    </message>
+    <message>
+        <source>Property</source>
+        <translation>Ιδιότητα</translation>
+    </message>
+    <message>
+        <source>Save</source>
+        <translation>Εκτός</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>Χρόνος</translation>
+    </message>
+    <message>
+        <source>Value</source>
+        <translation>Τιμή</translation>
+    </message>
+</context>
+<context>
+    <name>NewProfilesStructureDialogue</name>
+    <message>
+        <source>Accept</source>
+        <translation>Αποδέχομαι</translation>
+    </message>
+    <message>
+        <source>New profiles structure</source>
+        <translation>Δομή νέων προφίλ</translation>
+    </message>
+    <message>
+        <source>Number of time steps</source>
+        <translation>Αριθμός βημάτων χρόνου</translation>
+    </message>
+    <message>
+        <source>Start date</source>
+        <translation>Ημερομηνία έναρξης</translation>
+    </message>
+    <message>
+        <source>Time step length</source>
+        <translation>Μήκος βήματος χρόνου</translation>
+    </message>
+    <message>
+        <source>Time units</source>
+        <translation>Μονάδες χρόνου</translation>
+    </message>
+</context>
+<context>
+    <name>ObjectColumnFilterDialog</name>
+    <message>
+        <source>Apply</source>
+        <translation>Εφαρμογή</translation>
+    </message>
+    <message>
+        <source>Cancel filter</source>
+        <translation>Ακύρωση φίλτρου</translation>
+    </message>
+    <message>
+        <source>Clear filter</source>
+        <translation>Καθαρισμός φίλτρου</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>Ερευνα</translation>
+    </message>
+    <message>
+        <source>Select all visible</source>
+        <translation>Επιλογή όλων ορατών</translation>
+    </message>
+    <message>
+        <source>Select no visible</source>
+        <translation>Επιλογή κανενός ορατού</translation>
+    </message>
+    <message>
+        <source>Sort A to Z</source>
+        <translation>Ταξινόμηση Α προς Ζ</translation>
+    </message>
+    <message>
+        <source>Sort Z to A</source>
+        <translation>Ταξινόμηση Ζ προς Α</translation>
+    </message>
+</context>
+<context>
+    <name>RmsPlotDialog</name>
+    <message>
+        <source>Add</source>
+        <translation>Προσθέτω</translation>
+    </message>
+    <message>
+        <source>Device:</source>
+        <translation>Συσκευή:</translation>
+    </message>
+    <message>
+        <source>Plot Variables</source>
+        <translation>Σχεδιάγραμμα Μεταβλητών</translation>
+    </message>
+    <message>
+        <source>Plot Window</source>
+        <translation>Παράθυρο Σχεδιαγράμματος</translation>
+    </message>
+    <message>
+        <source>Remove variable</source>
+        <translation>Αφαίρεση μεταβλητής</translation>
+    </message>
+    <message>
+        <source>Rms Simulation Results</source>
+        <translation>Αποτελέσματα Υπολογισμού RMS</translation>
+    </message>
+    <message>
+        <source>Show in new window</source>
+        <translation>Εμφάνιση σε νέο παράθυρο</translation>
+    </message>
+    <message>
+        <source>Variable:</source>
+        <translation>Μεταβλητή:</translation>
+    </message>
+    <message>
+        <source>time (s)</source>
+        <translation>χρόνος (δευτ.)</translation>
+    </message>
+</context>
+<context>
+    <name>RosetaExplorerGUI</name>
+    <message>
+        <source>Copy</source>
+        <translation>Αντίγραφο</translation>
+    </message>
+</context>
+<context>
+    <name>RuntimeLogicEditorWidget</name>
+    <message>
+        <source>Add entry</source>
+        <translation>Προσθήκη καταχώρισης</translation>
+    </message>
+    <message>
+        <source>Add retained mode</source>
+        <translation>Προσθήκη διατηρούμενης λειτουργίας</translation>
+    </message>
+    <message>
+        <source>Configuration</source>
+        <translation>Διαμόρφωση</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>Διαγράφω</translation>
+    </message>
+    <message>
+        <source>Delete retained mode</source>
+        <translation>Διαγραφή διατηρούμενης λειτουργίας</translation>
+    </message>
+    <message>
+        <source>Documentation</source>
+        <translation>Τεκμηρίωση</translation>
+    </message>
+    <message>
+        <source>Enter a procedural entry name.</source>
+        <translation>Εισάγετε ένα όνομα διαδικαστικής καταχώρισης.</translation>
+    </message>
+    <message>
+        <source>Enter a valid retained-mode symbol name.</source>
+        <translation>Εισάγετε ένα έγκυρο όνομα συμβόλου διατηρούμενης λειτουργίας.</translation>
+    </message>
+    <message>
+        <source>Enter an initial value or expression.</source>
+        <translation>Εισάγετε μια αρχική τιμή ή έκφραση.</translation>
+    </message>
+    <message>
+        <source>Entry name</source>
+        <translation>Όνομα καταχώρισης</translation>
+    </message>
+    <message>
+        <source>Initial value or expression</source>
+        <translation>Αρχική τιμή ή έκφραση</translation>
+    </message>
+    <message>
+        <source>Mode symbol name</source>
+        <translation>Όνομα συμβόλου λειτουργίας</translation>
+    </message>
+    <message>
+        <source>Move down</source>
+        <translation>Μετακίνηση κάτω</translation>
+    </message>
+    <message>
+        <source>Move up</source>
+        <translation>Μετακίνηση πάνω</translation>
+    </message>
+    <message>
+        <source>Owner</source>
+        <translation>Ιδιοκτήτης</translation>
+    </message>
+    <message>
+        <source>Procedural entries</source>
+        <translation>Διαδικαστικές καταχωρίσεις</translation>
+    </message>
+    <message>
+        <source>Retained modes</source>
+        <translation>Διατηρούμενες λειτουργίες</translation>
+    </message>
+    <message>
+        <source>Runtime logic is valid.</source>
+        <translation>Η λογική εκτέλεσης είναι έγκυρη.</translation>
+    </message>
+    <message>
+        <source>Select a valid owner and procedural type.</source>
+        <translation>Επιλέξτε έναν έγκυρο ιδιοκτήτη και διαδικαστικό τύπο.</translation>
+    </message>
+    <message>
+        <source>Select a valid owner block.</source>
+        <translation>Επιλέξτε ένα έγκυρο μπλοκ ιδιοκτήτη.</translation>
+    </message>
+    <message>
+        <source>Select one procedural entry to delete.</source>
+        <translation>Επιλέξτε μία διαδικαστική καταχώριση για διαγραφή.</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>Τύπος</translation>
+    </message>
+    <message>
+        <source>Valid runtime logic. Warnings: </source>
+        <translation>Έγκυρη λογική εκτέλεσης. Προειδοποιήσεις:</translation>
+    </message>
+    <message>
+        <source>Validate runtime logic</source>
+        <translation>Επικύρωση λογικής εκτέλεσης</translation>
+    </message>
+</context>
+<context>
+    <name>ScenariosMain</name>
+    <message>
+        <source>Add child scenario</source>
+        <translation>Προσθήκη παιδικού σεναρίου</translation>
+    </message>
+    <message>
+        <source>Commit scenario</source>
+        <translation>Σενάριο δέσμευσης</translation>
+    </message>
+    <message>
+        <source>Merge children into scenario</source>
+        <translation>Συγχωνεύστε τα παιδιά στο σενάριο</translation>
+    </message>
+    <message>
+        <source>Remove scenario</source>
+        <translation>Κατάργηση σεναρίου</translation>
+    </message>
+    <message>
+        <source>Rename scenario</source>
+        <translation>Μετονομασία σεναρίου</translation>
+    </message>
+    <message>
+        <source>Set as current scenario</source>
+        <translation>Ορισμός ως τρέχον σενάριο</translation>
+    </message>
+</context>
+<context>
+    <name>SelectionDialog</name>
+    <message>
+        <source>Cancel</source>
+        <translation>Ματαίωση</translation>
+    </message>
+    <message>
+        <source>Click on a substation to reconnect branch {branch_name}</source>
+        <translation>Κάντε κλικ σε έναν υποσταθμό για επανασύνδεση της κλάδας {branch_name}</translation>
+    </message>
+    <message>
+        <source>The substation should have a compatible voltage level ({voltage} kV)</source>
+        <translation>Ο υποσταθμός πρέπει να έχει ένα συμβατό επίπεδο τάσης ({voltage} kV)</translation>
+    </message>
+    <message>
+        <source>Waiting for Selection</source>
+        <translation>Περιμένω Επιλογή</translation>
+    </message>
+    <message>
+        <source>Waiting for selection...</source>
+        <translation>Περιμένω επιλογή...</translation>
+    </message>
+</context>
+<context>
+    <name>ServerFileDialogue</name>
+    <message>
+        <source>Delete server file</source>
+        <translation>Διαγραφή αρχείου διακομιστή</translation>
+    </message>
+    <message>
+        <source>Delete server model</source>
+        <translation>Διαγραφή μοντέλου διακομιστή</translation>
+    </message>
+    <message>
+        <source>Delete the selected file and every model inside it?</source>
+        <translation>Θέλετε να διαγράψετε το επιλεγμένο αρχείο και όλα τα μοντέλα μέσα σε αυτό;</translation>
+    </message>
+    <message>
+        <source>Delete the selected model from the server database?</source>
+        <translation>Θέλετε να διαγράψετε το επιλεγμένο μοντέλο από τη βάση δεδομένων του διακομιστή;</translation>
+    </message>
+</context>
+<context>
+    <name>SigmaAnalysisGUI</name>
+    <message>
+        <source>CSV (*.csv);;Excel files (*.xlsx)</source>
+        <translation>CSV (*.csv);;Αρχεία Excel (*.xlsx)</translation>
+    </message>
+    <message>
+        <source>Export results</source>
+        <translation>Εξαγωγή αποτελεσμάτων</translation>
+    </message>
+    <message>
+        <source>HELM-Sigma analysis dialogue</source>
+        <translation>Διαλόγος ανάλυσης HELM-Sigma</translation>
+    </message>
+    <message>
+        <source>Sigma analysis completed</source>
+        <translation>Ολοκληρώθηκε η ανάλυση Sigma</translation>
+    </message>
+    <message>
+        <source>Sigma analysis did not return results</source>
+        <translation>Η ανάλυση Sigma δεν επέστρεψε αποτελέσματα</translation>
+    </message>
+    <message>
+        <source>Sigma coefficients did not converge :(</source>
+        <translation>Οι συντελεστές Sigma δεν συγκλίνوا :(</translation>
+    </message>
+    <message>
+        <source>Snapshot</source>
+        <translation>Στιγμιότυπο</translation>
+    </message>
+    <message>
+        <source>This window was opened without a circuit/options rerun context.</source>
+        <translation>Αυτό το παράθυρο άνοιξε χωρίς πλαίσιο επανάληψης κυκλώματος/επιλογών.</translation>
+    </message>
+    <message>
+        <source>Warning</source>
+        <translation>Προειδοποίηση</translation>
+    </message>
+</context>
+<context>
+    <name>SimulationsMain</name>
+    <message>
+        <source>Compiling the grid...</source>
+        <translation>Μεταcompilation του πλέγματος...</translation>
+    </message>
+    <message>
+        <source>Model v. {model_version}</source>
+        <translation>Μοντέλο v. {model_version}</translation>
+    </message>
+    <message>
+        <source>Pareto combination</source>
+        <translation>Συνδυασμός Pareto</translation>
+    </message>
+    <message>
+        <source>Pareto combination {index}</source>
+        <translation>Συνδυασμός Pareto {index}</translation>
+    </message>
+    <message>
+        <source>Running power flow...</source>
+        <translation>Εκτέλεση ροής ισχύος...</translation>
+    </message>
+    <message>
+        <source>Short circuits</source>
+        <translation>Βραχυκυκλώματα</translation>
+    </message>
+    <message>
+        <source>User: {user_name}</source>
+        <translation>Χρήστης: {user_name}</translation>
+    </message>
+    <message>
+        <source>idtag. {idtag}</source>
+        <translation>idtag. {idtag}</translation>
+    </message>
+</context>
+<context>
+    <name>SwitchSequenceDialog</name>
+    <message>
+        <source>Add Sequence Step</source>
+        <translation>Προσθήκη Βήματος Ακολουθίας</translation>
+    </message>
+    <message>
+        <source>Add at least one sequence row.</source>
+        <translation>Προσθέστε τουλάχιστον μία γραμμή ακολουθίας.</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>Κοντά</translation>
+    </message>
+    <message>
+        <source>Group</source>
+        <translation>Ομάδα</translation>
+    </message>
+    <message>
+        <source>Mode Parameter</source>
+        <translation>Παράμετρος Μόδου</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation>Άνοιγμα</translation>
+    </message>
+    <message>
+        <source>Please check at least one row to remove.</source>
+        <translation>Παρακαλώ επιλέξτε τουλάχιστον μία γραμμή για να αφαιρέσετε.</translation>
+    </message>
+    <message>
+        <source>Remove Selected Rows</source>
+        <translation>Διαγραφή Επιλεγμένων Γραμμών</translation>
+    </message>
+    <message>
+        <source>Select a mode parameter and an events group.</source>
+        <translation>Επιλέξτε μια παράμετρο μόδου και μια ομάδα γεγονότων.</translation>
+    </message>
+    <message>
+        <source>State</source>
+        <translation>Κατάσταση</translation>
+    </message>
+    <message>
+        <source>Switch Sequence</source>
+        <translation>Ακολουθία Μεταγωγής</translation>
+    </message>
+    <message>
+        <source>Switch Sequence Wizard</source>
+        <translation>Εναλλαγή Εργασιακού Βοηθήματος Ακολουθίας</translation>
+    </message>
+    <message>
+        <source>The selected parameter or group is invalid.</source>
+        <translation>Η επιλεγμένη παράμετρος ή ομάδα είναι μη έγκυρη.</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>Χρόνος</translation>
+    </message>
+</context>
+<context>
+    <name>SystemScaler</name>
+    <message>
+        <source>Aggregated energy scaling preview</source>
+        <translation>Προεπίθεμα κλιμάκωσης ενέργειας</translation>
+    </message>
+    <message>
+        <source>Aggregated power scaling preview</source>
+        <translation>Προεπίθεμα κλιμάκωσης ισχύος</translation>
+    </message>
+    <message>
+        <source>MW</source>
+        <translation>MW</translation>
+    </message>
+    <message>
+        <source>MWh</source>
+        <translation>MWh</translation>
+    </message>
+    <message>
+        <source>Original generation</source>
+        <translation>Αρχική παραγωγή</translation>
+    </message>
+    <message>
+        <source>Original generation energy</source>
+        <translation>Ενέργεια αρχικής παραγωγής</translation>
+    </message>
+    <message>
+        <source>Original load</source>
+        <translation>Αρχικό φορτίο</translation>
+    </message>
+    <message>
+        <source>Original load energy</source>
+        <translation>Ενέργεια αρχικού φορτίου</translation>
+    </message>
+    <message>
+        <source>Press plot to preview scaling</source>
+        <translation>Πατήστε plot για προεπίθεμα κλιμάκωσης</translation>
+    </message>
+    <message>
+        <source>Scaled generation</source>
+        <translation>Κλιμακωμένη παραγωγή</translation>
+    </message>
+    <message>
+        <source>Scaled generation energy</source>
+        <translation>Ενέργεια κλιμακωμένης παραγωγής</translation>
+    </message>
+    <message>
+        <source>Scaled load</source>
+        <translation>Κλιμακωμένο φορτίο</translation>
+    </message>
+    <message>
+        <source>Scaled load energy</source>
+        <translation>Ενέργεια κλιμακωμένου φορτίου</translation>
+    </message>
+    <message>
+        <source>System scaling</source>
+        <translation>Κλιμάκωση Συστήματος</translation>
+    </message>
+    <message>
+        <source>There is no time series to plot.</source>
+        <translation>Δεν υπάρχει σειρά χρόνου για να σχεδιαστεί.</translation>
+    </message>
+    <message>
+        <source>This operation will alter the generation and load composition irreversibly
+Are you sure?</source>
+        <translation>Αυτή η ενέργεια θα αλλάξει αναστρέγγισμα τη σύνθεση παραγωγής και φορτίου
+Είστε βέβαιοι?</translation>
+    </message>
+</context>
+<context>
+    <name>TimeReIndexDialogue</name>
+    <message>
+        <source>Accept</source>
+        <translation>Αποδέχομαι</translation>
+    </message>
+    <message>
+        <source>Start date</source>
+        <translation>Ημερομηνία έναρξης</translation>
+    </message>
+    <message>
+        <source>Time re-index</source>
+        <translation>Επανα-αρίθρισμα χρόνου</translation>
+    </message>
+    <message>
+        <source>Time step length</source>
+        <translation>Μήκος βήματος χρόνου</translation>
+    </message>
+    <message>
+        <source>Time units</source>
+        <translation>Μονάδες χρόνου</translation>
     </message>
 </context>
 </TS>

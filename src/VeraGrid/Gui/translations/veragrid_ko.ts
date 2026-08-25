@@ -115,6 +115,42 @@ li.checked::마커 { content: &quot;\2612&quot;; }
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot;font-size:11pt;&quot;&gt;| 네트워크엑스 | BSD |&lt;/span&gt;&lt;/p&gt;
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot;font-size:11pt;&quot;&gt;+---------------+----------------+&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
+    <message>
+        <source>Dependencies</source>
+        <translation>종속성</translation>
+    </message>
+    <message>
+        <source>Installation Path</source>
+        <translation>설치 경로</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>이름</translation>
+    </message>
+    <message>
+        <source>Not installed</source>
+        <translation>설치되지 않음</translation>
+    </message>
+    <message>
+        <source>Package</source>
+        <translation>패키지</translation>
+    </message>
+    <message>
+        <source>True</source>
+        <translation>참</translation>
+    </message>
+    <message>
+        <source>Version</source>
+        <translation>버전</translation>
+    </message>
+    <message>
+        <source>licensed</source>
+        <translation>라이선스</translation>
+    </message>
+    <message>
+        <source>supported version</source>
+        <translation>지원되는 버전</translation>
+    </message>
 </context>
 <context>
     <name>AdmittanceMatrixEditorWidget</name>
@@ -337,91 +373,91 @@ li.checked::마커 { content: &quot;\2612&quot;; }
     <name>AiChatDialogue</name>
     <message>
         <source>VeraGrid AI dialogue</source>
-        <translation type="vanished">VeraGrid AI 대화</translation>
+        <translation>VeraGrid AI 대화</translation>
     </message>
     <message>
         <source>Pick or type a GGUF file name</source>
-        <translation type="vanished">GGUF 파일 이름을 선택하거나 입력하세요.</translation>
+        <translation>GGUF 파일 이름을 선택하거나 입력하세요.</translation>
     </message>
     <message>
         <source>Provider model name</source>
-        <translation type="vanished">공급자 모델 이름</translation>
+        <translation>공급자 모델 이름</translation>
     </message>
     <message>
         <source>VeraGrid AI</source>
-        <translation type="vanished">베라그리드 AI</translation>
+        <translation>베라그리드 AI</translation>
     </message>
     <message>
         <source>Scan the configured path for GGUF files.</source>
-        <translation type="vanished">GGUF 파일에 대해 구성된 경로를 검색합니다.</translation>
+        <translation>GGUF 파일에 대해 구성된 경로를 검색합니다.</translation>
     </message>
     <message>
         <source>API key</source>
-        <translation type="vanished">API 키</translation>
+        <translation>API 키</translation>
     </message>
     <message>
         <source>Leave empty for unauthenticated endpoints</source>
-        <translation type="vanished">인증되지 않은 엔드포인트는 비워 두세요.</translation>
+        <translation>인증되지 않은 엔드포인트는 비워 두세요.</translation>
     </message>
     <message>
         <source>Query the configured backend for models.</source>
-        <translation type="vanished">모델에 대해 구성된 백엔드를 쿼리합니다.</translation>
+        <translation>모델에 대해 구성된 백엔드를 쿼리합니다.</translation>
     </message>
     <message>
         <source>Type a message before sending.</source>
-        <translation type="vanished">보내기 전에 메시지를 입력하세요.</translation>
+        <translation>보내기 전에 메시지를 입력하세요.</translation>
     </message>
     <message>
         <source>Resolve the pending tool approval or clear the chat first.</source>
-        <translation type="vanished">보류 중인 도구 승인을 해결하거나 먼저 채팅을 지우세요.</translation>
+        <translation>보류 중인 도구 승인을 해결하거나 먼저 채팅을 지우세요.</translation>
     </message>
     <message>
         <source>Stopping AI turn...</source>
-        <translation type="vanished">AI 턴을 중지하는 중...</translation>
+        <translation>AI 턴을 중지하는 중...</translation>
     </message>
     <message>
         <source>There is no running AI turn to stop.</source>
-        <translation type="vanished">실행중인 AI가 멈출 차례가 없습니다.</translation>
+        <translation>실행중인 AI가 멈출 차례가 없습니다.</translation>
     </message>
     <message>
         <source>Running simulation and analyzing the results...</source>
-        <translation type="vanished">시뮬레이션을 실행하고 결과를 분석하는 중...</translation>
+        <translation>시뮬레이션을 실행하고 결과를 분석하는 중...</translation>
     </message>
     <message>
         <source>There is no pending tool call to approve.</source>
-        <translation type="vanished">승인을 위해 보류 중인 도구 호출이 없습니다.</translation>
+        <translation>승인을 위해 보류 중인 도구 호출이 없습니다.</translation>
     </message>
     <message>
         <source>Wait for the current AI turn to finish.</source>
-        <translation type="vanished">현재 AI 턴이 끝날 때까지 기다립니다.</translation>
+        <translation>현재 AI 턴이 끝날 때까지 기다립니다.</translation>
     </message>
     <message>
         <source>Running AI turn...</source>
-        <translation type="vanished">AI 턴을 실행 중...</translation>
+        <translation>AI 턴을 실행 중...</translation>
     </message>
     <message>
         <source>Generating response</source>
-        <translation type="vanished">응답 생성 중</translation>
+        <translation>응답 생성 중</translation>
     </message>
     <message>
         <source>Running AI turn</source>
-        <translation type="vanished">AI 턴 실행</translation>
+        <translation>AI 턴 실행</translation>
     </message>
     <message>
         <source>Stop</source>
-        <translation type="vanished">멈추다</translation>
+        <translation>멈추다</translation>
     </message>
     <message>
         <source>Send</source>
-        <translation type="vanished">보내다</translation>
+        <translation>보내다</translation>
     </message>
     <message>
         <source>You</source>
-        <translation type="vanished">너</translation>
+        <translation>너</translation>
     </message>
     <message>
         <source>Tool</source>
-        <translation type="vanished">도구</translation>
+        <translation>도구</translation>
     </message>
 </context>
 <context>
@@ -617,11 +653,15 @@ li.checked::마커 { content: &quot;\2612&quot;; }
     <name>CgmesOptionsSelector</name>
     <message>
         <source>CGMES Version:</source>
-        <translation type="vanished">CGMES 버전:</translation>
+        <translation>CGMES 버전:</translation>
     </message>
     <message>
         <source>Accept</source>
-        <translation type="vanished">수용하다</translation>
+        <translation>수용하다</translation>
+    </message>
+    <message>
+        <source>Select the CGMES options</source>
+        <translation>CGMES 옵션 선택</translation>
     </message>
 </context>
 <context>
@@ -1804,6 +1844,310 @@ li.checked::마커 { content: &quot;\2612&quot;; }
         <source>Close</source>
         <translation type="obsolete">닫다</translation>
     </message>
+    <message>
+        <source>1 / {count}</source>
+        <translation>1 / {count}</translation>
+    </message>
+    <message>
+        <source>Add symbol</source>
+        <translation>심볼 추가</translation>
+    </message>
+    <message>
+        <source>Add symbol to selected block</source>
+        <translation>선택된 블록에 심볼 추가</translation>
+    </message>
+    <message>
+        <source>Advanced runtime logic</source>
+        <translation>고급 런타임 로직</translation>
+    </message>
+    <message>
+        <source>Apply structural settings separately from DAE-code or symbol-interface changes.</source>
+        <translation>구조적 설정을 DAE 코드 또는 심볼 인터페이스 변경 사항과 분리하여 적용합니다.</translation>
+    </message>
+    <message>
+        <source>Block / equation group</source>
+        <translation>블록 / 방정식 그룹</translation>
+    </message>
+    <message>
+        <source>Block configuration</source>
+        <translation>블록 구성</translation>
+    </message>
+    <message>
+        <source>Block info</source>
+        <translation>블록 정보</translation>
+    </message>
+    <message>
+        <source>Block properties - {name}</source>
+        <translation>블록 속성 - {name}</translation>
+    </message>
+    <message>
+        <source>Block structure rebuilt with the selected settings.</source>
+        <translation>선택된 설정으로 블록 구조가 재구축되었습니다.</translation>
+    </message>
+    <message>
+        <source>Catalogue type</source>
+        <translation>카탈로그 유형</translation>
+    </message>
+    <message>
+        <source>Changes applied to the editor working copy.</source>
+        <translation>편집 작업 복사본에 적용된 변경 사항.</translation>
+    </message>
+    <message>
+        <source>Changes applied. Advanced inequalities/discrete/boolean logic was preserved unchanged.</source>
+        <translation>변경 사항이 적용되었습니다. 고급 부등식/이산/불리언 로직은 변경 없이 보존되었습니다.</translation>
+    </message>
+    <message>
+        <source>Clear</source>
+        <translation>분명한</translation>
+    </message>
+    <message>
+        <source>Create derivative variable</source>
+        <translation>미분 변수 생성</translation>
+    </message>
+    <message>
+        <source>DAE and runtime-logic changes applied to the editor working copy.</source>
+        <translation>DAE 및 런타임 로직 변경 사항이 편집 작업 복사본에 적용되었습니다.</translation>
+    </message>
+    <message>
+        <source>DAE code is valid.</source>
+        <translation>DAE 코드가 유효합니다.</translation>
+    </message>
+    <message>
+        <source>DAE model</source>
+        <translation>DAE 모델</translation>
+    </message>
+    <message>
+        <source>DAE validation failed at line {line}: {message}</source>
+        <translation>DAE 유효성 검사 실패 (라인 {line}): {message}</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>삭제</translation>
+    </message>
+    <message>
+        <source>Download rendered PDF</source>
+        <translation>렌더링된 PDF 다운로드</translation>
+    </message>
+    <message>
+        <source>Enter a name</source>
+        <translation>이름을 입력하세요</translation>
+    </message>
+    <message>
+        <source>Enter a valid Python symbol name.</source>
+        <translation>유효한 Python 심볼 이름을 입력하세요.</translation>
+    </message>
+    <message>
+        <source>Equation PDF created: {path}</source>
+        <translation>방정식 PDF가 생성되었습니다: {path}</translation>
+    </message>
+    <message>
+        <source>Equation owner</source>
+        <translation>방정식 소유자</translation>
+    </message>
+    <message>
+        <source>Equations</source>
+        <translation>방정식</translation>
+    </message>
+    <message>
+        <source>General options</source>
+        <translation>일반 옵션</translation>
+    </message>
+    <message>
+        <source>Generated structure</source>
+        <translation>생성된 구조</translation>
+    </message>
+    <message>
+        <source>Initial numeric value</source>
+        <translation>초기 수치 값</translation>
+    </message>
+    <message>
+        <source>Inputs</source>
+        <translation>입력</translation>
+    </message>
+    <message>
+        <source>Invalid DAE code.</source>
+        <translation>잘못된 DAE 코드입니다.</translation>
+    </message>
+    <message>
+        <source>LaTeX</source>
+        <translation>LaTeX</translation>
+    </message>
+    <message>
+        <source>LaTeX source</source>
+        <translation>LaTeX 소스</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>이름</translation>
+    </message>
+    <message>
+        <source>New symbol name</source>
+        <translation>새 심볼 이름</translation>
+    </message>
+    <message>
+        <source>Next</source>
+        <translation>다음</translation>
+    </message>
+    <message>
+        <source>No matches</source>
+        <translation>일치하는 항목 없음</translation>
+    </message>
+    <message>
+        <source>No online catalogue documentation is available for this custom block.</source>
+        <translation>이 사용자 정의 블록에 대한 온라인 카탈로그 문서가 없습니다.</translation>
+    </message>
+    <message>
+        <source>None</source>
+        <translation>없음</translation>
+    </message>
+    <message>
+        <source>Nothing was applied: {message}</source>
+        <translation>적용된 것이 없습니다: {message}</translation>
+    </message>
+    <message>
+        <source>Online documentation</source>
+        <translation>온라인 문서</translation>
+    </message>
+    <message>
+        <source>Opens the documentation for the original predefined library block. If this block has been modified in the editor, its current equations, symbols, parameters, or runtime logic may differ from the online documentation.</source>
+        <translation>원본 사전 정의 라이브러리 블록의 문서를 엽니다. 이 블록이 편집기에서 수정된 경우, 현재 방정식, 심볼, 매개변수 또는 런타임 로직이 온라인 문서와 다를 수 있습니다.</translation>
+    </message>
+    <message>
+        <source>Output</source>
+        <translation>출력</translation>
+    </message>
+    <message>
+        <source>Outputs</source>
+        <translation>출력값</translation>
+    </message>
+    <message>
+        <source>Owner block</source>
+        <translation>소유 블록</translation>
+    </message>
+    <message>
+        <source>PDF documents (*.pdf)</source>
+        <translation>PDF 문서 (*.pdf)</translation>
+    </message>
+    <message>
+        <source>Parameter whose value may change during the simulation.</source>
+        <translation>시뮬레이션 중 값이 변경될 수 있는 매개변수입니다.</translation>
+    </message>
+    <message>
+        <source>Parameters</source>
+        <translation>매개변수</translation>
+    </message>
+    <message>
+        <source>Power-flow variable</source>
+        <translation>전력 흐름 변수</translation>
+    </message>
+    <message>
+        <source>Power-flow variable used to initialize this dynamic variable.</source>
+        <translation>이 동적 변수를 초기화하는 데 사용되는 전력 흐름 변수입니다.</translation>
+    </message>
+    <message>
+        <source>Previous</source>
+        <translation>이전</translation>
+    </message>
+    <message>
+        <source>Python code</source>
+        <translation>Python 코드</translation>
+    </message>
+    <message>
+        <source>Rename...</source>
+        <translation>이름 바꾸기...</translation>
+    </message>
+    <message>
+        <source>Runtime logic</source>
+        <translation>런타임 로직</translation>
+    </message>
+    <message>
+        <source>Save dynamic equations PDF</source>
+        <translation>동적 방정식 PDF 저장</translation>
+    </message>
+    <message>
+        <source>Search Python code...</source>
+        <translation>Python 코드 검색...</translation>
+    </message>
+    <message>
+        <source>Search parameters...</source>
+        <translation>매개변수 검색...</translation>
+    </message>
+    <message>
+        <source>Search variables...</source>
+        <translation>변수 검색...</translation>
+    </message>
+    <message>
+        <source>Select a valid owner block.</source>
+        <translation>유효한 소유 블록을 선택하십시오.</translation>
+    </message>
+    <message>
+        <source>Select a valid symbol type.</source>
+        <translation>유효한 심볼 유형을 선택하십시오.</translation>
+    </message>
+    <message>
+        <source>Select all</source>
+        <translation>모두 선택</translation>
+    </message>
+    <message>
+        <source>Select at least one non-empty equation group.</source>
+        <translation>비어 있지 않은 방정식 그룹을 하나 이상 선택하십시오.</translation>
+    </message>
+    <message>
+        <source>Select equation groups to generate copyable LaTeX source.</source>
+        <translation>복사 가능한 LaTeX 소스를 생성할 방정식 그룹을 선택하십시오.</translation>
+    </message>
+    <message>
+        <source>Select the equation groups to include. Each internal block and each DAE section can be selected independently.</source>
+        <translation>포함할 방정식 그룹을 선택하십시오. 각 내부 블록과 각 DAE 섹션은 독립적으로 선택할 수 있습니다.</translation>
+    </message>
+    <message>
+        <source>Special settings</source>
+        <translation>특수 설정</translation>
+    </message>
+    <message>
+        <source>Static device mapping</source>
+        <translation>정적 장치 매핑</translation>
+    </message>
+    <message>
+        <source>Symbol category</source>
+        <translation>심볼 카테고리</translation>
+    </message>
+    <message>
+        <source>The PDF could not be created: {message}</source>
+        <translation>PDF를 생성할 수 없습니다: {message}</translation>
+    </message>
+    <message>
+        <source>The online block documentation could not be opened in the system browser.</source>
+        <translation>온라인 블록 문서를 시스템 브라우저에서 열 수 없습니다.</translation>
+    </message>
+    <message>
+        <source>These settings contain structured data used to regenerate the block. Edit sequences with valid Python tuple/list syntax.</source>
+        <translation>이 설정에는 블록을 재생성하는 데 사용되는 구조화된 데이터가 포함되어 있습니다. 유효한 Python 튜플/리스트 구문으로 시퀀스를 편집하십시오.</translation>
+    </message>
+    <message>
+        <source>This block has no safe structural rebuild adapter.</source>
+        <translation>이 블록에는 안전한 구조 재구축 어댑터가 없습니다.</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>유형</translation>
+    </message>
+    <message>
+        <source>Validate all code</source>
+        <translation>모든 코드 유효성 검사</translation>
+    </message>
+    <message>
+        <source>Variable renamed to '{name}'.</source>
+        <translation>변수가 '{name}'으로 이름이 변경되었습니다.</translation>
+    </message>
+    <message>
+        <source>Variables</source>
+        <translation>변수</translation>
+    </message>
+    <message>
+        <source>{active} / {count}</source>
+        <translation>{active} / {count}</translation>
+    </message>
 </context>
 <context>
     <name>DynamicEditorWorkspaceWindow</name>
@@ -1867,6 +2211,18 @@ li.checked::마커 { content: &quot;\2612&quot;; }
         <source>view tree</source>
         <translation>보기 트리</translation>
     </message>
+    <message>
+        <source>Dynamic Editor - {title}</source>
+        <translation>동적 에디터 - {title}</translation>
+    </message>
+    <message>
+        <source>Open EMT editor</source>
+        <translation>EMT 편집기 열기</translation>
+    </message>
+    <message>
+        <source>Open RMS editor</source>
+        <translation>RMS 편집기 열기</translation>
+    </message>
 </context>
 <context>
     <name>DynamicEventDialogue</name>
@@ -1905,35 +2261,43 @@ li.checked::마커 { content: &quot;\2612&quot;; }
     <name>DynamicsResultsHandler</name>
     <message>
         <source>X-Y plot slot</source>
-        <translation type="vanished">X-Y 플롯 슬롯</translation>
+        <translation>X-Y 플롯 슬롯</translation>
     </message>
     <message>
         <source>Choose whether to place the dropped signal on the X axis or Y axis.</source>
-        <translation type="vanished">드롭된 신호를 X축 또는 Y축에 배치할지 선택합니다.</translation>
+        <translation>드롭된 신호를 X축 또는 Y축에 배치할지 선택합니다.</translation>
     </message>
     <message>
         <source>X axis</source>
-        <translation type="vanished">X축</translation>
+        <translation>X축</translation>
     </message>
     <message>
         <source>Y axis</source>
-        <translation type="vanished">Y축</translation>
+        <translation>Y축</translation>
     </message>
     <message>
         <source>Cancel</source>
-        <translation type="vanished">취소</translation>
+        <translation>취소</translation>
     </message>
     <message>
         <source>This X-Y plot already has X and Y signals. Replace X, replace Y, or cancel?</source>
-        <translation type="vanished">이 X-Y 플롯에는 이미 X 및 Y 신호가 있습니다. X를 바꾸시겠습니까, Y를 바꾸시겠습니까, 아니면 취소하시겠습니까?</translation>
+        <translation>이 X-Y 플롯에는 이미 X 및 Y 신호가 있습니다. X를 바꾸시겠습니까, Y를 바꾸시겠습니까, 아니면 취소하시겠습니까?</translation>
     </message>
     <message>
         <source>Replace X</source>
-        <translation type="vanished">X 교체</translation>
+        <translation>X 교체</translation>
     </message>
     <message>
         <source>Replace Y</source>
-        <translation type="vanished">Y 바꾸기</translation>
+        <translation>Y 바꾸기</translation>
+    </message>
+    <message>
+        <source>Dynamic plots</source>
+        <translation>동적 플롯</translation>
+    </message>
+    <message>
+        <source>Dynamics results</source>
+        <translation>동역학 결과</translation>
     </message>
 </context>
 <context>
@@ -1948,68 +2312,84 @@ li.checked::마커 { content: &quot;\2612&quot;; }
     <name>FileTypeSelector</name>
     <message>
         <source>Format:</source>
-        <translation type="vanished">체재:</translation>
+        <translation>체재:</translation>
     </message>
     <message>
         <source>Accept</source>
-        <translation type="vanished">수용하다</translation>
+        <translation>수용하다</translation>
+    </message>
+    <message>
+        <source>Select how to load the file</source>
+        <translation>파일 로드 방법 선택</translation>
+    </message>
+    <message>
+        <source>You've passed a generic list of files
+select the expected processing format</source>
+        <translation>일반 파일 목록을 전달했습니다
+예상 처리 형식을 선택하십시오</translation>
+    </message>
+    <message>
+        <source>You've passed a generic of file
+select the expected processing format</source>
+        <translation>일반 파일을 전달했습니다
+예상 처리 형식을 선택하십시오</translation>
     </message>
 </context>
 <context>
     <name>FmuTemplateEditorDialog</name>
     <message>
         <source>FMU Template Editor</source>
-        <translation type="vanished">FMU 템플릿 편집기</translation>
+        <translation>FMU 템플릿 편집기</translation>
     </message>
     <message>
         <source>Browse...</source>
-        <translation type="vanished">먹다...</translation>
+        <translation>먹다...</translation>
     </message>
     <message>
         <source>Choose an FMU archive to load its metadata and build the visual block.</source>
-        <translation type="vanished">메타데이터를 로드하고 시각적 블록을 구축하려면 FMU 아카이브를 선택하세요.</translation>
+        <translation>메타데이터를 로드하고 시각적 블록을 구축하려면 FMU 아카이브를 선택하세요.</translation>
     </message>
     <message>
         <source>Name</source>
-        <translation type="vanished">이름</translation>
+        <translation>이름</translation>
     </message>
     <message>
         <source>FMU file</source>
-        <translation type="vanished">FMU 파일</translation>
+        <translation>FMU 파일</translation>
     </message>
     <message>
         <source>Device type</source>
-        <translation type="vanished">장치 유형</translation>
+        <translation>장치 유형</translation>
     </message>
     <message>
         <source>Domain</source>
-        <translation type="vanished">도메인</translation>
+        <translation>도메인</translation>
     </message>
     <message>
         <source>Mode</source>
-        <translation type="vanished">방법</translation>
+        <translation>방법</translation>
     </message>
     <message>
         <source>Metadata</source>
-        <translation type="vanished">메타데이터</translation>
+        <translation>메타데이터</translation>
     </message>
     <message>
         <source>Select FMU file</source>
-        <translation type="vanished">FMU 파일 선택</translation>
+        <translation>FMU 파일 선택</translation>
     </message>
     <message>
         <source>FMU files (*.fmu)</source>
-        <translation type="vanished">FMU 파일(*.fmu)</translation>
+        <translation>FMU 파일(*.fmu)</translation>
     </message>
     <message>
         <source>FMU file not found:
 {path}</source>
-        <translation type="vanished">FMU 파일을 찾을 수 없습니다:
+        <translation>FMU 파일을 찾을 수 없습니다:
 {path}</translation>
     </message>
     <message>
         <source>Choose an FMU file first.</source>
-        <translation type="vanished">먼저 FMU 파일을 선택하세요.</translation>
+        <translation>먼저 FMU 파일을 선택하세요.</translation>
     </message>
 </context>
 <context>
@@ -2034,103 +2414,103 @@ li.checked::마커 { content: &quot;\2612&quot;; }
     <name>IoMain</name>
     <message>
         <source>The file type {file_extension} is not accepted :(</source>
-        <translation type="vanished">{file_extension} 파일 형식은 허용되지 않습니다.</translation>
+        <translation>{file_extension} 파일 형식은 허용되지 않습니다.</translation>
     </message>
     <message>
         <source>Message</source>
-        <translation type="vanished">메시지</translation>
+        <translation>메시지</translation>
     </message>
     <message>
         <source>Are you sure that you want to quit the current grid and open a new one?
  If the process is cancelled the grid will remain.</source>
-        <translation type="vanished">현재 그리드를 종료하고 새 그리드를 열시겠습니까?
+        <translation>현재 그리드를 종료하고 새 그리드를 열시겠습니까?
  프로세스가 취소되면 그리드는 그대로 유지됩니다.</translation>
     </message>
     <message>
         <source>Are you sure that you want to quit the current grid and create a new one?</source>
-        <translation type="vanished">현재 그리드를 종료하고 새 그리드를 생성하시겠습니까?</translation>
+        <translation>현재 그리드를 종료하고 새 그리드를 생성하시겠습니까?</translation>
     </message>
     <message>
         <source>There is a file being processed now.</source>
-        <translation type="vanished">지금 처리 중인 파일이 있습니다.</translation>
+        <translation>지금 처리 중인 파일이 있습니다.</translation>
     </message>
     <message>
         <source>Formats ({files_types})</source>
-        <translation type="vanished">형식({files_types})</translation>
+        <translation>형식({files_types})</translation>
     </message>
     <message>
         <source>The file does not exist :( 
  {file_name}</source>
-        <translation type="vanished">파일이 존재하지 않습니다 :( 
+        <translation>파일이 존재하지 않습니다 :( 
  {file_name}</translation>
     </message>
     <message>
         <source>File opening</source>
-        <translation type="vanished">파일 열기</translation>
+        <translation>파일 열기</translation>
     </message>
     <message>
         <source>No grid to load :(</source>
-        <translation type="vanished">로드할 그리드가 없습니다 :(</translation>
+        <translation>로드할 그리드가 없습니다 :(</translation>
     </message>
     <message>
         <source>Current: {circuit_name}</source>
-        <translation type="vanished">현재: {circuit_name}</translation>
+        <translation>현재: {circuit_name}</translation>
     </message>
     <message>
         <source>The grid is quite big, no diagram is automatically created</source>
-        <translation type="vanished">그리드가 꽤 커서 다이어그램이 자동으로 생성되지 않습니다.</translation>
+        <translation>그리드가 꽤 커서 다이어그램이 자동으로 생성되지 않습니다.</translation>
     </message>
     <message>
         <source>Sessions</source>
-        <translation type="vanished">세션</translation>
+        <translation>세션</translation>
     </message>
     <message>
         <source>Show Rosetta</source>
-        <translation type="vanished">로제타 표시</translation>
+        <translation>로제타 표시</translation>
     </message>
     <message>
         <source>Do you want to open the Rosetta CGMES browser?</source>
-        <translation type="vanished">Rosetta CGMES 브라우저를 여시겠습니까?</translation>
+        <translation>Rosetta CGMES 브라우저를 여시겠습니까?</translation>
     </message>
     <message>
         <source>Open CGMES file logger</source>
-        <translation type="vanished">CGMES 파일 로거 열기</translation>
+        <translation>CGMES 파일 로거 열기</translation>
     </message>
     <message>
         <source>Open file logger</source>
-        <translation type="vanished">파일 로거 열기</translation>
+        <translation>파일 로거 열기</translation>
     </message>
     <message>
         <source>Error while loading the file(s)</source>
-        <translation type="vanished">파일을 로드하는 중 오류가 발생했습니다.</translation>
+        <translation>파일을 로드하는 중 오류가 발생했습니다.</translation>
     </message>
     <message>
         <source>{name} {version} requires VeraGrid {veragrid_version}</source>
-        <translation type="vanished">{name} {version}에는 VeraGrid {veragrid_version}가 필요합니다.</translation>
+        <translation>{name} {version}에는 VeraGrid {veragrid_version}가 필요합니다.</translation>
     </message>
     <message>
         <source>Plugin install</source>
-        <translation type="vanished">플러그인 설치</translation>
+        <translation>플러그인 설치</translation>
     </message>
     <message>
         <source>There is already a plugin: {plugin_name} {plugin_version}. The new plugin is {new_version}. Install?</source>
-        <translation type="vanished">이미 플러그인이 있습니다: {plugin_name} {plugin_version}. 새로운 플러그인은 {new_version}입니다. 설치하다?</translation>
+        <translation>이미 플러그인이 있습니다: {plugin_name} {plugin_version}. 새로운 플러그인은 {new_version}입니다. 설치하다?</translation>
     </message>
     <message>
         <source>{name} {version} installed!</source>
-        <translation type="vanished">{name} {version}이 설치되었습니다!</translation>
+        <translation>{name} {version}이 설치되었습니다!</translation>
     </message>
     <message>
         <source>There is no manifest :(</source>
-        <translation type="vanished">매니페스트가 없습니다 :(</translation>
+        <translation>매니페스트가 없습니다 :(</translation>
     </message>
     <message>
         <source>Does not seem to be a plugin :/</source>
-        <translation type="vanished">플러그인이 아닌 것 같습니다 :/</translation>
+        <translation>플러그인이 아닌 것 같습니다 :/</translation>
     </message>
     <message>
         <source>CSV (*.csv)</source>
-        <translation type="vanished">CSV(*.csv)</translation>
+        <translation>CSV(*.csv)</translation>
     </message>
     <message>
         <source>Open CSV file</source>
@@ -2138,233 +2518,253 @@ li.checked::마커 { content: &quot;\2612&quot;; }
     </message>
     <message>
         <source>Grid merge</source>
-        <translation type="vanished">그리드 병합</translation>
+        <translation>그리드 병합</translation>
     </message>
     <message>
         <source>How do you want to represent the merged grid?</source>
-        <translation type="vanished">병합된 그리드를 어떻게 표현하시겠습니까?</translation>
+        <translation>병합된 그리드를 어떻게 표현하시겠습니까?</translation>
     </message>
     <message>
         <source>Create new diagram</source>
-        <translation type="vanished">새 다이어그램 만들기</translation>
+        <translation>새 다이어그램 만들기</translation>
     </message>
     <message>
         <source>Add to current diagram</source>
-        <translation type="vanished">현재 다이어그램에 추가</translation>
+        <translation>현재 다이어그램에 추가</translation>
     </message>
     <message>
         <source>No schematic diagram was selected...</source>
-        <translation type="vanished">회로도가 선택되지 않았습니다...</translation>
+        <translation>회로도가 선택되지 않았습니다...</translation>
     </message>
     <message>
         <source>Save file</source>
-        <translation type="vanished">파일 저장</translation>
+        <translation>파일 저장</translation>
     </message>
     <message>
         <source>VeraGrid zip (*.veragrid)</source>
-        <translation type="vanished">VeraGrid 우편번호(*.veragrid)</translation>
+        <translation>VeraGrid 우편번호(*.veragrid)</translation>
     </message>
     <message>
         <source>There is a saving procedure running.
 Cancel and retry?</source>
-        <translation type="vanished">저장 절차가 진행 중입니다.
+        <translation>저장 절차가 진행 중입니다.
 취소하고 다시 시도하시겠습니까?</translation>
     </message>
     <message>
         <source>There is a file being processed..</source>
-        <translation type="vanished">처리중인 파일이 있습니다..</translation>
+        <translation>처리중인 파일이 있습니다..</translation>
     </message>
     <message>
         <source>Save file logger</source>
-        <translation type="vanished">파일 로거 저장</translation>
+        <translation>파일 로거 저장</translation>
     </message>
     <message>
         <source>Are you sure that you want to delete the current grid and replace it?</source>
-        <translation type="vanished">현재 그리드를 삭제하고 바꾸시겠습니까?</translation>
+        <translation>현재 그리드를 삭제하고 바꾸시겠습니까?</translation>
     </message>
     <message>
         <source>Model v. {model_version}</source>
-        <translation type="vanished">모델 v. {model_version}</translation>
+        <translation>모델 v. {model_version}</translation>
     </message>
     <message>
         <source>idtag. {idtag}</source>
-        <translation type="vanished">idtag. {idtag}</translation>
+        <translation>idtag. {idtag}</translation>
     </message>
     <message>
         <source>Random grid {bus_count} buses</source>
-        <translation type="vanished">랜덤 그리드 {bus_count} 버스</translation>
+        <translation>랜덤 그리드 {bus_count} 버스</translation>
     </message>
     <message>
         <source>Grid generated randomly using the RPGM algorithm.</source>
-        <translation type="vanished">RPGM 알고리즘을 사용하여 무작위로 생성된 그리드입니다.</translation>
+        <translation>RPGM 알고리즘을 사용하여 무작위로 생성된 그리드입니다.</translation>
     </message>
     <message>
         <source>Excel file (*.xlsx)</source>
-        <translation type="vanished">엑셀 파일(*.xlsx)</translation>
+        <translation>엑셀 파일(*.xlsx)</translation>
     </message>
     <message>
         <source>profiles of </source>
-        <translation type="vanished">프로필</translation>
+        <translation>프로필</translation>
     </message>
     <message>
         <source>There are no profiles!</source>
-        <translation type="vanished">프로필이 없습니다!</translation>
+        <translation>프로필이 없습니다!</translation>
     </message>
     <message>
         <source>Export object profiles</source>
-        <translation type="vanished">개체 프로필 내보내기</translation>
+        <translation>개체 프로필 내보내기</translation>
     </message>
     <message>
         <source>Zip file (*.zip)</source>
-        <translation type="vanished">Zip 파일(*.zip)</translation>
+        <translation>Zip 파일(*.zip)</translation>
     </message>
     <message>
         <source>Results of </source>
-        <translation type="vanished">결과</translation>
+        <translation>결과</translation>
     </message>
     <message>
         <source>There are no results available :/</source>
-        <translation type="vanished">사용 가능한 결과가 없습니다 :/</translation>
+        <translation>사용 가능한 결과가 없습니다 :/</translation>
     </message>
     <message>
         <source>Export all</source>
-        <translation type="vanished">모두 내보내기</translation>
+        <translation>모두 내보내기</translation>
     </message>
     <message>
         <source>Done!</source>
-        <translation type="vanished">완료!</translation>
+        <translation>완료!</translation>
     </message>
     <message>
         <source>Results parsing</source>
-        <translation type="vanished">결과 분석</translation>
+        <translation>결과 분석</translation>
     </message>
     <message>
         <source>Loaded &apos;{study_name}&apos; results from disk</source>
-        <translation type="vanished">디스크에서 &apos;{study_name}&apos; 결과를 로드했습니다.</translation>
+        <translation>디스크에서 &apos;{study_name}&apos; 결과를 로드했습니다.</translation>
     </message>
     <message>
         <source>No file driver declared :/</source>
-        <translation type="vanished">선언된 파일 드라이버가 없습니다:/</translation>
+        <translation>선언된 파일 드라이버가 없습니다:/</translation>
     </message>
     <message>
         <source>Select a driver inside a session</source>
-        <translation type="vanished">세션 내에서 드라이버 선택</translation>
+        <translation>세션 내에서 드라이버 선택</translation>
     </message>
     <message>
         <source>Driver load from disk</source>
-        <translation type="vanished">디스크에서 드라이버 로드</translation>
+        <translation>디스크에서 드라이버 로드</translation>
     </message>
     <message>
         <source>Load results from disk</source>
-        <translation type="vanished">디스크에서 결과 로드</translation>
+        <translation>디스크에서 결과 로드</translation>
     </message>
     <message>
         <source>Formats (*.json)</source>
-        <translation type="vanished">형식(*.json)</translation>
+        <translation>형식(*.json)</translation>
     </message>
     <message>
         <source>Open file</source>
-        <translation type="vanished">파일 열기</translation>
+        <translation>파일 열기</translation>
     </message>
     <message>
         <source>Contingencies import</source>
-        <translation type="vanished">우발사항 가져오기</translation>
+        <translation>우발사항 가져오기</translation>
     </message>
     <message>
         <source>JSON file (*.json)</source>
-        <translation type="vanished">JSON 파일(*.json)</translation>
+        <translation>JSON 파일(*.json)</translation>
     </message>
     <message>
         <source>Catalogue added!</source>
-        <translation type="vanished">카탈로그가 추가되었습니다!</translation>
+        <translation>카탈로그가 추가되었습니다!</translation>
     </message>
     <message>
         <source>Load catalogue</source>
-        <translation type="vanished">카탈로그 로드</translation>
+        <translation>카탈로그 로드</translation>
     </message>
     <message>
         <source>Open catalogue logger</source>
-        <translation type="vanished">카탈로그 로거 열기</translation>
+        <translation>카탈로그 로거 열기</translation>
     </message>
     <message>
         <source>Catalogue loaded!</source>
-        <translation type="vanished">카탈로그가 로드되었습니다!</translation>
+        <translation>카탈로그가 로드되었습니다!</translation>
     </message>
     <message>
         <source>Catalogue file (*.xlsx)</source>
-        <translation type="vanished">카탈로그 파일(*.xlsx)</translation>
+        <translation>카탈로그 파일(*.xlsx)</translation>
     </message>
     <message>
         <source>Catalogue Excel file (*.xlsx)</source>
-        <translation type="vanished">카탈로그 Excel 파일(*.xlsx)</translation>
+        <translation>카탈로그 Excel 파일(*.xlsx)</translation>
     </message>
     <message>
         <source>Save catalogue</source>
-        <translation type="vanished">카탈로그 저장</translation>
+        <translation>카탈로그 저장</translation>
     </message>
     <message>
         <source>Catalogue saved!</source>
-        <translation type="vanished">카탈로그가 저장되었습니다!</translation>
+        <translation>카탈로그가 저장되었습니다!</translation>
     </message>
     <message>
         <source>CIM (*.xml)</source>
-        <translation type="vanished">CIM(*.xml)</translation>
+        <translation>CIM(*.xml)</translation>
     </message>
     <message>
         <source>Export to CIM</source>
-        <translation type="vanished">CIM으로 내보내기</translation>
+        <translation>CIM으로 내보내기</translation>
     </message>
     <message>
         <source>Power Grid Models (*.pgm)</source>
-        <translation type="vanished">전력망 모델(*.pgm)</translation>
+        <translation>전력망 모델(*.pgm)</translation>
     </message>
     <message>
         <source>Export to Power Grid Models</source>
-        <translation type="vanished">전력망 모델로 내보내기</translation>
+        <translation>전력망 모델로 내보내기</translation>
     </message>
     <message>
         <source>Power Grid Models not installed :/</source>
-        <translation type="vanished">전력망 모델이 설치되지 않았습니다. :/</translation>
+        <translation>전력망 모델이 설치되지 않았습니다. :/</translation>
     </message>
     <message>
         <source>Electrical Json V3 (*.ejson3)</source>
-        <translation type="vanished">전기 Json V3(*.ejson3)</translation>
+        <translation>전기 Json V3(*.ejson3)</translation>
     </message>
     <message>
         <source>Export to JSON</source>
-        <translation type="vanished">JSON으로 내보내기</translation>
+        <translation>JSON으로 내보내기</translation>
     </message>
     <message>
         <source>VeraGrid HDF5 (*.gch5)</source>
-        <translation type="vanished">VeraGrid HDF5(*.gch5)</translation>
+        <translation>VeraGrid HDF5(*.gch5)</translation>
     </message>
     <message>
         <source>Export to VeraGrid HDF5</source>
-        <translation type="vanished">VeraGrid HDF5로 내보내기</translation>
+        <translation>VeraGrid HDF5로 내보내기</translation>
     </message>
     <message>
         <source>Excel (*.xlsx)</source>
-        <translation type="vanished">엑셀(*.xlsx)</translation>
+        <translation>엑셀(*.xlsx)</translation>
     </message>
     <message>
         <source>Export to Microsoft Excel</source>
-        <translation type="vanished">Microsoft Excel로 내보내기</translation>
+        <translation>Microsoft Excel로 내보내기</translation>
     </message>
     <message>
         <source>Sqlite (*.sqlite)</source>
-        <translation type="vanished">SQLite(*.sqlite)</translation>
+        <translation>SQLite(*.sqlite)</translation>
     </message>
     <message>
         <source>Export to Sqlite</source>
-        <translation type="vanished">SQLite로 내보내기</translation>
+        <translation>SQLite로 내보내기</translation>
     </message>
     <message>
         <source>VeraGrid (*.veragrid)</source>
-        <translation type="vanished">베라그리드(*.veragrid)</translation>
+        <translation>베라그리드(*.veragrid)</translation>
     </message>
     <message>
         <source>Export VeraGrid scenario</source>
-        <translation type="vanished">VeraGrid 시나리오 내보내기</translation>
+        <translation>VeraGrid 시나리오 내보내기</translation>
+    </message>
+    <message>
+        <source>Server file deleted.</source>
+        <translation>서버 파일이 삭제되었습니다.</translation>
+    </message>
+    <message>
+        <source>Server file saved.</source>
+        <translation>서버 파일이 저장되었습니다.</translation>
+    </message>
+    <message>
+        <source>Server model deleted.</source>
+        <translation>서버 모델이 삭제되었습니다.</translation>
+    </message>
+    <message>
+        <source>Server save cancelled.</source>
+        <translation>서버 저장 취소됨.</translation>
+    </message>
+    <message>
+        <source>The file was loaded but the current project was kept because closing a dynamic editor was cancelled.</source>
+        <translation>파일은 로드되었지만, 동적 에디터 닫기가 취소되어 현재 프로젝트가 유지되었습니다.</translation>
     </message>
 </context>
 <context>
@@ -3150,6 +3550,562 @@ Cancel and retry?</source>
         <source>Data</source>
         <translation>데이터</translation>
     </message>
+    <message>
+        <source>&lt;b&gt;{error_count}&lt;/b&gt; errors and &lt;b&gt;{divergence_count}&lt;/b&gt; divergences are blocking the score most strongly.</source>
+        <translation>&lt;b&gt;{error_count}&lt;/b&gt;개의 오류와 &lt;b&gt;{divergence_count}&lt;/b&gt;개의 발산이 점수를 가장 강력하게 차단하고 있습니다.</translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;{fixable_count}&lt;/b&gt; findings can be auto-corrected safely from this dashboard.</source>
+        <translation>&lt;b&gt;{fixable_count}&lt;/b&gt;개의 발견 사항은 이 대시보드에서 안전하게 자동 수정할 수 있습니다.</translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;{warning_count}&lt;/b&gt; warnings and &lt;b&gt;{information_count}&lt;/b&gt; informational findings still reduce confidence.</source>
+        <translation>&lt;b&gt;{warning_count}&lt;/b&gt;개의 경고와 &lt;b&gt;{information_count}&lt;/b&gt;개의 정보성 발견 사항은 여전히 신뢰도를 떨어뜨립니다.</translation>
+    </message>
+    <message>
+        <source>Action Narrative</source>
+        <translation>액션 설명</translation>
+    </message>
+    <message>
+        <source>Aggregation</source>
+        <translation>집계</translation>
+    </message>
+    <message>
+        <source>All object types</source>
+        <translation>모든 객체 유형</translation>
+    </message>
+    <message>
+        <source>All severities</source>
+        <translation>모든 심각도</translation>
+    </message>
+    <message>
+        <source>Analyzed assets</source>
+        <translation>분석된 자산</translation>
+    </message>
+    <message>
+        <source>Apply fixes to time series</source>
+        <translation>시계열에 수정 적용</translation>
+    </message>
+    <message>
+        <source>Area</source>
+        <translation>지역</translation>
+    </message>
+    <message>
+        <source>Auto-fix</source>
+        <translation>자동 수정</translation>
+    </message>
+    <message>
+        <source>Auto-fix ready</source>
+        <translation>자동 수정 준비 완료</translation>
+    </message>
+    <message>
+        <source>Balance Explorer</source>
+        <translation>밸런스 탐색기</translation>
+    </message>
+    <message>
+        <source>Collapse All</source>
+        <translation>모두 접기</translation>
+    </message>
+    <message>
+        <source>Community</source>
+        <translation>Community</translation>
+    </message>
+    <message>
+        <source>Converged</source>
+        <translation>수렴됨</translation>
+    </message>
+    <message>
+        <source>Country</source>
+        <translation>Country</translation>
+    </message>
+    <message>
+        <source>Critical findings</source>
+        <translation>심각한 발견 사항</translation>
+    </message>
+    <message>
+        <source>Dashboard refreshed: {issue_count} findings, score {overall_score}/100.</source>
+        <translation>대시보드 새로고침: {issue_count}개의 발견 사항, 점수 {overall_score}/100점.</translation>
+    </message>
+    <message>
+        <source>Divergence</source>
+        <translation>발산</translation>
+    </message>
+    <message>
+        <source>Divergences</source>
+        <translation>발산 사항</translation>
+    </message>
+    <message>
+        <source>Error</source>
+        <translation>오류</translation>
+    </message>
+    <message>
+        <source>Errors</source>
+        <translation>오류</translation>
+    </message>
+    <message>
+        <source>Excel (*.xlsx)</source>
+        <translation>엑셀(*.xlsx)</translation>
+    </message>
+    <message>
+        <source>Excel (*.xlsx);;HTML (*.html);;PDF (*.pdf)</source>
+        <translation>Excel (*.xlsx);;HTML (*.html);;PDF (*.pdf)</translation>
+    </message>
+    <message>
+        <source>Executive Overview</source>
+        <translation>요약 개요</translation>
+    </message>
+    <message>
+        <source>Expand All</source>
+        <translation>모두 펼치기</translation>
+    </message>
+    <message>
+        <source>Export the full report once the score and findings reflect the scenario you want to share.</source>
+        <translation>점수와 발견 사항이 공유하려는 시나리오를 반영하면 전체 보고서를 내보냅니다.</translation>
+    </message>
+    <message>
+        <source>Field</source>
+        <translation>필드</translation>
+    </message>
+    <message>
+        <source>Findings ({count})</source>
+        <translation>발견 사항 ({count})</translation>
+    </message>
+    <message>
+        <source>Findings Explorer</source>
+        <translation>발견 사항 탐색기</translation>
+    </message>
+    <message>
+        <source>Findings Explorer ({count})</source>
+        <translation>발견 사항 탐색기 ({count})</translation>
+    </message>
+    <message>
+        <source>Fixed issues</source>
+        <translation>수정된 문제</translation>
+    </message>
+    <message>
+        <source>Full dashboard report exported to {file_name}.</source>
+        <translation>전체 대시보드 보고서가 {file_name}으로 내보내졌습니다.</translation>
+    </message>
+    <message>
+        <source>Generator Vset max</source>
+        <translation>발전기 Vset 최대값</translation>
+    </message>
+    <message>
+        <source>Generator Vset min</source>
+        <translation>발전기 Vset 최소값</translation>
+    </message>
+    <message>
+        <source>Global</source>
+        <translation>전역</translation>
+    </message>
+    <message>
+        <source>Grade</source>
+        <translation>등급</translation>
+    </message>
+    <message>
+        <source>Grade {grade}</source>
+        <translation>등급 {grade}</translation>
+    </message>
+    <message>
+        <source>Grid Health Dashboard Report</source>
+        <translation>그리드 상태 대시보드 보고서</translation>
+    </message>
+    <message>
+        <source>Index</source>
+        <translation>색인</translation>
+    </message>
+    <message>
+        <source>Information</source>
+        <translation>정보</translation>
+    </message>
+    <message>
+        <source>Inputs analysis is unavailable for the current grid.</source>
+        <translation>현재 그리드에 대한 입력 분석을 사용할 수 없습니다.</translation>
+    </message>
+    <message>
+        <source>Inputs analysis pending.</source>
+        <translation>입력 분석 대기 중.</translation>
+    </message>
+    <message>
+        <source>Inputs analysis unavailable</source>
+        <translation>입력 분석 사용 불가</translation>
+    </message>
+    <message>
+        <source>Investigate buses with the smallest sigma distances because the current stability margin is tight.</source>
+        <translation>현재 안정성 여유가 빠듯하므로 가장 작은 시그마 거리를 가진 버스를 조사하십시오.</translation>
+    </message>
+    <message>
+        <source>Issue score</source>
+        <translation>문제 점수</translation>
+    </message>
+    <message>
+        <source>Issue score {issue_score:.1f}/100 • sigma score unavailable.</source>
+        <translation>문제 점수 {issue_score:.1f}/100 • 시그마 점수 사용 불가.</translation>
+    </message>
+    <message>
+        <source>Issue score {issue_score:.1f}/100 • sigma score {sigma_score:.1f}/100.</source>
+        <translation>문제 점수 {issue_score:.1f}/100 • 시그마 점수 {sigma_score:.1f}/100.</translation>
+    </message>
+    <message>
+        <source>Issues</source>
+        <translation>문제점</translation>
+    </message>
+    <message>
+        <source>Issues exported to {file_name}.</source>
+        <translation>문제점이 {file_name}으로 내보내졌습니다.</translation>
+    </message>
+    <message>
+        <source>Item</source>
+        <translation>항목</translation>
+    </message>
+    <message>
+        <source>Lower</source>
+        <translation>낮음</translation>
+    </message>
+    <message>
+        <source>Make the grid simulation-ready and rerun the dashboard so sigma margin can join the report.</source>
+        <translation>그리드를 시뮬레이션 준비 상태로 만들고 대시보드를 다시 실행하여 시그마 여유가 보고서에 포함되도록 하십시오.</translation>
+    </message>
+    <message>
+        <source>Mean sigma distance</source>
+        <translation>평균 시그마 거리</translation>
+    </message>
+    <message>
+        <source>Mean {mean_distance:.3f} p.u.</source>
+        <translation>평균 {mean_distance:.3f} p.u.</translation>
+    </message>
+    <message>
+        <source>Message</source>
+        <translation>메시지</translation>
+    </message>
+    <message>
+        <source>Metric</source>
+        <translation>지표</translation>
+    </message>
+    <message>
+        <source>Minimum distance {min_distance:.3f} p.u. • mean distance {mean_distance:.3f} p.u.</source>
+        <translation>최소 거리 {min_distance:.3f} p.u. • 평균 거리 {mean_distance:.3f} p.u.</translation>
+    </message>
+    <message>
+        <source>Minimum sigma distance</source>
+        <translation>최소 시그마 거리</translation>
+    </message>
+    <message>
+        <source>Most Repeated Finding</source>
+        <translation>가장 많이 반복된 발견 사항</translation>
+    </message>
+    <message>
+        <source>Most repeated finding</source>
+        <translation>가장 많이 반복된 발견 사항</translation>
+    </message>
+    <message>
+        <source>Most repeated finding count</source>
+        <translation>가장 많이 반복된 발견 사항 횟수</translation>
+    </message>
+    <message>
+        <source>Municipality</source>
+        <translation>지방 자치 단체</translation>
+    </message>
+    <message>
+        <source>N/A</source>
+        <translation>해당 없음</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>이름</translation>
+    </message>
+    <message>
+        <source>Net balance (MW)</source>
+        <translation>순 균형 (MW)</translation>
+    </message>
+    <message>
+        <source>No</source>
+        <translation>아니요</translation>
+    </message>
+    <message>
+        <source>No balance series available</source>
+        <translation>균형 시리즈를 사용할 수 없습니다</translation>
+    </message>
+    <message>
+        <source>No findings were produced by the current analysis settings.</source>
+        <translation>현재 분석 설정으로는 발견된 사항이 없습니다.</translation>
+    </message>
+    <message>
+        <source>No safe automatic fixes were detected, so the next step is a manual review of the highest-severity findings.</source>
+        <translation>안전한 자동 수정 사항이 감지되지 않았으므로, 다음 단계는 최고 심각도 발견 사항에 대한 수동 검토입니다.</translation>
+    </message>
+    <message>
+        <source>No snapshot balances available</source>
+        <translation>스냅샷 잔액을 사용할 수 없습니다.</translation>
+    </message>
+    <message>
+        <source>No {aggregation} balances are available to plot.</source>
+        <translation>플로팅할 {aggregation} 잔액이 없습니다.</translation>
+    </message>
+    <message>
+        <source>Object</source>
+        <translation>객체</translation>
+    </message>
+    <message>
+        <source>Overall score</source>
+        <translation>종합 점수</translation>
+    </message>
+    <message>
+        <source>Prioritize errors and divergences before warnings, especially the rows tagged with severe numerical or connectivity issues.</source>
+        <translation>경고보다 오류와 편차를 우선 처리하십시오. 특히 심각한 수치적 또는 연결성 문제가 태그된 행에 유의하십시오.</translation>
+    </message>
+    <message>
+        <source>Property</source>
+        <translation>속성</translation>
+    </message>
+    <message>
+        <source>Recommended Next Actions</source>
+        <translation>권장 다음 조치</translation>
+    </message>
+    <message>
+        <source>Region</source>
+        <translation>영역</translation>
+    </message>
+    <message>
+        <source>Safe corrections available</source>
+        <translation>안전한 수정 가능</translation>
+    </message>
+    <message>
+        <source>Score Rationale</source>
+        <translation>점수 근거</translation>
+    </message>
+    <message>
+        <source>Severity</source>
+        <translation>심각도</translation>
+    </message>
+    <message>
+        <source>Showing the {count} strongest {aggregation} balance traces. Largest absolute balance: {column_name} at {column_value:.3f} MW.</source>
+        <translation>가장 강력한 {aggregation} 잔액 추이 {count}개를 표시합니다. 최대 절대 잔액: {column_name} ({column_value:.3f} MW).</translation>
+    </message>
+    <message>
+        <source>Sigma</source>
+        <translation>시그마</translation>
+    </message>
+    <message>
+        <source>Sigma Plot</source>
+        <translation>시그마 플롯</translation>
+    </message>
+    <message>
+        <source>Sigma Table</source>
+        <translation>시그마 테이블</translation>
+    </message>
+    <message>
+        <source>Sigma analysis</source>
+        <translation>시그마 분석</translation>
+    </message>
+    <message>
+        <source>Sigma analysis converged.</source>
+        <translation>시그마 분석이 수렴했습니다.</translation>
+    </message>
+    <message>
+        <source>Sigma analysis could not be produced for the current grid state.</source>
+        <translation>현재 그리드 상태에서는 시그마 분석을 생성할 수 없습니다.</translation>
+    </message>
+    <message>
+        <source>Sigma analysis did not converge</source>
+        <translation>시그마 분석이 수렴하지 않았습니다.</translation>
+    </message>
+    <message>
+        <source>Sigma analysis failed: {exception}</source>
+        <translation>시그마 분석 실패: {exception}</translation>
+    </message>
+    <message>
+        <source>Sigma analysis returned no results.</source>
+        <translation>시그마 분석 결과가 없습니다.</translation>
+    </message>
+    <message>
+        <source>Sigma analysis unavailable because the grid is not valid for simulation.</source>
+        <translation>그리드가 시뮬레이션에 유효하지 않아 시그마 분석을 사용할 수 없습니다.</translation>
+    </message>
+    <message>
+        <source>Sigma available</source>
+        <translation>시그마 사용 가능</translation>
+    </message>
+    <message>
+        <source>Sigma coefficients did not fully converge.</source>
+        <translation>시그마 계수가 완전히 수렴하지 않았습니다.</translation>
+    </message>
+    <message>
+        <source>Sigma data unavailable</source>
+        <translation>시그마 데이터 사용 불가</translation>
+    </message>
+    <message>
+        <source>Sigma distance</source>
+        <translation>시그마 거리</translation>
+    </message>
+    <message>
+        <source>Sigma distance is not available</source>
+        <translation>시그마 거리를 사용할 수 없습니다.</translation>
+    </message>
+    <message>
+        <source>Sigma margin is acceptable, so focus on structural cleanup before attempting aggressive operational studies.</source>
+        <translation>시그마 마진은 허용 가능하므로, 공격적인 운전 연구를 시도하기 전에 구조적 정리 작업에 집중하십시오.</translation>
+    </message>
+    <message>
+        <source>Sigma plot</source>
+        <translation>시그마 플롯</translation>
+    </message>
+    <message>
+        <source>Sigma plot is unavailable for the current grid state.</source>
+        <translation>현재 그리드 상태에서는 시그마 플롯을 사용할 수 없습니다.</translation>
+    </message>
+    <message>
+        <source>Sigma point is outside the stability curve</source>
+        <translation>시그마 포인트가 안정성 곡선 밖에 있습니다.</translation>
+    </message>
+    <message>
+        <source>Sigma score</source>
+        <translation>시그마 점수</translation>
+    </message>
+    <message>
+        <source>Sigma stability could not be included in the score because the simulation could not be produced.</source>
+        <translation>시뮬레이션을 생성할 수 없어 시그마 안정성을 점수에 포함할 수 없습니다.</translation>
+    </message>
+    <message>
+        <source>Sigma stability margin is available with minimum distance &lt;b&gt;{min_distance:.3f} p.u.&lt;/b&gt; and mean distance &lt;b&gt;{mean_distance:.3f} p.u.&lt;/b&gt;.</source>
+        <translation>최소 거리 &lt;b&gt;{min_distance:.3f} p.u.&lt;/b&gt; 및 평균 거리 &lt;b&gt;{mean_distance:.3f} p.u.&lt;/b&gt;로 시그마 안정성 마진을 사용할 수 있습니다.</translation>
+    </message>
+    <message>
+        <source>Sigma status</source>
+        <translation>시그마 상태</translation>
+    </message>
+    <message>
+        <source>Sigma table</source>
+        <translation>시그마 테이블</translation>
+    </message>
+    <message>
+        <source>Sigma table copied to clipboard.</source>
+        <translation>시그마 테이블이 클립보드에 복사되었습니다.</translation>
+    </message>
+    <message>
+        <source>Snapshot net balances by {aggregation}. Largest exporter: {exporter_name} ({exporter_value:.3f} MW). Largest importer: {importer_name} ({importer_value:.3f} MW).</source>
+        <translation>{aggregation}별 스냅샷 순수 잔액. 최대 수출자: {exporter_name} ({exporter_value:.3f} MW). 최대 수입자: {importer_name} ({importer_value:.3f} MW).</translation>
+    </message>
+    <message>
+        <source>Status</source>
+        <translation>상태</translation>
+    </message>
+    <message>
+        <source>Summary</source>
+        <translation>요약</translation>
+    </message>
+    <message>
+        <source>The current dashboard state does not expose any safe automatic fixes.</source>
+        <translation>현재 대시보드 상태에서는 안전한 자동 수정 사항을 노출하지 않습니다.</translation>
+    </message>
+    <message>
+        <source>The grid scores &lt;b&gt;{overall_score}/100&lt;/b&gt; (&lt;b&gt;grade {grade}&lt;/b&gt;) across &lt;b&gt;{asset_count}&lt;/b&gt; analyzed assets.</source>
+        <translation>그리드는 분석된 &lt;b&gt;{asset_count}&lt;/b&gt;개 자산에 걸쳐 &lt;b&gt;{overall_score}/100&lt;/b&gt; (&lt;b&gt;등급 {grade}&lt;/b&gt;)의 점수를 받았습니다.</translation>
+    </message>
+    <message>
+        <source>There are no critical findings, so the remaining work is mainly quality hardening and model cleanup.</source>
+        <translation>심각한 발견 사항이 없으므로, 남은 작업은 주로 품질 강화 및 모델 정리입니다.</translation>
+    </message>
+    <message>
+        <source>There is no sigma table available to copy.</source>
+        <translation>복사할 시그마 테이블이 없습니다.</translation>
+    </message>
+    <message>
+        <source>Threshold</source>
+        <translation>임계값</translation>
+    </message>
+    <message>
+        <source>Thresholds</source>
+        <translation>임계값들</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>시간</translation>
+    </message>
+    <message>
+        <source>Top N</source>
+        <translation>상위 N개</translation>
+    </message>
+    <message>
+        <source>Top {count} {aggregation} balances over time</source>
+        <translation>시간 경과에 따른 상위 {count}개 {aggregation} 잔액</translation>
+    </message>
+    <message>
+        <source>Top {count} {aggregation} snapshot balances</source>
+        <translation>상위 {count}개 {aggregation} 스냅샷 잔액</translation>
+    </message>
+    <message>
+        <source>Total findings</source>
+        <translation>총 발견 사항</translation>
+    </message>
+    <message>
+        <source>Transformer Vcc max (%)</source>
+        <translation>변압기 Vcc 최대 (%)</translation>
+    </message>
+    <message>
+        <source>Transformer Vcc min (%)</source>
+        <translation>변압기 Vcc 최소 (%)</translation>
+    </message>
+    <message>
+        <source>Transformer tap module max</source>
+        <translation>변압기 탭 모듈 최대</translation>
+    </message>
+    <message>
+        <source>Transformer tap module min</source>
+        <translation>변압기 탭 모듈 최소</translation>
+    </message>
+    <message>
+        <source>Unnamed grid</source>
+        <translation>이름 없는 그리드</translation>
+    </message>
+    <message>
+        <source>Upper</source>
+        <translation>상부</translation>
+    </message>
+    <message>
+        <source>Use &lt;b&gt;Fix Safe Issues&lt;/b&gt; to correct the problems already covered by automatic repairs, then refresh the score.</source>
+        <translation>&lt;b&gt;안전 문제 수정&lt;/b&gt;을 사용하여 자동 복구로 이미 처리된 문제를 수정하고 점수를 새로 고침하십시오.</translation>
+    </message>
+    <message>
+        <source>Use the tabs below to review the executive overview, detailed findings, action narrative, sigma stability view and threshold controls.</source>
+        <translation>아래 탭을 사용하여 요약 개요, 상세 결과, 조치 설명, 시그마 안정성 보기 및 임계값 제어를 검토하십시오.</translation>
+    </message>
+    <message>
+        <source>Value</source>
+        <translation>값</translation>
+    </message>
+    <message>
+        <source>VoltageLevel</source>
+        <translation>전압 레벨</translation>
+    </message>
+    <message>
+        <source>Warning</source>
+        <translation>경고</translation>
+    </message>
+    <message>
+        <source>Warnings</source>
+        <translation>경고</translation>
+    </message>
+    <message>
+        <source>Yes</source>
+        <translation>예</translation>
+    </message>
+    <message>
+        <source>Zone</source>
+        <translation>구역</translation>
+    </message>
+    <message>
+        <source>{critical_count} critical findings</source>
+        <translation>{critical_count}개의 심각한 결과</translation>
+    </message>
+    <message>
+        <source>{grid_name}  •  {bus_count} buses  •  {line_count} lines  •  {transformer_count} transformers</source>
+        <translation>{grid_name} • {bus_count} 버스 • {line_count} 라인 • {transformer_count} 변압기</translation>
+    </message>
+    <message>
+        <source>{status_text} Min distance {min_distance:.3f} p.u. • mean distance {mean_distance:.3f} p.u.</source>
+        <translation>{status_text} 최소 거리 {min_distance:.3f} p.u. • 평균 거리 {mean_distance:.3f} p.u.</translation>
+    </message>
 </context>
 <context>
     <name>MatpowerExportDialog</name>
@@ -3307,149 +4263,161 @@ Cancel and retry?</source>
     <name>ResultsMain</name>
     <message>
         <source>Delete driver</source>
-        <translation type="vanished">드라이버 삭제</translation>
+        <translation>드라이버 삭제</translation>
     </message>
     <message>
         <source>Rename group</source>
-        <translation type="vanished">그룹 이름 바꾸기</translation>
+        <translation>그룹 이름 바꾸기</translation>
     </message>
     <message>
         <source>Rename variable</source>
-        <translation type="vanished">변수 이름 바꾸기</translation>
+        <translation>변수 이름 바꾸기</translation>
     </message>
     <message>
         <source>Rename dynamic plot</source>
-        <translation type="vanished">동적 플롯 이름 바꾸기</translation>
+        <translation>동적 플롯 이름 바꾸기</translation>
     </message>
     <message>
         <source>Plot name</source>
-        <translation type="vanished">플롯 이름</translation>
+        <translation>플롯 이름</translation>
     </message>
     <message>
         <source>The plot group name is empty or already exists.</source>
-        <translation type="vanished">플롯 그룹 이름이 비어 있거나 이미 존재합니다.</translation>
+        <translation>플롯 그룹 이름이 비어 있거나 이미 존재합니다.</translation>
     </message>
     <message>
         <source>Select a plot group first.</source>
-        <translation type="vanished">먼저 플롯 그룹을 선택하십시오.</translation>
+        <translation>먼저 플롯 그룹을 선택하십시오.</translation>
     </message>
     <message>
         <source>There are no RMS dynamics results loaded.</source>
-        <translation type="vanished">로드된 RMS 역학 결과가 없습니다.</translation>
+        <translation>로드된 RMS 역학 결과가 없습니다.</translation>
     </message>
     <message>
         <source>Rename dynamic variable</source>
-        <translation type="vanished">동적 변수 이름 바꾸기</translation>
+        <translation>동적 변수 이름 바꾸기</translation>
     </message>
     <message>
         <source>Variable name</source>
-        <translation type="vanished">변수 이름</translation>
+        <translation>변수 이름</translation>
     </message>
     <message>
         <source>The variable name is empty or could not be changed.</source>
-        <translation type="vanished">변수 이름이 비어 있거나 변경할 수 없습니다.</translation>
+        <translation>변수 이름이 비어 있거나 변경할 수 없습니다.</translation>
     </message>
     <message>
         <source>New dynamic plot</source>
-        <translation type="vanished">새로운 동적 플롯</translation>
+        <translation>새로운 동적 플롯</translation>
     </message>
     <message>
         <source>Plot mode</source>
-        <translation type="vanished">플롯 모드</translation>
+        <translation>플롯 모드</translation>
     </message>
     <message>
         <source>Time Series (Y vs Time)</source>
-        <translation type="vanished">시계열(Y 대 시간)</translation>
+        <translation>시계열(Y 대 시간)</translation>
     </message>
     <message>
         <source>X-Y Plot (Y vs X)</source>
-        <translation type="vanished">X-Y 플롯(Y 대 X)</translation>
+        <translation>X-Y 플롯(Y 대 X)</translation>
     </message>
     <message>
         <source>The selected dynamic plot entry could not be deleted.</source>
-        <translation type="vanished">선택한 동적 플롯 항목을 삭제할 수 없습니다.</translation>
+        <translation>선택한 동적 플롯 항목을 삭제할 수 없습니다.</translation>
     </message>
     <message>
         <source>Select a plot group or variable first.</source>
-        <translation type="vanished">먼저 플롯 그룹이나 변수를 선택하십시오.</translation>
+        <translation>먼저 플롯 그룹이나 변수를 선택하십시오.</translation>
     </message>
     <message>
         <source>The selected dynamic plot entry could not be plotted.</source>
-        <translation type="vanished">선택한 동적 플롯 항목을 플롯할 수 없습니다.</translation>
+        <translation>선택한 동적 플롯 항목을 플롯할 수 없습니다.</translation>
     </message>
     <message>
         <source>There are {columns} columns, the plot might take a lot to render.
 Are you ok with potentially waiting a lot?</source>
-        <translation type="vanished">{columns} 열이 있으므로 플롯을 렌더링하는 데 많은 시간이 걸릴 수 있습니다.
+        <translation>{columns} 열이 있으므로 플롯을 렌더링하는 데 많은 시간이 걸릴 수 있습니다.
 잠재적으로 많이 기다려도 괜찮나요?</translation>
     </message>
     <message>
         <source>Plot</source>
-        <translation type="vanished">구성</translation>
+        <translation>구성</translation>
     </message>
     <message>
         <source>Export results</source>
-        <translation type="vanished">결과 내보내기</translation>
+        <translation>결과 내보내기</translation>
     </message>
     <message>
         <source>CSV (*.csv);;Excel files (*.xlsx)</source>
-        <translation type="vanished">CSV(*.csv);;Excel 파일(*.xlsx)</translation>
+        <translation>CSV(*.csv);;Excel 파일(*.xlsx)</translation>
     </message>
     <message>
         <source> is not valid :(</source>
-        <translation type="vanished">유효하지 않습니다 :(</translation>
+        <translation>유효하지 않습니다 :(</translation>
     </message>
     <message>
         <source>There is no profile displayed, please display one</source>
-        <translation type="vanished">표시된 프로필이 없습니다. 프로필을 표시해 주세요.</translation>
+        <translation>표시된 프로필이 없습니다. 프로필을 표시해 주세요.</translation>
     </message>
     <message>
         <source>Copy profile to clipboard</source>
-        <translation type="vanished">프로필을 클립보드에 복사</translation>
+        <translation>프로필을 클립보드에 복사</translation>
     </message>
     <message>
         <source>Copied!</source>
-        <translation type="vanished">복사되었습니다!</translation>
+        <translation>복사되었습니다!</translation>
     </message>
     <message>
         <source>Filter parse</source>
-        <translation type="vanished">필터 구문 분석</translation>
+        <translation>필터 구문 분석</translation>
     </message>
     <message>
         <source>Do you want to delete the results driver {study_name}?</source>
-        <translation type="vanished">결과 드라이버 {study_name}을(를) 삭제하시겠습니까?</translation>
+        <translation>결과 드라이버 {study_name}을(를) 삭제하시겠습니까?</translation>
     </message>
     <message>
         <source>Message</source>
-        <translation type="vanished">메시지</translation>
+        <translation>메시지</translation>
     </message>
     <message>
         <source>Are you sure that you want to overwrite the generation, batteries and load snapshot values with the OPF results?</source>
-        <translation type="vanished">OPF 결과로 발전, 배터리 및 로드 스냅샷 값을 덮어쓰시겠습니까?</translation>
+        <translation>OPF 결과로 발전, 배터리 및 로드 스냅샷 값을 덮어쓰시겠습니까?</translation>
     </message>
     <message>
         <source>Overwrite profiles with OPF results</source>
-        <translation type="vanished">OPF 결과로 프로필 덮어쓰기</translation>
+        <translation>OPF 결과로 프로필 덮어쓰기</translation>
     </message>
     <message>
         <source>P snapshot set from the OPF results</source>
-        <translation type="vanished">OPF 결과에서 설정된 P 스냅샷</translation>
+        <translation>OPF 결과에서 설정된 P 스냅샷</translation>
     </message>
     <message>
         <source>The OPF time series has no results :(</source>
-        <translation type="vanished">OPF 시계열에는 결과가 없습니다 :(</translation>
+        <translation>OPF 시계열에는 결과가 없습니다 :(</translation>
     </message>
     <message>
         <source>Are you sure that you want to overwrite the generation, batteries and load profiles with the OPF time series results?</source>
-        <translation type="vanished">OPF 시계열 결과로 발전, 배터리 및 부하 프로필을 덮어쓰시겠습니까?</translation>
+        <translation>OPF 시계열 결과로 발전, 배터리 및 부하 프로필을 덮어쓰시겠습니까?</translation>
     </message>
     <message>
         <source>P profiles set from the OPF results</source>
-        <translation type="vanished">OPF 결과에서 설정된 P 프로필</translation>
+        <translation>OPF 결과에서 설정된 P 프로필</translation>
     </message>
     <message>
         <source>Export logs</source>
-        <translation type="vanished">로그 내보내기</translation>
+        <translation>로그 내보내기</translation>
+    </message>
+    <message>
+        <source>Plot results</source>
+        <translation>결과 플롯</translation>
+    </message>
+    <message>
+        <source>Select a variable first.</source>
+        <translation>먼저 변수를 선택하십시오.</translation>
+    </message>
+    <message>
+        <source>There are no results available to plot.</source>
+        <translation>플롯할 결과가 없습니다.</translation>
     </message>
 </context>
 <context>
@@ -3516,305 +4484,305 @@ Are you ok with potentially waiting a lot?</source>
     <message>
         <source>VeraGrid internal commands.
 </source>
-        <translation type="vanished">VeraGrid 내부 명령.</translation>
+        <translation>VeraGrid 내부 명령.</translation>
     </message>
     <message>
         <source>If a command is unavailable is because the study has not been executed yet.</source>
-        <translation type="vanished">명령을 사용할 수 없는 경우는 연구가 아직 실행되지 않았기 때문입니다.</translation>
+        <translation>명령을 사용할 수 없는 경우는 연구가 아직 실행되지 않았기 때문입니다.</translation>
     </message>
     <message>
         <source>
 
 clc():	clear the console.</source>
-        <translation type="vanished">clc(): 콘솔을 지웁니다.</translation>
+        <translation>clc(): 콘솔을 지웁니다.</translation>
     </message>
     <message>
         <source>
 
 App functions:</source>
-        <translation type="vanished">앱 기능:</translation>
+        <translation>앱 기능:</translation>
     </message>
     <message>
         <source>	app.new_project(): Clear all.</source>
-        <translation type="vanished">app.new_project(): 모두 삭제합니다.</translation>
+        <translation>app.new_project(): 모두 삭제합니다.</translation>
     </message>
     <message>
         <source>	app.open_file(): Prompt to load VeraGrid compatible file</source>
-        <translation type="vanished">app.open_file(): VeraGrid 호환 파일을 로드하라는 메시지를 표시합니다.</translation>
+        <translation>app.open_file(): VeraGrid 호환 파일을 로드하라는 메시지를 표시합니다.</translation>
     </message>
     <message>
         <source>	app.save_file(): Prompt to save VeraGrid file</source>
-        <translation type="vanished">app.save_file(): VeraGrid 파일을 저장하라는 메시지</translation>
+        <translation>app.save_file(): VeraGrid 파일을 저장하라는 메시지</translation>
     </message>
     <message>
         <source>	app.export_diagram(): Prompt to export the diagram in png.</source>
-        <translation type="vanished">app.export_diagram(): 다이어그램을 png로 내보내라는 메시지를 표시합니다.</translation>
+        <translation>app.export_diagram(): 다이어그램을 png로 내보내라는 메시지를 표시합니다.</translation>
     </message>
     <message>
         <source>	app.create_schematic_from_api(): Create the schematic from the circuit information.</source>
-        <translation type="vanished">app.create_schematic_from_api(): 회로 정보로부터 회로도를 생성합니다.</translation>
+        <translation>app.create_schematic_from_api(): 회로 정보로부터 회로도를 생성합니다.</translation>
     </message>
     <message>
         <source>	app.adjust_all_node_width(): Adjust the width of all the nodes according to their name.</source>
-        <translation type="vanished">app.adjust_all_node_width(): 이름에 따라 모든 노드의 너비를 조정합니다.</translation>
+        <translation>app.adjust_all_node_width(): 이름에 따라 모든 노드의 너비를 조정합니다.</translation>
     </message>
     <message>
         <source>	app.numerical_circuit: get compilation of the assets.</source>
-        <translation type="vanished">app.numerical_circuit: 자산 컴파일을 가져옵니다.</translation>
+        <translation>app.numerical_circuit: 자산 컴파일을 가져옵니다.</translation>
     </message>
     <message>
         <source>	app.islands: get compilation of the assets split into the topological islands.</source>
-        <translation type="vanished">app.islands: 토폴로지 아일랜드로 분할된 자산을 컴파일합니다.</translation>
+        <translation>app.islands: 토폴로지 아일랜드로 분할된 자산을 컴파일합니다.</translation>
     </message>
     <message>
         <source>
 
 Circuit functions:</source>
-        <translation type="vanished">회로 기능:</translation>
+        <translation>회로 기능:</translation>
     </message>
     <message>
         <source>	app.circuit.plot_graph(): Plot a graph in a Matplotlib window. Call plt.show() after.</source>
-        <translation type="vanished">app.circuit.plot_graph(): Matplotlib 창에 그래프를 그립니다. 이후에 plt.show()를 호출하세요.</translation>
+        <translation>app.circuit.plot_graph(): Matplotlib 창에 그래프를 그립니다. 이후에 plt.show()를 호출하세요.</translation>
     </message>
     <message>
         <source>
 
 Power flow results:</source>
-        <translation type="vanished">전력 흐름 결과:</translation>
+        <translation>전력 흐름 결과:</translation>
     </message>
     <message>
         <source>	app.session.power_flow.voltage:	 the nodal voltages in per unit</source>
-        <translation type="vanished">app.session.power_flow.volt: 단위당 노드 전압</translation>
+        <translation>app.session.power_flow.volt: 단위당 노드 전압</translation>
     </message>
     <message>
         <source>	app.session.power_flow.current:	 the branch currents in per unit</source>
-        <translation type="vanished">app.session.power_flow.current: 단위당 분기 전류</translation>
+        <translation>app.session.power_flow.current: 단위당 분기 전류</translation>
     </message>
     <message>
         <source>	app.session.power_flow.loading:	 the branch loading in %</source>
-        <translation type="vanished">app.session.power_flow.loading: 브랜치 로딩(%)</translation>
+        <translation>app.session.power_flow.loading: 브랜치 로딩(%)</translation>
     </message>
     <message>
         <source>	app.session.power_flow.losses:	 the branch losses in per unit</source>
-        <translation type="vanished">app.session.power_flow.losses: 단위당 분기 손실</translation>
+        <translation>app.session.power_flow.losses: 단위당 분기 손실</translation>
     </message>
     <message>
         <source>	app.session.power_flow.power:	 the nodal power Injections in per unit</source>
-        <translation type="vanished">app.session.power_flow.power: 단위당 노드 전력 주입</translation>
+        <translation>app.session.power_flow.power: 단위당 노드 전력 주입</translation>
     </message>
     <message>
         <source>	app.session.power_flow.Sf:	 the branch power Injections in per unit at the &quot;from&quot; side</source>
-        <translation type="vanished">app.session.power_flow.Sf: &quot;from&quot; 측에서 단위당 분기 전원 주입</translation>
+        <translation>app.session.power_flow.Sf: &quot;from&quot; 측에서 단위당 분기 전원 주입</translation>
     </message>
     <message>
         <source>	app.session.power_flow.St:	 the branch power Injections in per unit at the &quot;to&quot; side</source>
-        <translation type="vanished">app.session.power_flow.St: &quot;to&quot; 측에서 단위당 분기 전원 주입</translation>
+        <translation>app.session.power_flow.St: &quot;to&quot; 측에서 단위당 분기 전원 주입</translation>
     </message>
     <message>
         <source>
 
 Short circuit results:</source>
-        <translation type="vanished">단락 결과:</translation>
+        <translation>단락 결과:</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.voltage:	 the nodal voltages in per unit</source>
-        <translation type="vanished">app.session.short_circuit.volt: 단위당 노드 전압</translation>
+        <translation>app.session.short_circuit.volt: 단위당 노드 전압</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.current:	 the branch currents in per unit</source>
-        <translation type="vanished">app.session.short_circuit.current: 단위당 분기 전류</translation>
+        <translation>app.session.short_circuit.current: 단위당 분기 전류</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.loading:	 the branch loading in %</source>
-        <translation type="vanished">app.session.short_circuit.loading: 브랜치 로딩(%)</translation>
+        <translation>app.session.short_circuit.loading: 브랜치 로딩(%)</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.losses:	 the branch losses in per unit</source>
-        <translation type="vanished">app.session.short_circuit.losses: 단위당 분기 손실</translation>
+        <translation>app.session.short_circuit.losses: 단위당 분기 손실</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.power:	 the nodal power Injections in per unit</source>
-        <translation type="vanished">app.session.short_circuit.power: 단위당 노드 전력 주입</translation>
+        <translation>app.session.short_circuit.power: 단위당 노드 전력 주입</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.power_from:	 the branch power Injections in per unit at the &quot;from&quot; side</source>
-        <translation type="vanished">app.session.short_circuit.power_from: &quot;from&quot; 측에서 단위당 분기 전원 주입</translation>
+        <translation>app.session.short_circuit.power_from: &quot;from&quot; 측에서 단위당 분기 전원 주입</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.power_to:	 the branch power Injections in per unit at the &quot;to&quot; side</source>
-        <translation type="vanished">app.session.short_circuit.power_to: &quot;to&quot; 측에서 단위당 분기 전원 주입</translation>
+        <translation>app.session.short_circuit.power_to: &quot;to&quot; 측에서 단위당 분기 전원 주입</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.short_circuit_power:	 Short circuit power in MVA of the grid nodes</source>
-        <translation type="vanished">app.session.short_circuit.short_circuit_power: 그리드 노드의 MVA 단락 전력</translation>
+        <translation>app.session.short_circuit.short_circuit_power: 그리드 노드의 MVA 단락 전력</translation>
     </message>
     <message>
         <source>
 
 Optimal power flow results:</source>
-        <translation type="vanished">최적의 전력 흐름 결과:</translation>
+        <translation>최적의 전력 흐름 결과:</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.voltage:	 the nodal voltages angles in rad</source>
-        <translation type="vanished">app.session.optimal_power_flow.volt: 노드 전압 각도(rad)</translation>
+        <translation>app.session.optimal_power_flow.volt: 노드 전압 각도(rad)</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.load_shedding:	 the branch loading in %</source>
-        <translation type="vanished">app.session.optimal_power_flow.load_shedding: 브랜치 로딩(%)</translation>
+        <translation>app.session.optimal_power_flow.load_shedding: 브랜치 로딩(%)</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.losses:	 the branch losses in per unit</source>
-        <translation type="vanished">app.session.optimal_power_flow.losses: 단위당 분기 손실</translation>
+        <translation>app.session.optimal_power_flow.losses: 단위당 분기 손실</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.Sbus:	 the nodal power Injections in MW</source>
-        <translation type="vanished">app.session.optimal_power_flow.Sbus: 노드 전력 주입(MW)</translation>
+        <translation>app.session.optimal_power_flow.Sbus: 노드 전력 주입(MW)</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.Sf:	 the branch power Sf</source>
-        <translation type="vanished">app.session.optimal_power_flow.Sf: 분기 전원 Sf</translation>
+        <translation>app.session.optimal_power_flow.Sf: 분기 전원 Sf</translation>
     </message>
     <message>
         <source>
 
 Time series power flow results:</source>
-        <translation type="vanished">시계열 전력 흐름 결과:</translation>
+        <translation>시계열 전력 흐름 결과:</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.time:	 Profiles time index (pandas DateTimeIndex object)</source>
-        <translation type="vanished">app.session.power_flow_ts.time: 프로필 시간 인덱스(pandas DateTimeIndex 개체)</translation>
+        <translation>app.session.power_flow_ts.time: 프로필 시간 인덱스(pandas DateTimeIndex 개체)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.load_profiles:	 Load profiles matrix (row: time, col: node)</source>
-        <translation type="vanished">app.session.power_flow_ts.load_profiles: 로드 프로필 매트릭스(행: 시간, 열: 노드)</translation>
+        <translation>app.session.power_flow_ts.load_profiles: 로드 프로필 매트릭스(행: 시간, 열: 노드)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.gen_profiles:	 Generation profiles matrix (row: time, col: node)</source>
-        <translation type="vanished">app.session.power_flow_ts.gen_profiles: 생성 프로필 매트릭스(행: 시간, 열: 노드)</translation>
+        <translation>app.session.power_flow_ts.gen_profiles: 생성 프로필 매트릭스(행: 시간, 열: 노드)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.voltages:	 nodal voltages results matrix (row: time, col: node)</source>
-        <translation type="vanished">app.session.power_flow_ts.volts: 노드 전압 결과 매트릭스(행: 시간, 열: 노드)</translation>
+        <translation>app.session.power_flow_ts.volts: 노드 전압 결과 매트릭스(행: 시간, 열: 노드)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.currents:	 Branches currents results matrix (row: time, col: branch)</source>
-        <translation type="vanished">app.session.power_flow_ts.currents: 분기 전류 결과 매트릭스(행: 시간, 열: 분기)</translation>
+        <translation>app.session.power_flow_ts.currents: 분기 전류 결과 매트릭스(행: 시간, 열: 분기)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.loadings:	 Branches loadings results matrix (row: time, col: branch)</source>
-        <translation type="vanished">app.session.power_flow_ts.loadings: 분기 로딩 결과 매트릭스(행: 시간, 열: 분기)</translation>
+        <translation>app.session.power_flow_ts.loadings: 분기 로딩 결과 매트릭스(행: 시간, 열: 분기)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.losses:	 Branches losses results matrix (row: time, col: branch)</source>
-        <translation type="vanished">app.session.power_flow_ts.losses: 분기 손실 결과 매트릭스(행: 시간, 열: 분기)</translation>
+        <translation>app.session.power_flow_ts.losses: 분기 손실 결과 매트릭스(행: 시간, 열: 분기)</translation>
     </message>
     <message>
         <source>
 
 Voltage stability power flow results:</source>
-        <translation type="vanished">전압 안정성 전력 흐름 결과:</translation>
+        <translation>전압 안정성 전력 흐름 결과:</translation>
     </message>
     <message>
         <source>	app.session.continuation_power_flow.voltage:	 Voltage values for every power multiplication factor.</source>
-        <translation type="vanished">app.session.continuation_power_flow.volt: 모든 전력 증배 인자에 대한 전압 값입니다.</translation>
+        <translation>app.session.continuation_power_flow.volt: 모든 전력 증배 인자에 대한 전압 값입니다.</translation>
     </message>
     <message>
         <source>	app.session.continuation_power_flow.lambda:	 Value of power multiplication factor applied</source>
-        <translation type="vanished">app.session.continuation_power_flow.lambda: 적용된 전력 배율 값</translation>
+        <translation>app.session.continuation_power_flow.lambda: 적용된 전력 배율 값</translation>
     </message>
     <message>
         <source>	app.session.continuation_power_flow.Sf:	 Power values for every power multiplication factor.</source>
-        <translation type="vanished">app.session.continuation_power_flow.Sf: 모든 전력 증배 인자에 대한 전력 값입니다.</translation>
+        <translation>app.session.continuation_power_flow.Sf: 모든 전력 증배 인자에 대한 전력 값입니다.</translation>
     </message>
     <message>
         <source>
 
 Monte Carlo power flow results:</source>
-        <translation type="vanished">몬테카를로 전력 흐름 결과:</translation>
+        <translation>몬테카를로 전력 흐름 결과:</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.V_avg:	 nodal voltage average result.</source>
-        <translation type="vanished">app.session.stochastic_power_flow.V_avg: 노드 전압 평균 결과.</translation>
+        <translation>app.session.stochastic_power_flow.V_avg: 노드 전압 평균 결과.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.I_avg:	 branch current average result.</source>
-        <translation type="vanished">app.session.stochastic_power_flow.I_avg: 분기 현재 평균 결과.</translation>
+        <translation>app.session.stochastic_power_flow.I_avg: 분기 현재 평균 결과.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.Loading_avg:	 branch loading average result.</source>
-        <translation type="vanished">app.session.stochastic_power_flow.Loading_avg: 분기 로딩 평균 결과.</translation>
+        <translation>app.session.stochastic_power_flow.Loading_avg: 분기 로딩 평균 결과.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.Losses_avg:	 branch losses average result.</source>
-        <translation type="vanished">app.session.stochastic_power_flow.Losses_avg: 분기 손실 평균 결과.</translation>
+        <translation>app.session.stochastic_power_flow.Losses_avg: 분기 손실 평균 결과.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.V_std:	 nodal voltage standard deviation result.</source>
-        <translation type="vanished">app.session.stochastic_power_flow.V_std: 노드 전압 표준 편차 결과.</translation>
+        <translation>app.session.stochastic_power_flow.V_std: 노드 전압 표준 편차 결과.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.I_std:	 branch current standard deviation result.</source>
-        <translation type="vanished">app.session.stochastic_power_flow.I_std: 분기 전류 표준 편차 결과입니다.</translation>
+        <translation>app.session.stochastic_power_flow.I_std: 분기 전류 표준 편차 결과입니다.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.Loading_std:	 branch loading standard deviation result.</source>
-        <translation type="vanished">app.session.stochastic_power_flow.Loading_std: 분기 로딩 표준 편차 결과입니다.</translation>
+        <translation>app.session.stochastic_power_flow.Loading_std: 분기 로딩 표준 편차 결과입니다.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.Losses_std:	 branch losses standard deviation result.</source>
-        <translation type="vanished">app.session.stochastic_power_flow.Losses_std: 분기 손실 표준 편차 결과입니다.</translation>
+        <translation>app.session.stochastic_power_flow.Losses_std: 분기 손실 표준 편차 결과입니다.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.V_avg_series:	 nodal voltage average series.</source>
-        <translation type="vanished">app.session.stochastic_power_flow.V_avg_series: 노드 전압 평균 계열.</translation>
+        <translation>app.session.stochastic_power_flow.V_avg_series: 노드 전압 평균 계열.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.V_std_series:	 branch current standard deviation series.</source>
-        <translation type="vanished">app.session.stochastic_power_flow.V_std_series: 분기 전류 표준 편차 계열.</translation>
+        <translation>app.session.stochastic_power_flow.V_std_series: 분기 전류 표준 편차 계열.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.error_series:	 Monte Carlo error series (the convergence value).</source>
-        <translation type="vanished">app.session.stochastic_power_flow.error_series: 몬테카를로 오류 계열(수렴 값).</translation>
+        <translation>app.session.stochastic_power_flow.error_series: 몬테카를로 오류 계열(수렴 값).</translation>
     </message>
     <message>
         <source>The same for app.latin_hypercube_sampling</source>
-        <translation type="vanished">app.latin_hypercube_sampling에도 동일</translation>
+        <translation>app.latin_hypercube_sampling에도 동일</translation>
     </message>
     <message>
         <source> does not exist :/</source>
-        <translation type="vanished">존재하지 않습니다 :/</translation>
+        <translation>존재하지 않습니다 :/</translation>
     </message>
     <message>
         <source>Open script</source>
-        <translation type="vanished">스크립트 열기</translation>
+        <translation>스크립트 열기</translation>
     </message>
     <message>
         <source>Are you sure you want to clear source code?</source>
-        <translation type="vanished">소스 코드를 삭제하시겠습니까?</translation>
+        <translation>소스 코드를 삭제하시겠습니까?</translation>
     </message>
     <message>
         <source>Clear source code</source>
-        <translation type="vanished">소스 코드 지우기</translation>
+        <translation>소스 코드 지우기</translation>
     </message>
     <message>
         <source>Please enter a name for the script</source>
-        <translation type="vanished">스크립트 이름을 입력하세요.</translation>
+        <translation>스크립트 이름을 입력하세요.</translation>
     </message>
     <message>
         <source>Save script</source>
-        <translation type="vanished">스크립트 저장</translation>
+        <translation>스크립트 저장</translation>
     </message>
     <message>
         <source>Do you want to delete {path}?</source>
-        <translation type="vanished">{path}을(를) 삭제하시겠습니까?</translation>
+        <translation>{path}을(를) 삭제하시겠습니까?</translation>
     </message>
     <message>
         <source>Delete source code file</source>
-        <translation type="vanished">소스코드 파일 삭제</translation>
+        <translation>소스코드 파일 삭제</translation>
     </message>
     <message>
         <source>Delete</source>
-        <translation type="vanished">삭제</translation>
+        <translation>삭제</translation>
     </message>
 </context>
 <context>
@@ -3950,34 +4918,38 @@ Monte Carlo power flow results:</source>
     <name>ServerMain</name>
     <message>
         <source>Server config file was erroneous, wrote a new one</source>
-        <translation type="vanished">서버 구성 파일에 오류가 있어 새 파일을 작성했습니다.</translation>
+        <translation>서버 구성 파일에 오류가 있어 새 파일을 작성했습니다.</translation>
     </message>
     <message>
         <source>The server connection is running, are you sure that you want to stop it?</source>
-        <translation type="vanished">서버 연결이 실행 중입니다. 중지하시겠습니까?</translation>
+        <translation>서버 연결이 실행 중입니다. 중지하시겠습니까?</translation>
     </message>
     <message>
         <source>Stop Server</source>
-        <translation type="vanished">서버 중지</translation>
+        <translation>서버 중지</translation>
     </message>
     <message>
         <source>Could not connect to the server :/</source>
-        <translation type="vanished">서버에 연결할 수 없습니다:/</translation>
+        <translation>서버에 연결할 수 없습니다:/</translation>
     </message>
     <message>
         <source>Connected!</source>
-        <translation type="vanished">연결되었습니다!</translation>
+        <translation>연결되었습니다!</translation>
     </message>
     <message>
         <source>Results received!</source>
-        <translation type="vanished">결과가 접수되었습니다!</translation>
+        <translation>결과가 접수되었습니다!</translation>
+    </message>
+    <message>
+        <source>Could not connect to the server: {error}</source>
+        <translation>서버에 연결할 수 없습니다: {error}</translation>
     </message>
 </context>
 <context>
     <name>ShortCircuitSelector</name>
     <message>
         <source>Short Circuit Configuration</source>
-        <translation type="vanished">단락 구성</translation>
+        <translation>단락 구성</translation>
     </message>
     <message>
         <source>Custom</source>
@@ -4213,15 +5185,15 @@ Monte Carlo power flow results:</source>
     <name>SubstationDesigner</name>
     <message>
         <source>Substation maker</source>
-        <translation type="vanished">변전소 메이커</translation>
+        <translation>변전소 메이커</translation>
     </message>
     <message>
         <source>Substation {number}</source>
-        <translation type="vanished">변전소 {number}</translation>
+        <translation>변전소 {number}</translation>
     </message>
     <message>
         <source>There are no voltage levels, so no substation will be created, ok?</source>
-        <translation type="vanished">전압 레벨이 없으므로 변전소가 생성되지 않습니다. 그렇죠?</translation>
+        <translation>전압 레벨이 없으므로 변전소가 생성되지 않습니다. 그렇죠?</translation>
     </message>
 </context>
 <context>
@@ -4575,19 +5547,19 @@ Monte Carlo power flow results:</source>
     <name>VeraGridMainGUI</name>
     <message>
         <source>VeraGrid {version}</source>
-        <translation type="vanished">베라그리드 {version}</translation>
+        <translation>베라그리드 {version}</translation>
     </message>
     <message>
         <source>Are you sure that you want to exit VeraGrid?</source>
-        <translation type="vanished">VeraGrid를 종료하시겠습니까?</translation>
+        <translation>VeraGrid를 종료하시겠습니까?</translation>
     </message>
     <message>
         <source>Close</source>
-        <translation type="vanished">닫다</translation>
+        <translation>닫다</translation>
     </message>
     <message>
         <source>No effect, select diagrams or database</source>
-        <translation type="vanished">효과가 없습니다. 다이어그램이나 데이터베이스를 선택하세요.</translation>
+        <translation>효과가 없습니다. 다이어그램이나 데이터베이스를 선택하세요.</translation>
     </message>
 </context>
 <context>
@@ -10204,6 +11176,1139 @@ Monte Carlo power flow results:</source>
     <message>
         <source>Question</source>
         <translation>질문</translation>
+    </message>
+</context>
+<context>
+    <name>ArrayEditor</name>
+    <message>
+        <source>Add</source>
+        <translation>추가하다</translation>
+    </message>
+    <message>
+        <source>Array Editor</source>
+        <translation>배열 편집기</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>삭제</translation>
+    </message>
+</context>
+<context>
+    <name>BlockParameterDraftModel</name>
+    <message>
+        <source>Name</source>
+        <translation>이름</translation>
+    </message>
+    <message>
+        <source>Numeric value. Changes are staged until Apply changes is pressed.</source>
+        <translation>숫자 값. 변경 사항은 '변경 사항 적용'을 누를 때까지 대기됩니다.</translation>
+    </message>
+    <message>
+        <source>Real value or symbolic initialization expression. Changes are staged until Apply changes is pressed.</source>
+        <translation>실수 값 또는 기호 초기화 표현식. 변경 사항은 '변경 사항 적용'을 누를 때까지 대기됩니다.</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>유형</translation>
+    </message>
+    <message>
+        <source>Value</source>
+        <translation>값</translation>
+    </message>
+</context>
+<context>
+    <name>BlockSymbolFilterProxyModel</name>
+    <message>
+        <source>Initializes a variable through VarPowerFlowReferenceType and block.external_mapping.</source>
+        <translation>VarPowerFlowReferenceType 및 block.external_mapping을 통해 변수를 초기화합니다.</translation>
+    </message>
+    <message>
+        <source>Maps a static parameter through ParamPowerFlowReferenceType to block.api_obj_mapping. Dynamic parameters are not editable here.</source>
+        <translation>ParamPowerFlowReferenceType을 통해 정적 매개변수를 block.api_obj_mapping에 매핑합니다. 동적 매개변수는 여기서 편집할 수 없습니다.</translation>
+    </message>
+    <message>
+        <source>Power-flow derived initialization</source>
+        <translation>전력 흐름 기반 초기화</translation>
+    </message>
+    <message>
+        <source>Static parameter mapping</source>
+        <translation>정적 매개변수 매핑</translation>
+    </message>
+</context>
+<context>
+    <name>CorrectInconsistenciesDialogue</name>
+    <message>
+        <source>Accept</source>
+        <translation>수용하다</translation>
+    </message>
+    <message>
+        <source>Correct inconsistencies</source>
+        <translation>불일치 수정</translation>
+    </message>
+    <message>
+        <source>Maximum generator set point</source>
+        <translation>최대 발전기 설정점</translation>
+    </message>
+    <message>
+        <source>Maximum virtual tap difference</source>
+        <translation>최대 가상 탭 차이</translation>
+    </message>
+    <message>
+        <source>Minimum generator set point</source>
+        <translation>최소 발전기 설정점</translation>
+    </message>
+</context>
+<context>
+    <name>DataBaseTableMain</name>
+    <message>
+        <source>Add</source>
+        <translation>추가하다</translation>
+    </message>
+    <message>
+        <source>Add to current diagram</source>
+        <translation>현재 다이어그램에 추가</translation>
+    </message>
+    <message>
+        <source>Assign to profile</source>
+        <translation>프로필에 할당</translation>
+    </message>
+    <message>
+        <source>Colour branches like this</source>
+        <translation>가지를 이렇게 색칠해요</translation>
+    </message>
+    <message>
+        <source>Copy idtag</source>
+        <translation>ID 태그 복사</translation>
+    </message>
+    <message>
+        <source>Copy table</source>
+        <translation>테이블 복사</translation>
+    </message>
+    <message>
+        <source>Crop model to buses selection</source>
+        <translation>모델을 버스 선택으로 자르기</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>삭제</translation>
+    </message>
+    <message>
+        <source>Duplicate object</source>
+        <translation>중복된 개체</translation>
+    </message>
+    <message>
+        <source>Edit</source>
+        <translation>편집하다</translation>
+    </message>
+    <message>
+        <source>Grid reduction</source>
+        <translation>그리드 축소</translation>
+    </message>
+    <message>
+        <source>Highlight based on property</source>
+        <translation>속성을 기준으로 강조 표시</translation>
+    </message>
+    <message>
+        <source>Highlight buses selection</source>
+        <translation>하이라이트 버스 선택</translation>
+    </message>
+    <message>
+        <source>Merge</source>
+        <translation>병합</translation>
+    </message>
+    <message>
+        <source>New diagram from selection</source>
+        <translation>선택 항목의 새 다이어그램</translation>
+    </message>
+    <message>
+        <source>New map from selection</source>
+        <translation>선택 항목의 새 지도</translation>
+    </message>
+    <message>
+        <source>New vicinity diagram</source>
+        <translation>새로운 주변 다이어그램</translation>
+    </message>
+    <message>
+        <source>Set value to column</source>
+        <translation>값을 열로 설정</translation>
+    </message>
+    <message>
+        <source>Type the object name or a smart filter expression ...</source>
+        <translation>객체 이름 또는 스마트 필터 표현식을 입력하십시오...</translation>
+    </message>
+</context>
+<context>
+    <name>DiagramsMain</name>
+    <message>
+        <source>Are you sure that you want to try an automatic layout?</source>
+        <translation>자동 레이아웃을 시도하시겠습니까?</translation>
+    </message>
+    <message>
+        <source>Duplicate</source>
+        <translation>복제하다</translation>
+    </message>
+    <message>
+        <source>Message</source>
+        <translation>메시지</translation>
+    </message>
+    <message>
+        <source>New map</source>
+        <translation>새로운 지도</translation>
+    </message>
+    <message>
+        <source>New schematic</source>
+        <translation>새로운 회로도</translation>
+    </message>
+    <message>
+        <source>New schematic from selection</source>
+        <translation>선택 항목의 새 회로도</translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation>제거하다</translation>
+    </message>
+    <message>
+        <source>Save image file</source>
+        <translation>이미지 파일 저장</translation>
+    </message>
+    <message>
+        <source>Save video file</source>
+        <translation>비디오 파일 저장</translation>
+    </message>
+    <message>
+        <source>Type to search in the current diagram</source>
+        <translation>현재 다이어그램에서 검색할 내용을 입력하십시오</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicBlockEditorGUI</name>
+    <message>
+        <source>Block name already exists</source>
+        <translation>블록 이름이 이미 존재합니다</translation>
+    </message>
+    <message>
+        <source>Block name cannot be empty</source>
+        <translation>블록 이름은 비어 있을 수 없습니다</translation>
+    </message>
+    <message>
+        <source>Block name is invalid</source>
+        <translation>블록 이름이 유효하지 않습니다</translation>
+    </message>
+    <message>
+        <source>Change Block Name</source>
+        <translation>블록 이름 변경</translation>
+    </message>
+    <message>
+        <source>Change Variable Name</source>
+        <translation>변수 이름 변경</translation>
+    </message>
+    <message>
+        <source>Dynamic Model Editor</source>
+        <translation>동적 모델 편집기</translation>
+    </message>
+    <message>
+        <source>Dynamic Model Editor [{mode}]</source>
+        <translation>동적 모델 편집기 [{mode}]</translation>
+    </message>
+    <message>
+        <source>Library</source>
+        <translation>도서관</translation>
+    </message>
+    <message>
+        <source>Variable name already exists</source>
+        <translation>변수 이름이 이미 존재합니다</translation>
+    </message>
+    <message>
+        <source>Variable name cannot be empty</source>
+        <translation>변수 이름은 비어 있을 수 없습니다</translation>
+    </message>
+    <message>
+        <source>Variable name is invalid</source>
+        <translation>변수 이름이 유효하지 않습니다</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEditorAddButton</name>
+    <message>
+        <source>Open another Dynamic Editor</source>
+        <translation>다른 동적 편집기 열기</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEditorGraphics</name>
+    <message>
+        <source>{direction} {index}: {name}</source>
+        <translation>{direction} {index}: {name}</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEditorPickerDialog</name>
+    <message>
+        <source>Mode</source>
+        <translation>방법</translation>
+    </message>
+    <message>
+        <source>Modes</source>
+        <translation>모드</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>이름</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation>열기</translation>
+    </message>
+    <message>
+        <source>Open the current block in the other mode.</source>
+        <translation>현재 블록을 다른 모드로 엽니다.</translation>
+    </message>
+    <message>
+        <source>Open the current block in {mode}.</source>
+        <translation>현재 블록을 {mode}로 엽니다.</translation>
+    </message>
+    <message>
+        <source>Open {mode}</source>
+        <translation>{mode} 열기</translation>
+    </message>
+    <message>
+        <source>Quick Open</source>
+        <translation>빠른 열기</translation>
+    </message>
+    <message>
+        <source>Search dynamic editors</source>
+        <translation>동적 에디터 검색</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>유형</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventEditor</name>
+    <message>
+        <source>&lt;b&gt;Target device:&lt;/b&gt;</source>
+        <translation>&lt;b&gt;대상 장치:&lt;/b&gt;</translation>
+    </message>
+    <message>
+        <source>Align Step</source>
+        <translation>스텝 정렬</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>취소</translation>
+    </message>
+    <message>
+        <source>Dynamic Event Editor</source>
+        <translation>동적 이벤트 편집기</translation>
+    </message>
+    <message>
+        <source>EMT Event Editor</source>
+        <translation>EMT 이벤트 에디터</translation>
+    </message>
+    <message>
+        <source>EMT group Created</source>
+        <translation>EMT 그룹 생성됨</translation>
+    </message>
+    <message>
+        <source>End Time</source>
+        <translation>종료 시간</translation>
+    </message>
+    <message>
+        <source>Group</source>
+        <translation>그룹</translation>
+    </message>
+    <message>
+        <source>Group: {group_name}</source>
+        <translation>그룹: {group_name}</translation>
+    </message>
+    <message>
+        <source>Invalid Input</source>
+        <translation>유효하지 않은 입력</translation>
+    </message>
+    <message>
+        <source>Missing fields</source>
+        <translation>누락된 필드</translation>
+    </message>
+    <message>
+        <source>New Value</source>
+        <translation>새 값</translation>
+    </message>
+    <message>
+        <source>New group name</source>
+        <translation>새 그룹 이름</translation>
+    </message>
+    <message>
+        <source>New row {row_number}</source>
+        <translation>새 행 {row_number}</translation>
+    </message>
+    <message>
+        <source>No EMT Events Group</source>
+        <translation>EMT 이벤트 그룹 없음</translation>
+    </message>
+    <message>
+        <source>No EMT Events Group found, please create one before adding an event.</source>
+        <translation>EMT 이벤트 그룹을 찾을 수 없습니다. 이벤트를 추가하기 전에 그룹을 생성해 주세요.</translation>
+    </message>
+    <message>
+        <source>No Events</source>
+        <translation>이벤트 없음</translation>
+    </message>
+    <message>
+        <source>No RMS Events Group</source>
+        <translation>RMS 이벤트 그룹 없음</translation>
+    </message>
+    <message>
+        <source>No RMS Events Group found, please create one before adding an event.</source>
+        <translation>RMS 이벤트 그룹을 찾을 수 없습니다. 이벤트를 추가하기 전에 그룹을 생성해 주세요.</translation>
+    </message>
+    <message>
+        <source>No Rows Selected</source>
+        <translation>선택된 행 없음</translation>
+    </message>
+    <message>
+        <source>No switch EMT mode parameter is available in this device.</source>
+        <translation>이 장치에는 스위치 EMT 모드 매개변수가 없습니다.</translation>
+    </message>
+    <message>
+        <source>Overlapping Events</source>
+        <translation>겹치는 이벤트</translation>
+    </message>
+    <message>
+        <source>Parameter</source>
+        <translation>매개변수</translation>
+    </message>
+    <message>
+        <source>Please add at least one event before confirming.</source>
+        <translation>확인하기 전에 최소한 하나의 이벤트를 추가해 주세요.</translation>
+    </message>
+    <message>
+        <source>Please check at least one row to remove.</source>
+        <translation>제거할 행을 최소한 하나 선택해 주세요.</translation>
+    </message>
+    <message>
+        <source>RMS Event Editor</source>
+        <translation>RMS 이벤트 에디터</translation>
+    </message>
+    <message>
+        <source>RMS group Created</source>
+        <translation>RMS 그룹 생성됨</translation>
+    </message>
+    <message>
+        <source>Ramp</source>
+        <translation>램프</translation>
+    </message>
+    <message>
+        <source>Row {row_number}: {message}</source>
+        <translation>행 {row_number}: {message}</translation>
+    </message>
+    <message>
+        <source>Some events are overlapped and cannot be applied.</source>
+        <translation>일부 이벤트가 겹쳐서 적용할 수 없습니다.</translation>
+    </message>
+    <message>
+        <source>Step</source>
+        <translation>스텝</translation>
+    </message>
+    <message>
+        <source>Switch Sequence</source>
+        <translation>스위치 시퀀스</translation>
+    </message>
+    <message>
+        <source>Switch Sequence Wizard</source>
+        <translation>스위치 시퀀스 마법사</translation>
+    </message>
+    <message>
+        <source>Target device:</source>
+        <translation>대상 장치:</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>시간</translation>
+    </message>
+    <message>
+        <source>Transition</source>
+        <translation>전이</translation>
+    </message>
+    <message>
+        <source>group has invalid type</source>
+        <translation>그룹 유형이 유효하지 않습니다</translation>
+    </message>
+    <message>
+        <source>parameter must be Var</source>
+        <translation>매개변수는 Var여야 합니다</translation>
+    </message>
+    <message>
+        <source>transition_type must be DynamicEventTransitionType</source>
+        <translation>transition_type은 DynamicEventTransitionType이어야 합니다</translation>
+    </message>
+    <message>
+        <source>{origin}: {transition}, parameter={parameter}, time={time:.4f} s, end_time={end_time:.4f} s, value={value:.6f}</source>
+        <translation>{origin}: {transition}, 매개변수={parameter}, 시간={time:.4f} s, 종료 시간={end_time:.4f} s, 값={value:.6f}</translation>
+    </message>
+    <message>
+        <source>{origin}: {transition}, parameter={parameter}, time={time:.4f} s, value={value:.6f}</source>
+        <translation>{origin}: {transition}, 매개변수={parameter}, 시간={time:.4f} s, 값={value:.6f}</translation>
+    </message>
+    <message>
+        <source>{prefix}: {group_name}</source>
+        <translation>{prefix}: {group_name}</translation>
+    </message>
+    <message>
+        <source>✅ Add Events</source>
+        <translation>✅ 이벤트 추가</translation>
+    </message>
+    <message>
+        <source>❌ Remove Selected Rows</source>
+        <translation>❌ 선택된 행 제거</translation>
+    </message>
+    <message>
+        <source>➕ Add New Event</source>
+        <translation>➕ 새 이벤트 추가</translation>
+    </message>
+    <message>
+        <source>➕ New Event Group</source>
+        <translation>➕ 새 이벤트 그룹</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventsGroupsDialog</name>
+    <message>
+        <source>Create EMT Events Group</source>
+        <translation>EMT 이벤트 그룹 생성</translation>
+    </message>
+    <message>
+        <source>Create RMS Events Group</source>
+        <translation>RMS 이벤트 그룹 생성</translation>
+    </message>
+    <message>
+        <source>Enter group name</source>
+        <translation>그룹 이름을 입력하세요</translation>
+    </message>
+    <message>
+        <source>Invalid name</source>
+        <translation>유효하지 않은 이름</translation>
+    </message>
+    <message>
+        <source>Name:</source>
+        <translation>이름:</translation>
+    </message>
+    <message>
+        <source>The name cannot be empty.</source>
+        <translation>이름은 비어 있을 수 없습니다.</translation>
+    </message>
+</context>
+<context>
+    <name>EquationLatexModel</name>
+    <message>
+        <source>Equation</source>
+        <translation>방정식</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>유형</translation>
+    </message>
+</context>
+<context>
+    <name>GridGeneratorGUI</name>
+    <message>
+        <source>Grid Generator</source>
+        <translation>그리드 생성기</translation>
+    </message>
+    <message>
+        <source>Warning</source>
+        <translation>경고</translation>
+    </message>
+</context>
+<context>
+    <name>GridMapWidget</name>
+    <message>
+        <source>Connection Error</source>
+        <translation>연결 오류</translation>
+    </message>
+    <message>
+        <source>No suitable voltage level ({voltage:.2f} kV) found in substation "{substation_name}".</source>
+        <translation>변전소 "{substation_name}"에서 적절한 전압 레벨 ({voltage:.2f} kV)을 찾을 수 없습니다.</translation>
+    </message>
+    <message>
+        <source>Operation Successful</source>
+        <translation>작업 성공</translation>
+    </message>
+    <message>
+        <source>Please select exactly one line and one substation.</source>
+        <translation>정확히 하나의 선로와 하나의 변전소를 선택하십시오.</translation>
+    </message>
+    <message>
+        <source>Selection Error</source>
+        <translation>선택 오류</translation>
+    </message>
+    <message>
+        <source>T-joint connection created between {substation_name} and {line_name}.</source>
+        <translation>{substation_name}과 {line_name} 사이에 T-접합 연결이 생성되었습니다.</translation>
+    </message>
+    <message>
+        <source>The line cannot be connected. Please ensure the target substation has a bus with a matching nominal voltage.</source>
+        <translation>해당 선로를 연결할 수 없습니다. 대상 변전소에 일치하는 정격 전압의 버스가 있는지 확인하십시오.</translation>
+    </message>
+    <message>
+        <source>Waypoint replaced with new substation '{substation_name}'.
+Original line split into two segments:
+- {line1_name}: {length1:.2f} km
+- {line2_name}: {length2:.2f} km
+New connection line: {distance:.2f} km</source>
+        <translation>경유지가 새 변전소 '{substation_name}'로 대체되었습니다.
+원래 선로가 두 세그먼트로 분할되었습니다:
+- {line1_name}: {length1:.2f} km
+- {line2_name}: {length2:.2f} km
+새 연결 선로: {distance:.2f} km</translation>
+    </message>
+</context>
+<context>
+    <name>LogsDialogue</name>
+    <message>
+        <source>Accept</source>
+        <translation>수용하다</translation>
+    </message>
+    <message>
+        <source>CSV (*.csv);;Excel files (*.xlsx)</source>
+        <translation>CSV(*.csv);;Excel 파일(*.xlsx)</translation>
+    </message>
+    <message>
+        <source>Class</source>
+        <translation>등급</translation>
+    </message>
+    <message>
+        <source>Copy</source>
+        <translation>복사</translation>
+    </message>
+    <message>
+        <source>Device</source>
+        <translation>장치</translation>
+    </message>
+    <message>
+        <source>Expected value</source>
+        <translation>예상 값</translation>
+    </message>
+    <message>
+        <source>Export results</source>
+        <translation>결과 내보내기</translation>
+    </message>
+    <message>
+        <source>Property</source>
+        <translation>속성</translation>
+    </message>
+    <message>
+        <source>Save</source>
+        <translation>구하다</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>시간</translation>
+    </message>
+    <message>
+        <source>Value</source>
+        <translation>값</translation>
+    </message>
+</context>
+<context>
+    <name>NewProfilesStructureDialogue</name>
+    <message>
+        <source>Accept</source>
+        <translation>수용하다</translation>
+    </message>
+    <message>
+        <source>New profiles structure</source>
+        <translation>새 프로파일 구조</translation>
+    </message>
+    <message>
+        <source>Number of time steps</source>
+        <translation>시간 단계 수</translation>
+    </message>
+    <message>
+        <source>Start date</source>
+        <translation>시작일</translation>
+    </message>
+    <message>
+        <source>Time step length</source>
+        <translation>시간 단계 길이</translation>
+    </message>
+    <message>
+        <source>Time units</source>
+        <translation>시간 단위</translation>
+    </message>
+</context>
+<context>
+    <name>ObjectColumnFilterDialog</name>
+    <message>
+        <source>Apply</source>
+        <translation>적용</translation>
+    </message>
+    <message>
+        <source>Cancel filter</source>
+        <translation>필터 취소</translation>
+    </message>
+    <message>
+        <source>Clear filter</source>
+        <translation>필터 지우기</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>찾다</translation>
+    </message>
+    <message>
+        <source>Select all visible</source>
+        <translation>보이는 모든 항목 선택</translation>
+    </message>
+    <message>
+        <source>Select no visible</source>
+        <translation>보이는 항목 없음 선택</translation>
+    </message>
+    <message>
+        <source>Sort A to Z</source>
+        <translation>A-Z 정렬</translation>
+    </message>
+    <message>
+        <source>Sort Z to A</source>
+        <translation>Z-A 정렬</translation>
+    </message>
+</context>
+<context>
+    <name>RmsPlotDialog</name>
+    <message>
+        <source>Add</source>
+        <translation>추가하다</translation>
+    </message>
+    <message>
+        <source>Device:</source>
+        <translation>장치:</translation>
+    </message>
+    <message>
+        <source>Plot Variables</source>
+        <translation>변수 플롯</translation>
+    </message>
+    <message>
+        <source>Plot Window</source>
+        <translation>플롯 창</translation>
+    </message>
+    <message>
+        <source>Remove variable</source>
+        <translation>변수 제거</translation>
+    </message>
+    <message>
+        <source>Rms Simulation Results</source>
+        <translation>RMS 시뮬레이션 결과</translation>
+    </message>
+    <message>
+        <source>Show in new window</source>
+        <translation>새 창에 표시</translation>
+    </message>
+    <message>
+        <source>Variable:</source>
+        <translation>변수:</translation>
+    </message>
+    <message>
+        <source>time (s)</source>
+        <translation>시간 (s)</translation>
+    </message>
+</context>
+<context>
+    <name>RosetaExplorerGUI</name>
+    <message>
+        <source>Copy</source>
+        <translation>복사</translation>
+    </message>
+</context>
+<context>
+    <name>RuntimeLogicEditorWidget</name>
+    <message>
+        <source>Add entry</source>
+        <translation>항목 추가</translation>
+    </message>
+    <message>
+        <source>Add retained mode</source>
+        <translation>유지 모드 추가</translation>
+    </message>
+    <message>
+        <source>Configuration</source>
+        <translation>구성</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>삭제</translation>
+    </message>
+    <message>
+        <source>Delete retained mode</source>
+        <translation>유지 모드 삭제</translation>
+    </message>
+    <message>
+        <source>Documentation</source>
+        <translation>문서</translation>
+    </message>
+    <message>
+        <source>Enter a procedural entry name.</source>
+        <translation>절차적 항목 이름을 입력하십시오.</translation>
+    </message>
+    <message>
+        <source>Enter a valid retained-mode symbol name.</source>
+        <translation>유효한 유지 모드 심볼 이름을 입력하십시오.</translation>
+    </message>
+    <message>
+        <source>Enter an initial value or expression.</source>
+        <translation>초기 값 또는 수식을 입력하십시오.</translation>
+    </message>
+    <message>
+        <source>Entry name</source>
+        <translation>항목 이름</translation>
+    </message>
+    <message>
+        <source>Initial value or expression</source>
+        <translation>초기 값 또는 수식</translation>
+    </message>
+    <message>
+        <source>Mode symbol name</source>
+        <translation>모드 심볼 이름</translation>
+    </message>
+    <message>
+        <source>Move down</source>
+        <translation>아래로 이동</translation>
+    </message>
+    <message>
+        <source>Move up</source>
+        <translation>위로 이동</translation>
+    </message>
+    <message>
+        <source>Owner</source>
+        <translation>소유자</translation>
+    </message>
+    <message>
+        <source>Procedural entries</source>
+        <translation>절차적 항목</translation>
+    </message>
+    <message>
+        <source>Retained modes</source>
+        <translation>유지 모드</translation>
+    </message>
+    <message>
+        <source>Runtime logic is valid.</source>
+        <translation>런타임 로직이 유효합니다.</translation>
+    </message>
+    <message>
+        <source>Select a valid owner and procedural type.</source>
+        <translation>유효한 소유자와 절차적 유형을 선택하십시오.</translation>
+    </message>
+    <message>
+        <source>Select a valid owner block.</source>
+        <translation>유효한 소유 블록을 선택하십시오.</translation>
+    </message>
+    <message>
+        <source>Select one procedural entry to delete.</source>
+        <translation>삭제할 절차적 항목을 하나 선택하십시오.</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>유형</translation>
+    </message>
+    <message>
+        <source>Valid runtime logic. Warnings: </source>
+        <translation>런타임 로직이 유효합니다. 경고:</translation>
+    </message>
+    <message>
+        <source>Validate runtime logic</source>
+        <translation>런타임 로직 유효성 검사</translation>
+    </message>
+</context>
+<context>
+    <name>ScenariosMain</name>
+    <message>
+        <source>Add child scenario</source>
+        <translation>하위 시나리오 추가</translation>
+    </message>
+    <message>
+        <source>Commit scenario</source>
+        <translation>커밋 시나리오</translation>
+    </message>
+    <message>
+        <source>Merge children into scenario</source>
+        <translation>어린이를 시나리오에 병합</translation>
+    </message>
+    <message>
+        <source>Remove scenario</source>
+        <translation>시나리오 삭제</translation>
+    </message>
+    <message>
+        <source>Rename scenario</source>
+        <translation>시나리오 이름 바꾸기</translation>
+    </message>
+    <message>
+        <source>Set as current scenario</source>
+        <translation>현재 시나리오로 설정</translation>
+    </message>
+</context>
+<context>
+    <name>SelectionDialog</name>
+    <message>
+        <source>Cancel</source>
+        <translation>취소</translation>
+    </message>
+    <message>
+        <source>Click on a substation to reconnect branch {branch_name}</source>
+        <translation>분기 {branch_name}을 다시 연결하려면 변전소를 클릭하십시오.</translation>
+    </message>
+    <message>
+        <source>The substation should have a compatible voltage level ({voltage} kV)</source>
+        <translation>변전소는 호환 가능한 전압 레벨({voltage} kV)을 가져야 합니다.</translation>
+    </message>
+    <message>
+        <source>Waiting for Selection</source>
+        <translation>선택 대기 중</translation>
+    </message>
+    <message>
+        <source>Waiting for selection...</source>
+        <translation>선택 대기 중...</translation>
+    </message>
+</context>
+<context>
+    <name>ServerFileDialogue</name>
+    <message>
+        <source>Delete server file</source>
+        <translation>서버 파일 삭제</translation>
+    </message>
+    <message>
+        <source>Delete server model</source>
+        <translation>서버 모델 삭제</translation>
+    </message>
+    <message>
+        <source>Delete the selected file and every model inside it?</source>
+        <translation>선택한 파일과 그 안의 모든 모델을 삭제하시겠습니까?</translation>
+    </message>
+    <message>
+        <source>Delete the selected model from the server database?</source>
+        <translation>서버 데이터베이스에서 선택한 모델을 삭제하시겠습니까?</translation>
+    </message>
+</context>
+<context>
+    <name>SigmaAnalysisGUI</name>
+    <message>
+        <source>CSV (*.csv);;Excel files (*.xlsx)</source>
+        <translation>CSV(*.csv);;Excel 파일(*.xlsx)</translation>
+    </message>
+    <message>
+        <source>Export results</source>
+        <translation>결과 내보내기</translation>
+    </message>
+    <message>
+        <source>HELM-Sigma analysis dialogue</source>
+        <translation>HELM-Sigma 분석 대화 상자</translation>
+    </message>
+    <message>
+        <source>Sigma analysis completed</source>
+        <translation>시그마 분석 완료</translation>
+    </message>
+    <message>
+        <source>Sigma analysis did not return results</source>
+        <translation>시그마 분석 결과 없음</translation>
+    </message>
+    <message>
+        <source>Sigma coefficients did not converge :(</source>
+        <translation>시그마 계수가 수렴하지 않았습니다 :(</translation>
+    </message>
+    <message>
+        <source>Snapshot</source>
+        <translation>스냅 사진</translation>
+    </message>
+    <message>
+        <source>This window was opened without a circuit/options rerun context.</source>
+        <translation>이 창은 회로/옵션 재실행 컨텍스트 없이 열렸습니다.</translation>
+    </message>
+    <message>
+        <source>Warning</source>
+        <translation>경고</translation>
+    </message>
+</context>
+<context>
+    <name>SimulationsMain</name>
+    <message>
+        <source>Compiling the grid...</source>
+        <translation>그리드 컴파일 중...</translation>
+    </message>
+    <message>
+        <source>Model v. {model_version}</source>
+        <translation>모델 v. {model_version}</translation>
+    </message>
+    <message>
+        <source>Pareto combination</source>
+        <translation>파레토 조합</translation>
+    </message>
+    <message>
+        <source>Pareto combination {index}</source>
+        <translation>파레토 조합 {index}</translation>
+    </message>
+    <message>
+        <source>Running power flow...</source>
+        <translation>전력 흐름 계산 중...</translation>
+    </message>
+    <message>
+        <source>Short circuits</source>
+        <translation>단락</translation>
+    </message>
+    <message>
+        <source>User: {user_name}</source>
+        <translation>사용자: {user_name}</translation>
+    </message>
+    <message>
+        <source>idtag. {idtag}</source>
+        <translation>idtag. {idtag}</translation>
+    </message>
+</context>
+<context>
+    <name>SwitchSequenceDialog</name>
+    <message>
+        <source>Add Sequence Step</source>
+        <translation>시퀀스 단계 추가</translation>
+    </message>
+    <message>
+        <source>Add at least one sequence row.</source>
+        <translation>최소한 하나의 시퀀스 행을 추가하십시오.</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>닫다</translation>
+    </message>
+    <message>
+        <source>Group</source>
+        <translation>그룹</translation>
+    </message>
+    <message>
+        <source>Mode Parameter</source>
+        <translation>모드 파라미터</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation>열기</translation>
+    </message>
+    <message>
+        <source>Please check at least one row to remove.</source>
+        <translation>제거할 행을 최소한 하나 선택해 주세요.</translation>
+    </message>
+    <message>
+        <source>Remove Selected Rows</source>
+        <translation>선택된 행 제거</translation>
+    </message>
+    <message>
+        <source>Select a mode parameter and an events group.</source>
+        <translation>모드 파라미터와 이벤트 그룹을 선택하십시오.</translation>
+    </message>
+    <message>
+        <source>State</source>
+        <translation>상태</translation>
+    </message>
+    <message>
+        <source>Switch Sequence</source>
+        <translation>스위치 시퀀스</translation>
+    </message>
+    <message>
+        <source>Switch Sequence Wizard</source>
+        <translation>스위치 시퀀스 마법사</translation>
+    </message>
+    <message>
+        <source>The selected parameter or group is invalid.</source>
+        <translation>선택된 파라미터 또는 그룹이 유효하지 않습니다.</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>시간</translation>
+    </message>
+</context>
+<context>
+    <name>SystemScaler</name>
+    <message>
+        <source>Aggregated energy scaling preview</source>
+        <translation>집계 에너지 스케일링 미리보기</translation>
+    </message>
+    <message>
+        <source>Aggregated power scaling preview</source>
+        <translation>집계 전력 스케일링 미리보기</translation>
+    </message>
+    <message>
+        <source>MW</source>
+        <translation>MW</translation>
+    </message>
+    <message>
+        <source>MWh</source>
+        <translation>MWh</translation>
+    </message>
+    <message>
+        <source>Original generation</source>
+        <translation>초기 발전량</translation>
+    </message>
+    <message>
+        <source>Original generation energy</source>
+        <translation>초기 발전 에너지</translation>
+    </message>
+    <message>
+        <source>Original load</source>
+        <translation>초기 부하</translation>
+    </message>
+    <message>
+        <source>Original load energy</source>
+        <translation>초기 부하 에너지</translation>
+    </message>
+    <message>
+        <source>Press plot to preview scaling</source>
+        <translation>스케일링 미리보기를 위해 플롯을 누르십시오.</translation>
+    </message>
+    <message>
+        <source>Scaled generation</source>
+        <translation>스케일링된 발전량</translation>
+    </message>
+    <message>
+        <source>Scaled generation energy</source>
+        <translation>스케일링된 발전 에너지</translation>
+    </message>
+    <message>
+        <source>Scaled load</source>
+        <translation>스케일링된 부하</translation>
+    </message>
+    <message>
+        <source>Scaled load energy</source>
+        <translation>스케일링된 부하 에너지</translation>
+    </message>
+    <message>
+        <source>System scaling</source>
+        <translation>시스템 스케일링</translation>
+    </message>
+    <message>
+        <source>There is no time series to plot.</source>
+        <translation>플롯할 시계열 데이터가 없습니다.</translation>
+    </message>
+    <message>
+        <source>This operation will alter the generation and load composition irreversibly
+Are you sure?</source>
+        <translation>이 작업은 발전 및 부하 구성을 되돌릴 수 없게 변경합니다.
+정말 확실합니까?</translation>
+    </message>
+</context>
+<context>
+    <name>TimeReIndexDialogue</name>
+    <message>
+        <source>Accept</source>
+        <translation>수용하다</translation>
+    </message>
+    <message>
+        <source>Start date</source>
+        <translation>시작일</translation>
+    </message>
+    <message>
+        <source>Time re-index</source>
+        <translation>시간 재인덱싱</translation>
+    </message>
+    <message>
+        <source>Time step length</source>
+        <translation>시간 단계 길이</translation>
+    </message>
+    <message>
+        <source>Time units</source>
+        <translation>시간 단위</translation>
     </message>
 </context>
 </TS>
