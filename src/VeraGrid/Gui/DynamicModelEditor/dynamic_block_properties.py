@@ -4733,6 +4733,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         "_dae_search_status",
         "_dae_highlighter",
         "_validate_code_button",
+        "_general_options_splitter",
         "_dae_splitter",
         "_symbol_panel_splitter",
         "_latex_model",
@@ -4895,6 +4896,10 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._validate_code_button: QtWidgets.QPushButton = QtWidgets.QPushButton(
             self.tr("Validate all code"), self
         )
+        self._general_options_splitter: QtWidgets.QSplitter = QtWidgets.QSplitter(
+            Qt.Orientation.Vertical,
+            self,
+        )
         self._dae_splitter: QtWidgets.QSplitter = QtWidgets.QSplitter(Qt.Orientation.Horizontal, self)
         self._symbol_panel_splitter: QtWidgets.QSplitter = QtWidgets.QSplitter(
             Qt.Orientation.Vertical,
@@ -5047,7 +5052,10 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         """
         page: QtWidgets.QWidget = QtWidgets.QWidget(self)
         layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(page)
-        identity_group: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self.tr("Block configuration"), page)
+        identity_group: QtWidgets.QGroupBox = QtWidgets.QGroupBox(
+            self.tr("Block configuration"),
+            self._general_options_splitter,
+        )
         identity_layout: QtWidgets.QFormLayout = QtWidgets.QFormLayout(identity_group)
         identity_layout.addRow(self.tr("Name"), QtWidgets.QLabel(self._block.name, identity_group))
         identity_layout.addRow(self.tr("Catalogue type"), QtWidgets.QLabel(self._block_type_name, identity_group))
@@ -5088,12 +5096,35 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         documentation_button_layout.addWidget(self._block_info_button)
         documentation_button_layout.addStretch(1)
         identity_layout.addRow(self.tr("Online documentation"), documentation_button_layout)
-        layout.addWidget(identity_group)
+
+        # The splitter must be able to hide the configuration fields while
+        # retaining the group-box title as a stable visual landmark. Removing
+        # the layout's minimum-size constraint permits that clipping, while an
+        # explicit title-height minimum prevents the whole panel disappearing.
+        identity_layout.setSizeConstraint(QtWidgets.QLayout.SizeConstraint.SetNoConstraint)
+        collapsed_configuration_height: int = max(
+            28,
+            identity_group.fontMetrics().height() + 14,
+        )
+        identity_group.setMinimumHeight(collapsed_configuration_height)
+        identity_group.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Ignored,
+        )
+        self._general_options_splitter.addWidget(identity_group)
+
+        # Generated-structure controls belong with the parameter editor below
+        # the handle. This keeps the resize boundary directly after Block
+        # configuration for every kind of catalogue block.
+        parameter_panel: QtWidgets.QWidget = QtWidgets.QWidget(self._general_options_splitter)
+        parameter_panel_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(parameter_panel)
+        parameter_panel_layout.setContentsMargins(0, 0, 0, 0)
+        parameter_panel_layout.setSizeConstraint(QtWidgets.QLayout.SizeConstraint.SetNoConstraint)
 
         if self._general_structural_model.rowCount() > 0:
             structure_group: QtWidgets.QGroupBox = QtWidgets.QGroupBox(
                 self.tr("Generated structure"),
-                page,
+                parameter_panel,
             )
             structure_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(structure_group)
             structure_table: QtWidgets.QTableView = QtWidgets.QTableView(structure_group)
@@ -5103,11 +5134,14 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             structure_header: QtWidgets.QHeaderView = structure_table.horizontalHeader()
             configure_interactive_table_header(structure_header, list((300, 620,)))
             structure_layout.addWidget(structure_table)
-            layout.addWidget(structure_group)
+            parameter_panel_layout.addWidget(structure_group)
         else:
             pass
 
-        parameters_group: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self.tr("Parameters"), page)
+        parameters_group: QtWidgets.QGroupBox = QtWidgets.QGroupBox(
+            self.tr("Parameters"),
+            parameter_panel,
+        )
         parameters_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(parameters_group)
         parameters_layout.addWidget(self._general_parameter_search)
         self._general_parameter_table.setParent(parameters_group)
@@ -5117,7 +5151,31 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._general_parameter_table.setAlternatingRowColors(True)
         self._general_parameter_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
         parameters_layout.addWidget(self._general_parameter_table)
-        layout.addWidget(parameters_group, 1)
+        parameter_panel_layout.addWidget(parameters_group, 1)
+
+        # Neither side may collapse to zero: at either extreme the user keeps
+        # a visible title and can drag the handle back without resetting the
+        # dialogue. Parameters receive most of the initial vertical space.
+        collapsed_parameter_height: int = max(
+            28,
+            parameters_group.fontMetrics().height() + 14,
+        )
+        parameter_panel.setMinimumHeight(collapsed_parameter_height)
+        parameter_panel.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Ignored,
+        )
+        self._general_options_splitter.setChildrenCollapsible(False)
+        self._general_options_splitter.setHandleWidth(6)
+        self._general_options_splitter.addWidget(parameter_panel)
+        self._general_options_splitter.setStretchFactor(0, 0)
+        self._general_options_splitter.setStretchFactor(1, 1)
+        preferred_configuration_height: int = identity_group.sizeHint().height()
+        preferred_parameter_height: int = max(360, preferred_configuration_height * 2)
+        self._general_options_splitter.setSizes(
+            list((preferred_configuration_height, preferred_parameter_height,))
+        )
+        layout.addWidget(self._general_options_splitter, 1)
         return page
 
     def _build_special_settings_page(self) -> QtWidgets.QWidget:
@@ -5430,6 +5488,19 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         add_layout.addItem(form_spacer, 6, 0, 1, 2)
         add_layout.setRowStretch(6, 1)
         add_layout.addWidget(self._add_symbol_button, 7, 0, 1, 2)
+        # Permit the form contents to be clipped when the lower splitter pane
+        # is reduced. Its explicit minimum retains only the group-box title,
+        # which leaves a visible handle target for restoring the full form.
+        add_layout.setSizeConstraint(QtWidgets.QLayout.SizeConstraint.SetNoConstraint)
+        collapsed_add_symbol_height: int = max(
+            28,
+            add_group.fontMetrics().height() + 14,
+        )
+        add_group.setMinimumHeight(collapsed_add_symbol_height)
+        add_group.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Ignored,
+        )
         # The user can trade form height for table height. This is deliberately
         # a vertical splitter inside the horizontally resizable DAE page, so
         # both dimensions remain independently adjustable.

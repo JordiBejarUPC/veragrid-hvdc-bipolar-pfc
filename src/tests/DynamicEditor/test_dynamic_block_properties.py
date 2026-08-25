@@ -1323,6 +1323,72 @@ def test_every_block_properties_table_column_is_manually_resizable() -> None:
     enlarged_table_sizes: list[int] = dialogue._symbol_panel_splitter.sizes()
     assert enlarged_table_sizes[0] > initial_vertical_sizes[0]
     assert enlarged_table_sizes[1] < initial_vertical_sizes[1]
+
+    # The form may be folded until only its group title remains. It must keep
+    # that minimum height so the pane and its handle cannot disappear.
+    add_symbol_group: QtWidgets.QWidget = dialogue._symbol_panel_splitter.widget(1)
+    assert isinstance(add_symbol_group, QtWidgets.QGroupBox)
+    assert add_symbol_group.title() == "Add symbol to selected block"
+    dialogue._symbol_panel_splitter.setSizes(list((initial_vertical_total, 0,)))
+    application.processEvents()
+    collapsed_form_sizes: list[int] = dialogue._symbol_panel_splitter.sizes()
+    assert collapsed_form_sizes[0] > enlarged_table_sizes[0]
+    assert collapsed_form_sizes[1] == add_symbol_group.minimumHeight()
+    assert add_symbol_group.isVisible()
+    dialogue.close()
+
+
+def test_general_options_splitter_resizes_configuration_and_parameters() -> None:
+    """The General options handle must retain each pane at its title-height minimum.
+
+    :return: None.
+    """
+    application: QtWidgets.QApplication = get_qt_application()
+    _unused_application: QtWidgets.QApplication = application
+    block: Block
+    state_variable: Var
+    parameter_variable: Var
+    parameter_constant: Const
+    block, state_variable, parameter_variable, parameter_constant = build_test_block()
+    _unused_state_variable: Var = state_variable
+    _unused_parameter_variable: Var = parameter_variable
+    _unused_parameter_constant: Const = parameter_constant
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
+        block,
+        "GENERIC",
+        VarFactory(),
+    )
+    dialogue.show()
+    dialogue._tabs.setCurrentIndex(0)
+    application.processEvents()
+
+    splitter: QtWidgets.QSplitter = dialogue._general_options_splitter
+    configuration_group: QtWidgets.QWidget = splitter.widget(0)
+    parameter_panel: QtWidgets.QWidget = splitter.widget(1)
+    initial_sizes: list[int] = splitter.sizes()
+    available_height: int = sum(initial_sizes)
+    assert splitter.orientation() == QtCore.Qt.Orientation.Vertical
+    assert splitter.count() == 2
+    assert isinstance(configuration_group, QtWidgets.QGroupBox)
+    assert configuration_group.title() == "Block configuration"
+    assert initial_sizes[1] > initial_sizes[0]
+
+    # Requesting a zero-sized configuration pane must stop at its title, not
+    # collapse the widget and strand the splitter handle.
+    splitter.setSizes(list((0, available_height,)))
+    application.processEvents()
+    collapsed_sizes: list[int] = splitter.sizes()
+    assert collapsed_sizes[0] == configuration_group.minimumHeight()
+    assert configuration_group.isVisible()
+    assert collapsed_sizes[1] > initial_sizes[1]
+
+    # The same handle must also enlarge Block configuration by taking space
+    # back from Parameters.
+    splitter.setSizes(list((available_height - parameter_panel.minimumHeight(), 0,)))
+    application.processEvents()
+    expanded_sizes: list[int] = splitter.sizes()
+    assert expanded_sizes[0] > initial_sizes[0]
+    assert expanded_sizes[1] == parameter_panel.minimumHeight()
     dialogue.close()
 
 
