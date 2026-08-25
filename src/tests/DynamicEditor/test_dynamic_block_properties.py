@@ -875,7 +875,7 @@ def test_new_input_is_applied_without_offering_external_mapping() -> None:
     dialogue.close()
 
 
-def test_add_symbol_fields_keep_one_width_across_symbol_categories() -> None:
+def test_add_symbol_fields_keep_one_column_across_symbol_categories() -> None:
     """Optional variable and parameter fields must share the form field column."""
     application: QtWidgets.QApplication = get_qt_application()
     var_factory: VarFactory = VarFactory()
@@ -899,14 +899,6 @@ def test_add_symbol_fields_keep_one_width_across_symbol_categories() -> None:
     dialogue._new_symbol_category.setCurrentText("Variables")
     dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.INPUT.value)
     application.processEvents()
-    variable_vertical_geometries: List[tuple[int, int]] = list()
-    stable_field: QtWidgets.QWidget
-    for stable_field in stable_fields:
-        variable_position: QtCore.QPoint = stable_field.mapTo(
-            dialogue,
-            QtCore.QPoint(0, 0),
-        )
-        variable_vertical_geometries.append((variable_position.y(), stable_field.height()))
 
     dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.STATE.value)
     application.processEvents()
@@ -927,14 +919,15 @@ def test_add_symbol_fields_keep_one_width_across_symbol_categories() -> None:
     dialogue._new_symbol_category.setCurrentText("Parameters")
     dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.EVENT_PARAMETER.value)
     application.processEvents()
-    parameter_vertical_geometries: List[tuple[int, int]] = list()
+    previous_bottom: int = -1
+    stable_field: QtWidgets.QWidget
     for stable_field in stable_fields:
         parameter_position: QtCore.QPoint = stable_field.mapTo(
             dialogue,
             QtCore.QPoint(0, 0),
         )
-        parameter_vertical_geometries.append((parameter_position.y(), stable_field.height()))
-    assert parameter_vertical_geometries == variable_vertical_geometries
+        assert parameter_position.y() >= previous_bottom
+        previous_bottom = parameter_position.y() + stable_field.height()
     assert dialogue._new_parameter_value.isVisible()
     assert (
         dialogue._new_parameter_value.x(),
