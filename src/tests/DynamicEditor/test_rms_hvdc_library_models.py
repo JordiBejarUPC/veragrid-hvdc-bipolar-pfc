@@ -14,6 +14,8 @@ from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Devices.Branches.vsc import VSC
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Injections.generator import Generator
+from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Templates.Rms.dc_line_rms_template_v2 import DcLineRmsTemplateV2
 from VeraGridEngine.Templates.Rms.hvdc_vsc_gfl_rms_template_v2 import HvdcVscGflRmsTemplate
@@ -393,6 +395,46 @@ def test_dc_line_equation_decomposition_connects_both_terminal_powers() -> None:
     assert len(block_types) > 0
     assert VarPowerFlowReferenceType.Pf in decomposed_output_refs
     assert VarPowerFlowReferenceType.Pt in decomposed_output_refs
+
+
+def test_catalogue_assignment_connects_vsc_and_dc_line_dc_terminals() -> None:
+    """Connect catalogue-assigned mixed and pure DC RMS terminal contracts.
+
+    :return: None.
+    """
+    circuit: MultiCircuit = MultiCircuit()
+    dc_from_bus: Bus = Bus(name="DC from", is_dc=True)
+    dc_to_bus: Bus = Bus(name="DC to", is_dc=True)
+    ac_bus: Bus = Bus(name="AC terminal")
+    circuit.add_bus(dc_from_bus)
+    circuit.add_bus(dc_to_bus)
+    circuit.add_bus(ac_bus)
+
+    vsc: VSC = VSC(name="VSC", bus_from=dc_from_bus, bus_to=ac_bus)
+    dc_line: DcLine = DcLine(name="DC line", bus_from=dc_from_bus, bus_to=dc_to_bus)
+    circuit.add_vsc(vsc)
+    circuit.add_dc_line(dc_line)
+
+    # Template-property assignment follows the same automatic copy-and-connect
+    # path used when the user selects one reusable model from the catalogue.
+    vsc.rms_template = HvdcVscGflRmsTemplate(circuit.var_factory).eval()
+    dc_line.rms_template = DcLineRmsTemplateV2(circuit.var_factory).eval()
+
+    vsc_vdc: Var = vsc.rms_model.external_mapping[VarPowerFlowReferenceType.Vdc]
+    vsc_vm: Var = vsc.rms_model.external_mapping[VarPowerFlowReferenceType.Vmt]
+    vsc_va: Var = vsc.rms_model.external_mapping[VarPowerFlowReferenceType.Vat]
+    dc_line_vdc_from: Var = dc_line.rms_model.external_mapping[VarPowerFlowReferenceType.Vmf]
+    dc_line_vdc_to: Var = dc_line.rms_model.external_mapping[VarPowerFlowReferenceType.Vmt]
+    bus_vdc_from: Var = dc_from_bus.rms_model.external_mapping[VarPowerFlowReferenceType.Vdc]
+    bus_vdc_to: Var = dc_to_bus.rms_model.external_mapping[VarPowerFlowReferenceType.Vdc]
+    bus_vm: Var = ac_bus.rms_model.external_mapping[VarPowerFlowReferenceType.Vm]
+    bus_va: Var = ac_bus.rms_model.external_mapping[VarPowerFlowReferenceType.Va]
+
+    assert vsc_vdc.uid == bus_vdc_from.uid
+    assert vsc_vm.uid == bus_vm.uid
+    assert vsc_va.uid == bus_va.uid
+    assert dc_line_vdc_from.uid == bus_vdc_from.uid
+    assert dc_line_vdc_to.uid == bus_vdc_to.uid
 
 
 def test_rms_save_synchronizes_child_mappings_to_the_root() -> None:
