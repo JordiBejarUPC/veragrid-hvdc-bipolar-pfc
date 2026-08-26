@@ -11,6 +11,16 @@ from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.enumerations import PrpCat
 
 
+def sequence_to_phase_matrix(positive_sequence_value: complex,
+                             zero_sequence_value: complex) -> np.ndarray:
+    """Build a symmetric ABC matrix assuming negative sequence equals positive sequence."""
+    diagonal_value = (2.0 * positive_sequence_value + zero_sequence_value) / 3.0
+    off_diagonal_value = (zero_sequence_value - positive_sequence_value) / 3.0
+    matrix_abc = np.full((3, 3), off_diagonal_value, dtype=np.complex128)
+    np.fill_diagonal(matrix_abc, diagonal_value)
+    return matrix_abc
+
+
 def get_line_impedances_with_c(r_ohm: float,
                                x_ohm: float,
                                c_nf: float,
@@ -372,25 +382,49 @@ class SequenceLineType(DynamicDevice):
             zero_conductance = 0.0
         return positive_conductance, zero_conductance
 
+    @property
+    def z_nabc(self) -> np.ndarray:
+        """Return the physical ABC series-impedance matrix in Ohm/km."""
+        return sequence_to_phase_matrix(
+            positive_sequence_value=self.R + 1j * self.X,
+            zero_sequence_value=self.R0 + 1j * self.X0,
+        )
+
+    @property
+    def y_nabc(self) -> np.ndarray:
+        """Return the physical ABC shunt-admittance matrix in S/km."""
+        if self.use_conductance:
+            positive_susceptance = 2.0 * np.pi * 50.0 * self.Cnf * 1.0e-9
+            zero_susceptance = 2.0 * np.pi * 50.0 * self.Cnf0 * 1.0e-9
+        else:
+            positive_susceptance = self.B * 1.0e-6
+            zero_susceptance = self.B0 * 1.0e-6
+
+        return sequence_to_phase_matrix(
+            positive_sequence_value=self.G * 1.0e-6 + 1j * positive_susceptance,
+            zero_sequence_value=self.G0 * 1.0e-6 + 1j * zero_susceptance,
+        )
+
+    @property
+    def z_phases_nabc(self) -> np.ndarray:
+        """Return the phase indices corresponding to ``z_nabc``."""
+        return np.array([1, 2, 3], dtype=int)
+
+    @property
+    def y_phases_nabc(self) -> np.ndarray:
+        """Return the phase indices corresponding to ``y_nabc``."""
+        return np.array([1, 2, 3], dtype=int)
+
     def get_ys_nabc(self) -> AdmittanceMatrix:
         """
         Get the series 3x3 admittance matrix
         :return: AdmittanceMatrix
         """
-        z1 = self.R + 1j * self.X
-        z0 = self.R0 + 1j * self.X0
-
-        diag = (2 * z1 + z0) / 3
-        off_diag = (z0 - z1) / 3
-
-        z_abc = np.full((3, 3), off_diag)
-        np.fill_diagonal(z_abc, diag)
-
         adm = AdmittanceMatrix(size=4)
         try:
-            adm.values[1:4, 1:4] = np.linalg.inv(z_abc)
+            adm.values[1:4, 1:4] = np.linalg.inv(self.z_nabc)
         except np.linalg.LinAlgError:
-            adm.values[1:4, 1:4] = np.linalg.pinv(z_abc, rcond=1e-12)
+            adm.values[1:4, 1:4] = np.linalg.pinv(self.z_nabc, rcond=1e-12)
 
         adm.phN = False
         adm.phA = True

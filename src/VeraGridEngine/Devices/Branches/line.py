@@ -997,10 +997,9 @@ class Line(BranchParent):
             return 0.0
         else:
             # TODO: consider using line.ys and line.ysh instead
-            # TODO: SANPEN For AlexBlanco: Member SequenceLineType of OverheadLineType | SequenceLineType | UndergroundLineType does not have attribute z_nabc
-            # Physical Parameters from Carson's
-            Z = self.template.z_nabc  # from Carson ohm/km
-            Y = self.template.y_nabc  # from Carson ohm/km
+            # Physical parameters per unit length
+            Z = self.template.z_nabc  # Ohm/km
+            Y = self.template.y_nabc  # S/km
 
             Z_phys_m = Z / 1e3  # ohm/m
             Y_phys_m = Y / 1e3  # S/m
