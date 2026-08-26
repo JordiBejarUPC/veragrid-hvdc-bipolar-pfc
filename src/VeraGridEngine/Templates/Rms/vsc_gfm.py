@@ -99,11 +99,6 @@ def build_gfm_converter_model(vfactory: VarFactory, inputs: List[Var],
         Kdq: vfactory.add_const(0.05),
         omega_nom: vfactory.add_const(2 * math.pi * 50),
         omega_ref: vfactory.add_const(1.0),
-        V_ref: vfactory.add_const(1.0),
-        P_ref: vfactory.add_const(None),  # Initialized from power flow
-        Q_ref: vfactory.add_const(None),
-        vd_ref: vfactory.add_const(None),
-        vq_ref: vfactory.add_const(None),
         fn: vfactory.add_const(50.0),
         Kp_icl: vfactory.add_const(0.05),
         Ki_icl: vfactory.add_const(50.0),
@@ -404,6 +399,11 @@ def build_gfm_converter_model(vfactory: VarFactory, inputs: List[Var],
         if reconstruct_filter_voltage
         else (V if voltage_inputs is not None else vq_f)
     )
+    event_dict[V_ref] = (
+        (vq_f if reconstruct_filter_voltage else Vm_f)
+        if voltage_inputs is not None
+        else Vm_c
+    )
 
     core_block = Block(
         algebraic_eqs=algebraic_eqs,
@@ -417,7 +417,6 @@ def build_gfm_converter_model(vfactory: VarFactory, inputs: List[Var],
             theta: (Va_g if reconstruct_filter_voltage else Va_f) if voltage_inputs is not None else Va_c,
             omega: vfactory.add_const(1.0),
             V: V_ref if reconstruct_filter_voltage else (Vm_f if voltage_inputs is not None else Vm_c),
-            V_ref: (vq_f if reconstruct_filter_voltage else Vm_f) if voltage_inputs is not None else Vm_c,
             vd_g: Vm_g * sym.sin(Va_g - theta),
             vq_g: Vm_g * sym.cos(Va_g - theta),
             id_g: id_g_init,

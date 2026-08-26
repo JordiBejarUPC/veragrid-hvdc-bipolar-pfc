@@ -1036,7 +1036,7 @@ def OELBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
         SW1: vfactory.add_const(1.0),
     }
 
-    oel_block.event_params = event_dict
+    oel_block.event_dict = event_dict
     # equations
     block_Ipu, Ipu = tf_to_block(
         vfactory,

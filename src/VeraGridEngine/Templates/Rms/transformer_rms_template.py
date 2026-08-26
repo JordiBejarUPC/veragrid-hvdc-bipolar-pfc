@@ -98,8 +98,12 @@ class TrafoRmsTemplate(RmsModelTemplate):
 
         phase_displacement = 0
         theta_hk = Vaf - Vat
+        # Keep terminal powers in the same semantic order as the RMS branch
+        # root interface.  The Dynamic Editor persists graphical ports by
+        # index, so a different order would silently cross Qf and Pt when the
+        # complete transformer block is connected to its device wrappers.
         block = Block(
-            algebraic_vars=[Pf, Pt, Qf, Qt],
+            algebraic_vars=[Pf, Qf, Pt, Qt],
             algebraic_eqs=[
                 # From side: Pf = Re(Vf * (Yff*Vf + Yft*Vt)*)
                 Pf - ((Vmf ** 2 * (gFe / 2 + gt)) / (m * vtap_f) ** 2 - gt / (m * vtap_f * vtap_t) * Vmf * Vmt * cos(
@@ -117,7 +121,7 @@ class TrafoRmsTemplate(RmsModelTemplate):
                     theta_hk - phi - phase_displacement)),
             ],
             in_vars=[Vmf, Vaf, Vmt, Vat],
-            out_vars = [Pf, Pt, Qf, Qt],
+            out_vars=[Pf, Qf, Pt, Qt],
         )
         block.external_mapping = {
             VarPowerFlowReferenceType.Pf: Pf,

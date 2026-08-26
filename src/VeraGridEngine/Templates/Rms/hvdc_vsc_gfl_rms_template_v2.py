@@ -129,6 +129,7 @@ def _build_explicit_pi_block(
         error: Expr,
         input_vars: list[Var],
         output: Var,
+        output_initial_expression: Expr,
         name: str,
 ) -> Block:
     """Build a PI controller with a dedicated integral state.
@@ -144,18 +145,32 @@ def _build_explicit_pi_block(
     :param error: Controller input error.
     :param input_vars: Variables required to evaluate the controller error.
     :param output: Algebraic controller output.
+    :param output_initial_expression: Steady-state value imposed on the PI
+        output during explicit initialization.
     :param name: Identifier used for the state and block.
     :return: PI controller block with one explicit state.
     """
     integral_state: Var = vfactory.add_var("xi_" + name)
     init_eqs: dict[Var, Expr] = dict()
+
+    # A PI output contains the steady-state bias stored by its integrator. The
+    # zero controller error alone cannot determine that bias, so initialize the
+    # output from the physical equilibrium before deriving the integral state.
+    init_eqs[output] = output_initial_expression
     init_eqs[integral_state] = (output - proportional_gain * error) / integral_gain
+
+    # Keep the controlled output as the direct left-hand side of the residual.
+    # Besides being mathematically explicit, this structure lets the equation
+    # decomposer identify the output and draw the complete PI signal path.
+    output_residual: Expr = output - (
+        proportional_gain * error + integral_gain * integral_state
+    )
     return Block(
         name=name,
         state_vars=list((integral_state,)),
         state_eqs=list((error,)),
         algebraic_vars=list((output,)),
-        algebraic_eqs=list((output - proportional_gain * error - integral_gain * integral_state,)),
+        algebraic_eqs=list((output_residual,)),
         init_eqs=init_eqs,
         in_vars=input_vars,
         out_vars=list((output,)),
@@ -231,6 +246,7 @@ def _build_pll_block(
         error=pll_error,
         input_vars=list((voltage_magnitude, voltage_angle, theta)),
         output=omega,
+        output_initial_expression=vfactory.add_const(1.0),
         name="PLL_integrator",
     )
     pll_block: Block = Block(
@@ -397,6 +413,7 @@ def _build_gfl_converter_model_v2(
         error=active_error,
         input_vars=active_inputs,
         output=i_q_ref,
+        output_initial_expression=i_q,
         name=active_name,
     )
     reactive_control: Block = _build_explicit_pi_block(
@@ -406,6 +423,7 @@ def _build_gfl_converter_model_v2(
         error=reactive_error,
         input_vars=reactive_inputs,
         output=i_d_ref,
+        output_initial_expression=i_d,
         name=reactive_name,
     )
 
@@ -452,6 +470,9 @@ def _build_gfl_converter_model_v2(
         error=i_d - i_d_ref_limited,
         input_vars=list((i_d, i_d_ref_limited)),
         output=v_d_hat,
+        output_initial_expression=(
+            v_d_converter - (v_d_grid - inductance * omega * i_q)
+        ),
         name="vd_hat",
     )
     q_axis_inner_control: Block = _build_explicit_pi_block(
@@ -461,6 +482,9 @@ def _build_gfl_converter_model_v2(
         error=i_q - i_q_ref_limited,
         input_vars=list((i_q, i_q_ref_limited)),
         output=v_q_hat,
+        output_initial_expression=(
+            v_q_converter - (v_q_grid + inductance * omega * i_d)
+        ),
         name="vq_hat",
     )
 

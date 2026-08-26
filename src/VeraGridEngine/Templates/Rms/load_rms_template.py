@@ -8,7 +8,7 @@ from VeraGridEngine.Templates.template_definition import TemplateDefinition, Tem
 from VeraGridEngine.enumerations import ParamPowerFlowReferenceType, VarPowerFlowReferenceType, DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.symbolic import Var
+from VeraGridEngine.Utils.Symbolic.symbolic import Expr, Var
 
 
 class LoadRmsTemplate(TemplateDefinition):
@@ -54,7 +54,7 @@ def get_load_rms_template(
     """Build the RMS constant-power load model.
 
     ``Pl0`` and ``Ql0`` remain runtime event parameters. When their optional
-    values are unset, explicit initialization copies the solved operating point
+    values are unset, their event expressions copy the solved operating point
     from ``Pl`` and ``Ql``. A numeric value supplied by General options replaces
     that automatic starting value while preserving event support.
 
@@ -80,15 +80,20 @@ def get_load_rms_template(
 
     block: Block = Block()
 
-    # Event parameters must be represented by constants so General options can
-    # stage a numeric override. ``None`` intentionally means "derive at t=0";
-    # the explicit initialization equations below provide that derivation.
-    block.event_dict[Pl0] = vfactory.add_const(pl0_init)
-    block.event_dict[Ql0] = vfactory.add_const(ql0_init)
-    block.init_eqs = dict({
-        Pl0: Pl,
-        Ql0: Ql,
-    })
+    # Each event parameter owns its initialization expression. A numeric value
+    # selected in General options overrides the power-flow-derived default.
+    pl0_expression: Expr
+    ql0_expression: Expr
+    if pl0_init is None:
+        pl0_expression = Pl
+    else:
+        pl0_expression = vfactory.add_const(pl0_init)
+    if ql0_init is None:
+        ql0_expression = Ql
+    else:
+        ql0_expression = vfactory.add_const(ql0_init)
+    block.event_dict[Pl0] = pl0_expression
+    block.event_dict[Ql0] = ql0_expression
 
     block.algebraic_vars = list([Pl, Ql])
     block.algebraic_eqs = list([Pl - Pl0, Ql - Ql0])
