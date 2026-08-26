@@ -108,9 +108,10 @@ def initialize_rms_models(grid: MultiCircuit) -> None:
     dc_line_model: Block = build_dc_line_rms_v2(
         vfactory=var_factory,
         name=dc_line.name,
-        resistance=dc_line.R,
-        inductance=0.05,
     ).block
+    # Inductance is a runtime/event parameter, so configure the case value only
+    # after the model structure and its event interface have been created.
+    dc_line_model.set_parameter_in_model(var_name="l_dc", new_value=0.05)
     dc_line.rms_model = dc_line_model
     set_rms_model(device=dc_line, model=dc_line_model, var_factory=var_factory)
     var_factory.add_connections(

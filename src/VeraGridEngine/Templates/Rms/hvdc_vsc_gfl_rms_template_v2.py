@@ -529,7 +529,7 @@ def _build_gfl_converter_model_v2(
             electrical_block,
         )),
         event_dict=event_dict,
-        in_vars=list((voltage_magnitude, voltage_angle, v_dc_state)),
+        in_vars=list((v_dc_state, voltage_magnitude, voltage_angle)),
         out_vars=list((i_d, i_q, active_power, reactive_power)),
     )
     internals: _VscGflInternals = _VscGflInternals(
@@ -613,7 +613,7 @@ def build_hvdc_vsc_gfl_rms(
             qt_vsc + reactive_power,
         )),
         in_vars=list((vdc_terminal, vdc_state, active_power, reactive_power)),
-        out_vars=list((pt_vsc, qt_vsc, pf_vsc)),
+        out_vars=list((pf_vsc, pt_vsc, qt_vsc)),
     )
     dc_link_events: dict[Var, Expr] = dict()
     dc_link_events[loss_a0] = vfactory.add_const(0.0)
@@ -638,8 +638,8 @@ def build_hvdc_vsc_gfl_rms(
         name=name,
         children=list((converter_block, terminal_block, dc_link_block)),
         event_dict=root_events,
-        in_vars=list((voltage_magnitude, voltage_angle, vdc_terminal)),
-        out_vars=list((pt_vsc, qt_vsc, pf_vsc)),
+        in_vars=list((vdc_terminal, voltage_magnitude, voltage_angle)),
+        out_vars=list((pf_vsc, pt_vsc, qt_vsc)),
         external_mapping=dict((
             (VarPowerFlowReferenceType.Vmt, voltage_magnitude),
             (VarPowerFlowReferenceType.Vat, voltage_angle),
