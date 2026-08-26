@@ -3897,10 +3897,11 @@ class SimulationsMain(TimeEventsMain):
         if not self.session.is_anything_running():
             self.UNLOCK()
 
-    def run_rms(self):
+    def run_rms(self) -> None:
         """
-        Run rms simulation
-        :return:
+        Run an RMS simulation from one converged power-flow operating point.
+
+        :return: None.
         """
         self.remove_simulation(SimulationTypes.RmsDynamic_run)
 
@@ -3909,27 +3910,29 @@ class SimulationsMain(TimeEventsMain):
         rms_options = self.get_selected_rms_simulation_options()
         if rms_options.simulation_time > 0.0:
 
-            if pf_results is not None:
-
-                self.add_simulation(SimulationTypes.RmsDynamic_run)
-
-                # self.add_simulation(SimulationTypes.RmsDynamic_run)
-                self.ui.progress_label.setText('Running rms simulation...')
-                QtGui.QGuiApplication.processEvents()
-                self.LOCK()
-
-                drv = sim.RmsSimulationDriver(grid=self.circuit,
-                                              options=self.get_selected_rms_simulation_options(),
-                                              pf_results=pf_results)
-
-                self.session.run(drv,
-                                 post_func=self.post_rms,
-                                 prog_func=self.ui.progressBar.setValue,
-                                 text_func=self.ui.progress_label.setText)
-
-            else:
+            if pf_results is None:
                 info_msg('Run a power flow simulation first.\n'
                          'The results are needed to initialize this simulation.')
+            else:
+                if bool(pf_results.converged):
+                    self.add_simulation(SimulationTypes.RmsDynamic_run)
+
+                    # self.add_simulation(SimulationTypes.RmsDynamic_run)
+                    self.ui.progress_label.setText('Running rms simulation...')
+                    QtGui.QGuiApplication.processEvents()
+                    self.LOCK()
+
+                    drv = sim.RmsSimulationDriver(grid=self.circuit,
+                                                  options=self.get_selected_rms_simulation_options(),
+                                                  pf_results=pf_results)
+
+                    self.session.run(drv,
+                                     post_func=self.post_rms,
+                                     prog_func=self.ui.progressBar.setValue,
+                                     text_func=self.ui.progress_label.setText)
+                else:
+                    info_msg('The power flow did not converge.\n'
+                             'Resolve the operating point before running this RMS simulation.')
         else:
             info_msg('The simulation time is 0. Change it to a proper time in settings.')
 

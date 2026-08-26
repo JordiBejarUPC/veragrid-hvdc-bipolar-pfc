@@ -5228,9 +5228,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="841"/>
-        <source>Layout algorithm 
+        <source>Layout algorithm
 (mark to ask)</source>
-        <translation>Algorytm układu 
+        <translation>Algorytm układu
 (zaznacz, aby zapytać)</translation>
     </message>
     <message>

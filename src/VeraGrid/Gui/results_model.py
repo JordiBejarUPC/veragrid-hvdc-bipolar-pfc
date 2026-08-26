@@ -3,8 +3,6 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 import io
-from typing import Any
-
 import numpy as np
 import pandas as pd
 from PySide6 import QtCore, QtWidgets
@@ -15,7 +13,7 @@ from VeraGridEngine.Simulations.results_table import ResultsTable
 from VeraGridEngine.Utils.Filtering.results_table_filtering import FilterResultsTable
 
 
-def is_missing_result_value(value: Any) -> bool:
+def is_missing_result_value(value: object) -> bool:
     """
     Check whether a scalar result value should be displayed as an empty cell.
 

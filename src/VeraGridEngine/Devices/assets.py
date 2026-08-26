@@ -15,7 +15,16 @@ import VeraGridEngine.Devices as dev
 import VeraGridEngine.Templates as tem
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES, BRANCH_TYPES, INJECTION_DEVICE_TYPES, FLUID_TYPES
 from VeraGridEngine.Devices.Parents.editable_device import GCPROP_TYPES
-from VeraGridEngine.enumerations import DeviceType, ActionType, FmuTemplateDomain, ParamPowerFlowReferenceType
+from VeraGridEngine.Devices.Dynamic.template_classification import (
+    classify_dynamic_template_block,
+)
+from VeraGridEngine.enumerations import (
+    ActionType,
+    DeviceType,
+    DynamicTemplateCategory,
+    FmuTemplateDomain,
+    ParamPowerFlowReferenceType,
+)
 from VeraGridEngine.basic_structures import Logger, ListSet
 from VeraGridEngine.data_logger import DataLogger
 
@@ -6385,12 +6394,41 @@ class Assets:
 
     def get_rms_models_by_device_type(self, tpe: DeviceType) -> List[dev.RmsModelTemplate]:
         """
-        Get a list of RmsModelTemplate filtering by device type
-        :param tpe:
-        :return:
+        Return complete RMS device templates assignable to one host type.
+
+        Internal controls remain registered in ``rms_models`` for composition,
+        but they must not appear in a physical device property selector.
+
+        :param tpe: Physical host device type.
+        :return: Matching complete RMS device templates.
         """
-        # return [elm for elm in self.rms_models if elm.tpe == tpe]
-        return [elm for elm in self.rms_models if _matches_dynamic_template_device_type(tpe, elm.tpe)]
+        result: List[dev.RmsModelTemplate] = list()
+        template: dev.RmsModelTemplate
+        for template in self.rms_models:
+            if (
+                    template.tpe == tpe
+                    and classify_dynamic_template_block(template.block)
+                    is DynamicTemplateCategory.DEVICE
+            ):
+                result.append(template)
+            else:
+                pass
+        return result
+
+    def get_rms_templates_for_editor(self, tpe: DeviceType) -> List[dev.RmsModelTemplate]:
+        """Return RMS device, component and measurement templates for editing.
+
+        :param tpe: Device type whose internal model is being composed.
+        :return: Compatible RMS templates grouped later by their typed contract.
+        """
+        result: List[dev.RmsModelTemplate] = list()
+        template: dev.RmsModelTemplate
+        for template in self.rms_models:
+            if _matches_dynamic_template_device_type(tpe, template.tpe):
+                result.append(template)
+            else:
+                pass
+        return result
 
     def get_loaded_rms_models_by_device_type(self, tpe: DeviceType) -> List[dev.RmsModelTemplate]:
         """
@@ -6399,8 +6437,18 @@ class Assets:
         :param tpe: Supported device type.
         :return: Matching loaded RMS templates.
         """
-        # return [elm for elm in self._rms_models if elm.tpe == tpe]
-        return [elm for elm in self._rms_models if _matches_dynamic_template_device_type(tpe, elm.tpe)]
+        result: List[dev.RmsModelTemplate] = list()
+        template: dev.RmsModelTemplate
+        for template in self._rms_models:
+            if (
+                    template.tpe == tpe
+                    and classify_dynamic_template_block(template.block)
+                    is DynamicTemplateCategory.DEVICE
+            ):
+                result.append(template)
+            else:
+                pass
+        return result
 
     # ------------------------------------------------------------------------------------------------------------------
     # EmtModel
@@ -6459,11 +6507,38 @@ class Assets:
 
     def get_emt_models_by_device_type(self, tpe: DeviceType) -> List[dev.EmtModelTemplate]:
         """
-        Get a list of EmtModelTemplate filtering by device type
-        :param tpe:
-        :return:
+        Return complete EMT device templates assignable to one host type.
+
+        :param tpe: Physical host device type.
+        :return: Matching complete EMT device templates.
         """
-        return [elm for elm in self.emt_models if _matches_dynamic_template_device_type(tpe, elm.tpe)]
+        result: List[dev.EmtModelTemplate] = list()
+        template: dev.EmtModelTemplate
+        for template in self.emt_models:
+            if (
+                    template.tpe == tpe
+                    and classify_dynamic_template_block(template.block)
+                    is DynamicTemplateCategory.DEVICE
+            ):
+                result.append(template)
+            else:
+                pass
+        return result
+
+    def get_emt_templates_for_editor(self, tpe: DeviceType) -> List[dev.EmtModelTemplate]:
+        """Return EMT device, component and measurement templates for editing.
+
+        :param tpe: Device type whose internal model is being composed.
+        :return: Compatible EMT templates grouped later by their typed contract.
+        """
+        result: List[dev.EmtModelTemplate] = list()
+        template: dev.EmtModelTemplate
+        for template in self.emt_models:
+            if _matches_dynamic_template_device_type(tpe, template.tpe):
+                result.append(template)
+            else:
+                pass
+        return result
 
     def get_loaded_emt_models_by_device_type(self, tpe: DeviceType) -> List[dev.EmtModelTemplate]:
         """
@@ -6472,7 +6547,18 @@ class Assets:
         :param tpe: Supported device type.
         :return: Matching loaded EMT templates.
         """
-        return [elm for elm in self._emt_models if _matches_dynamic_template_device_type(tpe, elm.tpe)]
+        result: List[dev.EmtModelTemplate] = list()
+        template: dev.EmtModelTemplate
+        for template in self._emt_models:
+            if (
+                    template.tpe == tpe
+                    and classify_dynamic_template_block(template.block)
+                    is DynamicTemplateCategory.DEVICE
+            ):
+                result.append(template)
+            else:
+                pass
+        return result
 
     @property
     def fmu_templates(self) -> List[dev.FmuTemplate]:
@@ -6606,11 +6692,11 @@ class Assets:
 
         if domain == FmuTemplateDomain.RMS:
             native_templates: List[dev.RmsModelTemplate | dev.EmtModelTemplate | dev.FmuTemplate] = list(
-                self.get_rms_models_by_device_type(tpe)
+                self.get_rms_templates_for_editor(tpe)
             )
         else:
             if domain == FmuTemplateDomain.EMT:
-                native_templates = list(self.get_emt_models_by_device_type(tpe))
+                native_templates = list(self.get_emt_templates_for_editor(tpe))
             else:
                 raise ValueError(f"Unsupported dynamic template domain {domain}")
 
@@ -9061,7 +9147,7 @@ class Assets:
 
     def refine_pointer_objects(self,
                                logger: Logger,
-                               all_elements_dict: Tuple[Dict[str, ALL_DEV_TYPES], bool] | None = None):
+                               all_elements_dict: Dict[str, ALL_DEV_TYPES] | None = None) -> None:
         """
         Find the device types of pointer objects
         :param logger:

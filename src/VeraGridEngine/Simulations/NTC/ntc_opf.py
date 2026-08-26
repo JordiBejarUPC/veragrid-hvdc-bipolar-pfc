@@ -2462,7 +2462,7 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
     :param logger
     :param corrective_contingencies: if True, allow corrective re-dispatch of the VSC/HVDC
     :param group_indices: subset of multi-contingency indices to formulate (None = all)
-    :param group_rows: per group index, the row indices to enforce 
+    :param group_rows: per group index, the row indices to enforce
     :param vsc_delta_store: per group index, the persistent VSC Δ variable dictionary
     :param hvdc_delta_store: per group index, the persistent HVDC Δ variable dictionary
     :param preservation_done: group indices whose exchange-preservation equality is already
@@ -2733,7 +2733,7 @@ def compute_vsc_pmode3_saturation_rates(vsc_data_t: VscData,
     A P-mode 3 droop saturates when the converter cannot deliver more power, and that limit
     is the converter rating or the total rating of the DC branches attached to the
     converter's DC bus, whichever is lower.
-    
+
     :param vsc_data_t: VscData structure
     :param branch_data_t: PassiveBranchData structure (contains the DC lines)
     :param bus_data_t: BusData structure (provides the is_dc marker)

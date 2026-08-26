@@ -729,6 +729,24 @@ def _sync_tree_label_context(ts_file: Path, source_texts: list[str]) -> None:
             pass
 
     ts_file.write_text(contents, encoding="utf-8")
+def _reactivate_context_block(context_match: re.Match[str]) -> str:
+    """
+    Remove obsolete state markers from one manual runtime context.
+
+    :param context_match: Regex match containing one whole TS context block.
+    :returns: Patched TS context block.
+    """
+    context_block: str = context_match.group(1)
+    reactivated_block: str = context_block.replace(
+        '<translation type="vanished">',
+        "<translation>",
+    )
+    reactivated_block = re.sub(
+        r'<translation type="unfinished">([^<]+)</translation>',
+        r"<translation>\1</translation>",
+        reactivated_block,
+    )
+    return reactivated_block
 
 
 def _reactivate_manual_context_translations(ts_file: Path) -> None:
@@ -741,31 +759,12 @@ def _reactivate_manual_context_translations(ts_file: Path) -> None:
     contents: str = ts_file.read_text(encoding="utf-8")
     updated_contents: str = contents
 
-    for context_name in ["ContextMenu", "ConfigurationMain", "messages", "SimulationsMain", "VeraGridTreeLabels"]:
+    for context_name in ("ContextMenu", "ConfigurationMain", "messages", "SimulationsMain", "VeraGridTreeLabels"):
         context_pattern: str = rf"(<context>\s*<name>{context_name}</name>.*?</context>)"
-
-        def reactivate_context_block(context_match: re.Match[str]) -> str:
-            """
-            Remove ``vanished`` and selected ``unfinished`` markers from one runtime context block.
-
-            :param context_match: Regex match containing one whole TS context block.
-            :returns: Patched TS context block.
-            """
-            context_block: str = context_match.group(1)
-            reactivated_block: str = context_block.replace(
-                '<translation type="vanished">',
-                "<translation>",
-            )
-            reactivated_block = re.sub(
-                r'<translation type="unfinished">([^<]+)</translation>',
-                r"<translation>\1</translation>",
-                reactivated_block,
-            )
-            return reactivated_block
 
         updated_contents = re.sub(
             context_pattern,
-            reactivate_context_block,
+            _reactivate_context_block,
             updated_contents,
             flags=re.DOTALL,
         )

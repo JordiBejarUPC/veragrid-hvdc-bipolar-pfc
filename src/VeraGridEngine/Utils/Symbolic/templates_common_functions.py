@@ -2287,7 +2287,11 @@ def initialize_bus_emt_from_grid_with_fallback(bus: Any,
     ).block
 
 
-def connect_line_rms_from(mdl1: Block, mdl2: Block, var_factory:VarFactory):
+def connect_line_rms_from(
+        mdl1: Block,
+        mdl2: Block,
+        var_factory: VarFactory,
+) -> None:
     """
     This function substitutes input variables for output variables to connect two rms models
     :param mdl1:
@@ -2295,12 +2299,27 @@ def connect_line_rms_from(mdl1: Block, mdl2: Block, var_factory:VarFactory):
     :param var_factory:
     :return:
     """
-    # connect Vm
-    pairs = [
+    # Connect the branch-side voltage to the canonical AC or DC bus voltage.
+    # AC and DC line shells use Vmf at the terminal boundary, while a VSC uses
+    # Vf_dc for its DC terminal. The bus owns either Vm or Vdc according to its
+    # physical topology.
+    pairs: List[tuple[Var, Var]] = [
         (outp, inpt)
         for outp in mdl1.out_vars
         for inpt in mdl2.in_vars
-        if outp.ref == VarPowerFlowReferenceType.Vm and inpt.ref == VarPowerFlowReferenceType.Vmf
+        if (
+            outp.ref in (
+                VarPowerFlowReferenceType.Vm,
+                VarPowerFlowReferenceType.Vdc,
+            )
+            and (
+                inpt.ref == VarPowerFlowReferenceType.Vmf
+                or (
+                    outp.ref == VarPowerFlowReferenceType.Vdc
+                    and inpt.ref == VarPowerFlowReferenceType.Vf_dc
+                )
+            )
+        )
     ]
     for outp, inpt in pairs:
         var_factory.add_connections([inpt], [outp])
@@ -2340,7 +2359,11 @@ def connect_models_power_flow(mdl1: Block, mdl2: Block, var_factory: VarFactory)
     normalize_single_bus_rms_root_contract(mdl1=mdl1, mdl2=mdl2)
 
 
-def connect_line_rms_to(mdl1: Block, mdl2: Block, var_factory:VarFactory):
+def connect_line_rms_to(
+        mdl1: Block,
+        mdl2: Block,
+        var_factory: VarFactory,
+) -> None:
     """
     This function substitutes input variables for output variables to connect two rms models
     :param mdl1:
@@ -2348,12 +2371,27 @@ def connect_line_rms_to(mdl1: Block, mdl2: Block, var_factory:VarFactory):
     :param var_factory:
     :return:
     """
-    # connect Vm
-    pairs = [
+    # Connect the branch-side voltage to the canonical AC or DC bus voltage.
+    # AC and DC line shells use Vmt at the terminal boundary, while a VSC uses
+    # Vt_dc for its DC terminal. The bus owns either Vm or Vdc according to its
+    # physical topology.
+    pairs: List[tuple[Var, Var]] = [
         (outp, inpt)
         for outp in mdl1.out_vars
         for inpt in mdl2.in_vars
-        if outp.ref == VarPowerFlowReferenceType.Vm and inpt.ref == VarPowerFlowReferenceType.Vmt
+        if (
+            outp.ref in (
+                VarPowerFlowReferenceType.Vm,
+                VarPowerFlowReferenceType.Vdc,
+            )
+            and (
+                inpt.ref == VarPowerFlowReferenceType.Vmt
+                or (
+                    outp.ref == VarPowerFlowReferenceType.Vdc
+                    and inpt.ref == VarPowerFlowReferenceType.Vt_dc
+                )
+            )
+        )
     ]
     for outp, inpt in pairs:
         var_factory.add_connections([inpt], [outp])
@@ -2402,13 +2440,31 @@ def normalize_branch_rms_root_contract_from(mdl1: Block, mdl2: Block) -> None:
     :return: None.
     """
     vm_bus: Var | None = mdl1.external_mapping.get(VarPowerFlowReferenceType.Vm, None)
+    vdc_bus: Var | None = mdl1.external_mapping.get(VarPowerFlowReferenceType.Vdc, None)
     va_bus: Var | None = mdl1.external_mapping.get(VarPowerFlowReferenceType.Va, None)
     vm_dev: Var | None = mdl2.external_mapping.get(VarPowerFlowReferenceType.Vmf, None)
+    vdc_dev: Var | None = mdl2.external_mapping.get(VarPowerFlowReferenceType.Vf_dc, None)
     va_dev: Var | None = mdl2.external_mapping.get(VarPowerFlowReferenceType.Vaf, None)
     var_mapping: Dict[Var, Var] = dict()
 
     if vm_bus is None:
-        pass
+        if vdc_bus is None:
+            pass
+        else:
+            if vm_dev is None:
+                pass
+            else:
+                if vm_dev.uid == vdc_bus.uid:
+                    pass
+                else:
+                    var_mapping[vm_dev] = vdc_bus
+            if vdc_dev is None:
+                pass
+            else:
+                if vdc_dev.uid == vdc_bus.uid:
+                    pass
+                else:
+                    var_mapping[vdc_dev] = vdc_bus
     else:
         if vm_dev is None:
             pass
@@ -2441,13 +2497,31 @@ def normalize_branch_rms_root_contract_to(mdl1: Block, mdl2: Block) -> None:
     :return: None.
     """
     vm_bus: Var | None = mdl1.external_mapping.get(VarPowerFlowReferenceType.Vm, None)
+    vdc_bus: Var | None = mdl1.external_mapping.get(VarPowerFlowReferenceType.Vdc, None)
     va_bus: Var | None = mdl1.external_mapping.get(VarPowerFlowReferenceType.Va, None)
     vm_dev: Var | None = mdl2.external_mapping.get(VarPowerFlowReferenceType.Vmt, None)
+    vdc_dev: Var | None = mdl2.external_mapping.get(VarPowerFlowReferenceType.Vt_dc, None)
     va_dev: Var | None = mdl2.external_mapping.get(VarPowerFlowReferenceType.Vat, None)
     var_mapping: Dict[Var, Var] = dict()
 
     if vm_bus is None:
-        pass
+        if vdc_bus is None:
+            pass
+        else:
+            if vm_dev is None:
+                pass
+            else:
+                if vm_dev.uid == vdc_bus.uid:
+                    pass
+                else:
+                    var_mapping[vm_dev] = vdc_bus
+            if vdc_dev is None:
+                pass
+            else:
+                if vdc_dev.uid == vdc_bus.uid:
+                    pass
+                else:
+                    var_mapping[vdc_dev] = vdc_bus
     else:
         if vm_dev is None:
             pass

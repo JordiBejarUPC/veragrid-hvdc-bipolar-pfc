@@ -297,6 +297,17 @@ class OptimalPowerFlowDriver(TimeSeriesDriverTemplate):
 
         return self.results
 
+    def run_gslv_opf(self) -> "pg.OptimalPowerFlowResults":
+        """Run one snapshot OPF with the configured GSLV backend.
+
+        :return: Native GSLV optimal-power-flow results for the current grid.
+        """
+        return gslv_opf(circuit=self.grid,
+                        opf_options=self.options,
+                        time_series=False,
+                        time_indices=None,
+                        logger=self.logger)
+
     def run(self):
         """
 
@@ -328,11 +339,7 @@ class OptimalPowerFlowDriver(TimeSeriesDriverTemplate):
             else:
                 self.report_text('Running Non-Linear OPF with GSLV...')
 
-            gslv_res = gslv_opf(circuit=self.grid,
-                                opf_options=self.options,
-                                time_series=False,
-                                time_indices=None,
-                                logger=self.logger)
+            gslv_res = self.run_gslv_opf()
 
             self.results.voltage = gslv_res.voltage[0, :]
             self.results.Sbus = gslv_res.Sbus[0, :]

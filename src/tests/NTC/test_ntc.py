@@ -1510,7 +1510,7 @@ def test_hvdc_lines_tests():
                      + sum(res.hvdc_Pf[k] * sense for k, sense in res.inter_space_hvdc))
     assert np.isclose(exchange, 3000.0)
 
-    # the HVDC flows are part of the same degenerate optimum, 
+    # the HVDC flows are part of the same degenerate optimum,
     # so only their physical limits are asserted, not their value
     assert np.all(np.abs(res.hvdc_Pf) <= 1000.0 + 1e-6)
     assert np.isclose(res.inter_area_flows, 3000.0)
@@ -2061,7 +2061,7 @@ def test_ntc_structural_n1_overload_is_relaxed_not_infeasible() -> None:
 
     Grid: gen area -> tie -> radial pair A (rate=100, x=0.01) / B (rate=50, x=0.02) feeding a
     fixed 120 MW load. Base split is 80/40 (B at 80 % of its rating, so its N-1 limit is
-    enforced), but losing A forces all 120 MW through B. Thus 70 MW of violation where 
+    enforced), but losing A forces all 120 MW through B. Thus 70 MW of violation where
     no exchange reduction can remove. With slacks an optimal solution should be reached.
     """
     grid = gce.MultiCircuit()
@@ -2086,7 +2086,7 @@ def test_ntc_structural_n1_overload_is_relaxed_not_infeasible() -> None:
     grid.add_contingency_group(cg)
     grid.add_contingency(gce.Contingency(device=line_a, group=cg))
 
-    info = grid.get_inter_aggregation_info(objects_from=[a1], objects_to=[a2])
+    info = grid.get_inter_aggregation_info(objects_from=list([a1]), objects_to=list([a2]))
     opts = gce.OptimalNetTransferCapacityOptions(
         sending_bus_idx=info.idx_bus_from,
         receiving_bus_idx=info.idx_bus_to,

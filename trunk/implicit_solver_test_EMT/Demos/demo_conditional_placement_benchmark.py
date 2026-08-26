@@ -1,6 +1,6 @@
 import statistics
 import time
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Mapping, Optional, Tuple
 import pandas as pd
 
 import matplotlib.pyplot as plt
@@ -12,8 +12,46 @@ from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import BoundaryU
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonTraceCollector
 from VeraGridEngine.Utils.Symbolic.symbolic import Comparison, Const, Expr, Var
-from VeraGridEngine.Utils.procedural_logic import build_boundary_updater_from_block, picdro
+from VeraGridEngine.Utils.procedural_logic import (
+    build_boundary_updater_from_block,
+    picdro,
+    procedural_logic_from_dict,
+)
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
+
+
+def _read_result_float(
+        result_data: Mapping[str, object],
+        field_name: str,
+) -> float:
+    """Read one numeric field from an offline benchmark result.
+
+    :param result_data: Result fields produced by the offline simulation.
+    :param field_name: Required numeric result field.
+    :return: Field converted to floating-point representation.
+    """
+    raw_value: object = result_data.get(field_name, None)
+    if isinstance(raw_value, (float, int)) and not isinstance(raw_value, bool):
+        return float(raw_value)
+    else:
+        raise TypeError(f"Benchmark result field '{field_name}' must be numeric")
+
+
+def _read_result_integer(
+        result_data: Mapping[str, object],
+        field_name: str,
+) -> int:
+    """Read one exact integer field from an offline benchmark result.
+
+    :param result_data: Result fields produced by the offline simulation.
+    :param field_name: Required integer result field.
+    :return: Exact integer result field.
+    """
+    raw_value: object = result_data.get(field_name, None)
+    if isinstance(raw_value, int) and not isinstance(raw_value, bool):
+        return raw_value
+    else:
+        raise TypeError(f"Benchmark result field '{field_name}' must be an integer")
 
 
 class GenericEmtProblem(EmtProblemTemplate):
@@ -223,7 +261,12 @@ def _build_case(builder) -> Tuple[GenericEmtProblem, JitSymbolicSolver, Dict[str
         method=DynamicIntegrationMethod.DaeTrapezoidal,
         verbose=False,
     )
-    return problem, solver, vars_map, problem.sys_block._procedural_logic_to_dict()
+    return (
+        problem,
+        solver,
+        vars_map,
+        problem.sys_block.serialize_procedural_logic_entries(),
+    )
 
 
 def _run_case_once(
@@ -232,7 +275,7 @@ def _run_case_once(
     vars_map: Dict[str, Var],
     logic_snapshot: List[dict],
 ) -> Dict[str, object]:
-    problem.sys_block.procedural_logic = Block._procedural_logic_from_dict(logic_snapshot)
+    problem.sys_block.procedural_logic = procedural_logic_from_dict(logic_snapshot)
 
     collector = NewtonTraceCollector()
     problem.set_newton_trace_collector(collector)
@@ -247,7 +290,7 @@ def _run_case_once(
         updater = mode_trace
 
     t_start = time.perf_counter()
-    t, y_hist, _ = solver.simulate(
+    t, y_hist, _, _, _ = solver.simulate(
         params0=problem.event_params_values.copy(),
         boundary_updater=updater,
     )
@@ -283,7 +326,7 @@ def benchmark_case(label: str, builder, measured_runs: int = 3) -> Dict[str, obj
     ]
     plot_run = measured[0]
 
-    elapsed_samples = [float(item["elapsed_s"]) for item in measured]
+    elapsed_samples = [_read_result_float(item, "elapsed_s") for item in measured]
     mean_iteration_samples = [float(np.mean(item["step_iters"])) for item in measured]
     max_iteration_samples = [float(np.max(item["step_iters"])) for item in measured]
 
@@ -320,7 +363,10 @@ def plot_benchmark_comparison(cases: List[Dict[str, object]]) -> None:
         label = str(case["label"])
         color = colors[label]
         t = np.asarray(case["t"], dtype=float)
-        x_hist = np.asarray(case["y_hist"], dtype=float)[:, int(case["x_idx"])]
+        x_hist = np.asarray(case["y_hist"], dtype=float)[
+            :,
+            _read_result_integer(case, "x_idx"),
+        ]
         step_t = np.asarray(case["step_t"], dtype=float)
         step_iters = np.asarray(case["step_iters"], dtype=float)
         worst_iter_axis = np.asarray(case["worst_iter_axis"], dtype=float)
@@ -335,7 +381,7 @@ def plot_benchmark_comparison(cases: List[Dict[str, object]]) -> None:
             marker="o",
             color=color,
             linewidth=1.8,
-            label=f"{label} @ t={float(case['worst_time']):.4f} s",
+            label=f"{label} @ t={_read_result_float(case, 'worst_time'):.4f} s",
         )
 
         switch_time: Optional[float]
@@ -354,7 +400,7 @@ def plot_benchmark_comparison(cases: List[Dict[str, object]]) -> None:
         _add_vertical_marker(ax_branch, switch_time, f"{label} switch", color=color, linestyle="--")
 
         runtime_labels.append(label)
-        runtime_values.append(float(case["median_elapsed_s"]))
+        runtime_values.append(_read_result_float(case, "median_elapsed_s"))
 
     ax_state.axhline(0.5, color="black", linestyle=":", linewidth=1.1, label="switch threshold")
     ax_state.set_title("State trajectory near the discontinuity")
@@ -398,10 +444,10 @@ def print_benchmark_summary(cases: List[Dict[str, object]]) -> None:
 
     for case in cases:
         print(f"--- {case['label']} ---")
-        print(f"median runtime [s]:       {float(case['median_elapsed_s']):.6f}")
-        print(f"mean Newton iterations:  {float(case['mean_newton_iterations']):.3f}")
-        print(f"max Newton iterations:   {float(case['max_newton_iterations']):.3f}")
-        print(f"worst-step time [s]:     {float(case['worst_time']):.6f}")
+        print(f"median runtime [s]:       {_read_result_float(case, 'median_elapsed_s'):.6f}")
+        print(f"mean Newton iterations:  {_read_result_float(case, 'mean_newton_iterations'):.3f}")
+        print(f"max Newton iterations:   {_read_result_float(case, 'max_newton_iterations'):.3f}")
+        print(f"worst-step time [s]:     {_read_result_float(case, 'worst_time'):.6f}")
         print("")
 
 
@@ -411,13 +457,16 @@ def _build_export_dataframe(cases: List[Dict[str, object]]) -> pd.DataFrame:
     for case in cases:
         label = str(case["label"])
         t = np.asarray(case["t"], dtype=float)
-        x_hist = np.asarray(case["y_hist"], dtype=float)[:, int(case["x_idx"])]
+        x_hist = np.asarray(case["y_hist"], dtype=float)[
+            :,
+            _read_result_integer(case, "x_idx"),
+        ]
         step_t = np.asarray(case["step_t"], dtype=float)
         step_iters = np.asarray(case["step_iters"], dtype=float)
         worst_iter_axis = np.asarray(case["worst_iter_axis"], dtype=float)
         worst_residual = np.asarray(case["worst_residual"], dtype=float)
         worst_metric_label = str(case["worst_metric_label"])
-        worst_time = float(case["worst_time"])
+        worst_time = _read_result_float(case, "worst_time")
 
         mode_t = case["mode_t"]
         mode_v = case["mode_v"]

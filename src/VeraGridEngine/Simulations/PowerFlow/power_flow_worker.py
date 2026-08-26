@@ -818,6 +818,11 @@ def __multi_island_pf_nc_complete_support(nc: NumericalCircuit,
                 hvdc_idx=island.hvdc_data.original_idx,
                 vsc_idx=island.vsc_data.original_idx
             )
+            # Preserve the numerical bus modes actually used by this island,
+            # including any automatically promoted angular reference.
+            results.bus_types[island.bus_data.original_idx] = (
+                island.bus_data.bus_types
+            )
             results.convergence_reports.append(report)
 
         else:
@@ -908,6 +913,11 @@ def __multi_island_pf_nc_limited_support(nc: NumericalCircuit,
                 hvdc_idx=island.hvdc_data.original_idx,
                 vsc_idx=island.vsc_data.original_idx
             )
+            # Preserve the numerical bus modes actually used by this island,
+            # including any automatically promoted angular reference.
+            results.bus_types[island.bus_data.original_idx] = (
+                island.bus_data.bus_types
+            )
             results.convergence_reports.append(report)
 
         else:
@@ -993,7 +1003,9 @@ def multi_island_pf_nc(nc: NumericalCircuit,
         q0_gen = _get_generator_q_for_split(nc=nc, V=V_for_q)
 
         vm_abs: Vec = np.abs(results.voltage)
-        slack_bus_mask: np.ndarray = (nc.bus_data.bus_types == BusMode.Slack_tpe.value)
+        slack_bus_mask: np.ndarray = (
+            results.bus_types == BusMode.Slack_tpe.value
+        )
         fixed_load_bus: CxVec = (
                 nc.load_data.get_injections_per_bus()
                 + results.voltage * np.conj(
@@ -1057,23 +1069,6 @@ def multi_island_pf_nc(nc: NumericalCircuit,
             atol=1e-12,
         )
 
-        results.gen_p, results.battery_p = split_slack_bus_quantity_between_generators_and_batteries(
-            Qbus=results.Sbus.real,
-            Qfixed_bus=fixed_non_generator_bus.real,
-            slack_bus_mask=slack_bus_mask,
-            gen_bus_idx=nc.generator_data.bus_idx,
-            Qmin_gen=nc.generator_data.pmin,
-            Qmax_gen=nc.generator_data.pmax,
-            gen_status=nc.generator_data.active,
-            Q0_gen=nc.generator_data.p,
-            batt_bus_idx=nc.battery_data.bus_idx,
-            Qmin_batt=nc.battery_data.pmin,
-            Qmax_batt=nc.battery_data.pmax,
-            batt_status=nc.battery_data.active,
-            Q0_batt=nc.battery_data.p,
-            atol=1e-12,
-        )
-
         if options.distributed_slack:
             results.gen_p, results.battery_p = split_bus_quantity(
                 Qbus=results.Sbus.real,
@@ -1101,6 +1096,25 @@ def multi_island_pf_nc(nc: NumericalCircuit,
             results.gen_p = nc.generator_data.p
             results.battery_p = nc.battery_data.p
 
+        # Reference generators absorb the final solved residual after all
+        # non-reference active-power allocations have been established.
+        results.gen_p, results.battery_p = split_slack_bus_quantity_between_generators_and_batteries(
+            Qbus=results.Sbus.real,
+            Qfixed_bus=fixed_non_generator_bus.real,
+            slack_bus_mask=slack_bus_mask,
+            gen_bus_idx=nc.generator_data.bus_idx,
+            Qmin_gen=nc.generator_data.pmin,
+            Qmax_gen=nc.generator_data.pmax,
+            gen_status=nc.generator_data.active,
+            Q0_gen=results.gen_p,
+            batt_bus_idx=nc.battery_data.bus_idx,
+            Qmin_batt=nc.battery_data.pmin,
+            Qmax_batt=nc.battery_data.pmax,
+            batt_status=nc.battery_data.active,
+            Q0_batt=results.battery_p,
+            atol=1e-12,
+        )
+
         return results
 
     else:
@@ -1121,7 +1135,9 @@ def multi_island_pf_nc(nc: NumericalCircuit,
         q0_gen = _get_generator_q_for_split(nc=nc, V=V_for_q)
 
         vm_abs: Vec = np.abs(results.voltage)
-        slack_bus_mask: np.ndarray = (nc.bus_data.bus_types == BusMode.Slack_tpe.value)
+        slack_bus_mask: np.ndarray = (
+            results.bus_types == BusMode.Slack_tpe.value
+        )
         fixed_load_bus: CxVec = (
                 nc.load_data.get_injections_per_bus()
                 + results.voltage * np.conj(

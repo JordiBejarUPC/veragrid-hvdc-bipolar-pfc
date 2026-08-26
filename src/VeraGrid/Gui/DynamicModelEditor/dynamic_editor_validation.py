@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import cast, Optional, TYPE_CHECKING
+from typing import Optional, Protocol, runtime_checkable
 
 from PySide6 import QtGui, QtWidgets
 from PySide6.QtCore import QObject, Qt
@@ -13,10 +13,20 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.enumerations import VarPowerFlowReferenceType
 
-if TYPE_CHECKING:
-    from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
-else:
-    pass
+
+@runtime_checkable
+class ValidationIssuePresenter(Protocol):
+    """Expose the editor operation required by the validation dialogue."""
+
+    __slots__ = ()
+
+    def show_validation_issues_in_model(self, section_results: list["ValidationSection"]) -> None:
+        """Highlight validation issues in the owning model editor.
+
+        :param section_results: Validation sections to present.
+        :return: None.
+        """
+        ...
 
 
 def collect_block_tree(root_block: Block) -> list[Block]:
@@ -751,12 +761,11 @@ class ValidationSectionDialog(QDialog):
 
         :return: None.
         """
-        # Construction is owned by the dynamic editor. A typed cast keeps the
-        # validation module independent from the editor's runtime import cycle.
-        parent_widget: DynamicBlockEditorGUI | None = cast("DynamicBlockEditorGUI | None", self.parent())
-
-        if parent_widget is not None:
-            parent_widget.show_validation_issues_in_model(section_results=self.get_section_results())
+        # The structural protocol keeps this module independent from the
+        # editor's runtime import cycle while validating the required method.
+        parent_object: QObject | None = self.parent()
+        if isinstance(parent_object, ValidationIssuePresenter):
+            parent_object.show_validation_issues_in_model(section_results=self.get_section_results())
             self.accept()
         else:
             pass

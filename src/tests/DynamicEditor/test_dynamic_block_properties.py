@@ -16,6 +16,7 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_block_properties import (
     BlockVariableRenameRequest,
     DaeCodeDiagnostic,
     DynamicBlockPropertiesDialog,
+    RmsMeasurementEditOption,
     build_block_symbol_namespace,
     build_equation_code,
     parse_equation_code,
@@ -56,9 +57,15 @@ from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.enumerations import (
     BlockType,
     ParamPowerFlowReferenceType,
+    RmsPhysicalMeterKind,
+    RmsTerminalSide,
     VarPowerFlowReferenceType,
 )
-from VeraGridEngine.Utils.Symbolic.block import Block, normalize_event_parameter_initialization
+from VeraGridEngine.Utils.Symbolic.block import (
+    Block,
+    RmsPhysicalMeasurementPoint,
+    normalize_event_parameter_initialization,
+)
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var, get_expression_vars, symbolic_to_string
 from VeraGridEngine.Templates.Emt.generator_emt_type_template import get_governor_emt
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template_v2 import get_genqec_rms
@@ -78,6 +85,79 @@ def get_qt_application() -> QtWidgets.QApplication:
         return QtWidgets.QApplication(list())
     else:
         return application
+
+
+def test_physical_meter_general_options_expose_canonical_configuration() -> None:
+    """Show measurement type, resolved bus, terminal, signals, and equations.
+
+    :return: None.
+    """
+    application: QtWidgets.QApplication = get_qt_application()
+    _unused_application: QtWidgets.QApplication = application
+    output_var: Var = Var("active_power_meter")
+    meter_block: Block = Block(
+        name="VeraGrid Power meter native",
+        algebraic_vars=list((output_var,)),
+        algebraic_eqs=list((output_var - Const(1.0),)),
+        init_eqs=dict(((output_var, Const(1.0)),)),
+        out_vars=list((output_var,)),
+    )
+    meter_block.dynamic_model_contract.rms_physical_measurement_point = (
+        RmsPhysicalMeasurementPoint(
+            source_fid="native-power-meter",
+            target_fid="bus-id-001",
+            terminal_side=RmsTerminalSide.BUS,
+            meter_kind=RmsPhysicalMeterKind.POWER,
+            output_signal_names=(output_var.name,),
+            output_var_uids=(output_var.uid,),
+        )
+    )
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
+        block=meter_block,
+        block_type_name="Physical measurement",
+        var_factory=VarFactory(),
+        measurement_target_name="Bus Alpha (Bus)",
+        measurement_edit_options=list((
+            RmsMeasurementEditOption(
+                meter_kind=RmsPhysicalMeterKind.POWER,
+                source_terminal_side=RmsTerminalSide.BUS,
+                target_fid="bus-id-001",
+                target_label="Generator Alpha — BUS terminal → Bus Alpha",
+            ),
+            RmsMeasurementEditOption(
+                meter_kind=RmsPhysicalMeterKind.VOLTAGE,
+                source_terminal_side=RmsTerminalSide.BUS,
+                target_fid="bus-id-001",
+                target_label="Bus Alpha (Bus)",
+            ),
+        )),
+    )
+
+    assert dialogue.ui.measurement_configuration_group.isVisibleTo(dialogue)
+    assert dialogue.ui.measurement_family_value.text() == (
+        "Balanced RMS physical measurement"
+    )
+    assert dialogue.ui.measurement_mode_combo.isEnabled()
+    assert dialogue.ui.measurement_mode_combo.currentText() == "Power"
+    assert dialogue.ui.measurement_target_button.isEnabled()
+    assert dialogue.ui.measurement_target_value.text() == (
+        "Generator Alpha — BUS terminal → Bus Alpha"
+    )
+    assert dialogue.ui.measurement_terminal_value.text() == "BUS"
+    assert dialogue.findChild(QtWidgets.QWidget, "measurement_signals_value") is None
+    assert dialogue.findChild(QtWidgets.QWidget, "measurement_identity_value") is None
+    assert dialogue.findChild(QtWidgets.QWidget, "measurement_equations_value") is None
+    assert dialogue.get_selected_measurement_option() is not None
+    assert not dialogue.has_measurement_configuration_changes()
+    dialogue.release_measurement_target()
+    assert dialogue.ui.measurement_target_value.text() == "No target selected"
+    assert not dialogue.ui.measurement_target_release_button.isEnabled()
+    assert dialogue.ui.measurement_target_button.isEnabled()
+    assert dialogue.get_selected_measurement_option() is None
+    assert dialogue.has_measurement_configuration_changes()
+    dialogue.refresh_measurement_target_options()
+    assert dialogue.get_selected_measurement_option() is not None
+    dialogue.close()
 
 
 class AliasRenameReceiver(QtCore.QObject):
@@ -426,10 +506,10 @@ def test_equation_code_removes_only_redundant_root_parentheses() -> None:
     expression: Expr = (state_variable - input_variable) / divisor_variable
     block: Block = Block(
         name="precedence_test",
-        state_vars=[state_variable],
-        state_eqs=[expression],
-        in_vars=[input_variable],
-        parameters={divisor_variable: Const(2.0, name="divisor")},
+        state_vars=list([state_variable]),
+        state_eqs=list([expression]),
+        in_vars=list([input_variable]),
+        parameters=dict({divisor_variable: Const(2.0, name="divisor")}),
     )
 
     code: str = build_equation_code(block)

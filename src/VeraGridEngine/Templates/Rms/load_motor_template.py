@@ -11,29 +11,18 @@ from VeraGridEngine.Utils.Symbolic.block import (Block, VarPowerFlowReferenceTyp
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
 
-"""
-    Builds an RMS model template for an induction motor load.
-    
-    Implements a detailed induction motor model with transient and subtransient dynamics.
-    The model includes:
-    - Electrical dynamics: Transient and subtransient voltage equations (Ed', Eq', Ed'', Eq'')
-    - Mechanical dynamics: Rotor speed (omega/slip) with inertia and load torque
-    - Algebraic equations: Currents, voltages, and power calculations in dq-reference frame
-    
-    The motor is represented by its equivalent circuit parameters including stator resistance,
-    leakage inductances, and magnetizing inductance. The model captures motor behavior during
-    voltage disturbances, including stall and recovery characteristics.
-    
-    Args:
-        name (str): Name of the motor load model
-    
-    Returns:
-        RmsModelTemplate: Configured RMS model template for induction motor simulation
-"""
+def MotorLoadBuild(vfactory: VarFactory, name: str = "Motor load RMS template") -> RmsModelTemplate:
+    """Build a detailed induction-motor RMS load model.
 
+    The model represents transient and subtransient electrical dynamics,
+    rotor-speed mechanics, and dq-frame current, voltage, and power equations.
 
-def MotorLoadBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
-    templ = RmsModelTemplate()
+    :param vfactory: Factory that owns the model's symbolic variables.
+    :param name: Name assigned to the generated RMS model template.
+    :return: Configured induction-motor load RMS model template.
+    """
+    templ = RmsModelTemplate(name=name)
+    templ.name = name
     templ.tpe = DeviceType.LoadDevice
     pi = math.pi
     # Inputs:
@@ -180,4 +169,5 @@ def MotorLoadBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     }
 
     templ.block = res_block
+    templ.comment = 'Load RMS induction-motor model'
     return templ

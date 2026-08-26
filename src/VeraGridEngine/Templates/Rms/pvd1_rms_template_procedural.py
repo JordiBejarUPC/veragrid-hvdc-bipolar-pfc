@@ -203,6 +203,7 @@ def get_pvd1_rms_template(vfactory: VarFactory, name: str = "PVD1 RMS template")
     block.out_vars = [p, q, ipout, iqout, q_droop, p_sum, q_sum, f_trip, v_trip]
 
     templ.block = block
+    templ.comment = 'Generator PV PVD1 procedural RMS model'
     return templ
 
 
@@ -558,6 +559,7 @@ def get_pvd1_complete_rms_template(vfactory: VarFactory, name: str = "PVD1 compl
     ]
 
     templ.block = block
+    templ.comment = 'Generator complete PV PVD1 procedural RMS model'
     return templ
 
 
@@ -779,6 +781,7 @@ def get_pvd1_dc_mppt_rms_template(vfactory: VarFactory, name: str = "PVD1 DC-MPP
     block.out_vars = [p, q, ipout, iqout, pavail, pmppt, p_sum, q_sum, f_trip, v_trip]
 
     templ.block = block
+    templ.comment = 'Generator PV PVD1 DC MPPT procedural RMS model'
     return templ
 
 
@@ -1088,6 +1091,7 @@ def get_pvd1_dc_link_mppt_rms_template(vfactory: VarFactory, name: str = "PVD1 D
     block.out_vars = [p, q, ipout, iqout, p_sum, q_sum, pavail, psrc, pinv, vpv, vdc, duty, vmp, imp]
 
     templ.block = block
+    templ.comment = 'Generator PV PVD1 DC-link MPPT procedural RMS model'
     return templ
 
 
@@ -1379,4 +1383,5 @@ def get_pvd1_dc_link_bess_rms_template(vfactory: VarFactory, name: str = "PVD1 D
     ]
 
     templ.block = block
+    templ.comment = 'Battery PV PVD1 DC-link BESS procedural RMS model'
     return templ

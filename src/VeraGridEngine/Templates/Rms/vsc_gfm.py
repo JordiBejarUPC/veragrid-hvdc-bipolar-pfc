@@ -474,7 +474,7 @@ def build_gfm_converter_model(vfactory: VarFactory, inputs: List[Var],
     }
 
 
-def VscGfmLossBuild(vfactory: VarFactory, name: str = "", current_power_inputs: List[Var] | None = None,
+def VscGfmLossBuild(vfactory: VarFactory, name: str = "Grid-forming VSC loss RMS template", current_power_inputs: List[Var] | None = None,
                     reconstruct_filter_voltage: bool = False) -> RmsModelTemplate:
     """
     VSC GFM model builder for explicit AC filter-network validations.
@@ -484,6 +484,7 @@ def VscGfmLossBuild(vfactory: VarFactory, name: str = "", current_power_inputs: 
     expose a DC-side reactive power mapping.
     """
     templ = RmsModelTemplate()
+    templ.name = name
     templ.tpe = DeviceType.VscDevice
 
     inputs = [
@@ -575,14 +576,16 @@ def VscGfmLossBuild(vfactory: VarFactory, name: str = "", current_power_inputs: 
     }
 
     templ.block = vsc_wrapper
+    templ.comment = 'VSC grid-forming loss RMS block'
     return templ
 
 
-def VscGfmBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
+def VscGfmBuild(vfactory: VarFactory, name: str = "Grid-forming VSC RMS template") -> RmsModelTemplate:
     """
     VSC GFM (Grid Forming) model template builder.
     """
     templ = RmsModelTemplate()
+    templ.name = name
     templ.tpe = DeviceType.VscDevice
 
     inputs = [vfactory.add_var("Vm_"), vfactory.add_var("Va_"), vfactory.add_var("Vdc_")]
@@ -654,4 +657,5 @@ def VscGfmBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     }
 
     templ.block = vsc_wrapper
+    templ.comment = 'VSC grid-forming RMS model'
     return templ
