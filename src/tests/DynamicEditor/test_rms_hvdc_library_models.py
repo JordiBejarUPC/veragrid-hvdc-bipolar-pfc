@@ -108,14 +108,14 @@ def test_hvdc_vsc_control_options_survive_block_properties_reopen() -> None:
     assert reopened_builder.get_value("control2") == ConverterControlType.Vm_ac
     assert reopened_builder.get_value("cdc") == 0.77
     assert [variable.ref for variable in block.in_vars] == [
+        VarPowerFlowReferenceType.Vdc,
         VarPowerFlowReferenceType.Vmt,
         VarPowerFlowReferenceType.Vat,
-        VarPowerFlowReferenceType.Vdc,
     ]
     assert [variable.ref for variable in block.out_vars] == [
+        VarPowerFlowReferenceType.Pf,
         VarPowerFlowReferenceType.Pt,
         VarPowerFlowReferenceType.Qt,
-        VarPowerFlowReferenceType.Pf,
     ]
 
 
@@ -219,6 +219,60 @@ def test_hvdc_vsc_internal_blocks_expose_every_dynamic_signal_connection() -> No
     assert {source.name for source, _ in integrator_coordinate_pairs} == {"omega"}
 
 
+def test_hvdc_vsc_pi_decomposition_connects_integral_states_to_outputs() -> None:
+    """Keep every explicit PI integral state connected to its output.
+
+    :return: None.
+    """
+    var_factory: VarFactory = VarFactory()
+    block: Block = HvdcVscGflRmsTemplate(var_factory).eval().block
+    converter_block: Block = block.children[0]
+    pll_block: Block = converter_block.children[5]
+    pll_integrator_block: Block = pll_block.children[1]
+    pi_blocks: list[Block] = list((
+        converter_block.children[0],
+        converter_block.children[1],
+        converter_block.children[3],
+        converter_block.children[4],
+        pll_integrator_block,
+    ))
+
+    # Opening each nested block performs this same equation decomposition. The
+    # generated children must preserve both ends of every explicit PI path.
+    pi_block: Block
+    for pi_block in pi_blocks:
+        integral_state: Var = pi_block.state_vars[0]
+        controlled_output: Var = pi_block.algebraic_vars[0]
+        prepared_block: Block
+        block_types: dict[int, BlockType]
+        prepared_block, block_types = prepare_block_for_editing(
+            block=pi_block,
+            var_factory=var_factory,
+        )
+        integral_state_producers: list[Block] = list()
+        integral_state_consumers: list[Block] = list()
+        output_producers: list[Block] = list()
+        child: Block
+        for child in prepared_block.children:
+            if integral_state in child.out_vars:
+                integral_state_producers.append(child)
+            else:
+                pass
+            if integral_state in child.in_vars:
+                integral_state_consumers.append(child)
+            else:
+                pass
+            if controlled_output in child.out_vars:
+                output_producers.append(child)
+            else:
+                pass
+
+        assert len(block_types) > 0, pi_block.name
+        assert len(integral_state_producers) > 0, pi_block.name
+        assert len(integral_state_consumers) > 0, pi_block.name
+        assert len(output_producers) > 0, pi_block.name
+
+
 def test_hvdc_vsc_initialization_equations_belong_to_variable_owners() -> None:
     """Keep internal P/Q initialization on their algebraic owner block."""
     block: Block = HvdcVscGflRmsTemplate(VarFactory()).eval().block
@@ -261,7 +315,10 @@ def test_legacy_terminal_decomposition_keeps_implicit_equations() -> None:
 
 
 def test_voltage_source_and_transformer_native_blocks_can_be_created() -> None:
-    """Create the two non-modal complete RMS blocks from their native types."""
+    """Create complete RMS blocks with the transformer's root port order.
+
+    :return: None.
+    """
     voltage_source: Block | None = create_block_of_type(
         var_factory=VarFactory(),
         block_type=BlockType.VOLTAGE_SOURCE_RMS,
@@ -276,13 +333,30 @@ def test_voltage_source_and_transformer_native_blocks_can_be_created() -> None:
     assert transformer is not None
     assert VarPowerFlowReferenceType.P in voltage_source.external_mapping
     assert VarPowerFlowReferenceType.Pf in transformer.external_mapping
+    assert [variable.ref for variable in transformer.out_vars] == [
+        VarPowerFlowReferenceType.Pf,
+        VarPowerFlowReferenceType.Qf,
+        VarPowerFlowReferenceType.Pt,
+        VarPowerFlowReferenceType.Qt,
+    ]
+    assert len(transformer.children) == 1
+    equation_block: Block = transformer.children[0]
+    assert equation_block.algebraic_vars == transformer.out_vars
 
 
 def test_dc_line_power_flow_variables_have_no_explicit_init_equations() -> None:
     """Keep If_dc, Pf and Pt under authoritative power-flow initialization."""
-    dc_line_block: Block = DcLineRmsTemplateV2(VarFactory()).eval().block
+    template_definition: DcLineRmsTemplateV2 = DcLineRmsTemplateV2(VarFactory())
+    assert set(template_definition.params_dict.keys()) == set(("name",))
+    dc_line_block: Block = template_definition.eval().block
     equation_block: Block = dc_line_block.children[0]
+    resistance: Var = dc_line_block.api_obj_mapping[ParamPowerFlowReferenceType.dc_line_r_pu]
+    inductance: Var = next(variable for variable in equation_block.event_dict if variable.name == "l_dc")
     assert len(equation_block.init_eqs) == 0
+    assert equation_block.parameters[resistance].value is None
+    assert equation_block.event_dict[inductance].value == 0.05
+    dc_line_block.set_parameter_in_model(var_name="l_dc", new_value=0.08)
+    assert equation_block.event_dict[inductance].value == 0.08
     assert VarPowerFlowReferenceType.If_dc in dc_line_block.external_mapping
     assert VarPowerFlowReferenceType.Pf in dc_line_block.external_mapping
     assert VarPowerFlowReferenceType.Pt in dc_line_block.external_mapping
