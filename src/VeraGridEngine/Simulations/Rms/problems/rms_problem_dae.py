@@ -15,7 +15,11 @@ from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, eval_uid a
                                                     get_expression_vars, hard_sat)
 from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicParamsVector, SymbolicDerivative, SymbolicJacobian
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.enumerations import VarPowerFlowReferenceType, RmsInitializationMethod
+from VeraGridEngine.enumerations import (
+    ParamPowerFlowReferenceType,
+    VarPowerFlowReferenceType,
+    RmsInitializationMethod,
+)
 from VeraGridEngine.basic_structures import Vec, ObjVec, BoolVec, Logger
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
@@ -57,6 +61,197 @@ from VeraGridEngine.Devices.Dynamic.static_parameter_mapping_unified import (
 
 
 from VeraGridEngine.Utils.procedural_logic import BlockProceduralLogicUpdater
+
+
+def _get_static_mapping_keys_for_parameter(
+        root_block: Block,
+        parameter: Var,
+) -> List[ParamPowerFlowReferenceType]:
+    """Return the static mapping keys that target one RMS parameter.
+
+    Saved RMS models synchronize their authoritative static mappings at the
+    root, while legacy models may still contain a mapping on a child block.
+    Traversing the complete hierarchy keeps unresolved-parameter diagnostics
+    useful for both representations.
+
+    :param root_block: Complete RMS model assigned to the static device.
+    :param parameter: Constant symbolic parameter being diagnosed.
+    :return: Static mapping keys whose target has the same immutable UID.
+    """
+    mapping_keys: List[ParamPowerFlowReferenceType] = list()
+    candidate_block: Block
+    mapping_key: ParamPowerFlowReferenceType
+    mapping_target: Var
+
+    for candidate_block in root_block.get_all_blocks():
+        for mapping_key, mapping_target in candidate_block.api_obj_mapping.items():
+            if mapping_target.uid == parameter.uid:
+                mapping_keys.append(mapping_key)
+            else:
+                pass
+
+    return mapping_keys
+
+
+def _get_static_parameter_value_by_uid(
+        parameter: Var,
+        static_parameter_values: Dict[Var, Const],
+) -> Const | None:
+    """Return a mapped RMS static value using symbolic UID identity.
+
+    Dynamic Editor persistence can clone a ``Var`` while preserving its UID.
+    Comparing UIDs therefore prevents a valid static mapping from being lost
+    merely because the dictionary contains a different Python object instance.
+
+    :param parameter: Symbolic parameter whose numerical value is required.
+    :param static_parameter_values: Values resolved from static API mappings.
+    :return: Mapped constant, or ``None`` when no mapping was resolved.
+    """
+    direct_value: Const | None = static_parameter_values.get(parameter, None)
+
+    if direct_value is not None:
+        return direct_value
+    else:
+        pass
+
+    mapped_parameter: Var
+    mapped_value: Const
+    for mapped_parameter, mapped_value in static_parameter_values.items():
+        if mapped_parameter.uid == parameter.uid:
+            return mapped_value
+        else:
+            pass
+
+    return None
+
+
+def _resolve_rms_constant_parameter_value(
+        device: ALL_DEV_TYPES,
+        root_block: Block,
+        owner_block: Block,
+        parameter: Var,
+        declared_value: Const,
+        static_parameter_values: Dict[Var, Const],
+) -> Const:
+    """Resolve one RMS constant before registering it in the DAE problem.
+
+    Numerical template constants are self-contained. A ``Const(None)`` is a
+    required static-device placeholder and is valid only when
+    ``api_obj_mapping`` has supplied a concrete value. Failing during problem
+    assembly keeps the null constant out of the numerical compiler and reports
+    the exact device and block contract that must be corrected.
+
+    :param device: Static device that owns the RMS model.
+    :param root_block: Complete RMS model assigned to ``device``.
+    :param owner_block: Block that declares the parameter.
+    :param parameter: Symbolic constant parameter.
+    :param declared_value: Value stored in ``owner_block.parameters``.
+    :param static_parameter_values: Values resolved from ``api_obj_mapping``.
+    :return: Concrete constant to register in the RMS problem.
+    :raises ValueError: If neither the model nor the static mapping supplies a
+        numerical value.
+    """
+    mapped_value: Const | None = _get_static_parameter_value_by_uid(
+        parameter=parameter,
+        static_parameter_values=static_parameter_values,
+    )
+    resolved_value: Const
+
+    if mapped_value is None:
+        resolved_value = declared_value
+    else:
+        resolved_value = mapped_value
+
+    if resolved_value.value is None:
+        mapping_keys: List[ParamPowerFlowReferenceType] = _get_static_mapping_keys_for_parameter(
+            root_block=root_block,
+            parameter=parameter,
+        )
+        mapping_names: List[str] = list()
+        mapping_key: ParamPowerFlowReferenceType
+
+        for mapping_key in mapping_keys:
+            mapping_names.append(mapping_key.name)
+
+        if len(mapping_names) == 0:
+            mapping_diagnostic: str = (
+                "the parameter is not targeted by any api_obj_mapping entry"
+            )
+        else:
+            mapping_diagnostic = (
+                "api_obj_mapping targets it through ["
+                + ", ".join(mapping_names)
+                + "], but the static mapper produced no value"
+            )
+
+        raise ValueError(
+            "Unresolved RMS constant parameter "
+            + f"'{parameter.name}' in block '{owner_block.name}' of "
+            + f"{device.device_type.value} '{device.name}': {mapping_diagnostic}. "
+            + "A parameter declared as Const(None) must be linked to a supported "
+            + "static device property through the RMS root api_obj_mapping."
+        )
+    else:
+        pass
+
+    return resolved_value
+
+
+def _resolve_rms_runtime_parameter_expression(
+        device: ALL_DEV_TYPES,
+        owner_block: Block,
+        parameter: Var,
+        declared_expression: Expr | Const,
+        is_discrete_parameter: bool,
+) -> Expr | Const:
+    """Resolve one RMS runtime parameter before DAE compilation.
+
+    Runtime parameters normally carry a numerical or symbolic expression in
+    ``event_dict``. A null source is valid only when block normalization has
+    retained an explicit initialization equation or discrete mode logic owns a
+    separate runtime initialization path.
+
+    :param device: Static device that owns the RMS model.
+    :param owner_block: Block that declares the runtime parameter.
+    :param parameter: Runtime symbolic parameter.
+    :param declared_expression: Expression stored in ``event_dict`` or
+        ``mode_dict``.
+    :param is_discrete_parameter: Whether mode logic initializes the parameter.
+    :return: Effective initialization expression registered by the problem.
+    :raises ValueError: If an ordinary runtime parameter has no usable source.
+    """
+    effective_expression: Expr | Const = declared_expression
+
+    if isinstance(declared_expression, Const) and declared_expression.value is None:
+        initialization_expression: Expr | Const | None = None
+        initialization_variable: Var
+        candidate_expression: Expr | Const
+
+        for initialization_variable, candidate_expression in owner_block.init_eqs.items():
+            if initialization_variable.uid == parameter.uid:
+                initialization_expression = candidate_expression
+            else:
+                pass
+
+        if initialization_expression is not None:
+            effective_expression = initialization_expression
+        elif is_discrete_parameter:
+            # Discrete registration supplies its own zero baseline and retains
+            # the symbolic mode expression for later transitions.
+            effective_expression = declared_expression
+        else:
+            raise ValueError(
+                "Unresolved RMS dynamic parameter "
+                + f"'{parameter.name}' in block '{owner_block.name}' of "
+                + f"{device.device_type.value} '{device.name}'. "
+                + "Provide a numerical/symbolic value in event_dict or an "
+                + "initialization equation for the same parameter."
+            )
+    else:
+        pass
+
+    return effective_expression
+
 
 def _tic():
     return time.perf_counter()
@@ -2151,15 +2346,23 @@ class RmsProblemDae(RmsProblemTemplate):
                 raise ValueError(f"Parameter '{ep.name}' (uid={ep.uid}) is already registered in the system. "
                                  f"Previous device may have created a duplicate parameter.")
 
+            resolved_parameter_value: Const = _resolve_rms_constant_parameter_value(
+                device=elm,
+                root_block=elm.rms_model,
+                owner_block=mdl,
+                parameter=ep,
+                declared_value=const,
+                static_parameter_values=self._static_parameters_values_mapping,
+            )
+
             self._compiler_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}[{self._n_params}]"
             self._alias_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}_{self._n_params}"
             self._uid2idx_params[ep.uid] = self._n_params
             self._constant_parameters.append(ep)
-            # search value in self._static_parameters_values_mapping
-            if ep in self._static_parameters_values_mapping:
-                self._parameters_values.append(self._static_parameters_values_mapping[ep])
-            else:
-                self._parameters_values.append(const)
+            # Register only the already validated concrete value. This keeps a
+            # missing static mapping from reaching the numerical compiler as a
+            # late, context-free ``None`` conversion error.
+            self._parameters_values.append(resolved_parameter_value)
             self._n_params += 1
 
         # m is for variable parameters
@@ -2175,19 +2378,17 @@ class RmsProblemDae(RmsProblemTemplate):
                 raise ValueError(f"Event parameter '{ep.name}' (uid={ep.uid}) is already registered in the system. "
                                  f"Previous device may have created a duplicate event parameter.")
 
+            effective_eq: Expr | Const = _resolve_rms_runtime_parameter_expression(
+                device=elm,
+                owner_block=mdl,
+                parameter=ep,
+                declared_expression=eq,
+                is_discrete_parameter=ep.uid in self._discrete_event_parameter_uids,
+            )
+
             self._compiler_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}[{self._n_event_params}]"
             self._alias_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}_{self._n_event_params}"
             self._uid2idx_event_params[ep.uid] = self._n_event_params
-
-            effective_eq: Expr | Const = eq
-            if isinstance(eq, Const) and eq.value is None:
-                init_eq_for_ep: Expr | Const | None = None
-                for init_var, init_eq in mdl.init_eqs.items():
-                    if init_var.uid == ep.uid:
-                        init_eq_for_ep = init_eq
-                        break
-                if init_eq_for_ep is not None:
-                    effective_eq = init_eq_for_ep
 
             self._variable_parameters.append(ep)
             self._event_parameters_eqs0.append(effective_eq)

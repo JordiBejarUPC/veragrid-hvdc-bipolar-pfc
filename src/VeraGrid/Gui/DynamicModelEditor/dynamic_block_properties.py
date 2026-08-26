@@ -1874,25 +1874,37 @@ def apply_symbol_mapping(block: Block,
     for external_key in external_keys_to_remove:
         del block.external_mapping[external_key]
 
-    static_keys_to_remove: List[ParamPowerFlowReferenceType] = list()
-    static_key: ParamPowerFlowReferenceType
-    mapped_static_variable: Var
-    for static_key, mapped_static_variable in block.api_obj_mapping.items():
-        if mapped_static_variable is variable:
-            static_keys_to_remove.append(static_key)
-        else:
-            pass
-    for static_key in static_keys_to_remove:
-        del block.api_obj_mapping[static_key]
-
     external_reference: VarPowerFlowReferenceType | None = row.get_external_reference()
-    static_reference: ParamPowerFlowReferenceType | None = row.get_static_reference()
     if external_reference is not None:
         block.external_mapping[external_reference] = variable
     else:
         pass
-    if static_reference is not None and row.get_kind() == BlockSymbolKind.PARAMETER:
-        block.api_obj_mapping[static_reference] = variable
+
+    # A composite root can expose a child-owned parameter through
+    # ``api_obj_mapping``. Such a variable is mapping-only from the root's
+    # perspective and appears there as OUTPUT_ONLY, so that synthetic row must
+    # not delete the authoritative static mapping during an unrelated Apply.
+    manages_static_mapping: bool = (
+        row.get_kind() == BlockSymbolKind.PARAMETER
+        or row.get_original_kind() == BlockSymbolKind.PARAMETER
+    )
+    if manages_static_mapping:
+        static_keys_to_remove: List[ParamPowerFlowReferenceType] = list()
+        static_key: ParamPowerFlowReferenceType
+        mapped_static_variable: Var
+        for static_key, mapped_static_variable in block.api_obj_mapping.items():
+            if mapped_static_variable is variable:
+                static_keys_to_remove.append(static_key)
+            else:
+                pass
+        for static_key in static_keys_to_remove:
+            del block.api_obj_mapping[static_key]
+
+        static_reference: ParamPowerFlowReferenceType | None = row.get_static_reference()
+        if static_reference is not None and row.get_kind() == BlockSymbolKind.PARAMETER:
+            block.api_obj_mapping[static_reference] = variable
+        else:
+            pass
     else:
         pass
 
@@ -2186,13 +2198,18 @@ class SymbolMappingDelegate(QtWidgets.QStyledItemDelegate):
 
 
 class BlockParameterDraftModel(QtCore.QAbstractTableModel):
-    """Table model that stages static values and event expressions until Apply."""
+    """Stage dynamic-parameter expressions from ``event_dict`` until Apply.
+
+    Fixed ``block.parameters`` remain part of the symbolic compiler contract
+    and are managed through the DAE model's Parameters page. General options is
+    exclusively the value editor for runtime-changeable dynamic parameters.
+    """
 
     __slots__ = ("_rows",)
 
     def __init__(self, block: Block, parent: QtCore.QObject | None = None) -> None:
         """
-        Build staged rows recursively from static values and event expressions.
+        Build staged rows recursively from dynamic-parameter expressions.
 
         :param block: Symbolic block used by the operation.
         :param parent: Owning Qt widget.
@@ -2203,25 +2220,19 @@ class BlockParameterDraftModel(QtCore.QAbstractTableModel):
         self._load_rows(block)
 
     def _load_rows(self, block: Block) -> None:
-        """Load every editable numeric constant from a recursive block tree.
+        """Load every user-editable parameter from a recursive block tree.
 
         :param block: Root block whose parameter tree is displayed.
         :return: None.
         """
+        all_blocks: List[Block] = block.get_all_blocks()
         child_block: Block
-        for child_block in block.get_all_blocks():
+        for child_block in all_blocks:
             owner_label: str = child_block.name if child_block is not block else block.name
-            self._append_parameter_rows(
-                category=f"Parameter - {owner_label}",
-                owner=child_block,
-                values=child_block.parameters,
-                kind=BlockSymbolKind.PARAMETER,
-            )
-            self._append_parameter_rows(
+            self._append_event_parameter_rows(
                 category=f"Dynamic parameter - {owner_label}",
                 owner=child_block,
                 values=child_block.event_dict,
-                kind=BlockSymbolKind.EVENT_PARAMETER,
             )
             # Retained modes may have symbolic initialization expressions and
             # execution dependencies. They are edited in Runtime logic, where
@@ -2238,35 +2249,29 @@ class BlockParameterDraftModel(QtCore.QAbstractTableModel):
         self._load_rows(block)
         self.endResetModel()
 
-    def _append_parameter_rows(self,
-                               category: str,
-                               owner: Block,
-                               values: Mapping[Var, Expr],
-                               kind: BlockSymbolKind) -> None:
-        """Append editable parameter mappings from one block dictionary.
+    def _append_event_parameter_rows(self,
+                                     category: str,
+                                     owner: Block,
+                                     values: Mapping[Var, Expr]) -> None:
+        """Append editable dynamic parameters from one ``event_dict``.
 
-        :param category: User-facing constant category and owner label.
-        :param owner: Block containing the supplied parameter mapping.
-        :param values: Variable-to-expression dictionary owned by the block.
-        :param kind: Static or event parameter role represented by the mapping.
+        :param category: User-facing dynamic-parameter category and owner label.
+        :param owner: Block containing the supplied ``event_dict``.
+        :param values: Dynamic parameter-to-expression mapping owned by the block.
         :return: None.
         """
         variable: Var
         expression: Expr
         for variable, expression in values.items():
-            if kind == BlockSymbolKind.PARAMETER and not isinstance(expression, Const):
-                # Static parameters have a numeric-only engine contract.
-                pass
-            else:
-                self._rows.append(
-                    ParameterDraftRow(
-                        category=category,
-                        owner=owner,
-                        variable=variable,
-                        expression=expression,
-                        kind=kind,
-                    )
+            self._rows.append(
+                ParameterDraftRow(
+                    category=category,
+                    owner=owner,
+                    variable=variable,
+                    expression=expression,
+                    kind=BlockSymbolKind.EVENT_PARAMETER,
                 )
+            )
 
     def rowCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
         """
@@ -2886,6 +2891,7 @@ class DaeCodeEditor(BasePythonCodeEditor):
         "_completion_shortcut",
         "_completion_entries",
         "_last_completion_prefix",
+        "_prepared_to_delete",
     )
 
     def __init__(
@@ -2900,6 +2906,7 @@ class DaeCodeEditor(BasePythonCodeEditor):
         :return: None.
         """
         self._qt_completer: QtWidgets.QCompleter | None = None
+        self._prepared_to_delete: bool = False
         super().__init__(parent)
         self._diagnostics: List[DaeCodeDiagnostic] = list()
         self._search_ranges: List[tuple[int, int]] = list()
@@ -2943,6 +2950,63 @@ class DaeCodeEditor(BasePythonCodeEditor):
         )
         self._completion_shortcut.setContext(QtCore.Qt.ShortcutContext.WidgetShortcut)
         self._completion_shortcut.activated.connect(self._trigger_manual_completion)
+
+    def prepare_to_delete(self) -> None:
+        """Detach completion event filters before Qt destroys the editor.
+
+        ``QCompleter`` owns a popup outside the text editor's ordinary widget
+        subtree. Both that popup and its viewport retain event-filter pointers
+        to this Python-backed editor. Removing those pointers while every
+        QObject is still valid prevents queued events from reaching a deleted
+        Shiboken wrapper during a later event-loop pass.
+
+        :return: None.
+        """
+        if self._prepared_to_delete:
+            return
+        else:
+            pass
+
+        self._prepared_to_delete = True
+        completer: QtWidgets.QCompleter | None = self._qt_completer
+        if completer is not None:
+            popup: QtWidgets.QAbstractItemView = completer.popup()
+            popup_viewport: QtWidgets.QWidget = popup.viewport()
+
+            # Remove the Python event filter before detaching the completer.
+            # The popup may otherwise receive a queued Qt event after this
+            # editor's native object has already been released.
+            self.removeEventFilter(self)
+            popup.removeEventFilter(self)
+            popup_viewport.removeEventFilter(self)
+            popup.hide()
+
+            try:
+                completer.activated[QtCore.QModelIndex].disconnect(
+                    self._insert_completion
+                )
+            except (RuntimeError, TypeError):
+                pass
+            completer.setWidget(None)
+            completer.setModel(None)
+            self._qt_completer = None
+        else:
+            pass
+
+        try:
+            self._completion_shortcut.activated.disconnect(
+                self._trigger_manual_completion
+            )
+        except (RuntimeError, TypeError):
+            pass
+        self._completion_shortcut.setEnabled(False)
+
+        # Clear Python-side references only after the Qt completer no longer
+        # observes the model or editor. The parent widget will subsequently
+        # destroy the child QObjects in Qt's normal ownership order.
+        self._completion_model.clear()
+        self._completion_entries.clear()
+        self._search_ranges.clear()
 
     def set_symbol_namespace(self, symbol_namespace: Mapping[str, Expr]) -> None:
         """Replace the symbolic identities accepted by DAE validation.
@@ -4956,6 +5020,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         else:
             self._prepared_to_delete = True
             self._runtime_logic_editor.prepare_to_delete()
+            self._dae_editor.prepare_to_delete()
             self._general_parameter_table.setModel(None)
             self._symbol_table.setModel(None)
             self._parameter_symbol_table.setModel(None)

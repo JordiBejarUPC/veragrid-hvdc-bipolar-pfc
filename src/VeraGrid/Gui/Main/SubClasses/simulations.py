@@ -3940,13 +3940,15 @@ class SimulationsMain(TimeEventsMain):
         :return: None.
         """
         _, results = self.session.rms_dynamic_simulation
+        rms_thread: GcThread | None = self.session.threads.get(SimulationTypes.RmsDynamic_run, None)
+
+        # A completed or failed worker is no longer an active simulation. Keep
+        # this cleanup outside the results branch because an engine validation
+        # error deliberately produces no result shell.
+        self.remove_simulation(SimulationTypes.RmsDynamic_run)
+        self.update_available_results()
 
         if results is not None:
-
-            # delete from the current simulations
-            self.remove_simulation(SimulationTypes.RmsDynamic_run)
-            self.update_available_results()
-
             # Only active event groups are simulated, so the completion report
             # must ignore inactive groups whose default result flags remain False.
             active_group_indices: list[int] = list()
@@ -3998,7 +4000,10 @@ class SimulationsMain(TimeEventsMain):
                 self.show_info_toast("There are no active RMS event groups to report.")
 
         else:
-            warning_msg('There are no rms simulation results.', 'Rms simulation')
+            if rms_thread is not None and rms_thread.logger.has_logs():
+                self.show_logs(logger=rms_thread.logger, name="RMS simulation error")
+            else:
+                warning_msg('There are no rms simulation results.', 'Rms simulation')
 
         if not self.session.is_anything_running():
             self.UNLOCK()
@@ -4146,13 +4151,14 @@ class SimulationsMain(TimeEventsMain):
         """
         _, results = self.session.emt_dynamic_simulation
         emt_driver, _unused_results = self.session.emt_dynamic_simulation
+        emt_thread: GcThread | None = self.session.threads.get(SimulationTypes.EmtDynamic_run, None)
+
+        # A failed construction has no results object, but it has still finished.
+        # Always clear the running entry so the GUI unlocks and can run again.
+        self.remove_simulation(SimulationTypes.EmtDynamic_run)
+        self.update_available_results()
 
         if results is not None:
-
-            # delete from the current simulations
-            self.remove_simulation(SimulationTypes.EmtDynamic_run)
-            self.update_available_results()
-
             # Only active event groups are simulated, so the completion report
             # must ignore inactive groups whose default result flags remain False.
             active_group_indices: list[int] = list()
@@ -4203,18 +4209,31 @@ class SimulationsMain(TimeEventsMain):
                 self.show_info_toast("There are no active EMT event groups to report.")
 
         else:
-            if emt_driver is not None and emt_driver.logger.has_logs():
-                self.show_logs(logger=emt_driver.logger, name="EMT simulation logs")
-            else:
-                pass
+            has_detailed_logs: bool = False
 
-            emt_thread = self.session.threads.get(SimulationTypes.EmtDynamic_run, None)
+            # GcThread carries both the uncaught exception and the driver's logs,
+            # so it is the authoritative source for construction failures.
             if emt_thread is not None and emt_thread.logger.has_logs():
                 self.show_logs(logger=emt_thread.logger, name="EMT simulation error")
+                has_detailed_logs = True
             else:
                 pass
 
-            warning_msg('There are no emt simulation results.', 'Emt simulation')
+            # Keep a driver fallback for failures reported without an uncaught
+            # exception. Do not show it after the thread logger because the thread
+            # already merges those records and duplicate dialogs obscure the cause.
+            if has_detailed_logs:
+                pass
+            elif emt_driver is not None and emt_driver.logger.has_logs():
+                self.show_logs(logger=emt_driver.logger, name="EMT simulation logs")
+                has_detailed_logs = True
+            else:
+                pass
+
+            if has_detailed_logs:
+                pass
+            else:
+                warning_msg('There are no emt simulation results.', 'Emt simulation')
 
         if not self.session.is_anything_running():
             self.UNLOCK()
@@ -4415,24 +4434,28 @@ class SimulationsMain(TimeEventsMain):
         else:
             pass
 
-    def post_emt_small_signal_stability(self):
-        """
+    def post_emt_small_signal_stability(self) -> None:
+        """Finalize EMT small-signal analysis and expose engine diagnostics.
 
-        :return:
+        :return: None.
         """
         _, results = self.session.small_signal_stability_simulation
+        emt_thread: GcThread | None = self.session.threads.get(SimulationTypes.EmtSmallSignal_run, None)
 
-        if results is not None:
+        # Problem construction can fail before a results object exists, so the
+        # active-run bookkeeping must be cleared on both outcomes.
+        self.remove_simulation(SimulationTypes.EmtSmallSignal_run)
+        self.update_available_results()
 
-            # delete from the current simulations
-            self.remove_simulation(SimulationTypes.EmtSmallSignal_run)
-            self.update_available_results()
-
+        if results is not None and (emt_thread is None or not emt_thread.has_failed()):
             self.show_info_toast("Small-Signal stability analysis EMT has finished correctly!")
 
         else:
-            warning_msg('There are no Small-Signal Stability analysis EMT results.',
-                        'Small-Signal Stability analysis EMT')
+            if emt_thread is not None and emt_thread.logger.has_logs():
+                self.show_logs(logger=emt_thread.logger, name="EMT small-signal simulation error")
+            else:
+                warning_msg('There are no Small-Signal Stability analysis EMT results.',
+                            'Small-Signal Stability analysis EMT')
 
         if not self.session.is_anything_running():
             self.UNLOCK()

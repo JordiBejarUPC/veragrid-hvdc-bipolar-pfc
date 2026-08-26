@@ -79,6 +79,137 @@ from VeraGridEngine.Devices.Dynamic.static_parameter_mapping_unified import (
 )
 
 
+def _get_static_mapping_keys_for_parameter(
+        root_block: Block,
+        parameter: Var,
+) -> List[ParamPowerFlowReferenceType]:
+    """Return the static API mapping keys that target one EMT parameter.
+
+    EMT models can expose the authoritative mapping either on their wrapper
+    root or on a nested equation block. Traversing the complete hierarchy keeps
+    the diagnostic valid for both representations.
+
+    :param root_block: Complete EMT model assigned to the static device.
+    :param parameter: Constant symbolic parameter being diagnosed.
+    :return: Mapping keys whose target has the same immutable UID.
+    """
+    mapping_keys: List[ParamPowerFlowReferenceType] = list()
+    candidate_block: Block
+    mapping_key: ParamPowerFlowReferenceType
+    mapping_target: Var
+
+    for candidate_block in root_block.get_all_blocks():
+        for mapping_key, mapping_target in candidate_block.api_obj_mapping.items():
+            if mapping_target.uid == parameter.uid:
+                mapping_keys.append(mapping_key)
+            else:
+                pass
+
+    return mapping_keys
+
+
+def _get_static_parameter_value_by_uid(
+        parameter: Var,
+        static_parameter_values: Dict[Var, Const],
+) -> Const | None:
+    """Return a mapped EMT static value using symbolic UID identity.
+
+    Saved Dynamic Editor models may contain cloned ``Var`` objects that preserve
+    the canonical UID. UID matching avoids losing a valid mapping because the
+    dictionary contains a different Python object instance.
+
+    :param parameter: Symbolic parameter whose value is required.
+    :param static_parameter_values: Values resolved by the static API mapper.
+    :return: Mapped constant, or ``None`` when no mapping was resolved.
+    """
+    direct_value: Const | None = static_parameter_values.get(parameter, None)
+
+    if direct_value is not None:
+        return direct_value
+    else:
+        pass
+
+    mapped_parameter: Var
+    mapped_value: Const
+    for mapped_parameter, mapped_value in static_parameter_values.items():
+        if mapped_parameter.uid == parameter.uid:
+            return mapped_value
+        else:
+            pass
+
+    return None
+
+
+def _resolve_emt_constant_parameter_value(
+        device: ALL_DEV_TYPES,
+        root_block: Block,
+        owner_block: Block,
+        parameter: Var,
+        declared_value: Const,
+        static_parameter_values: Dict[Var, Const],
+) -> Const:
+    """Resolve one EMT constant before registering the DAE problem.
+
+    Numerical template constants are self-contained. A ``Const(None)`` is a
+    required static-device placeholder and is valid only when
+    ``api_obj_mapping`` has supplied a concrete value. Raising during assembly
+    prevents a later context-free NumPy conversion failure.
+
+    :param device: Static device that owns the EMT model.
+    :param root_block: Complete EMT model assigned to ``device``.
+    :param owner_block: Block that declares the constant parameter.
+    :param parameter: Symbolic constant parameter.
+    :param declared_value: Value stored in ``owner_block.parameters``.
+    :param static_parameter_values: Values resolved from ``api_obj_mapping``.
+    :return: Concrete constant that the EMT problem can register.
+    :raises ValueError: If no numerical source exists for the parameter.
+    """
+    mapped_value: Const | None = _get_static_parameter_value_by_uid(
+        parameter=parameter,
+        static_parameter_values=static_parameter_values,
+    )
+    resolved_value: Const
+
+    if mapped_value is None:
+        resolved_value = declared_value
+    else:
+        resolved_value = mapped_value
+
+    if resolved_value.value is None:
+        mapping_keys: List[ParamPowerFlowReferenceType] = _get_static_mapping_keys_for_parameter(
+            root_block=root_block,
+            parameter=parameter,
+        )
+        mapping_names: List[str] = list()
+        mapping_key: ParamPowerFlowReferenceType
+
+        for mapping_key in mapping_keys:
+            mapping_names.append(mapping_key.name)
+
+        if len(mapping_names) == 0:
+            mapping_diagnostic: str = (
+                "the parameter is not targeted by any api_obj_mapping entry"
+            )
+        else:
+            mapping_diagnostic = (
+                "api_obj_mapping targets it through ["
+                + ", ".join(mapping_names)
+                + "], but the static mapper produced no value"
+            )
+
+        raise ValueError(
+            "Unresolved EMT constant parameter "
+            + f"'{parameter.name}' in block '{owner_block.name}' of "
+            + f"{device.device_type.value} '{device.name}': {mapping_diagnostic}. "
+            + "A parameter declared as Const(None) must be linked to a supported "
+            + "static device property through the EMT root api_obj_mapping."
+        )
+    else:
+        pass
+
+    return resolved_value
+
+
 def _tic() -> float:
     """
     Returns the current performance counter time.
@@ -1987,6 +2118,8 @@ class EmtProblemDae(EmtProblemTemplate):
         self._local_bus_kcl_blocks: List[Block] = list()
         self._local_external_mapping_by_block_uid: Dict[int, Dict[Any, Var]] = dict()
         self._local_api_mapping_by_block_uid: Dict[int, Dict[ParamPowerFlowReferenceType, Any]] = dict()
+        self._runtime_parameter_owner_blocks: Dict[int, Block] = dict()
+        self._runtime_parameter_devices: Dict[int, ALL_DEV_TYPES] = dict()
 
         static_parameter_values_mapping: Dict[Var, Const] = dict()
 
@@ -2126,6 +2259,11 @@ class EmtProblemDae(EmtProblemTemplate):
                 pass
             else:
                 self._event_params_values[runtime_idx_promote] = float(value)
+        # At this point every PF-derived runtime seed has been applied and the
+        # canonical event equations have been refreshed. A remaining null source
+        # is therefore either owned by explicit initialization/mode logic or is a
+        # genuine model contract error that should be reported with full context.
+        self._validate_runtime_parameter_sources_after_power_flow()
         if self.progress_signal is not None:
             self.progress_signal.emit(5)
 
@@ -3767,7 +3905,109 @@ class EmtProblemDae(EmtProblemTemplate):
         else:
             pass
 
-    def _process_device_model(self, dev: Any, mdl:Block, sys_block: Block) -> Block:
+    def _validate_runtime_parameter_sources_after_power_flow(self) -> None:
+        """Validate EMT runtime sources after operating-point seeding.
+
+        EMT templates intentionally leave several event parameters undefined
+        until the power-flow operating point is available. Running this check
+        after the seed refresh avoids rejecting those valid placeholders while
+        still stopping before the expensive symbolic/native initialization when
+        a parameter has no source at all.
+
+        :return: None.
+        :raises ValueError: If a runtime parameter has no numerical, symbolic,
+            power-flow, initialization-equation, or retained-mode source.
+        """
+        parameter_index: int = 0
+        parameter_count: int = len(self._variable_parameters)
+        hierarchical_initialization_source_uids: set[int] = set()
+        initialization_variable: Var
+        initialization_expression: Expr | Const | None
+
+        # Wrapper models can keep the initialization equation on an ancestor
+        # block rather than beside the event declaration. Preserve that valid
+        # ownership pattern by checking the already-flattened initialization map.
+        for initialization_variable, initialization_expression in self._init_eqs_flat.items():
+            if isinstance(initialization_expression, Const) and initialization_expression.value is None:
+                pass
+            elif initialization_expression is None:
+                pass
+            else:
+                hierarchical_initialization_source_uids.add(initialization_variable.uid)
+
+        while parameter_index < parameter_count:
+            parameter: Var = self._variable_parameters[parameter_index]
+            declared_expression: Expr | Const = self._event_parameters_eqs[parameter_index]
+
+            if isinstance(declared_expression, Const) and declared_expression.value is None:
+                owner_block: Block | None = self._runtime_parameter_owner_blocks.get(parameter.uid, None)
+                device: ALL_DEV_TYPES | None = self._runtime_parameter_devices.get(parameter.uid, None)
+
+                if owner_block is None or device is None:
+                    raise ValueError(
+                        "Unresolved EMT dynamic parameter "
+                        + f"'{parameter.name}': its Const(None) source is not associated "
+                        + "with a device and owner block in the assembled EMT problem."
+                    )
+                else:
+                    has_power_flow_seed: bool = (
+                        parameter.uid in self._temp_init_guess
+                        or parameter.uid in self._temp_post_init_guess
+                        or parameter.uid in self.event_params_init_dict
+                    )
+                    is_discrete_parameter: bool = parameter.uid in self._runtime_mode_uids
+                    owner_initialization_expression: Expr | Const | None = None
+                    owner_initialization_variable: Var
+                    owner_candidate_expression: Expr | Const
+
+                    # A legacy model can retain the initialization source beside
+                    # its event declaration. Check that source in addition to the
+                    # already-flattened hierarchical initialization equations.
+                    for owner_initialization_variable, owner_candidate_expression in owner_block.init_eqs.items():
+                        if owner_initialization_variable.uid == parameter.uid:
+                            owner_initialization_expression = owner_candidate_expression
+                        else:
+                            pass
+
+                    has_owner_initialization_source: bool
+                    if owner_initialization_expression is None:
+                        has_owner_initialization_source = False
+                    elif (isinstance(owner_initialization_expression, Const)
+                          and owner_initialization_expression.value is None):
+                        has_owner_initialization_source = False
+                    else:
+                        has_owner_initialization_source = True
+
+                    has_hierarchical_initialization_source: bool = (
+                        parameter.uid in hierarchical_initialization_source_uids
+                    )
+                    if has_power_flow_seed:
+                        pass
+                    elif has_owner_initialization_source:
+                        pass
+                    elif has_hierarchical_initialization_source:
+                        pass
+                    elif is_discrete_parameter:
+                        pass
+                    else:
+                        raise ValueError(
+                            "Unresolved EMT dynamic parameter "
+                            + f"'{parameter.name}' in block '{owner_block.name}' of "
+                            + f"{device.device_type.value} '{device.name}'. "
+                            + "Provide a numerical/symbolic value in event_dict, an "
+                            + "initialization equation for the same parameter, or a "
+                            + "supported power-flow initialization mapping."
+                        )
+            else:
+                pass
+
+            parameter_index += 1
+
+    def _process_device_model(self,
+                              dev: ALL_DEV_TYPES,
+                              mdl: Block,
+                              sys_block: Block,
+                              static_parameter_values_mapping: Dict[Var, Const]) -> Block:
         """
         Register a device EMT model into the global system block.
 
@@ -3777,11 +4017,35 @@ class EmtProblemDae(EmtProblemTemplate):
         restored on the device root before the block is added to the global system.
 
         :param dev: Device object from the grid.
-        :param mdl: Device block
+        :param mdl: Device block.
         :param sys_block: Main DAE system block.
+        :param static_parameter_values_mapping: Static parameter values already
+            resolved from the device API mapping.
         :return: Unified device block.
         """
         resolved_external_mapping: Dict[Any, Var]
+
+        # Validate static constants while this device still owns its complete
+        # hierarchy. Child-first traversal preserves the most specific block name
+        # when wrapper parameters have been temporarily mirrored at the root.
+        validated_parameter_uids: set[int] = set()
+        validation_block: Block
+        constant_parameter: Var
+        declared_constant: Const
+        for validation_block in reversed(mdl.get_all_blocks()):
+            for constant_parameter, declared_constant in validation_block.parameters.items():
+                if constant_parameter.uid in validated_parameter_uids:
+                    pass
+                else:
+                    _resolve_emt_constant_parameter_value(
+                        device=dev,
+                        root_block=mdl,
+                        owner_block=validation_block,
+                        parameter=constant_parameter,
+                        declared_value=declared_constant,
+                        static_parameter_values=static_parameter_values_mapping,
+                    )
+                    validated_parameter_uids.add(constant_parameter.uid)
 
         # Wrapper roots may not own the PF-parameter mapping directly, so the
         # hierarchy is flattened into one root-visible mapping before build use.
@@ -3802,6 +4066,19 @@ class EmtProblemDae(EmtProblemTemplate):
 
         parameter_owner_blocks: List[Block] = _collect_block_hierarchy(mdl)
         parameter_owner_block: Block
+
+        # Preserve device and block ownership until PF-derived runtime values have
+        # been applied. The later validation can then explain exactly which model
+        # contract left a placeholder unresolved.
+        runtime_parameter: Var
+        for parameter_owner_block in parameter_owner_blocks:
+            for runtime_parameter in parameter_owner_block.event_dict.keys():
+                self._runtime_parameter_owner_blocks[runtime_parameter.uid] = parameter_owner_block
+                self._runtime_parameter_devices[runtime_parameter.uid] = dev
+
+            for runtime_parameter in parameter_owner_block.mode_dict.keys():
+                self._runtime_parameter_owner_blocks[runtime_parameter.uid] = parameter_owner_block
+                self._runtime_parameter_devices[runtime_parameter.uid] = dev
 
         # Register runtime-updatable EMT parameters declared by the device block.
         # EMT runtime events are no longer baked into the symbolic model during the
@@ -4083,7 +4360,12 @@ class EmtProblemDae(EmtProblemTemplate):
         )
 
         _promote_child_static_parameters_to_wrapper_root(br_working_mdl)
-        mdl: Block = self._process_device_model(dev=branch, mdl=br_working_mdl, sys_block=sys_block)
+        mdl: Block = self._process_device_model(
+            dev=branch,
+            mdl=br_working_mdl,
+            sys_block=sys_block,
+            static_parameter_values_mapping=static_parameter_values_mapping,
+        )
         _restore_wrapper_root_parameter_snapshot(br_working_mdl, original_root_parameters)
 
         is_bergeron: bool
@@ -4699,7 +4981,12 @@ class EmtProblemDae(EmtProblemTemplate):
         )
 
         _promote_child_static_parameters_to_wrapper_root(inj_working_mdl)
-        mdl: Block = self._process_device_model(dev=injection, mdl=inj_working_mdl, sys_block=sys_block)
+        mdl: Block = self._process_device_model(
+            dev=injection,
+            mdl=inj_working_mdl,
+            sys_block=sys_block,
+            static_parameter_values_mapping=static_parameter_values_mapping,
+        )
         _restore_wrapper_root_parameter_snapshot(inj_working_mdl, original_root_parameters)
 
         b: int = bus_dict[injection.bus]
@@ -4930,7 +5217,8 @@ class EmtProblemDae(EmtProblemTemplate):
                               sys_block: Block,
                               bus: Any,
                               bus_index: int,
-                              bus_working_models: Dict[Any, Block]) -> None:
+                              bus_working_models: Dict[Any, Block],
+                              static_parameter_values_mapping: Dict[Var, Const]) -> None:
         """
         Register one EMT bus device and seed its PF initialization.
 
@@ -4938,6 +5226,8 @@ class EmtProblemDae(EmtProblemTemplate):
         :param bus: Bus device.
         :param bus_index: Bus index.
         :param bus_working_models: Local bus working models.
+        :param static_parameter_values_mapping: Static parameter values already
+            resolved while assembling the EMT problem.
         :return: None.
         """
         disposition: str = self._get_device_emt_disposition(bus.device_type)
@@ -4948,7 +5238,12 @@ class EmtProblemDae(EmtProblemTemplate):
             return
 
         bus_working_mdl: Block = bus_working_models[bus]
-        mdl: Block = self._process_device_model(dev=bus, mdl=bus_working_mdl, sys_block=sys_block)
+        mdl: Block = self._process_device_model(
+            dev=bus,
+            mdl=bus_working_mdl,
+            sys_block=sys_block,
+            static_parameter_values_mapping=static_parameter_values_mapping,
+        )
 
         if self.power_flow_results_3ph is not None:
             self._try_set_bus_pf_init(bus=bus, mdl=mdl, bus_index=bus_index)
@@ -5153,6 +5448,7 @@ class EmtProblemDae(EmtProblemTemplate):
                 bus=bus,
                 bus_index=bus_idx,
                 bus_working_models=bus_working_models,
+                static_parameter_values_mapping=static_parameter_values_mapping,
             )
 
         for bus_idx, bus in enumerate(grid.buses):

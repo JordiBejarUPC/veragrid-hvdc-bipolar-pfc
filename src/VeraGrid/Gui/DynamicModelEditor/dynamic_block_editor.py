@@ -10963,8 +10963,58 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
+        properties_dialogue: DynamicBlockPropertiesDialog | None = self._block_properties_dialogue
+        if properties_dialogue is not None:
+            # The dialogue can outlive its editor until DeferredDelete is
+            # processed. Disconnect every Python receiver first so no queued
+            # properties signal can call into the dismantled editor.
+            try:
+                properties_dialogue.blockApplied.disconnect(
+                    self.on_block_properties_applied
+                )
+            except (RuntimeError, TypeError):
+                pass
+            try:
+                properties_dialogue.structuralRebuildRequested.disconnect(
+                    self.on_structural_rebuild_requested
+                )
+            except (RuntimeError, TypeError):
+                pass
+            try:
+                properties_dialogue.variableRenameRequested.disconnect(
+                    self.on_variable_rename_requested
+                )
+            except (RuntimeError, TypeError):
+                pass
+            try:
+                properties_dialogue.outputExportChangesRequested.disconnect(
+                    self.on_output_export_changes_requested
+                )
+            except (RuntimeError, TypeError):
+                pass
+        else:
+            pass
+
         properties_dock: DynamicBlockPropertiesDockWidget | None = self._block_properties_dock
         if properties_dock is not None:
+            try:
+                properties_dock.closed.disconnect(
+                    self.on_block_properties_dock_closed
+                )
+            except (RuntimeError, TypeError):
+                pass
+            try:
+                properties_dock.dockLocationChanged.disconnect(
+                    self.on_block_properties_dock_location_changed
+                )
+            except (RuntimeError, TypeError):
+                pass
+            try:
+                properties_dock.topLevelChanged.disconnect(
+                    self.on_block_properties_dock_top_level_changed
+                )
+            except (RuntimeError, TypeError):
+                pass
             properties_dock.prepare_to_delete()
             self.removeDockWidget(properties_dock)
             properties_dock.setParent(None)
