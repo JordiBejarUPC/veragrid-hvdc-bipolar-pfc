@@ -843,6 +843,7 @@ class NumericalCircuit:
         else:
             bus_types = np.array(bus_types, dtype=int, copy=True)
 
+        # TODO: SANPEN: What is this and why is it here? probably colliding with problem-specific logic later
         # Promote one PV source in every AC phase region before the generic
         # classifier runs. Imported PV/SL semantics remain unchanged in
         # MultiCircuit while VSC/DC links stay outside the phase graph.

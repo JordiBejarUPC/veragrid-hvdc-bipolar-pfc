@@ -6525,7 +6525,7 @@ class Assets:
                 pass
         return result
 
-    def get_emt_templates_for_editor(self, tpe: DeviceType) -> List[dev.EmtModelTemplate]:
+    def get_emt_templates_for_editor(self, tpe: DeviceType) -> List[dev.EmtModelTemplate]:  # TODO: SANPEN: WTF is this? GUI code on the engine?
         """Return EMT device, component and measurement templates for editing.
 
         :param tpe: Device type whose internal model is being composed.

@@ -818,6 +818,8 @@ def __multi_island_pf_nc_complete_support(nc: NumericalCircuit,
                 hvdc_idx=island.hvdc_data.original_idx,
                 vsc_idx=island.vsc_data.original_idx
             )
+
+            # TODO: SANPEN: This must be inside apply_from_island, looks like fucking AI garbage
             # Preserve the numerical bus modes actually used by this island,
             # including any automatically promoted angular reference.
             results.bus_types[island.bus_data.original_idx] = (

@@ -281,8 +281,8 @@ class Line(BranchParent):
     )
 
     def __init__(self,
-                 bus_from: Bus = None,
-                 bus_to: Bus = None,
+                 bus_from: Bus | None = None,
+                 bus_to: Bus | None = None,
                  name='Line',
                  idtag=None,
                  code='',
@@ -312,6 +312,7 @@ class Line(BranchParent):
                  opex=0,
                  circuit_idx: int = 1,
                  build_status: BuildStatus = BuildStatus.Commissioned,
+                 # TODO: SANPEN: Why are these here?
                  dc_series_inductance_pu_seconds: float = 0.0,
                  dc_shunt_capacitance_pu_seconds: float = 0.0,
                  dc_cable_dynamic_parameters_complete: bool = False):
@@ -996,6 +997,7 @@ class Line(BranchParent):
             return 0.0
         else:
             # TODO: consider using line.ys and line.ysh instead
+            # TODO: SANPEN For AlexBlanco: Member SequenceLineType of OverheadLineType | SequenceLineType | UndergroundLineType does not have attribute z_nabc
             # Physical Parameters from Carson's
             Z = self.template.z_nabc  # from Carson ohm/km
             Y = self.template.y_nabc  # from Carson ohm/km

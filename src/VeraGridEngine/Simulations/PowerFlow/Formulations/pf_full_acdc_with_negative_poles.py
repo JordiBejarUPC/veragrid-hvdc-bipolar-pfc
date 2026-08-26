@@ -3119,6 +3119,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             autodiff = self.use_autodiff_jacobian
 
         if autodiff:
+            # TODO: SANPEN: And what if the Jacobian is not complete because we haven't computed the derivatives and we want the autodiff for debugging? Again, AI Slop
             sparsity: CSC = self.Jacobian(autodiff=False)
             J: CSC = calc_autodiff_jacobian(func=self.compute_f,
                                             x=self.var2x(),
