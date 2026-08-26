@@ -3286,6 +3286,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             )
             dialogue.variableRenameRequested.connect(self.on_variable_rename_requested)
             dialogue.outputExportChangesRequested.connect(self.on_output_export_changes_requested)
+            if self.current_theme == DynEditorGraphicsModes.DARK:
+                dialogue.set_dark_mode()
+            else:
+                dialogue.set_light_mode()
             properties_dock: DynamicBlockPropertiesDockWidget = DynamicBlockPropertiesDockWidget(
                 properties_widget=dialogue,
                 parent=self,
@@ -13483,8 +13487,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return: None.
         """
         confirmed: bool = yes_no_question(
-            text="You are going to delete the complete model and start from scratch. Are you sure?",
-            title="Delete all"
+            text=self.tr("You are going to delete the complete model and start from scratch. Are you sure?"),
+            title=self.tr("Delete all")
         )
 
         if confirmed:
@@ -15005,7 +15009,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
         # Create dialog
         dialog = QDialog(self)
-        dialog.setWindowTitle("Inspect Model")
+        dialog.setWindowTitle(self.tr("Inspect Model"))
         dialog.resize(600, 400)
 
         # create layout
@@ -16397,8 +16401,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         reply = QtWidgets.QMessageBox.question(
             parent if parent is not None else self,
-            "Unsaved changes",
-            "There are unapplied changes. Do you want to close without applying them?",
+            self.tr("Unsaved changes"),
+            self.tr("There are unapplied changes. Do you want to close without applying them?"),
             QtWidgets.QMessageBox.StandardButton.Yes,
             QtWidgets.QMessageBox.StandardButton.No,
         )
@@ -16643,6 +16647,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 item.recolour()
             else:
                 pass
+        if self._block_properties_dialogue is not None:
+            self._block_properties_dialogue.set_dark_mode()
+        else:
+            pass
 
     def set_light_mode(self) -> None:
         """
@@ -16660,3 +16668,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 item.recolour()
             else:
                 pass
+        if self._block_properties_dialogue is not None:
+            self._block_properties_dialogue.set_light_mode()
+        else:
+            pass

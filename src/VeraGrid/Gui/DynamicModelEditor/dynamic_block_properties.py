@@ -3203,21 +3203,55 @@ class DaeCodeHighlighter(QtGui.QSyntaxHighlighter):
         """
         super().__init__(document)
         self._keyword_format: QtGui.QTextCharFormat = QtGui.QTextCharFormat()
-        self._keyword_format.setForeground(QtGui.QColor("#7c3aed"))
         self._keyword_format.setFontWeight(QtGui.QFont.Weight.Bold)
         self._number_format: QtGui.QTextCharFormat = QtGui.QTextCharFormat()
-        self._number_format.setForeground(QtGui.QColor("#0369a1"))
         self._string_format: QtGui.QTextCharFormat = QtGui.QTextCharFormat()
-        self._string_format.setForeground(QtGui.QColor("#15803d"))
         self._comment_format: QtGui.QTextCharFormat = QtGui.QTextCharFormat()
-        self._comment_format.setForeground(QtGui.QColor("#64748b"))
         self._comment_format.setFontItalic(True)
         self._symbol_format: QtGui.QTextCharFormat = QtGui.QTextCharFormat()
-        self._symbol_format.setForeground(QtGui.QColor("#b45309"))
         self._function_format: QtGui.QTextCharFormat = QtGui.QTextCharFormat()
-        self._function_format.setForeground(QtGui.QColor("#0369a1"))
         self._function_format.setFontWeight(QtGui.QFont.Weight.Bold)
         self._symbol_names: tuple[str, ...] = tuple(symbol_names)
+        self.set_light_mode()
+
+    def apply_theme(self, dark_theme: bool) -> None:
+        """
+        Apply DAE token colors for the current editor theme.
+
+        :param dark_theme: Whether to use the dark token palette.
+        :return: None.
+        """
+        if dark_theme:
+            self._keyword_format.setForeground(QtGui.QColor("#A78BFA"))
+            self._number_format.setForeground(QtGui.QColor("#7DD3FC"))
+            self._string_format.setForeground(QtGui.QColor("#86EFAC"))
+            self._comment_format.setForeground(QtGui.QColor("#94A3B8"))
+            self._symbol_format.setForeground(QtGui.QColor("#FBBF24"))
+            self._function_format.setForeground(QtGui.QColor("#7DD3FC"))
+        else:
+            self._keyword_format.setForeground(QtGui.QColor("#7C3AED"))
+            self._number_format.setForeground(QtGui.QColor("#0369A1"))
+            self._string_format.setForeground(QtGui.QColor("#15803D"))
+            self._comment_format.setForeground(QtGui.QColor("#64748B"))
+            self._symbol_format.setForeground(QtGui.QColor("#B45309"))
+            self._function_format.setForeground(QtGui.QColor("#0369A1"))
+        self.rehighlight()
+
+    def set_dark_mode(self) -> None:
+        """
+        Apply dark DAE syntax colors.
+
+        :return: None.
+        """
+        self.apply_theme(dark_theme=True)
+
+    def set_light_mode(self) -> None:
+        """
+        Apply light DAE syntax colors.
+
+        :return: None.
+        """
+        self.apply_theme(dark_theme=False)
 
     def set_symbol_names(self, symbol_names: Sequence[str]) -> None:
         """
@@ -5511,6 +5545,22 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             return True
         else:
             return False
+
+    def set_dark_mode(self) -> None:
+        """Apply the dark theme to the owned code editors.
+
+        :return: None.
+        """
+        self._dae_editor.set_dark_mode()
+        self._dae_highlighter.set_dark_mode()
+
+    def set_light_mode(self) -> None:
+        """Apply the light theme to the owned code editors.
+
+        :return: None.
+        """
+        self._dae_editor.set_light_mode()
+        self._dae_highlighter.set_light_mode()
 
     def _build_general_page(self) -> QtWidgets.QWidget:
         """

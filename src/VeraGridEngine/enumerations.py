@@ -2963,6 +2963,8 @@ class ResultTypes(Enum):
     AvailableTransferCapacityAlpha = 'Sensitivity to the exchange'
     AvailableTransferCapacityAlphaN1 = 'Sensitivity to the exchange (N-1)'
     NetTransferCapacity = 'Net transfer capacity'
+    NetTransferCapacitySlack = 'Net transfer capacity slack'
+    NetTransferCapacityStatus = 'Net transfer capacity status'
     AvailableTransferCapacityReport = 'ATC Report'
 
     BaseFlowReport = 'Ntc: Base flow report'
