@@ -5239,6 +5239,12 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._general_parameter_table.setModel(self._general_parameter_proxy)
         parameter_header: QtWidgets.QHeaderView = self._general_parameter_table.horizontalHeader()
         configure_interactive_table_header(parameter_header, list((270, 520, 180,)))
+        # Match the compact catalogue-tree rhythm so long parameter lists show
+        # more engineering data without changing the editable column layout.
+        compact_row_height: int = self._general_parameter_table.fontMetrics().height() + 4
+        general_parameter_vertical_header: QtWidgets.QHeaderView = self._general_parameter_table.verticalHeader()
+        general_parameter_vertical_header.setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Fixed)
+        general_parameter_vertical_header.setDefaultSectionSize(compact_row_height)
         self._general_parameter_table.setAlternatingRowColors(True)
         self._general_parameter_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
         parameters_layout.addWidget(self._general_parameter_table)
@@ -5452,6 +5458,12 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._symbol_table.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
         self._symbol_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self._symbol_table.verticalHeader().setVisible(False)
+        # Use the same compact row rhythm as the catalogue selector while
+        # retaining the existing resizable columns and horizontal splitter.
+        compact_row_height: int = self._symbol_table.fontMetrics().height() + 4
+        variable_vertical_header: QtWidgets.QHeaderView = self._symbol_table.verticalHeader()
+        variable_vertical_header.setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Fixed)
+        variable_vertical_header.setDefaultSectionSize(compact_row_height)
         symbol_header: QtWidgets.QHeaderView = self._symbol_table.horizontalHeader()
         configure_interactive_table_header(
             symbol_header,
@@ -5482,6 +5494,9 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         )
         self._parameter_symbol_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self._parameter_symbol_table.verticalHeader().setVisible(False)
+        parameter_vertical_header: QtWidgets.QHeaderView = self._parameter_symbol_table.verticalHeader()
+        parameter_vertical_header.setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Fixed)
+        parameter_vertical_header.setDefaultSectionSize(compact_row_height)
         # Parameters reuse the staged symbol source model, but configuration
         # constants can never be output ports. Hide the interface-only column
         # instead of presenting a meaningless empty checkbox column.
