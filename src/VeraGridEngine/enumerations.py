@@ -2737,6 +2737,8 @@ class ResultTypes(Enum):
     AvailableTransferCapacityAlpha = 'Sensitivity to the exchange'
     AvailableTransferCapacityAlphaN1 = 'Sensitivity to the exchange (N-1)'
     NetTransferCapacity = 'Net transfer capacity'
+    NetTransferCapacitySlack = 'Net transfer capacity slack'
+    NetTransferCapacityStatus = 'Net transfer capacity status'
     AvailableTransferCapacityReport = 'ATC Report'
 
     BaseFlowReport = 'Ntc: Base flow report'
@@ -4459,7 +4461,11 @@ class BlockType(Enum):
     PLL_TRANSFORM_RMS = "Pll_transform_rms"
     PI_CURRENT_CONTROLLER = "Pi_current_controller"
     PI_POWER_CONTROLLER = "Pi_power_controller"
-    GFL_CONVERTER_RMS = "Gfl_converter_rms"
+    GFL_CONVERTER_RMS = "GFL_converter_rms"
+    GFL_VSC_HVDC_RMS = "GFL_vsc_hvdc"
+    VOLTAGE_SOURCE_RMS = "Voltage_source_rms"
+    TRANSFORMER_2W_RMS = "Transformer_2w_rms"
+    DC_LINE_RMS = "DC_line_rms"
 
     # EMT
     EMT_GENERATOR = "EMT_GENERATOR"

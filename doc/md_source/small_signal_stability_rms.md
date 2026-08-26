@@ -1,12 +1,12 @@
-# 🔍Small-Signal Stability Analysis
+# 🔍 Small-Signal Stability Analysis
 
-RMS small-signal stability analysis linearizes the RMS dynamic model around one operating point and computes the corresponding eigenvalues and modal information.
+RMS Small-Signal stability analysis linearizes the RMS dynamic model around one operating point and computes the corresponding eigenvalues and modal information.
 
-Before running the RMS small-signal assessment, a power-flow solution must exist because the RMS model is initialized from that operating point.
+Before running the RMS Small-Signal assessment, a power-flow solution must exist because the RMS model is initialized from that operating point.
 
 ## RMS Workflow
 
-The RMS small-signal driver follows two stages.
+The RMS Small-Signal driver follows two stages.
 
 1. Build and initialize the RMS DAE model from the grid and the power-flow results.
 2. Evaluate the linearization at the requested assessment time.
@@ -21,7 +21,7 @@ This is the Small-Signal settings page:
 
 ![](figures/dynamics/dynamic_settings.png)
 
-### Small-signal settings
+### Small-Signal settings
 
 - **Assessment time (s)**: Time instant where the linearization is evaluated.
 - **Modes**: Number of eigenvalues to compute.
@@ -46,11 +46,11 @@ When `ss_assessment_time > 0.0`, the RMS simulation settings become part of the 
 - **Simulation time**: Must be consistent with the requested assessment time when the RMS simulation is used.
 - **Verbose**: Controls the amount of printed diagnostic information.
 
-The small-signal driver currently advances the pre-assessment RMS simulation with the RMS integration method selected in `RmsOptions` and then evaluates the Jacobians at the requested time.
+The Small-Signal driver currently advances the pre-assessment RMS simulation with the RMS integration method selected in `RmsOptions` and then evaluates the Jacobians at the requested time.
 
 ## Numerical Formulation
 
-The RMS small-signal implementation supports two related formulations.
+The RMS Small-Signal implementation supports two related formulations.
 
 ### Standard formulation
 
@@ -138,7 +138,7 @@ Sparse calculation is the correct choice when:
 
 ## Results
 
-The RMS small-signal study provides four result tables.
+The RMS Small-Signal study provides four result tables.
 
 - **Modes**: Modal properties and the source table for the S-domain plot.
 - **Participation factors**: Normalized participation-factor matrix. Row `k`, column `i` gives the participation of variable `k` in mode `i`.
@@ -194,7 +194,7 @@ Complex-plane plotting is available for the original **Modes** and **Right eigen
 
 ### `SmallSignalStabilityRmsResults` registered properties
 
-The RMS small-signal stability result stores modal, matrix, and labeling data for the current linearization.
+The RMS Small-Signal stability result stores modal, matrix, and labeling data for the current linearization.
 
 | Property | Type | Description |
 |----------|------|-------------|
@@ -209,11 +209,11 @@ The RMS small-signal stability result stores modal, matrix, and labeling data fo
 
 ### `SmallSignalStabilityEmtResults` registered properties
 
-The EMT small-signal stability result stores multiplier, eigenvalue, and participation-factor data.
+The EMT Small-Signal stability result stores multiplier, eigenvalue, and participation-factor data.
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `multipliers` | `CxVec` | Discrete-time multipliers from the EMT small-signal analysis. |
+| `multipliers` | `CxVec` | Discrete-time multipliers from the EMT Small-Signal analysis. |
 | `eigenvalues` | `CxVec` | Eigenvalues of the linearized system. |
 | `participation_factors` | `Mat` | Participation-factor matrix relating states or variables to modes. |
 
@@ -254,7 +254,7 @@ The EMT result stores the simulated variable values.
 
 ## API
 
-The maintained RMS small-signal example is `trunk/dynamics/small_signal/rms_kundur_small_signal.py`. The pattern below follows the current driver usage.
+The maintained RMS Small-Signal example is `trunk/dynamics/small_signal/rms_kundur_small_signal.py`. The pattern below follows the current driver usage.
 
 ```python
 from pathlib import Path
@@ -697,7 +697,7 @@ grid.add_generator(bus=bus4, api_obj=gen4)
 # Run PowerFlow and Small-Signal stability
 ######################################################################################################
 
-# The RMS small-signal assessment always starts from one solved power flow.
+# The RMS Small-Signal assessment always starts from one solved power flow.
 pf_options = PowerFlowOptions(
         solver_type=gce.SolverType.NR,
         retry_with_other_methods=False,
@@ -780,7 +780,7 @@ In that case, the driver first runs the RMS simulation to `t = 5.0 s` and then c
 
 ### Running ANDES
 
-Thanks to its symbolic precision and reliable numerical performance, ANDES provides a great baseline for stability analysis in contemporary power system studies. That's why VeraGrid uses ANDES as its benchmark for small-signal analysis. Of course, VeraGrid successfully reproduces all eigenvalue placements from ANDES.
+Thanks to its symbolic precision and reliable numerical performance, ANDES provides a great baseline for stability analysis in contemporary power system studies. That's why VeraGrid uses ANDES as its benchmark for Small-Signal analysis. Of course, VeraGrid successfully reproduces all eigenvalue placements from ANDES.
 
 VeraGrid loads ANDES models by opening json files. Naturally, VeraGrid replicates all eigenvalue results from ANDES across standard benchmarks like the Kundur two area system with consistent accuracy and sub-second performance.
 
