@@ -115,6 +115,12 @@ class ResultsMain(SimulationsMain):
                 self.ui.resultsLogsTreeView.setModel(None)
                 return
 
+            if driver.results is None:
+                # set the logs
+                self.current_results_logger = None
+                self.ui.resultsLogsTreeView.setModel(None)
+                return
+
             # set the logs
             self.current_results_logger = driver.logger
             logs_mdl = fill_tree_from_logs(driver.logger)
@@ -547,7 +553,6 @@ class ResultsMain(SimulationsMain):
         :return: Nothing.
         """
 
-
         # A row insertion already happened inside the existing model. Rebuilding
         # the views here would destroy the exact expansion state we are trying to
         # preserve. The only required post-insert action is to keep the target
@@ -573,8 +578,9 @@ class ResultsMain(SimulationsMain):
             name_edit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(dialog)
             mode_label: QtWidgets.QLabel = QtWidgets.QLabel(self.tr("Plot mode"), dialog)
             mode_combo: QtWidgets.QComboBox = QtWidgets.QComboBox(dialog)
-            buttons: QtWidgets.QDialogButtonBox = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.StandardButton.Ok | QtWidgets.QDialogButtonBox.StandardButton.Cancel,
-                                                                              dialog)
+            buttons: QtWidgets.QDialogButtonBox = QtWidgets.QDialogButtonBox(
+                QtWidgets.QDialogButtonBox.StandardButton.Ok | QtWidgets.QDialogButtonBox.StandardButton.Cancel,
+                dialog)
             name_edit.setText(suggested_name)
             mode_combo.addItem(self.tr("Time Series (Y vs Time)"), DynamicPlotMode.TIME_SERIES)
             mode_combo.addItem(self.tr("X-Y Plot (Y vs X)"), DynamicPlotMode.XY)
@@ -665,7 +671,7 @@ class ResultsMain(SimulationsMain):
 
     def get_or_create_dynamic_results_handler(self,
                                               study_type: SimulationTypes,
-                                              results: RmsResults|EmtResults) -> DynamicsResultsHandler:
+                                              results: RmsResults | EmtResults) -> DynamicsResultsHandler:
         """
         Get a cached dynamic-results handler for the given study, or create/update it.
 
@@ -834,8 +840,8 @@ class ResultsMain(SimulationsMain):
             if number_of_plots > 50:
                 ok = yes_no_question(text=self.tr("There are {columns} columns, the plot might take a lot to render.\n"
                                                   "Are you ok with potentially waiting a lot?").format(
-                                                      columns=number_of_plots),
-                                     title=self.tr("Plot"))
+                    columns=number_of_plots),
+                    title=self.tr("Plot"))
             else:
                 ok = True
 
@@ -1002,7 +1008,6 @@ class ResultsMain(SimulationsMain):
 
         # Leave the dynamics tab and go back to the normal results table tab
         self.ui.resultsTabWidget.setCurrentIndex(0)
-
 
     def copy_opf_to_profiles(self):
         """
