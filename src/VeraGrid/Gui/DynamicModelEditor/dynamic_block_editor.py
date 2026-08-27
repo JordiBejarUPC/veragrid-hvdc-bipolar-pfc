@@ -6192,7 +6192,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
 
 
-
+    def add_measurements_items(self):
+        pass
 
     def add_connection_items(self, blocks_list: List[graph.BlockItem] | None = None) -> None:
         """
