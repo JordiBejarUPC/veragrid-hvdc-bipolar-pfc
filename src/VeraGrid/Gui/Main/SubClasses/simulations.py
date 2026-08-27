@@ -168,7 +168,7 @@ class SimulationsMain(TimeEventsMain):
 
         # ips solvers dictionary
         self.ui.ips_method_comboBox.setModel(
-            gf.ComboModel(enum_values=[SolverType.NR], translate=self.tr)
+            gf.ComboModel(enum_values=[SolverType.NR, SolverType.NR_PC], translate=self.tr)
         )
 
         # the MIP combobox models assigning is done in modify_ui_options_according_to_the_engine
