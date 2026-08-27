@@ -61,6 +61,19 @@ def _get_generator_q_for_split(nc: NumericalCircuit, V: CxVec) -> Vec:
     return q0_gen
 
 
+def voltage_guess_is_usable(V: CxVec) -> bool:
+    """
+    Check whether a voltage guess can safely seed nonlinear sparse solvers.
+
+    :param V: Voltage vector.
+    :return: True if the voltage vector is finite and numerically bounded.
+    """
+
+    usable: bool = bool(np.all(np.isfinite(V)) and np.all(np.abs(V) < 1.0e6))
+
+    return usable
+
+
 def __solve_island_complete_support(nc: NumericalCircuit,
                                     indices: SimulationIndices,
                                     options: PowerFlowOptions,
@@ -137,6 +150,12 @@ def __solve_island_complete_support(nc: NumericalCircuit,
         return solution, report
 
     else:
+        if voltage_guess_is_usable(V=V0):
+            V0 = V0
+        else:
+            logger.add_warning("Ignoring unusable power flow voltage guess")
+            V0 = nc.bus_data.Vbus
+
         final_solution = NumericPowerFlowResults(V=V0,
                                                  converged=False,
                                                  norm_f=1e200,
@@ -278,8 +297,12 @@ def __solve_island_complete_support(nc: NumericalCircuit,
             else:
                 pass
 
+            solution_is_usable: bool = bool(np.isfinite(solution.norm_f)
+                                            and np.all(np.isfinite(solution.V))
+                                            and np.all(np.abs(solution.V) < 1.0e6))
+
             # record the method used, if it improved the solution
-            if abs(solution.norm_f) < abs(final_solution.norm_f):
+            if solution_is_usable and abs(solution.norm_f) < abs(final_solution.norm_f):
                 report.add(method=solver_type,
                            converged=solution.converged,
                            error=solution.norm_f,
@@ -405,6 +428,11 @@ def __solve_island_limited_support(island: NumericalCircuit,
         return solution, report
 
     else:
+        if voltage_guess_is_usable(V=V0):
+            V0 = V0
+        else:
+            logger.add_warning("Ignoring unusable power flow voltage guess")
+            V0 = island.bus_data.Vbus
 
         adm = island.get_admittance_matrices()
 
@@ -700,8 +728,12 @@ def __solve_island_limited_support(island: NumericalCircuit,
             else:
                 pass
 
+            solution_is_usable: bool = bool(np.isfinite(solution.norm_f)
+                                            and np.all(np.isfinite(solution.V))
+                                            and np.all(np.abs(solution.V) < 1.0e6))
+
             # record the method used, if it improved the solution
-            if abs(solution.norm_f) < abs(final_solution.norm_f):
+            if solution_is_usable and abs(solution.norm_f) < abs(final_solution.norm_f):
                 report.add(method=solver_type,
                            converged=solution.converged,
                            error=solution.norm_f,
@@ -967,9 +999,17 @@ def multi_island_pf_nc(nc: NumericalCircuit,
         )
         V0 = results_0.voltage
     else:
-        V0 = nc.bus_data.Vbus if V_guess is None else V_guess[nc.bus_data.original_idx]
+        if V_guess is None:
+            V0 = nc.bus_data.Vbus
+        else:
+            V0 = V_guess[nc.bus_data.original_idx]
+            if voltage_guess_is_usable(V=V0):
+                V0 = V0
+            else:
+                logger.add_warning("Ignoring unusable power flow voltage guess")
+                V0 = nc.bus_data.Vbus
 
-    if nc.active_branch_data.any_pf_control:
+    if nc.active_branch_data.any_pf_control and options.solver_type != SolverType.HELM:
 
         results = __multi_island_pf_nc_complete_support(
             nc=nc,
