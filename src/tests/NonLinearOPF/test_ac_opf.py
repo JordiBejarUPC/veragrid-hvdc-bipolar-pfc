@@ -132,6 +132,34 @@ def case14_ctrlQ_shunts() -> NonlinearOPFResults:
     return base_sol
 
 
+def test_monitored_tap_control_hessian_entries_are_scalar() -> None:
+    """
+    Check that monitored tap-control Hessian entries stay scalar-valued.
+
+    :return: None.
+    """
+
+    file_path: str = os.path.join('data', 'grids', 'Matpower', 'case14.matpower')
+    grid: gce.MultiCircuit = gce.FileOpen(file_path).open()
+
+    for transformer in grid.transformers2w:
+        transformer.monitor_loading = True
+
+    grid.transformers2w[0].tap_phase_control_mode = TapPhaseControl.Pt
+    grid.transformers2w[0].tap_module_control_mode = TapModuleControl.Qt
+
+    opf_options: gce.OptimalPowerFlowOptions = gce.OptimalPowerFlowOptions(
+        ips_method=gce.SolverType.NR,
+        ips_iterations=1,
+        acopf_mode=gce.AcOpfMode.ACOPFstd,
+        ips_init_with_pf=False
+    )
+
+    res: NonlinearOPFResults = run_nonlinear_opf(grid=grid, opf_options=opf_options)
+
+    assert len(res.Vm) == len(grid.buses)
+
+
 def case_pegase89() -> NonlinearOPFResults:
     """
     Pegase89
