@@ -204,7 +204,6 @@ class DynamicEditorLibrary:
         "common_rms_device_blocks",
         "device_rms_related_blocks",
         "device_emt_related_blocks",
-        "control_rms_related_blocks",
         "tree_structure",
         "library_model",
     )
@@ -242,31 +241,21 @@ class DynamicEditorLibrary:
         self.common_rms_device_blocks: List[LibraryLeafSpec] = list((LibraryLeafSpec("Pll transformer", BlockType.PLL_TRANSFORM_RMS),
                                                                      LibraryLeafSpec("Pi current controller", BlockType.PI_CURRENT_CONTROLLER),
                                                                      LibraryLeafSpec("Pi power controller", BlockType.PI_POWER_CONTROLLER),
-                                                                     LibraryLeafSpec("VSC terminal power equations", BlockType.VSC_TERMINAL_POWER_RMS),
-                                                                     LibraryLeafSpec("Generic", BlockType.GENERIC),))
+                                                                     ))
 
         # devices rms
-        self.device_rms_related_blocks: Dict[DeviceType, List[LibraryLeafSpec]] = dict(((DeviceType.GeneratorDevice, list((LibraryLeafSpec("Generic", BlockType.GENERIC),
-                                                                                                                           LibraryLeafSpec("Voltage source", BlockType.VOLTAGE_SOURCE_RMS),
+        self.device_rms_related_blocks: Dict[DeviceType, List[LibraryLeafSpec]] = dict(((DeviceType.GeneratorDevice, list((LibraryLeafSpec("Voltage source", BlockType.VOLTAGE_SOURCE_RMS),
                                                                                                                            LibraryLeafSpec("Generator basic", BlockType.GENRAW),
                                                                                                                            LibraryLeafSpec("Generator QEC", BlockType.GENQEC),
                                                                                                                            LibraryLeafSpec("Governor", BlockType.GOV_RMS),
                                                                                                                            LibraryLeafSpec("Stabilizer", BlockType.STAB_RMS),
                                                                                                                            LibraryLeafSpec("Exciter", BlockType.EXCITER_RMS),))),
-                                                                                        (DeviceType.VscDevice, list((LibraryLeafSpec("Generic", BlockType.GENERIC),
-                                                                                                                     LibraryLeafSpec("GFL converter", BlockType.GFL_CONVERTER_RMS),
-                                                                                                                     LibraryLeafSpec("Complete GFL VSC hvdc",BlockType.GFL_VSC_HVDC_RMS),
-                                                                                                                     LibraryLeafSpec("Converter electrical equations", BlockType.VSC_ELECTRICAL_RMS),
-                                                                                                                     LibraryLeafSpec("DC-link capacitor", BlockType.VSC_DC_LINK_RMS),
-                                                                                                                     ))),
-                                                                                        (DeviceType.LineDevice, list((LibraryLeafSpec("Generic", BlockType.GENERIC),
-                                                                                                                      LibraryLeafSpec("Line", BlockType.LINE_RMS),))),
-                                                                                        (DeviceType.DCLineDevice, list((LibraryLeafSpec("Generic", BlockType.GENERIC),
-                                                                                                                       LibraryLeafSpec("DC line", BlockType.DC_LINE_RMS),))),
-                                                                                        (DeviceType.Transformer2WDevice, list((LibraryLeafSpec("Generic", BlockType.GENERIC),
-                                                                                                                              LibraryLeafSpec("Transformer 2W", BlockType.TRANSFORMER_2W_RMS),))),
-                                                                                        (DeviceType.LoadDevice, list((LibraryLeafSpec("Generic", BlockType.GENERIC),
-                                                                                                                      LibraryLeafSpec("Load", BlockType.LOAD_RMS),))) ))
+                                                                                        (DeviceType.VscDevice, list((LibraryLeafSpec("Gfl converter", BlockType.GFL_CONVERTER_RMS),
+                                                                                                                     LibraryLeafSpec("Gfl VSC hvdc", BlockType.GFL_VSC_HVDC_RMS),))),
+                                                                                        (DeviceType.LineDevice, list((LibraryLeafSpec("Line", BlockType.LINE_RMS),))),
+                                                                                        (DeviceType.DCLineDevice, list((LibraryLeafSpec("DC line", BlockType.DC_LINE_RMS),))),
+                                                                                        (DeviceType.Transformer2WDevice, list((LibraryLeafSpec("Transformer 2W", BlockType.TRANSFORMER_2W_RMS),))),
+                                                                                        (DeviceType.LoadDevice, list((LibraryLeafSpec("Load", BlockType.LOAD_RMS),))) ))
         # devices emt
         self.device_emt_related_blocks: Dict[DeviceType, List[LibraryLeafSpec]] = dict(((DeviceType.GeneratorDevice, list((LibraryLeafSpec("Generator", BlockType.EMT_GENERATOR),
                                                                                                                            LibraryLeafSpec("Thevenin eq. generator", BlockType.EMT_THEVENIN),
@@ -291,27 +280,12 @@ class DynamicEditorLibrary:
                                                                                         (DeviceType.TransformerTypeDevice, list((LibraryLeafSpec("Transformer", BlockType.TRAFO_EMT),
                                                                                                                                  LibraryLeafSpec("XFMR Transformer", BlockType.XFMR_TRANSFORMER),))),
                                                                                         (DeviceType.VscDevice, list((LibraryLeafSpec("Complete pseudo-EMT VSC", BlockType.COMPLETE_PSEUDO_VSC_EMT),))),))
-        self.control_rms_related_blocks: Dict[DeviceType, List[LibraryLeafSpec]] = dict(((DeviceType.GeneratorDevice, list((LibraryLeafSpec("Governor", BlockType.GOV_RMS),
-                                                                                                                           LibraryLeafSpec("Stabilizer", BlockType.STAB_RMS),
-                                                                                                                           LibraryLeafSpec("Exciter", BlockType.EXCITER_RMS),))),
-                                                                                        (DeviceType.VscDevice, list((
-                                                                                            LibraryLeafSpec("PLL explicit PI", BlockType.VSC_PLL_RMS),
-                                                                                            LibraryLeafSpec("Vdc / P control", BlockType.VSC_ACTIVE_CONTROL_RMS),
-                                                                                            LibraryLeafSpec("Qac / Vac control", BlockType.VSC_REACTIVE_CONTROL_RMS),
-                                                                                            LibraryLeafSpec("Current limiter", BlockType.VSC_CURRENT_LIMITER_RMS),
-                                                                                            LibraryLeafSpec("vd_hat", BlockType.VSC_VD_HAT_RMS),
-                                                                                            LibraryLeafSpec("vq_hat", BlockType.VSC_VQ_HAT_RMS),
-                                                                                        ))),
-                                                                                        ))
-
 
         # Build tree structure
         self.tree_structure: Dict[str, object] = dict()
         if mode == DynamicSimulationMode.RMS:
             self.tree_structure["Basic"] = build_basic_library_branch()
             self.tree_structure["Basic_devices"] = list(self.common_rms_device_blocks)
-            self.tree_structure["Control blocks"] = self.control_rms_related_blocks.get(
-                self.api_object.device_type if self.api_object is not None else DeviceType.NoDevice, list())
             self.tree_structure["Devices"] = self.device_rms_related_blocks.get(
                 self.api_object.device_type if self.api_object is not None else DeviceType.NoDevice, dict())
 
@@ -326,7 +300,8 @@ class DynamicEditorLibrary:
         else:
             pass
 
-        self.tree_structure["Tools"] = list((LibraryLeafSpec("Signal Pair", BlockType.FROM_GOTO),))
+        self.tree_structure["Tools"] = list((LibraryLeafSpec("Signal Pair", BlockType.FROM_GOTO),
+                                                                LibraryLeafSpec("Generic Device", BlockType.GENERIC)))
 
         if self.templates_list:
             self.tree_structure["Templates"] = dict((("Available", [LibraryLeafSpec(template.name, template, template.name) for template in

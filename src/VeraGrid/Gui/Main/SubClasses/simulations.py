@@ -275,7 +275,6 @@ class SimulationsMain(TimeEventsMain):
             gf.ComboModel(enum_values=[DynamicIntegrationMethod.DaeBackEuler,
                                        DynamicIntegrationMethod.DaeTrapezoidal,
                                        DynamicIntegrationMethod.DaeBDF2,
-                                       DynamicIntegrationMethod.DaeBackEuler,
                                        DynamicIntegrationMethod.OdeEuler],
                           translate=self.tr)
         )
