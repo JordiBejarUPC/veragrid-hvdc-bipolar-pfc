@@ -713,7 +713,7 @@ class ProfileInputGUI(QtWidgets.QDialog):
                 dlg.setModal(True)
                 dlg.exec()
 
-    def plot_selected(self):
+    def plot_selected(self) -> None:
         """
         Plot the selected profile
         """
@@ -723,7 +723,7 @@ class ProfileInputGUI(QtWidgets.QDialog):
                 col_name = self.original_data_frame.columns[idx]
                 try:
                     plt.ion()
-                    self.fig = plt.Figure(figsize=(8, 6))
+                    self.fig = plt.figure(figsize=(8, 6))
                     ax = self.fig.add_subplot(111)
                     self.original_data_frame[col_name].plot(ax=ax)
                     plt.show()
