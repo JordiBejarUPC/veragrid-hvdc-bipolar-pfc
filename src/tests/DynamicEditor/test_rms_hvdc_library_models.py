@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 
 import pytest
-from PySide6 import QtWidgets
+from PySide6 import QtCore, QtWidgets
 
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_library import DynamicEditorLibrary, LibraryLeafSpec
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_preparation import prepare_block_for_editing
@@ -616,6 +616,69 @@ def test_vsc_components_are_registered_in_the_requested_library_categories() -> 
     assert controls.isdisjoint(devices)
     assert BlockType.VSC_TERMINAL_POWER_RMS in set(leaf.payload for leaf in library.common_rms_device_blocks)
     assert library.tree_structure["Control blocks"] == library.control_rms_related_blocks[DeviceType.VscDevice]
+
+
+@pytest.mark.parametrize("branch_label, expected_types", (
+    ("Control blocks", (
+        BlockType.VSC_PLL_RMS, BlockType.VSC_ACTIVE_CONTROL_RMS,
+        BlockType.VSC_REACTIVE_CONTROL_RMS, BlockType.VSC_CURRENT_LIMITER_RMS,
+        BlockType.VSC_VD_HAT_RMS, BlockType.VSC_VQ_HAT_RMS,
+    )),
+    ("Devices", (
+        BlockType.GFL_VSC_HVDC_RMS, BlockType.VSC_ELECTRICAL_RMS, BlockType.VSC_DC_LINK_RMS,
+    )),
+    ("Basic_devices", (BlockType.VSC_TERMINAL_POWER_RMS,)),
+))
+def test_vsc_library_components_have_registered_drag_payloads(
+        branch_label: str,
+        expected_types: tuple[BlockType, ...],
+) -> None:
+    """Expose the restored components through the restructured Qt drag model.
+
+    :param branch_label: Visible library branch containing the requested blocks.
+    :param expected_types: Native payload types expected once in that branch.
+    :return: None.
+    """
+    library: DynamicEditorLibrary = DynamicEditorLibrary(api_object=VSC(), mode=DynamicSimulationMode.RMS)
+    seen_types: set[BlockType] = set()
+    branch_row: int
+    leaf_row: int
+
+    # Inspect the built tree, not only the lists used to construct it: a merge
+    # can retain definitions without exposing them as draggable library items.
+    for branch_row in range(library.library_model.rowCount()):
+        branch_index: QtCore.QModelIndex = library.library_model.index(branch_row, 0)
+        if library.library_model.data(branch_index) == branch_label:
+            for leaf_row in range(library.library_model.rowCount(branch_index)):
+                leaf_index: QtCore.QModelIndex = library.library_model.index(leaf_row, 0, branch_index)
+                payload: object = library.library_model.data(leaf_index, library.block_role)
+                if isinstance(payload, BlockType) and payload in expected_types:
+                    assert payload not in seen_types
+                    seen_types.add(payload)
+                    assert library.library_model.flags(leaf_index) & QtCore.Qt.ItemFlag.ItemIsDragEnabled
+                    # The editor resolves the opaque MIME token back to this
+                    # same BlockType before choosing its factory or builder.
+                    mime_data: QtCore.QMimeData = library.library_model.mimeData(list((leaf_index,)))
+                    token: str = bytes(mime_data.data(library.mime_type)).decode("utf-8")
+                    assert library.library_model.get_drag_payload(token) == payload
+                else:
+                    pass
+        else:
+            pass
+    assert seen_types == set(expected_types)
+
+
+def test_vsc_control_library_branch_is_contextual() -> None:
+    """Keep VSC RMS controls out of EMT and unrelated RMS device editors.
+
+    :return: None.
+    """
+    emt_library: DynamicEditorLibrary = DynamicEditorLibrary(api_object=VSC(), mode=DynamicSimulationMode.EMT)
+    generator_library: DynamicEditorLibrary = DynamicEditorLibrary(
+        api_object=Generator(), mode=DynamicSimulationMode.RMS,
+    )
+    assert "Control blocks" not in emt_library.tree_structure
+    assert "Control blocks" not in generator_library.tree_structure
 
 
 @pytest.mark.parametrize("control1", (
