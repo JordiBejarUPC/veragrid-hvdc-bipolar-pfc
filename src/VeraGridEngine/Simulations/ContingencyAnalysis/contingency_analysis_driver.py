@@ -56,7 +56,9 @@ class ContingencyAnalysisDriver(DriverTemplate):
         DriverTemplate.__init__(self, grid=grid, engine=engine)
 
         # Options to use
-        self.options = options
+        self.options: ContingencyAnalysisOptions = options if options is not None else ContingencyAnalysisOptions(
+            contingency_groups=grid.contingency_groups
+        )
 
         self.opf_results: Union[OptimalPowerFlowResults, None] = opf_results
 
@@ -97,11 +99,12 @@ class ContingencyAnalysisDriver(DriverTemplate):
         else:
             return list()
 
-    def run_at(self, t_idx: int = None, t_prob: float = 1.0) -> ContingencyAnalysisResults:
+    def run_at(self, t_idx: int | None = None, t_prob: float = 1.0, show_progress=False) -> ContingencyAnalysisResults:
         """
         Run the contingency at a time point
         :param t_idx: index for any time series index, None for the snapshot
         :param t_prob: probability of te time
+        :param show_progress: Show the progress
         :return: ContingencyAnalysisResults
         """
         if self.engine == EngineType.PGM and not PGM_AVAILABLE:
@@ -131,7 +134,8 @@ class ContingencyAnalysisDriver(DriverTemplate):
                     is_cancel=self.is_cancel,
                     t_idx=t_idx,
                     t_prob=t_prob,
-                    logger=self.logger
+                    logger=self.logger,
+                    report_progress=show_progress
                 )
 
             elif (self.options.contingency_method == ContingencyMethod.Linear
@@ -178,7 +182,8 @@ class ContingencyAnalysisDriver(DriverTemplate):
                     is_cancel=self.is_cancel,
                     t=t_idx,
                     t_prob=t_prob,
-                    logger=self.logger
+                    logger=self.logger,
+                    report_progress=show_progress
                 )
 
             elif self.options.contingency_method == ContingencyMethod.HELM:
@@ -262,5 +267,8 @@ class ContingencyAnalysisDriver(DriverTemplate):
         :return:
         """
         self.tic()
-        self.run_at(t_idx=None)
+
+        self.report_text("Compiling and configuring...")
+
+        self.run_at(t_idx=None, show_progress=True)
         self.toc()
