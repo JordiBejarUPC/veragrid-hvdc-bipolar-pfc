@@ -238,7 +238,10 @@ class DynamicEditorLibrary:
         self.common_emt_fault_blocks: List[LibraryLeafSpec] = list((LibraryLeafSpec("Fault EMT", BlockType.FAULT_EMT),))
 
         # common rms
-        self.common_rms_device_blocks: List[LibraryLeafSpec] = list((LibraryLeafSpec("Pll transformer", BlockType.PLL_TRANSFORM_RMS), LibraryLeafSpec("Pi current controller", BlockType.PI_CURRENT_CONTROLLER), LibraryLeafSpec("Pi power controller", BlockType.PI_POWER_CONTROLLER),))
+        self.common_rms_device_blocks: List[LibraryLeafSpec] = list((LibraryLeafSpec("Pll transformer", BlockType.PLL_TRANSFORM_RMS),
+                                                                     LibraryLeafSpec("Pi current controller", BlockType.PI_CURRENT_CONTROLLER),
+                                                                     LibraryLeafSpec("Pi power controller", BlockType.PI_POWER_CONTROLLER),
+                                                                     LibraryLeafSpec("Generic", BlockType.GENERIC),))
 
         # devices rms
         self.device_rms_related_blocks: Dict[DeviceType, List[LibraryLeafSpec]] = dict(((DeviceType.GeneratorDevice, list((LibraryLeafSpec("Generic", BlockType.GENERIC),
@@ -248,14 +251,17 @@ class DynamicEditorLibrary:
                                                                                                                            LibraryLeafSpec("Governor", BlockType.GOV_RMS),
                                                                                                                            LibraryLeafSpec("Stabilizer", BlockType.STAB_RMS),
                                                                                                                            LibraryLeafSpec("Exciter", BlockType.EXCITER_RMS),))),
-                                                                                        (DeviceType.VscDevice, list((LibraryLeafSpec("Gfl converter", BlockType.GFL_CONVERTER_RMS),
+                                                                                        (DeviceType.VscDevice, list((LibraryLeafSpec("Generic", BlockType.GENERIC),
+                                                                                                                     LibraryLeafSpec("Gfl converter", BlockType.GFL_CONVERTER_RMS),
                                                                                                                      LibraryLeafSpec("Gfl VSC hvdc", BlockType.GFL_VSC_HVDC_RMS),))),
                                                                                         (DeviceType.LineDevice, list((LibraryLeafSpec("Generic", BlockType.GENERIC),
                                                                                                                       LibraryLeafSpec("Line", BlockType.LINE_RMS),))),
-                                                                                        (DeviceType.DCLineDevice, list((LibraryLeafSpec("DC line", BlockType.DC_LINE_RMS),))),
-                                                                                        (DeviceType.Transformer2WDevice, list((LibraryLeafSpec("Transformer 2W", BlockType.TRANSFORMER_2W_RMS),))),
+                                                                                        (DeviceType.DCLineDevice, list((LibraryLeafSpec("Generic", BlockType.GENERIC),
+                                                                                                                       LibraryLeafSpec("DC line", BlockType.DC_LINE_RMS),))),
+                                                                                        (DeviceType.Transformer2WDevice, list((LibraryLeafSpec("Generic", BlockType.GENERIC),
+                                                                                                                              LibraryLeafSpec("Transformer 2W", BlockType.TRANSFORMER_2W_RMS),))),
                                                                                         (DeviceType.LoadDevice, list((LibraryLeafSpec("Generic", BlockType.GENERIC),
-                                                                                                                      LibraryLeafSpec("Load", BlockType.LOAD_RMS),))),))
+                                                                                                                      LibraryLeafSpec("Load", BlockType.LOAD_RMS),))) ))
         # devices emt
         self.device_emt_related_blocks: Dict[DeviceType, List[LibraryLeafSpec]] = dict(((DeviceType.GeneratorDevice, list((LibraryLeafSpec("Generator", BlockType.EMT_GENERATOR),
                                                                                                                            LibraryLeafSpec("Thevenin eq. generator", BlockType.EMT_THEVENIN),
