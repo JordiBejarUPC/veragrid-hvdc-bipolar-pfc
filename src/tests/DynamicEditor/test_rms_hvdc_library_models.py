@@ -2,35 +2,64 @@
 
 from __future__ import annotations
 
+import math
+
+import pytest
+from PySide6 import QtWidgets
+
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_library import DynamicEditorLibrary, LibraryLeafSpec
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_preparation import prepare_block_for_editing
+from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_tab import DynamicEditorTab
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_utilities import (
     create_block_of_type,
+    create_default_template_builder,
     get_blocktype2template_builder_dict,
     initialize_template_builder_from_block,
+    synchronize_vsc_library_initialization,
 )
 from VeraGridEngine.Devices.Branches.dc_line import DcLine
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Devices.Branches.vsc import VSC
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
+from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagramNode
 from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Templates.Rms.dc_line_rms_template_v2 import DcLineRmsTemplateV2
-from VeraGridEngine.Templates.Rms.hvdc_vsc_gfl_rms_template_v2 import HvdcVscGflRmsTemplate
+from VeraGridEngine.Templates.Rms.hvdc_vsc_gfl_rms_template_v2 import (
+    HvdcVscGflRmsTemplate,
+    VscActiveControlRmsTemplate,
+    VscReactiveControlRmsTemplate,
+)
 from VeraGridEngine.Templates.template_definition import TemplateDefinition
 from VeraGridEngine.Utils.Symbolic.block import Block, find_connections
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import synchronize_saved_rms_root_mappings_from_children
-from VeraGridEngine.Utils.Symbolic.symbolic import Var
+from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var
 from VeraGridEngine.enumerations import (
     BlockType,
     ConverterControlType,
     DeviceType,
     DynamicSimulationMode,
+    DynEditorGraphicsModes,
     ParamPowerFlowReferenceType,
     VarPowerFlowReferenceType,
 )
+
+
+@pytest.fixture(scope="module", autouse=True)
+def vsc_library_application() -> QtWidgets.QApplication:
+    """Keep Qt alive for the Library and real Apply integration tests.
+
+    :return: Shared application using the offscreen platform when newly made.
+    """
+    application: QtWidgets.QApplication | None = QtWidgets.QApplication.instance()
+    if application is None:
+        application = QtWidgets.QApplication(list(("VSC library regression", "-platform", "offscreen")))
+    else:
+        pass
+    return application
 
 
 def _get_device_library_payloads(device: ALL_DEV_TYPES) -> list[BlockType]:
@@ -444,6 +473,10 @@ def test_rms_save_synchronizes_child_mappings_to_the_root() -> None:
     active_power: Var = var_factory.add_var("P", reference=VarPowerFlowReferenceType.P)
     resistance: Var = var_factory.add_var("R")
     child: Block = Block(
+        algebraic_vars=list((active_power,)),
+        algebraic_eqs=list((active_power,)),
+        out_vars=list((active_power,)),
+        parameters=dict(((resistance, Const(None)),)),
         external_mapping=dict(((VarPowerFlowReferenceType.P, active_power),)),
         api_obj_mapping=dict(((ParamPowerFlowReferenceType.R1, resistance),)),
     )
@@ -454,3 +487,413 @@ def test_rms_save_synchronizes_child_mappings_to_the_root() -> None:
 
     assert root.external_mapping[VarPowerFlowReferenceType.P] is active_power
     assert root.api_obj_mapping[ParamPowerFlowReferenceType.R1] is resistance
+
+
+def _build_vsc_library_component(vf: VarFactory, block_type: BlockType, name: str) -> Block:
+    """Follow the native-drop builder or direct-factory path for one component.
+
+    :param vf: Shared editor factory.
+    :param block_type: Library payload being materialized.
+    :param name: Requested component name.
+    :return: Generated symbolic component.
+    """
+    builder: TemplateDefinition | None = create_default_template_builder(vf, block_type, name)
+    if builder is None:
+        block: Block | None = create_block_of_type(vf, block_type, name)
+        assert block is not None
+        return block
+    else:
+        # The actual builder-backed GUI drop consumes .block, not a bare Block.
+        template: RmsModelTemplate = builder.eval()
+        assert isinstance(template, RmsModelTemplate)
+        return template.block
+
+
+def _assert_vsc_component_is_closed(block: Block) -> None:
+    """Reject undeclared dependencies, missing owners and hidden init symbols.
+
+    :param block: Standalone component or assembled model under inspection.
+    :return: None.
+    """
+    declared: set[int] = set(variable.uid for variable in block.in_vars)
+    owned: set[int] = set()
+    candidate: Block
+    variable: Var
+    for candidate in block.get_all_blocks():
+        assert len(candidate.diff_vars) == 0
+        assert len(candidate.state_vars) == len(candidate.state_eqs)
+        assert len(candidate.algebraic_vars) == len(candidate.algebraic_eqs)
+        local_owned: set[int] = set()
+        variable_group: list[Var]
+        for variable_group in (candidate.state_vars, candidate.algebraic_vars):
+            for variable in variable_group:
+                assert variable.uid not in owned
+                owned.add(variable.uid)
+                local_owned.add(variable.uid)
+                declared.add(variable.uid)
+        declared.update(variable.uid for variable in candidate.event_dict)
+        declared.update(variable.uid for variable in candidate.parameters)
+        # Decomposition keeps original init_eqs at the component boundary;
+        # the variables themselves then belong to its operation children.
+        initialization_scope: set[int] = set(variable.uid for variable in candidate.get_all_vars())
+        assert all(variable.uid in initialization_scope for variable in candidate.init_eqs)
+    assert all(variable.uid in owned for variable in block.out_vars)
+
+    # Check event and initialization expressions as well as runtime equations;
+    # the original nested controls relied on parent-only initialization data.
+    expression: Expr
+    for candidate in block.get_all_blocks():
+        expression_group: list[Expr]
+        for expression_group in (
+            candidate.state_eqs, candidate.algebraic_eqs,
+            list(candidate.init_eqs.values()), list(candidate.event_dict.values()),
+        ):
+            for expression in expression_group:
+                assert all(variable.uid in declared for variable in expression.get_vars()), (
+                    candidate.name, str(expression)
+                )
+
+
+@pytest.mark.parametrize("block_type,inputs,outputs", (
+    (BlockType.VSC_PLL_RMS, ("Vm", "Va"), ("vd", "vq", "omega")),
+    (BlockType.VSC_ELECTRICAL_RMS,
+     ("vd", "vq", "omega", "y_vd_hat", "y_vq_hat"),
+     ("i_d", "i_q", "P", "Q")),
+    (BlockType.VSC_ACTIVE_CONTROL_RMS, ("Vdc_state", "i_q"), ("i_q_ref",)),
+    (BlockType.VSC_REACTIVE_CONTROL_RMS, ("Q", "i_d"), ("i_d_ref",)),
+    (BlockType.VSC_CURRENT_LIMITER_RMS, ("i_d_ref", "i_q_ref", "i_q"), ("i_d_ref_sat", "i_q_ref_sat")),
+    (BlockType.VSC_VD_HAT_RMS, ("i_d", "i_d_ref_sat"), ("y_vd_hat",)),
+    (BlockType.VSC_VQ_HAT_RMS, ("i_q", "i_q_ref_sat"), ("y_vq_hat",)),
+    (BlockType.VSC_DC_LINK_RMS, ("Vdc", "Pf_vsc", "Pt_vsc", "i_d", "i_q"), ("Vdc_state",)),
+    (BlockType.VSC_TERMINAL_POWER_RMS, ("Vdc", "Vdc_state", "P", "Q"), ("Pf_vsc", "Pt_vsc", "Qt_vsc")),
+))
+def test_vsc_library_components_have_complete_independent_contracts(
+        block_type: BlockType, inputs: tuple[str, ...], outputs: tuple[str, ...],
+) -> None:
+    """Build every public component without borrowing symbols from a parent.
+
+    :param block_type: Library payload to instantiate.
+    :param inputs: Expected ordered input labels.
+    :param outputs: Expected ordered output labels.
+    :return: None.
+    """
+    vf: VarFactory = VarFactory()
+    block: Block = _build_vsc_library_component(vf, block_type, "Component")
+    assert tuple(variable.name for variable in block.in_vars) == inputs
+    assert tuple(variable.name for variable in block.out_vars) == outputs
+    _assert_vsc_component_is_closed(block)
+
+    # Dropping a second identically named block must not connect either copy.
+    second: Block = _build_vsc_library_component(vf, block_type, "Component")
+    first_ids: set[int] = set(variable.uid for variable in block.get_all_vars())
+    second_ids: set[int] = set(variable.uid for variable in second.get_all_vars())
+    assert first_ids.isdisjoint(second_ids)
+    first_refs: set[int] = set(
+        variable.shared_ref.uid for variable in block.get_all_vars() if variable.shared_ref is not None
+    )
+    second_refs: set[int] = set(
+        variable.shared_ref.uid for variable in second.get_all_vars() if variable.shared_ref is not None
+    )
+    assert first_refs.isdisjoint(second_refs)
+
+
+def test_vsc_components_are_registered_in_the_requested_library_categories() -> None:
+    """Keep the complete VSC and expose devices, controls and terminal equations.
+
+    :return: None.
+    """
+    library: DynamicEditorLibrary = DynamicEditorLibrary(api_object=VSC(), mode=DynamicSimulationMode.RMS)
+    controls: set[BlockType] = set(
+        leaf.payload for leaf in library.control_rms_related_blocks[DeviceType.VscDevice]
+    )
+    assert controls == set((
+        BlockType.VSC_PLL_RMS, BlockType.VSC_ACTIVE_CONTROL_RMS,
+        BlockType.VSC_REACTIVE_CONTROL_RMS, BlockType.VSC_CURRENT_LIMITER_RMS,
+        BlockType.VSC_VD_HAT_RMS, BlockType.VSC_VQ_HAT_RMS,
+    ))
+    devices: set[BlockType] = set(_get_device_library_payloads(VSC()))
+    assert set((BlockType.GFL_VSC_HVDC_RMS, BlockType.VSC_ELECTRICAL_RMS, BlockType.VSC_DC_LINK_RMS)) <= devices
+    assert controls.isdisjoint(devices)
+    assert BlockType.VSC_TERMINAL_POWER_RMS in set(leaf.payload for leaf in library.common_rms_device_blocks)
+    assert library.tree_structure["Control blocks"] == library.control_rms_related_blocks[DeviceType.VscDevice]
+
+
+@pytest.mark.parametrize("control1", (
+    ConverterControlType.Vm_dc, ConverterControlType.Pdc, ConverterControlType.Pac,
+))
+@pytest.mark.parametrize("control2", (ConverterControlType.Qac, ConverterControlType.Vm_ac))
+def test_standalone_vsc_control_modes_survive_serialization(
+        control1: ConverterControlType, control2: ConverterControlType,
+) -> None:
+    """Recover controller options even when the block was renamed and reloaded.
+
+    :param control1: Active-axis structural mode.
+    :param control2: Reactive-axis structural mode.
+    :return: None.
+    """
+    active: VscActiveControlRmsTemplate = VscActiveControlRmsTemplate(VarFactory())
+    reactive: VscReactiveControlRmsTemplate = VscReactiveControlRmsTemplate(VarFactory())
+    active.params_dict["control1"].value = control1
+    reactive.params_dict["control2"].value = control2
+    builder: TemplateDefinition
+    block_type: BlockType
+    for builder, block_type in (
+        (active, BlockType.VSC_ACTIVE_CONTROL_RMS), (reactive, BlockType.VSC_REACTIVE_CONTROL_RMS),
+    ):
+        block: Block = builder.eval().block
+        block.name = "Renamed controller"
+        restored: Block = Block.parse(block.to_dict())
+        reopened: TemplateDefinition | None = create_default_template_builder(VarFactory(), block_type, block.name)
+        assert reopened is not None
+        initialize_template_builder_from_block(reopened, restored, block_type)
+        option_name: str = "control1" if block_type == BlockType.VSC_ACTIVE_CONTROL_RMS else "control2"
+        assert reopened.get_value(option_name) == builder.get_value(option_name)
+        _assert_vsc_component_is_closed(restored)
+
+
+def _assemble_vsc_from_library(vf: VarFactory, decomposed: bool = False) -> Block:
+    """Wire independent library components as a user would assemble the model.
+
+    :param vf: Editor factory used for native drops and explicit connections.
+    :param decomposed: Whether to open the component internals before wiring.
+    :return: Flat VSC composition with the same physical root interface.
+    """
+    pll: Block = _build_vsc_library_component(vf, BlockType.VSC_PLL_RMS, "PLL_explicit_PI")
+    electrical: Block = _build_vsc_library_component(vf, BlockType.VSC_ELECTRICAL_RMS, "Electrical")
+    active: Block = _build_vsc_library_component(vf, BlockType.VSC_ACTIVE_CONTROL_RMS, "Vdc_ctrl")
+    reactive: Block = _build_vsc_library_component(vf, BlockType.VSC_REACTIVE_CONTROL_RMS, "Qac_ctrl")
+    limiter: Block = _build_vsc_library_component(vf, BlockType.VSC_CURRENT_LIMITER_RMS, "Current limiter")
+    vd: Block = _build_vsc_library_component(vf, BlockType.VSC_VD_HAT_RMS, "vd_hat")
+    vq: Block = _build_vsc_library_component(vf, BlockType.VSC_VQ_HAT_RMS, "vq_hat")
+    capacitor: Block = _build_vsc_library_component(vf, BlockType.VSC_DC_LINK_RMS, "DC-link capacitor")
+    terminal: Block = _build_vsc_library_component(vf, BlockType.VSC_TERMINAL_POWER_RMS, "Terminal")
+    if decomposed:
+        component: Block
+        for component in (electrical, vd, vq):
+            prepare_block_for_editing(component, vf)
+    else:
+        pass
+    # Wire exactly the original electrical and current-PI port contracts.
+    vf.add_connections(electrical.in_vars, list((
+        pll.out_vars[0], pll.out_vars[1], pll.out_vars[2], vd.out_vars[0], vq.out_vars[0],
+    )))
+    vf.add_connections(active.in_vars, list((capacitor.out_vars[0], electrical.out_vars[1])))
+    vf.add_connections(reactive.in_vars, list((electrical.out_vars[3], electrical.out_vars[0])))
+    vf.add_connections(limiter.in_vars, list((reactive.out_vars[0], active.out_vars[0], electrical.out_vars[1])))
+    vf.add_connections(vd.in_vars, list((electrical.out_vars[0], limiter.out_vars[0])))
+    vf.add_connections(vq.in_vars, list((electrical.out_vars[1], limiter.out_vars[1])))
+    vf.add_connections(terminal.in_vars[1:], list((
+        capacitor.out_vars[0], electrical.out_vars[2], electrical.out_vars[3],
+    )))
+    vf.add_connections(capacitor.in_vars, list((
+        terminal.in_vars[0], terminal.out_vars[0], terminal.out_vars[1],
+        electrical.out_vars[0], electrical.out_vars[1],
+    )))
+    device: VSC = VSC()
+    device.rms_model = Block(
+        name="Manual VSC",
+        children=list((pll, electrical, active, reactive, limiter, vd, vq, capacitor, terminal)),
+        in_vars=list((terminal.in_vars[0], pll.in_vars[0], pll.in_vars[1])),
+        out_vars=list(terminal.out_vars),
+    )
+    synchronize_saved_rms_root_mappings_from_children(device)
+    # Persist the same type metadata used by a real Library drop. Reopening
+    # must not depend on an in-memory block-type lookup or component names.
+    block_type: BlockType
+    for component, block_type in (
+        (electrical, BlockType.VSC_ELECTRICAL_RMS),
+        (vd, BlockType.VSC_VD_HAT_RMS),
+        (vq, BlockType.VSC_VQ_HAT_RMS),
+    ):
+        device.rms_model.diagram.node_data[component.uid] = BlockDiagramNode(
+            name=component.name, x=0.0, y=0.0, tpe=block_type.name,
+            device_uid=component.uid, api_object_name="VSC",
+            state_ins=0, state_outs=list(), algeb_ins=len(component.in_vars),
+            algeb_outs=list(variable.name for variable in component.out_vars), color="",
+        )
+    unresolved: list[Var] = synchronize_vsc_library_initialization(
+        root=device.rms_model,
+    )
+    assert unresolved == list()
+    return device.rms_model
+
+
+@pytest.mark.parametrize("manual,decomposed", ((False, False), (True, False), (True, True)))
+def test_vsc_components_initialize_consistently_with_nonzero_filter_resistance(
+        manual: bool, decomposed: bool,
+) -> None:
+    """Resolve the explicit initialization graph without a time-domain solver.
+
+    Nonzero R detects incorrect zero PI biases that a lossless example hides.
+    Run this for both complete and independently dropped/wired components.
+
+    :param manual: Whether to assemble individual Library entries.
+    :param decomposed: Whether the component internals were opened before wiring.
+    :return: None.
+    """
+    vf: VarFactory = VarFactory()
+    block: Block = _assemble_vsc_from_library(vf, decomposed) if manual else HvdcVscGflRmsTemplate(vf).eval().block
+    _assert_vsc_component_is_closed(block)
+    block.set_parameter_in_model(var_name="R", new_value=0.03)
+    values: dict[int, float] = dict()
+    reference: VarPowerFlowReferenceType
+    value: float
+    for reference, value in (
+        (VarPowerFlowReferenceType.Vdc, 1.0),
+        (VarPowerFlowReferenceType.Vmt, 1.0),
+        (VarPowerFlowReferenceType.Vat, 0.1),
+        (VarPowerFlowReferenceType.Pf, 0.2),
+        (VarPowerFlowReferenceType.Pt, -0.2),
+        (VarPowerFlowReferenceType.Qt, -0.04),
+    ):
+        variable: Var | None = block.external_mapping[reference]
+        assert variable is not None
+        values[variable.uid] = value
+
+    assignments: dict[int, Expr] = dict()
+    all_blocks: list[Block] = block.get_all_blocks()
+    candidate: Block
+    parameter: Var
+    expression: Expr
+    for candidate in all_blocks:
+        for parameter, expression in candidate.parameters.items():
+            assert isinstance(expression, Const)
+            assert expression.value is None
+            assert parameter in block.api_obj_mapping.values()
+            values[parameter.uid] = 0.0  # Explicit zero static loss coefficients.
+        for parameter, expression in candidate.event_dict.items():
+            assignments[parameter.uid] = expression
+        for parameter, expression in candidate.init_eqs.items():
+            assignments[parameter.uid] = expression
+
+    # Resolve only expressions whose declared dependencies are available.
+    # A stalled graph reports the actual missing bias or initialization port.
+    while len(assignments) > 0:
+        resolved: list[int] = list()
+        uid: int
+        for uid, expression in assignments.items():
+            if all(variable.uid in values for variable in expression.get_vars()):
+                values[uid] = float(expression.eval_uid(values))
+                resolved.append(uid)
+            else:
+                pass
+        assert len(resolved) > 0, list(str(expression) for expression in assignments.values())
+        for uid in resolved:
+            del assignments[uid]
+
+    state_count: int = 0
+    electrical: Block = block.children[1] if manual else block.children[0].children[6]
+    assert math.isclose(values[electrical.in_vars[3].uid], -0.03 * 0.04 + 2.0 * 0.05 * 0.2, abs_tol=1e-12)
+    assert math.isclose(values[electrical.in_vars[4].uid], 0.03 * 0.2, abs_tol=1e-12)
+    for candidate in all_blocks:
+        state_count += len(candidate.state_vars)
+        equation_group: list[Expr]
+        for equation_group in (candidate.state_eqs, candidate.algebraic_eqs):
+            for expression in equation_group:
+                if all(variable.uid in values for variable in expression.get_vars()):
+                    assert math.isclose(float(expression.eval_uid(values)), 0.0, abs_tol=1.0e-12), (
+                        candidate.name, str(expression)
+                    )
+                else:
+                    # ELK auxiliary variables are not new explicit-init targets.
+                    # Their runtime algebraic equations define them as before.
+                    assert decomposed
+    assert state_count == 9
+
+
+@pytest.mark.parametrize("decomposed", (False, True))
+def test_vsc_component_initialization_survives_reopen_and_renaming(decomposed: bool) -> None:
+    """Rebind initialization after Ctrl+click, serialization and label changes.
+
+    :param decomposed: Whether to decompose the components before wiring them.
+    :return: None.
+    """
+    original: Block = _assemble_vsc_from_library(VarFactory(), decomposed=decomposed)
+    restored: Block = Block.parse(original.to_dict())
+    candidate: Block
+    variable: Var
+    for candidate in restored.get_all_blocks():
+        candidate.name = "Renamed block"
+        for variable in candidate.get_all_vars():
+            variable.name = "renamed_" + str(variable.uid)
+    assert synchronize_vsc_library_initialization(restored) == list()
+    _assert_vsc_component_is_closed(restored)
+    # Repeated save must not change the explicit initialization expressions.
+    before: dict[int, str] = dict(
+        (variable.uid, str(expression))
+        for candidate in restored.get_all_blocks() for variable, expression in candidate.init_eqs.items()
+    )
+    assert synchronize_vsc_library_initialization(restored) == list()
+    after: dict[int, str] = dict(
+        (variable.uid, str(expression))
+        for candidate in restored.get_all_blocks() for variable, expression in candidate.init_eqs.items()
+    )
+    assert before == after
+
+
+def test_vsc_component_initialization_does_not_reconnect_disconnected_powers() -> None:
+    """Discard stale init bindings without creating new graphical connections.
+
+    :return: None.
+    """
+    vf: VarFactory = VarFactory()
+    root: Block = _assemble_vsc_from_library(vf)
+    electrical: Block = root.children[1]
+    terminal: Block = root.children[8]
+    disconnected_p: Var = vf.add_var("Disconnected_P")
+    disconnected_q: Var = vf.add_var("Disconnected_Q")
+    terminal.update_equations(terminal.in_vars[2], disconnected_p)
+    terminal.update_equations(terminal.in_vars[3], disconnected_q)
+    terminal.in_vars[2] = disconnected_p
+    terminal.in_vars[3] = disconnected_q
+    connection_count: int = len(root.diagram.con_data)
+    unresolved: list[Var] = synchronize_vsc_library_initialization(root)
+    assert electrical.out_vars[2] in unresolved
+    assert electrical.out_vars[3] in unresolved
+    assert electrical.out_vars[2] not in electrical.init_eqs
+    assert electrical.out_vars[3] not in electrical.init_eqs
+    assert terminal.in_vars[2].uid != electrical.out_vars[2].uid
+    assert terminal.in_vars[3].uid != electrical.out_vars[3].uid
+    assert len(root.diagram.con_data) == connection_count
+
+
+def test_vsc_library_apply_saves_initialization_bindings(vsc_library_application: QtWidgets.QApplication) -> None:
+    """Exercise the real editor Apply path without running a simulation.
+
+    :param vsc_library_application: Shared Qt application kept alive by pytest.
+    :return: None.
+    """
+    grid: MultiCircuit = MultiCircuit()
+    dc_bus: Bus = Bus(name="DC", is_dc=True)
+    ac_bus: Bus = Bus(name="AC")
+    grid.add_bus(dc_bus)
+    grid.add_bus(ac_bus)
+    device: VSC = VSC(bus_from=dc_bus, bus_to=ac_bus)
+    grid.add_vsc(device)
+    root: Block = _assemble_vsc_from_library(grid.var_factory)
+    electrical: Block = root.children[1]
+    vd: Block = root.children[5]
+    vq: Block = root.children[6]
+    electrical.init_eqs.pop(electrical.out_vars[2])
+    electrical.init_eqs.pop(electrical.out_vars[3])
+    vd.init_eqs.pop(vd.out_vars[0])
+    vq.init_eqs.pop(vq.out_vars[0])
+    device.rms_model = root
+    tab: DynamicEditorTab = DynamicEditorTab(
+        var_factory=grid.var_factory, block=root, api_object=device, circuit=grid,
+        current_theme=DynEditorGraphicsModes.LIGHT, mode=DynamicSimulationMode.RMS,
+    )
+    try:
+        assert tab._editor is not None
+        tab._editor.apply_changes()
+        saved_blocks: dict[int, Block] = dict((candidate.uid, candidate) for candidate in device.rms_model.get_all_blocks())
+        saved_electrical: Block = saved_blocks[electrical.uid]
+        assert saved_electrical.out_vars[2] in saved_electrical.init_eqs
+        assert saved_electrical.out_vars[3] in saved_electrical.init_eqs
+        assert saved_blocks[vd.uid].out_vars[0] in saved_blocks[vd.uid].init_eqs
+        assert saved_blocks[vq.uid].out_vars[0] in saved_blocks[vq.uid].init_eqs
+        assert tab._editor.changes_applied
+    finally:
+        tab.prepare_to_delete()
+        tab.deleteLater()
+        vsc_library_application.processEvents()

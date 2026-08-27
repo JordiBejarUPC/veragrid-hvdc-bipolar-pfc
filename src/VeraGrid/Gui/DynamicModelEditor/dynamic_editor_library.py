@@ -204,6 +204,7 @@ class DynamicEditorLibrary:
         "common_rms_device_blocks",
         "device_rms_related_blocks",
         "device_emt_related_blocks",
+        "control_rms_related_blocks",
         "tree_structure",
         "library_model",
     )
@@ -241,6 +242,7 @@ class DynamicEditorLibrary:
         self.common_rms_device_blocks: List[LibraryLeafSpec] = list((LibraryLeafSpec("Pll transformer", BlockType.PLL_TRANSFORM_RMS),
                                                                      LibraryLeafSpec("Pi current controller", BlockType.PI_CURRENT_CONTROLLER),
                                                                      LibraryLeafSpec("Pi power controller", BlockType.PI_POWER_CONTROLLER),
+                                                                     LibraryLeafSpec("VSC terminal power equations", BlockType.VSC_TERMINAL_POWER_RMS),
                                                                      LibraryLeafSpec("Generic", BlockType.GENERIC),))
 
         # devices rms
@@ -252,8 +254,11 @@ class DynamicEditorLibrary:
                                                                                                                            LibraryLeafSpec("Stabilizer", BlockType.STAB_RMS),
                                                                                                                            LibraryLeafSpec("Exciter", BlockType.EXCITER_RMS),))),
                                                                                         (DeviceType.VscDevice, list((LibraryLeafSpec("Generic", BlockType.GENERIC),
-                                                                                                                     LibraryLeafSpec("Gfl converter", BlockType.GFL_CONVERTER_RMS),
-                                                                                                                     LibraryLeafSpec("Gfl VSC hvdc", BlockType.GFL_VSC_HVDC_RMS),))),
+                                                                                                                     LibraryLeafSpec("GFL converter", BlockType.GFL_CONVERTER_RMS),
+                                                                                                                     LibraryLeafSpec("Complete GFL VSC hvdc",BlockType.GFL_VSC_HVDC_RMS),
+                                                                                                                     LibraryLeafSpec("Converter electrical equations", BlockType.VSC_ELECTRICAL_RMS),
+                                                                                                                     LibraryLeafSpec("DC-link capacitor", BlockType.VSC_DC_LINK_RMS),
+                                                                                                                     ))),
                                                                                         (DeviceType.LineDevice, list((LibraryLeafSpec("Generic", BlockType.GENERIC),
                                                                                                                       LibraryLeafSpec("Line", BlockType.LINE_RMS),))),
                                                                                         (DeviceType.DCLineDevice, list((LibraryLeafSpec("Generic", BlockType.GENERIC),
@@ -286,12 +291,27 @@ class DynamicEditorLibrary:
                                                                                         (DeviceType.TransformerTypeDevice, list((LibraryLeafSpec("Transformer", BlockType.TRAFO_EMT),
                                                                                                                                  LibraryLeafSpec("XFMR Transformer", BlockType.XFMR_TRANSFORMER),))),
                                                                                         (DeviceType.VscDevice, list((LibraryLeafSpec("Complete pseudo-EMT VSC", BlockType.COMPLETE_PSEUDO_VSC_EMT),))),))
+        self.control_rms_related_blocks: Dict[DeviceType, List[LibraryLeafSpec]] = dict(((DeviceType.GeneratorDevice, list((LibraryLeafSpec("Governor", BlockType.GOV_RMS),
+                                                                                                                           LibraryLeafSpec("Stabilizer", BlockType.STAB_RMS),
+                                                                                                                           LibraryLeafSpec("Exciter", BlockType.EXCITER_RMS),))),
+                                                                                        (DeviceType.VscDevice, list((
+                                                                                            LibraryLeafSpec("PLL explicit PI", BlockType.VSC_PLL_RMS),
+                                                                                            LibraryLeafSpec("Vdc / P control", BlockType.VSC_ACTIVE_CONTROL_RMS),
+                                                                                            LibraryLeafSpec("Qac / Vac control", BlockType.VSC_REACTIVE_CONTROL_RMS),
+                                                                                            LibraryLeafSpec("Current limiter", BlockType.VSC_CURRENT_LIMITER_RMS),
+                                                                                            LibraryLeafSpec("vd_hat", BlockType.VSC_VD_HAT_RMS),
+                                                                                            LibraryLeafSpec("vq_hat", BlockType.VSC_VQ_HAT_RMS),
+                                                                                        ))),
+                                                                                        ))
+
 
         # Build tree structure
         self.tree_structure: Dict[str, object] = dict()
         if mode == DynamicSimulationMode.RMS:
             self.tree_structure["Basic"] = build_basic_library_branch()
             self.tree_structure["Basic_devices"] = list(self.common_rms_device_blocks)
+            self.tree_structure["Control blocks"] = self.control_rms_related_blocks.get(
+                self.api_object.device_type if self.api_object is not None else DeviceType.NoDevice, list())
             self.tree_structure["Devices"] = self.device_rms_related_blocks.get(
                 self.api_object.device_type if self.api_object is not None else DeviceType.NoDevice, dict())
 

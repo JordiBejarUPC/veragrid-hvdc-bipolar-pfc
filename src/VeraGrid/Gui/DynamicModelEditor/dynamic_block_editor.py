@@ -61,6 +61,7 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_utilities import (
     RlcComboBlockTemplateDefinition,
     get_blocktype2template_builder_dict,
     initialize_template_builder_from_block,
+    synchronize_vsc_library_initialization,
 )
 
 from VeraGrid.Gui.messages import yes_no_question
@@ -9570,6 +9571,13 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 pass
             # Persist the edited RMS block back into the original model object.
             if self._document is not None:
+                # Individual VSC Library blocks keep their original ports.
+                # Bind only their initialization expressions before committing,
+                # including when their equations were decomposed for display.
+                synchronize_vsc_library_initialization(
+                    root=self._document.working_root_block,
+                    block_types=self._block2blocktype,
+                )
                 self._document.commit()
             else:
                 pass
