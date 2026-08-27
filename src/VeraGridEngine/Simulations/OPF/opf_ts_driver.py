@@ -668,6 +668,7 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
         """
 
         self.tic()
+        self.report_text("Compiling and configuring...")
 
         if self.engine == EngineType.GSLV:
             if not GSLV_AVAILABLE:

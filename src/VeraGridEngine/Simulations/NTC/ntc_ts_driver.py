@@ -194,6 +194,7 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
         :return:
         """
         self.tic()
+        self.report_text("Compiling and configuring...")
 
         self.opf()
         self.report_text('Done!')
