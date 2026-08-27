@@ -10,6 +10,7 @@ from typing import Union, List, TYPE_CHECKING
 
 from VeraGridEngine.Compilers.Gslv.Simulations.contingencies import gslv_contingencies_snapshot
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.Devices.Events.contingency_group import ContingencyGroup
 from VeraGridEngine.enumerations import EngineType, ContingencyMethod, SimulationTypes
 from VeraGridEngine.Simulations.ContingencyAnalysis.contingency_analysis_results import ContingencyAnalysisResults
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
@@ -35,6 +36,8 @@ class ContingencyAnalysisDriver(DriverTemplate):
         "options",
         "opf_results",
         "linear_multiple_contingencies",
+        "contingency_groups_used",
+        "con_names_used"
     )
 
     name = 'Contingency Analysis'
@@ -79,15 +82,21 @@ class ContingencyAnalysisDriver(DriverTemplate):
         else:
             self.linear_multiple_contingencies: LinearMultiContingencies = linear_multiple_contingencies
 
+        self.contingency_groups_used: List[ContingencyGroup] = (self.grid.get_contingency_groups()
+                                                           if self.options.contingency_groups is None
+                                                           else self.options.contingency_groups)
+
+        self.con_names_used=np.array([contingency_group.name for contingency_group in self.contingency_groups_used])
+
         # N-K results
         self.results = ContingencyAnalysisResults(
-            ncon=self.grid.get_contingency_groups_number(),
+            ncon=len(self.contingency_groups_used),
             nbus=self.grid.get_bus_number(),
             nbr=self.grid.get_branch_number(add_hvdc=False, add_vsc=False, add_switch=True),
             bus_names=self.grid.get_bus_names(),
             branch_names=self.grid.get_branch_names(add_hvdc=False, add_vsc=False, add_switch=True),
             bus_types=np.ones(self.grid.get_bus_number(), dtype=int),
-            con_names=np.array(self.grid.get_contingency_group_names())
+            con_names=self.con_names_used
         )
 
     def get_steps(self) -> List[str]:
@@ -110,6 +119,11 @@ class ContingencyAnalysisDriver(DriverTemplate):
         if self.engine == EngineType.PGM and not PGM_AVAILABLE:
             self.engine = EngineType.VeraGrid
             self.logger.add_warning('Tried to use PGM, but failed back to VeraGrid')
+
+        if self.results.Sbus.shape[0] == 0:
+            return self.results
+        else:
+            pass
 
         if self.engine == EngineType.VeraGrid:
 
@@ -219,13 +233,13 @@ class ContingencyAnalysisDriver(DriverTemplate):
                                                   opf_results=self.opf_results)
 
             self.results = ContingencyAnalysisResults(
-                ncon=self.grid.get_contingency_groups_number(),
+                ncon=len(self.contingency_groups_used),
                 nbus=self.grid.get_bus_number(),
                 nbr=self.grid.get_branch_number(add_hvdc=False, add_vsc=False, add_switch=True),
                 bus_names=self.grid.get_bus_names(),
                 branch_names=self.grid.get_branch_names(add_hvdc=False, add_vsc=False, add_switch=True),
                 bus_types=np.ones(self.grid.get_bus_number(), dtype=int),
-                con_names=np.array(self.grid.get_contingency_group_names())
+                con_names=self.con_names_used
             )
 
             self.results.Sf = con_res.Sf
@@ -267,7 +281,6 @@ class ContingencyAnalysisDriver(DriverTemplate):
         :return:
         """
         self.tic()
-
         self.report_text("Compiling and configuring...")
 
         self.run_at(t_idx=None, show_progress=True)
