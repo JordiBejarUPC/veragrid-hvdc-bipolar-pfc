@@ -71,3 +71,36 @@ Z_cw = Z_bond[0:phases, phases:]
 Z_wc = Z_bond[phases:, 0:phases]
 Z_abc = Z_cc - Z_cw @ np.linalg.inv(Z_ww) @ Z_wc
 print('Z_abc =', np.round(Z_abc,5))
+
+# Shunt Admittance Matrix
+r_3 = 106.4 / 2
+r_2 = 62.4 / 2
+r_5 = 126 / 2
+r_4 = 114.2 / 2
+
+epsilon_XLPE = 2.5
+epsilon_PPL = 2.8
+
+epsilon_0 = 8.854 * 10**(-12) # Permittivity of the free space [F/m]
+
+P_c = (1/(2 * np.pi * epsilon_0 * epsilon_XLPE)) * np.log(r_3/r_2)
+P_s = (1/(2 * np.pi * epsilon_0 * epsilon_PPL)) * np.log(r_5/r_4)
+
+
+I3 = np.eye(3)
+
+# Ordering: [c1, c2, c3, s1, s2, s3]
+P = np.block([
+    [(P_c + P_s) * I3, P_s * I3],
+    [P_s * I3,         P_s * I3],
+])
+
+Y_shunt = 1j * 2 * np.pi * f * np.linalg.inv(P)
+
+Y_cc = Y_shunt[:3, :3]
+Y_cs = Y_shunt[:3, 3:]
+Y_sc = Y_shunt[3:, :3]
+Y_ss = Y_shunt[3:, 3:]
+
+Y_abc = Y_cc - Y_cs @ np.linalg.inv(Y_ss) @ Y_sc
+print('Y_abc =', np.round(Y_abc * 1e9, 6))  # μS/km
