@@ -635,6 +635,28 @@ class FmuTemplateMode(Enum):
     MODEL_EXCHANGE = "ModelExchange"
 
 
+class FmiVersion(str, Enum):
+    """FMI specification families recognized by VeraGrid.
+
+    Maintenance documents do not necessarily define a new XML version or ABI.
+    FMI 1.0.1 and FMI 2.0.x therefore remain in the 1.0 and 2.0 families,
+    while stable FMI 3.0.x declarations remain in the 3.0 family. Recognizing
+    a family does not imply that every importer, runtime, or exporter supports
+    every interface in that family.
+    """
+
+    FMI_1_0 = "1.0"
+    FMI_2_0 = "2.0"
+    FMI_3_0 = "3.0"
+
+
+class FmuSourceKind(str, Enum):
+    """Kinds of FMU source accepted at the import boundary."""
+
+    ZIP = "zip"
+    DIRECTORY = "directory"
+
+
 class MIPSolvers(Enum):
     """
     MIP solvers enumeration
@@ -1862,6 +1884,7 @@ class DeviceType(Enum):
     ItMeasurementDevice = 'It Measurement'
 
     WireDevice = 'Wire'
+    DcCableTypeDevice = 'DC cable type'
     SequenceLineDevice = 'Sequence line'
     UnderGroundLineDevice = 'Underground line'
     OverheadLineTypeDevice = 'Tower'
@@ -4775,6 +4798,15 @@ class BlockType(Enum):
     PI_POWER_CONTROLLER = "Pi_power_controller"
     GFL_CONVERTER_RMS = "GFL_converter_rms"
     GFL_VSC_HVDC_RMS = "GFL_vsc_hvdc"
+    VSC_PLL_RMS = "VSC_PLL_RMS"
+    VSC_ELECTRICAL_RMS = "VSC_ELECTRICAL_RMS"
+    VSC_ACTIVE_CONTROL_RMS = "VSC_ACTIVE_CONTROL_RMS"
+    VSC_REACTIVE_CONTROL_RMS = "VSC_REACTIVE_CONTROL_RMS"
+    VSC_CURRENT_LIMITER_RMS = "VSC_CURRENT_LIMITER_RMS"
+    VSC_VD_HAT_RMS = "VSC_VD_HAT_RMS"
+    VSC_VQ_HAT_RMS = "VSC_VQ_HAT_RMS"
+    VSC_DC_LINK_RMS = "VSC_DC_LINK_RMS"
+    VSC_TERMINAL_POWER_RMS = "VSC_TERMINAL_POWER_RMS"
     VOLTAGE_SOURCE_RMS = "Voltage_source_rms"
     TRANSFORMER_2W_RMS = "Transformer_2w_rms"
     DC_LINE_RMS = "DC_line_rms"

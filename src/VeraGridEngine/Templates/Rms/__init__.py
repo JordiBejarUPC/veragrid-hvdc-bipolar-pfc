@@ -22,7 +22,18 @@ from VeraGridEngine.Templates.Rms.voltage_source_template import VoltageSourceBu
 from VeraGridEngine.Templates.Rms.vsc_gfl_dclinked import build_vsc_rms
 from VeraGridEngine.Templates.Rms.hvdc_vsc_gfl_rms_template_v2 import (
     HvdcVscGflRmsTemplate,
+    VscActiveControlRmsTemplate,
+    VscReactiveControlRmsTemplate,
     build_hvdc_vsc_gfl_rms,
+    build_vsc_pll_rms,
+    build_vsc_electrical_rms,
+    build_vsc_active_control_rms,
+    build_vsc_reactive_control_rms,
+    build_vsc_current_limiter_rms,
+    build_vsc_vd_hat_rms,
+    build_vsc_vq_hat_rms,
+    build_vsc_dc_link_rms,
+    build_vsc_terminal_power_rms,
     get_hvdc_vdc_q_vsc_rms,
     get_hvdc_pdc_q_vsc_rms,
 )

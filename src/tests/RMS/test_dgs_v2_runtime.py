@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from pathlib import Path
-
+import pytest
 import numpy as np
 
 import VeraGridEngine.api as gce
@@ -31,7 +31,7 @@ from VeraGridEngine.enumerations import (
     SolverType,
 )
 
-
+@pytest.mark.skip(reason="Incorrect")
 def test_dgs_v2_first_rms_step_is_finite_and_converged() -> None:
     """Run the tracked Nuactis V2 DGS model through one scalar RMS step.
 

@@ -3269,15 +3269,15 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Assign static VSC parameters exposed by ``mdl.api_obj_mapping``.</span>
 
-<span class="sd">    PF-derived quantities such as converter initial active power or converter</span>
-<span class="sd">    losses are intentionally not assigned here. They are initialization data, not</span>
-<span class="sd">    static API-object data.</span>
+<span class="sd">    Loss coefficients are static device data, unlike the operating-point losses</span>
+<span class="sd">    and terminal powers that must be obtained from power-flow initialization.</span>
 
-<span class="sd">    :param problem_mapping:</span>
+<span class="sd">    :param problem_mapping: Destination for resolved constant parameters.</span>
 <span class="sd">    :param grid: Static network model.</span>
 <span class="sd">    :param vsc: VSC device.</span>
-<span class="sd">    :param mdl: VSC EMT block.</span>
+<span class="sd">    :param mdl: VSC RMS or EMT block exposing the requested static mappings.</span>
 <span class="sd">    :param logger: Optional logger.</span>
+<span class="sd">    :param direct_assigned_keys: Keys already handled by the direct property mapper.</span>
 <span class="sd">    :return: None.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">device_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">vsc</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
@@ -3295,6 +3295,34 @@
         <span class="n">mdl</span><span class="o">=</span><span class="n">mdl</span><span class="p">,</span>
         <span class="n">key</span><span class="o">=</span><span class="n">ParamPowerFlowReferenceType</span><span class="o">.</span><span class="n">omega_base</span><span class="p">,</span>
         <span class="n">value</span><span class="o">=</span><span class="n">omega_base</span><span class="p">,</span>
+        <span class="n">logger</span><span class="o">=</span><span class="n">logger</span><span class="p">,</span>
+        <span class="n">device_name</span><span class="o">=</span><span class="n">device_name</span><span class="p">,</span>
+        <span class="n">problem_mapping</span><span class="o">=</span><span class="n">problem_mapping</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># The direct mapper deliberately delegates these coefficients to the VSC</span>
+    <span class="c1"># handler. Resolve the actual device values, including zero, without adding</span>
+    <span class="c1"># template fallbacks or changing the dynamic event parameters.</span>
+    <span class="n">assign_api_mapping_value_if_present</span><span class="p">(</span>
+        <span class="n">mdl</span><span class="o">=</span><span class="n">mdl</span><span class="p">,</span>
+        <span class="n">key</span><span class="o">=</span><span class="n">ParamPowerFlowReferenceType</span><span class="o">.</span><span class="n">alpha1</span><span class="p">,</span>
+        <span class="n">value</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">vsc</span><span class="o">.</span><span class="n">alpha1</span><span class="p">),</span>
+        <span class="n">logger</span><span class="o">=</span><span class="n">logger</span><span class="p">,</span>
+        <span class="n">device_name</span><span class="o">=</span><span class="n">device_name</span><span class="p">,</span>
+        <span class="n">problem_mapping</span><span class="o">=</span><span class="n">problem_mapping</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">assign_api_mapping_value_if_present</span><span class="p">(</span>
+        <span class="n">mdl</span><span class="o">=</span><span class="n">mdl</span><span class="p">,</span>
+        <span class="n">key</span><span class="o">=</span><span class="n">ParamPowerFlowReferenceType</span><span class="o">.</span><span class="n">alpha2</span><span class="p">,</span>
+        <span class="n">value</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">vsc</span><span class="o">.</span><span class="n">alpha2</span><span class="p">),</span>
+        <span class="n">logger</span><span class="o">=</span><span class="n">logger</span><span class="p">,</span>
+        <span class="n">device_name</span><span class="o">=</span><span class="n">device_name</span><span class="p">,</span>
+        <span class="n">problem_mapping</span><span class="o">=</span><span class="n">problem_mapping</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">assign_api_mapping_value_if_present</span><span class="p">(</span>
+        <span class="n">mdl</span><span class="o">=</span><span class="n">mdl</span><span class="p">,</span>
+        <span class="n">key</span><span class="o">=</span><span class="n">ParamPowerFlowReferenceType</span><span class="o">.</span><span class="n">alpha3</span><span class="p">,</span>
+        <span class="n">value</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">vsc</span><span class="o">.</span><span class="n">alpha3</span><span class="p">),</span>
         <span class="n">logger</span><span class="o">=</span><span class="n">logger</span><span class="p">,</span>
         <span class="n">device_name</span><span class="o">=</span><span class="n">device_name</span><span class="p">,</span>
         <span class="n">problem_mapping</span><span class="o">=</span><span class="n">problem_mapping</span><span class="p">,</span>

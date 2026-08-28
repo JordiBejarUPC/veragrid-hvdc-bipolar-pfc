@@ -478,8 +478,6 @@ def test_validation_sections_skip_phase_consistency_for_mixed_ac_dc_branch() -> 
     phase_section: ValidationSection | None = _get_section_by_title(sections, "Phases Consistency")
 
     assert phase_section is None
-    # Use the production tab teardown path so the intentionally edited model does not open a modal save prompt.
-    editor.prepare_to_delete()
     editor.close()
 
 
@@ -516,8 +514,6 @@ def test_validation_sections_skip_phase_consistency_for_ac_injection() -> None:
     sections: list[ValidationSection] = editor.collect_model_consistency_sections()
     phase_section: ValidationSection | None = _get_section_by_title(sections, "Phases Consistency")
     assert phase_section is None
-    # Use the production teardown path because changing interface refs marks the editor as modified.
-    editor.prepare_to_delete()
     editor.close()
 
 
@@ -557,8 +553,6 @@ def test_validation_sections_skip_phase_consistency_for_mixed_branch_with_ac_sid
     sections: list[ValidationSection] = editor.collect_model_consistency_sections()
     phase_section: ValidationSection | None = _get_section_by_title(sections, "Phases Consistency")
     assert phase_section is None
-    # Use the production teardown path because changing interface refs marks the editor as modified.
-    editor.prepare_to_delete()
     editor.close()
 
 
@@ -640,8 +634,6 @@ def test_show_issues_highlights_reported_protected_emt_connector_port() -> None:
     protected_item = _find_protected_item_by_name(editor, row_labels[0])
     highlighted_ports = [port for port in protected_item.inputs + protected_item.outputs if port._validation_highlighted]
     assert len(highlighted_ports) == 1
-    # Use the production teardown path because changing interface refs marks the editor as modified.
-    editor.prepare_to_delete()
     editor.close()
 
 
@@ -674,8 +666,6 @@ def test_show_issues_highlights_reported_protected_emt_voltage_connector_port() 
     protected_item = _find_protected_item_by_ref(editor, VarPowerFlowReferenceType.v_A)
     highlighted_ports = [port for port in protected_item.inputs + protected_item.outputs if port._validation_highlighted]
     assert len(highlighted_ports) == 1
-    # Use the production teardown path because changing interface refs marks the editor as modified.
-    editor.prepare_to_delete()
     editor.close()
 
 
@@ -714,8 +704,6 @@ def test_show_issues_highlights_reported_protected_emt_neutral_connector_port_by
     protected_item = _find_protected_item_by_ref(editor, VarPowerFlowReferenceType.v_N)
     highlighted_ports = [port for port in protected_item.inputs + protected_item.outputs if port._validation_highlighted]
     assert len(highlighted_ports) == 1
-    # Use the production teardown path because changing interface refs marks the editor as modified.
-    editor.prepare_to_delete()
     editor.close()
 
 
@@ -765,8 +753,6 @@ def test_show_issues_highlights_reported_protected_emt_branch_voltage_connector_
     protected_item = _find_protected_item_by_ref(editor, VarPowerFlowReferenceType.vf_A)
     highlighted_ports = [port for port in protected_item.inputs + protected_item.outputs if port._validation_highlighted]
     assert len(highlighted_ports) == 1
-    # Use the production teardown path because changing interface refs marks the editor as modified.
-    editor.prepare_to_delete()
     editor.close()
 
 
@@ -817,8 +803,6 @@ def test_zero_wire_emt_connectivity_emits_neutral_and_current_refs() -> None:
     assert VarPowerFlowReferenceType.i_A in collected_refs
     assert VarPowerFlowReferenceType.i_B in collected_refs
     assert VarPowerFlowReferenceType.i_C in collected_refs
-    # Use the production teardown path because changing interface refs marks the editor as modified.
-    editor.prepare_to_delete()
     editor.close()
 
 
@@ -998,8 +982,6 @@ def test_show_issues_globally_highlights_generic_visible_ports_from_connectivity
     protected_item = _find_protected_item_by_ref(editor, VarPowerFlowReferenceType.Vdc)
     highlighted_ports = [port for port in protected_item.inputs + protected_item.outputs if port._validation_highlighted]
     assert len(highlighted_ports) == 1
-    # Use the production teardown path because changing interface refs marks the editor as modified.
-    editor.prepare_to_delete()
     editor.close()
 
 
@@ -1042,6 +1024,4 @@ def test_show_issues_highlights_unconnected_internal_emt_ac_ports_by_ref() -> No
 
     assert VarPowerFlowReferenceType.v_A in collected_refs
     assert VarPowerFlowReferenceType.i_A in collected_refs
-    # Use the production teardown path because changing interface refs marks the editor as modified.
-    editor.prepare_to_delete()
     editor.close()

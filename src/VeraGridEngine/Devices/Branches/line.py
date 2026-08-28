@@ -59,9 +59,6 @@ class Line(BranchParent):
         '_X2',
         '_B2',
         '_G2',
-        'dc_series_inductance_pu_seconds',
-        'dc_shunt_capacitance_pu_seconds',
-        'dc_cable_dynamic_parameters_complete',
         '_ys',
         '_ysh',
         'temp_base',
@@ -171,28 +168,6 @@ class Line(BranchParent):
             tpe=float,
             definition='Total negative sequence shunt conductance.',
             cat=[PrpCat.SC, PrpCat.PF3],
-        ),
-        GCProp(
-            prop_name='dc_series_inductance_pu_seconds',
-            units='p.u. s',
-            tpe=float,
-            definition='DC series inductance coefficient on the system power base.',
-            cat=[PrpCat.RMS],
-            dyn_ref=ParamPowerFlowReferenceType.dc_line_l_pu_seconds,
-        ),
-        GCProp(
-            prop_name='dc_shunt_capacitance_pu_seconds',
-            units='p.u. s',
-            tpe=float,
-            definition='DC shunt capacitance coefficient on the system power base.',
-            cat=[PrpCat.RMS],
-        ),
-        GCProp(
-            prop_name='dc_cable_dynamic_parameters_complete',
-            units='',
-            tpe=bool,
-            definition='Whether the DC cable energy coefficients come from complete source evidence.',
-            cat=[PrpCat.RMS],
         ),
         GCProp(
             prop_name='ys',
@@ -311,11 +286,7 @@ class Line(BranchParent):
                  capex=0,
                  opex=0,
                  circuit_idx: int = 1,
-                 build_status: BuildStatus = BuildStatus.Commissioned,
-                 # TODO: SANPEN: Why are these here?
-                 dc_series_inductance_pu_seconds: float = 0.0,
-                 dc_shunt_capacitance_pu_seconds: float = 0.0,
-                 dc_cable_dynamic_parameters_complete: bool = False):
+                 build_status: BuildStatus = BuildStatus.Commissioned):
         """
         AC current Line
         :param bus_from: "From" :ref:`bus<Bus>` object
@@ -357,9 +328,6 @@ class Line(BranchParent):
         :param capex: Cost of investment (e/MW)
         :param opex: Cost of operation (e/MWh)
         :param build_status: build status (now time)
-        :param dc_series_inductance_pu_seconds: DC series inductance coefficient in p.u. seconds
-        :param dc_shunt_capacitance_pu_seconds: DC shunt capacitance coefficient in p.u. seconds
-        :param dc_cable_dynamic_parameters_complete: Whether both coefficients have complete source evidence
         """
 
         BranchParent.__init__(self,
@@ -413,11 +381,6 @@ class Line(BranchParent):
         self._X2 = float(x2)
         self._B2 = float(b2)
         self._G2 = float(g2)
-
-        # Preserve the irreducible DC cable data required by the RMS topology.
-        self.dc_series_inductance_pu_seconds: float = float(dc_series_inductance_pu_seconds)
-        self.dc_shunt_capacitance_pu_seconds: float = float(dc_shunt_capacitance_pu_seconds)
-        self.dc_cable_dynamic_parameters_complete: bool = bool(dc_cable_dynamic_parameters_complete)
 
         self._ys = AdmittanceMatrix()
         self._ysh = AdmittanceMatrix()
@@ -734,19 +697,6 @@ class Line(BranchParent):
             self.G *= b
             self.G0 *= b
             self.G2 *= b
-
-            # The dynamic impedance and admittance coefficients use reciprocal
-            # base transformations. Invalidate cross-domain evidence after a
-            # non-identity change until the legacy static B scaling is reviewed.
-            if self.dc_cable_dynamic_parameters_complete:
-                self.dc_series_inductance_pu_seconds *= b
-                self.dc_shunt_capacitance_pu_seconds /= b
-                if b != 1.0:
-                    self.dc_cable_dynamic_parameters_complete = False
-                else:
-                    pass
-            else:
-                pass
         else:
             pass
 
@@ -821,16 +771,6 @@ class Line(BranchParent):
                                          length=self.length,
                                          line_Vnom=self.get_max_bus_nominal_voltage(),
                                          decimals_rounding=decimals_rounding)
-
-            # Conductance is an independent shunt component. Keep the legacy
-            # seven-value template tuple stable and obtain G explicitly.
-            self.G, self.G0 = obj.get_conductance_values(
-                Sbase=Sbase,
-                length=self.length,
-                line_Vnom=self.get_max_bus_nominal_voltage(),
-                decimals_rounding=decimals_rounding,
-            )
-            self.G2 = self.G
 
             self.ys = obj.get_ys_nabc()
             self.ysh = obj.get_ysh_nabc()

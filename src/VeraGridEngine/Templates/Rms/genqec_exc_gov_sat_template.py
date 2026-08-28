@@ -632,7 +632,6 @@ def get_exciter_rms(vfactory: VarFactory, name: str = "exciter") -> RmsModelTemp
 
     events_dict = {
         # Exciter (AVR) parameters
-        UsRefPu: vfactory.add_const(None),  # reference voltage (pu)
         AEz: vfactory.add_const(0.02),  # saturation gain
         BEz: vfactory.add_const(1.5),  # saturation exponential coefficient
         Se_threshold: vfactory.add_const(1.0),  # saturation threshold
@@ -910,7 +909,7 @@ def OELBuild(vfactory: VarFactory, name: str = "OEL") -> RmsModelTemplate:
         SW1: vfactory.add_const(1.0),
     }
 
-    oel_block.event_params = event_dict
+    oel_block.event_dict = event_dict
     # equations
     block_Ipu, Ipu = tf_to_block(
         var_factory=vfactory,

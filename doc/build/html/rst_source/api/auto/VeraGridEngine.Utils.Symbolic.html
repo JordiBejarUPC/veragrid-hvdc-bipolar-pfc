@@ -5257,16 +5257,23 @@ current device EMT model block.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="VeraGridEngine.Utils.Symbolic.templates_common_functions.connect_bus_variables_rms">
-<span class="sig-prename descclassname"><span class="pre">VeraGridEngine.Utils.Symbolic.templates_common_functions.</span></span><span class="sig-name descname"><span class="pre">connect_bus_variables_rms</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#VeraGridEngine.Utils.Symbolic.block.Block" title="VeraGridEngine.Utils.Symbolic.block.Block"><span class="pre">Block</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">var_factory</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.Devices.Dynamic.html#VeraGridEngine.Devices.Dynamic.var_factory.VarFactory" title="VeraGridEngine.Devices.Dynamic.var_factory.VarFactory"><span class="pre">VarFactory</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/VeraGridEngine/Utils/Symbolic/templates_common_functions.html#connect_bus_variables_rms"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Utils.Symbolic.templates_common_functions.connect_bus_variables_rms" title="Link to this definition"></a></dt>
-<dd><p>connect the bus variables of the model with the api_object bus variables
-:param device:
-:type device:
-:param model:
-:type model:
-:param var_factory:
-:type var_factory:
-:return:
-:rtype:</p>
+<span class="sig-prename descclassname"><span class="pre">VeraGridEngine.Utils.Symbolic.templates_common_functions.</span></span><span class="sig-name descname"><span class="pre">connect_bus_variables_rms</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#VeraGridEngine.Utils.Symbolic.block.Block" title="VeraGridEngine.Utils.Symbolic.block.Block"><span class="pre">Block</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">var_factory</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.Devices.Dynamic.html#VeraGridEngine.Devices.Dynamic.var_factory.VarFactory" title="VeraGridEngine.Devices.Dynamic.var_factory.VarFactory"><span class="pre">VarFactory</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Utils/Symbolic/templates_common_functions.html#connect_bus_variables_rms"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Utils.Symbolic.templates_common_functions.connect_bus_variables_rms" title="Link to this definition"></a></dt>
+<dd><p>Connect one RMS device model to the voltage variables of its buses.</p>
+<p>Mixed AC/DC VSCs and pure DC lines use explicit device-specific terminal
+mappings. Conventional AC branches retain the existing from/to connection
+helpers, while injection devices retain exact power-flow-reference matching.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>device</strong> – Static network device receiving the RMS model.</p></li>
+<li><p><strong>model</strong> – Materialized RMS model whose terminal variables are connected.</p></li>
+<li><p><strong>var_factory</strong> – Shared symbolic variable factory, when available.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>None.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -5841,13 +5848,15 @@ its children for robust GUI execution.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="VeraGridEngine.Utils.Symbolic.templates_common_functions.synchronize_saved_rms_root_mappings_from_children">
 <span class="sig-prename descclassname"><span class="pre">VeraGridEngine.Utils.Symbolic.templates_common_functions.</span></span><span class="sig-name descname"><span class="pre">synchronize_saved_rms_root_mappings_from_children</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Utils/Symbolic/templates_common_functions.html#synchronize_saved_rms_root_mappings_from_children"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Utils.Symbolic.templates_common_functions.synchronize_saved_rms_root_mappings_from_children" title="Link to this definition"></a></dt>
-<dd><p>Mirror child RMS mappings into the saved device-model root.</p>
+<dd><p>Synchronize live child RMS mappings into the saved device-model root.</p>
 <p>Models assembled in the Dynamic Editor store complete device templates as
 children of the editor-owned root. RMS initialization reads
 <code class="docutils literal notranslate"><span class="pre">external_mapping</span></code> and <code class="docutils literal notranslate"><span class="pre">api_obj_mapping</span></code> from that root, so every
 mapping owned by a generated child must also be exposed there after the
-edited model is committed. Existing non-null root mappings remain
-authoritative, which preserves manually curated interface bindings.</p>
+edited model is committed. Keep existing root bindings only when their
+targets are still declared in the current tree. This removes orphaned
+mappings left by deleted blocks while preserving live interface bindings,
+including connected variables with different names or from/to references.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>device</strong> – Device whose saved RMS model has just been committed.</p>

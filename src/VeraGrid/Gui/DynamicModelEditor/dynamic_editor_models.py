@@ -56,7 +56,7 @@ class InspectModel(QWidget):
         main_layout.addLayout(left_panel)
 
         var_header_layout: QHBoxLayout = QHBoxLayout()
-        var_label: QLabel = QLabel(self.tr("Variables"))
+        var_label: QLabel = QLabel("Variables")
         var_header_layout.addWidget(var_label)
         left_panel.addLayout(var_header_layout)
 
@@ -64,7 +64,7 @@ class InspectModel(QWidget):
         left_panel.addWidget(self.list_vars)
 
         param_header_layout: QHBoxLayout = QHBoxLayout()
-        param_label: QLabel = QLabel(self.tr("Parameters"))
+        param_label: QLabel = QLabel("Parameters")
         param_header_layout.addWidget(param_label)
         left_panel.addLayout(param_header_layout)
 
@@ -80,7 +80,7 @@ class InspectModel(QWidget):
         main_layout.addLayout(right_panel)
 
         eqn_header_layout: QHBoxLayout = QHBoxLayout()
-        eqn_label: QLabel = QLabel(self.tr("Equations"))
+        eqn_label: QLabel = QLabel("Equations")
         eqn_header_layout.addWidget(eqn_label)
         right_panel.addLayout(eqn_header_layout)
 
@@ -200,7 +200,7 @@ def copy_block_state(source_block: Block, target_block: Block) -> None:
     target_block.diagram = source_clone.diagram
 
 
-def ensure_block_tree_names(block: Block, prefix: str = "block") -> None:
+def _ensure_block_tree_names(block: Block, prefix: str = "block") -> None:
     """Assign deterministic display names to unnamed blocks recursively.
 
     :param block: Block subtree to normalize.
@@ -215,7 +215,7 @@ def ensure_block_tree_names(block: Block, prefix: str = "block") -> None:
     child_index: int
     child_block: Block
     for child_index, child_block in enumerate(block.children, start=1):
-        ensure_block_tree_names(child_block, prefix=f"{block.name}_{child_index}")
+        _ensure_block_tree_names(child_block, prefix=f"{block.name}_{child_index}")
 
 
 def block_requires_editor_connection_bootstrap(block: Block) -> bool:
@@ -239,7 +239,7 @@ def block_requires_editor_connection_bootstrap(block: Block) -> bool:
         return False
 
 
-def initialize_editor_assigned_rms_bus_model(bus: Bus, var_factory: VarFactory) -> None:
+def _initialize_editor_assigned_rms_bus_model(bus: Bus, var_factory: VarFactory) -> None:
     """Create a missing RMS bus shell used by an editor-assigned model.
 
     :param bus: Connected network bus.
@@ -252,10 +252,10 @@ def initialize_editor_assigned_rms_bus_model(bus: Bus, var_factory: VarFactory) 
         pass
 
 
-def initialize_editor_assigned_emt_bus_model(bus: Bus,
-                                             api_object: ALL_DEV_TYPES,
-                                             circuit: MultiCircuit | None,
-                                             var_factory: VarFactory) -> None:
+def _initialize_editor_assigned_emt_bus_model(bus: Bus,
+                                              api_object: ALL_DEV_TYPES,
+                                              circuit: MultiCircuit | None,
+                                              var_factory: VarFactory) -> None:
     """Create or reconcile one EMT bus shell before editor attachment.
 
     :param bus: Connected network bus.
@@ -333,27 +333,27 @@ def initialize_connected_bus_models_for_editor_assignment(api_object: ALL_DEV_TY
         if bus is None:
             pass
         elif mode == DynamicSimulationMode.RMS:
-            initialize_editor_assigned_rms_bus_model(bus=bus, var_factory=var_factory)
+            _initialize_editor_assigned_rms_bus_model(bus=bus, var_factory=var_factory)
         elif mode == DynamicSimulationMode.EMT:
-            initialize_editor_assigned_emt_bus_model(bus=bus,
-                                                     api_object=api_object,
-                                                     circuit=circuit,
-                                                     var_factory=var_factory)
+            _initialize_editor_assigned_emt_bus_model(bus=bus,
+                                                      api_object=api_object,
+                                                      circuit=circuit,
+                                                      var_factory=var_factory)
         else:
             raise ValueError(f"Unsupported dynamic editor mode {mode}")
     elif isinstance(api_object, BranchParent):
         if mode == DynamicSimulationMode.RMS:
-            initialize_editor_assigned_rms_bus_model(bus=api_object.bus_from, var_factory=var_factory)
-            initialize_editor_assigned_rms_bus_model(bus=api_object.bus_to, var_factory=var_factory)
+            _initialize_editor_assigned_rms_bus_model(bus=api_object.bus_from, var_factory=var_factory)
+            _initialize_editor_assigned_rms_bus_model(bus=api_object.bus_to, var_factory=var_factory)
         elif mode == DynamicSimulationMode.EMT:
-            initialize_editor_assigned_emt_bus_model(bus=api_object.bus_from,
-                                                     api_object=api_object,
-                                                     circuit=circuit,
-                                                     var_factory=var_factory)
-            initialize_editor_assigned_emt_bus_model(bus=api_object.bus_to,
-                                                     api_object=api_object,
-                                                     circuit=circuit,
-                                                     var_factory=var_factory)
+            _initialize_editor_assigned_emt_bus_model(bus=api_object.bus_from,
+                                                      api_object=api_object,
+                                                      circuit=circuit,
+                                                      var_factory=var_factory)
+            _initialize_editor_assigned_emt_bus_model(bus=api_object.bus_to,
+                                                      api_object=api_object,
+                                                      circuit=circuit,
+                                                      var_factory=var_factory)
             if not api_object.emt_model.empty() and circuit is not None:
                 reconcile_saved_emt_model_against_current_topology(device=api_object,
                                                                    grid=circuit,

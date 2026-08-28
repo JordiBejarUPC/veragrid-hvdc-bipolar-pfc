@@ -275,7 +275,6 @@ class SimulationsMain(TimeEventsMain):
             gf.ComboModel(enum_values=[DynamicIntegrationMethod.DaeBackEuler,
                                        DynamicIntegrationMethod.DaeTrapezoidal,
                                        DynamicIntegrationMethod.DaeBDF2,
-                                       DynamicIntegrationMethod.DaeBackEuler,
                                        DynamicIntegrationMethod.OdeEuler],
                           translate=self.tr)
         )
@@ -3947,13 +3946,15 @@ class SimulationsMain(TimeEventsMain):
         :return: None.
         """
         _, results = self.session.rms_dynamic_simulation
+        # rms_thread: GcThread | None = self.session.threads.get(SimulationTypes.RmsDynamic_run, None)
+
+        # A completed or failed worker is no longer an active simulation. Keep
+        # this cleanup outside the results branch because an engine validation
+        # error deliberately produces no result shell.
+        self.remove_simulation(SimulationTypes.RmsDynamic_run)
+        self.update_available_results()
 
         if results is not None:
-
-            # delete from the current simulations
-            self.remove_simulation(SimulationTypes.RmsDynamic_run)
-            self.update_available_results()
-
             # Only active event groups are simulated, so the completion report
             # must ignore inactive groups whose default result flags remain False.
             active_group_indices: list[int] = list()
@@ -4005,7 +4006,11 @@ class SimulationsMain(TimeEventsMain):
                 self.show_info_toast("There are no active RMS event groups to report.")
 
         else:
-            warning_msg(self.tr('There are no rms simulation results.'), self.tr('Rms simulation'))
+            if rms_thread.logger.has_logs():
+                self.show_logs(logger=rms_thread.logger, name="RMS simulation error")
+            else:
+                warning_msg(self.tr('There are no rms simulation results.'), self.tr('Rms simulation'))
+
 
         if not self.session.is_anything_running():
             self.UNLOCK()
@@ -4072,79 +4077,6 @@ class SimulationsMain(TimeEventsMain):
         else:
             info_msg(self.tr('The simulation time is 0. Change it to a proper time in settings.'))
 
-        # if self.circuit.valid_for_simulation():
-        #
-        #     if not self.session.is_this_running(SimulationTypes.EmtDynamic_run):
-        #
-        #         logger = self.circuit.check_emt_models()
-        #         if logger.has_errors():
-        #             # Show dialogue
-        #             dlg = LogsDialogue(name="EMT pre simulation check",
-        #                                logger=logger)
-        #             dlg.setModal(True)
-        #             dlg.exec()
-        #             return
-        #         else:
-        #
-        #             self.remove_simulation(SimulationTypes.EmtDynamic_run)
-        #
-        #             _, pf_results_3ph = self.session.power_flow_3ph
-        #
-        #             _, pf_results = self.session.power_flow
-        #
-        #             if not len(self.circuit.emt_events_groups) == 0:
-        #                 emt_options = self.get_selected_emt_simulation_options()
-        #                 if emt_options.simulation_time > 0.0:
-        #                     if pf_results_3ph is not None:
-        #
-        #                         self.add_simulation(SimulationTypes.EmtDynamic_run)
-        #                         self.ui.progress_label.setText('Running emt simulation...')
-        #                         QtGui.QGuiApplication.processEvents()
-        #                         self.LOCK()
-        #
-        #                         drv = sim.EmtSimulationDriver(grid=self.circuit,
-        #                                                       options=self.get_selected_emt_simulation_options(),
-        #                                                       pf_results_3ph=pf_results_3ph)
-        #
-        #                         self.session.run(drv,
-        #                                          post_func=self.post_emt,
-        #                                          prog_func=self.ui.progressBar.setValue,
-        #                                          text_func=self.ui.progress_label.setText)
-        #
-        #                     elif pf_results is not None:
-        #
-        #                         # self.add_simulation(SimulationTypes.RmsDynamic_run)
-        #                         self.ui.progress_label.setText('Running emt simulation from balanced power flow results ...')
-        #                         QtGui.QGuiApplication.processEvents()
-        #                         self.LOCK()
-        #
-        #                         drv = sim.EmtSimulationDriver(grid=self.circuit,
-        #                                                       options=self.get_selected_emt_simulation_options(),
-        #                                                       pf_results=pf_results)
-        #
-        #                         self.session.run(drv,
-        #                                          post_func=self.post_emt,
-        #                                          prog_func=self.ui.progressBar.setValue,
-        #                                          text_func=self.ui.progress_label.setText)
-        #
-        #                     else:
-        #                         info_msg('Run a power flow simulation first.\n'
-        #                                  'The results are needed to initialize this simulation.')
-        #
-        #                 else:
-        #                     info_msg('The simulation time is 0. Change it to a proper time in settings.')
-        #
-        #             else:
-        #                 info_msg('Add an EMT Events Group even if it is empty.\n'
-        #                          'Go to database -> EMT Events Group to add it.')
-        #
-        #
-        #     else:
-        #         self.show_warning_toast('Another EMT simulation is running already...')
-        #
-        # else:
-        #     pass
-
     def post_emt(self) -> None:
         """
         Finalize the EMT simulation workflow and report only active-group status.
@@ -4154,12 +4086,12 @@ class SimulationsMain(TimeEventsMain):
         _, results = self.session.emt_dynamic_simulation
         emt_driver, _unused_results = self.session.emt_dynamic_simulation
 
+        # A failed construction has no results object, but it has still finished.
+        # Always clear the running entry so the GUI unlocks and can run again.
+        self.remove_simulation(SimulationTypes.EmtDynamic_run)
+        self.update_available_results()
+
         if results is not None:
-
-            # delete from the current simulations
-            self.remove_simulation(SimulationTypes.EmtDynamic_run)
-            self.update_available_results()
-
             # Only active event groups are simulated, so the completion report
             # must ignore inactive groups whose default result flags remain False.
             active_group_indices: list[int] = list()
@@ -4210,18 +4142,31 @@ class SimulationsMain(TimeEventsMain):
                 self.show_info_toast("There are no active EMT event groups to report.")
 
         else:
-            if emt_driver is not None and emt_driver.logger.has_logs():
-                self.show_logs(logger=emt_driver.logger, name="EMT simulation logs")
-            else:
-                pass
+            has_detailed_logs: bool = False
 
-            emt_thread = self.session.threads.get(SimulationTypes.EmtDynamic_run, None)
-            if emt_thread is not None and emt_thread.logger.has_logs():
+            # GcThread carries both the uncaught exception and the driver's logs,
+            # so it is the authoritative source for construction failures.
+            if emt_thread.logger.has_logs():
                 self.show_logs(logger=emt_thread.logger, name="EMT simulation error")
+                has_detailed_logs = True
             else:
                 pass
 
-            warning_msg(self.tr('There are no emt simulation results.'), self.tr('Emt simulation'))
+            # Keep a driver fallback for failures reported without an uncaught
+            # exception. Do not show it after the thread logger because the thread
+            # already merges those records and duplicate dialogs obscure the cause.
+            if has_detailed_logs:
+                pass
+            elif emt_driver is not None and emt_driver.logger.has_logs():
+                self.show_logs(logger=emt_driver.logger, name="EMT simulation logs")
+                has_detailed_logs = True
+            else:
+                pass
+
+            if has_detailed_logs:
+                pass
+            else:
+                warning_msg(self.tr('There are no emt simulation results.'), self.tr('Emt simulation'))
 
         if not self.session.is_anything_running():
             self.UNLOCK()
@@ -4422,24 +4367,27 @@ class SimulationsMain(TimeEventsMain):
         else:
             pass
 
-    def post_emt_small_signal_stability(self):
-        """
+    def post_emt_small_signal_stability(self) -> None:
+        """Finalize EMT small-signal analysis and expose engine diagnostics.
 
-        :return:
+        :return: None.
         """
-        _, results = self.session.small_signal_stability_simulation
+        driver, results = self.session.small_signal_stability_simulation
+
+        # Problem construction can fail before a results object exists, so the
+        # active-run bookkeeping must be cleared on both outcomes.
+        self.remove_simulation(SimulationTypes.EmtSmallSignal_run)
+        self.update_available_results()
 
         if results is not None:
-
-            # delete from the current simulations
-            self.remove_simulation(SimulationTypes.EmtSmallSignal_run)
-            self.update_available_results()
-
             self.show_info_toast("Small-Signal stability analysis EMT has finished correctly!")
 
         else:
-            warning_msg(self.tr('There are no Small-Signal Stability analysis EMT results.'),
-                        self.tr('Small-Signal Stability analysis EMT'))
+            if driver.logger.has_logs():
+                self.show_logs(logger=driver.logger, name="EMT small-signal simulation error")
+            else:
+                warning_msg(self.tr('There are no Small-Signal Stability analysis EMT results.'),
+                            self.tr('Small-Signal Stability analysis EMT'))
 
         if not self.session.is_anything_running():
             self.UNLOCK()

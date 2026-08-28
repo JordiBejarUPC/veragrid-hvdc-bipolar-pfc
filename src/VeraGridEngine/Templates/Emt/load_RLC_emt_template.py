@@ -1170,7 +1170,6 @@ def get_shunt_r_emt_template(
         voltage_vars[phase_label] = voltage_var
 
         resistance_var: Var = vf.add_var(f"R_{phase_label}_{event_name}")
-        block.event_dict[resistance_var] = vf.add_const(None)
         resistance_vars[phase_label] = resistance_var
 
         pl0_var: Var = vf.add_var(f"Pl0_{phase_label}")

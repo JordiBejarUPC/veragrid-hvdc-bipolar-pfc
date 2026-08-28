@@ -42,8 +42,8 @@ from VeraGridEngine.Templates.Rms.line_rms_template import (
 from VeraGridEngine.Templates.Rms.load_rms_template import (
     get_load_rms_template,
     get_voltage_dependent_power_rms_template,
-    VoltageDependentPowerModel,
 )
+from VeraGridEngine.enumerations import VoltageDependentPowerModel
 from VeraGridEngine.Templates.Rms.shunt_template import get_shunt_template
 from VeraGridEngine.Templates.Rms.transformer_rms_template import (
     get_ideal_transformer2w_rms,
