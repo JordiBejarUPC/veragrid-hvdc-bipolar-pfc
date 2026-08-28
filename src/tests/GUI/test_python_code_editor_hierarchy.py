@@ -76,7 +76,7 @@ def test_scripting_editor_owns_completion_namespace() -> None:
     _unused_application: QtWidgets.QApplication = application
     sentinel: object = object()
     editor: ScriptingPythonEditor = ScriptingPythonEditor(
-        vars_dict=dict({"initial_object": sentinel})
+        vars_dict={"initial_object": sentinel}
     )
 
     namespace: dict[str, object] = editor.get_execution_namespace()
@@ -103,7 +103,7 @@ def test_dae_editor_owns_diagnostics_and_search_state() -> None:
     _unused_application: QtWidgets.QApplication = application
     symbolic_variable: Var = Var("alpha")
     editor: DaeCodeEditor = DaeCodeEditor(
-        symbol_namespace=dict({"alpha": symbolic_variable})
+        symbol_namespace={"alpha": symbolic_variable}
     )
     editor.setPlainText("alpha + beta\nalpha")
     diagnostic: DaeCodeDiagnostic = DaeCodeDiagnostic(1, 0, 5, "Example error")

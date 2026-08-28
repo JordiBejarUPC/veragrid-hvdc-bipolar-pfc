@@ -43,7 +43,7 @@ def _get_device_library_payloads(device: ALL_DEV_TYPES) -> list[BlockType]:
         api_object=device,
         mode=DynamicSimulationMode.RMS,
     )
-    leaves: list[LibraryLeafSpec] = library.device_rms_physical_blocks.get(device.device_type, list())
+    leaves: list[LibraryLeafSpec] = library.device_rms_related_blocks.get(device.device_type, list())
     payloads: list[BlockType] = list()
     for leaf in leaves:
         if isinstance(leaf.payload, BlockType):
@@ -77,7 +77,7 @@ def test_dc_line_library_uses_the_device_name_only() -> None:
         api_object=DcLine(),
         mode=DynamicSimulationMode.RMS,
     )
-    leaves: list[LibraryLeafSpec] = library.device_rms_physical_blocks.get(
+    leaves: list[LibraryLeafSpec] = library.device_rms_related_blocks.get(
         DeviceType.DCLineDevice,
         list(),
     )

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import copy
-from typing import Dict, List
+from typing import Any, Dict, List
 
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Utils.Symbolic.block import Block, normalize_dynamic_connection_intents
@@ -99,7 +99,7 @@ def test_block_saver_round_trip_preserves_typed_connection_intents() -> None:
     source_factory: VarFactory = VarFactory()
     source_block: Block = _build_block_with_connection_intents(var_factory=source_factory)
     saver: BlockSaver = BlockSaver(var_factory=source_factory)
-    saved_root: Dict[str, object] = saver.save_block(blk=source_block, main=True)
+    saved_root: Dict[str, Any] = saver.save_block(blk=source_block, main=True)
     persisted_intents: List[Dict[str, object]] = saved_root["connection_intents"]
 
     assert len(persisted_intents) == 2
@@ -154,8 +154,8 @@ def test_block_parser_upgrades_legacy_port_index_intent() -> None:
     source_block: Block = _build_block_with_connection_intents(var_factory=source_factory)
     saver: BlockSaver = BlockSaver(var_factory=source_factory)
     saver.save_block(blk=source_block, main=True)
-    saved_blocks: Dict[int, Dict[str, object]] = copy.deepcopy(saver.get_blocks())
-    saved_root: Dict[str, object] = saved_blocks[source_block.uid]
+    saved_blocks: Dict[int, Dict[str, Any]] = copy.deepcopy(saver.get_blocks())
+    saved_root: Dict[str, Any] = saved_blocks[source_block.uid]
     saved_root["connection_intents"] = list([dict({
         "origin": DynamicConnectionIntentOrigin.USER.value,
         "root_ref": VarPowerFlowReferenceType.v_A.value,

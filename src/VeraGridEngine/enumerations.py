@@ -635,6 +635,28 @@ class FmuTemplateMode(Enum):
     MODEL_EXCHANGE = "ModelExchange"
 
 
+class FmiVersion(str, Enum):
+    """FMI specification families recognized by VeraGrid.
+
+    Maintenance documents do not necessarily define a new XML version or ABI.
+    FMI 1.0.1 and FMI 2.0.x therefore remain in the 1.0 and 2.0 families,
+    while stable FMI 3.0.x declarations remain in the 3.0 family. Recognizing
+    a family does not imply that every importer, runtime, or exporter supports
+    every interface in that family.
+    """
+
+    FMI_1_0 = "1.0"
+    FMI_2_0 = "2.0"
+    FMI_3_0 = "3.0"
+
+
+class FmuSourceKind(str, Enum):
+    """Kinds of FMU source accepted at the import boundary."""
+
+    ZIP = "zip"
+    DIRECTORY = "directory"
+
+
 class MIPSolvers(Enum):
     """
     MIP solvers enumeration
@@ -1862,6 +1884,7 @@ class DeviceType(Enum):
     ItMeasurementDevice = 'It Measurement'
 
     WireDevice = 'Wire'
+    DcCableTypeDevice = 'DC cable type'
     SequenceLineDevice = 'Sequence line'
     UnderGroundLineDevice = 'Underground line'
     OverheadLineTypeDevice = 'Tower'

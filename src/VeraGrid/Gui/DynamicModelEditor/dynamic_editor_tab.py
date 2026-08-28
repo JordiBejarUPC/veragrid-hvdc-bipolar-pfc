@@ -23,11 +23,7 @@ from VeraGridEngine.enumerations import DynamicSimulationMode, BlockType, DynEdi
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_models import clone_block_for_editing, copy_block_state
 
-from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import (
-    DynamicBlockEditorGUI,
-    find_direct_physical_template_block,
-    find_physical_root_control_container,
-)
+from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGrid.Session.dynamic_editor_entries import DynamicEditorEntry
 
 
@@ -232,30 +228,7 @@ class DynamicEditorTab(QtWidgets.QWidget):
 
         # ---- Document + Navigation ----
         document = DynamicEditorDocument(block)
-        working_root_block: Block = document.working_root_block
-        if mode == DynamicSimulationMode.RMS:
-            has_physical_root_projection: bool = (
-                find_physical_root_control_container(
-                    root_block=working_root_block,
-                )
-                is not None
-                or find_direct_physical_template_block(
-                    root_block=working_root_block,
-                )
-                is not None
-            )
-        else:
-            has_physical_root_projection = False
-
-        # A physical RMS root must reach the editor with its public device
-        # boundary intact. Decomposing it here turns the device into arithmetic
-        # implementation blocks before the editor can materialize local
-        # measurements and network exchange ports. Non-physical roots retain
-        # the established equation-decomposition path.
-        if has_physical_root_projection:
-            pass
-        else:
-            prepare_block_for_editing(working_root_block, var_factory)
+        prepare_block_for_editing(document.working_root_block, var_factory)
         self._navigation = DynamicEditorNavigation(document)
 
         self._layout = QtWidgets.QVBoxLayout(self)

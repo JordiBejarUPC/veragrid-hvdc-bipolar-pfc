@@ -3050,18 +3050,19 @@ def convert_dgs_to_line(
             and math.isfinite(float(line.B))
             and float(line.B) >= 0.0
         )
-        if has_valid_dynamic_parameters:
-            line.dc_series_inductance_pu_seconds = (
-                float(line.X) / angular_frequency
-            )
-            line.dc_shunt_capacitance_pu_seconds = (
-                float(line.B) / angular_frequency
-            )
-            line.dc_cable_dynamic_parameters_complete = True
-        else:
-            line.dc_cable_dynamic_parameters_complete = False
+        # if has_valid_dynamic_parameters:
+        #     line.dc_series_inductance_pu_seconds = (
+        #         float(line.X) / angular_frequency
+        #     )
+        #     line.dc_shunt_capacitance_pu_seconds = (
+        #         float(line.B) / angular_frequency
+        #     )
+        #     line.dc_cable_dynamic_parameters_complete = True
+        # else:
+        #     line.dc_cable_dynamic_parameters_complete = False
     else:
-        line.dc_cable_dynamic_parameters_complete = False
+        # line.dc_cable_dynamic_parameters_complete = False
+        pass
 
     if is_dc_cable:
         # The exported cable reactance and susceptance encode stored energy for

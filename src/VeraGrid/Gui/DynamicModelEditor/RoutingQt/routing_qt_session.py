@@ -5,12 +5,11 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import QPointF
 from PySide6.QtGui import QPainterPath
 
 from VeraGrid.Gui.DynamicModelEditor.Routing.route_builder import RouteBuilder
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_editor import RoutingEditor
-from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingNode, RoutingSegment
+from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingSegment
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_graph import RoutingGraph
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_serializer import RoutingGraphSerializer
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_serializer import RoutingSerializedGraph
@@ -18,7 +17,6 @@ from VeraGrid.Gui.DynamicModelEditor.RoutingQt.routing_qt_adapter import QtRouti
 from VeraGrid.Gui.DynamicModelEditor.RoutingQt.routing_qt_port_snapshot import QtRoutingPortSnapshot
 from VeraGrid.Gui.DynamicModelEditor.RoutingQt.routing_qt_port_snapshot import build_qt_routing_port_snapshot
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics import PortItem
-from VeraGridEngine.enumerations import RoutingNodeKind
 
 
 class QtRoutingSession:
@@ -28,30 +26,17 @@ class QtRoutingSession:
     :return: None.
     """
 
-    __slots__ = ("_graphs_by_connection_uid", "_serializer", "_adapter", "_grid_size")
+    __slots__ = ("_graphs_by_connection_uid", "_serializer", "_adapter")
 
-    def __init__(self, grid_size: float = 20.0) -> None:
+    def __init__(self) -> None:
         """
         Build one Qt routing session for the new routing engine.
 
-        :param grid_size: Positive mesh spacing for new editable routes.
         :return: None.
         """
         self._graphs_by_connection_uid: dict[int, RoutingGraph] = dict()
         self._serializer: RoutingGraphSerializer = RoutingGraphSerializer()
         self._adapter: QtRoutingGraphAdapter = QtRoutingGraphAdapter()
-        self._grid_size: float = max(1.0, float(grid_size))
-
-    def set_grid_size(self, grid_size: float) -> None:
-        """Set the mesh spacing used when a connection graph is created.
-
-        Existing graphs retain their user-authored geometry.  New graphs and
-        legacy graphs upgraded on synchronization use the new spacing.
-
-        :param grid_size: Positive mesh spacing in scene pixels.
-        :return: None.
-        """
-        self._grid_size = max(1.0, float(grid_size))
 
     def has_connection(self, connection_uid: int) -> bool:
         """
@@ -88,66 +73,6 @@ class QtRoutingSession:
         """
         return self._graphs_by_connection_uid.get(int(connection_uid), None)
 
-    def is_segment_movable(self, connection_uid: int, segment_id: int) -> bool:
-        """Return whether one route segment can be displaced by the editor.
-
-        :param connection_uid: Stable connection identifier.
-        :param segment_id: Segment identifier inside the connection graph.
-        :return: ``True`` when both segment endpoints are editable elbows.
-        """
-        routing_graph: RoutingGraph | None = self.get_graph(connection_uid)
-        if routing_graph is None:
-            return False
-        else:
-            return self._routing_graph_segment_is_movable(
-                routing_graph=routing_graph,
-                segment_id=segment_id,
-            )
-
-    def _routing_graph_segment_is_movable(
-            self,
-            routing_graph: RoutingGraph,
-            segment_id: int,
-    ) -> bool:
-        """Return whether a graph segment is bounded by two elbow nodes.
-
-        :param routing_graph: Routing graph owning the segment.
-        :param segment_id: Segment identifier to inspect.
-        :return: Segment editability.
-        """
-        route_segment: RoutingSegment | None = routing_graph.get_segment(segment_id)
-        if route_segment is None:
-            return False
-        else:
-            pass
-        start_node: RoutingNode | None = routing_graph.get_node(route_segment.get_start_node_id())
-        end_node: RoutingNode | None = routing_graph.get_node(route_segment.get_end_node_id())
-        if start_node is None or end_node is None:
-            return False
-        elif start_node.get_kind() != RoutingNodeKind.ELBOW:
-            return False
-        elif end_node.get_kind() != RoutingNodeKind.ELBOW:
-            return False
-        else:
-            return True
-
-    def _routing_graph_has_movable_segment(self, routing_graph: RoutingGraph) -> bool:
-        """Return whether a graph exposes at least one editable segment.
-
-        :param routing_graph: Routing graph to inspect.
-        :return: ``True`` when a movable segment exists.
-        """
-        route_segment: RoutingSegment
-        for route_segment in routing_graph.get_ordered_segments():
-            if self._routing_graph_segment_is_movable(
-                    routing_graph=routing_graph,
-                    segment_id=route_segment.get_segment_id(),
-            ):
-                return True
-            else:
-                pass
-        return False
-
     def create_connection_graph(
             self,
             connection_uid: int,
@@ -171,7 +96,6 @@ class QtRoutingSession:
             destination_position=destination_snapshot.get_position(),
             source_port_side=source_snapshot.get_port_side(),
             destination_port_side=destination_snapshot.get_port_side(),
-            grid_size=self._grid_size,
         )
         routing_graph: RoutingGraph = route_builder.build()
         self._graphs_by_connection_uid[int(connection_uid)] = routing_graph
@@ -302,30 +226,9 @@ class QtRoutingSession:
             destination_port=destination_port,
         )
         if refreshed_graph is None:
-            # A large endpoint move can collapse one local elbow corridor.  The
-            # editor restores the original graph atomically in that case; the
-            # session then reroutes from the committed live ports so a stale
-            # endpoint can never remain visually detached from its block.
-            synchronized_graph: RoutingGraph = self.create_connection_graph(
-                connection_uid=connection_uid,
-                source_port=source_port,
-                destination_port=destination_port,
-            )
+            return routing_graph
         else:
-            synchronized_graph = refreshed_graph
-
-        # Payloads produced before segment editing used zero or one elbow and
-        # therefore had no segment that could move independently.  They carry
-        # no user-authored bends, so upgrading them from the live endpoints is
-        # lossless and gives old diagrams the same interaction contract.
-        if self._routing_graph_has_movable_segment(synchronized_graph):
-            return synchronized_graph
-        else:
-            return self.create_connection_graph(
-                connection_uid=connection_uid,
-                source_port=source_port,
-                destination_port=destination_port,
-            )
+            return refreshed_graph
 
     def move_segment(self, connection_uid: int, segment_id: int, coordinate_offset: float) -> bool:
         """
@@ -365,7 +268,7 @@ class QtRoutingSession:
             painter_path: QPainterPath = self._adapter.build_path(routing_graph)
             return painter_path
 
-    def get_segment_path_points(self, connection_uid: int, segment_id: int) -> tuple[QPointF, QPointF] | None:
+    def get_segment_path_points(self, connection_uid: int, segment_id: int) -> tuple[object, object] | None:
         """
         Return the Qt endpoints of one segment in one registered graph.
 

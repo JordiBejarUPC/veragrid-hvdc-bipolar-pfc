@@ -18,7 +18,6 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_block_properties import (
     BlockVariableRenameRequest,
     DaeCodeDiagnostic,
     DynamicBlockPropertiesDialog,
-    RmsMeasurementEditOption,
     build_block_symbol_namespace,
     build_equation_code,
     parse_equation_code,
@@ -59,15 +58,9 @@ from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.enumerations import (
     BlockType,
     ParamPowerFlowReferenceType,
-    RmsPhysicalMeterKind,
-    RmsTerminalSide,
     VarPowerFlowReferenceType,
 )
-from VeraGridEngine.Utils.Symbolic.block import (
-    Block,
-    RmsPhysicalMeasurementPoint,
-    normalize_event_parameter_initialization,
-)
+from VeraGridEngine.Utils.Symbolic.block import Block, normalize_event_parameter_initialization
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var, get_expression_vars, symbolic_to_string
 from VeraGridEngine.Templates.Emt.generator_emt_type_template import get_governor_emt
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template_v2 import get_genqec_rms
@@ -87,79 +80,6 @@ def get_qt_application() -> QtWidgets.QApplication:
         return QtWidgets.QApplication(list())
     else:
         return application
-
-
-def test_physical_meter_general_options_expose_canonical_configuration() -> None:
-    """Show measurement type, resolved bus, terminal, signals, and equations.
-
-    :return: None.
-    """
-    application: QtWidgets.QApplication = get_qt_application()
-    _unused_application: QtWidgets.QApplication = application
-    output_var: Var = Var("active_power_meter")
-    meter_block: Block = Block(
-        name="VeraGrid Power meter native",
-        algebraic_vars=list((output_var,)),
-        algebraic_eqs=list((output_var - Const(1.0),)),
-        init_eqs=dict(((output_var, Const(1.0)),)),
-        out_vars=list((output_var,)),
-    )
-    meter_block.dynamic_model_contract.rms_physical_measurement_point = (
-        RmsPhysicalMeasurementPoint(
-            source_fid="native-power-meter",
-            target_fid="bus-id-001",
-            terminal_side=RmsTerminalSide.BUS,
-            meter_kind=RmsPhysicalMeterKind.POWER,
-            output_signal_names=(output_var.name,),
-            output_var_uids=(output_var.uid,),
-        )
-    )
-    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
-        block=meter_block,
-        block_type_name="Physical measurement",
-        var_factory=VarFactory(),
-        measurement_target_name="Bus Alpha (Bus)",
-        measurement_edit_options=list((
-            RmsMeasurementEditOption(
-                meter_kind=RmsPhysicalMeterKind.POWER,
-                source_terminal_side=RmsTerminalSide.BUS,
-                target_fid="bus-id-001",
-                target_label="Generator Alpha — BUS terminal → Bus Alpha",
-            ),
-            RmsMeasurementEditOption(
-                meter_kind=RmsPhysicalMeterKind.VOLTAGE,
-                source_terminal_side=RmsTerminalSide.BUS,
-                target_fid="bus-id-001",
-                target_label="Bus Alpha (Bus)",
-            ),
-        )),
-    )
-
-    assert dialogue.ui.measurement_configuration_group.isVisibleTo(dialogue)
-    assert dialogue.ui.measurement_family_value.text() == (
-        "Balanced RMS physical measurement"
-    )
-    assert dialogue.ui.measurement_mode_combo.isEnabled()
-    assert dialogue.ui.measurement_mode_combo.currentText() == "Power"
-    assert dialogue.ui.measurement_target_button.isEnabled()
-    assert dialogue.ui.measurement_target_value.text() == (
-        "Generator Alpha — BUS terminal → Bus Alpha"
-    )
-    assert dialogue.ui.measurement_terminal_value.text() == "BUS"
-    assert dialogue.findChild(QtWidgets.QWidget, "measurement_signals_value") is None
-    assert dialogue.findChild(QtWidgets.QWidget, "measurement_identity_value") is None
-    assert dialogue.findChild(QtWidgets.QWidget, "measurement_equations_value") is None
-    assert dialogue.get_selected_measurement_option() is not None
-    assert not dialogue.has_measurement_configuration_changes()
-    dialogue.release_measurement_target()
-    assert dialogue.ui.measurement_target_value.text() == "No target selected"
-    assert not dialogue.ui.measurement_target_release_button.isEnabled()
-    assert dialogue.ui.measurement_target_button.isEnabled()
-    assert dialogue.get_selected_measurement_option() is None
-    assert dialogue.has_measurement_configuration_changes()
-    dialogue.refresh_measurement_target_options()
-    assert dialogue.get_selected_measurement_option() is not None
-    dialogue.close()
 
 
 class AliasRenameReceiver(QtCore.QObject):
@@ -508,10 +428,10 @@ def test_equation_code_removes_only_redundant_root_parentheses() -> None:
     expression: Expr = (state_variable - input_variable) / divisor_variable
     block: Block = Block(
         name="precedence_test",
-        state_vars=list([state_variable]),
-        state_eqs=list([expression]),
-        in_vars=list([input_variable]),
-        parameters=dict({divisor_variable: Const(2.0, name="divisor")}),
+        state_vars=[state_variable],
+        state_eqs=[expression],
+        in_vars=[input_variable],
+        parameters={divisor_variable: Const(2.0, name="divisor")},
     )
 
     code: str = build_equation_code(block)
@@ -963,7 +883,7 @@ def test_new_input_is_applied_without_offering_external_mapping() -> None:
     dialogue.close()
 
 
-def test_add_symbol_fields_keep_one_column_across_symbol_categories() -> None:
+def test_add_symbol_fields_keep_one_width_across_symbol_categories() -> None:
     """Optional variable and parameter fields must share the form field column."""
     application: QtWidgets.QApplication = get_qt_application()
     var_factory: VarFactory = VarFactory()
@@ -987,6 +907,14 @@ def test_add_symbol_fields_keep_one_column_across_symbol_categories() -> None:
     dialogue._new_symbol_category.setCurrentText("Variables")
     dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.INPUT.value)
     application.processEvents()
+    variable_vertical_geometries: List[tuple[int, int]] = list()
+    stable_field: QtWidgets.QWidget
+    for stable_field in stable_fields:
+        variable_position: QtCore.QPoint = stable_field.mapTo(
+            dialogue,
+            QtCore.QPoint(0, 0),
+        )
+        variable_vertical_geometries.append((variable_position.y(), stable_field.height()))
 
     dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.STATE.value)
     application.processEvents()
@@ -1007,15 +935,14 @@ def test_add_symbol_fields_keep_one_column_across_symbol_categories() -> None:
     dialogue._new_symbol_category.setCurrentText("Parameters")
     dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.EVENT_PARAMETER.value)
     application.processEvents()
-    previous_bottom: int = -1
-    stable_field: QtWidgets.QWidget
+    parameter_vertical_geometries: List[tuple[int, int]] = list()
     for stable_field in stable_fields:
         parameter_position: QtCore.QPoint = stable_field.mapTo(
             dialogue,
             QtCore.QPoint(0, 0),
         )
-        assert parameter_position.y() >= previous_bottom
-        previous_bottom = parameter_position.y() + stable_field.height()
+        parameter_vertical_geometries.append((parameter_position.y(), stable_field.height()))
+    assert parameter_vertical_geometries == variable_vertical_geometries
     assert dialogue._new_parameter_value.isVisible()
     assert (
         dialogue._new_parameter_value.x(),
