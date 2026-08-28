@@ -3327,18 +3327,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
     def create_measurements_block_item_basic(self, block_type: BlockType) -> graph.MeasurementsItem | None:
         """
-        Create and place a block item in the canvas scene.
+        Create and place one root-interface measurement item in the canvas.
 
-        :param var:
-        :type var:
-        :param block_type:
-        :param x_pos:
-        :param y_pos:
-        :param blocks_list:
-        :return:
+        :param block_type: Input or output connection type represented by the item.
+        :return: Created measurement item, or ``None`` when creation fails.
         """
-        count: int = self.block_counters.get(block_type, 0) + 1
-
         item_name: str = f"{block_type.name}"
         measurements_item: graph.MeasurementsItem = graph.MeasurementsItem(editor=self,
                                                                     var_factory=self.var_factory,
@@ -3348,7 +3341,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         block_model: Block = Block(name=item_name)
 
 
-
+        var: Var
         if block_type == BlockType.INPUT_CONN:
             for var in self.main_block.in_vars:
                 block_model.out_vars.append(var)
@@ -3371,15 +3364,37 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.main_block.add(block_model)
             self.scene.addItem(measurements_item)
 
-            measurements_item.setPos(QtCore.QPointF(50, 50))
+            # Convert the visible viewport to scene coordinates so placement
+            # follows the canvas area regardless of zoom, scrolling, or size.
+            viewport_rect: QtCore.QRect = self.view.viewport().rect()
+            visible_scene_rect: QtCore.QRectF = self.view.mapToScene(
+                viewport_rect,
+            ).boundingRect()
+            item_center: QtCore.QPointF = measurements_item.boundingRect().center()
+            target_y: float = visible_scene_rect.center().y()
 
-            # Keep the diagram synchronized so later features can rebuild from the same data source.
+            if block_type == BlockType.INPUT_CONN:
+                target_x: float = visible_scene_rect.left() + visible_scene_rect.width() * 0.25
+            elif block_type == BlockType.OUTPUT_CONN:
+                target_x = visible_scene_rect.left() + visible_scene_rect.width() * 0.75
+            else:
+                target_x = visible_scene_rect.center().x()
+
+            # QGraphicsItem positions refer to the item's local origin. Offset
+            # that origin so the block itself, rather than its corner, occupies
+            # the requested quarter and vertical centre.
+            x_pos: float = target_x - item_center.x()
+            y_pos: float = target_y - item_center.y()
+            measurements_item.setPos(QtCore.QPointF(x_pos, y_pos))
+
+            # Persist exactly the same top-left scene position used by the item
+            # so rebuilding the diagram retains the calculated alignment.
             self.diagram.add_node(
                 name=item_name,
-                x=50,
-                y=50,
+                x=x_pos,
+                y=y_pos,
                 tpe=block_type.name,
-                device_uid=block_model.uid
+                device_uid=block_model.uid,
             )
 
             return measurements_item
