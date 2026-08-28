@@ -666,12 +666,11 @@ def get_veragrid_generator(psse_elm: RawGeneratorLike, psse_bus_dict: Dict[int, 
         Qmax = psse_elm.QT
         Q = psse_elm.QG
 
-    # A non-slack generator with no reactive range (QT == QB) cannot regulate voltage.
-    # Keep the slack machine as voltage-controlled even when its reactive range is zero,
-    # because the RAW slack/reference bus still defines the system angle and voltage target.
     bus = psse_bus_dict[psse_elm.I]
     if Qmax == Qmin and not bus.is_slack:
-        control_mode = GeneratorControlMode.Q
+        has_wind_pf_reactive_control = psse_elm.WMOD == 2 and abs(abs(psse_elm.WPF) - 1.0) > 1e-6
+        if not has_wind_pf_reactive_control:
+            control_mode = GeneratorControlMode.Q
 
     elm = dev.Generator(
         name=name,

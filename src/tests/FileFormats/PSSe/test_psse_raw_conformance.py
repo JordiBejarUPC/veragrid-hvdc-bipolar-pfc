@@ -45,12 +45,12 @@ from VeraGridEngine.IO.raw.versioned.v34.vsc_dc_line import RawVscDCLineV34
 from VeraGridEngine.IO.raw.versioned.v35.vsc_dc_line import RawVscDCLineV35
 from VeraGridEngine.IO.raw.raw_parser_writer import interpret_line, read_and_split, read_raw
 from VeraGridEngine.IO.raw.rawx_parser_writer import parse_rawx
-from VeraGridEngine.IO.raw.raw_to_veragrid import get_veragrid_transformer, psse_to_veragrid
+from VeraGridEngine.IO.raw.raw_to_veragrid import get_veragrid_generator, get_veragrid_transformer, psse_to_veragrid
 from VeraGridEngine.IO.raw.veragrid_to_raw import (RawNodeBreakerExportData, append_psse_terminal,
                                                    get_psse_substation_switch, veragrid_to_raw)
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
 from VeraGridEngine.basic_structures import Logger
-from VeraGridEngine.enumerations import PsseTopologyExportMode, ShuntControlMode, TapModuleControl
+from VeraGridEngine.enumerations import GeneratorControlMode, PsseTopologyExportMode, ShuntControlMode, TapModuleControl
 
 
 def test_psse35_branch_parser_keeps_ownership_fields() -> None:
@@ -121,6 +121,56 @@ def test_psse33_three_winding_cw3_taps_use_bus_voltage_base() -> None:
     assert np.isclose(transformer.winding1.tap_module, 1.02 * 220.0 / 230.0)
     assert np.isclose(transformer.winding2.tap_module, 0.98 * 110.0 / 115.0)
     assert np.isclose(transformer.winding3.tap_module, 1.01 * 33.0 / 34.5)
+
+
+def test_psse_wmod2_non_unity_power_factor_preserves_voltage_control() -> None:
+    """WMOD=2 machines with non-unity WPF can regulate voltage even with tiny Q limits."""
+
+    bus = dev.Bus(name="PV", Vnom=34.5)
+
+    renewable = RawGenerator()
+    renewable.I = 101
+    renewable.ID = "1"
+    renewable.PG = 0.005
+    renewable.QG = 0.0
+    renewable.QT = 0.0
+    renewable.QB = 0.0
+    renewable.VS = 1.04
+    renewable.MBASE = 10.0
+    renewable.STAT = 1
+    renewable.PT = 10.0
+    renewable.PB = 0.0
+    renewable.WMOD = 2
+    renewable.WPF = 0.9999
+
+    generator = get_veragrid_generator(renewable, {101: bus}, logger=Logger())
+
+    assert generator.control_mode == GeneratorControlMode.V
+
+
+def test_psse_zero_reactive_range_unity_power_factor_is_fixed_q() -> None:
+    """Unity-power-factor WMOD=2 machines with no Q range should not force a PV solve."""
+
+    bus = dev.Bus(name="PQ", Vnom=0.5)
+
+    generator_raw = RawGenerator()
+    generator_raw.I = 101
+    generator_raw.ID = "1"
+    generator_raw.PG = 0.9
+    generator_raw.QG = 0.0
+    generator_raw.QT = 0.0
+    generator_raw.QB = 0.0
+    generator_raw.VS = 1.1
+    generator_raw.MBASE = 10.0
+    generator_raw.STAT = 1
+    generator_raw.PT = 10.0
+    generator_raw.PB = 0.0
+    generator_raw.WMOD = 2
+    generator_raw.WPF = 1.0
+
+    generator = get_veragrid_generator(generator_raw, {101: bus}, logger=Logger())
+
+    assert generator.control_mode == GeneratorControlMode.Q
 
 
 def test_parse_rawx_owner_fields_preserve_iowner(tmp_path: Path) -> None:
