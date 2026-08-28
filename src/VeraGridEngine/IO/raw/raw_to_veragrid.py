@@ -1127,29 +1127,7 @@ def get_veragrid_transformer(
         tr3w.winding2.tap_phase = np.deg2rad(psse_elm.ANG2)
         tr3w.winding3.tap_phase = np.deg2rad(psse_elm.ANG3)
 
-        # STAT=2/3/4 means winding 1/2/3 is individually out of service
-        if psse_elm.STAT == 0:
-            tr3w.winding1.active = False
-            tr3w.winding2.active = False
-            tr3w.winding3.active = False
-        elif psse_elm.STAT == 1:
-            tr3w.winding1.active = True
-            tr3w.winding2.active = True
-            tr3w.winding3.active = True
-        elif psse_elm.STAT == 2:
-            tr3w.winding1.active = True
-            tr3w.winding2.active = False
-            tr3w.winding3.active = True
-        elif psse_elm.STAT == 3:
-            tr3w.winding1.active = True
-            tr3w.winding2.active = True
-            tr3w.winding3.active = False
-        elif psse_elm.STAT == 4:
-            tr3w.winding1.active = False
-            tr3w.winding2.active = True
-            tr3w.winding3.active = True
-
-        # STAT=2/3/4 means winding 1/2/3 is individually out of service
+        # STAT=2/3/4 means winding 2/3/1 is individually out of service
         if psse_elm.STAT == 0:
             tr3w.winding1.active = False
             tr3w.winding2.active = False
@@ -1191,9 +1169,9 @@ def get_veragrid_transformer(
 
         elif psse_elm.CW == 3:
 
-            tr3w.winding1.tap_module = psse_elm.WINDV1 / NOMV1
-            tr3w.winding2.tap_module = psse_elm.WINDV2 / NOMV2
-            tr3w.winding3.tap_module = psse_elm.WINDV3 / NOMV3
+            tr3w.winding1.tap_module = psse_elm.WINDV1 * NOMV1 / bus_1.Vnom
+            tr3w.winding2.tap_module = psse_elm.WINDV2 * NOMV2 / bus_2.Vnom
+            tr3w.winding3.tap_module = psse_elm.WINDV3 * NOMV3 / bus_3.Vnom
         else:
             raise Exception('Unknown impedance combination CW=' + str(psse_elm.CZ))
 

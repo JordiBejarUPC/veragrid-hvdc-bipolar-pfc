@@ -39,6 +39,7 @@ from VeraGridEngine.IO.raw.versioned.v36.fixed_shunt import RawFixedShuntV36
 from VeraGridEngine.IO.raw.versioned.v36.owner import RawOwnerV36
 from VeraGridEngine.IO.raw.versioned.v36.generator import RawGeneratorV36
 from VeraGridEngine.IO.raw.versioned.v34.transformer import RawTransformerV34
+from VeraGridEngine.IO.raw.versioned.v33.transformer import RawTransformerV33
 from VeraGridEngine.IO.raw.versioned.v35.transformer import RawTransformerV35
 from VeraGridEngine.IO.raw.versioned.v34.vsc_dc_line import RawVscDCLineV34
 from VeraGridEngine.IO.raw.versioned.v35.vsc_dc_line import RawVscDCLineV35
@@ -47,8 +48,9 @@ from VeraGridEngine.IO.raw.rawx_parser_writer import parse_rawx
 from VeraGridEngine.IO.raw.raw_to_veragrid import get_veragrid_transformer, psse_to_veragrid
 from VeraGridEngine.IO.raw.veragrid_to_raw import (RawNodeBreakerExportData, append_psse_terminal,
                                                    get_psse_substation_switch, veragrid_to_raw)
+from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
 from VeraGridEngine.basic_structures import Logger
-from VeraGridEngine.enumerations import PsseTopologyExportMode, TapModuleControl
+from VeraGridEngine.enumerations import PsseTopologyExportMode, ShuntControlMode, TapModuleControl
 
 
 def test_psse35_branch_parser_keeps_ownership_fields() -> None:
@@ -69,6 +71,56 @@ def test_psse35_branch_parser_keeps_ownership_fields() -> None:
     assert branch.F3 == 0.0
     assert branch.O4 == 0
     assert branch.F4 == 0.0
+
+
+def test_psse33_three_winding_cw3_taps_use_bus_voltage_base() -> None:
+    """PSSE CW=3 winding taps are pu of NOMVn and must be moved to the bus base."""
+
+    psse_transformer = RawTransformerV33()
+    psse_transformer.windings = 3
+    psse_transformer.I = 101
+    psse_transformer.J = 102
+    psse_transformer.K = 103
+    psse_transformer.CKT = "1"
+    psse_transformer.CW = 3
+    psse_transformer.CZ = 1
+    psse_transformer.CM = 1
+    psse_transformer.STAT = 1
+    psse_transformer.NAME = "CW3"
+    psse_transformer.R1_2 = 0.01
+    psse_transformer.X1_2 = 0.10
+    psse_transformer.R2_3 = 0.02
+    psse_transformer.X2_3 = 0.20
+    psse_transformer.R3_1 = 0.03
+    psse_transformer.X3_1 = 0.30
+    psse_transformer.SBASE1_2 = 100.0
+    psse_transformer.SBASE2_3 = 100.0
+    psse_transformer.SBASE3_1 = 100.0
+    psse_transformer.WINDV1 = 1.02
+    psse_transformer.WINDV2 = 0.98
+    psse_transformer.WINDV3 = 1.01
+    psse_transformer.NOMV1 = 220.0
+    psse_transformer.NOMV2 = 110.0
+    psse_transformer.NOMV3 = 33.0
+
+    bus_1 = dev.Bus(name="B1", Vnom=230.0)
+    bus_2 = dev.Bus(name="B2", Vnom=115.0)
+    bus_3 = dev.Bus(name="B3", Vnom=34.5)
+
+    transformer, n_windings = get_veragrid_transformer(
+        psse_elm=psse_transformer,
+        psse_bus_dict={101: bus_1, 102: bus_2, 103: bus_3},
+        Sbase=100.0,
+        logger=Logger(),
+        adjust_taps_to_discrete_positions=False,
+        simple_naming=False,
+        flatten_virtual_taps=False,
+    )
+
+    assert n_windings == 3
+    assert np.isclose(transformer.winding1.tap_module, 1.02 * 220.0 / 230.0)
+    assert np.isclose(transformer.winding2.tap_module, 0.98 * 110.0 / 115.0)
+    assert np.isclose(transformer.winding3.tap_module, 1.01 * 33.0 / 34.5)
 
 
 def test_parse_rawx_owner_fields_preserve_iowner(tmp_path: Path) -> None:
@@ -224,6 +276,27 @@ def test_switched_shunt_writer_uses_swrem_before_psse35() -> None:
     raw_values = interpret_line(switched_shunt.get_raw_line(34))
 
     assert raw_values[6] == 77
+
+
+def test_locked_controllable_shunt_compiles_fixed_admittance() -> None:
+    """RAW MODSW=0 switched shunts import as locked controllable shunts and must stay in Ybus."""
+
+    grid = MultiCircuit()
+    bus = dev.Bus(name="BUS1", Vnom=34.5)
+    shunt = dev.ControllableShunt(
+        name="locked shunt",
+        B=-25.0,
+        active=True,
+        control_mode=ShuntControlMode.Locked,
+    )
+    grid.add_bus(bus)
+    grid.add_controllable_shunt(bus=bus, api_obj=shunt)
+
+    nc = compile_numerical_circuit_at(grid, t_idx=None)
+
+    assert nc.shunt_data.active[0]
+    assert np.isclose(nc.shunt_data.Y[0].real, 0.0)
+    assert np.isclose(nc.shunt_data.Y[0].imag, -25.0)
 
 
 def test_vsc_dc_line_writer_uses_version_specific_control_fields() -> None:
