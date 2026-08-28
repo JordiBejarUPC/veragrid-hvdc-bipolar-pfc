@@ -1275,6 +1275,15 @@ def get_veragrid_line(psse_elm: RawBranchLike,
     if protection_factor == 0:
         protection_factor = 1.4
 
+    active = bool(psse_elm.ST)
+
+    if active and (not bus_from.active or not bus_to.active):
+        active = False
+        logger.add_warning(
+            msg="Branch connected to inactive bus imported as inactive",
+            device=code,
+        )
+
     branch = dev.Line(bus_from=bus_from,
                       bus_to=bus_to,
                       idtag=psse_elm.idtag,
@@ -1286,7 +1295,7 @@ def get_veragrid_line(psse_elm: RawBranchLike,
                       rate=rate1,
                       contingency_factor=round(contingency_factor, 6),
                       protection_rating_factor=round(protection_factor, 6),
-                      active=bool(psse_elm.ST),
+                      active=active,
                       mttf=0,
                       mttr=0,
                       length=psse_elm.LEN)

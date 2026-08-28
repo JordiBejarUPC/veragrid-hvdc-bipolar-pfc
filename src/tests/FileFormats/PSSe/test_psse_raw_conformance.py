@@ -45,7 +45,7 @@ from VeraGridEngine.IO.raw.versioned.v34.vsc_dc_line import RawVscDCLineV34
 from VeraGridEngine.IO.raw.versioned.v35.vsc_dc_line import RawVscDCLineV35
 from VeraGridEngine.IO.raw.raw_parser_writer import interpret_line, read_and_split, read_raw
 from VeraGridEngine.IO.raw.rawx_parser_writer import parse_rawx
-from VeraGridEngine.IO.raw.raw_to_veragrid import (get_veragrid_generator, get_veragrid_shunt_switched,
+from VeraGridEngine.IO.raw.raw_to_veragrid import (get_veragrid_generator, get_veragrid_line, get_veragrid_shunt_switched,
                                                    get_veragrid_transformer, psse_to_veragrid)
 from VeraGridEngine.IO.raw.veragrid_to_raw import (RawNodeBreakerExportData, append_psse_terminal,
                                                    get_psse_substation_switch, veragrid_to_raw)
@@ -224,6 +224,100 @@ def test_branch_ownership_helper_accepts_single_owner_pair() -> None:
     assert branch.F3 == 0.0
     assert branch.O4 == 0
     assert branch.F4 == 0.0
+
+
+def test_psse_branch_connected_to_inactive_bus_imports_inactive() -> None:
+    """PSSE rejects in-service branches at type-4 buses; import them inactive."""
+
+    bus_from = dev.Bus(name="IN_SERVICE", Vnom=132.0)
+    bus_to = dev.Bus(name="OUT_OF_SERVICE", Vnom=132.0, active=False)
+
+    psse_branch = RawBranchV33()
+    psse_branch.I = 101
+    psse_branch.J = 102
+    psse_branch.CKT = "1"
+    psse_branch.NAME = ""
+    psse_branch.R = 0.0
+    psse_branch.X = 1e-4
+    psse_branch.B = 0.0
+    psse_branch.RATEA = 0.0
+    psse_branch.RATEB = 0.0
+    psse_branch.RATEC = 0.0
+    psse_branch.ST = 1
+    psse_branch.LEN = 0.0
+    psse_branch.idtag = None
+
+    line = get_veragrid_line(
+        psse_elm=psse_branch,
+        psse_bus_dict={101: bus_from, 102: bus_to},
+        Sbase=100.0,
+        logger=Logger(),
+        simple_naming=True,
+    )
+
+    assert not line.active
+
+
+def test_compile_with_stored_guess_keeps_angle_but_applies_generator_voltage_schedule() -> None:
+    """PSS/E stored starts keep the angle seed but apply controlled-bus voltage schedules."""
+
+    grid = MultiCircuit()
+    bus = dev.Bus(name="PV", Vnom=220.0, Vm0=1.08, Va0=np.deg2rad(-5.0))
+    gen = dev.Generator(name="G", active=True, P=10.0, vset=1.02)
+    grid.add_bus(bus)
+    grid.add_generator(bus=bus, api_obj=gen)
+
+    nc = compile_numerical_circuit_at(grid, t_idx=None, use_stored_guess=True)
+
+    assert np.isclose(abs(nc.bus_data.Vbus[0]), 1.02)
+    assert np.isclose(np.angle(nc.bus_data.Vbus[0]), np.deg2rad(-5.0))
+
+
+def test_compile_detects_conflicting_remote_voltage_schedules_on_controlled_bus() -> None:
+    """Multiple remote controllers targeting one bus must compare against that bus."""
+
+    grid = MultiCircuit()
+    local_1 = dev.Bus(name="LOCAL_1", Vnom=30.0)
+    local_2 = dev.Bus(name="LOCAL_2", Vnom=30.0)
+    remote = dev.Bus(name="REMOTE", Vnom=220.0, Vm0=1.04)
+    gen_1 = dev.Generator(name="G1", active=True, P=1.0, vset=1.02)
+    gen_2 = dev.Generator(name="G2", active=True, P=1.0, vset=1.05)
+    gen_1.control_bus = remote
+    gen_2.control_bus = remote
+
+    grid.add_bus(local_1)
+    grid.add_bus(local_2)
+    grid.add_bus(remote)
+    grid.add_generator(bus=local_1, api_obj=gen_1)
+    grid.add_generator(bus=local_2, api_obj=gen_2)
+    logger = Logger()
+
+    nc = compile_numerical_circuit_at(grid, t_idx=None, use_stored_guess=True, logger=logger)
+
+    assert logger.error_count() == 1
+    assert np.isclose(abs(nc.bus_data.Vbus[2]), 1.02)
+
+
+def test_compile_does_not_fix_voltage_controller_q_in_remote_regulated_bus() -> None:
+    """Voltage controller QG is solved by the PF, not fixed from the RAW seed."""
+
+    grid = MultiCircuit()
+    local = dev.Bus(name="LOCAL", Vnom=30.0)
+    regulated = dev.Bus(name="REGULATED", Vnom=220.0)
+    local_gen = dev.Generator(name="LOCAL_G", active=True, P=1.0, Q=-15.0, vset=1.04)
+    remote_gen = dev.Generator(name="REMOTE_G", active=True, P=1.0, Q=20.0, vset=1.04)
+    remote_gen.control_bus = regulated
+
+    grid.add_bus(local)
+    grid.add_bus(regulated)
+    grid.add_generator(bus=regulated, api_obj=local_gen)
+    grid.add_generator(bus=local, api_obj=remote_gen)
+
+    nc = compile_numerical_circuit_at(grid, t_idx=None, use_stored_guess=True)
+
+    assert np.allclose(nc.generator_data.q, 0.0)
+    assert np.isclose(nc.get_power_injections()[0].imag, 0.0)
+    assert np.isclose(nc.get_power_injections()[1].imag, 0.0)
 
 
 def test_read_raw_keeps_psse35_system_wide_records_out_of_bus_section(tmp_path: Path) -> None:

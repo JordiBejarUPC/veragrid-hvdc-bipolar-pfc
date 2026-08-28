@@ -1091,6 +1091,7 @@ def multi_island_pf_nc(nc: NumericalCircuit,
             v_ctrl_val_gen=GeneratorControlMode.V.idx(),
             qv_droop_val_gen=GeneratorControlMode.QVDroop.idx(),
             Vm=vm_abs,
+            enforce_q_limits=options.control_Q,
             atol=1e-12,
         )
 
@@ -1221,6 +1222,7 @@ def multi_island_pf_nc(nc: NumericalCircuit,
             v_ctrl_val_gen=GeneratorControlMode.V.idx(),
             qv_droop_val_gen=GeneratorControlMode.QVDroop.idx(),
             Vm=vm_abs,
+            enforce_q_limits=options.control_Q,
             atol=1e-12,
         )
 
