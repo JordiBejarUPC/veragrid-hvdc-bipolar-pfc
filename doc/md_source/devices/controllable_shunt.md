@@ -6,35 +6,6 @@ A `ControllableShunt` extends shunt modelling with discrete or controllable reac
 
 This device connects to a bus and contributes power, current, or admittance to the solved network model.
 
-### Power-flow behaviour
-
-Controllable shunts are compiled as bus shunt admittances. The `B` value is the susceptance at 1.0 p.u. voltage, in MVAr on the system base convention used by VeraGrid input data. A positive `B` is capacitive. In power-flow results, however, shunt reactive power is reported with the network injection sign convention:
-
-```text
-Qshunt = -B * Vm^2
-```
-
-This means a capacitive shunt with `B = 20` MVAr appears in the solved shunt results as about `-20` MVAr at 1.0 p.u. voltage. For continuous voltage-control shunts, the compiled reactive limits follow the same solved-result sign convention:
-
-```text
-qmin = -Bmax
-qmax = -Bmin
-```
-
-For example, a switched shunt imported with `Bmin = 0` and `Bmax = 20` has a controllable solved reactive range of `[-20, 0]` MVAr at 1.0 p.u.
-
-The `control_mode` determines how the shunt participates in a power flow:
-
-| control mode | behaviour |
-|--------------|-----------|
-| `Locked` | The current admittance is fixed in the Ybus. The shunt does not regulate voltage. |
-| `Continuous` | The shunt is treated as a continuous voltage-control resource between `Bmin` and `Bmax`. The connected bus, or `control_bus` when remote control is enabled, is assigned the voltage target `Vset`. |
-| `Discrete` | The shunt uses the cumulative `g_steps` and `b_steps` ladder. Step `0` is the neutral/off point, and higher steps are cumulative block positions. |
-
-When importing PSS/e RAW switched shunts, VeraGrid maps the PSS/e block data to the cumulative step ladder. The imported `Bmin` and `Bmax` are the minimum and maximum cumulative susceptance values reachable by those blocks, including the neutral `0` point. This is important for PSS/e parity: a `MODSW=2` shunt with one block of `20` MVAr imports with `Bmin = 0`, `Bmax = 20`, not with an unbounded continuous range.
-
-There is a practical difference between a continuous voltage controller and a saturated switched shunt. If the imported shunt is already at its physical block limit, PSS/e may leave the controlled bus away from `Vset` because no more reactive support is available. A VeraGrid power flow with continuous shunt control should enforce the same `Bmin`/`Bmax` range; otherwise, the bus can be held at `Vset` as if the shunt had unlimited reactive capability. If exact PSS/e comparison is needed for a case where switched shunts are not being adjusted, set those shunts to `Locked` so their current `B` is kept as fixed admittance.
-
 ### Registered properties
 Profile-enabled properties: `active`, `Cost`, `shift_key`, `G`, `G0`, `Ga`, `Gb`, `Gc`, `B`, `B0`, `Ba`, `Bb`, `Bc`, `step`, `Vset`.
 
