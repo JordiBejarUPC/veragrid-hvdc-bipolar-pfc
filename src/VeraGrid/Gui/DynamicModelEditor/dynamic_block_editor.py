@@ -1871,7 +1871,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 pass
                 # self.add_api_obj_mapping()
 
-            self.add_connection_items()
+            self.add_measurements_items()
         else:
             pass
         # A legacy or partially bootstrapped atomic DAE can already own its
@@ -3273,6 +3273,65 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             items_by_uid=items_by_uid,
             layout_graph=layout_graph,
         )
+
+    def create_measurements_block_item(self, block_type: BlockType) -> graph.MeasurementsItem | None:
+        """
+        Create and place a block item in the canvas scene.
+
+        :param var:
+        :type var:
+        :param block_type:
+        :param x_pos:
+        :param y_pos:
+        :param blocks_list:
+        :return:
+        """
+        count: int = self.block_counters.get(block_type, 0) + 1
+
+        item_name: str = f"{block_type.name}"
+        measurements_item: graph.MeasurementsItem = graph.MeasurementsItem(editor=self,
+                                                                    var_factory=self.var_factory,
+                                                                    name=item_name,
+                                                                    mode=self.mode,
+                                                                    api_object=self.api_object)
+        block_model: Block = Block(name=item_name)
+
+        if block_type == BlockType.INPUT_CONN:
+            for var in self.main_block.in_vars:
+                block_model.out_vars.append(var)
+
+        elif block_type == BlockType.OUTPUT_CONN:
+            for var in self.main_block.out_vars:
+                block_model.in_vars.append(var)
+
+        else:
+            pass
+
+        if block_model is not None:
+            # The symbolic block has to be attached first so the graphics item can build its ports from it.
+
+            measurements_item.set_subsystem(block_model)
+            measurements_item.position_changed_callback = self.build_position_changed_callback(block_model.uid)
+            measurements_item.build_item()
+
+            # The editor block is the authoritative model container for later save/rebuild steps.
+            self.main_block.add(block_model)
+            self.scene.addItem(measurements_item)
+
+            measurements_item.setPos(QtCore.QPointF(50, 50))
+
+            # Keep the diagram synchronized so later features can rebuild from the same data source.
+            self.diagram.add_node(
+                name=item_name,
+                x=50,
+                y=50,
+                tpe=block_type.name,
+                device_uid=block_model.uid
+            )
+
+            return measurements_item
+        else:
+            return None
 
     def create_connection_block_item(self, var: Var, block_type: BlockType, x_pos: float,
                                      y_pos: float, blocks_list: List[graph.BlockItem] | None) -> graph.BlockItem | None:
@@ -6193,8 +6252,28 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
 
     def add_measurements_items(self):
-        # Here we need to create the measurements items
-        pass
+    #     # Here we need to create the measurements items
+        """
+                Build graphical wrapper items for every root input and output variable.
+
+                :param blocks_list: Optional list that receives the created graphics items.
+                :return: None.
+                """
+
+        self.create_measurements_block_item(BlockType.INPUT_CONN)
+
+        self.create_measurements_block_item(BlockType.OUTPUT_CONN)
+
+
+
+        # self.scene.setSceneRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT)
+        # fit_rect = self._compact_initial_layout()
+        # if fit_rect is not None:
+        #     self.view.fitInView(fit_rect, QtCore.Qt.AspectRatioMode.KeepAspectRatio)
+        #     self.view.scale(graph.EditorGraphicsCommonFeatures.INITIAL_VIEW_SCALE,
+        #                     graph.EditorGraphicsCommonFeatures.INITIAL_VIEW_SCALE)
+        # else:
+        #     self.view.fitInView(self.scene.sceneRect(), QtCore.Qt.AspectRatioMode.KeepAspectRatio)
 
     def add_connection_items(self, blocks_list: List[graph.BlockItem] | None = None) -> None:
         """
@@ -10586,9 +10665,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         con: BlockDiagramConnection
 
         self.scene.clear()
-        self._ensure_root_interface_wrapper_nodes_exist()
-        self._remove_stale_root_interface_duplicate_children()
-        self._refresh_interface_wrapper_scene_items()
+        # self._ensure_root_interface_wrapper_nodes_exist()
+        # self._remove_stale_root_interface_duplicate_children()
+        # self._refresh_interface_wrapper_scene_items()
 
         # Recreate every persisted node, repairing old wrapper identities in place.
         for uid, node in self.diagram.node_data.items():
@@ -10616,72 +10695,72 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 graph.GenericBlockItem | None = None
 
             if block_type == BlockType.INPUT_CONN or block_type == BlockType.OUTPUT_CONN:
-                repaired_wrapper: Block | None = self._build_root_interface_wrapper_block(
-                    block_type=block_type,
-                    fallback_block_model=block_model,
-                    interface_index=self._get_root_interface_index_from_expected_order(block_type=block_type,
-                                                                                      node_uid=uid),
-                    wrapper_uid=uid,
-                )
-
-                if repaired_wrapper is not None:
-                    block_model = repaired_wrapper
-                    wrapper_is_registered: bool = False
-                    child_block: Block
-                    for child_block in self.main_block.children:
-                        if child_block is block_model:
-                            wrapper_is_registered = True
-                        else:
-                            pass
-
-                    if wrapper_is_registered:
-                        pass
-                    else:
-                        self.main_block.add(block_model)
+                # repaired_wrapper: Block | None = self._build_root_interface_wrapper_block(
+                #     block_type=block_type,
+                #     fallback_block_model=block_model,
+                #     interface_index=self._get_root_interface_index_from_expected_order(block_type=block_type,
+                #                                                                       node_uid=uid),
+                #     wrapper_uid=uid,
+                # )
+                #
+                # if repaired_wrapper is not None:
+                #     block_model = repaired_wrapper
+                #     wrapper_is_registered: bool = False
+                #     child_block: Block
+                #     for child_block in self.main_block.children:
+                #         if child_block is block_model:
+                #             wrapper_is_registered = True
+                #         else:
+                #             pass
+                #
+                #     if wrapper_is_registered:
+                #         pass
+                #     else:
+                #         self.main_block.add(block_model)
 
                     # Diagram endpoints always reference the wrapper block UID.
-                    node.device_uid = uid
-                    node.name = block_model.name
+                node.device_uid = uid
+                node.name = block_model.name
+                register_legacy_interface_uid_alias(
+                    aliases=legacy_interface_uid_aliases,
+                    old_uid=persisted_node_uid,
+                    repaired_uid=uid,
+                )
+                register_legacy_interface_uid_alias(
+                    aliases=legacy_interface_uid_aliases,
+                    old_uid=persisted_block_uid,
+                    repaired_uid=uid,
+                )
+
+                interface_var: Var | None = get_single_interface_var(block_model)
+                if interface_var is not None:
                     register_legacy_interface_uid_alias(
                         aliases=legacy_interface_uid_aliases,
-                        old_uid=persisted_node_uid,
+                        old_uid=interface_var.uid,
                         repaired_uid=uid,
                     )
-                    register_legacy_interface_uid_alias(
-                        aliases=legacy_interface_uid_aliases,
-                        old_uid=persisted_block_uid,
-                        repaired_uid=uid,
-                    )
-
-                    interface_var: Var | None = get_single_interface_var(block_model)
-                    if interface_var is not None:
-                        register_legacy_interface_uid_alias(
-                            aliases=legacy_interface_uid_aliases,
-                            old_uid=interface_var.uid,
-                            repaired_uid=uid,
-                        )
-                    else:
-                        pass
-
-                    block_item: graph.ProtectedConnectionBlockItem = graph.ProtectedConnectionBlockItem(
-                        editor=self,
-                        var_factory=self.var_factory,
-                        name=block_model.name,
-                        mode=self.mode,
-                        api_object=self.api_object,
-                    )
-                    block_item.set_subsystem(block_model)
-                    block_item.position_changed_callback = self.build_position_changed_callback(uid)
-                    block_item.build_item()
-                    block_item.recolour()
-                    self.scene.addItem(block_item)
-                    block_item.setPos(QPointF(node.x, node.y))
-                    uid_to_blockitem[uid] = block_item
-
-                    current_count: int = self.block_counters.get(block_type, 0) + 1
-                    self.block_counters[block_type] = current_count
                 else:
                     pass
+
+                block_item: graph.MeasurementsItem = graph.MeasurementsItem(
+                    editor=self,
+                    var_factory=self.var_factory,
+                    name=block_model.name,
+                    mode=self.mode,
+                    api_object=self.api_object,
+                )
+                block_item.set_subsystem(block_model)
+                block_item.position_changed_callback = self.build_position_changed_callback(uid)
+                block_item.build_item()
+                block_item.recolour()
+                self.scene.addItem(block_item)
+                block_item.setPos(QPointF(node.x, node.y))
+                uid_to_blockitem[uid] = block_item
+
+                current_count: int = self.block_counters.get(block_type, 0) + 1
+                self.block_counters[block_type] = current_count
+                # else:
+                #     pass
             elif block_model is None:
                 # Malformed non-interface nodes are skipped without aborting the rebuild.
                 pass
