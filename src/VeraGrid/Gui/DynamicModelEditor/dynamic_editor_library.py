@@ -2,90 +2,20 @@ from __future__ import annotations
 
 import uuid
 
-from typing import List, Optional, Dict, Set
+from typing import List, Optional, Dict
 
 from PySide6 import QtCore, QtGui
 
 from VeraGrid.Gui.Icons.icon_associations import device_type_icons
-from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
-from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
-from VeraGridEngine.enumerations import (
-    DeviceType,
-    DynamicSimulationMode,
-    RmsPhysicalMeterKind,
-    RmsTerminalSide,
-)
+from VeraGridEngine.enumerations import DeviceType, DynamicSimulationMode
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.fmu_template import FmuTemplate
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
-from VeraGridEngine.Devices.Dynamic.template_classification import (
-    classify_dynamic_template_block,
-)
-from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.Templates.BasicBlockCatalog import BasicBlockTemplateDescriptor, \
     get_editor_ready_basic_block_catalog_descriptors
 from VeraGridEngine.Templates.BasicBlockCatalog.catalog import build_basic_block_catalog_branch_skeleton
-from VeraGridEngine.enumerations import BlockType, DynamicTemplateCategory
-
-
-def build_library_template_semantic_key(
-        template: RmsModelTemplate | EmtModelTemplate | FmuTemplate,
-) -> tuple[object, ...]:
-    """Build a bounded key for one visually equivalent template leaf.
-
-    The library is a projection of canonical templates, so this key never
-    removes or merges circuit objects.  RMS and EMT blocks are distinguished by
-    their compatible device type, typed category, public interface, equation
-    shape, and direct-child shape.  Instance identifiers and diagram geometry
-    are deliberately excluded because they do not change draggable semantics.
-
-    :param template: Canonical template considered for one library leaf.
-    :return: Hashable semantic key used only by the library projection.
-    """
-    if isinstance(template, FmuTemplate):
-        result: tuple[object, ...] = (
-            FmuTemplate,
-            template.idtag,
-        )
-    else:
-        block: Block = template.block
-        input_signature_list: List[tuple[str, object]] = list()
-        output_signature_list: List[tuple[str, object]] = list()
-        variable: Var
-        for variable in block.in_vars:
-            input_signature_list.append((variable.name, variable.ref))
-        for variable in block.out_vars:
-            output_signature_list.append((variable.name, variable.ref))
-        child_signature_list: List[tuple[str, int, int, int, int]] = list()
-        child: Block
-        for child in block.children:
-            child_signature_list.append((
-                child.name,
-                len(child.in_vars),
-                len(child.out_vars),
-                len(child.algebraic_eqs),
-                len(child.children),
-            ))
-        input_signature: tuple[tuple[str, object], ...] = tuple(input_signature_list)
-        output_signature: tuple[tuple[str, object], ...] = tuple(output_signature_list)
-        child_signature: tuple[tuple[str, int, int, int, int], ...] = tuple(
-            child_signature_list
-        )
-        result = (
-            template.__class__,
-            template.name.casefold(),
-            template.tpe,
-            classify_dynamic_template_block(block=block),
-            input_signature,
-            output_signature,
-            len(block.state_eqs),
-            len(block.algebraic_eqs),
-            len(block.differential_eqs),
-            child_signature,
-        )
-    return result
+from VeraGridEngine.enumerations import BlockType
 
 
 def _new_uid() -> int:
@@ -113,71 +43,6 @@ class LibraryLeafSpec:
         self.label: str = label
         self.payload: object = payload
         self.search_text: str = search_text
-
-
-class MeasurementBlockDescriptor:
-    """Describe one typed native RMS measurement requested by the user."""
-
-    __slots__ = ("_mode", "_meter_kind", "_terminal_side")
-
-    def __init__(
-            self,
-            mode: DynamicSimulationMode,
-            meter_kind: RmsPhysicalMeterKind,
-            terminal_side: RmsTerminalSide,
-    ) -> None:
-        """Create one typed measurement-block request.
-
-        :param mode: Dynamic simulation domain of the receiving editor.
-        :param meter_kind: Physical quantity produced by the new meter.
-        :param terminal_side: Device terminal used to obtain the measurement.
-        :return: None.
-        """
-        self._mode: DynamicSimulationMode = mode
-        self._meter_kind: RmsPhysicalMeterKind = meter_kind
-        self._terminal_side: RmsTerminalSide = terminal_side
-
-    def get_mode(self) -> DynamicSimulationMode:
-        """Return the dynamic domain requested for the new block.
-
-        :return: RMS or EMT simulation mode.
-        """
-        return self._mode
-
-    def get_meter_kind(self) -> RmsPhysicalMeterKind:
-        """Return the selected physical measurement family.
-
-        :return: Voltage, current, power, or phase measurement family.
-        """
-        return self._meter_kind
-
-    def get_terminal_side(self) -> RmsTerminalSide:
-        """Return the selected physical source terminal.
-
-        :return: Bus, from-terminal, or to-terminal selection.
-        """
-        return self._terminal_side
-
-
-class MeasurementStationDescriptor:
-    """Describe the neutral measurement-station placement tool."""
-
-    __slots__ = ("_mode",)
-
-    def __init__(self, mode: DynamicSimulationMode) -> None:
-        """Create one station tool without embedding a terminal selection.
-
-        :param mode: Dynamic simulation domain of the receiving editor.
-        :return: None.
-        """
-        self._mode: DynamicSimulationMode = mode
-
-    def get_mode(self) -> DynamicSimulationMode:
-        """Return the dynamic domain supported by the station tool.
-
-        :return: RMS simulation mode.
-        """
-        return self._mode
 
 
 class DynamicsLibraryTreeModel(QtGui.QStandardItemModel):
@@ -337,10 +202,8 @@ class DynamicEditorLibrary:
         "common_emt_device_blocks",
         "common_emt_fault_blocks",
         "common_rms_device_blocks",
-        "device_rms_physical_blocks",
-        "device_rms_control_blocks",
-        "device_emt_physical_blocks",
-        "device_emt_control_blocks",
+        "device_rms_related_blocks",
+        "device_emt_related_blocks",
         "tree_structure",
         "library_model",
     )
@@ -375,201 +238,76 @@ class DynamicEditorLibrary:
         self.common_emt_fault_blocks: List[LibraryLeafSpec] = list((LibraryLeafSpec("Fault EMT", BlockType.FAULT_EMT),))
 
         # common rms
-        self.common_rms_device_blocks: List[LibraryLeafSpec] = list((LibraryLeafSpec("Pll transformer", BlockType.PLL_TRANSFORM_RMS), LibraryLeafSpec("Pi current controller", BlockType.PI_CURRENT_CONTROLLER), LibraryLeafSpec("Pi power controller", BlockType.PI_POWER_CONTROLLER),))
+        self.common_rms_device_blocks: List[LibraryLeafSpec] = list((LibraryLeafSpec("Pll transformer", BlockType.PLL_TRANSFORM_RMS),
+                                                                     LibraryLeafSpec("Pi current controller", BlockType.PI_CURRENT_CONTROLLER),
+                                                                     LibraryLeafSpec("Pi power controller", BlockType.PI_POWER_CONTROLLER),
+                                                                     ))
 
         # devices rms
-        self.device_rms_physical_blocks: Dict[DeviceType, List[LibraryLeafSpec]] = dict((
-            (DeviceType.GeneratorDevice, list((
-                LibraryLeafSpec("Voltage source", BlockType.VOLTAGE_SOURCE_RMS),
-                LibraryLeafSpec("Generator basic", BlockType.GENRAW),
-                LibraryLeafSpec("Generator QEC", BlockType.GENQEC),
-            ))),
-            (DeviceType.VscDevice, list((
-                LibraryLeafSpec("Gfl converter", BlockType.GFL_CONVERTER_RMS),
-                LibraryLeafSpec("Gfl VSC hvdc", BlockType.GFL_VSC_HVDC_RMS),
-            ))),
-            (DeviceType.LineDevice, list((LibraryLeafSpec("Line", BlockType.LINE_RMS),))),
-            (DeviceType.DCLineDevice, list((LibraryLeafSpec("DC line", BlockType.DC_LINE_RMS),))),
-            (DeviceType.Transformer2WDevice, list((
-                LibraryLeafSpec("Transformer 2W", BlockType.TRANSFORMER_2W_RMS),
-            ))),
-            (DeviceType.LoadDevice, list((LibraryLeafSpec("Load", BlockType.LOAD_RMS),))),
-        ))
-        self.device_rms_control_blocks: Dict[DeviceType, List[LibraryLeafSpec]] = dict((
-            (DeviceType.GeneratorDevice, list((
-                LibraryLeafSpec("Generic", BlockType.GENERIC),
-                LibraryLeafSpec("Governor", BlockType.GOV_RMS),
-                LibraryLeafSpec("Stabilizer", BlockType.STAB_RMS),
-                LibraryLeafSpec("Exciter", BlockType.EXCITER_RMS),
-            ))),
-            (DeviceType.LineDevice, list((LibraryLeafSpec("Generic", BlockType.GENERIC),))),
-            (DeviceType.LoadDevice, list((LibraryLeafSpec("Generic", BlockType.GENERIC),))),
-        ))
+        self.device_rms_related_blocks: Dict[DeviceType, List[LibraryLeafSpec]] = dict(((DeviceType.GeneratorDevice, list((LibraryLeafSpec("Voltage source", BlockType.VOLTAGE_SOURCE_RMS),
+                                                                                                                           LibraryLeafSpec("Generator basic", BlockType.GENRAW),
+                                                                                                                           LibraryLeafSpec("Generator QEC", BlockType.GENQEC),
+                                                                                                                           LibraryLeafSpec("Governor", BlockType.GOV_RMS),
+                                                                                                                           LibraryLeafSpec("Stabilizer", BlockType.STAB_RMS),
+                                                                                                                           LibraryLeafSpec("Exciter", BlockType.EXCITER_RMS),))),
+                                                                                        (DeviceType.VscDevice, list((LibraryLeafSpec("Gfl converter", BlockType.GFL_CONVERTER_RMS),
+                                                                                                                     LibraryLeafSpec("Gfl VSC hvdc", BlockType.GFL_VSC_HVDC_RMS),))),
+                                                                                        (DeviceType.LineDevice, list((LibraryLeafSpec("Line", BlockType.LINE_RMS),))),
+                                                                                        (DeviceType.DCLineDevice, list((LibraryLeafSpec("DC line", BlockType.DC_LINE_RMS),))),
+                                                                                        (DeviceType.Transformer2WDevice, list((LibraryLeafSpec("Transformer 2W", BlockType.TRANSFORMER_2W_RMS),))),
+                                                                                        (DeviceType.LoadDevice, list((LibraryLeafSpec("Load", BlockType.LOAD_RMS),))) ))
         # devices emt
-        self.device_emt_physical_blocks: Dict[DeviceType, List[LibraryLeafSpec]] = dict(((DeviceType.GeneratorDevice, list((LibraryLeafSpec("Generator", BlockType.EMT_GENERATOR), LibraryLeafSpec("Thevenin eq. generator", BlockType.EMT_THEVENIN), LibraryLeafSpec("PV power plant", BlockType.PV_POWER_PLANT_EMT), LibraryLeafSpec("PV ", BlockType.PV_EMT),))), (DeviceType.BatteryDevice, list((LibraryLeafSpec("BESS ", BlockType.BESS_EMT), LibraryLeafSpec("Battery ", BlockType.BATTERY_EMT),))), (DeviceType.LineDevice, list((LibraryLeafSpec("Emt pi line", BlockType.EMT_PI_LINE), LibraryLeafSpec("Emt Bergeron line", BlockType.EMT_BERGERON_LINE), LibraryLeafSpec("Emt JMarti line", BlockType.EMT_JMARTI_LINE),))), (DeviceType.DCLineDevice, list((LibraryLeafSpec("Emt DC line", BlockType.EMT_DC_LINE),))), (DeviceType.LoadDevice, list((LibraryLeafSpec("Exponential load", BlockType.EXP_LOAD_EMT), LibraryLeafSpec("ZIP load", BlockType.ZIP_LOAD_EMT), LibraryLeafSpec("Induction motor", BlockType.INDUCTION_MOTOR_EMT),))), (DeviceType.Transformer2WDevice, list((LibraryLeafSpec("Transformer", BlockType.TRAFO_EMT), LibraryLeafSpec("XFMR Transformer", BlockType.XFMR_TRANSFORMER),))), (DeviceType.Transformer3WDevice, list((LibraryLeafSpec("Transformer", BlockType.TRAFO_EMT), LibraryLeafSpec("XFMR Transformer", BlockType.XFMR_TRANSFORMER),))), (DeviceType.TransformerTypeDevice, list((LibraryLeafSpec("Transformer", BlockType.TRAFO_EMT), LibraryLeafSpec("XFMR Transformer", BlockType.XFMR_TRANSFORMER),))), (DeviceType.VscDevice, list((LibraryLeafSpec("Complete pseudo-EMT VSC", BlockType.COMPLETE_PSEUDO_VSC_EMT),))),))
-        self.device_emt_control_blocks: Dict[DeviceType, List[LibraryLeafSpec]] = dict((
-            (DeviceType.GeneratorDevice, list((
-                LibraryLeafSpec("Governor", BlockType.GOV_EMT),
-                LibraryLeafSpec("Stabilizer", BlockType.STAB_EMT),
-                LibraryLeafSpec("Exciter", BlockType.EXCITER_EMT),
-            ))),
-        ))
+        self.device_emt_related_blocks: Dict[DeviceType, List[LibraryLeafSpec]] = dict(((DeviceType.GeneratorDevice, list((LibraryLeafSpec("Generator", BlockType.EMT_GENERATOR),
+                                                                                                                           LibraryLeafSpec("Thevenin eq. generator", BlockType.EMT_THEVENIN),
+                                                                                                                           LibraryLeafSpec("Governor", BlockType.GOV_EMT),
+                                                                                                                           LibraryLeafSpec("Stabilizer", BlockType.STAB_EMT),
+                                                                                                                           LibraryLeafSpec("Exciter", BlockType.EXCITER_EMT),
+                                                                                                                           LibraryLeafSpec("PV power plant", BlockType.PV_POWER_PLANT_EMT),
+                                                                                                                           LibraryLeafSpec("PV ", BlockType.PV_EMT),))),
+                                                                                        (DeviceType.BatteryDevice, list((LibraryLeafSpec("BESS ", BlockType.BESS_EMT),
+                                                                                                                         LibraryLeafSpec("Battery ", BlockType.BATTERY_EMT),))),
+                                                                                        (DeviceType.LineDevice, list((LibraryLeafSpec("Emt pi line", BlockType.EMT_PI_LINE),
+                                                                                                                      LibraryLeafSpec("Emt Bergeron line", BlockType.EMT_BERGERON_LINE),
+                                                                                                                      LibraryLeafSpec("Emt JMarti line", BlockType.EMT_JMARTI_LINE),))),
+                                                                                        (DeviceType.DCLineDevice, list((LibraryLeafSpec("Emt DC line", BlockType.EMT_DC_LINE),))),
+                                                                                        (DeviceType.LoadDevice, list((LibraryLeafSpec("Exponential load", BlockType.EXP_LOAD_EMT),
+                                                                                                                      LibraryLeafSpec("ZIP load", BlockType.ZIP_LOAD_EMT),
+                                                                                                                      LibraryLeafSpec("Induction motor", BlockType.INDUCTION_MOTOR_EMT),))),
+                                                                                        (DeviceType.Transformer2WDevice, list((LibraryLeafSpec("Transformer", BlockType.TRAFO_EMT),
+                                                                                                                               LibraryLeafSpec("XFMR Transformer", BlockType.XFMR_TRANSFORMER),))),
+                                                                                        (DeviceType.Transformer3WDevice, list((LibraryLeafSpec("Transformer", BlockType.TRAFO_EMT),
+                                                                                                                               LibraryLeafSpec("XFMR Transformer", BlockType.XFMR_TRANSFORMER),))),
+                                                                                        (DeviceType.TransformerTypeDevice, list((LibraryLeafSpec("Transformer", BlockType.TRAFO_EMT),
+                                                                                                                                 LibraryLeafSpec("XFMR Transformer", BlockType.XFMR_TRANSFORMER),))),
+                                                                                        (DeviceType.VscDevice, list((LibraryLeafSpec("Complete pseudo-EMT VSC", BlockType.COMPLETE_PSEUDO_VSC_EMT),))),))
 
         # Build tree structure
         self.tree_structure: Dict[str, object] = dict()
-        physical_entries: List[LibraryLeafSpec] = list()
-        control_entries: List[LibraryLeafSpec] = list()
-        control_entry: LibraryLeafSpec
-        current_device_type: DeviceType = (
-            self.api_object.device_type
-            if self.api_object is not None
-            else DeviceType.NoDevice
-        )
         if mode == DynamicSimulationMode.RMS:
             self.tree_structure["Basic"] = build_basic_library_branch()
-            physical_entries = list(
-                self.device_rms_physical_blocks.get(current_device_type, list())
-            )
-            for control_entry in self.common_rms_device_blocks:
-                control_entries.append(control_entry)
-            for control_entry in self.device_rms_control_blocks.get(
-                    current_device_type,
-                    list(),
-            ):
-                control_entries.append(control_entry)
+            self.tree_structure["Basic_devices"] = list(self.common_rms_device_blocks)
+            self.tree_structure["Devices"] = self.device_rms_related_blocks.get(
+                self.api_object.device_type if self.api_object is not None else DeviceType.NoDevice, dict())
 
         elif mode == DynamicSimulationMode.EMT:
             self.tree_structure["Basic"] = build_basic_library_branch()
-            physical_entries = list(
-                self.device_emt_physical_blocks.get(current_device_type, list())
-            )
-            for control_entry in self.common_emt_device_blocks:
-                control_entries.append(control_entry)
-            for control_entry in self.device_emt_control_blocks.get(
-                    current_device_type,
-                    list(),
-            ):
-                control_entries.append(control_entry)
+            specific_emt_blocks: List[LibraryLeafSpec] = list(
+                self.device_emt_related_blocks.get(
+                    self.api_object.device_type if self.api_object is not None else DeviceType.NoDevice, list()))
+            self.tree_structure["Devices"] = list(self.common_emt_device_blocks + specific_emt_blocks)
             self.tree_structure["Faults"] = list(self.common_emt_fault_blocks)
 
         else:
             pass
 
+        self.tree_structure["Tools"] = list((LibraryLeafSpec("Signal Pair", BlockType.FROM_GOTO),
+                                                                LibraryLeafSpec("Generic Device", BlockType.GENERIC)))
+
         if self.templates_list:
-            # Several imported devices can register independent instances of
-            # one reusable shell.  Keep every canonical object in the circuit,
-            # but project only the first equivalent drag choice in this tree.
-            seen_template_keys: Set[tuple[object, ...]] = set()
-            template: RmsModelTemplate | EmtModelTemplate | FmuTemplate
-            for template in self.templates_list:
-                template_key: tuple[object, ...] = (
-                    build_library_template_semantic_key(template=template)
-                )
-                if template_key in seen_template_keys:
-                    pass
-                else:
-                    seen_template_keys.add(template_key)
-                    leaf: LibraryLeafSpec = LibraryLeafSpec(
-                        template.name,
-                        template,
-                        template.name,
-                    )
-                    if isinstance(template, FmuTemplate):
-                        template_category: DynamicTemplateCategory = (
-                            DynamicTemplateCategory.DEVICE
-                        )
-                    else:
-                        template_category = classify_dynamic_template_block(
-                            block=template.block
-                        )
-
-                    if template_category is DynamicTemplateCategory.DEVICE:
-                        physical_entries.append(leaf)
-                    elif template_category is DynamicTemplateCategory.MEASUREMENT:
-                        pass
-                    else:
-                        control_entries.append(leaf)
+            self.tree_structure["Templates"] = dict((("Available", [LibraryLeafSpec(template.name, template, template.name) for template in
+                              self.templates_list]),))
         else:
             pass
-
-        self.tree_structure["Physical devices/templates"] = physical_entries
-        self.tree_structure["Controls/components"] = control_entries
-        measurement_entries: List[LibraryLeafSpec] = list()
-        if mode in (DynamicSimulationMode.RMS, DynamicSimulationMode.EMT):
-            if isinstance(self.api_object, BranchParent):
-                if (
-                        self.api_object.bus_from is not None
-                        and not self.api_object.bus_from.is_dc
-                ):
-                    default_terminal_side: RmsTerminalSide = RmsTerminalSide.FROM
-                elif (
-                        self.api_object.bus_to is not None
-                        and not self.api_object.bus_to.is_dc
-                ):
-                    default_terminal_side = RmsTerminalSide.TO
-                else:
-                    default_terminal_side = RmsTerminalSide.FROM
-            else:
-                default_terminal_side = RmsTerminalSide.BUS
-            meter_kind: RmsPhysicalMeterKind
-            for meter_kind in RmsPhysicalMeterKind:
-                meter_supported: bool = (
-                    mode is DynamicSimulationMode.RMS
-                    or meter_kind in (
-                        RmsPhysicalMeterKind.VOLTAGE,
-                        RmsPhysicalMeterKind.CURRENT,
-                        RmsPhysicalMeterKind.POWER,
-                    )
-                )
-                if not meter_supported:
-                    pass
-                else:
-                    quantity_label: str
-                    if meter_kind is RmsPhysicalMeterKind.PHASE_LOCKED_LOOP:
-                        quantity_label = "Phase"
-                    else:
-                        quantity_label = meter_kind.value.title()
-                    measurement_entries.append(
-                        LibraryLeafSpec(
-                            label=f"{quantity_label} meter",
-                            payload=MeasurementBlockDescriptor(
-                                mode=mode,
-                                meter_kind=meter_kind,
-                                terminal_side=default_terminal_side,
-                            ),
-                            search_text=(
-                                "measurements meter voltage current power phase pll "
-                                + default_terminal_side.value
-                            ),
-                        ),
-                    )
-        else:
-            pass
-        if (
-                mode is DynamicSimulationMode.RMS
-                and isinstance(self.api_object, (BranchParent, InjectionParent))
-        ):
-            measurement_entries.append(
-                LibraryLeafSpec(
-                    label="Measurement station",
-                    payload=MeasurementStationDescriptor(mode=mode),
-                    search_text=(
-                        "measurements station power current voltage pll from to"
-                    ),
-                )
-            )
-        else:
-            pass
-        if mode is DynamicSimulationMode.RMS:
-            measurement_branch_label: str = "RMS (balanced)"
-        elif mode is DynamicSimulationMode.EMT:
-            measurement_branch_label = "EMT"
-        else:
-            measurement_branch_label = "Other"
-        self.tree_structure["Measurements"] = dict((
-            (measurement_branch_label, measurement_entries),
-        ))
-        self.tree_structure["Tools"] = list((LibraryLeafSpec("Signal Pair", BlockType.FROM_GOTO),))
 
         # build and add library model
         self.library_model: DynamicsLibraryTreeModel = self.build_library_tree_model()
@@ -649,22 +387,7 @@ def build_basic_library_branch() -> Dict[str, object]:
     :return: Nested branch data consumed by :class:`DynamicEditorLibrary`.
     """
     # build native branch
-    native_branch: Dict[str, List[LibraryLeafSpec]] = {
-        "Arithmetic": [
-            LibraryLeafSpec("Const", BlockType.CONST),
-            LibraryLeafSpec("Gain", BlockType.GAIN),
-            LibraryLeafSpec("Sum", BlockType.SUM),
-            LibraryLeafSpec("Product", BlockType.PRODUCT),
-            LibraryLeafSpec("Abs", BlockType.ABS),
-        ],
-        "Arrays and matrices": [
-            LibraryLeafSpec("Inverse Lookup array (linear)", BlockType.INVERSE_LOOKUP_ARRAY),
-            LibraryLeafSpec("Lookup array (linear)", BlockType.LOOKUP_ARRAY_LINEAR),
-            LibraryLeafSpec("Lookup array (spline)", BlockType.LOOKUP_ARRAY_SPLINE),
-            LibraryLeafSpec("Lookup matrix (linear)", BlockType.LOOKUP_MATRIX_LINEAR),
-            LibraryLeafSpec("Lookup matrix (spline)", BlockType.LOOKUP_MATRIX_SPLINE),
-        ],
-    }
+    native_branch: Dict[str, object] = dict((("Arithmetic", list((LibraryLeafSpec("Const", BlockType.CONST), LibraryLeafSpec("Gain", BlockType.GAIN), LibraryLeafSpec("Sum", BlockType.SUM), LibraryLeafSpec("Product", BlockType.PRODUCT), LibraryLeafSpec("Abs", BlockType.ABS),))), ("Arrays and matrices", list((LibraryLeafSpec("Inverse Lookup array (linear)", BlockType.INVERSE_LOOKUP_ARRAY), LibraryLeafSpec("Lookup array (linear)", BlockType.LOOKUP_ARRAY_LINEAR), LibraryLeafSpec("Lookup array (spline)", BlockType.LOOKUP_ARRAY_SPLINE), LibraryLeafSpec("Lookup matrix (linear)", BlockType.LOOKUP_MATRIX_LINEAR), LibraryLeafSpec("Lookup matrix (spline)", BlockType.LOOKUP_MATRIX_SPLINE),))),))
 
     # build catalogue branch
     branch: Dict[str, object] = build_basic_block_catalog_branch_skeleton()
@@ -672,7 +395,8 @@ def build_basic_library_branch() -> Dict[str, object]:
     descriptor: BasicBlockTemplateDescriptor
     for descriptor in get_editor_ready_basic_block_catalog_descriptors():
         category_path: tuple[str, ...] = descriptor.category_path[1:] if descriptor.category_path and \
-                                                                         descriptor.category_path[0] == "Native" else descriptor.category_path
+                                                                         descriptor.category_path[
+                                                                             0] == "Native" else descriptor.category_path
         if len(category_path) == 0:
             category_path = ("Miscellaneous", "Other")
         else:
@@ -720,8 +444,6 @@ def is_supported_library_payload(item_data: object) -> bool:
         return True
     elif isinstance(item_data, (RmsModelTemplate, EmtModelTemplate, FmuTemplate)):
         return True
-    elif isinstance(item_data, (MeasurementBlockDescriptor, MeasurementStationDescriptor)):
-        return True
     else:
         return False
 
@@ -766,11 +488,5 @@ def set_library_item_icon(item: QtGui.QStandardItem, payload: object) -> None:
         item.setIcon(QtGui.QIcon(device_type_icons[DeviceType.RmsModelTemplateDevice.value]))
     elif isinstance(payload, (EmtModelTemplate, BasicBlockTemplateDescriptor)):
         item.setIcon(QtGui.QIcon(device_type_icons[DeviceType.EmtModelTemplateDevice.value]))
-    elif isinstance(payload, (MeasurementBlockDescriptor, MeasurementStationDescriptor)):
-        measurement_icon_path: str | None = device_type_icons.get("Measurements", None)
-        if measurement_icon_path is not None:
-            item.setIcon(QtGui.QIcon(measurement_icon_path))
-        else:
-            pass
     else:
         pass

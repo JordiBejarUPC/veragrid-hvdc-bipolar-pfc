@@ -2666,28 +2666,188 @@ def connect_models(mdl1: Block, mdl2: Block, var_factory:VarFactory):
         var_factory.add_connections([inpt], [outp])
 
     #print("")
-def connect_bus_variables_rms(device: Any, model:Block, var_factory: VarFactory | None):
+def _connect_rms_bus_voltage_reference(
+        bus_model: Block,
+        device_model: Block,
+        bus_reference: VarPowerFlowReferenceType,
+        device_reference: VarPowerFlowReferenceType,
+        var_factory: VarFactory,
+) -> bool:
+    """Connect one device RMS voltage terminal to its authoritative bus variable.
+
+    The ordinary AC branch helpers encode the conventional ``Vm/Va`` to
+    ``Vmf/Vaf`` or ``Vmt/Vat`` mappings directly. DC terminals and mixed
+    AC/DC devices need the same operation with a different pair of semantic
+    references. This helper performs that reference-to-reference connection
+    while normalizing the complete device block hierarchy to the bus variable.
+
+    :param bus_model: Initialized RMS bus model providing the source voltage.
+    :param device_model: RMS device model consuming the terminal voltage.
+    :param bus_reference: Voltage reference exposed by the bus model.
+    :param device_reference: Terminal reference exposed by the device model.
+    :param var_factory: Shared variable factory that persists the connection.
+    :return: ``True`` when both endpoints exist and are connected.
     """
-    connect the bus variables of the model with the api_object bus variables
-    :param device:
-    :type device:
-    :param model:
-    :type model:
-    :param var_factory:
-    :type var_factory:
-    :return:
-    :rtype:
+    bus_voltage: Var | None = bus_model.external_mapping.get(bus_reference, None)
+    device_voltage: Var | None = device_model.external_mapping.get(device_reference, None)
+    candidate_var: Var
+
+    # Legacy models may expose the correct terminal only through their visible
+    # interface. Recover it there without weakening the authoritative mapping
+    # used by current templates.
+    if bus_voltage is None:
+        for candidate_var in bus_model.out_vars:
+            if bus_voltage is None and candidate_var.ref == bus_reference:
+                bus_voltage = candidate_var
+            else:
+                pass
+    else:
+        pass
+
+    if device_voltage is None:
+        for candidate_var in device_model.in_vars:
+            if device_voltage is None and candidate_var.ref == device_reference:
+                device_voltage = candidate_var
+            else:
+                pass
+    else:
+        pass
+
+    if bus_voltage is None or device_voltage is None:
+        return False
+    else:
+        pass
+
+    # Replace every occurrence in the model before registering the persistent
+    # alias. The equations, initialization expressions and root mappings then
+    # all use the exact bus variable identity rather than a detached terminal.
+    var_mapping: Dict[Var, Var] = dict()
+    if device_voltage.non_mutable_uid == bus_voltage.non_mutable_uid:
+        pass
+    else:
+        var_mapping[device_voltage] = bus_voltage
+    normalize_rms_root_contract(mdl2=device_model, var_mapping=var_mapping)
+    var_factory.add_connections(
+        vars_to_subs=list((device_voltage,)),
+        incoming_vars=list((bus_voltage,)),
+    )
+    return True
+
+
+def connect_bus_variables_rms(device: Any,
+                              model: Block,
+                              var_factory: VarFactory | None) -> None:
+    """Connect one RMS device model to the voltage variables of its buses.
+
+    Mixed AC/DC VSCs and pure DC lines use explicit device-specific terminal
+    mappings. Conventional AC branches retain the existing from/to connection
+    helpers, while injection devices retain exact power-flow-reference matching.
+
+    :param device: Static network device receiving the RMS model.
+    :param model: Materialized RMS model whose terminal variables are connected.
+    :param var_factory: Shared symbolic variable factory, when available.
+    :return: None.
     """
-    if device.device_type in [DeviceType.BranchDevice,
-                              DeviceType.LineDevice,
-                              DeviceType.Transformer2WDevice,
-                              DeviceType.Transformer3WDevice,
-                              DeviceType.DCLineDevice,
-                              DeviceType.HVDCLineDevice,
-                              DeviceType.SwitchDevice,
-                              DeviceType.SeriesReactanceDevice,
-                              DeviceType.UpfcDevice,
-                              DeviceType.VscDevice]:
+    if device.device_type == DeviceType.VscDevice:
+        # A VeraGrid VSC is oriented from its DC bus to its AC bus. Its RMS
+        # template therefore combines a direct Vdc terminal on the from side
+        # with the conventional Vmt/Vat pair on the to side.
+        if var_factory is None:
+            raise ValueError("var factory not associated to grid element")
+        else:
+            pass
+
+        if device.bus_from.rms_model.empty():
+            initialize_bus_rms(device.bus_from, var_factory)
+        else:
+            pass
+        if device.bus_to.rms_model.empty():
+            initialize_bus_rms(device.bus_to, var_factory)
+        else:
+            pass
+
+        _connect_rms_bus_voltage_reference(
+            bus_model=device.bus_from.rms_model,
+            device_model=model,
+            bus_reference=VarPowerFlowReferenceType.Vdc,
+            device_reference=VarPowerFlowReferenceType.Vdc,
+            var_factory=var_factory,
+        )
+        vm_connected: bool = _connect_rms_bus_voltage_reference(
+            bus_model=device.bus_to.rms_model,
+            device_model=model,
+            bus_reference=VarPowerFlowReferenceType.Vm,
+            device_reference=VarPowerFlowReferenceType.Vmt,
+            var_factory=var_factory,
+        )
+        if vm_connected:
+            pass
+        else:
+            # Older VSC templates used the injection-style Vm reference for
+            # their AC terminal. Preserve that supported contract as fallback.
+            _connect_rms_bus_voltage_reference(
+                bus_model=device.bus_to.rms_model,
+                device_model=model,
+                bus_reference=VarPowerFlowReferenceType.Vm,
+                device_reference=VarPowerFlowReferenceType.Vm,
+                var_factory=var_factory,
+            )
+        va_connected: bool = _connect_rms_bus_voltage_reference(
+            bus_model=device.bus_to.rms_model,
+            device_model=model,
+            bus_reference=VarPowerFlowReferenceType.Va,
+            device_reference=VarPowerFlowReferenceType.Vat,
+            var_factory=var_factory,
+        )
+        if va_connected:
+            pass
+        else:
+            _connect_rms_bus_voltage_reference(
+                bus_model=device.bus_to.rms_model,
+                device_model=model,
+                bus_reference=VarPowerFlowReferenceType.Va,
+                device_reference=VarPowerFlowReferenceType.Va,
+                var_factory=var_factory,
+            )
+    elif device.device_type == DeviceType.DCLineDevice:
+        # A DC line reuses the branch-side Vmf/Vmt references for its two
+        # terminals, while both connected bus shells expose a direct Vdc.
+        if var_factory is None:
+            raise ValueError("var factory not associated to grid element")
+        else:
+            pass
+
+        if device.bus_from.rms_model.empty():
+            initialize_bus_rms(device.bus_from, var_factory)
+        else:
+            pass
+        if device.bus_to.rms_model.empty():
+            initialize_bus_rms(device.bus_to, var_factory)
+        else:
+            pass
+
+        _connect_rms_bus_voltage_reference(
+            bus_model=device.bus_from.rms_model,
+            device_model=model,
+            bus_reference=VarPowerFlowReferenceType.Vdc,
+            device_reference=VarPowerFlowReferenceType.Vmf,
+            var_factory=var_factory,
+        )
+        _connect_rms_bus_voltage_reference(
+            bus_model=device.bus_to.rms_model,
+            device_model=model,
+            bus_reference=VarPowerFlowReferenceType.Vdc,
+            device_reference=VarPowerFlowReferenceType.Vmt,
+            var_factory=var_factory,
+        )
+    elif device.device_type in [DeviceType.BranchDevice,
+                                DeviceType.LineDevice,
+                                DeviceType.Transformer2WDevice,
+                                DeviceType.Transformer3WDevice,
+                                DeviceType.HVDCLineDevice,
+                                DeviceType.SwitchDevice,
+                                DeviceType.SeriesReactanceDevice,
+                                DeviceType.UpfcDevice]:
         # Check if using phasor or polar coordinates by looking at bus model outputs
         bus_model = device.bus_from.rms_model
         if bus_model.empty():

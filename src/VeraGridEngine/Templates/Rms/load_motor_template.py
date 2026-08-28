@@ -80,7 +80,6 @@ def MotorLoadBuild(vfactory: VarFactory, name: str = "Motor load RMS template") 
         H: vfactory.add_const(0.8),  # Inertia constant (s) ~ 0.2–1.5
         D: vfactory.add_const(0.0),  # Damping (often 0 unless explicitly modelled)
         n: vfactory.add_const(1.0),  # Exponent of the torque speed dependency (unitless)
-        Cl0: vfactory.add_const(None),  # Initial load torque	(pu)
         SLIP0: vfactory.add_const(0.0),  # Initial load torque	(pu)
 
         # Voltage measurement / filtering
@@ -89,7 +88,6 @@ def MotorLoadBuild(vfactory: VarFactory, name: str = "Motor load RMS template") 
         u: vfactory.add_const(0.0),
         # frequency
         omega_s: vfactory.add_const(1.0),  # nominal frequency in pu
-        omega0: vfactory.add_const(None),  # initial frequency in pu
 
         g: vfactory.add_const(0.0),
         b: vfactory.add_const(0.0),
