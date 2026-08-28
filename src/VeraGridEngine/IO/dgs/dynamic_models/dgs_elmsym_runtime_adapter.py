@@ -777,7 +777,7 @@ def _build_tabular_saturation_coefficient(
         # Convert the interpolated physical increment back to the normalised
         # coefficient used by the machine equations.  The flux expression is
         # already regularised at construction, while the epsilon protects this
-        # helper when it is exercised independently by import tests.
+        # helper when it is exercised independently by importing tests.
         epsilon: Const = Const(1.0e-12)
         coefficient: Expr = sym.max(
             saturation_increment_curve / (flux_magnitude + epsilon),
