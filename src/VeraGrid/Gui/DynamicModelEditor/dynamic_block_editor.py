@@ -12,6 +12,7 @@ from PySide6.QtGui import (QDropEvent, QDragEnterEvent, QDragMoveEvent)
 from PySide6.QtCore import Qt, QPointF, Signal
 
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
+from VeraGridEngine.Devices.Substation.bus import Bus
 
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 from VeraGridEngine.Utils.Symbolic.rms_measurements_functions import measurement_vars_dict, build_rms_voltage_meter_outputs_from_polar
@@ -44,6 +45,7 @@ from VeraGrid.Gui.DynamicModelEditor.block_editor import Ui_BlockEditorWindow
 import VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics as graph
 from VeraGrid.Session.dynamic_editor_entries import DynamicEditorEntry
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_library import DynamicEditorLibrary, LibraryTreeFilterProxyModel
+from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.measurements_dialog import MeasurementsDialog
 import VeraGrid.Gui.DynamicModelEditor.dynamic_editor_models as dialog_models
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_properties import (
     BlockStructuralEditRequest,
@@ -1964,24 +1966,50 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-    def open_measurements_editor(self) -> Tuple[ALL_DEV_TYPES, BlockType, List[VarPowerFlowReferenceType], List[VarPowerFlowReferenceType]]:
+    def open_measurements_editor(self,
+                                 source_item: graph.MeasurementsItem,
+                                 x_pos: float,
+                                 y_pos: float) -> None:
         """
-        open dialog and create measurements block from user inputs
-        :return:
-        :rtype:
+        Open the measurement dialog and create one block from accepted selections.
+
+        :param source_item: Measurement item that opened the dialog.
+        :param x_pos: Scene x coordinate of the double-clicked measurement item.
+        :param y_pos: Scene y coordinate of the double-clicked measurement item.
+        :return: None.
         """
+        # The circuit owns the authoritative bus objects that the generated
+        # measurement block must reference after the modal selection is accepted.
+        buses_list: List[Bus] = list(self.circuit.buses)
+        vars_dict: Dict[BlockType, List[VarPowerFlowReferenceType]] = measurement_vars_dict
+        dialogue: MeasurementsDialog = MeasurementsDialog(
+            buses=buses_list,
+            measurement_vars_dict=vars_dict,
+            parent=self,
+        )
 
-        # get buses from multicircuit
-        buses_list: List[ALL_DEV_TYPES] = [bus for bus in self.circuit.buses]
-        vars_dict: Dict = measurement_vars_dict
-
-        # the dialogue has to be called here
-
-        bus, block_type, inputs_list, outputs_list = dialogue.get_user_info()
-
-        self.create_measurements_block_item(bus, block_type, inputs_list, outputs_list)
-
-        return
+        if dialogue.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+            bus: Bus
+            block_type: BlockType
+            inputs_list: List[VarPowerFlowReferenceType]
+            outputs_list: List[VarPowerFlowReferenceType]
+            bus, block_type, inputs_list, outputs_list = dialogue.get_user_info()
+            # The accepted configuration replaces the provisional graphics item,
+            # so remove that exact item through the editor-owned scene first.
+            if source_item.scene() is self.scene:
+                self.scene.removeItem(source_item)
+            else:
+                pass
+            self.create_measurements_block_item(
+                x_pos=x_pos,
+                y_pos=y_pos,
+                bus=bus,
+                block_type=block_type,
+                ref_inputs=inputs_list,
+                ref_outputs=outputs_list,
+            )
+        else:
+            pass
 
 
 
@@ -3463,7 +3491,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.main_block.add(block_model)
             self.scene.addItem(measurements_item)
 
-            measurements_item.setPos(QtCore.QPointF(50, 50))
+            # Place the configured graphics item at the same scene coordinates
+            # that are persisted in the diagram model below.
+            measurements_item.setPos(QtCore.QPointF(x_pos, y_pos))
 
             # Keep the diagram synchronized so later features can rebuild from the same data source.
             self.diagram.add_node(

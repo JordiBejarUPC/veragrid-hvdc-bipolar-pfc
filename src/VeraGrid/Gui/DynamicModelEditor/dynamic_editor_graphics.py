@@ -3129,7 +3129,14 @@ class MeasurementsItem(QGraphicsRectItem):
         :return: None.
         """
         if event.button() == Qt.MouseButton.LeftButton:
-            self.editor.open_measurements_editor()
+            # Pass scene coordinates because the replacement measurement block
+            # is inserted directly into the editor scene after configuration.
+            item_position: QPointF = self.scenePos()
+            self.editor.open_measurements_editor(
+                source_item=self,
+                x_pos=item_position.x(),
+                y_pos=item_position.y(),
+            )
             event.accept()
         else:
             super().mouseDoubleClickEvent(event)
