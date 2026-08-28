@@ -3037,43 +3037,6 @@ def convert_dgs_to_line(
     else:
         pass
 
-    # Retain the two irreducible energy coefficients of a DGS DC cable on the
-    # final Line. The static per-unit reactance and susceptance already include
-    # angular frequency, while the RMS differential equations require seconds.
-    if is_dc_cable and dynamic_parameters_complete:
-        angular_frequency: float = 2.0 * math.pi * float(freq)
-        has_valid_dynamic_parameters: bool = (
-            math.isfinite(angular_frequency)
-            and angular_frequency > 0.0
-            and math.isfinite(float(line.X))
-            and float(line.X) >= 0.0
-            and math.isfinite(float(line.B))
-            and float(line.B) >= 0.0
-        )
-        # if has_valid_dynamic_parameters:
-        #     line.dc_series_inductance_pu_seconds = (
-        #         float(line.X) / angular_frequency
-        #     )
-        #     line.dc_shunt_capacitance_pu_seconds = (
-        #         float(line.B) / angular_frequency
-        #     )
-        #     line.dc_cable_dynamic_parameters_complete = True
-        # else:
-        #     line.dc_cable_dynamic_parameters_complete = False
-    else:
-        # line.dc_cable_dynamic_parameters_complete = False
-        pass
-
-    if is_dc_cable:
-        # The exported cable reactance and susceptance encode stored energy for
-        # RMS. A stationary DC network has neither phasor reactance nor shunt
-        # susceptance, so keep those coefficients only in the typed dynamic
-        # fields materialized above.
-        line.X = 0.0
-        line.B = 0.0
-    else:
-        pass
-
     return line
 
 
