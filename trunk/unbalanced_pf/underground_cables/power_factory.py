@@ -47,7 +47,7 @@ print('R_DC = ', np.round(R_DC_s,7), 'Ω/km')
 
 
 '''
-2.2 CABLE SYSTEM TYPE (TypCabsys)
+CABLE SYSTEM TYPE (TypCabsys)
 '''
 f = 60 # Nominal frequency [Hz] -> frnom
 cGearth = 100 # Conductivity of the ground [uS/cm] -> cGearth
@@ -59,7 +59,7 @@ y2 = 0.6096 # [m]
 y3 = 0.6096 # [m]
 
 '''
-3 Calculation of Electrical Parameters
+SERIES IMPEDANCE MATRIX
 '''
 sigma_g = cGearth * 10**(-4)  # Conductivity of the ground [S/m]
 R_ac = np.array([R_DC_c, R_DC_c, R_DC_c, R_DC_s, R_DC_s, R_DC_s]) # Resistance's vector [Ω/km]
@@ -76,10 +76,15 @@ d_ab = np.sqrt((x1 - x2)**2 + (y1 - y2)**2)
 d_bc = np.sqrt((x2 - x3)**2 + (y2 - y3)**2)
 d_ca = np.sqrt((x3 - x1)**2 + (y3 - y1)**2)
 
+d_cs = (ri_s + ro_s) / 2 # Distance between conductor and sheath [m]
+
 d = np.array([
-    [1e-20, d_ab, d_ca],
-    [d_ab, 1e-20, d_bc],
-    [d_ca, d_bc, 1e-20],
+    [1e-20, d_ab, d_ca, d_cs, d_ab, d_ca],
+    [d_ab, 1e-20, d_bc, d_ab, d_cs, d_bc],
+    [d_ca, d_bc, 1e-20, d_ca, d_bc, d_cs],
+    [d_cs, d_ab, d_ca, 1e-20, d_ab, d_ca],
+    [d_ab, d_cs, d_bc, d_ab, 1e-20, d_bc],
+    [d_ca, d_bc, d_cs, d_ca, d_bc, 1e-20],
 ]) # Geometrical distances vector [m]
 
 # Self impedance calculation using Carson infinite series [Ω/km]:
@@ -94,3 +99,63 @@ print('Z_mutual =', np.round(Z_mutual,5))
 Z_series = Z_mutual.copy()
 np.fill_diagonal(Z_series, Z_self)
 print('Z_series =', np.round(Z_series,5))
+
+# Applying Kron reduction to eliminate the explicit representation of the concentric wires [Ω/km]:
+phases = 3
+Z_cc = Z_series[0:phases, 0:phases]
+Z_ww = Z_series[phases:, phases:]
+Z_cw = Z_series[0:phases, phases:]
+Z_wc = Z_series[phases:, 0:phases]
+Z_abc = Z_cc - Z_cw @ np.linalg.inv(Z_ww) @ Z_wc
+print('Z_abc =', np.round(Z_abc,5))
+
+# Applying Fortescue transformation to obtain the sequence impedance [Ω/km]:
+a = np.exp(1j * 2 * np.pi / 3)
+F_abc_to_012 = np.array([
+    [1, 1, 1],
+    [1, a**2, a],
+    [1, a, a**2]
+])
+F_012_to_abc = 1/3 * np.array([
+    [1, 1, 1],
+    [1, a, a**2],
+    [1, a**2, a]
+])
+Z_012 = F_012_to_abc @ Z_abc @ F_abc_to_012
+print('Z_012 =', np.round(Z_012,5))
+
+'''
+SHUNT ADMITTANCE MATRIX
+'''
+epsilon_insulation = 2.3 # Relative permittivity of the insulation
+epsilon_oversheath = 2.5 # Relative permittivity of the oversheath
+epsilon_0 = 8.854 * 10**(-12) # Permittivity of the free space [F/m]
+
+r_c = 6.35809 # Conductor radius [mm]
+r_insulation = r_c + 7.103906 # Insulation radius [mm]
+r_s = r_insulation + 0.159258 # Sheath radius [mm]
+r_oversheath = r_s + 1.651 # Oversheath radius [mm]
+
+P_insulation = (1/(2 * np.pi * epsilon_0 * epsilon_insulation)) * np.log(r_insulation/r_c)
+P_oversheath = (1/(2 * np.pi * epsilon_0 * epsilon_oversheath)) * np.log(r_oversheath/r_s)
+
+I3 = np.eye(3)
+
+# Ordering: [c1, c2, c3, s1, s2, s3]
+P = np.block([
+    [(P_insulation + P_oversheath) * I3, P_oversheath * I3],
+    [P_oversheath * I3,         P_oversheath * I3],
+])
+
+Y_shunt = 1j * 2 * np.pi * f * np.linalg.inv(P)
+print('Y_shunt =', np.round(Y_shunt * 1e9, 6))  # μS/km
+
+Y_cc = Y_shunt[:3, :3]
+Y_cs = Y_shunt[:3, 3:]
+Y_sc = Y_shunt[3:, :3]
+Y_ss = Y_shunt[3:, 3:]
+Y_abc = Y_cc - Y_cs @ np.linalg.inv(Y_ss) @ Y_sc
+print('Y_abc =', np.round(Y_abc * 1e9, 6))  # μS/km
+
+Y_012 = F_012_to_abc @ Y_abc @ F_abc_to_012
+print('Y_012 =', np.round(Y_012 * 1e9, 6))  # μS/km
