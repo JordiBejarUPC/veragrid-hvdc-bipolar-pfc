@@ -45,7 +45,8 @@ from VeraGridEngine.IO.raw.versioned.v34.vsc_dc_line import RawVscDCLineV34
 from VeraGridEngine.IO.raw.versioned.v35.vsc_dc_line import RawVscDCLineV35
 from VeraGridEngine.IO.raw.raw_parser_writer import interpret_line, read_and_split, read_raw
 from VeraGridEngine.IO.raw.rawx_parser_writer import parse_rawx
-from VeraGridEngine.IO.raw.raw_to_veragrid import get_veragrid_generator, get_veragrid_transformer, psse_to_veragrid
+from VeraGridEngine.IO.raw.raw_to_veragrid import (get_veragrid_generator, get_veragrid_shunt_switched,
+                                                   get_veragrid_transformer, psse_to_veragrid)
 from VeraGridEngine.IO.raw.veragrid_to_raw import (RawNodeBreakerExportData, append_psse_terminal,
                                                    get_psse_substation_switch, veragrid_to_raw)
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
@@ -347,6 +348,58 @@ def test_locked_controllable_shunt_compiles_fixed_admittance() -> None:
     assert nc.shunt_data.active[0]
     assert np.isclose(nc.shunt_data.Y[0].real, 0.0)
     assert np.isclose(nc.shunt_data.Y[0].imag, -25.0)
+
+
+def test_psse_switched_shunt_import_uses_block_bounds() -> None:
+    """PSS/e switched-shunt controllable range is the cumulative RAW block range."""
+
+    bus = dev.Bus(name="BUS1", Vnom=115.0)
+    bus.code = "10"
+
+    psse_shunt = RawSwitchedShunt()
+    psse_shunt.I = 10
+    psse_shunt.MODSW = 2
+    psse_shunt.STAT = 1
+    psse_shunt.VSWHI = 1.03
+    psse_shunt.VSWLO = 1.03
+    psse_shunt.RMPCT = 100.0
+    psse_shunt.BINIT = -5.0
+    psse_shunt.set_block(index=1, status=1, steps=1, admittance=-20.0)
+    psse_shunt.set_block(index=2, status=1, steps=1, admittance=15.0)
+
+    shunt = get_veragrid_shunt_switched(
+        psse_elm=psse_shunt,
+        bus=bus,
+        psse_bus_dict={10: bus},
+        logger=Logger(),
+    )
+
+    assert shunt.control_mode == ShuntControlMode.Continuous
+    assert np.isclose(shunt.B, -5.0)
+    assert np.isclose(shunt.Bmin, -20.0)
+    assert np.isclose(shunt.Bmax, 0.0)
+
+
+def test_continuous_controllable_shunt_compiles_signed_q_limits() -> None:
+    """Continuous shunt controls use VeraGrid's load-like Q sign convention."""
+
+    grid = MultiCircuit()
+    bus = dev.Bus(name="BUS1", Vnom=115.0)
+    shunt = dev.ControllableShunt(
+        name="continuous shunt",
+        B=9.38,
+        Bmin=0.0,
+        Bmax=9.38,
+        active=True,
+        control_mode=ShuntControlMode.Continuous,
+    )
+    grid.add_bus(bus)
+    grid.add_controllable_shunt(bus=bus, api_obj=shunt)
+
+    nc = compile_numerical_circuit_at(grid, t_idx=None)
+
+    assert np.isclose(nc.shunt_data.qmin[0], -9.38)
+    assert np.isclose(nc.shunt_data.qmax[0], 0.0)
 
 
 def test_vsc_dc_line_writer_uses_version_specific_control_fields() -> None:

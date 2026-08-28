@@ -557,12 +557,16 @@ def get_veragrid_shunt_switched(
     # (step 0 = neutral/off, step k = first k blocks on).
     cum_b = np.insert(np.cumsum([n * b for n, b in zip(n_list, b_list)]), 0, 0.0)
     init_step = int(np.argmin(np.abs(cum_b - psse_elm.BINIT))) if len(cum_b) > 1 else 0
+    b_min = float(np.min(cum_b)) if len(cum_b) > 0 else 0.0
+    b_max = float(np.max(cum_b)) if len(cum_b) > 0 else 0.0
 
     elm = dev.ControllableShunt(
         name='Switched shunt ' + busnum_id,
         code=busnum_id,
         active=bool(psse_elm.STAT),
         B=b_init,
+        Bmin=b_min,
+        Bmax=b_max,
         step=init_step,
         vset=vset,
         vmin=float(psse_elm.VSWLO),
