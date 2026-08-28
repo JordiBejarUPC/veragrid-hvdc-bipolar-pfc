@@ -971,6 +971,9 @@ def get_shunt_data(
             data.active[ii] = elm.get_active_at(t_idx)
             data.cost[ii] = elm.get_Cost_at(t_idx)
 
+            if elm.control_mode == ShuntControlMode.Locked:
+                data.Y[ii] += elm.get_Y_at(t_idx)
+
             if elm.control_mode == ShuntControlMode.Continuous:
                 data.Y[ii] += elm.get_Y_at(t_idx)
 
