@@ -3128,8 +3128,8 @@ class MeasurementsItem(QGraphicsRectItem):
         :param event: Incoming Qt event.
         :return: None.
         """
-        if event.button() == Qt.MouseButton.LeftButton and self.subsys is not None:
-            self.editor.request_open_block_properties(self.subsys)
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.editor.open_measurements_editor()
             event.accept()
         else:
             super().mouseDoubleClickEvent(event)

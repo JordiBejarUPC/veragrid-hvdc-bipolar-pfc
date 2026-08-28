@@ -14,6 +14,7 @@ from PySide6.QtCore import Qt, QPointF, Signal
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
 
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
+from VeraGridEngine.Utils.Symbolic.rms_measurements_functions import measurement_vars_dict, build_rms_voltage_meter_outputs_from_polar
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowReferenceType, ParamPowerFlowReferenceType, \
     DynamicSimulationMode, DynEditorGraphicsModes
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_algebraic_vars
@@ -1866,7 +1867,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         elif not self.main_block.diagram.node_data:
             # here we add the connection variables to the main block
             if self.is_root_editor:
-                self.add_connection_vars()
+                self.add_connection_vars_basic()
             else:
                 pass
                 # self.add_api_obj_mapping()
@@ -1962,6 +1963,27 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self._navigation_delegate.navigate_to_block(block)
         else:
             pass
+
+    def open_measurements_editor(self) -> Tuple[ALL_DEV_TYPES, BlockType, List[VarPowerFlowReferenceType], List[VarPowerFlowReferenceType]]:
+        """
+        open dialog and create measurements block from user inputs
+        :return:
+        :rtype:
+        """
+
+        # get buses from multicircuit
+        buses_list: List[ALL_DEV_TYPES] = [bus for bus in self.circuit.buses]
+        vars_dict: Dict = measurement_vars_dict
+
+        # the dialogue has to be called here
+
+        bus, block_type, inputs_list, outputs_list = dialogue.get_user_info()
+
+        self.create_measurements_block_item(bus, block_type, inputs_list, outputs_list)
+
+        return
+
+
 
     def request_open_block_properties(self, block: Block) -> None:
         """
@@ -3274,7 +3296,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             layout_graph=layout_graph,
         )
 
-    def create_measurements_block_item(self, block_type: BlockType) -> graph.MeasurementsItem | None:
+
+    def create_measurements_block_item_basic(self, block_type: BlockType) -> graph.MeasurementsItem | None:
         """
         Create and place a block item in the canvas scene.
 
@@ -3295,6 +3318,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                                                     mode=self.mode,
                                                                     api_object=self.api_object)
         block_model: Block = Block(name=item_name)
+
+
 
         if block_type == BlockType.INPUT_CONN:
             for var in self.main_block.in_vars:
@@ -3332,6 +3357,128 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             return measurements_item
         else:
             return None
+
+    def create_measurements_block(self, bus: ALL_DEV_TYPES,
+                                  block_type: BlockType,
+                                  ref_inputs: List[VarPowerFlowReferenceType],
+                                  ref_outputs: List[VarPowerFlowReferenceType]) -> Block:
+        """
+        create a measurements block
+
+        :param bus:
+        :type bus:
+        :param block_type:
+        :type block_type:
+        :param ref_inputs:
+        :type ref_inputs:
+        :param ref_outputs:
+        :type ref_outputs:
+        :return:
+        :rtype:
+        """
+
+        block: Block = Block()
+        vars_list: List[Var] = list()
+        nominal_frequency = Const(self.circuit.fBase)
+
+        # get bus variables
+        bus_vars = self.add_connection_vars(bus)
+
+        # build measurement block
+
+        if block_type == BlockType.INPUT_CONN:
+           vars_list = bus_vars
+
+
+        if block_type == BlockType.MEASUREMENTS_VOLTAGE_FROM_POLAR:
+            block, vars_list = build_rms_voltage_meter_outputs_from_polar(self.var_factory, bus_vars[0], bus_vars[1], nominal_frequency, nominal_frequency)
+        #
+        # elif block_type == BlockType.MEASUREMENTS_VOLTAGE_FROM_DC:
+        #
+        # elif block_type == BlockType.MEASUREMENTS_VOLTAGE_FROM_POLAR:
+        #
+        # elif block_type == BlockType.MEASUREMENTS_VOLTAGE_FROM_DC:
+        #
+        # elif block_type == BlockType.MEASUREMENTS_VOLTAGE_FROM_POLAR:
+        #
+        # elif block_type == BlockType.MEASUREMENTS_VOLTAGE_FROM_DC:
+
+        for var in vars_list:
+            if var.ref in ref_inputs:
+                block.in_vars.append(var)
+            else:
+                block.out_vars.append(var)
+
+        return block
+
+
+
+    def create_measurements_block_item(self, x_pos: float, y_pos: float, bus: ALL_DEV_TYPES | None = None,
+                                  block_type: BlockType = BlockType.INPUT_CONN,
+                                  ref_inputs: List[VarPowerFlowReferenceType] | None= None,
+                                  ref_outputs: List[VarPowerFlowReferenceType] | None = None)  -> graph.MeasurementsItem | None:
+        """
+        Create and place a measurements block item in the canvas scene.
+
+        :param bus:
+        :param block_type:
+        :param ref_inputs:
+        :param ref_outputs:
+        :return:
+        """
+
+        if bus is None:
+            bus = self.api_object.bus
+        else:
+            pass
+
+        if ref_inputs is None:
+            ref_inputs = []
+        else:
+            pass
+
+        if ref_outputs is None:
+            ref_outputs = [VarPowerFlowReferenceType.Va, VarPowerFlowReferenceType.Vm]
+        else:
+            pass
+
+        count: int = self.block_counters.get(block_type, 0) + 1
+
+        item_name: str = f"{block_type.name}"
+        measurements_item: graph.MeasurementsItem = graph.MeasurementsItem(editor=self,
+                                                                    var_factory=self.var_factory,
+                                                                    name=item_name,
+                                                                    mode=self.mode,
+                                                                    api_object=self.api_object)
+        block_model: Block = self.create_measurements_block(bus, block_type, ref_inputs, ref_outputs)
+
+        if block_model is not None:
+            # The symbolic block has to be attached first so the graphics item can build its ports from it.
+
+            measurements_item.set_subsystem(block_model)
+            measurements_item.position_changed_callback = self.build_position_changed_callback(block_model.uid)
+            measurements_item.build_item()
+
+            # The editor block is the authoritative model container for later save/rebuild steps.
+            self.main_block.add(block_model)
+            self.scene.addItem(measurements_item)
+
+            measurements_item.setPos(QtCore.QPointF(50, 50))
+
+            # Keep the diagram synchronized so later features can rebuild from the same data source.
+            self.diagram.add_node(
+                name=item_name,
+                x=x_pos,
+                y=y_pos,
+                tpe=block_type.name,
+                device_uid=block_model.uid
+            )
+
+            return measurements_item
+        else:
+            return None
+
+
 
     def create_connection_block_item(self, var: Var, block_type: BlockType, x_pos: float,
                                      y_pos: float, blocks_list: List[graph.BlockItem] | None) -> graph.BlockItem | None:
@@ -3644,7 +3791,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     def create_library_payload_item(self,
                                     payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate,
                                     x_pos: float,
-                                    y_pos: float) -> graph.BlockItem | graph.GenericBlockItem | graph.RoundBaseArithmeticOpItem | graph.RectBaseArithmeticOpItem | graph.PairedItem | None:
+                                    y_pos: float) -> graph.BlockItem | graph.MeasurementsItem | graph.GenericBlockItem | graph.RoundBaseArithmeticOpItem | graph.RectBaseArithmeticOpItem | graph.PairedItem | None:
         """
         Materialize one library payload on the diagram scene.
 
@@ -3660,6 +3807,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         elif isinstance(payload, BlockType) and payload == BlockType.FROM_GOTO:
             items = self.create_signal_pair_item(x_pos=x_pos, y_pos=y_pos)
             return items[0] if items else None
+
+        elif isinstance(payload, BlockType) and payload == BlockType.INPUT_CONN:
+            return self.create_measurements_block_item(x_pos=x_pos, y_pos=y_pos)
 
         elif isinstance(payload, BlockType) and payload == BlockType.SUM:
             return self.create_basic_arithmetic_op_item(BlockType.SUM, x_pos, y_pos)
@@ -5455,7 +5605,29 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-    def add_connection_vars_rms(self) -> None:
+    def add_connection_vars_rms(self, bus) -> List[Var]:
+        """
+        Add a block with bus connection variables to connect the device (RMS)
+        :return: None.
+        """
+        bus_vars: List[Var] = list()
+
+        # get bus variables
+
+        if self.api_object.bus.is_dc:
+            Vdc, _, _ = get_bus_rms_algebraic_vars(bus.rms_model)
+            if Vdc is not None:
+                bus_vars.append(Vdc)
+            else:
+                pass
+        else:
+            _, Vm, Va = get_bus_rms_algebraic_vars(bus.rms_model)
+            bus_vars.append(Vm)
+            bus_vars.append(Va)
+
+        return bus_vars
+
+    def add_connection_vars_rms_basic(self) -> None:
         """
         Add a block with bus connection variables to connect the device (RMS)
         :return: None.
@@ -5572,7 +5744,52 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-    def add_connection_vars_emt(self) -> None:
+    def add_connection_vars_emt(self, bus) -> List[Var]:
+        """
+        Add a block with bus connection variables to connect the device (EMT)
+        :return: None.
+
+        :param bus:
+        """
+
+
+        bus_vars: List[Var] = list()
+        # connect bus variables
+
+        if bus.is_dc:
+            Vdc, _, _, _ = get_bus_emt_algebraic_vars(bus.emt_model)
+
+            if Vdc is not None:
+                bus_vars.append(Vdc)
+            else:
+                raise ValueError("Invalid EMT bus model: expected Vdc, None, None, None")
+        else:
+            v_N, v_A, v_B, v_C = get_bus_emt_algebraic_vars(bus.emt_model)
+
+            if v_N is not None:
+                bus_vars.append(v_N)
+
+            else:
+                pass
+            if v_A is not None:
+                bus_vars.append(v_A)
+
+            else:
+                pass
+            if v_B is not None:
+                bus_vars.append(v_B)
+
+            else:
+                pass
+            if v_C is not None:
+                bus_vars.append(v_C)
+
+            else:
+                pass
+
+        return bus_vars
+
+    def add_connection_vars_emt_basic(self) -> None:
         """
         Add a block with bus connection variables to connect the device (EMT)
         :return: None.
@@ -5769,8 +5986,27 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
+    def add_connection_vars(self, bus: ALL_DEV_TYPES) -> List[Var]:
+        """
+        Add the connection variables required to couple the edited device with the grid.
 
-    def add_connection_vars(self) -> None:
+        :param bus: the bus model
+
+        :return:
+        """
+        # specs: List[ConnectionVarSpec]
+
+        if self.mode == DynamicSimulationMode.RMS:
+            bus_vars = self.add_connection_vars_rms(bus)
+        elif self.mode == DynamicSimulationMode.EMT:
+            bus_vars = self.add_connection_vars_emt(bus)
+
+
+        else:
+            raise ValueError(f"Unsupported dynamic editor mode {self.mode}")
+        return bus_vars
+
+    def add_connection_vars_basic(self) -> None:
         """
         Add the connection variables required to couple the edited device with the grid.
 
@@ -5779,9 +6015,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         # specs: List[ConnectionVarSpec]
 
         if self.mode == DynamicSimulationMode.RMS:
-            self.add_connection_vars_rms()
+            self.add_connection_vars_rms_basic()
         elif self.mode == DynamicSimulationMode.EMT:
-            self.add_connection_vars_emt()
+            self.add_connection_vars_emt_basic()
 
 
         else:
@@ -6252,7 +6488,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
 
     def add_measurements_items(self):
-    #     # Here we need to create the measurements items
         """
                 Build graphical wrapper items for every root input and output variable.
 
@@ -6260,20 +6495,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 :return: None.
                 """
 
-        self.create_measurements_block_item(BlockType.INPUT_CONN)
+        self.create_measurements_block_item_basic(BlockType.INPUT_CONN)
 
-        self.create_measurements_block_item(BlockType.OUTPUT_CONN)
-
-
-
-        # self.scene.setSceneRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT)
-        # fit_rect = self._compact_initial_layout()
-        # if fit_rect is not None:
-        #     self.view.fitInView(fit_rect, QtCore.Qt.AspectRatioMode.KeepAspectRatio)
-        #     self.view.scale(graph.EditorGraphicsCommonFeatures.INITIAL_VIEW_SCALE,
-        #                     graph.EditorGraphicsCommonFeatures.INITIAL_VIEW_SCALE)
-        # else:
-        #     self.view.fitInView(self.scene.sceneRect(), QtCore.Qt.AspectRatioMode.KeepAspectRatio)
+        self.create_measurements_block_item_basic(BlockType.OUTPUT_CONN)
 
     def add_connection_items(self, blocks_list: List[graph.BlockItem] | None = None) -> None:
         """

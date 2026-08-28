@@ -3771,6 +3771,63 @@ class VarPowerFlowReferenceType(Enum):
     Sf_complex = "Sf_complex"  # Complex power at from bus
     St_complex = "St_complex"  # Complex power at to bus
 
+    UR = "UR"
+    UI = "UI"
+    U = "U"
+    U2R = "U2R"
+    U2I = "U2I"
+    U2 = "U2"
+    U0R = "U0R"
+    U0I = "U0I"
+    U0 = "U0"
+    FREF = "FREF"
+    FE = "FE"
+    DU = "DU"
+    DUR = "DUR"
+    DUI = "DUI"
+    DU2 = "DU2"
+    DU2R = "DU2R"
+    DU2I = "DU2I"
+    DU0 = "DU0"
+    DU0R = "DU0R"
+    DU0I = "DU0I"
+    UR_A = "UR_A"
+    UR_B = "UR_B"
+    UR_C = "UR_C"
+    UI_A = "UI_A"
+    UI_B = "UI_B"
+    UI_C = "UI_C"
+    DUR_A = "DUR_A"
+    DUR_B = "DUR_B"
+    DUR_C = "DUR_C"
+    DUI_A = "DUI_A"
+    DUI_B = "DUI_B"
+    DUI_C = "DUI_C"
+
+    IR = "IR"
+    II = "II"
+    I = "I"
+    IA = "IA"
+    I2R = "I2R"
+    I2I = "I2I"
+    I2 = "I2"
+    I0R = "I0R"
+    I0I = "I0"
+    IR_A = "IR_A"
+    IR_B = "IR_B"
+    IR_C = "IR_C"
+    II_A = "II_A"
+    II_B = "II_B"
+    II_C = "II_C"
+
+    I_DC = "I_DC"
+
+    VD = "VD"
+    VQ = "VQ"
+
+    ID = "ID"
+    IQ = "IQ"
+
     def __str__(self):
         return self.value
 
@@ -4516,6 +4573,13 @@ class BlockType(Enum):
     BATTERY_EMT = "BATTERY_EMT"
     COMPLETE_PSEUDO_VSC_EMT = "COMPLETE_PSEUDO_VSC_EMT"
 
+    MEASUREMENTS_VOLTAGE_FROM_POLAR = "MEASUREMENTS_VOLTAGE_FROM_POLAR"
+    MEASUREMENTS_VOLTAGE_FROM_DC = "MEASUREMENTS_VOLTAGE_FROM_DC"
+    MEASUREMENTS_CURRENT_FROM_PQ = "MEASUREMENTS_CURRENT_FROM_PQ"
+    MEASUREMENTS_CURRENT_FROM_DC = "MEASUREMENTS_CURRENT_FROM_DC"
+    MEASUREMENTS_CURRENT_PARK = "MEASUREMENTS_CURRENT_PARK"
+    MEASUREMENTS_PLL = "MEASUREMENTS_PLL"
+
     def __str__(self):
         return self.value
 
@@ -4776,3 +4840,65 @@ class RoutingValidationMessageLevel(Enum):
 
     ERROR = "error"
     WARNING = "warning"
+
+class MeasurementVarType(Enum):
+    """
+    this class contains the existing measurement variables
+    """
+    UR = "UR"
+    UI = "UI"
+    U = "U"
+    U2R = "U2R"
+    U2I = "U2I"
+    U2 = "U2"
+    U0R = "U0R"
+    U0I = "U0I"
+    U0 = "U0"
+    FREF = "FREF"
+    FE = "FE"
+    DU = "DU"
+    DUR = "DUR"
+    DUI = "DUI"
+    DU2 = "DU2"
+    DU2R = "DU2R"
+    DU2I = "DU2I"
+    DU0 = "DU0"
+    DU0R = "DU0R"
+    DU0I = "DU0I"
+    UR_A = "UR_A"
+    UR_B = "UR_B"
+    UR_C = "UR_C"
+    UI_A = "UI_A"
+    UI_B = "UI_B"
+    UI_C = "UI_C"
+    DUR_A = "DUR_A"
+    DUR_B = "DUR_B"
+    DUR_C = "DUR_C"
+    DUI_A = "DUI_A"
+    DUI_B = "DUI_B"
+    DUI_C = "DUI_C"
+
+    IR = "IR"
+    II = "II"
+    I = "I"
+    IA = "IA"
+    I2R = "I2R"
+    I2I = "I2I"
+    I2 = "I2"
+    I0R = "I0R"
+    I0I = "I0"
+    IR_A = "IR_A"
+    IR_B = "IR_B"
+    IR_C = "IR_C"
+    II_A = "II_A"
+    II_B = "II_B"
+    II_C = "II_C"
+
+    I_DC = "I_DC"
+
+    VD = "VD"
+    VQ = "VQ"
+
+    ID = "ID"
+    IQ = "IQ"
+

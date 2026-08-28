@@ -301,6 +301,7 @@ class DynamicEditorLibrary:
             pass
 
         self.tree_structure["Tools"] = list((LibraryLeafSpec("Signal Pair", BlockType.FROM_GOTO),
+                                                                LibraryLeafSpec("Measurements", BlockType.INPUT_CONN),
                                                                 LibraryLeafSpec("Generic Device", BlockType.GENERIC)))
 
         if self.templates_list:
