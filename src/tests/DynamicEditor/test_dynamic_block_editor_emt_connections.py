@@ -1748,7 +1748,7 @@ def test_manual_exponential_load_partial_connections_survive_apply_and_reopen() 
                                    modal=False)
     try:
         exponential_load_item = editor.create_item_using_blocktype_wizard(
-            block_type=BlockType.EXP_LOAD_EMT,
+            blocktype=BlockType.EXP_LOAD_EMT,
             x_pos=260.0,
             y_pos=180.0)
         assert isinstance(exponential_load_item, graph.GenericBlockItem)
@@ -1832,7 +1832,7 @@ def test_generated_phase_rebuild_preserves_surviving_port_connections() -> None:
     )
     try:
         exponential_load_item: graph.GenericBlockItem | None = editor.create_item_using_blocktype_wizard(
-            block_type=BlockType.EXP_LOAD_EMT,
+            blocktype=BlockType.EXP_LOAD_EMT,
             x_pos=260.0,
             y_pos=180.0,
         )
@@ -1932,7 +1932,7 @@ def test_workspace_exponential_load_partial_connections_survive_tab_close_and_re
     editor = load_page.editor
     assert editor is not None
     exponential_load_item = editor.create_item_using_blocktype_wizard(
-        block_type=BlockType.EXP_LOAD_EMT,
+        blocktype=BlockType.EXP_LOAD_EMT,
         x_pos=260.0,
         y_pos=180.0)
     assert isinstance(exponential_load_item, graph.GenericBlockItem)

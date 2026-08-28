@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import Optional, Protocol, runtime_checkable
+from typing import cast, Optional, TYPE_CHECKING
 
 from PySide6 import QtGui, QtWidgets
 from PySide6.QtCore import QObject, Qt
@@ -13,20 +13,10 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.enumerations import VarPowerFlowReferenceType
 
-
-@runtime_checkable
-class ValidationIssuePresenter(Protocol):
-    """Expose the editor operation required by the validation dialogue."""
-
-    __slots__ = ()
-
-    def show_validation_issues_in_model(self, section_results: list["ValidationSection"]) -> None:
-        """Highlight validation issues in the owning model editor.
-
-        :param section_results: Validation sections to present.
-        :return: None.
-        """
-        ...
+if TYPE_CHECKING:
+    from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
+else:
+    pass
 
 
 def collect_block_tree(root_block: Block) -> list[Block]:
@@ -533,7 +523,7 @@ class ValidationSectionDialog(QDialog):
         """
         super().__init__(parent)
         self._section_results: list[ValidationSection] = section_results
-        self.setWindowTitle(self.tr("Model Consistency Validation"))
+        self.setWindowTitle("Model Consistency Validation")
         self.resize(860, 620)
 
         layout: QVBoxLayout = QVBoxLayout(self)
@@ -557,8 +547,8 @@ class ValidationSectionDialog(QDialog):
         scroll_layout.setSpacing(2)
 
         intro_label: QLabel = QLabel(
-            self.tr("Run an informational validation of the edited model structure, mappings, initialization, and port connectivity. "
-            "This check reports issues but does not block saving the model.")
+            "Run an informational validation of the edited model structure, mappings, initialization, and port connectivity. "
+            "This check reports issues but does not block saving the model."
         )
         intro_label.setWordWrap(True)
         scroll_layout.addWidget(intro_label)
@@ -658,7 +648,7 @@ class ValidationSectionDialog(QDialog):
             if section.get_show_issue_label():
                 # The warning label is kept, but spacing is reduced so the table is
                 # still visible together with the section title in normal cases.
-                warning_label: QLabel = QLabel(self.tr("Issues found in this section"))
+                warning_label: QLabel = QLabel("Issues found in this section")
                 warning_label.setStyleSheet("color: #b42318;")
                 warning_label.setContentsMargins(4, 0, 4, 0)
                 section_content_layout.addWidget(warning_label)
@@ -761,11 +751,12 @@ class ValidationSectionDialog(QDialog):
 
         :return: None.
         """
-        # The structural protocol keeps this module independent from the
-        # editor's runtime import cycle while validating the required method.
-        parent_object: QObject | None = self.parent()
-        if isinstance(parent_object, ValidationIssuePresenter):
-            parent_object.show_validation_issues_in_model(section_results=self.get_section_results())
+        # Construction is owned by the dynamic editor. A typed cast keeps the
+        # validation module independent from the editor's runtime import cycle.
+        parent_widget: DynamicBlockEditorGUI | None = cast("DynamicBlockEditorGUI | None", self.parent())
+
+        if parent_widget is not None:
+            parent_widget.show_validation_issues_in_model(section_results=self.get_section_results())
             self.accept()
         else:
             pass

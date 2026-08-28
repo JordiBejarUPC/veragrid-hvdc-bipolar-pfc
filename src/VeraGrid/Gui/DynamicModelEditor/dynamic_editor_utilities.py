@@ -9,6 +9,7 @@ from typing import Dict, List
 
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Devices.Branches.winding import Winding
+from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagramNode
 from VeraGridEngine.enumerations import (
     BlockType,
     ConverterControlType,
@@ -16,17 +17,22 @@ from VeraGridEngine.enumerations import (
     FaultType,
     JMartiDataSourceMode,
     ShuntConnectionType,
+    VarPowerFlowReferenceType,
     WindingType,
 )
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Utils.Symbolic.block import Block, rehash_block_tree_var_keyed_dicts
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var
 import VeraGridEngine.Templates.BasicBlockCatalog as basic_block_templates
 import VeraGridEngine.Templates as tem
 import VeraGridEngine.Templates.Emt as emt_templates
 import VeraGridEngine.Templates.Rms as rms_templates
 from VeraGridEngine.Templates.Rms.dc_line_rms_template_v2 import DcLineRmsTemplateV2
-from VeraGridEngine.Templates.Rms.hvdc_vsc_gfl_rms_template_v2 import HvdcVscGflRmsTemplate
+from VeraGridEngine.Templates.Rms.hvdc_vsc_gfl_rms_template_v2 import (
+    HvdcVscGflRmsTemplate,
+    VscActiveControlRmsTemplate,
+    VscReactiveControlRmsTemplate,
+)
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Templates.template_definition import TemplateDefinition, TemplateProp
@@ -213,6 +219,8 @@ def get_blocktype2template_builder_dict() -> Dict[BlockType, type[TemplateDefini
                  (BlockType.LOOKUP_MATRIX_LINEAR, emt_templates.LookupMatrixLinearRuntimeTemplate),
                  (BlockType.LOOKUP_MATRIX_SPLINE, emt_templates.LookupMatrixSplineRuntimeTemplate),
                  (BlockType.GFL_VSC_HVDC_RMS, HvdcVscGflRmsTemplate),
+                 (BlockType.VSC_ACTIVE_CONTROL_RMS, VscActiveControlRmsTemplate),
+                 (BlockType.VSC_REACTIVE_CONTROL_RMS, VscReactiveControlRmsTemplate),
                  (BlockType.DC_LINE_RMS, DcLineRmsTemplateV2),))
 
 
@@ -416,7 +424,11 @@ def initialize_template_builder_from_block(builder: TemplateDefinition,
     else:
         pass
 
-    if block_type == BlockType.GFL_VSC_HVDC_RMS:
+    if block_type in (
+        BlockType.GFL_VSC_HVDC_RMS,
+        BlockType.VSC_ACTIVE_CONTROL_RMS,
+        BlockType.VSC_REACTIVE_CONTROL_RMS,
+    ):
         # Block metadata accelerates an in-memory reopen, but the serialized
         # symbolic format does not retain arbitrary Python attributes. Recover
         # the two structural controller selections from the generated child
@@ -425,6 +437,15 @@ def initialize_template_builder_from_block(builder: TemplateDefinition,
         candidate_block: Block
         for candidate_block in block.get_all_blocks():
             child_names.add(candidate_block.name)
+            # Standalone controllers can be renamed by the user. Their
+            # integral-state names still retain the structural mode after
+            # serialization or equation decomposition.
+            state_variable: Var
+            for state_variable in candidate_block.state_vars:
+                if state_variable.name.startswith("xi_"):
+                    child_names.add(state_variable.name[3:])
+                else:
+                    pass
 
         control1_property: TemplateProp | None = builder.params_dict.get("control1", None)
         if control1_property is None:
@@ -725,177 +746,39 @@ def create_block_of_type(var_factory: VarFactory,
         blk.name = item_name
         return blk
 
+    elif block_type == BlockType.VSC_PLL_RMS:
+        return rms_templates.build_vsc_pll_rms(var_factory, name=item_name)
 
-    # ----- RMS international standards blocks -----------------------
+    elif block_type == BlockType.VSC_ELECTRICAL_RMS:
+        return rms_templates.build_vsc_electrical_rms(var_factory, name=item_name)
 
-    elif block_type == BlockType.AC1A:
-        blk = tem.build_ac1a_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
+    elif block_type == BlockType.VSC_CURRENT_LIMITER_RMS:
+        return rms_templates.build_vsc_current_limiter_rms(var_factory, name=item_name)
+
+    elif block_type in (BlockType.VSC_VD_HAT_RMS, BlockType.VSC_VQ_HAT_RMS):
+        # Keep native identifiers and symbolic names stable, but show the
+        # controller's purpose instead of the historical enum on a new drop.
+        controller_label: str
+        if block_type == BlockType.VSC_VD_HAT_RMS:
+            blk = rms_templates.build_vsc_vd_hat_rms(var_factory, name=item_name)
+            controller_label = "d-axis current PI controller"
+        else:
+            blk = rms_templates.build_vsc_vq_hat_rms(var_factory, name=item_name)
+            controller_label = "q-axis current PI controller"
+        generated_prefix: str = f"{block_type.name}_"
+        instance_number: str = item_name.removeprefix(generated_prefix)
+        if item_name.startswith(generated_prefix) and instance_number.isdecimal():
+            blk.name = f"{controller_label}_{instance_number}"
+        else:
+            # Explicit caller/user names must not be overwritten.
+            pass
         return blk
-    elif block_type == BlockType.AC1C:
-        blk = tem.build_ac1c_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.AC6A:
-        blk = tem.build_ac6a_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.AC6C:
-        blk = tem.build_ac6c_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.AC7B:
-        blk = tem.build_ac7b_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.AC7C:
-        blk = tem.build_ac7c_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.AC8B:
-        blk = tem.build_ac8b_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.AC8C:
-        blk = tem.build_ac8c_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.BBSEX1:
-        blk = tem.build_bbsex1_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.BESSCBCURRENTSOURCENOPLANTCONTROL:
-        blk = tem.build_besscbcurrentsourcenoplantcontrol_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.DC1A:
-        blk = tem.build_dc1a_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.DC1C:
-        blk = tem.build_dc1c_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.EXAC1:
-        blk = tem.build_exac1_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.GOVHYDRO4:
-        blk = tem.build_govhydro4_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.GOVSTEAM1:
-        blk = tem.build_govsteam1_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.GOVSTEAMEU:
-        blk = tem.build_govsteameu_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.IEEEG1:
-        blk = tem.build_ieeeg1_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.IEEEG2:
-        blk = tem.build_ieeeg2_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.IEEET1:
-        blk = tem.build_ieeet1_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.IEEEX2:
-        blk = tem.build_ieeex2_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.IEEX2A:
-        blk = tem.build_ieex2a_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.MAXEX2:
-        blk = tem.build_maxex2_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.OEL2C:
-        blk = tem.build_oel2c_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.OEL3C:
-        blk = tem.build_oel3c_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.OEL4C:
-        blk = tem.build_oel4c_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.OEL5C:
-        blk = tem.build_oel5c_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.PSS1AOMEGA:
-        blk = tem.build_pss1aomega_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.PSS1APGEN:
-        blk = tem.build_pss1apgen_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.PSS2A:
-        blk = tem.build_pss2a_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.PSS2B:
-        blk = tem.build_pss2b_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.PSS2C:
-        blk = tem.build_pss2c_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.PSS3B:
-        blk = tem.build_pss3b_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.PSS3C:
-        blk = tem.build_pss3c_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.PSS6C:
-        blk = tem.build_pss6c_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.PSSKUNDUR:
-        blk = tem.build_psskundur_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.PVCURRENTSOURCEBNOPLANTCONTROL:
-        blk = tem.build_pvcurrentsourcebnoplantcontrol_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.PVVOLTAGESOURCEANOPLANTCONTROL:
-        blk = tem.build_pvvoltagesourceanoplantcontrol_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.PVVOLTAGESOURCEBNOPLANTCONTROL:
-        blk = tem.build_pvvoltagesourcebnoplantcontrol_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.REECB:
-        blk = tem.build_reecb_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.REECC:
-        blk = tem.build_reecc_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.REGCBCS:
-        blk = tem.build_regcbcs_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.REPCA:
-        blk = tem.build_repca_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
+
+    elif block_type == BlockType.VSC_DC_LINK_RMS:
+        return rms_templates.build_vsc_dc_link_rms(var_factory, name=item_name)
+
+    elif block_type == BlockType.VSC_TERMINAL_POWER_RMS:
+        return rms_templates.build_vsc_terminal_power_rms(var_factory, name=item_name)
 
     elif block_type == BlockType.VOLTAGE_SOURCE_RMS:
         blk = rms_templates.VoltageSourceBuild(var_factory, name=item_name).block
@@ -904,197 +787,6 @@ def create_block_of_type(var_factory: VarFactory,
 
     elif block_type == BlockType.TRANSFORMER_2W_RMS:
         blk = rms_templates.get_transformer2w_rms(vf=var_factory).block
-        blk.name = item_name
-        return blk
-
-    elif block_type == BlockType.SCL1C:
-        blk = tem.build_scl1c_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-
-    elif block_type == BlockType.SCL2C:
-        blk = tem.build_scl2c_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.SCRX:
-        blk = tem.build_scrx_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.SEXS:
-        blk = tem.build_sexs_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.ST1A:
-        blk = tem.build_st1a_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-    elif block_type == BlockType.ST1C:
-        blk = tem.build_st1c_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-
-    elif block_type == BlockType.ST4B:
-        blk = tem.build_st4b_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-
-    elif block_type == BlockType.ST4C:
-        blk = tem.build_st4c_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-
-    elif block_type == BlockType.ST5B:
-        blk = tem.build_st5b_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-
-    elif block_type == BlockType.ST5C:
-        blk = tem.build_st5c_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-
-    elif block_type == BlockType.ST6B:
-        blk = tem.build_st6b_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-
-    elif block_type == BlockType.ST6C:
-        blk = tem.build_st6c_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-
-    elif block_type == BlockType.ST7B:
-        blk = tem.build_st7b_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-
-    elif block_type == BlockType.ST7C:
-        blk = tem.build_st7c_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-
-    elif block_type == BlockType.ST9C:
-        blk = tem.build_st9c_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-
-    elif block_type == BlockType.TGOV3:
-        blk = tem.build_tgov3_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-
-    elif block_type == BlockType.UEL1:
-        blk = tem.build_uel1_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-
-    elif block_type == BlockType.UEL2C:
-        blk = tem.build_uel2c_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-
-    elif block_type == BlockType.VRKUNDUR:
-        blk = tem.build_vrkundur_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-
-    elif block_type == BlockType.WPP4BCURRENTSOURCE2020:
-        blk = tem.build_wpp4bcurrentsource2020_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-
-    elif block_type == BlockType.WT4ACURRENTSOURCE:
-        blk = tem.build_wt4acurrentsource_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-
-    elif block_type == BlockType.WT4ACURRENTSOURCE2020:
-        blk = tem.build_wt4acurrentsource2020_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-
-    elif block_type == BlockType.WT4BCURRENTSOURCE2020:
-        blk = tem.build_wt4bcurrentsource2020_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-
-    elif block_type == BlockType.WT4BCURRENTSOURCE:
-        blk = tem.build_wt4bcurrentsource_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-
-    elif block_type == BlockType.WT4INJECTOR:
-        blk = tem.build_wt4injector_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-
-    elif block_type == BlockType.WTG4ACURRENTSOURCE:
-        blk = tem.build_wtg4acurrentsource_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-
-    elif block_type == BlockType.WTG4BCURRENTSOURCE:
-        blk = tem.build_wtg4bcurrentsource_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-
-    elif block_type == BlockType.IEEEVC_1981:
-        blk = tem.build_ieeevc_1981_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-
-    elif block_type == BlockType.ESDC2A:
-        blk = tem.build_esdc2a_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-
-    elif block_type == BlockType.FRQTPA:
-        blk = tem.build_frqtpa_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-
-    elif block_type == BlockType.VTGTPA:
-        blk = tem.build_vtgtpa_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-
-    elif block_type == BlockType.CIMTR1:
-        blk = tem.build_cimtr1_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-
-    elif block_type == BlockType.CIMW:
-        blk = tem.build_cimw_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-
-    elif block_type == BlockType.GENSAL:
-        blk = tem.build_gensal_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-
-    elif block_type == BlockType.GENROU:
-        blk = tem.build_genrou_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-
-    elif block_type == BlockType.GGOV1:
-        blk = tem.build_ggov1_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-
-    elif block_type == BlockType.HYGOV:
-        blk = tem.build_hygov_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-
-    elif block_type == BlockType.IEEL:
-        blk = tem.build_ieel_template(vf=var_factory, name=item_name).block
-        blk.name = item_name
-        return blk
-
-    elif block_type == BlockType.TGOV1:
-        blk = tem.build_tgov1_template(vf=var_factory, name=item_name).block
         blk.name = item_name
         return blk
 
@@ -1165,7 +857,7 @@ def create_block_of_type(var_factory: VarFactory,
 
     # #
     # elif block_type == BlockType.INDUCTION_MOTOR_EMT:
-    #     blk = tem.get_induction_motor_emt_template(vf=var_factory, name=item_name).block.block
+    #     blk = tem.get_induction_motor_emt_template(vf=var_factory, name=item_name).block
     #     blk.name = item_name
     #     return blk
 
@@ -1270,3 +962,136 @@ def create_generic_block(var_factory: VarFactory,
     blk = basic_block_templates.generic(var_factory, inputs, outputs)
     blk.name = name
     return blk
+
+
+def synchronize_vsc_library_initialization(
+        root: Block,
+        block_types: dict[int, BlockType] | None = None,
+) -> list[Var]:
+    """Bind the original VSC initial conditions when saving a Library assembly.
+
+    Only the electrical P/Q and inner-PI output initializations are generated.
+    They follow the actual symbolic connections, including intermediate ELK
+    operation blocks, rather than labels or power-flow reference coincidences.
+    The saved model remains an ordinary Block with ordinary init_eqs: neither
+    the numerical initializer nor the runtime equations need special handling.
+
+    :param root: Complete editor working tree with its physical root interface.
+    :param block_types: Optional in-memory component types; persisted diagrams
+        supply the types when reopening a saved model.
+    :return: Target variables whose initialization cannot yet be connected.
+    """
+    blocks: list[Block] = root.get_all_blocks()
+    types_by_uid: dict[int, BlockType] = dict() if block_types is None else dict(block_types)
+    candidate: Block
+    diagram_node: BlockDiagramNode
+    for candidate in blocks:
+        for diagram_node in candidate.diagram.node_data.values():
+            if diagram_node.tpe in BlockType.__members__:
+                types_by_uid[diagram_node.device_uid] = BlockType[diagram_node.tpe]
+            else:
+                pass
+
+    targets: dict[int, Var] = dict()
+    for candidate in blocks:
+        block_type: BlockType | None = types_by_uid.get(candidate.uid, None)
+        if block_type == BlockType.VSC_ELECTRICAL_RMS and len(candidate.out_vars) == 4:
+            targets[candidate.out_vars[2].uid] = candidate.out_vars[2]
+            targets[candidate.out_vars[3].uid] = candidate.out_vars[3]
+        elif block_type in (BlockType.VSC_VD_HAT_RMS, BlockType.VSC_VQ_HAT_RMS) and len(candidate.out_vars) == 1:
+            targets[candidate.out_vars[0].uid] = candidate.out_vars[0]
+        else:
+            pass
+    if len(targets) == 0:
+        return list()
+    else:
+        pass
+
+    # Rebuild generated initial conditions on every save, so reconnecting a
+    # port cannot retain an initialization dependency on its former neighbour.
+    rehash_block_tree_var_keyed_dicts(root)
+    assignments: dict[Var, Expr] = dict()
+    owners: dict[int, Block] = dict()
+    equations: list[Expr] = list()
+    known: set[int] = set()
+    variable: Var
+    for candidate in blocks:
+        for variable in list(candidate.init_eqs):
+            if variable.uid in targets:
+                del candidate.init_eqs[variable]
+            else:
+                pass
+        assignments.update(candidate.init_eqs)
+        assignments.update(candidate.event_dict)
+        known.update(variable.uid for variable in candidate.parameters)
+        equations.extend(candidate.algebraic_eqs)
+        for variable in candidate.algebraic_vars:
+            owners[variable.uid] = candidate
+
+    # These are physical network seeds, not inferred connections. Internal
+    # converter P/Q mappings must not be mistaken for PF-initialized powers.
+    root_port_group: list[Var]
+    for root_port_group in (root.in_vars, root.out_vars):
+        known.update(variable.uid for variable in root_port_group)
+    reference: VarPowerFlowReferenceType
+    for reference in (
+        VarPowerFlowReferenceType.Vdc, VarPowerFlowReferenceType.Vmt,
+        VarPowerFlowReferenceType.Vat, VarPowerFlowReferenceType.Pf,
+        VarPowerFlowReferenceType.Pt, VarPowerFlowReferenceType.Qt,
+    ):
+        mapped_variable: Var | None = root.external_mapping.get(reference, None)
+        if mapped_variable is not None:
+            known.add(mapped_variable.uid)
+        else:
+            pass
+
+    # Resolve only affine algebraic identities with one unknown and a nonzero
+    # constant coefficient. States are never solved or forced to equilibrium.
+    # Existing init_eqs remain authoritative; their dependencies must actually
+    # be resolvable before they are used to derive a downstream initialization.
+    inferred: dict[Var, Expr] = dict()
+    progress: bool = True
+    expression: Expr
+    while progress:
+        progress = False
+        for variable, expression in assignments.items():
+            if variable.uid not in known and all(dependency.uid in known for dependency in expression.get_vars()):
+                known.add(variable.uid)
+                progress = True
+            else:
+                pass
+        for expression in equations:
+            unknowns: dict[int, Var] = dict(
+                (dependency.uid, dependency) for dependency in expression.get_vars() if dependency.uid not in known
+            )
+            if len(unknowns) == 1:
+                variable = next(iter(unknowns.values()))
+                if variable.uid in owners and variable not in assignments:
+                    coefficient: Expr = expression.diff(variable).simplify()
+                    if isinstance(coefficient, Const) and coefficient.value is not None and coefficient.value != 0.0:
+                        remainder: Expr = expression.subs(dict(((variable, Const(0.0)),))).simplify()
+                        inferred_expression: Expr = (-remainder / coefficient).subs(inferred).simplify()
+                        if all(dependency.uid in known for dependency in inferred_expression.get_vars()):
+                            inferred[variable] = inferred_expression
+                            known.add(variable.uid)
+                            progress = True
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    pass
+            else:
+                pass
+
+    # Intermediate graphical operations are substituted, not added as new
+    # initialization owners. Only the original four VSC quantities are saved.
+    unresolved: list[Var] = list()
+    for variable in targets.values():
+        initial_expression: Expr | None = inferred.get(variable, None)
+        owner: Block | None = owners.get(variable.uid, None)
+        if initial_expression is not None and owner is not None:
+            owner.init_eqs[variable] = initial_expression
+        else:
+            unresolved.append(variable)
+    return unresolved

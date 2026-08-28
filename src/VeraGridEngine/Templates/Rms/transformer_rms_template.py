@@ -61,7 +61,6 @@ class TrafoRmsTemplate(RmsModelTemplate):
 
         vf = vf
         self.tpe: DeviceType = DeviceType.Transformer2WDevice
-        self.comment = 'Transformer two-winding RMS polar admittance model'
         Qf = vf.add_var("Qf", reference=VarPowerFlowReferenceType.Qf)
         Qt = vf.add_var("Qt", reference=VarPowerFlowReferenceType.Qt)
         Pf = vf.add_var("Pf", reference=VarPowerFlowReferenceType.Pf)
@@ -74,7 +73,6 @@ class TrafoRmsTemplate(RmsModelTemplate):
         bmu = vf.add_var('bmu')
         vtap_f = vf.add_var('vtap_f')
         vtap_t = vf.add_var('vtap_t')
-        conduction_status: Var = vf.add_var("u")
 
         # print(f"DEBUG Trafo: R={trafo.R}, X={trafo.X}, G={trafo.G}, B={trafo.B}")
         # print(f"DEBUG Trafo: tap_mod={trafo.tap_module}, tap_phase={trafo.tap_phase}, vtap_f={vtap_f}, vtap_t={vtap_t}")
@@ -100,25 +98,30 @@ class TrafoRmsTemplate(RmsModelTemplate):
 
         phase_displacement = 0
         theta_hk = Vaf - Vat
+        # Keep terminal powers in the same semantic order as the RMS branch
+        # root interface.  The Dynamic Editor persists graphical ports by
+        # index, so a different order would silently cross Qf and Pt when the
+        # complete transformer block is connected to its device wrappers.
         block = Block(
-            algebraic_vars=[Pf, Pt, Qf, Qt],
+            algebraic_vars=[Pf, Qf, Pt, Qt],
             algebraic_eqs=[
                 # From side: Pf = Re(Vf * (Yff*Vf + Yft*Vt)*)
-                Pf - conduction_status * ((Vmf ** 2 * (gFe / 2 + gt)) / (m * vtap_f) ** 2 - gt / (m * vtap_f * vtap_t) * Vmf * Vmt * cos(
+                Pf - ((Vmf ** 2 * (gFe / 2 + gt)) / (m * vtap_f) ** 2 - gt / (m * vtap_f * vtap_t) * Vmf * Vmt * cos(
                     theta_hk - phi) - bt / (m * vtap_f * vtap_t) * Vmf * Vmt * sin(
                     theta_hk - phi - phase_displacement)),
-                Qf - conduction_status * (-Vmf ** 2 * (bmu / 2 + bt) / (m * vtap_f) ** 2 - gt / (m * vtap_f * vtap_t) * Vmf * Vmt * sin(
+                Qf - (-Vmf ** 2 * (bmu / 2 + bt) / (m * vtap_f) ** 2 - gt / (m * vtap_f * vtap_t) * Vmf * Vmt * sin(
                     theta_hk - phi) + bt / (m * vtap_f * vtap_t) * Vmf * Vmt * cos(
                     theta_hk - phi - phase_displacement)),
                 # To side: Pt = Re(Vt * (Ytf*Vf + Ytt*Vt)*)
-                Pt - conduction_status * ((Vmt ** 2 * (gFe / 2 + gt)) / vtap_t ** 2 - gt / (m * vtap_f * vtap_t) * Vmt * Vmf * cos(
+                Pt - ((Vmt ** 2 * (gFe / 2 + gt)) / vtap_t ** 2 - gt / (m * vtap_f * vtap_t) * Vmt * Vmf * cos(
                     theta_hk - phi) + bt / (m * vtap_f * vtap_t) * Vmt * Vmf * sin(
                     theta_hk - phi - phase_displacement)),
-                Qt - conduction_status * (-Vmt ** 2 * (bmu / 2 + bt) / vtap_t ** 2 + gt / (m * vtap_f * vtap_t) * Vmt * Vmf * sin(
+                Qt - (-Vmt ** 2 * (bmu / 2 + bt) / vtap_t ** 2 + gt / (m * vtap_f * vtap_t) * Vmt * Vmf * sin(
                     theta_hk - phi) + bt / (m * vtap_f * vtap_t) * Vmt * Vmf * cos(
                     theta_hk - phi - phase_displacement)),
             ],
             in_vars=[Vmf, Vaf, Vmt, Vat],
+            out_vars=[Pf, Qf, Pt, Qt],
         )
         block.external_mapping = {
             VarPowerFlowReferenceType.Pf: Pf,
@@ -149,7 +152,6 @@ class TrafoRmsTemplate(RmsModelTemplate):
         block.parameters[phi] = vf.add_const(0.0)
         block.parameters[vtap_f] = vf.add_const(1.0)
         block.parameters[vtap_t] = vf.add_const(1.0)
-        block.event_dict[conduction_status] = vf.add_const(1.0)
         #
         # if trafo.tap_module_control_mode != TapModuleControl.fixed:
         #    del block.event_dict[m]
@@ -244,24 +246,11 @@ class TrafoRmsTemplate(RmsModelTemplate):
 
         block.in_vars = inputs
 
-        block.dynamic_model_contract.rms_conduction_status_var_uid = conduction_status.uid
-        # Transformer terminal powers are deterministic algebraic views of the
-        # bus phasors, tap and admittance. Refresh these four shells before the
-        # startup/Newton residual so the global ideal-connector projection does
-        # not begin from stale load-flow flow variables.
-        block.dynamic_model_contract.runtime_equipment_shell_sync_names = list([
-            Pf.name,
-            Pt.name,
-            Qf.name,
-            Qt.name,
-        ])
-        block.dynamic_model_contract.runtime_equipment_shell_sync_var_uids = list([
-            Pf.uid,
-            Pt.uid,
-            Qf.uid,
-            Qt.uid,
-        ])
-        self._block = block
+        self._block.children.append(block)
+        self._block.external_mapping = block.external_mapping
+        self._block.api_obj_mapping = block.api_obj_mapping
+        self._block.in_vars = inputs
+        self._block.out_vars = block.out_vars
 
 
 class IdealTrafoRmsTemplate(RmsModelTemplate):
@@ -410,7 +399,6 @@ class IdealTrafoRmsTemplate(RmsModelTemplate):
         ])
         self._block: Block = block
 
-
 class TrafoPhasorRmsTemplate(RmsModelTemplate):
 
     def __init__(self, vf: VarFactory, name: str = "rms_trafo_phasor_template"):
@@ -443,7 +431,6 @@ class TrafoPhasorRmsTemplate(RmsModelTemplate):
         vtap_f = vf.add_var("vtap_f")
         vtap_t = vf.add_var("vtap_t")
         phase_displacement = vf.add_var("phase_displacement")
-        conduction_status: Var = vf.add_var("u")
 
         theta0 = tap_phase + phase_displacement
         cos_theta0 = cos(theta0)
@@ -454,10 +441,6 @@ class TrafoPhasorRmsTemplate(RmsModelTemplate):
         k_to = vtap_t
 
         # Admittance coefficients in rectangular form
-        # ``Transformer2W.G`` is the total shunt conductance, matching
-        # ``Transformer2W.B``.  The static Y-bus splits that shunt equally
-        # between both terminals, so the RMS model must use the same half-shunt
-        # convention to preserve the solved AC operating point at ``t=0``.
         gff = (gFe / 2 + gt) / (k_from ** 2)
         bff = (bmu / 2 + bt) / (k_from ** 2)
         gtt = (gFe / 2 + gt) / (k_to ** 2)
@@ -474,10 +457,10 @@ class TrafoPhasorRmsTemplate(RmsModelTemplate):
         block = Block(
             algebraic_vars=[Irf, Iif, Irt, Iit],
             algebraic_eqs=[
-                Irf - conduction_status * (gff * Vrf - bff * Vif + gft * Vrt - bft * Vit),
-                Iif - conduction_status * (bff * Vrf + gff * Vif + bft * Vrt + gft * Vit),
-                Irt - conduction_status * (gtf * Vrf - btf * Vif + gtt * Vrt - btt * Vit),
-                Iit - conduction_status * (btf * Vrf + gtf * Vif + btt * Vrt + gtt * Vit),
+                Irf - (gff * Vrf - bff * Vif + gft * Vrt - bft * Vit),
+                Iif - (bff * Vrf + gff * Vif + bft * Vrt + gft * Vit),
+                Irt - (gtf * Vrf - btf * Vif + gtt * Vrt - btt * Vit),
+                Iit - (btf * Vrf + gtf * Vif + btt * Vrt + gtt * Vit),
             ],
             in_vars=[Vrf, Vif, Vrt, Vit],
         )
@@ -513,28 +496,14 @@ class TrafoPhasorRmsTemplate(RmsModelTemplate):
         block.parameters[vtap_f] = vf.add_const(1.0)
         block.parameters[vtap_t] = vf.add_const(1.0)
         block.parameters[phase_displacement] = vf.add_const(0)
-        block.event_dict[conduction_status] = vf.add_const(1.0)
 
-        block.dynamic_model_contract.rms_conduction_status_var_uid = conduction_status.uid
         self._block = block
 
 
-def get_transformer2w_rms(
-        vf: VarFactory,
-        use_phasor_template: bool = False,
-) -> RmsModelTemplate:
-    """Build the regular finite-impedance transformer RMS template.
-
-    :param vf: Variable factory shared by the owning circuit.
-    :param use_phasor_template: Select rectangular-current formulation.
-    :return: Transformer RMS template.
-    """
+def get_transformer2w_rms(vf: VarFactory, use_phasor_template: bool = False):
     if use_phasor_template:
-        template: RmsModelTemplate = TrafoPhasorRmsTemplate(vf=vf)
-    else:
-        template = TrafoRmsTemplate(vf=vf)
-    template.comment = 'Transformer two-winding RMS model'
-    return template
+        return TrafoPhasorRmsTemplate(vf=vf)
+    return TrafoRmsTemplate(vf=vf)
 
 
 def get_ideal_transformer2w_rms(
@@ -548,7 +517,6 @@ def get_ideal_transformer2w_rms(
     :return: Ideal-transformer RMS template.
     """
     return IdealTrafoRmsTemplate(vf=vf, name=name)
-
 
 def initialize_trafo_rms(trafo: Transformer2W, vf: VarFactory):
     """

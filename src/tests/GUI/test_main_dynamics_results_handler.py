@@ -1,9 +1,7 @@
 from typing import Dict, List, Tuple
 
-import pytest
 from PySide6 import QtCore, QtGui, QtWidgets
 
-import VeraGrid.Gui.Main.SubClasses.Model.diagrams as diagrams_module
 from VeraGrid.Gui.Main.SubClasses.Results.dynamics_results_handler import (
     DynamicResultSeriesKey,
     DynamicPlotCandidate,
@@ -20,13 +18,7 @@ from VeraGrid.Gui.Main.SubClasses.Results.dynamics_results_handler import (
     build_dynamics_tree_model,
 )
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
-from VeraGridEngine.enumerations import (
-    Colormaps,
-    DeviceType,
-    DynamicPlotEntryKind,
-    PlotSimulationType,
-    SimulationTypes,
-)
+from VeraGridEngine.enumerations import DeviceType, PlotSimulationType, DynamicPlotEntryKind
 
 
 class NamedDevice:
@@ -181,144 +173,6 @@ class FakeDropHandler:
         :return: Accepted calls.
         """
         return list(self._calls)
-
-
-class FakeRmsColouringUi:
-    """
-    Typed subset of main-window controls read by diagram colouring.
-    """
-
-    __slots__ = (
-        "branch_width_based_on_flow_checkBox",
-        "min_branch_size_spinBox",
-        "max_branch_size_spinBox",
-        "min_node_size_spinBox",
-        "max_node_size_spinBox",
-        "palette_comboBox",
-    )
-
-    def __init__(self, palette: Colormaps) -> None:
-        """
-        Build the exact UI state consumed by ``grid_colour_function``.
-
-        :param palette: Colour map selected in the main window.
-        :return: Nothing.
-        """
-        # Real Qt controls preserve the production API without replacing GUI
-        # classes or mutating module-level symbols.
-        self.branch_width_based_on_flow_checkBox: QtWidgets.QCheckBox = QtWidgets.QCheckBox()
-        self.min_branch_size_spinBox: QtWidgets.QSpinBox = QtWidgets.QSpinBox()
-        self.max_branch_size_spinBox: QtWidgets.QSpinBox = QtWidgets.QSpinBox()
-        self.min_node_size_spinBox: QtWidgets.QSpinBox = QtWidgets.QSpinBox()
-        self.max_node_size_spinBox: QtWidgets.QSpinBox = QtWidgets.QSpinBox()
-        self.palette_comboBox: QtWidgets.QComboBox = QtWidgets.QComboBox()
-        self.palette_comboBox.addItem("RMS fallback palette", palette)
-
-
-class FakeRmsColouringGui:
-    """
-    Lightweight receiver for direct ``DiagramsMain`` dispatch testing.
-    """
-
-    __slots__ = ("ui", "call_count", "call")
-
-    def __init__(self, ui: FakeRmsColouringUi) -> None:
-        """
-        Build the receiver with no full main-window initialization.
-
-        :param ui: Typed UI controls read by the production dispatcher.
-        :return: Nothing.
-        """
-        self.ui: FakeRmsColouringUi = ui
-        self.call_count: int = 0
-        self.call: Tuple[int | None, object, Colormaps, bool, int, int, int, int] | None = None
-
-    def default_colouring(self,
-                          t_idx: int | None,
-                          diagram_widget: object,
-                          cmap: Colormaps,
-                          use_flow_based_width: bool = False,
-                          min_branch_width: int = 2,
-                          max_branch_width: int = 5,
-                          min_bus_width: int = 2,
-                          max_bus_width: int = 5) -> None:
-        """
-        Record one fallback colouring call without rendering a diagram.
-
-        :param t_idx: Selected dynamic-results time index.
-        :param diagram_widget: Diagram object forwarded by the dispatcher.
-        :param cmap: Selected colour map.
-        :param use_flow_based_width: Whether branch widths follow power flow.
-        :param min_branch_width: Minimum rendered branch width.
-        :param max_branch_width: Maximum rendered branch width.
-        :param min_bus_width: Minimum rendered bus width.
-        :param max_bus_width: Maximum rendered bus width.
-        :return: Nothing.
-        """
-        # One scalar count and one fixed-size record make duplicate dispatches
-        # visible without growing a collection during the test.
-        self.call_count += 1
-        self.call = (
-            t_idx,
-            diagram_widget,
-            cmap,
-            use_flow_based_width,
-            min_branch_width,
-            max_branch_width,
-            min_bus_width,
-            max_bus_width,
-        )
-
-
-def test_rms_dynamic_grid_colouring_routes_to_default_fallback(
-        qt_app: object,
-        capsys: pytest.CaptureFixture[str]) -> None:
-    """
-    Check that RMS results route once through the default diagram colouring.
-
-    :param qt_app: Shared Qt application fixture.
-    :param capsys: Pytest fixture used to inspect standard output.
-    :return: Nothing.
-    """
-    del qt_app
-
-    palette: Colormaps = Colormaps.Heatmap
-    ui: FakeRmsColouringUi = FakeRmsColouringUi(palette=palette)
-    ui.branch_width_based_on_flow_checkBox.setChecked(True)
-    ui.min_branch_size_spinBox.setValue(3)
-    ui.max_branch_size_spinBox.setValue(9)
-    ui.min_node_size_spinBox.setValue(4)
-    ui.max_node_size_spinBox.setValue(12)
-    gui: FakeRmsColouringGui = FakeRmsColouringGui(ui=ui)
-    diagram_widget: object = object()
-    time_index: int = 7
-
-    # Invoke the production dispatcher directly so the test covers the exact
-    # RMS study-name branch without constructing the complete main window.
-    diagrams_module.DiagramsMain.grid_colour_function(
-        self=gui,
-        diagram_widget=diagram_widget,
-        current_study=SimulationTypes.RmsDynamic_run.value,
-        t_idx=time_index,
-        allow_popups=False,
-    )
-
-    routed_call: Tuple[int | None, object, Colormaps, bool, int, int, int, int] | None = gui.call
-    captured_output: pytest.CaptureResult[str] = capsys.readouterr()
-    expected_call: Tuple[int | None, object, Colormaps, bool, int, int, int, int] = (
-        time_index,
-        diagram_widget,
-        palette,
-        True,
-        3,
-        9,
-        4,
-        12,
-    )
-
-    assert gui.call_count == 1
-    assert routed_call == expected_call
-    assert "Not implemented" not in captured_output.out
 
 
 def test_dynamics_plot_group_rejects_duplicate_variables_by_uid() -> None:

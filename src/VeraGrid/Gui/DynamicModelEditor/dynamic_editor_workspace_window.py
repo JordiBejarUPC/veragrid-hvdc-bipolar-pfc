@@ -46,11 +46,6 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         "_tree_proxy",
         "ui",
         "editor_tabs",
-        "_grid_tool_button",
-        "_grid_visibility_action",
-        "_snap_to_grid_action",
-        "_grid_size_spin_box",
-        "_grid_size_widget_action",
     )
 
     def __init__(
@@ -100,7 +95,6 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         self.ui.actionZoom_out.triggered.connect(self.zoom_out_view)
         self.ui.action_delete_all.triggered.connect(self.delete_all_blocks_with_confirmation)
         self.ui.actionValidate.triggered.connect(self.show_model_consistency_validation)
-        self._build_grid_tool_button()
         self.ui.treeView.setModel(self._tree_proxy)
         self.ui.treeView.setHeaderHidden(True)
         self.ui.treeView.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
@@ -131,130 +125,6 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         :return: None.
         """
         self._refresh_window_title()
-        self._grid_visibility_action.setText(self.tr("Grid"))
-        self._grid_visibility_action.setToolTip(self.tr("Show or hide the editor grid"))
-        self._snap_to_grid_action.setText(self.tr("Snap blocks to grid"))
-        self._grid_size_spin_box.setToolTip(self.tr("Grid spacing; cable segments always move by grid cells"))
-
-    def _build_grid_tool_button(self) -> None:
-        """Add one split Grid button to the shared workspace toolbar.
-
-        The main icon toggles grid visibility immediately. Its arrow opens the
-        related block-snap and spacing options without adding a second toolbar
-        inside every editor tab.
-
-        :return: None.
-        """
-        self._grid_visibility_action: QtGui.QAction = QtGui.QAction(
-            QtGui.QIcon(":/Icons/icons/squares.png"),
-            self.tr("Grid"),
-            self,
-        )
-        self._grid_visibility_action.setCheckable(True)
-        self._grid_visibility_action.setToolTip(self.tr("Show or hide the editor grid"))
-        self._grid_visibility_action.toggled.connect(self._set_current_grid_visible)
-
-        self._snap_to_grid_action: QtGui.QAction = QtGui.QAction(
-            self.tr("Snap blocks to grid"),
-            self,
-        )
-        self._snap_to_grid_action.setCheckable(True)
-        self._snap_to_grid_action.toggled.connect(self._set_current_snap_to_grid)
-
-        self._grid_size_spin_box: QtWidgets.QSpinBox = QtWidgets.QSpinBox(self)
-        self._grid_size_spin_box.setObjectName("dynamicEditorWorkspaceGridSizeSpinBox")
-        self._grid_size_spin_box.setRange(5, 200)
-        self._grid_size_spin_box.setSingleStep(5)
-        self._grid_size_spin_box.setSuffix(" px")
-        self._grid_size_spin_box.setToolTip(
-            self.tr("Grid spacing; cable segments always move by grid cells")
-        )
-        self._grid_size_spin_box.valueChanged.connect(self._set_current_grid_size)
-        self._grid_size_widget_action: QtWidgets.QWidgetAction = QtWidgets.QWidgetAction(self)
-        self._grid_size_widget_action.setDefaultWidget(self._grid_size_spin_box)
-
-        grid_menu: QtWidgets.QMenu = QtWidgets.QMenu(self)
-        grid_menu.addAction(self._grid_visibility_action)
-        grid_menu.addAction(self._snap_to_grid_action)
-        grid_menu.addSeparator()
-        grid_menu.addAction(self._grid_size_widget_action)
-
-        self._grid_tool_button: QtWidgets.QToolButton = QtWidgets.QToolButton(self.ui.toolBar)
-        self._grid_tool_button.setObjectName("dynamicEditorGridToolButton")
-        self._grid_tool_button.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.MenuButtonPopup)
-        self._grid_tool_button.setDefaultAction(self._grid_visibility_action)
-        self._grid_tool_button.setMenu(grid_menu)
-        toolbar_actions: list[QtGui.QAction] = self.ui.toolBar.actions()
-        if len(toolbar_actions) > 0:
-            self.ui.toolBar.insertWidget(toolbar_actions[-1], self._grid_tool_button)
-        else:
-            self.ui.toolBar.addWidget(self._grid_tool_button)
-        self._sync_workspace_grid_controls()
-
-    def _set_current_grid_visible(self, visible: bool) -> None:
-        """Apply workspace grid visibility to the current editor.
-
-        :param visible: Requested visible state.
-        :return: None.
-        """
-        editor: DynamicBlockEditorGUI | None = self.get_current_block_editor()
-        if editor is not None:
-            editor.set_grid_visible(visible=visible)
-        else:
-            pass
-
-    def _set_current_snap_to_grid(self, enabled: bool) -> None:
-        """Apply block snap state to the current editor.
-
-        :param enabled: Requested block snap state.
-        :return: None.
-        """
-        editor: DynamicBlockEditorGUI | None = self.get_current_block_editor()
-        if editor is not None:
-            editor.set_snap_to_grid_enabled(enabled=enabled)
-        else:
-            pass
-
-    def _set_current_grid_size(self, grid_size: int) -> None:
-        """Apply mesh spacing to the current editor.
-
-        :param grid_size: Requested grid spacing in scene pixels.
-        :return: None.
-        """
-        editor: DynamicBlockEditorGUI | None = self.get_current_block_editor()
-        if editor is not None:
-            editor.set_grid_size(grid_size=grid_size)
-        else:
-            pass
-
-    def _sync_workspace_grid_controls(self) -> None:
-        """Mirror the current editor's grid state into the shared controls.
-
-        :return: None.
-        """
-        editor: DynamicBlockEditorGUI | None = self.get_current_block_editor()
-        controls_enabled: bool = editor is not None
-        self._grid_visibility_action.setEnabled(controls_enabled)
-        self._snap_to_grid_action.setEnabled(controls_enabled)
-        self._grid_size_spin_box.setEnabled(controls_enabled)
-        if editor is not None:
-            visibility_blocker: QtCore.QSignalBlocker = QtCore.QSignalBlocker(
-                self._grid_visibility_action
-            )
-            snap_blocker: QtCore.QSignalBlocker = QtCore.QSignalBlocker(
-                self._snap_to_grid_action
-            )
-            size_blocker: QtCore.QSignalBlocker = QtCore.QSignalBlocker(
-                self._grid_size_spin_box
-            )
-            self._grid_visibility_action.setChecked(editor.is_grid_visible())
-            self._snap_to_grid_action.setChecked(editor.is_snap_to_grid_enabled())
-            self._grid_size_spin_box.setValue(editor.get_grid_size())
-            del visibility_blocker
-            del snap_blocker
-            del size_blocker
-        else:
-            pass
 
     def get_open_workspaces(self) -> list["DynamicEditorWorkspaceWindow"]:
         """
@@ -825,7 +695,6 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         else:
             pass
         self._refresh_window_title()
-        self._sync_workspace_grid_controls()
 
     def add_editor_page(
             self,

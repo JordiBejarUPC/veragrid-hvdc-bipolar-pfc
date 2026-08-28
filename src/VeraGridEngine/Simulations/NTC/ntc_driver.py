@@ -179,6 +179,7 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
         Run this study
         """
         self.tic()
+        self.report_text("Compiling and configuring...")
 
         self.opf()
 

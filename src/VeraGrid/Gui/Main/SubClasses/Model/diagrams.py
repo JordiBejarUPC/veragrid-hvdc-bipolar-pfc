@@ -1792,7 +1792,7 @@ class DiagramsMain(CompiledArraysMain):
 
             else:
                 if allow_popups:
-                    self.show_warning_toast(f"{current_study_label} only has values for the snapshot")
+                    self.show_warning_toast(f"{current_study_label} " + self.tr("only has values for the snapshot"))
 
         elif normalized_current_study == sim.PowerFlowDriver3Ph.tpe:
             if t_idx is None:
@@ -1808,29 +1808,13 @@ class DiagramsMain(CompiledArraysMain):
 
             else:
                 if allow_popups:
-                    self.show_warning_toast(f"{current_study_label} only has values for the snapshot")
+                    self.show_warning_toast(f"{current_study_label} " + self.tr("only has values for the snapshot"))
 
         elif normalized_current_study == sim.PowerFlowTimeSeriesDriver.tpe:
             if t_idx is not None:
                 drv, results = self.session.power_flow_ts
-                self.pf_ts_colouring(t_idx=t_idx,
-                                     diagram_widget=diagram_widget,
-                                     results=results,
-                                     cmap=cmap,
-                                     use_flow_based_width=use_flow_based_width,
-                                     min_branch_width=min_branch_width,
-                                     max_branch_width=max_branch_width,
-                                     min_bus_width=min_bus_width,
-                                     max_bus_width=max_bus_width)
-
-            else:
-                if allow_popups:
-                    self.show_warning_toast(f"{current_study_label} does not have values for the snapshot")
-
-        elif normalized_current_study == sim.PowerFlowTimeSeriesDriver3Ph.tpe:
-            if t_idx is not None:
-                _, results = self.session.power_flow_3ph_ts
-                self.pf_3ph_ts_colouring(t_idx=t_idx,
+                if results.S.shape[0] > 0:
+                    self.pf_ts_colouring(t_idx=t_idx,
                                          diagram_widget=diagram_widget,
                                          results=results,
                                          cmap=cmap,
@@ -1839,10 +1823,38 @@ class DiagramsMain(CompiledArraysMain):
                                          max_branch_width=max_branch_width,
                                          min_bus_width=min_bus_width,
                                          max_bus_width=max_bus_width)
+                else:
+                    if allow_popups:
+                        self.show_warning_toast(self.tr("No time series values to show :/"))
+                    else:
+                        pass
 
             else:
                 if allow_popups:
-                    self.show_warning_toast(f"{current_study_label} does not have values for the snapshot")
+                    self.show_warning_toast(f"{current_study_label} " + self.tr("does not have values for the snapshot"))
+
+        elif normalized_current_study == sim.PowerFlowTimeSeriesDriver3Ph.tpe:
+            if t_idx is not None:
+                _, results = self.session.power_flow_3ph_ts
+                if results.Sbus_A.shape[0] > 0:
+                    self.pf_3ph_ts_colouring(t_idx=t_idx,
+                                             diagram_widget=diagram_widget,
+                                             results=results,
+                                             cmap=cmap,
+                                             use_flow_based_width=use_flow_based_width,
+                                             min_branch_width=min_branch_width,
+                                             max_branch_width=max_branch_width,
+                                             min_bus_width=min_bus_width,
+                                             max_bus_width=max_bus_width)
+                else:
+                    if allow_popups:
+                        self.show_warning_toast(self.tr("No time series values to show :/"))
+                    else:
+                        pass
+
+            else:
+                if allow_popups:
+                    self.show_warning_toast(f"{current_study_label} " + self.tr("does not have values for the snapshot"))
 
         elif normalized_current_study == sim.StateEstimationDriver.tpe:
             if t_idx is None:
@@ -1858,14 +1870,39 @@ class DiagramsMain(CompiledArraysMain):
 
             else:
                 if allow_popups:
-                    self.show_warning_toast(f"{current_study_label} only has values for the snapshot")
+                    self.show_warning_toast(f"{current_study_label} " + self.tr("only has values for the snapshot"))
 
         elif normalized_current_study == sim.ContinuationPowerFlowDriver.tpe:
             if t_idx is None:
                 results: sim.ContinuationPowerFlowResults = self.session.get_results(
                     SimulationTypes.ContinuationPowerFlow_run
                 )
-                self.cpf_colouring(diagram_widget=diagram_widget,
+                if results.Sbus.shape[0] > 0:
+                    self.cpf_colouring(diagram_widget=diagram_widget,
+                                       results=results,
+                                       cmap=cmap,
+                                       use_flow_based_width=use_flow_based_width,
+                                       min_branch_width=min_branch_width,
+                                       max_branch_width=max_branch_width,
+                                       min_bus_width=min_bus_width,
+                                       max_bus_width=max_bus_width)
+                else:
+                    if allow_popups:
+                        self.show_warning_toast(self.tr("No continuation power flow values to show :/"))
+                    else:
+                        pass
+            else:
+                if allow_popups:
+                    self.show_warning_toast(f"{current_study_label} " + self.tr("only has values for the snapshot"))
+
+        elif normalized_current_study == sim.StochasticPowerFlowDriver.tpe:
+
+            # the time is not relevant in this study
+            results: sim.StochasticPowerFlowResults = self.session.get_results(
+                SimulationTypes.StochasticPowerFlow
+            )
+            if results.S_points.shape[0] > 0:
+                self.spf_colouring(diagram_widget=diagram_widget,
                                    results=results,
                                    cmap=cmap,
                                    use_flow_based_width=use_flow_based_width,
@@ -1875,22 +1912,9 @@ class DiagramsMain(CompiledArraysMain):
                                    max_bus_width=max_bus_width)
             else:
                 if allow_popups:
-                    self.show_warning_toast(f"{current_study_label} only has values for the snapshot")
-
-        elif normalized_current_study == sim.StochasticPowerFlowDriver.tpe:
-
-            # the time is not relevant in this study
-            results: sim.StochasticPowerFlowResults = self.session.get_results(
-                SimulationTypes.StochasticPowerFlow
-            )
-            self.spf_colouring(diagram_widget=diagram_widget,
-                               results=results,
-                               cmap=cmap,
-                               use_flow_based_width=use_flow_based_width,
-                               min_branch_width=min_branch_width,
-                               max_branch_width=max_branch_width,
-                               min_bus_width=min_bus_width,
-                               max_bus_width=max_bus_width)
+                    self.show_warning_toast(self.tr("No stochastic power flow values to show :/"))
+                else:
+                    pass
 
         elif normalized_current_study == sim.ShortCircuitDriver.tpe:
             if t_idx is None:
@@ -1905,7 +1929,7 @@ class DiagramsMain(CompiledArraysMain):
                                   max_bus_width=max_bus_width)
             else:
                 if allow_popups:
-                    self.show_warning_toast(f"{current_study_label} only has values for the snapshot")
+                    self.show_warning_toast(f"{current_study_label} " + self.tr(" only has values for the snapshot"))
 
         elif normalized_current_study == sim.OptimalPowerFlowDriver.tpe:
             if t_idx is None:
@@ -1920,7 +1944,7 @@ class DiagramsMain(CompiledArraysMain):
                                    max_bus_width=max_bus_width)
             else:
                 if allow_popups:
-                    self.show_warning_toast(f"{current_study_label} only has values for the snapshot")
+                    self.show_warning_toast(f"{current_study_label} " + self.tr(" only has values for the snapshot"))
 
         elif normalized_current_study == sim.OptimalPowerFlowTimeSeriesDriver.tpe:
 
@@ -1928,18 +1952,24 @@ class DiagramsMain(CompiledArraysMain):
                 results: sim.OptimalPowerFlowTimeSeriesResults = self.session.get_results(
                     SimulationTypes.OPFTimeSeries_run
                 )
-                self.opf_ts_colouring(t_idx=t_idx,
-                                      diagram_widget=diagram_widget,
-                                      results=results,
-                                      cmap=cmap,
-                                      use_flow_based_width=use_flow_based_width,
-                                      min_branch_width=min_branch_width,
-                                      max_branch_width=max_branch_width,
-                                      min_bus_width=min_bus_width,
-                                      max_bus_width=max_bus_width)
+                if results.Sbus.shape[0] > 0:
+                    self.opf_ts_colouring(t_idx=t_idx,
+                                          diagram_widget=diagram_widget,
+                                          results=results,
+                                          cmap=cmap,
+                                          use_flow_based_width=use_flow_based_width,
+                                          min_branch_width=min_branch_width,
+                                          max_branch_width=max_branch_width,
+                                          min_bus_width=min_bus_width,
+                                          max_bus_width=max_bus_width)
+                else:
+                    if allow_popups:
+                        self.show_warning_toast(self.tr("No OPF time series values to show :/"))
+                    else:
+                        pass
             else:
                 if allow_popups:
-                    self.show_warning_toast(f"{current_study_label} does not have values for the snapshot")
+                    self.show_warning_toast(f"{current_study_label} " + self.tr("does not have values for the snapshot"))
 
         elif normalized_current_study == sim.NodalCapacityDriver.tpe:
 
@@ -1956,15 +1986,21 @@ class DiagramsMain(CompiledArraysMain):
         elif normalized_current_study == sim.NodalCapacityTimeSeriesDriver.tpe:
 
             _, results = self.session.nodal_capacity_optimization_ts
-            self.nc_ts_colouring(t_idx=t_idx,
-                                 diagram_widget=diagram_widget,
-                                 results=results,
-                                 cmap=cmap,
-                                 use_flow_based_width=use_flow_based_width,
-                                 min_branch_width=min_branch_width,
-                                 max_branch_width=max_branch_width,
-                                 min_bus_width=min_bus_width,
-                                 max_bus_width=max_bus_width)
+            if results.Sbus.shape[0] > 0:
+                self.nc_ts_colouring(t_idx=t_idx,
+                                     diagram_widget=diagram_widget,
+                                     results=results,
+                                     cmap=cmap,
+                                     use_flow_based_width=use_flow_based_width,
+                                     min_branch_width=min_branch_width,
+                                     max_branch_width=max_branch_width,
+                                     min_bus_width=min_bus_width,
+                                     max_bus_width=max_bus_width)
+            else:
+                if allow_popups:
+                    self.show_warning_toast(self.tr("No nodal capacity time series values to show :/"))
+                else:
+                    pass
 
         elif normalized_current_study == sim.LinearAnalysisDriver.tpe:
             if t_idx is None:
@@ -1979,25 +2015,31 @@ class DiagramsMain(CompiledArraysMain):
                                      max_bus_width=max_bus_width)
             else:
                 if allow_popups:
-                    self.show_warning_toast(f"{current_study_label} only has values for the snapshot")
+                    self.show_warning_toast(f"{current_study_label} " + self.tr("only has values for the snapshot"))
 
         elif normalized_current_study == sim.LinearAnalysisTimeSeriesDriver.tpe:
             if t_idx is not None:
                 results: sim.LinearAnalysisTimeSeriesResults = self.session.get_results(
                     SimulationTypes.LinearAnalysis_TS_run
                 )
-                self.linpf_ts_colouring(t_idx=t_idx,
-                                        diagram_widget=diagram_widget,
-                                        results=results,
-                                        cmap=cmap,
-                                        use_flow_based_width=use_flow_based_width,
-                                        min_branch_width=min_branch_width,
-                                        max_branch_width=max_branch_width,
-                                        min_bus_width=min_bus_width,
-                                        max_bus_width=max_bus_width)
+                if results.S.shape[0] > 0:
+                    self.linpf_ts_colouring(t_idx=t_idx,
+                                            diagram_widget=diagram_widget,
+                                            results=results,
+                                            cmap=cmap,
+                                            use_flow_based_width=use_flow_based_width,
+                                            min_branch_width=min_branch_width,
+                                            max_branch_width=max_branch_width,
+                                            min_bus_width=min_bus_width,
+                                            max_bus_width=max_bus_width)
+                else:
+                    if allow_popups:
+                        self.show_warning_toast(self.tr("No linear analysis time series values to show :/"))
+                    else:
+                        pass
             else:
                 if allow_popups:
-                    self.show_warning_toast(f"{current_study_label} does not have values for the snapshot")
+                    self.show_warning_toast(f"{current_study_label} " + self.tr("does not have values for the snapshot"))
 
         elif normalized_current_study == sim.ContingencyAnalysisDriver.tpe:
 
@@ -2005,36 +2047,48 @@ class DiagramsMain(CompiledArraysMain):
                 results: sim.ContingencyAnalysisResults = self.session.get_results(
                     SimulationTypes.ContingencyAnalysis_run
                 )
-                self.con_colouring(diagram_widget=diagram_widget,
-                                   results=results,
-                                   cmap=cmap,
-                                   use_flow_based_width=use_flow_based_width,
-                                   min_branch_width=min_branch_width,
-                                   max_branch_width=max_branch_width,
-                                   min_bus_width=min_bus_width,
-                                   max_bus_width=max_bus_width)
+                if results.Sbus.shape[0] > 0:
+                    self.con_colouring(diagram_widget=diagram_widget,
+                                       results=results,
+                                       cmap=cmap,
+                                       use_flow_based_width=use_flow_based_width,
+                                       min_branch_width=min_branch_width,
+                                       max_branch_width=max_branch_width,
+                                       min_bus_width=min_bus_width,
+                                       max_bus_width=max_bus_width)
+                else:
+                    if allow_popups:
+                        self.show_warning_toast(self.tr("No contingencies to show :/"))
+                    else:
+                        pass
 
             else:
                 if allow_popups:
-                    self.show_warning_toast(f"{current_study_label} only has values for the snapshot")
+                    self.show_warning_toast(f"{current_study_label} " + self.tr("only has values for the snapshot"))
 
         elif normalized_current_study == sim.ContingencyAnalysisTimeSeriesDriver.tpe:
             if t_idx is not None:
                 results: sim.ContingencyAnalysisTimeSeriesResults = self.session.get_results(
                     SimulationTypes.ContingencyAnalysisTS_run
                 )
-                self.con_ts_colouring(t_idx=t_idx,
-                                      diagram_widget=diagram_widget,
-                                      results=results,
-                                      cmap=cmap,
-                                      use_flow_based_width=use_flow_based_width,
-                                      min_branch_width=min_branch_width,
-                                      max_branch_width=max_branch_width,
-                                      min_bus_width=min_bus_width,
-                                      max_bus_width=max_bus_width)
+                if results.S.shape[0] > 0:
+                    self.con_ts_colouring(t_idx=t_idx,
+                                          diagram_widget=diagram_widget,
+                                          results=results,
+                                          cmap=cmap,
+                                          use_flow_based_width=use_flow_based_width,
+                                          min_branch_width=min_branch_width,
+                                          max_branch_width=max_branch_width,
+                                          min_bus_width=min_bus_width,
+                                          max_bus_width=max_bus_width)
+                else:
+                    if allow_popups:
+                        self.show_warning_toast(self.tr("No contingency time series values to show :/"))
+                    else:
+                        pass
             else:
                 if allow_popups:
-                    self.show_warning_toast(f"{current_study_label} does not have values for the snapshot")
+                    self.show_warning_toast(f"{current_study_label} " + self.tr("does not have values for the snapshot"))
 
         elif normalized_current_study == sim.AvailableTransferCapacityDriver.tpe:
             self.default_colouring(t_idx=t_idx,
@@ -2071,25 +2125,31 @@ class DiagramsMain(CompiledArraysMain):
                                    max_bus_width=max_bus_width)
             else:
                 if allow_popups:
-                    self.show_warning_toast(f"{current_study_label} only has values for the snapshot")
+                    self.show_warning_toast(f"{current_study_label} " + self.tr("only has values for the snapshot"))
 
         elif normalized_current_study == sim.OptimalNetTransferCapacityTimeSeriesDriver.tpe:
             if t_idx is not None:
                 results: sim.OptimalNetTransferCapacityTimeSeriesResults = self.session.get_results(
                     SimulationTypes.OPF_NTC_TS_run
                 )
-                self.ntc_ts_colouring(t_idx=t_idx,
-                                      diagram_widget=diagram_widget,
-                                      results=results,
-                                      cmap=cmap,
-                                      use_flow_based_width=use_flow_based_width,
-                                      min_branch_width=min_branch_width,
-                                      max_branch_width=max_branch_width,
-                                      min_bus_width=min_bus_width,
-                                      max_bus_width=max_bus_width)
+                if results.Sbus.shape[0] > 0:
+                    self.ntc_ts_colouring(t_idx=t_idx,
+                                          diagram_widget=diagram_widget,
+                                          results=results,
+                                          cmap=cmap,
+                                          use_flow_based_width=use_flow_based_width,
+                                          min_branch_width=min_branch_width,
+                                          max_branch_width=max_branch_width,
+                                          min_bus_width=min_bus_width,
+                                          max_bus_width=max_bus_width)
+                else:
+                    if allow_popups:
+                        self.show_warning_toast(self.tr("No NTC time series values to show :/"))
+                    else:
+                        pass
             else:
                 if allow_popups:
-                    self.show_warning_toast(f"{current_study_label} does not have values for the snapshot")
+                    self.show_warning_toast(f"{current_study_label} " + self.tr("does not have values for the snapshot"))
 
         elif normalized_current_study == sim.InputsAnalysisDriver.tpe:
 
@@ -2136,7 +2196,7 @@ class DiagramsMain(CompiledArraysMain):
                                           results=results)
             else:
                 if allow_popups:
-                    self.show_warning_toast(f"{current_study_label} only has values for the snapshot")
+                    self.show_warning_toast(f"{current_study_label} " + self.tr("only has values for the snapshot"))
 
         else:
             print("grid_colour_function: <" + current_study_label + "> Not implemented :(")

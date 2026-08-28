@@ -961,8 +961,12 @@ def get_shunt_data(
             data.vset[ii] = elm.Vset
             data.vmin[ii] = elm.Vmin
             data.vmax[ii] = elm.Vmax
-            data.qmin[ii] = elm.Bmin
-            data.qmax[ii] = elm.Bmax
+            if elm.control_mode == ShuntControlMode.Continuous:
+                data.qmin[ii] = -elm.Bmax
+                data.qmax[ii] = -elm.Bmin
+            else:
+                data.qmin[ii] = elm.Bmin
+                data.qmax[ii] = elm.Bmax
 
             data.step[ii] = elm.step
             data.g_steps.insert(i=ii, x=np.insert(np.cumsum(elm.g_steps), 0, 0))
@@ -970,6 +974,9 @@ def get_shunt_data(
 
             data.active[ii] = elm.get_active_at(t_idx)
             data.cost[ii] = elm.get_Cost_at(t_idx)
+
+            if elm.control_mode == ShuntControlMode.Locked:
+                data.Y[ii] += elm.get_Y_at(t_idx)
 
             if elm.control_mode == ShuntControlMode.Continuous:
                 data.Y[ii] += elm.get_Y_at(t_idx)

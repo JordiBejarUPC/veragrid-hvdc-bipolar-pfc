@@ -3027,15 +3027,15 @@ def assign_vsc_static_api_mapping(
     """
     Assign static VSC parameters exposed by ``mdl.api_obj_mapping``.
 
-    PF-derived quantities such as converter initial active power or converter
-    losses are intentionally not assigned here. They are initialization data, not
-    static API-object data.
+    Loss coefficients are static device data, unlike the operating-point losses
+    and terminal powers that must be obtained from power-flow initialization.
 
-    :param problem_mapping:
+    :param problem_mapping: Destination for resolved constant parameters.
     :param grid: Static network model.
     :param vsc: VSC device.
-    :param mdl: VSC EMT block.
+    :param mdl: VSC RMS or EMT block exposing the requested static mappings.
     :param logger: Optional logger.
+    :param direct_assigned_keys: Keys already handled by the direct property mapper.
     :return: None.
     """
     device_name: str = str(vsc.name)
@@ -3053,6 +3053,34 @@ def assign_vsc_static_api_mapping(
         mdl=mdl,
         key=ParamPowerFlowReferenceType.omega_base,
         value=omega_base,
+        logger=logger,
+        device_name=device_name,
+        problem_mapping=problem_mapping,
+    )
+
+    # The direct mapper deliberately delegates these coefficients to the VSC
+    # handler. Resolve the actual device values, including zero, without adding
+    # template fallbacks or changing the dynamic event parameters.
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowReferenceType.alpha1,
+        value=float(vsc.alpha1),
+        logger=logger,
+        device_name=device_name,
+        problem_mapping=problem_mapping,
+    )
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowReferenceType.alpha2,
+        value=float(vsc.alpha2),
+        logger=logger,
+        device_name=device_name,
+        problem_mapping=problem_mapping,
+    )
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowReferenceType.alpha3,
+        value=float(vsc.alpha3),
         logger=logger,
         device_name=device_name,
         problem_mapping=problem_mapping,

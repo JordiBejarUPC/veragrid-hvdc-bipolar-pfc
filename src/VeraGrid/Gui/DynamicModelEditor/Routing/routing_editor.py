@@ -140,8 +140,8 @@ class RoutingEditor:
             pass
 
         # A port update starts by moving the physical port endpoint itself. The
-        # neighbouring stub then follows with exactly the same translation so
-        # PORT and STUB behave as one rigid local attachment to the block.
+        # neighbouring stub is then rebuilt from the same shared geometry rule
+        # used by the builder so the endpoint topology remains consistent.
         route_node.set_position(new_position.copy())
 
         stub_node: RoutingNode = adjacent_nodes[0]
@@ -152,11 +152,9 @@ class RoutingEditor:
             self._graph._restore_from(graph_snapshot)
             return False
         else:
-            delta_x: float = new_position.get_x() - original_position.get_x()
-            delta_y: float = new_position.get_y() - original_position.get_y()
-            stub_position: RoutingPoint = RoutingPoint(
-                stub_node.get_position().get_x() + delta_x,
-                stub_node.get_position().get_y() + delta_y,
+            stub_position: RoutingPoint = self._geometry.build_port_stub_point(
+                port_position=new_position,
+                port_side=route_node.get_port_side(),
             )
             stub_node.set_position(stub_position)
 
