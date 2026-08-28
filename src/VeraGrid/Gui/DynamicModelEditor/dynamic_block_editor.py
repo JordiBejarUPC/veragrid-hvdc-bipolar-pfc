@@ -2712,7 +2712,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.scene.addItem(item)
 
             self.diagram.add_node(
-                name=item_name,
+                name=block_model.name,
                 x=x_pos,
                 y=y_pos,
                 tpe=block_type.name,
@@ -2753,6 +2753,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             block_item.set_subsystem(block_model)
             block_item.position_changed_callback = self.build_position_changed_callback(block_model.uid)
             block_item.build_item()
+            # The factory may give a native block a readable display name while
+            # keeping its enum identifier unchanged for persistence.
+            block_item.refresh_block_name()
 
             # The editor block is the authoritative model container for later save/rebuild steps.
             self.main_block.add(block_model)
@@ -2761,7 +2764,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
             # Keep the diagram synchronized so later features can rebuild from the same data source.
             self.diagram.add_node(
-                name=item_name,
+                name=block_model.name,
                 x=x_pos,
                 y=y_pos,
                 tpe=block_type.name,

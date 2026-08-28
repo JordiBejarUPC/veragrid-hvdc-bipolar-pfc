@@ -755,11 +755,24 @@ def create_block_of_type(var_factory: VarFactory,
     elif block_type == BlockType.VSC_CURRENT_LIMITER_RMS:
         return rms_templates.build_vsc_current_limiter_rms(var_factory, name=item_name)
 
-    elif block_type == BlockType.VSC_VD_HAT_RMS:
-        return rms_templates.build_vsc_vd_hat_rms(var_factory, name=item_name)
-
-    elif block_type == BlockType.VSC_VQ_HAT_RMS:
-        return rms_templates.build_vsc_vq_hat_rms(var_factory, name=item_name)
+    elif block_type in (BlockType.VSC_VD_HAT_RMS, BlockType.VSC_VQ_HAT_RMS):
+        # Keep native identifiers and symbolic names stable, but show the
+        # controller's purpose instead of the historical enum on a new drop.
+        controller_label: str
+        if block_type == BlockType.VSC_VD_HAT_RMS:
+            blk = rms_templates.build_vsc_vd_hat_rms(var_factory, name=item_name)
+            controller_label = "d-axis current PI controller"
+        else:
+            blk = rms_templates.build_vsc_vq_hat_rms(var_factory, name=item_name)
+            controller_label = "q-axis current PI controller"
+        generated_prefix: str = f"{block_type.name}_"
+        instance_number: str = item_name.removeprefix(generated_prefix)
+        if item_name.startswith(generated_prefix) and instance_number.isdecimal():
+            blk.name = f"{controller_label}_{instance_number}"
+        else:
+            # Explicit caller/user names must not be overwritten.
+            pass
+        return blk
 
     elif block_type == BlockType.VSC_DC_LINK_RMS:
         return rms_templates.build_vsc_dc_link_rms(var_factory, name=item_name)

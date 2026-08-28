@@ -254,8 +254,14 @@ class DynamicEditorLibrary:
                 LibraryLeafSpec("Vdc / P control", BlockType.VSC_ACTIVE_CONTROL_RMS),
                 LibraryLeafSpec("Qac / Vac control", BlockType.VSC_REACTIVE_CONTROL_RMS),
                 LibraryLeafSpec("Current limiter", BlockType.VSC_CURRENT_LIMITER_RMS),
-                LibraryLeafSpec("vd hat", BlockType.VSC_VD_HAT_RMS),
-                LibraryLeafSpec("vq hat", BlockType.VSC_VQ_HAT_RMS),
+                LibraryLeafSpec(
+                    "d-axis current PI controller", BlockType.VSC_VD_HAT_RMS,
+                    search_text="d-axis current PI controller inner loop voltage correction vd hat vd_hat y_vd_hat",
+                ),
+                LibraryLeafSpec(
+                    "q-axis current PI controller", BlockType.VSC_VQ_HAT_RMS,
+                    search_text="q-axis current PI controller inner loop voltage correction vq hat vq_hat y_vq_hat",
+                ),
             ))),
         ))
 

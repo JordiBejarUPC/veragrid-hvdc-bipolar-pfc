@@ -4487,6 +4487,27 @@ def _get_documentation_relative_path(block_type_name: str, block_name: str) -> s
         return f"library/catalog/typ_{catalogue_type_match.group(1)}.md"
     else:
         pass
+    # Use persisted native types, not editable display names, for the RMS
+    # components, using the same RMS documentation section as other devices.
+    rms_pages: Dict[BlockType, str] = dict((
+        (BlockType.GFL_VSC_HVDC_RMS, "hvdc_vsc_gfl.md"),
+        (BlockType.VSC_PLL_RMS, "vsc_pll.md"),
+        (BlockType.VSC_ELECTRICAL_RMS, "vsc_electrical.md"),
+        (BlockType.VSC_ACTIVE_CONTROL_RMS, "vsc_active_control.md"),
+        (BlockType.VSC_REACTIVE_CONTROL_RMS, "vsc_reactive_control.md"),
+        (BlockType.VSC_CURRENT_LIMITER_RMS, "vsc_current_limiter.md"),
+        (BlockType.VSC_VD_HAT_RMS, "vsc_vd_hat.md"),
+        (BlockType.VSC_VQ_HAT_RMS, "vsc_vq_hat.md"),
+        (BlockType.VSC_DC_LINK_RMS, "vsc_dc_link.md"),
+        (BlockType.VSC_TERMINAL_POWER_RMS, "vsc_terminal_power.md"),
+        (BlockType.DC_LINE_RMS, "dc_line.md"),
+    ))
+    native_type: BlockType | None = BlockType.__members__.get(normalized, None)
+    rms_page: str | None = rms_pages.get(native_type, None) if native_type is not None else None
+    if rms_page is not None:
+        return "RMS/" + rms_page
+    else:
+        pass
     mapping: Dict[str, str] = dict((("GENERIC", "library/generic.md"), ("CONST", "library/constant.md"), ("GAIN", "library/gain.md"), ("ABS", "library/absolute_value.md"), ("SUM", "library/sum.md"), ("PRODUCT", "library/product.md"), ("FROM_GOTO", "library/from_goto.md"), ("LINE_RMS", "RMS/line.md"), ("LOAD_RMS", "RMS/load.md"), ("GENRAW", "RMS/genrou_genrow.md"), ("GENQEC", "RMS/genqec.md"), ("GOV_RMS", "RMS/governor.md"), ("STAB_RMS", "RMS/stabilizer.md"), ("EXCITER_RMS", "RMS/exciter.md"), ("EMT_GENERATOR", "EMT/sauer_pai_generator.md"), ("GOV_EMT", "EMT/governor.md"), ("STAB_EMT", "EMT/stabilizer.md"), ("EXCITER_EMT", "EMT/exciter.md"), ("EMT_PI_LINE", "EMT/pi_line_abc.md"), ("EMT_BERGERON_LINE", "EMT/bergeron_line_abc.md"), ("EMT_JMARTI_LINE", "EMT/jmarti_line.md"), ("EMT_DC_LINE", "EMT/dc_line.md"), ("EXP_LOAD_EMT", "library/exp_load_emt.md"), ("ZIP_LOAD_EMT", "EMT/zip_load_abc.md"), ("DC_LOAD_EMT", "EMT/dc_load.md"), ("EMT_THEVENIN", "EMT/thevenin_generator.md"), ("TRAFO_EMT", "library/trafo_emt.md"), ("XFMR_TRANSFORMER", "library/xfmr_transformer.md"), ("INDUCTION_MOTOR_EMT", "EMT/single_cage_induction_motor.md"), ("PV_POWER_PLANT_EMT", "EMT/pv_plant_grid_following.md"), ("PV_EMT", "EMT/pv_plant_grid_following.md"), ("COMPLETE_PSEUDO_VSC_EMT", "EMT/full_pseudo_converter.md"), ("GFL_CONVERTER_RMS", "RMS/converter.md"), ("BESS_EMT", "EMT/bess.md"), ("BATTERY_EMT", "library/battery_emt.md"), ("VOLTAGE_SOURCE_EMT", "library/voltage_source_emt.md"), ("CURRENT_SOURCE_EMT", "library/current_source_emt.md"), ("CONTROLLED_VOLTAGE_SOURCE_EMT", "library/controlled_voltage_source_emt.md"), ("CONTROLLED_CURRENT_SOURCE_EMT", "library/controlled_current_source_emt.md"), ("ARBITRARY_WAVEFORM_VOLTAGE_SOURCE_EMT", "library/arbitrary_waveform_voltage_source_emt.md"), ("ARBITRARY_WAVEFORM_CURRENT_SOURCE_EMT", "library/arbitrary_waveform_current_source_emt.md"), ("BALANCED_3PH_VOLTAGE_SOURCE_EMT", "library/balanced_3ph_voltage_source_emt.md"), ("BALANCED_3PH_CURRENT_SOURCE_EMT", "library/balanced_3ph_current_source_emt.md"), ("CONTROLLED_BALANCED_3PH_VOLTAGE_SOURCE_EMT", "library/controlled_balanced_3ph_voltage_source_emt.md"), ("CONTROLLED_BALANCED_3PH_CURRENT_SOURCE_EMT", "library/controlled_balanced_3ph_current_source_emt.md"), ("DC_VOLTAGE_SOURCE_EMT", "library/dc_voltage_source_emt.md"), ("DC_CURRENT_SOURCE_EMT", "library/dc_current_source_emt.md"), ("CONTROLLED_DC_VOLTAGE_SOURCE_EMT", "library/controlled_dc_voltage_source_emt.md"), ("CONTROLLED_DC_CURRENT_SOURCE_EMT", "library/controlled_dc_current_source_emt.md"), ("STEP_VOLTAGE_SOURCE_EMT", "library/step_voltage_source_emt.md"), ("STEP_CURRENT_SOURCE_EMT", "library/step_current_source_emt.md"), ("RAMP_VOLTAGE_SOURCE_EMT", "library/ramp_voltage_source_emt.md"), ("RAMP_CURRENT_SOURCE_EMT", "library/ramp_current_source_emt.md"), ("DOUBLE_EXPONENTIAL_CURRENT_SOURCE_EMT", "library/double_exponential_current_source_emt.md"), ("HEIDLER_CURRENT_SOURCE_EMT", "library/heidler_current_source_emt.md"), ("CIGRE_SURGE_CURRENT_SOURCE_EMT", "library/cigre_surge_current_source_emt.md"), ("R_LOAD_EMT", "library/r_load_emt.md"), ("L_LOAD_EMT", "library/l_load_emt.md"), ("C_LOAD_EMT", "library/c_load_emt.md"), ("RLC_COMBO_EMT", "library/rlc_combo_emt.md"), ("GROUND_EMT", "library/ground_emt.md"), ("GROUNDING_LINK_EMT", "library/grounding_link_emt.md"), ("SWITCH_EMT", "library/switch_emt.md"), ("FAULT_EMT", "EMT/fault.md"), ("NONLINEAR_RESISTOR_EMT", "library/nonlinear_resistor_emt.md"), ("INVERSE_LOOKUP_ARRAY", "library/inverse-lookup-array-object-linear.md"), ("LOOKUP_ARRAY_LINEAR", "library/lookup_array.md"), ("LOOKUP_ARRAY_SPLINE", "library/lookup_array.md"), ("LOOKUP_MATRIX_LINEAR", "library/lookup_matrix.md"), ("LOOKUP_MATRIX_SPLINE", "library/lookup_matrix.md"), ("PI_CURRENT_CONTROLLER", "library/pi_current_controller.md"), ("PI_POWER_CONTROLLER", "library/pi_power_controller.md"), ("PLL_TRANSFORM_RMS", "library/pll_transformer.md"),))
     relative_path: str | None = mapping.get(normalized, None)
     if relative_path is not None:
