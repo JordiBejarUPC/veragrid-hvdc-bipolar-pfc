@@ -8,6 +8,7 @@ import pytest
 from PySide6 import QtCore, QtWidgets
 
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_library import DynamicEditorLibrary, LibraryLeafSpec
+from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics import BlockItem, GenericBlockItem
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_preparation import prepare_block_for_editing
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_tab import DynamicEditorTab
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_utilities import (
@@ -616,6 +617,106 @@ def test_vsc_components_are_registered_in_the_requested_library_categories() -> 
     assert controls.isdisjoint(devices)
     assert BlockType.VSC_TERMINAL_POWER_RMS in set(leaf.payload for leaf in library.common_rms_device_blocks)
     assert library.tree_structure["Control blocks"] == library.control_rms_related_blocks[DeviceType.VscDevice]
+
+
+@pytest.mark.parametrize("block_type,label,old_name", (
+    (BlockType.VSC_VD_HAT_RMS, "d-axis current PI controller", "vd_hat"),
+    (BlockType.VSC_VQ_HAT_RMS, "q-axis current PI controller", "vq_hat"),
+))
+def test_vsc_current_pi_names_preserve_symbolic_and_library_contracts(
+        block_type: BlockType, label: str, old_name: str,
+) -> None:
+    """Rename current PIs without changing ports, state names or native types.
+
+    :param block_type: Historical native identifier retained for saved models.
+    :param label: Descriptive name shown for newly built controllers.
+    :param old_name: Original controller name and symbolic state suffix.
+    :return: None.
+    """
+    library: DynamicEditorLibrary = DynamicEditorLibrary(api_object=VSC(), mode=DynamicSimulationMode.RMS)
+    leaf: LibraryLeafSpec = next(
+        candidate for candidate in library.control_rms_related_blocks[DeviceType.VscDevice]
+        if candidate.payload == block_type
+    )
+    assert leaf.label == label
+    assert label in leaf.search_text
+    assert old_name in leaf.search_text
+
+    # The complete model uses the same names, but preserves its existing
+    # integral-state and voltage-correction identifiers for scripts/results.
+    complete: Block = HvdcVscGflRmsTemplate(VarFactory()).eval().block
+    controller: Block = next(candidate for candidate in complete.get_all_blocks() if candidate.name == label)
+    assert controller.state_vars[0].name == f"xi_{old_name}"
+    assert controller.out_vars[0].name == f"y_{old_name}"
+
+    # Native drops receive a readable numbered label; explicit caller names
+    # and old saved block names remain untouched.
+    dropped: Block = _build_vsc_library_component(VarFactory(), block_type, f"{block_type.name}_1")
+    assert dropped.name == f"{label}_1"
+    assert dropped.state_vars[0].name == f"xi_{block_type.name}_1"
+    assert tuple(variable.name for variable in dropped.in_vars) == tuple(
+        variable.name for variable in controller.in_vars
+    )
+    assert dropped.out_vars[0].name == controller.out_vars[0].name
+    restored: Block = Block.parse(dropped.to_dict())
+    assert restored.name == dropped.name
+    assert restored.out_vars[0].uid == dropped.out_vars[0].uid
+    custom_name: str
+    for custom_name in (old_name, "My current regulator"):
+        custom: Block = _build_vsc_library_component(VarFactory(), block_type, custom_name)
+        assert custom.name == custom_name
+        assert Block.parse(custom.to_dict()).name == custom_name
+
+
+@pytest.mark.parametrize("block_type,label", (
+    (BlockType.VSC_VD_HAT_RMS, "d-axis current PI controller"),
+    (BlockType.VSC_VQ_HAT_RMS, "q-axis current PI controller"),
+))
+@pytest.mark.parametrize("compact", (False, True))
+def test_vsc_current_pi_drop_keeps_scene_and_diagram_names_aligned(
+        vsc_library_application: QtWidgets.QApplication,
+        block_type: BlockType, label: str, compact: bool,
+) -> None:
+    """Persist the friendly name through both native graphical creation paths.
+
+    :param vsc_library_application: Qt application owning the editor widgets.
+    :param block_type: Current controller's unchanged native type.
+    :param label: Expected descriptive label before its instance suffix.
+    :param compact: Whether to exercise the compact BlockItem creation path.
+    :return: None.
+    """
+    grid: MultiCircuit = MultiCircuit()
+    dc_bus: Bus = Bus(name="DC", is_dc=True)
+    ac_bus: Bus = Bus(name="AC")
+    grid.add_bus(dc_bus)
+    grid.add_bus(ac_bus)
+    device: VSC = VSC(bus_from=dc_bus, bus_to=ac_bus)
+    grid.add_vsc(device)
+    root: Block = Block(name="Current controllers")
+    device.rms_model = root
+    tab: DynamicEditorTab = DynamicEditorTab(
+        var_factory=grid.var_factory, block=root, api_object=device, circuit=grid,
+        current_theme=DynEditorGraphicsModes.LIGHT, mode=DynamicSimulationMode.RMS,
+    )
+    try:
+        assert tab._editor is not None
+        item: BlockItem | GenericBlockItem | None
+        if compact:
+            item = tab._editor.create_block_item(block_type, 0.0, 0.0)
+        else:
+            item = tab._editor.create_block_item_from_blocktype(block_type, 0.0, 0.0)
+        assert item is not None
+        assert item.subsys is not None
+        assert item.subsys.name == f"{label}_1"
+        assert item.name_item.toPlainText() == item.subsys.name
+        node: BlockDiagramNode | None = tab._editor.diagram.node_data.get(item.subsys.uid, None)
+        assert node is not None
+        assert node.name == item.subsys.name
+        assert node.tpe == block_type.name
+    finally:
+        tab.prepare_to_delete()
+        tab.deleteLater()
+        vsc_library_application.processEvents()
 
 
 @pytest.mark.parametrize("branch_label, expected_types", (

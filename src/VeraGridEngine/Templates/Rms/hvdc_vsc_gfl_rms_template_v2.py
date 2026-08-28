@@ -605,16 +605,20 @@ def build_vsc_current_limiter_rms(
 
 def build_vsc_vd_hat_rms(
         vfactory: VarFactory,
-        name: str = "vd_hat",
+        name: str = "d-axis current PI controller",
         inputs: tuple[Var, Var] | None = None,
         output: Var | None = None,
 ) -> Block:
-    """Build the original two-input d-axis current PI with an explicit state.
+    """Build the d-axis inner current PI producing a voltage correction.
+
+    The historical builder and output names are retained for compatibility.
+    This block is a current regulator, not a voltage estimator; the electrical
+    equations add the feedforward and cross-axis voltage terms separately.
 
     :param vfactory: Factory owning all generated symbols.
     :param name: Display name of the controller.
     :param inputs: Optional measured i_d and limited i_d_ref_sat signals.
-    :param output: Optional predeclared y_vd_hat signal for composite assembly.
+    :param output: Optional predeclared voltage-correction signal y_vd_hat.
     :return: Explicit-state current PI with locally owned gains.
     """
     if inputs is None:
@@ -627,11 +631,15 @@ def build_vsc_vd_hat_rms(
         pass
     kp: Var = vfactory.add_var("Kp_icl")
     ki: Var = vfactory.add_var("Ki_icl")
+    # A readable display label must not rename the existing integral state or
+    # introduce spaces/hyphens into its symbolic identifier.
+    symbolic_name: str = "vd_hat" if name == "d-axis current PI controller" else name
     block: Block = _build_explicit_pi_block(
         vfactory=vfactory, proportional_gain=kp, integral_gain=ki,
         error=inputs[0] - inputs[1], input_vars=list(inputs), output=output,
-        output_initial_expression=None, name=name,
+        output_initial_expression=None, name=symbolic_name,
     )
+    block.name = name
     # The connected electrical equations initialize the output first; the PI
     # initialization then computes xi from that nonzero voltage correction.
     block.event_dict = dict(((kp, vfactory.add_const(0.20)), (ki, vfactory.add_const(5.0))))
@@ -640,16 +648,20 @@ def build_vsc_vd_hat_rms(
 
 def build_vsc_vq_hat_rms(
         vfactory: VarFactory,
-        name: str = "vq_hat",
+        name: str = "q-axis current PI controller",
         inputs: tuple[Var, Var] | None = None,
         output: Var | None = None,
 ) -> Block:
-    """Build the original two-input q-axis current PI with an explicit state.
+    """Build the q-axis inner current PI producing a voltage correction.
+
+    The historical builder and output names are retained for compatibility.
+    This block is a current regulator, not a voltage estimator; the electrical
+    equations add the feedforward and cross-axis voltage terms separately.
 
     :param vfactory: Factory owning all generated symbols.
     :param name: Display name of the controller.
     :param inputs: Optional measured i_q and limited i_q_ref_sat signals.
-    :param output: Optional predeclared y_vq_hat signal for composite assembly.
+    :param output: Optional predeclared voltage-correction signal y_vq_hat.
     :return: Explicit-state current PI with locally owned gains.
     """
     if inputs is None:
@@ -662,11 +674,14 @@ def build_vsc_vq_hat_rms(
         pass
     kp: Var = vfactory.add_var("Kp_icl")
     ki: Var = vfactory.add_var("Ki_icl")
+    # Preserve the symbolic state while giving the controller a readable label.
+    symbolic_name: str = "vq_hat" if name == "q-axis current PI controller" else name
     block: Block = _build_explicit_pi_block(
         vfactory=vfactory, proportional_gain=kp, integral_gain=ki,
         error=inputs[0] - inputs[1], input_vars=list(inputs), output=output,
-        output_initial_expression=None, name=name,
+        output_initial_expression=None, name=symbolic_name,
     )
+    block.name = name
     block.event_dict = dict(((kp, vfactory.add_const(0.20)), (ki, vfactory.add_const(5.0))))
     return block
 
