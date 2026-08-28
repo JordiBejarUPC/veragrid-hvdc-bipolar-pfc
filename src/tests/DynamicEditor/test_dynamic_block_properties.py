@@ -1791,6 +1791,53 @@ def test_every_basic_catalogue_template_resolves_its_own_markdown() -> None:
         ), descriptor.display_label
 
 
+@pytest.mark.parametrize("block_type, page_name", (
+    (BlockType.GFL_VSC_HVDC_RMS, "hvdc_vsc_gfl"),
+    (BlockType.VSC_PLL_RMS, "vsc_pll"),
+    (BlockType.VSC_ELECTRICAL_RMS, "vsc_electrical"),
+    (BlockType.VSC_ACTIVE_CONTROL_RMS, "vsc_active_control"),
+    (BlockType.VSC_REACTIVE_CONTROL_RMS, "vsc_reactive_control"),
+    (BlockType.VSC_CURRENT_LIMITER_RMS, "vsc_current_limiter"),
+    (BlockType.VSC_VD_HAT_RMS, "vsc_vd_hat"),
+    (BlockType.VSC_VQ_HAT_RMS, "vsc_vq_hat"),
+    (BlockType.VSC_DC_LINK_RMS, "vsc_dc_link"),
+    (BlockType.VSC_TERMINAL_POWER_RMS, "vsc_terminal_power"),
+    (BlockType.DC_LINE_RMS, "dc_line"),
+))
+def test_rms_component_block_info_uses_native_type_after_rename(
+        block_type: BlockType,
+        page_name: str,
+) -> None:
+    """Enable each RMS component's published reference despite a display rename.
+
+    :param block_type: Persisted Library type used by Block properties.
+    :param page_name: Expected page in the existing RMS documentation section.
+    :return: None.
+    """
+    application: QtWidgets.QApplication = get_qt_application()
+    _unused_application: QtWidgets.QApplication = application
+    expected_url: str = (
+        "https://veragrid.readthedocs.io/en/latest/md_source/dyn_templates/RMS/"
+        + page_name + ".html"
+    )
+    # The page belongs to the predefined native type, not the user's current
+    # name. In particular, a DC-line RMS entry must not fall back to EMT docs.
+    renamed_block: Block = Block(name="Renamed component for the practical session")
+    assert resolve_block_documentation_url(block_type.name, renamed_block.name) == expected_url
+    assert resolve_block_documentation_url(block_type.name.lower(), block_type.name) == expected_url
+
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
+        renamed_block, block_type.name, VarFactory(),
+    )
+    try:
+        # Inspect the same button that dispatches open_block_documentation;
+        # never launch a browser or require an online documentation build.
+        assert dialogue._block_info_button.isEnabled()
+        assert dialogue._block_documentation_url == expected_url
+    finally:
+        dialogue.close()
+
+
 def test_custom_block_disables_online_catalogue_documentation() -> None:
     """A genuinely custom node must not pretend to have catalogue documentation."""
     application: QtWidgets.QApplication = get_qt_application()

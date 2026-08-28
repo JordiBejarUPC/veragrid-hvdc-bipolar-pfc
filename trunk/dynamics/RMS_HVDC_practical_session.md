@@ -117,12 +117,7 @@ At the end of the session, participants should be able to:
 
 The network is symmetrical at both terminals. The detailed connection order is:
 
-```text
- Generator_Grid_1                                               Generator_Grid_2
-        |                                                               |
- Bus_Grid_1 -- TrafoGFL_1 -- Bus_VSC_1 -- VSC_1 -- Bus_DC_1 -- HVDC_Line -- Bus_DC_2 -- VSC_2 -- Bus_VSC_2 -- TrafoGFL_2 -- Bus_Grid_2
-   AC, slack       passive        AC       DC -> AC      DC          DC line          DC       DC -> AC       AC          passive       AC, slack
-```
+![System overview](example_hvdcLFE.png)
 
 The device directions used by the reference case are:
 
@@ -382,7 +377,7 @@ The principal internal functions are:
 2. an outer `Vdc` or `Pdc` loop that produces the active-axis current reference;
 3. an outer `Qac` loop that produces the reactive-axis current reference;
 4. a current-reference limiter;
-5. inner current controllers;
+5. the **d-axis current PI controller** and **q-axis current PI controller**, which regulate the respective currents and produce voltage corrections `y_vd_hat` and `y_vq_hat` for the electrical equations (formerly labelled `vd hat` and `vq hat`);
 6. the converter AC/DC power balance;
 7. the DC-link capacitor equation.
 

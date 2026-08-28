@@ -202,6 +202,7 @@ class DynamicEditorLibrary:
         "common_emt_device_blocks",
         "common_emt_fault_blocks",
         "common_rms_device_blocks",
+        "control_rms_related_blocks",
         "device_rms_related_blocks",
         "device_emt_related_blocks",
         "tree_structure",
@@ -241,7 +242,28 @@ class DynamicEditorLibrary:
         self.common_rms_device_blocks: List[LibraryLeafSpec] = list((LibraryLeafSpec("Pll transformer", BlockType.PLL_TRANSFORM_RMS),
                                                                      LibraryLeafSpec("Pi current controller", BlockType.PI_CURRENT_CONTROLLER),
                                                                      LibraryLeafSpec("Pi power controller", BlockType.PI_POWER_CONTROLLER),
+                                                                     LibraryLeafSpec("VSC terminal power equations", BlockType.VSC_TERMINAL_POWER_RMS),
                                                                      ))
+
+        # Keep the configurable controls separate from electrical devices.
+        # Typed leaves use the same drag registration and native builders as
+        # the rest of the restructured library.
+        self.control_rms_related_blocks: Dict[DeviceType, List[LibraryLeafSpec]] = dict((
+            (DeviceType.VscDevice, list((
+                LibraryLeafSpec("PLL explicit PI", BlockType.VSC_PLL_RMS),
+                LibraryLeafSpec("Vdc / P control", BlockType.VSC_ACTIVE_CONTROL_RMS),
+                LibraryLeafSpec("Qac / Vac control", BlockType.VSC_REACTIVE_CONTROL_RMS),
+                LibraryLeafSpec("Current limiter", BlockType.VSC_CURRENT_LIMITER_RMS),
+                LibraryLeafSpec(
+                    "d-axis current PI controller", BlockType.VSC_VD_HAT_RMS,
+                    search_text="d-axis current PI controller inner loop voltage correction vd hat vd_hat y_vd_hat",
+                ),
+                LibraryLeafSpec(
+                    "q-axis current PI controller", BlockType.VSC_VQ_HAT_RMS,
+                    search_text="q-axis current PI controller inner loop voltage correction vq hat vq_hat y_vq_hat",
+                ),
+            ))),
+        ))
 
         # devices rms
         self.device_rms_related_blocks: Dict[DeviceType, List[LibraryLeafSpec]] = dict(((DeviceType.GeneratorDevice, list((LibraryLeafSpec("Voltage source", BlockType.VOLTAGE_SOURCE_RMS),
@@ -251,7 +273,9 @@ class DynamicEditorLibrary:
                                                                                                                            LibraryLeafSpec("Stabilizer", BlockType.STAB_RMS),
                                                                                                                            LibraryLeafSpec("Exciter", BlockType.EXCITER_RMS),))),
                                                                                         (DeviceType.VscDevice, list((LibraryLeafSpec("Gfl converter", BlockType.GFL_CONVERTER_RMS),
-                                                                                                                     LibraryLeafSpec("Gfl VSC hvdc", BlockType.GFL_VSC_HVDC_RMS),))),
+                                                                                                                     LibraryLeafSpec("Complete GFL VSC hvdc", BlockType.GFL_VSC_HVDC_RMS),
+                                                                                                                     LibraryLeafSpec("Converter electrical equations", BlockType.VSC_ELECTRICAL_RMS),
+                                                                                                                     LibraryLeafSpec("DC-link capacitor", BlockType.VSC_DC_LINK_RMS),))),
                                                                                         (DeviceType.LineDevice, list((LibraryLeafSpec("Line", BlockType.LINE_RMS),))),
                                                                                         (DeviceType.DCLineDevice, list((LibraryLeafSpec("DC line", BlockType.DC_LINE_RMS),))),
                                                                                         (DeviceType.Transformer2WDevice, list((LibraryLeafSpec("Transformer 2W", BlockType.TRANSFORMER_2W_RMS),))),
@@ -288,6 +312,14 @@ class DynamicEditorLibrary:
             self.tree_structure["Basic_devices"] = list(self.common_rms_device_blocks)
             self.tree_structure["Devices"] = self.device_rms_related_blocks.get(
                 self.api_object.device_type if self.api_object is not None else DeviceType.NoDevice, dict())
+            # Only expose VSC-specific controls for a VSC editor; keep other
+            # devices and the EMT branch unchanged by the RMS registrations.
+            rms_controls: List[LibraryLeafSpec] = self.control_rms_related_blocks.get(
+                self.api_object.device_type if self.api_object is not None else DeviceType.NoDevice, list())
+            if len(rms_controls) > 0:
+                self.tree_structure["Control blocks"] = list(rms_controls)
+            else:
+                pass
 
         elif mode == DynamicSimulationMode.EMT:
             self.tree_structure["Basic"] = build_basic_library_branch()
