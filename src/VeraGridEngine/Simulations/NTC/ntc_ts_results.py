@@ -9,8 +9,8 @@ from typing import List, Union, TYPE_CHECKING
 from VeraGridEngine.Simulations.results_template import ResultsTemplate, ResultsProperty
 from VeraGridEngine.enumerations import ResultTypes, StudyResultsType, SolutionState
 from VeraGridEngine.Simulations.results_table import ResultsTable, DeviceType
-from VeraGridEngine.Simulations.NTC.ntc_results import contingency_report_row_order
-from VeraGridEngine.basic_structures import StrVec, DateVec, Vec, IntVec, Mat, CxMat, ObjMat, BoolVec
+from VeraGridEngine.Simulations.NTC.ntc_results import worst_contingency_report_table
+from VeraGridEngine.basic_structures import StrVec, DateVec, Vec, IntVec, Mat, CxMat, ObjMat, BoolVec, IntMat, ObjVec
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGridEngine.Simulations.Clustering.clustering_results import ClusteringResults
@@ -57,6 +57,12 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
         ResultsProperty(name='inter_area_flows', tpe=Vec, old_names=list(), expandable=True),
         ResultsProperty(name='contingency_flows_list', tpe=list, old_names=list(), expandable=False),
         ResultsProperty(name='strict_formulation', tpe=bool, old_names=list(), expandable=False),
+        ResultsProperty(name='contingency_group_device_names', tpe=ObjVec, old_names=list(), expandable=False),
+        ResultsProperty(name='worst_contingency_idx', tpe=IntMat, old_names=list(), expandable=True),
+        ResultsProperty(name='worst_contingency_flow', tpe=Mat, old_names=list(), expandable=True),
+        ResultsProperty(name='worst_contingency_loading', tpe=Mat, old_names=list(), expandable=True),
+        ResultsProperty(name='alpha_n1_worst', tpe=Mat, old_names=list(), expandable=True),
+        ResultsProperty(name='loading_threshold_to_report', tpe=float, old_names=list(), expandable=False),
     )
 
     __slots__ = (
@@ -97,6 +103,12 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
         "strict_formulation",
         "converged",
         "inter_area_flows",
+        "contingency_group_device_names",
+        "worst_contingency_idx",
+        "worst_contingency_flow",
+        "worst_contingency_loading",
+        "alpha_n1_worst",
+        "loading_threshold_to_report",
     )
 
     def __init__(self,
@@ -136,6 +148,7 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
                     ResultTypes.BranchTapAngle,
                     ResultTypes.BranchMonitoring,
                     ResultTypes.AvailableTransferCapacityAlpha,
+                    ResultTypes.AvailableTransferCapacityAlphaN1,
                 ],
                 ResultTypes.HvdcResults: [
                     ResultTypes.HvdcPowerFrom,
@@ -216,6 +229,16 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
 
         self.converged = np.zeros(nt, dtype=bool)
         self.inter_area_flows = np.zeros(nt, dtype=float)
+
+        n_g: int = len(contingency_group_names)
+        self.contingency_group_device_names = np.empty(n_g, dtype=object)
+        for i_g in range(n_g):
+            self.contingency_group_device_names[i_g] = ""
+        self.worst_contingency_idx = np.full((nt, m), -1, dtype=int)
+        self.worst_contingency_flow = np.zeros((nt, m), dtype=float)
+        self.loading_threshold_to_report: float = 98.0
+        self.worst_contingency_loading = np.zeros((nt, m), dtype=float)
+        self.alpha_n1_worst = np.zeros((nt, m), dtype=float)
 
     def get_total_slack_mw(self) -> Vec:
         """
@@ -423,6 +446,19 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
                 idx_device_type=DeviceType.BranchDevice
             )
 
+        elif result_type == ResultTypes.AvailableTransferCapacityAlphaN1:
+            return ResultsTable(
+                data=self.alpha_n1_worst,
+                index=self.time_array,
+                columns=self.branch_names,
+                title=str(result_type.value),
+                ylabel='(p.u.)',
+                xlabel='',
+                units='',
+                cols_device_type=DeviceType.NoDevice,
+                idx_device_type=DeviceType.BranchDevice
+            )
+
         elif result_type == ResultTypes.InterSpaceBranchPower:
 
             nt = len(self.time_array)
@@ -541,41 +577,21 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
             )
 
         elif result_type == ResultTypes.ContingencyFlowsReport:
-            data = list()
-            cols = list()
-            columns = ['Time index', 'Monitored index', 'Contingency group index',
-                       'Time array', 'Contingency branch', 'Contingency group',
-                       'Flow (MW)', 'Loading (%)']
-            row_order: IntVec = contingency_report_row_order(self.contingency_flows_list)
-            i_ord: int
-            for i_ord in range(len(row_order)):
-                entry = self.contingency_flows_list[int(row_order[i_ord])]
-                # The strict formulation stores (t, m, c, flow) with no slacks,
-                # while the non-strict one stores (t, m, c, flow, neg_slack, pos_slack).
-                if self.strict_formulation:
-                    t, m, c, contingency = entry
-                    flow_c = contingency
-                else:
-                    t, m, c, contingency, negative_slack, positive_slack = entry
-                    flow_c = contingency - negative_slack + positive_slack
-                cols.append("")
-                loading_c = abs(flow_c) / self.contingency_rates[m] * 100
-                data.append([
-                    t, m, c, str(self.time_array[t]), self.branch_names[m], self.contingency_group_names[c],
-                    np.round(flow_c, 4),
-                    np.round(loading_c, 4)
-                ])
-
-            return ResultsTable(
-                data=np.array(data, dtype=object),
-                index=np.array(cols),
-                columns=columns,
-                title=str(result_type.value),
-                ylabel='',
-                xlabel='',
-                units='',
-                cols_device_type=DeviceType.NoDevice,
-                idx_device_type=DeviceType.NoDevice
+            return worst_contingency_report_table(
+                time_array=self.time_array,
+                branch_names=self.branch_names,
+                group_names=self.contingency_group_names,
+                group_device_names=self.contingency_group_device_names,
+                worst_idx=self.worst_contingency_idx,
+                worst_flow=self.worst_contingency_flow,
+                worst_loading=self.worst_contingency_loading,
+                alpha=self.alpha,
+                alpha_n1=self.alpha_n1_worst,
+                monitor_logic=self.monitor_logic,
+                flow_n=np.real(self.Sf),
+                ntc=self.inter_area_flows,
+                contingency_rates=self.contingency_rates,
+                loading_threshold_pct=self.loading_threshold_to_report
             )
 
         else:
