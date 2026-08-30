@@ -38,8 +38,8 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
         ResultsProperty(name='loading', tpe=CxMat, old_names=list(), expandable=True),
         ResultsProperty(name='losses', tpe=CxMat, old_names=list(), expandable=True),
         ResultsProperty(name='phase_shift', tpe=CxMat, old_names=list(), expandable=True),
-        ResultsProperty(name='rates', tpe=Vec, old_names=list(), expandable=True),
-        ResultsProperty(name='contingency_rates', tpe=Vec, old_names=list(), expandable=True),
+        ResultsProperty(name='rates', tpe=Vec, old_names=list(), expandable=False),
+        ResultsProperty(name='contingency_rates', tpe=Vec, old_names=list(), expandable=False),
         ResultsProperty(name='alpha', tpe=CxMat, old_names=list(), expandable=True),
         ResultsProperty(name='monitor_logic', tpe=ObjMat, old_names=list(), expandable=True),
         ResultsProperty(name='hvdc_Pf', tpe=Mat, old_names=list(), expandable=True),
@@ -53,7 +53,7 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
         ResultsProperty(name='inter_space_branches', tpe=list, old_names=list(), expandable=False),
         ResultsProperty(name='inter_space_hvdc', tpe=list, old_names=list(), expandable=False),
         ResultsProperty(name='inter_space_vsc', tpe=list, old_names=list(), expandable=False),
-        ResultsProperty(name='converged', tpe=BoolVec, old_names=list(), expandable=False),
+        ResultsProperty(name='converged', tpe=BoolVec, old_names=list(), expandable=True),
         ResultsProperty(name='inter_area_flows', tpe=Vec, old_names=list(), expandable=True),
         ResultsProperty(name='contingency_flows_list', tpe=list, old_names=list(), expandable=False),
         ResultsProperty(name='strict_formulation', tpe=bool, old_names=list(), expandable=False),
@@ -226,22 +226,47 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
 
         :return: slack per time step in MW
         """
-        n_time: int = len(self.converged)
         total: Vec = np.sum(np.abs(self.overloads), axis=1).astype(float)
+        n_total: int = int(total.shape[0])
+
         if self.strict_formulation:
             return total
         else:
+            n_clustered: int = 0
             for item in self.contingency_flows_list:
-                t_i, m_i, c_i, flow_i, neg_i, pos_i = item
-                t_int: int = int(t_i)
-                if 0 <= t_int < n_time:
-                    if isinstance(neg_i, float) and isinstance(pos_i, float):
-                        total[t_int] += abs(neg_i) + abs(pos_i)
-                    else:
-                        pass
+                t_probe: int = int(item[0])
+                if t_probe + 1 > n_clustered:
+                    n_clustered = t_probe + 1
                 else:
                     pass
-            return total
+
+            if n_clustered == 0:
+                return total
+            else:
+                con_slack: Vec = np.zeros(n_clustered, dtype=float)
+                for item in self.contingency_flows_list:
+                    t_i, m_i, c_i, flow_i, neg_i, pos_i = item
+                    t_int: int = int(t_i)
+                    if isinstance(neg_i, float) and isinstance(pos_i, float) and 0 <= t_int < n_clustered:
+                        con_slack[t_int] = con_slack[t_int] + abs(neg_i) + abs(pos_i)
+                    else:
+                        pass
+
+                sample_idx: IntVec | None = self.original_sample_idx
+                if n_clustered == n_total:
+                    total = total + con_slack
+                elif sample_idx is not None and int(sample_idx.shape[0]) == n_total:
+                    h: int
+                    for h in range(n_total):
+                        cluster_t: int = int(sample_idx[h])
+                        if 0 <= cluster_t < n_clustered:
+                            total[h] = total[h] + con_slack[cluster_t]
+                        else:
+                            pass
+                else:
+                    pass
+
+                return total
 
     def get_solution_states(self, slack_tol_mw: float = 0.1) -> List[SolutionState]:
         """

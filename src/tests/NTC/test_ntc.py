@@ -8,6 +8,7 @@ import numpy as np
 import VeraGridEngine.api as gce
 from VeraGridEngine.enumerations import ConverterControlType, SolutionState, ResultTypes
 from VeraGridEngine.Simulations.NTC.ntc_ts_results import OptimalNetTransferCapacityTimeSeriesResults
+from VeraGridEngine.Simulations.Clustering.clustering_results import ClusteringResults
 
 
 TEST_GRID_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "grids"))
@@ -2156,6 +2157,63 @@ def test_ntc_ts_solution_status_column() -> None:
     assert status_table.data_c[0, 0] == SolutionState.Optimal
     assert status_table.data_c[1, 0] == SolutionState.Relaxed
     assert status_table.data_c[2, 0] == SolutionState.NotOptimal
+
+
+def test_ntc_ts_solution_status_expands_with_clustering() -> None:
+    """
+    After clustering expansion, the status table has one row per original hour and
+    each hour inherits the representative's Optimal / Relaxed / NotOptimal state.
+    """
+    full_nt: int = 10
+    time_all: np.ndarray = np.array(
+        [np.datetime64('2020-01-01T00') + np.timedelta64(h, 'h') for h in range(full_nt)]
+    )
+    time_indices: np.ndarray = np.array([0, 4, 8])
+    original_sample_idx: np.ndarray = np.array([0, 0, 0, 0, 1, 1, 1, 1, 2, 2])
+    clustering: ClusteringResults = ClusteringResults(
+        time_indices=time_indices,
+        sampled_probabilities=np.array([0.4, 0.4, 0.2]),
+        time_array=time_all,
+        original_sample_idx=original_sample_idx,
+    )
+
+    res = OptimalNetTransferCapacityTimeSeriesResults(
+        bus_names=np.array(['b1']),
+        branch_names=np.array(['br1']),
+        hvdc_names=np.array([]),
+        vsc_names=np.array([]),
+        contingency_group_names=np.array(['g1']),
+        time_array=time_all[time_indices],
+        time_indices=time_indices,
+        clustering_results=clustering,
+    )
+    res.converged[:] = np.array([True, True, False])
+    res.overloads[:, 0] = np.array([0.0, 5.0, 0.0])
+    res.inter_area_flows[:] = np.array([100.0, 90.0, 0.0])
+
+    res.expand_clustered_results()
+
+    assert len(res.time_array) == full_nt
+    assert res.converged.shape[0] == full_nt
+
+    status_table = res.mdl(ResultTypes.NetTransferCapacityStatus)
+    assert status_table.r == full_nt
+    assert list(status_table.cols_c) == ['Status']
+
+    expected: List[SolutionState] = (
+        [SolutionState.Optimal] * 4
+        + [SolutionState.Relaxed] * 4
+        + [SolutionState.NotOptimal] * 2
+    )
+    t: int
+    for t in range(full_nt):
+        assert status_table.data_c[t, 0] == expected[t]
+
+    ntc_table = res.mdl(ResultTypes.NetTransferCapacity)
+    assert ntc_table.r == full_nt
+    assert ntc_table.data_c[0, 0] == 100.0
+    assert ntc_table.data_c[4, 0] == 90.0
+    assert ntc_table.data_c[8, 0] == 0.0
 
 
 if __name__ == '__main__':
