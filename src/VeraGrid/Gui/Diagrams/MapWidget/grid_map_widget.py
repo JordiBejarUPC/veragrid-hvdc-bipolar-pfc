@@ -16,7 +16,8 @@ from matplotlib import pyplot as plt
 
 from PySide6.QtWidgets import QGraphicsItem, QMessageBox, QDialog, QVBoxLayout, QLabel, QPushButton
 from collections.abc import Callable
-from PySide6.QtCore import (Qt, QMimeData, QIODevice, QByteArray, QDataStream, QModelIndex, QRunnable, QThreadPool)
+from PySide6.QtCore import (Qt, QMimeData, QIODevice, QByteArray, QDataStream, QModelIndex, QRunnable, QThreadPool,
+                            QCoreApplication)
 from PySide6.QtGui import (QIcon, QPixmap, QImage, QStandardItemModel, QStandardItem, QColor, QDropEvent,
                            QWheelEvent, QPainter)
 
@@ -99,7 +100,9 @@ class MapLibraryModel(QStandardItemModel):
 
         self.setColumnCount(1)
 
-        self.add(name=self.tr("Substation"), device_type=DeviceType.SubstationDevice, icon_name="substation")
+        self.add(name=QCoreApplication.translate("MapLibraryModel", "Substation"),
+                 device_type=DeviceType.SubstationDevice,
+                 icon_name="substation")
 
     def add(self, name: str, device_type: DeviceType, icon_name: str) -> None:
         """
@@ -113,8 +116,41 @@ class MapLibraryModel(QStandardItemModel):
         _icon.addPixmap(QPixmap(f":/Icons/icons/{icon_name}.png"))
         _item = QStandardItem(_icon, name)
         _item.setData(device_type, Qt.ItemDataRole.UserRole)
-        _item.setToolTip(self.tr("Drag & drop {name} into the schematic").format(name=name))
+        _item.setToolTip(QCoreApplication.translate(
+            "MapLibraryModel",
+            "Drag & drop {name} into the schematic",
+        ).format(name=name))
         self.appendRow(_item)
+
+    def retranslate(self) -> None:
+        """
+        Refresh translated item labels without changing the drag/drop device type data.
+
+        :return: None.
+        """
+        row: int
+        item: QStandardItem | None
+        device_type: DeviceType
+        name: str
+
+        for row in range(self.rowCount()):
+            item = self.item(row, 0)
+
+            if item is not None:
+                device_type = item.data(Qt.ItemDataRole.UserRole)
+
+                if device_type == DeviceType.SubstationDevice:
+                    name = QCoreApplication.translate("MapLibraryModel", "Substation")
+                else:
+                    name = item.text()
+
+                item.setText(name)
+                item.setToolTip(QCoreApplication.translate(
+                    "MapLibraryModel",
+                    "Drag & drop {name} into the schematic",
+                ).format(name=name))
+            else:
+                pass
 
     @staticmethod
     def to_bytes_array(val: str) -> QByteArray:

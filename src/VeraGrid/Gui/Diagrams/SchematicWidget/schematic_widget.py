@@ -16,7 +16,7 @@ import networkx as nx
 from matplotlib import pyplot as plt
 
 from PySide6.QtCore import (Qt, QPoint, QSize, QPointF, QRect, QRectF, QMimeData, QIODevice, QByteArray,
-                            QDataStream, QModelIndex, QTimer)
+                            QDataStream, QModelIndex, QTimer, QCoreApplication)
 from PySide6.QtGui import (QIcon, QPixmap, QImage, QPainter, QStandardItemModel, QStandardItem, QColor, QPen, QBrush,
                            QDragEnterEvent, QDragMoveEvent, QDropEvent, QWheelEvent, QKeyEvent, QMouseEvent,
                            QContextMenuEvent)
@@ -136,12 +136,24 @@ class SchematicLibraryModel(QStandardItemModel):
 
         self.setColumnCount(1)
 
-        self.add(name=self.tr("Bus"), device_type=DeviceType.BusBarDevice, icon_name="bus_icon")
-        self.add(name=self.tr("Connectivity bus"), device_type=DeviceType.BusDevice, icon_name="cn_icon")
-        self.add(name=self.tr("3W-Transformer"), device_type=DeviceType.Transformer3WDevice, icon_name="transformer3w")
-        self.add(name=self.tr("NW-Transformer"), device_type=DeviceType.TransformerNwDevice, icon_name="transformerNw")
-        self.add(name=self.tr("Fluid-node"), device_type=DeviceType.FluidNodeDevice, icon_name="dam")
-        self.add(name=self.tr("VSC"), device_type=DeviceType.VscDevice, icon_name="to_vsc")
+        self.add(name=QCoreApplication.translate("SchematicLibraryModel", "Bus"),
+                 device_type=DeviceType.BusBarDevice,
+                 icon_name="bus_icon")
+        self.add(name=QCoreApplication.translate("SchematicLibraryModel", "Connectivity bus"),
+                 device_type=DeviceType.BusDevice,
+                 icon_name="cn_icon")
+        self.add(name=QCoreApplication.translate("SchematicLibraryModel", "3W-Transformer"),
+                 device_type=DeviceType.Transformer3WDevice,
+                 icon_name="transformer3w")
+        self.add(name=QCoreApplication.translate("SchematicLibraryModel", "NW-Transformer"),
+                 device_type=DeviceType.TransformerNwDevice,
+                 icon_name="transformerNw")
+        self.add(name=QCoreApplication.translate("SchematicLibraryModel", "Fluid-node"),
+                 device_type=DeviceType.FluidNodeDevice,
+                 icon_name="dam")
+        self.add(name=QCoreApplication.translate("SchematicLibraryModel", "VSC"),
+                 device_type=DeviceType.VscDevice,
+                 icon_name="to_vsc")
 
     def add(self, name: str, device_type: DeviceType, icon_name: str) -> None:
         """
@@ -155,8 +167,51 @@ class SchematicLibraryModel(QStandardItemModel):
         _icon.addPixmap(QPixmap(f":/Icons/icons/{icon_name}.png"))
         _item = QStandardItem(_icon, name)
         _item.setData(device_type, Qt.ItemDataRole.UserRole)
-        _item.setToolTip(self.tr("Drag & drop {name} into the schematic").format(name=name))
+        _item.setToolTip(QCoreApplication.translate(
+            "SchematicLibraryModel",
+            "Drag & drop {name} into the schematic",
+        ).format(name=name))
         self.appendRow(_item)
+
+    def retranslate(self) -> None:
+        """
+        Refresh translated item labels without changing the drag/drop device type data.
+
+        :return: None.
+        """
+        row: int
+        item: QStandardItem | None
+        device_type: DeviceType
+        name: str
+
+        for row in range(self.rowCount()):
+            item = self.item(row, 0)
+
+            if item is not None:
+                device_type = item.data(Qt.ItemDataRole.UserRole)
+
+                if device_type == DeviceType.BusBarDevice:
+                    name = QCoreApplication.translate("SchematicLibraryModel", "Bus")
+                elif device_type == DeviceType.BusDevice:
+                    name = QCoreApplication.translate("SchematicLibraryModel", "Connectivity bus")
+                elif device_type == DeviceType.Transformer3WDevice:
+                    name = QCoreApplication.translate("SchematicLibraryModel", "3W-Transformer")
+                elif device_type == DeviceType.TransformerNwDevice:
+                    name = QCoreApplication.translate("SchematicLibraryModel", "NW-Transformer")
+                elif device_type == DeviceType.FluidNodeDevice:
+                    name = QCoreApplication.translate("SchematicLibraryModel", "Fluid-node")
+                elif device_type == DeviceType.VscDevice:
+                    name = QCoreApplication.translate("SchematicLibraryModel", "VSC")
+                else:
+                    name = item.text()
+
+                item.setText(name)
+                item.setToolTip(QCoreApplication.translate(
+                    "SchematicLibraryModel",
+                    "Drag & drop {name} into the schematic",
+                ).format(name=name))
+            else:
+                pass
 
     @staticmethod
     def to_bytes_array(val: str) -> QByteArray:
