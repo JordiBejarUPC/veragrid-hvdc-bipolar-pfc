@@ -15,10 +15,11 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QDialog, QGridLayout, QHeaderView,
-    QLabel, QPlainTextEdit, QPushButton, QSizePolicy,
-    QSpacerItem, QTabWidget, QTableWidget, QTableWidgetItem,
-    QTextEdit, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QApplication, QDialog, QFrame, QGridLayout,
+    QHBoxLayout, QHeaderView, QLabel, QPlainTextEdit,
+    QPushButton, QSizePolicy, QSpacerItem, QTabWidget,
+    QTableWidget, QTableWidgetItem, QTextEdit, QVBoxLayout,
+    QWidget)
 from VeraGrid.Gui.Icons.icons_rc import *
 
 class Ui_AboutDialog(object):
@@ -36,30 +37,24 @@ class Ui_AboutDialog(object):
         self.tabWidget.setObjectName(u"tabWidget")
         self.tab = QWidget()
         self.tab.setObjectName(u"tab")
-        self.gridLayout = QGridLayout(self.tab)
-        self.gridLayout.setObjectName(u"gridLayout")
-        self.librariesTableWidget = QTableWidget(self.tab)
-        self.librariesTableWidget.setObjectName(u"librariesTableWidget")
-
-        self.gridLayout.addWidget(self.librariesTableWidget, 2, 0, 2, 3)
-
-        self.label_3 = QLabel(self.tab)
+        self.verticalLayout_4 = QVBoxLayout(self.tab)
+        self.verticalLayout_4.setObjectName(u"verticalLayout_4")
+        self.frame = QFrame(self.tab)
+        self.frame.setObjectName(u"frame")
+        self.frame.setFrameShape(QFrame.Shape.NoFrame)
+        self.frame.setFrameShadow(QFrame.Shadow.Raised)
+        self.horizontalLayout = QHBoxLayout(self.frame)
+        self.horizontalLayout.setObjectName(u"horizontalLayout")
+        self.horizontalLayout.setContentsMargins(0, 0, 0, 0)
+        self.label_3 = QLabel(self.frame)
         self.label_3.setObjectName(u"label_3")
         self.label_3.setMaximumSize(QSize(32, 32))
         self.label_3.setPixmap(QPixmap(u":/Program icon/icons/VeraGrid_icon.png"))
         self.label_3.setScaledContents(True)
 
-        self.gridLayout.addWidget(self.label_3, 0, 0, 1, 1)
+        self.horizontalLayout.addWidget(self.label_3)
 
-        self.copyrightLabel = QLabel(self.tab)
-        self.copyrightLabel.setObjectName(u"copyrightLabel")
-        self.copyrightLabel.setWordWrap(True)
-        self.copyrightLabel.setOpenExternalLinks(True)
-        self.copyrightLabel.setTextInteractionFlags(Qt.TextInteractionFlag.LinksAccessibleByMouse|Qt.TextInteractionFlag.TextSelectableByMouse)
-
-        self.gridLayout.addWidget(self.copyrightLabel, 7, 0, 1, 3)
-
-        self.mainLabel = QLabel(self.tab)
+        self.mainLabel = QLabel(self.frame)
         self.mainLabel.setObjectName(u"mainLabel")
         self.mainLabel.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
         self.mainLabel.setTextFormat(Qt.TextFormat.RichText)
@@ -69,27 +64,30 @@ class Ui_AboutDialog(object):
         self.mainLabel.setOpenExternalLinks(True)
         self.mainLabel.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
 
-        self.gridLayout.addWidget(self.mainLabel, 0, 1, 1, 2)
+        self.horizontalLayout.addWidget(self.mainLabel)
 
-        self.label = QLabel(self.tab)
-        self.label.setObjectName(u"label")
-        self.label.setMinimumSize(QSize(48, 48))
-        self.label.setMaximumSize(QSize(48, 48))
-        self.label.setPixmap(QPixmap(u":/Icons/icons/VeraGrid_icon.png"))
-        self.label.setScaledContents(True)
 
-        self.gridLayout.addWidget(self.label, 3, 0, 1, 1)
+        self.verticalLayout_4.addWidget(self.frame)
 
-        self.verticalSpacer = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+        self.librariesTableWidget = QTableWidget(self.tab)
+        self.librariesTableWidget.setObjectName(u"librariesTableWidget")
 
-        self.gridLayout.addItem(self.verticalSpacer, 4, 0, 1, 1)
+        self.verticalLayout_4.addWidget(self.librariesTableWidget)
 
         self.updateLabel = QLabel(self.tab)
         self.updateLabel.setObjectName(u"updateLabel")
         self.updateLabel.setOpenExternalLinks(True)
         self.updateLabel.setTextInteractionFlags(Qt.TextInteractionFlag.LinksAccessibleByKeyboard|Qt.TextInteractionFlag.LinksAccessibleByMouse|Qt.TextInteractionFlag.TextBrowserInteraction|Qt.TextInteractionFlag.TextSelectableByKeyboard|Qt.TextInteractionFlag.TextSelectableByMouse)
 
-        self.gridLayout.addWidget(self.updateLabel, 5, 0, 1, 3)
+        self.verticalLayout_4.addWidget(self.updateLabel)
+
+        self.copyrightLabel = QLabel(self.tab)
+        self.copyrightLabel.setObjectName(u"copyrightLabel")
+        self.copyrightLabel.setWordWrap(True)
+        self.copyrightLabel.setOpenExternalLinks(True)
+        self.copyrightLabel.setTextInteractionFlags(Qt.TextInteractionFlag.LinksAccessibleByMouse|Qt.TextInteractionFlag.TextSelectableByMouse)
+
+        self.verticalLayout_4.addWidget(self.copyrightLabel)
 
         self.tabWidget.addTab(self.tab, "")
         self.tab_2 = QWidget()
@@ -161,10 +159,9 @@ class Ui_AboutDialog(object):
     def retranslateUi(self, AboutDialog):
         AboutDialog.setWindowTitle(QCoreApplication.translate("AboutDialog", u"About VeraGrid", None))
         self.label_3.setText("")
-        self.copyrightLabel.setText(QCoreApplication.translate("AboutDialog", u"Copyright", None))
         self.mainLabel.setText(QCoreApplication.translate("AboutDialog", u"<html><head/><body><p align=\"justify\"><span style=\" font-weight:600;\">VeraGrid</span> has been carefully crafted since 2015 to serve as a platform for research and consultancy. Visit <a href=\"https://www.eroots.tech/\"><span style=\" text-decoration: underline; color:#26a269;\">eRoots</span></a> for more details. The source of VeraGrid can be found <a href=\"https://github.com/SanPen/VeraGrid\"><span style=\" text-decoration: underline; color:#26a269;\">here.</span></a></p></body></html>", None))
-        self.label.setText("")
         self.updateLabel.setText("")
+        self.copyrightLabel.setText(QCoreApplication.translate("AboutDialog", u"Copyright", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab), QCoreApplication.translate("AboutDialog", u"About", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2), QCoreApplication.translate("AboutDialog", u"Contributors", None))
 #if QT_CONFIG(tooltip)

@@ -14,7 +14,7 @@
         <translation>Over</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="87"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="89"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;VeraGrid&lt;/span&gt; has been carefully crafted since 2015 to serve as a platform for research and consultancy. Visit &lt;a href=&quot;https://www.eroots.tech/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;eRoots&lt;/span&gt;&lt;/a&gt; for more details. The source of VeraGrid can be found &lt;a href=&quot;https://github.com/SanPen/VeraGrid&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;here.&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;VeraGrid&lt;/span&gt;is sinds 2015 zorgvuldig samengesteld om te dienen als platform voor onderzoek en advies. Bezoek&lt;a href=&quot;https://www.eroots.tech/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;eRoots&lt;/span&gt;&lt;/a&gt;voor meer informatie. De bron van VeraGrid kan worden gevonden&lt;a href=&quot;https://github.com/SanPen/VeraGrid&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;hier.&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
@@ -23,12 +23,12 @@
         <translation type="vanished">versie</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="68"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="133"/>
         <source>Copyright</source>
         <translation>Copyright</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="164"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="150"/>
         <source>Contributors</source>
         <translation>Bijdragers</translation>
     </message>
@@ -37,12 +37,12 @@
         <translation type="vanished">TextLabel</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="174"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="160"/>
         <source>Libraries</source>
         <translation>Bibliotheken</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="180"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="166"/>
         <source>Copy the table</source>
         <translation>Kopieer de tabel</translation>
     </message>
@@ -55,17 +55,17 @@
         <translation type="vanished">Optionele bibliotheken</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="211"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="197"/>
         <source>License</source>
         <translation>Licentie</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="217"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="203"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;This program comes with absolutelly no warranty. This is free software, and you are welcome to redistribute it under the conditions set by the license. VeraGrid is licensed under the &lt;a href=&quot;https://www.mozilla.org/en-US/MPL/2.0/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;Mozilla Public License V2&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;Dit programma wordt geleverd met absoluut geen garantie. Dit is gratis software en u bent van harte welkom deze opnieuw te distribueren onder de voorwaarden die in de licentie zijn vastgelegd. VeraGrid is gelicentieerd onder de&lt;a href=&quot;https://www.mozilla.org/en-US/MPL/2.0/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;Mozilla publieke licentie V2&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="238"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="224"/>
         <source>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;meta charset=&quot;utf-8&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
@@ -1776,7 +1776,19 @@ Weet u zeker?</translation>
     </message>
     <message>
         <source>VSC devices need one AC bus and two DC buses.</source>
-        <translation>VSC-apparaten hebben één AC-bus en twee DC-bussen nodig.</translation>
+        <translation type="vanished">VSC-apparaten hebben één AC-bus en twee DC-bussen nodig.</translation>
+    </message>
+    <message>
+        <source>There are no devices to target.</source>
+        <translation>Er zijn geen apparaten om te selecteren.</translation>
+    </message>
+    <message>
+        <source>There are no supported devices to target.</source>
+        <translation>Er zijn geen ondersteunde apparaten om te selecteren.</translation>
+    </message>
+    <message>
+        <source>VSC devices need one AC bus, one DC bus, and an optional DC bus.</source>
+        <translation>VSC-apparaten hebben één AC-bus, één DC-bus en een optionele DC-bus nodig.</translation>
     </message>
 </context>
 <context>
@@ -1856,6 +1868,17 @@ Weet u zeker?</translation>
     <message>
         <source>Search</source>
         <translation type="vanished">Zoekopdracht</translation>
+    </message>
+</context>
+<context>
+    <name>DeviceSelectorPanel</name>
+    <message>
+        <source>None</source>
+        <translation>Geen</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>Zoekopdracht</translation>
     </message>
 </context>
 <context>
@@ -14984,17 +15007,6 @@ U moet een net laden of aanmaken!</translation>
     <message>
         <source>Question</source>
         <translation>Vraag</translation>
-    </message>
-</context>
-<context>
-    <name>DeviceSelectorPanel</name>
-    <message>
-        <source>None</source>
-        <translation>Geen</translation>
-    </message>
-    <message>
-        <source>Search</source>
-        <translation>Zoekopdracht</translation>
     </message>
 </context>
 </TS>

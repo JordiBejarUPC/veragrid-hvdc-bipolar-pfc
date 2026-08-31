@@ -289,8 +289,7 @@ class ObjectsModel(WrappableTableModel):
                 tpe = self.attribute_types[i]
 
                 if tpe is bool:
-                    delegate = ComboDelegate(self.parent, [True, False], ['True', 'False'])
-                    F(i, delegate)
+                    F(i, None)
 
                 elif tpe is str:
                     delegate = TextDelegate(self.parent)
@@ -418,7 +417,18 @@ class ObjectsModel(WrappableTableModel):
         ) and value is None
 
         if self.editable and (self.attributes[attr_idx] not in self.non_editable_attributes or is_empty_bus_reference):
-            return QtCore.Qt.ItemFlag.ItemIsEditable | QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsSelectable
+            flags: QtCore.Qt.ItemFlag = (
+                QtCore.Qt.ItemFlag.ItemIsEditable
+                | QtCore.Qt.ItemFlag.ItemIsEnabled
+                | QtCore.Qt.ItemFlag.ItemIsSelectable
+            )
+
+            if self.attribute_types[attr_idx] is bool:
+                flags = flags | QtCore.Qt.ItemFlag.ItemIsUserCheckable
+            else:
+                pass
+
+            return flags
         else:
             return QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsSelectable
 
@@ -547,7 +557,9 @@ class ObjectsModel(WrappableTableModel):
             if role == QtCore.Qt.ItemDataRole.DisplayRole:
                 value: Any = self.data_with_type(index)
 
-                if self.property_list[attr_idx].is_date:
+                if self.attribute_types[attr_idx] is bool:
+                    return ""
+                elif self.property_list[attr_idx].is_date:
                     return self._format_date_display(value)
                 else:
                     if value is None:
@@ -557,6 +569,15 @@ class ObjectsModel(WrappableTableModel):
 
             elif role == QtCore.Qt.ItemDataRole.EditRole:
                 return self.data_with_type(index)
+
+            elif role == QtCore.Qt.ItemDataRole.CheckStateRole:
+                if self.attribute_types[attr_idx] is bool:
+                    if bool(self.data_with_type(index)):
+                        return QtCore.Qt.CheckState.Checked
+                    else:
+                        return QtCore.Qt.CheckState.Unchecked
+                else:
+                    pass
 
             elif role == QtCore.Qt.ItemDataRole.BackgroundRole:
 
@@ -613,6 +634,11 @@ class ObjectsModel(WrappableTableModel):
 
         prop = self.property_list[attr_idx]
 
+        if role == QtCore.Qt.ItemDataRole.CheckStateRole and prop.tpe is bool:
+            value = value == QtCore.Qt.CheckState.Checked or value == int(QtCore.Qt.CheckState.Checked.value)
+        else:
+            pass
+
         # check taken values
         if self.attributes[attr_idx] in self.check_unique:
             taken = self.attr_taken(self.attributes[attr_idx], value)
@@ -634,6 +660,15 @@ class ObjectsModel(WrappableTableModel):
 
                     try:
                         self.objects[obj_idx].set_value(prop=prop, t_idx=self.time_index_, value=value2)
+                        self.dataChanged.emit(
+                            index,
+                            index,
+                            [
+                                QtCore.Qt.ItemDataRole.DisplayRole,
+                                QtCore.Qt.ItemDataRole.EditRole,
+                                QtCore.Qt.ItemDataRole.CheckStateRole,
+                            ],
+                        )
                     except ValueError as e:
                         self.report_error(str(e))
                 else:

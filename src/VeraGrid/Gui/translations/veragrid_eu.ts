@@ -14,7 +14,7 @@
         <translation>Buruz</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="87"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="89"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;VeraGrid&lt;/span&gt; has been carefully crafted since 2015 to serve as a platform for research and consultancy. Visit &lt;a href=&quot;https://www.eroots.tech/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;eRoots&lt;/span&gt;&lt;/a&gt; for more details. The source of VeraGrid can be found &lt;a href=&quot;https://github.com/SanPen/VeraGrid&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;here.&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;VeraGrid&lt;/span&gt; 2015az geroztik kontu handiz landu da ikerketarako eta aholkularitzarako plataforma izateko. Bisitatu &lt;a href=&quot;https://www.eroots.tech/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;eRoots&lt;/span&gt;&lt;/a&gt; xehetasun gehiagorako. The source of VeraGrid can be found &lt;a href=&quot;https://github.com/SanPen/VeraGrid&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;hemen.&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
@@ -23,12 +23,12 @@
         <translation type="vanished">bertsioa</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="68"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="133"/>
         <source>Copyright</source>
         <translation>Copyright</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="164"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="150"/>
         <source>Contributors</source>
         <translation>Laguntzaileak</translation>
     </message>
@@ -37,12 +37,12 @@
         <translation type="vanished">TextLabel</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="174"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="160"/>
         <source>Libraries</source>
         <translation>Liburutegiak</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="180"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="166"/>
         <source>Copy the table</source>
         <translation>Kopiatu taula</translation>
     </message>
@@ -55,17 +55,17 @@
         <translation type="vanished">Aukerako liburutegiak</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="211"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="197"/>
         <source>License</source>
         <translation>Lizentzia</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="217"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="203"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;This program comes with absolutelly no warranty. This is free software, and you are welcome to redistribute it under the conditions set by the license. VeraGrid is licensed under the &lt;a href=&quot;https://www.mozilla.org/en-US/MPL/2.0/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;Mozilla Public License V2&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;This program comes with absolutelly no warranty. Hau software librea da, eta lizentziak ezarritako baldintzetan birbanatzeko aukera dago. VeraGrid is licensed under the &lt;a href=&quot;https://www.mozilla.org/en-US/MPL/2.0/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;Mozilla Public License V2&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="238"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="224"/>
         <source>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;meta charset=&quot;utf-8&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
@@ -1778,7 +1778,19 @@ Are you sure?</translation>
     </message>
     <message>
         <source>VSC devices need one AC bus and two DC buses.</source>
-        <translation>VSC devices need one AC bus and two DC buses.</translation>
+        <translation type="vanished">VSC devices need one AC bus and two DC buses.</translation>
+    </message>
+    <message>
+        <source>There are no devices to target.</source>
+        <translation>Ez dago azingeru moduaz inguratu behar.</translation>
+    </message>
+    <message>
+        <source>There are no supported devices to target.</source>
+        <translation>Ez dago babestutako azingeru moduaz inguratu behar.</translation>
+    </message>
+    <message>
+        <source>VSC devices need one AC bus, one DC bus, and an optional DC bus.</source>
+        <translation>VSC azingeru moduaz batezko AC bus batek, DC bus batek eta DC bus opzionalt bat behar ditu.</translation>
     </message>
 </context>
 <context>
@@ -1858,6 +1870,17 @@ Are you sure?</translation>
     <message>
         <source>Search</source>
         <translation type="vanished">Bilatu</translation>
+    </message>
+</context>
+<context>
+    <name>DeviceSelectorPanel</name>
+    <message>
+        <source>None</source>
+        <translation>Ninguno</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>Bilatu</translation>
     </message>
 </context>
 <context>
@@ -15004,17 +15027,6 @@ Ekarri edo sortu ekarri-erakunde bat!</translation>
     <message>
         <source>Question</source>
         <translation>Galdera</translation>
-    </message>
-</context>
-<context>
-    <name>DeviceSelectorPanel</name>
-    <message>
-        <source>None</source>
-        <translation>Ninguno</translation>
-    </message>
-    <message>
-        <source>Search</source>
-        <translation>Bilatu</translation>
     </message>
 </context>
 </TS>

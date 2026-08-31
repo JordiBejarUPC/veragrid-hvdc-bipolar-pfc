@@ -14,7 +14,7 @@
         <translation>À propos</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="87"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="89"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;VeraGrid&lt;/span&gt; has been carefully crafted since 2015 to serve as a platform for research and consultancy. Visit &lt;a href=&quot;https://www.eroots.tech/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;eRoots&lt;/span&gt;&lt;/a&gt; for more details. The source of VeraGrid can be found &lt;a href=&quot;https://github.com/SanPen/VeraGrid&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;here.&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;VeraGrid&lt;/span&gt; a été soigneusement conçu depuis 2015 pour servir de plate-forme de recherche et de conseil. Visite &lt;a href=&quot;https://www.eroots.tech/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;eRoots&lt;/span&gt;&lt;/a&gt; pour plus de détails. La source de VeraGrid peut être trouvée &lt;a href=&quot;https://github.com/SanPen/VeraGrid&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;ici.&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
@@ -23,12 +23,12 @@
         <translation type="vanished">version</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="68"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="133"/>
         <source>Copyright</source>
         <translation>Droit d&apos;auteur</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="164"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="150"/>
         <source>Contributors</source>
         <translation>Contributeurs</translation>
     </message>
@@ -37,12 +37,12 @@
         <translation type="vanished">TextLabel</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="174"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="160"/>
         <source>Libraries</source>
         <translation>Bibliothèques</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="180"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="166"/>
         <source>Copy the table</source>
         <translation>Copiez le tableau</translation>
     </message>
@@ -55,17 +55,17 @@
         <translation type="vanished">Bibliothèques facultatives</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="211"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="197"/>
         <source>License</source>
         <translation>Licence</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="217"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="203"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;This program comes with absolutelly no warranty. This is free software, and you are welcome to redistribute it under the conditions set by the license. VeraGrid is licensed under the &lt;a href=&quot;https://www.mozilla.org/en-US/MPL/2.0/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;Mozilla Public License V2&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;Ce programme est livré avec absolument aucune garantie. Il s&apos;agit d&apos;un logiciel libre et vous pouvez le redistribuer dans les conditions fixées par la licence. VeraGrid est sous licence &lt;a href=&quot;https://www.mozilla.org/en-US/MPL/2.0/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;Mozilla Public License V2&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="238"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="224"/>
         <source>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;meta charset=&quot;utf-8&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
@@ -205,7 +205,7 @@ li.checked :: marqueur { content: &quot;\2612&quot;; }
     </message>
     <message>
         <source>{name} update failed after {attempts} attempt(s).</source>
-        <translation>{name} n'a pas pu être mis à jour après {attempts} tentative(s).</translation>
+        <translation>{name} n&apos;a pas pu être mis à jour après {attempts} tentative(s).</translation>
     </message>
     <message>
         <source>{name} updated successfully after {attempts} attempt(s)</source>
@@ -1778,7 +1778,19 @@ Are you sure?</source>
     </message>
     <message>
         <source>VSC devices need one AC bus and two DC buses.</source>
-        <translation>Les dispositifs VSC nécessitent un bus CA et deux bus CC.</translation>
+        <translation type="vanished">Les dispositifs VSC nécessitent un bus CA et deux bus CC.</translation>
+    </message>
+    <message>
+        <source>There are no devices to target.</source>
+        <translation>Aucun appareil à cibler.</translation>
+    </message>
+    <message>
+        <source>There are no supported devices to target.</source>
+        <translation>Aucun appareil pris en charge à cibler.</translation>
+    </message>
+    <message>
+        <source>VSC devices need one AC bus, one DC bus, and an optional DC bus.</source>
+        <translation>Les appareils VSC nécessitent un bus CA, un bus CC et un bus CC optionnel.</translation>
     </message>
 </context>
 <context>
@@ -1858,6 +1870,17 @@ Are you sure?</source>
     <message>
         <source>Search</source>
         <translation type="vanished">Rechercher</translation>
+    </message>
+</context>
+<context>
+    <name>DeviceSelectorPanel</name>
+    <message>
+        <source>None</source>
+        <translation>Aucun</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>Rechercher</translation>
     </message>
 </context>
 <context>
@@ -15005,17 +15028,6 @@ Vous devez charger ou créer un réseau !</translation>
     <message>
         <source>Question</source>
         <translation>Question</translation>
-    </message>
-</context>
-<context>
-    <name>DeviceSelectorPanel</name>
-    <message>
-        <source>None</source>
-        <translation>Aucun</translation>
-    </message>
-    <message>
-        <source>Search</source>
-        <translation>Rechercher</translation>
     </message>
 </context>
 </TS>

@@ -14,7 +14,7 @@
         <translation>에 대한</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="87"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="89"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;VeraGrid&lt;/span&gt; has been carefully crafted since 2015 to serve as a platform for research and consultancy. Visit &lt;a href=&quot;https://www.eroots.tech/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;eRoots&lt;/span&gt;&lt;/a&gt; for more details. The source of VeraGrid can be found &lt;a href=&quot;https://github.com/SanPen/VeraGrid&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;here.&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;&lt;span style=&quot;font-weight:600;&quot;&gt;VeraGrid&lt;/span&gt;는 2015년부터 연구 및 컨설팅을 위한 플랫폼 역할을 하기 위해 세심하게 제작되었습니다. 자세한 내용을 보려면 &lt;a href=&quot;https://www.eroots.tech/&quot;&gt;&lt;span style=&quot; text-꾸밈: underline; color:#26a269;&quot;&gt;eRoots&lt;/span&gt;&lt;/a&gt;를 방문하세요. VeraGrid의 소스는 &lt;a href=&quot;https://github.com/SanPen/VeraGrid&quot;&gt;&lt;span style=&quot; text-designation: underline; color:#26a269;&quot;&gt;여기&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;에서 찾을 수 있습니다.</translation>
     </message>
@@ -23,12 +23,12 @@
         <translation type="vanished">버전</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="68"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="133"/>
         <source>Copyright</source>
         <translation>저작권</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="164"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="150"/>
         <source>Contributors</source>
         <translation>기여자</translation>
     </message>
@@ -37,12 +37,12 @@
         <translation type="vanished">텍스트 라벨</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="174"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="160"/>
         <source>Libraries</source>
         <translation>도서관</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="180"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="166"/>
         <source>Copy the table</source>
         <translation>테이블 복사</translation>
     </message>
@@ -55,17 +55,17 @@
         <translation type="vanished">선택적 라이브러리</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="211"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="197"/>
         <source>License</source>
         <translation>특허</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="217"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="203"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;This program comes with absolutelly no warranty. This is free software, and you are welcome to redistribute it under the conditions set by the license. VeraGrid is licensed under the &lt;a href=&quot;https://www.mozilla.org/en-US/MPL/2.0/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;Mozilla Public License V2&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;이 프로그램은 어떠한 보증도 제공하지 않습니다. 이 소프트웨어는 무료 소프트웨어이므로 라이센스에 명시된 조건에 따라 재배포할 수 있습니다. VeraGrid는 &lt;a href=&quot;https://www.mozilla.org/en-US/MPL/2.0/&quot;&gt;&lt;span style=&quot; text-designation: underline; color:#26a269;&quot;&gt;Mozilla Public License V2&lt;/span&gt;&lt;/a&gt;에 따라 라이센스가 부여되었습니다.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="238"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="224"/>
         <source>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;meta charset=&quot;utf-8&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
@@ -1786,7 +1786,19 @@ Are you sure?</source>
     </message>
     <message>
         <source>VSC devices need one AC bus and two DC buses.</source>
-        <translation>VSC 장치는 AC 버스 1개와 DC 버스 2개가 필요합니다.</translation>
+        <translation type="vanished">VSC 장치는 AC 버스 1개와 DC 버스 2개가 필요합니다.</translation>
+    </message>
+    <message>
+        <source>There are no devices to target.</source>
+        <translation>대상 장치가 없습니다.</translation>
+    </message>
+    <message>
+        <source>There are no supported devices to target.</source>
+        <translation>지원되는 대상 장치가 없습니다.</translation>
+    </message>
+    <message>
+        <source>VSC devices need one AC bus, one DC bus, and an optional DC bus.</source>
+        <translation>VSC 장치는 AC 버스 1개, DC 버스 1개, 그리고 선택적 DC 버스가 필요합니다.</translation>
     </message>
 </context>
 <context>
@@ -1866,6 +1878,17 @@ Are you sure?</source>
     <message>
         <source>Search</source>
         <translation type="vanished">찾다</translation>
+    </message>
+</context>
+<context>
+    <name>DeviceSelectorPanel</name>
+    <message>
+        <source>None</source>
+        <translation>없음</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>찾다</translation>
     </message>
 </context>
 <context>
@@ -14993,17 +15016,6 @@ You need to load or create a grid!</source>
     <message>
         <source>Question</source>
         <translation>질문</translation>
-    </message>
-</context>
-<context>
-    <name>DeviceSelectorPanel</name>
-    <message>
-        <source>None</source>
-        <translation>없음</translation>
-    </message>
-    <message>
-        <source>Search</source>
-        <translation>찾다</translation>
     </message>
 </context>
 </TS>

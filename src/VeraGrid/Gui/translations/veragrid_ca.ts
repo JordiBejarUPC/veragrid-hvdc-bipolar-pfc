@@ -14,7 +14,7 @@
         <translation>Sobre</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="87"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="89"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;VeraGrid&lt;/span&gt; has been carefully crafted since 2015 to serve as a platform for research and consultancy. Visit &lt;a href=&quot;https://www.eroots.tech/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;eRoots&lt;/span&gt;&lt;/a&gt; for more details. The source of VeraGrid can be found &lt;a href=&quot;https://github.com/SanPen/VeraGrid&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;here.&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;VeraGrid&lt;/span&gt; ha estat dissenyat amb cura des de 2015 per servir com a plataforma d&apos;investigació i consultoria. Visita &lt;a href=&quot;https://www.eroots.tech/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;eRoots&lt;/span&gt;&lt;/a&gt; per a més detalls. Es pot trobar la font de VeraGrid &lt;a href=&quot;https://github.com/SanPen/VeraGrid&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;aquí.&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
@@ -23,12 +23,12 @@
         <translation type="vanished">versió</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="68"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="133"/>
         <source>Copyright</source>
         <translation>Copyright</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="164"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="150"/>
         <source>Contributors</source>
         <translation>Col·laboradors</translation>
     </message>
@@ -37,12 +37,12 @@
         <translation type="vanished">TextLabel</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="174"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="160"/>
         <source>Libraries</source>
         <translation>Biblioteques</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="180"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="166"/>
         <source>Copy the table</source>
         <translation>Copia la taula</translation>
     </message>
@@ -55,17 +55,17 @@
         <translation type="vanished">Biblioteques opcionals</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="211"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="197"/>
         <source>License</source>
         <translation>llicència</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="217"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="203"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;This program comes with absolutelly no warranty. This is free software, and you are welcome to redistribute it under the conditions set by the license. VeraGrid is licensed under the &lt;a href=&quot;https://www.mozilla.org/en-US/MPL/2.0/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;Mozilla Public License V2&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;Aquest programa no inclou absolutament cap garantia. Aquest és programari lliure i podeu redistribuir-lo sota les condicions establertes per la llicència. VeraGrid té llicència sota el &lt;a href=&quot;https://www.mozilla.org/en-US/MPL/2.0/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;Llicència pública de Mozilla V2&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="238"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="224"/>
         <source>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;meta charset=&quot;utf-8&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
@@ -157,7 +157,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
     </message>
     <message>
         <source>Exit code: {code}</source>
-        <translation>Codi d'èxit: {code}</translation>
+        <translation>Codi d&apos;èxit: {code}</translation>
     </message>
     <message>
         <source>False</source>
@@ -205,11 +205,11 @@ li.checked::marker { content: &quot;\2612&quot;; }
     </message>
     <message>
         <source>{name} update failed after {attempts} attempt(s).</source>
-        <translation>L'actualització de {name} ha fallat després de {attempts} intent(s).</translation>
+        <translation>L&apos;actualització de {name} ha fallat després de {attempts} intent(s).</translation>
     </message>
     <message>
         <source>{name} updated successfully after {attempts} attempt(s)</source>
-        <translation>L'actualització de {name} ha estat exitosa després de {attempts} intent(s).</translation>
+        <translation>L&apos;actualització de {name} ha estat exitosa després de {attempts} intent(s).</translation>
     </message>
 </context>
 <context>
@@ -1778,7 +1778,19 @@ Combreu?</translation>
     </message>
     <message>
         <source>VSC devices need one AC bus and two DC buses.</source>
-        <translation>Els dispositius VSC necessiten un bus AC i dos busos DC.</translation>
+        <translation type="vanished">Els dispositius VSC necessiten un bus AC i dos busos DC.</translation>
+    </message>
+    <message>
+        <source>There are no devices to target.</source>
+        <translation>No hi ha dispositius a objectivar.</translation>
+    </message>
+    <message>
+        <source>There are no supported devices to target.</source>
+        <translation>No hi ha dispositius suportats per objectivar.</translation>
+    </message>
+    <message>
+        <source>VSC devices need one AC bus, one DC bus, and an optional DC bus.</source>
+        <translation>Els dispositius VSC necessiten un bus CA, un bus CC i un bus CC opcional.</translation>
     </message>
 </context>
 <context>
@@ -1858,6 +1870,17 @@ Combreu?</translation>
     <message>
         <source>Search</source>
         <translation type="vanished">Cerca</translation>
+    </message>
+</context>
+<context>
+    <name>DeviceSelectorPanel</name>
+    <message>
+        <source>None</source>
+        <translation>Cap</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>Cerca</translation>
     </message>
 </context>
 <context>
@@ -15003,17 +15026,6 @@ Ha de carregar o crear una xarxa!</translation>
     <message>
         <source>Question</source>
         <translation>Pregunta</translation>
-    </message>
-</context>
-<context>
-    <name>DeviceSelectorPanel</name>
-    <message>
-        <source>None</source>
-        <translation>Cap</translation>
-    </message>
-    <message>
-        <source>Search</source>
-        <translation>Cerca</translation>
     </message>
 </context>
 </TS>

@@ -14,7 +14,7 @@
         <translation>परिचय</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="87"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="89"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;VeraGrid&lt;/span&gt; has been carefully crafted since 2015 to serve as a platform for research and consultancy. Visit &lt;a href=&quot;https://www.eroots.tech/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;eRoots&lt;/span&gt;&lt;/a&gt; for more details. The source of VeraGrid can be found &lt;a href=&quot;https://github.com/SanPen/VeraGrid&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;here.&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;VeraGrid&lt;/span&gt; को 2015 से अनुसंधान और परामर्श के लिए एक मंच के रूप में सावधानीपूर्वक विकसित किया गया है। अधिक जानकारी के लिए &lt;a href=&quot;https://www.eroots.tech/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;eRoots&lt;/span&gt;&lt;/a&gt; देखें। VeraGrid का स्रोत कोड &lt;a href=&quot;https://github.com/SanPen/VeraGrid&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;यहाँ&lt;/span&gt;&lt;/a&gt; उपलब्ध है।&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
@@ -23,12 +23,12 @@
         <translation type="vanished">संस्करण</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="68"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="133"/>
         <source>Copyright</source>
         <translation>कॉपीराइट</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="164"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="150"/>
         <source>Contributors</source>
         <translation>योगदानकर्ता</translation>
     </message>
@@ -37,12 +37,12 @@
         <translation type="vanished">पाठ लेबल</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="174"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="160"/>
         <source>Libraries</source>
         <translation>लाइब्रेरी</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="180"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="166"/>
         <source>Copy the table</source>
         <translation>तालिका की प्रतिलिपि बनाएँ</translation>
     </message>
@@ -55,7 +55,7 @@
         <translation type="vanished">वैकल्पिक लाइब्रेरी</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="211"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="197"/>
         <source>License</source>
         <translation>लाइसेंस</translation>
     </message>
@@ -92,12 +92,12 @@
         <translation>निर्भरताएँ</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="217"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="203"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;This program comes with absolutelly no warranty. This is free software, and you are welcome to redistribute it under the conditions set by the license. VeraGrid is licensed under the &lt;a href=&quot;https://www.mozilla.org/en-US/MPL/2.0/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;Mozilla Public License V2&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;यह प्रोग्राम बिल्कुल बिना किसी वारंटी के आता है। यह मुक्त सॉफ़्टवेयर है, और आप लाइसेंस में निर्धारित शर्तों के अनुसार इसे पुनर्वितरित कर सकते हैं। VeraGrid &lt;a href=&quot;https://www.mozilla.org/en-US/MPL/2.0/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;Mozilla Public License V2&lt;/span&gt;&lt;/a&gt; के अंतर्गत लाइसेंस प्राप्त है।&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="238"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="224"/>
         <source>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;meta charset=&quot;utf-8&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
@@ -1216,7 +1216,19 @@ Are you sure?</source>
     </message>
     <message>
         <source>VSC devices need one AC bus and two DC buses.</source>
-        <translation>VSC उपकरणों को एक AC बस और दो DC बस की आवश्यकता होती है।</translation>
+        <translation type="vanished">VSC उपकरणों को एक AC बस और दो DC बस की आवश्यकता होती है।</translation>
+    </message>
+    <message>
+        <source>There are no devices to target.</source>
+        <translation>लक्ष्य करने के लिए कोई डिवाइस नहीं है।</translation>
+    </message>
+    <message>
+        <source>There are no supported devices to target.</source>
+        <translation>लक्ष्य करने के लिए कोई समर्थित डिवाइस नहीं है।</translation>
+    </message>
+    <message>
+        <source>VSC devices need one AC bus, one DC bus, and an optional DC bus.</source>
+        <translation>VSC उपकरणों को एक AC बस, एक DC बस और एक वैकल्पिक DC बस की आवश्यकता होती है।</translation>
     </message>
 </context>
 <context>
@@ -1296,6 +1308,17 @@ Are you sure?</source>
     <message>
         <source>Search</source>
         <translation type="vanished">खोजें</translation>
+    </message>
+</context>
+<context>
+    <name>DeviceSelectorPanel</name>
+    <message>
+        <source>None</source>
+        <translation>कोई नहीं</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>खोजें</translation>
     </message>
 </context>
 <context>
@@ -14239,17 +14262,6 @@ You need to load or create a grid!</source>
     <message>
         <source>Question</source>
         <translation>प्रश्न</translation>
-    </message>
-</context>
-<context>
-    <name>DeviceSelectorPanel</name>
-    <message>
-        <source>None</source>
-        <translation>कोई नहीं</translation>
-    </message>
-    <message>
-        <source>Search</source>
-        <translation>खोजें</translation>
     </message>
 </context>
 </TS>
