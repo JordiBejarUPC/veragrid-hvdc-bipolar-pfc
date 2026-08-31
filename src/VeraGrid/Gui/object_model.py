@@ -19,7 +19,64 @@ from VeraGridEngine.Devices import Bus, ContingencyGroup
 from VeraGridEngine.Devices.Parents.editable_device import GCProp, GCPROP_TYPES
 from VeraGridEngine.Devices.Branches.line_locations import LineLocations
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
-from VeraGridEngine.enumerations import PrpCat
+from VeraGridEngine.enumerations import DeviceType, PrpCat
+
+
+class DeviceSelectorDelegate(QtWidgets.QItemDelegate):
+    """
+    Delegate that opens a searchable device selector for an empty device reference.
+    """
+
+    def __init__(self,
+                 parent: QtWidgets.QTableView,
+                 devices_by_type: Dict[DeviceType, List[ALL_DEV_TYPES]]) -> None:
+        """
+        Constructor.
+
+        :param parent: QTableView parent object.
+        :param devices_by_type: Dictionary with device types and their devices.
+        """
+        QtWidgets.QItemDelegate.__init__(self, parent)
+
+        self.devices_by_type: Dict[DeviceType, List[ALL_DEV_TYPES]] = devices_by_type
+
+    def createEditor(self,
+                     parent: QtWidgets.QWidget,
+                     option: QtWidgets.QStyleOptionViewItem,
+                     index: QtCore.QModelIndex) -> QtWidgets.QWidget | None:
+        """
+        Open the selector dialogue when the current model value is empty.
+
+        :param parent: Parent widget.
+        :param option: Editor style option.
+        :param index: Edited model index.
+        :return: None because the modal dialogue writes directly to the model.
+        """
+        current_value: Any = index.model().data(index, role=QtCore.Qt.ItemDataRole.EditRole)
+
+        if current_value is None:
+            # Local import avoids the module cycle with general_dialogues.
+            from VeraGrid.Gui.general_dialogues import DeviceSelectorDialogue
+
+            dialogue: DeviceSelectorDialogue = DeviceSelectorDialogue(
+                devices_by_type=self.devices_by_type,
+                parent=parent,
+            )
+            accepted: int = dialogue.exec()
+
+            if accepted == QtWidgets.QDialog.DialogCode.Accepted:
+                selected_device: ALL_DEV_TYPES | None = dialogue.get_selected_device()
+
+                if selected_device is not None:
+                    index.model().setData(index, selected_device)
+                else:
+                    pass
+            else:
+                pass
+        else:
+            pass
+
+        return None
 
 
 class ObjectsModel(WrappableTableModel):
@@ -196,13 +253,35 @@ class ObjectsModel(WrappableTableModel):
                 elif self._get_delegate_objects(i) is not None:
                     # foreign key objects drop-down
                     objs = self._get_delegate_objects(i)
-                    delegate = ComboDelegate(parent=self.parent,
-                                             objects=[None] + objs,
-                                             object_names=['None'] + [x.name for x in objs])
+                    if self._is_bus_property_type(tpe=tpe):
+                        delegate = DeviceSelectorDelegate(
+                            parent=self.parent,
+                            devices_by_type={DeviceType.BusDevice: objs},
+                        )
+                    else:
+                        delegate = ComboDelegate(parent=self.parent,
+                                                 objects=[None] + objs,
+                                                 object_names=['None'] + [x.name for x in objs])
                     F(i, delegate)
 
                 else:
                     F(i, None)
+
+    @staticmethod
+    def _is_bus_property_type(tpe: GCPROP_TYPES) -> bool:
+        """
+        Check if a property type describes a bus reference.
+
+        :param tpe: Property type.
+        :return: True if the property type is a bus reference.
+        """
+        if tpe is Bus:
+            return True
+        else:
+            if tpe == DeviceType.BusDevice:
+                return True
+            else:
+                return False
 
     def _get_delegate_objects(self, attr_idx: int) -> List[ALL_DEV_TYPES] | None:
         """
@@ -228,7 +307,10 @@ class ObjectsModel(WrappableTableModel):
                 if tpe in self.dictionary_of_lists:
                     return self.dictionary_of_lists[tpe]
                 else:
-                    return None
+                    if self._is_bus_property_type(tpe=tpe) and DeviceType.BusDevice in self.dictionary_of_lists:
+                        return self.dictionary_of_lists[DeviceType.BusDevice]
+                    else:
+                        return None
 
     def update(self):
         """
@@ -254,7 +336,12 @@ class ObjectsModel(WrappableTableModel):
         else:
             attr_idx = index.column()
 
-        if self.editable and self.attributes[attr_idx] not in self.non_editable_attributes:
+        value: Any = self.data_with_type(index=index)
+        is_empty_bus_reference: bool = self._is_bus_property_type(
+            tpe=self.attribute_types[attr_idx],
+        ) and value is None
+
+        if self.editable and (self.attributes[attr_idx] not in self.non_editable_attributes or is_empty_bus_reference):
             return QtCore.Qt.ItemFlag.ItemIsEditable | QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsSelectable
         else:
             return QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsSelectable
@@ -296,11 +383,15 @@ class ObjectsModel(WrappableTableModel):
             attr_idx = c
 
         prop = self.property_list[attr_idx]
+        value: Any = self.objects[obj_idx].get_value(prop=prop, t_idx=self.time_index_)
 
-        if prop.tpe is Bus:
-            return self.objects[obj_idx].get_value(prop=prop, t_idx=self.time_index_).name
+        if self._is_bus_property_type(tpe=prop.tpe):
+            if value is None:
+                return ""
+            else:
+                return value.name
         else:
-            return self.objects[obj_idx].get_value(prop=prop, t_idx=self.time_index_)
+            return value
 
     def data_with_type(self, index: QtCore.QModelIndex):
         """
@@ -317,11 +408,15 @@ class ObjectsModel(WrappableTableModel):
 
         if obj_idx < len(self.objects):
             prop = self.property_list[attr_idx]
+            value: Any = self.objects[obj_idx].get_value(prop=prop, t_idx=self.time_index_)
 
-            if prop.tpe is Bus:
-                return self.objects[obj_idx].get_value(prop=prop, t_idx=self.time_index_).name
+            if self._is_bus_property_type(tpe=prop.tpe):
+                if value is None:
+                    return None
+                else:
+                    return value.name
             else:
-                return self.objects[obj_idx].get_value(prop=prop, t_idx=self.time_index_)
+                return value
         else:
             # there is a mismatch because the element was deleted without refreshing this table model
             return ""
@@ -374,11 +469,15 @@ class ObjectsModel(WrappableTableModel):
                 attr_idx = index.column()
 
             if role == QtCore.Qt.ItemDataRole.DisplayRole:
+                value: Any = self.data_with_type(index)
 
                 if self.property_list[attr_idx].is_date:
-                    return self._format_date_display(self.data_with_type(index))
+                    return self._format_date_display(value)
                 else:
-                    return str(self.data_with_type(index))
+                    if value is None:
+                        return ""
+                    else:
+                        return str(value)
 
             elif role == QtCore.Qt.ItemDataRole.EditRole:
                 return self.data_with_type(index)
@@ -418,7 +517,10 @@ class ObjectsModel(WrappableTableModel):
 
         if not taken:
             if obj_idx < len(self.objects):
-                if self.attributes[attr_idx] not in self.non_editable_attributes:
+                current_value: Any = self.objects[obj_idx].get_value(prop=prop, t_idx=self.time_index_)
+                is_empty_bus_reference: bool = self._is_bus_property_type(tpe=prop.tpe) and current_value is None
+
+                if self.attributes[attr_idx] not in self.non_editable_attributes or is_empty_bus_reference:
 
                     if isinstance(value, str) and value != "":
                         # try casting to the type

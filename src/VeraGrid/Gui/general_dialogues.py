@@ -18,7 +18,8 @@ from VeraGridEngine.basic_structures import Logger, IntVec
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGrid.Gui.gui_functions import ComboModel, get_list_model, get_checked_indices, get_chck_list_model
 from VeraGrid.Gui.object_model import ObjectsModel
-from VeraGridEngine.enumerations import FaultType, MethodShortCircuit, PhasesShortCircuit, FileType, CGMESVersions
+from VeraGridEngine.enumerations import (FaultType, MethodShortCircuit, PhasesShortCircuit, FileType, CGMESVersions,
+                                         DeviceType)
 
 
 class CenteredDialog(QDialog):
@@ -317,6 +318,280 @@ class LogsDialogue(CenteredDialog):
         cb = QtWidgets.QApplication.clipboard()
         cb.clear()
         cb.setText(txt)
+
+
+class DeviceSelectorDialogue(CenteredDialog):
+    """
+    Dialogue to select one device from a searchable device tree.
+    """
+
+    def __init__(self,
+                 devices_by_type: Dict[DeviceType, List[ALL_DEV_TYPES]],
+                 parent: QtWidgets.QWidget | None = None) -> None:
+        """
+        Constructor.
+
+        :param devices_by_type: Dictionary with device types and their devices.
+        :param parent: Parent widget.
+        """
+        CenteredDialog.__init__(self, parent=parent)
+
+        self.setWindowTitle(self.tr("Device selection"))
+        self.resize(500, 600)
+
+        self.devices_by_type: Dict[DeviceType, List[ALL_DEV_TYPES]] = devices_by_type
+        self.selected_device: ALL_DEV_TYPES | None = None
+
+        # Build the visible search controls before the model is populated.
+        self.main_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self)
+        self.search_box: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+        self.search_box.setPlaceholderText(self.tr("Search"))
+        self.tree_view: QtWidgets.QTreeView = QtWidgets.QTreeView(self)
+        self.tree_view.setHeaderHidden(True)
+        self.tree_view.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
+
+        # Keep a source model and filter proxy so the item payloads survive searches.
+        self.source_model: QtGui.QStandardItemModel = QtGui.QStandardItemModel(self)
+        self.proxy_model: QtCore.QSortFilterProxyModel = QtCore.QSortFilterProxyModel(self)
+        self.proxy_model.setSourceModel(self.source_model)
+        self.proxy_model.setFilterCaseSensitivity(QtCore.Qt.CaseSensitivity.CaseInsensitive)
+        self.proxy_model.setFilterKeyColumn(0)
+        self.proxy_model.setRecursiveFilteringEnabled(True)
+        self.tree_view.setModel(self.proxy_model)
+
+        self.button_box: QtWidgets.QDialogButtonBox = QtWidgets.QDialogButtonBox(
+            QtWidgets.QDialogButtonBox.StandardButton.Ok | QtWidgets.QDialogButtonBox.StandardButton.Cancel,
+            parent=self,
+        )
+
+        self.main_layout.addWidget(self.search_box)
+        self.main_layout.addWidget(self.tree_view)
+        self.main_layout.addWidget(self.button_box)
+
+        self.search_box.textChanged.connect(self.apply_filter)
+        self.tree_view.doubleClicked.connect(self.accept_index)
+        self.button_box.accepted.connect(self.accept)
+        self.button_box.rejected.connect(self.reject)
+
+        self.fill_tree()
+
+    def fill_tree(self) -> None:
+        """
+        Fill the tree model with one top-level row per device type.
+
+        :return: None.
+        """
+        self.source_model.clear()
+
+        for device_type, devices in self.devices_by_type.items():
+            # Device type rows group leaves but are not assignable values.
+            device_type_item: QtGui.QStandardItem = QtGui.QStandardItem(device_type.value)
+            device_type_item.setEditable(False)
+            device_type_item.setSelectable(False)
+
+            for device in devices:
+                # Device objects are stored in UserRole while names remain the visible text.
+                device_item: QtGui.QStandardItem = QtGui.QStandardItem(device.name)
+                device_item.setEditable(False)
+                device_item.setData(device, QtCore.Qt.ItemDataRole.UserRole)
+                device_type_item.appendRow(device_item)
+
+            self.source_model.appendRow(device_type_item)
+
+        self.tree_view.expandAll()
+
+    def apply_filter(self, text: str) -> None:
+        """
+        Apply the search text to the tree proxy model.
+
+        :param text: Text to search.
+        :return: None.
+        """
+        # Qt's proxy handles recursive matching through the device tree.
+        escaped_text: str = QtCore.QRegularExpression.escape(text)
+        expression: QtCore.QRegularExpression = QtCore.QRegularExpression(escaped_text)
+        expression.setPatternOptions(QtCore.QRegularExpression.PatternOption.CaseInsensitiveOption)
+        self.proxy_model.setFilterRegularExpression(expression)
+        self.tree_view.expandAll()
+
+    def accept_index(self, proxy_index: QtCore.QModelIndex) -> None:
+        """
+        Accept the dialogue when a device leaf is double-clicked.
+
+        :param proxy_index: Index received from the filtered tree view.
+        :return: None.
+        """
+        source_index: QtCore.QModelIndex = self.proxy_model.mapToSource(proxy_index)
+        selected_device: ALL_DEV_TYPES | None = self.source_model.data(
+            source_index,
+            QtCore.Qt.ItemDataRole.UserRole,
+        )
+
+        if selected_device is not None:
+            self.selected_device = selected_device
+            CenteredDialog.accept(self)
+        else:
+            pass
+
+    def accept(self) -> None:
+        """
+        Accept the dialogue if one device is selected.
+
+        :return: None.
+        """
+        selected_index: QtCore.QModelIndex = self.tree_view.currentIndex()
+
+        if selected_index.isValid():
+            source_index: QtCore.QModelIndex = self.proxy_model.mapToSource(selected_index)
+            selected_device: ALL_DEV_TYPES | None = self.source_model.data(
+                source_index,
+                QtCore.Qt.ItemDataRole.UserRole,
+            )
+
+            if selected_device is not None:
+                self.selected_device = selected_device
+                CenteredDialog.accept(self)
+            else:
+                pass
+        else:
+            pass
+
+    def get_selected_device(self) -> ALL_DEV_TYPES | None:
+        """
+        Get the selected device.
+
+        :return: Selected device or None.
+        """
+        return self.selected_device
+
+
+class NewBusConnectedDeviceDialogue(CenteredDialog):
+    """
+    Dialogue to define a new device name and its connected buses.
+    """
+
+    def __init__(self,
+                 name: str,
+                 bus_count: int,
+                 buses: List[ALL_DEV_TYPES],
+                 parent: QtWidgets.QWidget | None = None) -> None:
+        """
+        Constructor.
+
+        :param name: Default device name.
+        :param bus_count: Number of buses that must be selected.
+        :param buses: Available buses.
+        :param parent: Parent widget.
+        """
+        CenteredDialog.__init__(self, parent=parent)
+
+        self.setWindowTitle(self.tr("New device"))
+        self.resize(420, 120 + 42 * bus_count)
+
+        self.buses: List[ALL_DEV_TYPES] = buses
+        self.selected_buses: List[ALL_DEV_TYPES | None] = list()
+        self.bus_labels: List[QtWidgets.QLabel] = list()
+        self.bus_buttons: List[QtWidgets.QPushButton] = list()
+
+        self.main_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self)
+        self.name_edit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+        self.name_edit.setText(name)
+
+        self.main_layout.addWidget(QtWidgets.QLabel(self.tr("Name"), self))
+        self.main_layout.addWidget(self.name_edit)
+
+        for i in range(bus_count):
+            self.selected_buses.append(None)
+
+            row_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout()
+            bus_label: QtWidgets.QLabel = QtWidgets.QLabel(self.tr("None"), self)
+            bus_button: QtWidgets.QPushButton = QtWidgets.QPushButton(self.tr("Select bus") + f" {i + 1}", self)
+            bus_button.setProperty("bus_index", i)
+            bus_button.clicked.connect(self.select_bus_click)
+
+            self.bus_labels.append(bus_label)
+            self.bus_buttons.append(bus_button)
+
+            row_layout.addWidget(bus_button)
+            row_layout.addWidget(bus_label)
+            self.main_layout.addLayout(row_layout)
+
+        self.button_box: QtWidgets.QDialogButtonBox = QtWidgets.QDialogButtonBox(
+            QtWidgets.QDialogButtonBox.StandardButton.Ok | QtWidgets.QDialogButtonBox.StandardButton.Cancel,
+            parent=self,
+        )
+        self.button_box.accepted.connect(self.accept)
+        self.button_box.rejected.connect(self.reject)
+        self.main_layout.addWidget(self.button_box)
+
+    def select_bus_click(self) -> None:
+        """
+        Open the bus selector for the clicked bus slot.
+
+        :return: None.
+        """
+        sender: QtCore.QObject | None = self.sender()
+
+        if isinstance(sender, QtWidgets.QPushButton):
+            bus_index_data: object = sender.property("bus_index")
+
+            if isinstance(bus_index_data, int):
+                dialogue: DeviceSelectorDialogue = DeviceSelectorDialogue(
+                    devices_by_type={DeviceType.BusDevice: self.buses},
+                    parent=self,
+                )
+                accepted: int = dialogue.exec()
+
+                if accepted == QtWidgets.QDialog.DialogCode.Accepted:
+                    selected_bus: ALL_DEV_TYPES | None = dialogue.get_selected_device()
+
+                    if selected_bus is not None:
+                        self.selected_buses[bus_index_data] = selected_bus
+                        self.bus_labels[bus_index_data].setText(selected_bus.name)
+                    else:
+                        pass
+                else:
+                    pass
+            else:
+                pass
+        else:
+            pass
+
+    def accept(self) -> None:
+        """
+        Accept only when the name and all bus slots are filled.
+
+        :return: None.
+        """
+        has_name: bool = self.name_edit.text().strip() != ""
+        has_all_buses: bool = True
+
+        for selected_bus in self.selected_buses:
+            if selected_bus is None:
+                has_all_buses = False
+            else:
+                pass
+
+        if has_name and has_all_buses:
+            CenteredDialog.accept(self)
+        else:
+            pass
+
+    def get_name(self) -> str:
+        """
+        Get the configured device name.
+
+        :return: Device name.
+        """
+        return self.name_edit.text().strip()
+
+    def get_buses(self) -> List[ALL_DEV_TYPES | None]:
+        """
+        Get the selected bus list.
+
+        :return: Selected bus list.
+        """
+        return self.selected_buses
 
 
 class ElementsDialogue(CenteredDialog):
