@@ -51,13 +51,6 @@ class Ui_AboutDialog(object):
 
         self.gridLayout.addWidget(self.label_3, 0, 0, 1, 1)
 
-        self.updateLabel = QLabel(self.tab)
-        self.updateLabel.setObjectName(u"updateLabel")
-        self.updateLabel.setOpenExternalLinks(True)
-        self.updateLabel.setTextInteractionFlags(Qt.TextInteractionFlag.LinksAccessibleByKeyboard|Qt.TextInteractionFlag.LinksAccessibleByMouse|Qt.TextInteractionFlag.TextBrowserInteraction|Qt.TextInteractionFlag.TextSelectableByKeyboard|Qt.TextInteractionFlag.TextSelectableByMouse)
-
-        self.gridLayout.addWidget(self.updateLabel, 5, 0, 1, 2)
-
         self.copyrightLabel = QLabel(self.tab)
         self.copyrightLabel.setObjectName(u"copyrightLabel")
         self.copyrightLabel.setWordWrap(True)
@@ -65,15 +58,6 @@ class Ui_AboutDialog(object):
         self.copyrightLabel.setTextInteractionFlags(Qt.TextInteractionFlag.LinksAccessibleByMouse|Qt.TextInteractionFlag.TextSelectableByMouse)
 
         self.gridLayout.addWidget(self.copyrightLabel, 7, 0, 1, 3)
-
-        self.updateButton = QPushButton(self.tab)
-        self.updateButton.setObjectName(u"updateButton")
-        self.updateButton.setMaximumSize(QSize(80, 16777215))
-        icon1 = QIcon()
-        icon1.addFile(u":/Icons/icons/sync.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.updateButton.setIcon(icon1)
-
-        self.gridLayout.addWidget(self.updateButton, 5, 2, 1, 1)
 
         self.mainLabel = QLabel(self.tab)
         self.mainLabel.setObjectName(u"mainLabel")
@@ -100,6 +84,13 @@ class Ui_AboutDialog(object):
 
         self.gridLayout.addItem(self.verticalSpacer, 4, 0, 1, 1)
 
+        self.updateLabel = QLabel(self.tab)
+        self.updateLabel.setObjectName(u"updateLabel")
+        self.updateLabel.setOpenExternalLinks(True)
+        self.updateLabel.setTextInteractionFlags(Qt.TextInteractionFlag.LinksAccessibleByKeyboard|Qt.TextInteractionFlag.LinksAccessibleByMouse|Qt.TextInteractionFlag.TextBrowserInteraction|Qt.TextInteractionFlag.TextSelectableByKeyboard|Qt.TextInteractionFlag.TextSelectableByMouse)
+
+        self.gridLayout.addWidget(self.updateLabel, 5, 0, 1, 3)
+
         self.tabWidget.addTab(self.tab, "")
         self.tab_2 = QWidget()
         self.tab_2.setObjectName(u"tab_2")
@@ -117,9 +108,9 @@ class Ui_AboutDialog(object):
         self.gridLayout_3.setObjectName(u"gridLayout_3")
         self.copyLibsButton = QPushButton(self.tab_5)
         self.copyLibsButton.setObjectName(u"copyLibsButton")
-        icon2 = QIcon()
-        icon2.addFile(u":/Icons/icons/copy.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.copyLibsButton.setIcon(icon2)
+        icon1 = QIcon()
+        icon1.addFile(u":/Icons/icons/copy.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.copyLibsButton.setIcon(icon1)
 
         self.gridLayout_3.addWidget(self.copyLibsButton, 2, 5, 1, 1)
 
@@ -170,14 +161,10 @@ class Ui_AboutDialog(object):
     def retranslateUi(self, AboutDialog):
         AboutDialog.setWindowTitle(QCoreApplication.translate("AboutDialog", u"About VeraGrid", None))
         self.label_3.setText("")
-        self.updateLabel.setText("")
         self.copyrightLabel.setText(QCoreApplication.translate("AboutDialog", u"Copyright", None))
-#if QT_CONFIG(tooltip)
-        self.updateButton.setToolTip(QCoreApplication.translate("AboutDialog", u"Update VeraGrid. If you are on windows don't do this.", None))
-#endif // QT_CONFIG(tooltip)
-        self.updateButton.setText("")
         self.mainLabel.setText(QCoreApplication.translate("AboutDialog", u"<html><head/><body><p align=\"justify\"><span style=\" font-weight:600;\">VeraGrid</span> has been carefully crafted since 2015 to serve as a platform for research and consultancy. Visit <a href=\"https://www.eroots.tech/\"><span style=\" text-decoration: underline; color:#26a269;\">eRoots</span></a> for more details. The source of VeraGrid can be found <a href=\"https://github.com/SanPen/VeraGrid\"><span style=\" text-decoration: underline; color:#26a269;\">here.</span></a></p></body></html>", None))
         self.label.setText("")
+        self.updateLabel.setText("")
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab), QCoreApplication.translate("AboutDialog", u"About", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2), QCoreApplication.translate("AboutDialog", u"Contributors", None))
 #if QT_CONFIG(tooltip)

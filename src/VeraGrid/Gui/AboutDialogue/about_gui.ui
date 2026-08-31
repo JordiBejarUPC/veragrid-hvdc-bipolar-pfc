@@ -62,19 +62,6 @@
          </property>
         </widget>
        </item>
-       <item row="5" column="0" colspan="2">
-        <widget class="QLabel" name="updateLabel">
-         <property name="text">
-          <string/>
-         </property>
-         <property name="openExternalLinks">
-          <bool>true</bool>
-         </property>
-         <property name="textInteractionFlags">
-          <set>Qt::TextInteractionFlag::LinksAccessibleByKeyboard|Qt::TextInteractionFlag::LinksAccessibleByMouse|Qt::TextInteractionFlag::TextBrowserInteraction|Qt::TextInteractionFlag::TextSelectableByKeyboard|Qt::TextInteractionFlag::TextSelectableByMouse</set>
-         </property>
-        </widget>
-       </item>
        <item row="7" column="0" colspan="3">
         <widget class="QLabel" name="copyrightLabel">
          <property name="text">
@@ -88,26 +75,6 @@
          </property>
          <property name="textInteractionFlags">
           <set>Qt::TextInteractionFlag::LinksAccessibleByMouse|Qt::TextInteractionFlag::TextSelectableByMouse</set>
-         </property>
-        </widget>
-       </item>
-       <item row="5" column="2">
-        <widget class="QPushButton" name="updateButton">
-         <property name="maximumSize">
-          <size>
-           <width>80</width>
-           <height>16777215</height>
-          </size>
-         </property>
-         <property name="toolTip">
-          <string>Update VeraGrid. If you are on windows don't do this.</string>
-         </property>
-         <property name="text">
-          <string/>
-         </property>
-         <property name="icon">
-          <iconset resource="../Icons/icons.qrc">
-           <normaloff>:/Icons/icons/sync.png</normaloff>:/Icons/icons/sync.png</iconset>
          </property>
         </widget>
        </item>
@@ -176,6 +143,19 @@
           </size>
          </property>
         </spacer>
+       </item>
+       <item row="5" column="0" colspan="3">
+        <widget class="QLabel" name="updateLabel">
+         <property name="text">
+          <string/>
+         </property>
+         <property name="openExternalLinks">
+          <bool>true</bool>
+         </property>
+         <property name="textInteractionFlags">
+          <set>Qt::TextInteractionFlag::LinksAccessibleByKeyboard|Qt::TextInteractionFlag::LinksAccessibleByMouse|Qt::TextInteractionFlag::TextBrowserInteraction|Qt::TextInteractionFlag::TextSelectableByKeyboard|Qt::TextInteractionFlag::TextSelectableByMouse</set>
+         </property>
+        </widget>
        </item>
       </layout>
      </widget>
