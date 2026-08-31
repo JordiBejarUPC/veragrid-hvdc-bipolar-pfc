@@ -16,7 +16,7 @@ from VeraGridEngine.Simulations.InvestmentsEvaluation.CandidateGeneration.candid
     CandidateGenerationOptions,
 )
 from VeraGridEngine.Simulations.InvestmentsEvaluation.CandidateGeneration.candidate_generation_results import (
-    NEW_LINE, UPGRADE,
+    NEW_LINE, UPGRADE, SHUNT_REACTOR, STATIC_GENERATOR, BATTERY,
 )
 
 
@@ -71,9 +71,14 @@ def test_candidate_generation_pipeline():
     for c in results.candidates:
         assert len(c.relieved_violations) > 0
 
-    # --- Step 5: verification produced a report for the top candidate ---
-    assert len(results.verification_report) == 1
-    assert "resolved" in results.verification_report[0]
+    # --- Step 5: verification produced a report for the top candidate of each non-empty track ---
+    # (line/upgrade, injection and voltage-relief candidates are verified independently, each up
+    # to verify_top_k=1 - this stressed grid has all three kinds of violation/candidate).
+    expected_reports = (min(1, len(results.candidates))
+                        + min(1, len(results.injection_candidates))
+                        + min(1, len(results.voltage_candidates)))
+    assert len(results.verification_report) == expected_reports
+    assert all("resolved" in r for r in results.verification_report)
 
     # Only the top verify_top_k candidates are verified; the rest are left untouched.
     verified_flagged = [c for c in results.candidates if c.verified]
@@ -83,6 +88,7 @@ def test_candidate_generation_pipeline():
     summary = results.summary_text()
     assert "Base case AC power flow" in summary
     assert "N-1 screening" in summary
+    assert "Voltage screening" in summary
     assert "Ranked candidates" in summary
 
 
@@ -174,6 +180,140 @@ def test_candidate_apply_creates_investments():
     # The base grid is untouched until the investments are applied: original rate and active state.
     assert upgrade_cand.target_branch.rate == old_rate
     assert upgrade_cand.target_branch.active is True
+
+    # Shunt reactor, static generator and battery candidates: each is a brand-new device added
+    # inactive, wrapped in exactly one investment - mirroring the new-line pattern above.
+    shunt_cand = next(c for c in drv.results.voltage_candidates if c.kind == SHUNT_REACTOR)
+    static_gen_cand = next(c for c in drv.results.injection_candidates if c.kind == STATIC_GENERATOR)
+    battery_cand = next(c for c in drv.results.injection_candidates if c.kind == BATTERY)
+
+    n_shunts_before = len(grid.controllable_shunts)
+    n_inv_before = len(grid.investments)
+    created_shunt = shunt_cand.apply(circuit=grid, group=group, logger=logger)
+    assert isinstance(created_shunt, dev.ControllableShunt)
+    assert created_shunt.active is False
+    assert created_shunt.Bmax == shunt_cand.shunt_bmax
+    assert len(grid.controllable_shunts) == n_shunts_before + 1
+    assert len(grid.investments) == n_inv_before + 1
+    assert grid.investments[-1].device is created_shunt
+
+    n_static_gens_before = len(grid.static_generators)
+    n_inv_before = len(grid.investments)
+    created_static_gen = static_gen_cand.apply(circuit=grid, group=group, logger=logger)
+    assert isinstance(created_static_gen, dev.StaticGenerator)
+    assert created_static_gen.active is False
+    assert created_static_gen.P == static_gen_cand.injection_p
+    assert len(grid.static_generators) == n_static_gens_before + 1
+    assert len(grid.investments) == n_inv_before + 1
+    assert grid.investments[-1].device is created_static_gen
+
+    n_batteries_before = len(grid.batteries)
+    n_inv_before = len(grid.investments)
+    created_battery = battery_cand.apply(circuit=grid, group=group, logger=logger)
+    assert isinstance(created_battery, dev.Battery)
+    assert created_battery.active is False
+    assert created_battery.Enom == battery_cand.battery_enom
+    assert len(grid.batteries) == n_batteries_before + 1
+    assert len(grid.investments) == n_inv_before + 1
+    assert grid.investments[-1].device is created_battery
+
+
+def test_static_generator_candidate_relieves_overload():
+    """
+    A static-generator candidate is sized/scored like a non-wires alternative: real-power
+    injection at a congested site, capped by max_injection_mw, priced linearly by
+    static_gen_cost_per_mw.
+    """
+    grid = _stressed_ieee14()
+    options = CandidateGenerationOptions(top_n_corridors=3, verify_top_k=0)
+    drv = CandidateGenerationDriver(grid=grid, options=options)
+    drv.run()
+    results = drv.results
+
+    static_gen_candidates = [c for c in results.injection_candidates if c.kind == STATIC_GENERATOR]
+    assert len(static_gen_candidates) > 0
+    for c in static_gen_candidates:
+        assert c.injection_p > 0.0
+        assert c.injection_p <= options.max_injection_mw
+        assert len(c.relieved_violations) > 0
+        assert c.capex == options.static_gen_cost_per_mw * c.injection_p
+
+
+def test_battery_candidate_dual_purpose_fields():
+    """
+    A battery candidate reuses the static-generator sizing for its real-power side, derives Enom
+    from Pmax x the configured duration, and is priced linearly by battery_cost_per_mwh on Enom.
+    """
+    grid = _stressed_ieee14()
+    options = CandidateGenerationOptions(top_n_corridors=3, verify_top_k=0)
+    drv = CandidateGenerationDriver(grid=grid, options=options)
+    drv.run()
+    results = drv.results
+
+    battery_candidates = [c for c in results.injection_candidates if c.kind == BATTERY]
+    assert len(battery_candidates) > 0
+    for c in battery_candidates:
+        assert c.battery_pmax == c.injection_p
+        assert c.battery_enom == c.battery_pmax * options.battery_duration_hours
+        assert len(c.relieved_violations) > 0
+        assert c.capex == options.battery_cost_per_mwh * c.battery_enom
+
+
+def _bus_with_overvoltage():
+    """
+    Tiny 2-bus grid with a lightly loaded far bus whose Vmax is tightened below where it
+    naturally solves, giving the voltage screening step an unambiguous over-voltage violation
+    with no branch overload at all - this is what exercises the "voltage violations alone must
+    not short-circuit the pipeline" guard.
+    """
+    grid = gce.MultiCircuit()
+
+    bus1 = dev.Bus('Bus 1', Vnom=20)
+    grid.add_bus(bus1)
+    grid.add_generator(bus1, dev.Generator('Slack Generator', vset=1.0))
+
+    bus2 = dev.Bus('Bus 2', Vnom=20)
+    bus2.Vmax = 0.98
+    bus2.Vmin = 0.90
+    grid.add_bus(bus2)
+    grid.add_load(bus2, dev.Load('load 2', P=1.0, Q=0.0))
+
+    grid.add_line(dev.Line(bus1, bus2, name='line 1-2', r=0.001, x=0.01, b=0.0, rate=50.0))
+
+    return grid
+
+
+def test_shunt_reactor_candidate_generated_and_verified():
+    """
+    A base-case over-voltage bus (with no branch overload at all) still produces exactly one
+    verified shunt-reactor candidate, in its own voltage_candidates track.
+    """
+    grid = _bus_with_overvoltage()
+    options = CandidateGenerationOptions(verify_top_k=1)
+
+    drv = CandidateGenerationDriver(grid=grid, options=options)
+    drv.run()
+    results = drv.results
+
+    assert results.base_case_converged is True
+    assert len(results.violations) == 0
+    assert len(results.voltage_violations) == 1
+    assert results.voltage_violations[0].is_overvoltage is True
+
+    assert len(results.voltage_candidates) == 1
+    cand = results.voltage_candidates[0]
+    assert cand.kind == SHUNT_REACTOR
+    assert cand.shunt_bmax > 0.0
+    assert cand.target_bus.name == results.voltage_violations[0].bus_name
+    assert cand.capex == options.shunt_cost_per_mvar * cand.shunt_bmax
+
+    # verify_top_k=1 verifies the top voltage-relief candidate too, even with zero overload
+    # candidates - this is the early-return guard fix (voltage-only violations must not
+    # short-circuit the pipeline before candidates are generated).
+    assert cand.verified is True
+    assert cand.verification_converged is True
+
+    assert "Voltage screening (base case)" in results.summary_text()
 
 
 def _two_bus_with_growing_load():

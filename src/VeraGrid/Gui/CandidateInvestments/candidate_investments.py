@@ -32,9 +32,10 @@ class CandidateInvestmentsWindow(QtWidgets.QDialog):
     Candidate-investment generator window.
 
     Runs the transmission-expansion candidate-generation pipeline (AC power flow base case ->
-    LODF N-1 screening -> PTDF-ranked reinforcements -> shortlist -> AC power-flow verification)
-    and lets the user pick which of the ranked candidates to materialise as investments, mirroring
-    the ``ProceduralGridWindow`` accept flow.
+    LODF N-1 + voltage screening -> PTDF-ranked reinforcements (new line, upgrade, static
+    generator, battery) and voltage-relief reinforcements (shunt reactor) -> shortlist -> AC
+    power-flow verification) and lets the user pick which of the ranked candidates to materialise
+    as investments, mirroring the ``ProceduralGridWindow`` accept flow.
     """
 
     def __init__(self, app: SimulationsMain, parent=None):
@@ -157,8 +158,13 @@ class CandidateInvestmentsWindow(QtWidgets.QDialog):
         self.report_text.setPlainText(results.summary_text())
 
         # Fill the ranked candidate list. Only verified candidates that introduce no new violations
-        # are listed, so everything shown is confirmed by a full AC power flow + N-1 re-check.
-        self._candidates = results.verified_candidates
+        # are listed, so everything shown is confirmed by a full AC power flow + N-1/voltage
+        # re-check. Line/upgrade, injection (static gen/battery) and voltage-relief (shunt reactor)
+        # candidates are three independently ranked/verified tracks (see CandidateGenerationResults
+        # docstring); each candidate's label() already names its own kind, so a simple concatenation
+        # is enough here.
+        self._candidates = (results.verified_candidates + results.verified_injection_candidates
+                            + results.verified_voltage_candidates)
         for candidate in self._candidates:
             self.candidate_list.addItem(QtWidgets.QListWidgetItem(candidate.label()))
 
@@ -171,14 +177,15 @@ class CandidateInvestmentsWindow(QtWidgets.QDialog):
         """
         Add every listed candidate as an investment. Each candidate gets its own
         ``InvestmentsGroup``, named after the asset it represents, so they can be combined freely
-        by the downstream investment evaluation. Any new-line devices are added to the circuit and
-        drawn on the currently selected diagram.
+        by the downstream investment evaluation. Any newly created device (line, shunt reactor,
+        static generator or battery) is added to the circuit and drawn on the currently selected
+        diagram.
         """
         if self._driver is None or len(self._candidates) == 0:
             return
 
         logger = Logger()
-        new_lines: List[dev.Line] = list()
+        new_devices: List[dev.EditableDevice] = list()
 
         for candidate in self._candidates:
             group = dev.InvestmentsGroup(idtag=None,
@@ -189,36 +196,68 @@ class CandidateInvestmentsWindow(QtWidgets.QDialog):
             # Each candidate creates its Investment(s) (and any new device) against the circuit.
             # A new-line candidate returns a Line to draw; an upgrade returns its uprated branch
             # copy, which overlaps the original geometrically — draw it only when it is a Line so
-            # the corridor still shows solid once applied (transformer copies are left undrawn).
+            # the corridor still shows solid once applied (transformer copies are left undrawn);
+            # shunt reactor / static generator / battery candidates return an injection device.
             created = candidate.apply(circuit=self.app.circuit, group=group, logger=logger)
             if isinstance(created, dev.Line):
-                new_lines.append(created)
+                new_devices.append(created)
+            elif isinstance(created, (dev.ControllableShunt, dev.StaticGenerator, dev.Battery)):
+                new_devices.append(created)
+            else:
+                pass
 
-        # Draw any newly created lines on the currently selected diagram. Both new-line and upgrade
-        # candidates connect existing buses, so their endpoints already exist on the diagram.
-        self._draw_new_lines(new_lines)
+        # Draw any newly created devices on the currently selected diagram. New-line, static-gen,
+        # battery and shunt-reactor candidates all connect to/attach at existing buses, so their
+        # host bus(es) already exist on the diagram.
+        self._draw_new_devices(new_devices)
 
         if logger.has_logs():
             LogsDialogue('Candidate investment generator log', logger).exec()
 
         self.close()
 
-    def _draw_new_lines(self, new_lines: List[dev.Line]) -> None:
+    def _draw_new_devices(self, new_devices: List[dev.EditableDevice]) -> None:
         """
-        Draw the given new lines on the currently selected diagram widget, if any.
+        Draw newly created devices on the currently selected diagram widget, if any. A new line
+        connects two existing buses and uses the line-drawing path; an injection device (shunt
+        reactor / static generator / battery) attaches to its host bus's existing graphic item.
 
-        :param new_lines: Lines that were added to the circuit.
+        :param new_devices: Devices created by ``candidate.apply()`` across all accepted candidates.
         """
-        if len(new_lines) == 0:
+        if len(new_devices) == 0:
             return
+        else:
+            pass
 
         diagram = self.app.get_selected_diagram_widget()
+        if diagram is None:
+            return
+        else:
+            pass
 
         if isinstance(diagram, SchematicWidget):
-            for line in new_lines:
-                if diagram.graphics_manager.query(elm=line) is None:
-                    diagram.add_api_line(branch=line)
+            for device in new_devices:
+                if diagram.graphics_manager.query(elm=device) is not None:
+                    pass  # already drawn
+                elif isinstance(device, dev.Line):
+                    diagram.add_api_line(branch=device)
+                else:
+                    # Injection device: attach to its host bus's existing graphic item, if drawn.
+                    bus_graphic = diagram.graphics_manager.query(elm=device.bus)
+                    if bus_graphic is not None:
+                        bus_graphic.add_object(api_obj=device)
+                    else:
+                        pass  # host bus not on this diagram; nothing to attach to
         elif isinstance(diagram, GridMapWidget):
-            for line in new_lines:
-                if diagram.graphics_manager.query(elm=line) is None:
-                    diagram.add_api_line(api_object=line)
+            for device in new_devices:
+                if diagram.graphics_manager.query(elm=device) is not None:
+                    pass
+                elif isinstance(device, dev.Line):
+                    diagram.add_api_line(api_object=device)
+                else:
+                    # The map widget has no drawing method for ControllableShunt today; battery
+                    # and static-generator investments still exist correctly in the circuit, just
+                    # won't render on the map diagram specifically (known, pre-existing gap).
+                    pass
+        else:
+            pass

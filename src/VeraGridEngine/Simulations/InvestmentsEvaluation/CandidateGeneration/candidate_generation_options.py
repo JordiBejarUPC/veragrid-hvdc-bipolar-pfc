@@ -7,6 +7,35 @@ from typing import Optional
 
 from VeraGridEngine.basic_structures import IntVec
 
+# Standard grid-scale battery duration class for peak-shaving/overload-relief use cases (as opposed
+# to ~1h frequency-response or 8h+ long-duration storage). A default, not a domain-calibrated figure.
+DEFAULT_BATTERY_DURATION_HOURS: float = 4.0
+
+# Headroom multiplier applied to the shunt reactor's upfront Bmax sizing estimate (a network-
+# decoupled proxy, see CandidateGenerationDriver._make_shunt_reactor_candidates), to guard against
+# that proxy underestimating the true, network-coupled reactive power requirement.
+DEFAULT_SHUNT_BMAX_MARGIN: float = 1.5
+
+# Safety cap (MW) on Static Generator / Battery sizing, playing the same bounding role a reference
+# branch's own rating plays for a NEW_LINE candidate.
+DEFAULT_MAX_INJECTION_MW: float = 50.0
+
+# CAPEX unit costs (EUR). Sources noted where an internet-sourced figure was used; otherwise this
+# is a planning-tool placeholder, not a domain-calibrated figure - see the CAPEX proxies previously
+# used (rate**2-style) for context on why a linear-in-size model replaced them.
+#
+# Shunt reactor: MISO Transmission Cost Estimation Guide, 2023 revision, 500kV shunt reactors.
+DEFAULT_SHUNT_COST_PER_MVAR: float = 23625.0
+# Static generator: not internet-sourced - midpoint of a ~EUR0.7M-1.2M/MW simple-cycle-peaker-class
+# estimate, kept as a placeholder since "static generator" is a generic non-wires-alternative
+# abstraction rather than one specific technology.
+DEFAULT_STATIC_GEN_COST_PER_MW: float = 1_000_000.0
+# Battery: NREL "Cost Projections for Utility-Scale Battery Storage" (2025 update), mid case,
+# 4-hour duration, 2035 - a single bundled EUR/MWh figure (power conversion + BOS + cells), applied
+# to Enom rather than split into separate power/energy terms, matching NREL's own costing convention
+# now that Enom already encodes both Pmax and duration.
+DEFAULT_BATTERY_COST_PER_MWH: float = 247000.0
+
 
 class CandidateGenerationOptions:
     """
@@ -20,7 +49,13 @@ class CandidateGenerationOptions:
                  ptdf_threshold: float = 1e-4,
                  verify_top_k: int = 1,
                  use_time_series: bool = False,
-                 time_indices: Optional[IntVec] = None):
+                 time_indices: Optional[IntVec] = None,
+                 battery_duration_hours: float = DEFAULT_BATTERY_DURATION_HOURS,
+                 shunt_bmax_margin: float = DEFAULT_SHUNT_BMAX_MARGIN,
+                 max_injection_mw: float = DEFAULT_MAX_INJECTION_MW,
+                 shunt_cost_per_mvar: float = DEFAULT_SHUNT_COST_PER_MVAR,
+                 static_gen_cost_per_mw: float = DEFAULT_STATIC_GEN_COST_PER_MW,
+                 battery_cost_per_mwh: float = DEFAULT_BATTERY_COST_PER_MWH):
         """
         :param top_n_corridors: Number of nearby-substation corridors enumerated as new-line
                                 candidates for each flagged violation (in addition to the parallel
@@ -31,13 +66,27 @@ class CandidateGenerationOptions:
                                       (1.0 = 100% of ``rate * contingency_factor``).
         :param ptdf_threshold: Sensitivities with absolute value below this are treated as zero.
         :param verify_top_k: Number of top-ranked candidates to verify with a fresh AC power flow
-                             plus N-1 screening (step 5).
+                             plus N-1 and voltage screening (step 5). Applied independently to the
+                             overload-relief candidates and to the voltage-relief candidates.
         :param use_time_series: If True, scan ``time_indices`` for the most critical snapshot
                                 (most base-case branch overloads plus bus voltage violations) and
                                 run the whole pipeline at that snapshot instead of today's grid
                                 state.
         :param time_indices: Time steps to scan when ``use_time_series`` is True. ``None`` means
                              every time step in the grid (``grid.get_all_time_indices()``).
+        :param battery_duration_hours: Hours of ``Pmax`` used to size a battery candidate's
+                                       ``Enom`` (``Enom = Pmax * battery_duration_hours``).
+        :param shunt_bmax_margin: Headroom multiplier on a shunt-reactor candidate's upfront
+                                  ``Bmax`` sizing estimate.
+        :param max_injection_mw: Upper bound (MW) on a static-generator or battery candidate's
+                                 sized real-power output.
+        :param shunt_cost_per_mvar: CAPEX unit cost (EUR/MVAr) for a shunt-reactor candidate,
+                                    applied to its sized ``Bmax``.
+        :param static_gen_cost_per_mw: CAPEX unit cost (EUR/MW) for a static-generator candidate,
+                                       applied to its sized ``P``.
+        :param battery_cost_per_mwh: CAPEX unit cost (EUR/MWh) for a battery candidate, applied to
+                                     its sized ``Enom`` (which already encodes both ``Pmax`` and
+                                     ``battery_duration_hours``).
         """
         self.top_n_corridors: int = int(top_n_corridors)
         self.base_overload_threshold: float = float(base_overload_threshold)
@@ -46,3 +95,9 @@ class CandidateGenerationOptions:
         self.verify_top_k: int = int(verify_top_k)
         self.use_time_series: bool = bool(use_time_series)
         self.time_indices: Optional[IntVec] = time_indices
+        self.battery_duration_hours: float = float(battery_duration_hours)
+        self.shunt_bmax_margin: float = float(shunt_bmax_margin)
+        self.max_injection_mw: float = float(max_injection_mw)
+        self.shunt_cost_per_mvar: float = float(shunt_cost_per_mvar)
+        self.static_gen_cost_per_mw: float = float(static_gen_cost_per_mw)
+        self.battery_cost_per_mwh: float = float(battery_cost_per_mwh)

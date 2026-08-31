@@ -7,6 +7,7 @@ from typing import List, Optional, TYPE_CHECKING
 
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.basic_structures import Logger
+from VeraGridEngine.enumerations import ShuntControlMode, GeneratorControlMode
 
 if TYPE_CHECKING:
     from VeraGridEngine.Devices.multi_circuit import MultiCircuit
@@ -15,6 +16,9 @@ if TYPE_CHECKING:
 # Candidate kinds
 NEW_LINE = "New line"
 UPGRADE = "Upgrade"
+SHUNT_REACTOR = "Shunt reactor"
+STATIC_GENERATOR = "Static generator"
+BATTERY = "Battery"
 
 
 class ViolationRecord:
@@ -67,16 +71,71 @@ class ViolationRecord:
         return f"outage {self.outage_name} -> branch {self.monitored_name} overloaded ({pct:.1f}%)"
 
 
+class VoltageViolationRecord:
+    """
+    A single bus voltage-magnitude violation, base case only (see ``CandidateGenerationDriver``
+    docstring for why N-1 voltage screening is out of scope).
+    """
+
+    def __init__(self,
+                 bus_idx: int,
+                 bus_name: str,
+                 vm: float,
+                 vmin: float,
+                 vmax: float):
+        """
+        :param bus_idx: Bus index (compiled order) of the violated bus.
+        :param bus_name: Name of the violated bus.
+        :param vm: Voltage magnitude at the bus (p.u.).
+        :param vmin: Lower voltage limit (p.u.).
+        :param vmax: Upper voltage limit (p.u.).
+        """
+        self.bus_idx = bus_idx
+        self.bus_name = bus_name
+        self.vm = vm
+        self.vmin = vmin
+        self.vmax = vmax
+
+    @property
+    def is_overvoltage(self) -> bool:
+        """Whether this violation is an over-voltage (Vm > Vmax)."""
+        return self.vm > self.vmax
+
+    @property
+    def is_undervoltage(self) -> bool:
+        """Whether this violation is an under-voltage (Vm < Vmin)."""
+        return self.vm < self.vmin
+
+    @property
+    def excess(self) -> float:
+        """P.u. by which the voltage exceeds its violated bound (>= 0)."""
+        if self.is_overvoltage:
+            return max(self.vm - self.vmax, 0.0)
+        elif self.is_undervoltage:
+            return max(self.vmin - self.vm, 0.0)
+        else:
+            return 0.0
+
+    def describe(self) -> str:
+        """One-line description in the 'bus X: Vm pu (> Vmax limit pu)' form."""
+        if self.is_overvoltage:
+            bound, limit, rel = "Vmax", self.vmax, ">"
+        else:
+            bound, limit, rel = "Vmin", self.vmin, "<"
+        return f"bus {self.bus_name}: {self.vm:.3f} pu ({rel} {bound} {limit:.3f} pu)"
+
+
 class ReinforcementCandidate:
     """
-    A candidate reinforcement: either a new line on a corridor, or a rating upgrade of an
-    existing branch. Carries enough to be scored, annotated with the violations it relieves,
-    and materialised as an ``Investment``.
+    A candidate reinforcement: a new line on a corridor, a rating upgrade of an existing branch, a
+    shunt reactor, a static generator, or a battery. Carries enough to be scored, annotated with the
+    violations it relieves, and materialised as an ``Investment``.
     """
 
     def __init__(self, kind: str):
         """
-        :param kind: ``NEW_LINE`` or ``UPGRADE``.
+        :param kind: ``NEW_LINE``, ``UPGRADE``, ``SHUNT_REACTOR``, ``STATIC_GENERATOR`` or
+                    ``BATTERY``.
         """
         self.kind: str = kind
 
@@ -97,8 +156,25 @@ class ReinforcementCandidate:
         self.old_rate: float = 0.0
         self.new_rate: float = 0.0
 
+        # Shunt-reactor fields
+        self.target_bus: Optional[dev.Bus] = None
+        self.target_bus_idx: int = -1
+        self.shunt_vset: float = 1.0
+        self.shunt_bmax: float = 0.0
+
+        # Static-generator / battery shared placement fields
+        self.injection_bus: Optional[dev.Bus] = None
+        self.injection_bus_idx: int = -1
+        self.injection_p: float = 0.0
+        self.injection_snom: float = 0.0
+
+        # Battery-only fields
+        self.battery_pmax: float = 0.0
+        self.battery_enom: float = 0.0
+
         # Scoring / annotation
         self.relieved_violations: List[ViolationRecord] = list()
+        self.relieved_voltage_violations: List[VoltageViolationRecord] = list()
         self.score: float = 0.0
         self.capex: float = 0.0
 
@@ -108,31 +184,66 @@ class ReinforcementCandidate:
         self.n_targeted: int = 0
         self.n_resolved: int = 0
         self.n_new_violations: int = 0
+        self.n_voltage_targeted: int = 0
+        self.n_voltage_resolved: int = 0
+        self.n_new_voltage_violations: int = 0
 
     @property
     def verified_ok(self) -> bool:
         """
         Whether this candidate was verified with a converged AC power flow and introduced no new
-        violations. This is the gate for displaying a candidate in the GUI shortlist.
+        branch or voltage violations. This is the gate for displaying a candidate in the GUI
+        shortlist.
         """
-        return self.verified and self.verification_converged and self.n_new_violations == 0
+        return (self.verified and self.verification_converged
+               and self.n_new_violations == 0 and self.n_new_voltage_violations == 0)
 
     def group_name(self) -> str:
         """Name of the investments group this candidate goes into: the asset it represents."""
         if self.kind == NEW_LINE:
             return f"New line {self.bus_from.name} - {self.bus_to.name}"
-        return f"Upgrade {self.target_branch.name} rate {self.new_rate:.0f}"
+        elif self.kind == UPGRADE:
+            return f"Upgrade {self.target_branch.name} rate {self.new_rate:.0f}"
+        elif self.kind == SHUNT_REACTOR:
+            return f"Shunt reactor @ {self.target_bus.name}"
+        elif self.kind == STATIC_GENERATOR:
+            return f"Static generator @ {self.injection_bus.name}"
+        elif self.kind == BATTERY:
+            return f"Battery @ {self.injection_bus.name}"
+        else:
+            raise ValueError(f"Unhandled candidate kind: {self.kind}")
 
     def label(self) -> str:
         """Human-readable one-line label for the candidate list in the GUI."""
-        n = len(self.relieved_violations)
         if self.kind == NEW_LINE:
             what = f"New line {self.bus_from.name} - {self.bus_to.name} (rate {self.rate:.0f} MVA)"
-        else:
+            n = len(self.relieved_violations)
+            return f"{what} | relieves {n} violation(s) | score {self.score:.1f} MW"
+        elif self.kind == UPGRADE:
             what = f"Upgrade {self.target_branch.name} rate {self.old_rate:.0f} -> {self.new_rate:.0f} MVA"
-        return f"{what} | relieves {n} violation(s) | score {self.score:.1f} MW"
+            n = len(self.relieved_violations)
+            return f"{what} | relieves {n} violation(s) | score {self.score:.1f} MW"
+        elif self.kind == SHUNT_REACTOR:
+            what = f"Shunt reactor @ {self.target_bus.name} (Bmax {self.shunt_bmax:.1f} MVAr, Vset {self.shunt_vset:.3f} pu)"
+            n = len(self.relieved_voltage_violations)
+            return f"{what} | relieves {n} voltage violation(s) | score {self.score:.3f} pu"
+        elif self.kind == STATIC_GENERATOR:
+            what = f"Static generator @ {self.injection_bus.name} ({self.injection_p:.1f} MW)"
+            n = len(self.relieved_violations)
+            return f"{what} | relieves {n} violation(s) | score {self.score:.1f} MW"
+        elif self.kind == BATTERY:
+            what = f"Battery @ {self.injection_bus.name} ({self.injection_p:.1f} MW, {self.battery_enom:.1f} MWh)"
+            n = len(self.relieved_violations)
+            if len(self.relieved_voltage_violations) > 0:
+                extra = f" (+voltage support @ {len(self.relieved_voltage_violations)} bus(es))"
+            else:
+                extra = ""
+            return f"{what} | relieves {n} violation(s){extra} | score {self.score:.1f} MW"
+        else:
+            raise ValueError(f"Unhandled candidate kind: {self.kind}")
 
-    def apply(self, circuit: "MultiCircuit", group: dev.InvestmentsGroup, logger: Logger) -> Optional[dev.Branch]:
+    def apply(self, circuit: "MultiCircuit", group: dev.InvestmentsGroup,
+             logger: Logger) -> Optional[dev.EditableDevice]:
         """
         Materialise this candidate on the given circuit as ``Investment`` object(s) in ``group``.
 
@@ -145,6 +256,11 @@ class ReinforcementCandidate:
         rating, and — unlike a ``prop``/``value`` investment — works through the activation-only
         investments framework (optimizer and Variations panel), which never applies ``prop``/
         ``value``. The base grid is left untouched until the investments are applied.
+
+        Shunt reactor, static generator and battery candidates are all brand-new devices with
+        nothing existing to deactivate, so they follow the same single-device/single-investment
+        pattern as the new-line candidate: built inactive, added to the circuit, and wrapped in one
+        investment that activates them.
 
         :param circuit: The circuit to add to (the same one the generator ran on).
         :param group: The investments group to attach to.
@@ -169,7 +285,7 @@ class ReinforcementCandidate:
                                                   CAPEX=self.capex,
                                                   group=group))
             return line
-        else:
+        elif self.kind == UPGRADE:
             # Upgrade: copy the branch, raise the copy's rate, add it inactive. The forced new
             # idtag keeps the copy distinct from the original in the grid's element dictionary.
             upgraded = self.target_branch.copy(forced_new_idtag=True)
@@ -203,6 +319,59 @@ class ReinforcementCandidate:
                                                   status=False,
                                                   group=group))
             return upgraded
+        elif self.kind == SHUNT_REACTOR:
+            # A reactor only absorbs (Bmin=0); the continuous shunt control sizes the actual B
+            # within [0, Bmax] during a power flow to hit Vset, so only the cap needs to be built
+            # here - see CandidateGenerationDriver._make_shunt_reactor_candidates for the sizing.
+            shunt = dev.ControllableShunt(name=f"Shunt reactor @ {self.target_bus.name}",
+                                          Bmin=0.0,
+                                          Bmax=self.shunt_bmax,
+                                          Gmin=0.0,
+                                          Gmax=0.0,
+                                          number_of_steps=1,
+                                          vset=self.shunt_vset,
+                                          control_mode=ShuntControlMode.Continuous,
+                                          active=False)
+            circuit.add_controllable_shunt(self.target_bus, shunt)
+            circuit.add_investment(dev.Investment(device=shunt,
+                                                  code=shunt.code,
+                                                  name="Shunt reactor: " + shunt.name,
+                                                  CAPEX=self.capex,
+                                                  group=group))
+            return shunt
+        elif self.kind == STATIC_GENERATOR:
+            static_gen = dev.StaticGenerator(name=f"Static generator @ {self.injection_bus.name}",
+                                             P=self.injection_p,
+                                             Q=0.0,
+                                             Snom=self.injection_snom,
+                                             active=False)
+            circuit.add_static_generator(self.injection_bus, static_gen)
+            circuit.add_investment(dev.Investment(device=static_gen,
+                                                  code=static_gen.code,
+                                                  name="Static generator: " + static_gen.name,
+                                                  CAPEX=self.capex,
+                                                  group=group))
+            return static_gen
+        elif self.kind == BATTERY:
+            # control_mode defaults to V (voltage-controlled, like a PV bus), so voltage support at
+            # this bus comes for free - no separate sizing is done for it, per the design decision.
+            battery = dev.Battery(name=f"Battery @ {self.injection_bus.name}",
+                                  P=self.injection_p,
+                                  Pmin=0.0,
+                                  Pmax=self.battery_pmax,
+                                  Enom=self.battery_enom,
+                                  control_mode=GeneratorControlMode.V,
+                                  vset=1.0,
+                                  active=False)
+            circuit.add_battery(self.injection_bus, battery)
+            circuit.add_investment(dev.Investment(device=battery,
+                                                  code=battery.code,
+                                                  name="Battery: " + battery.name,
+                                                  CAPEX=self.capex,
+                                                  group=group))
+            return battery
+        else:
+            raise ValueError(f"Unhandled candidate kind: {self.kind}")
 
 
 class CandidateGenerationResults:
@@ -217,6 +386,20 @@ class CandidateGenerationResults:
         self.violations: List[ViolationRecord] = list()
         self.candidates: List[ReinforcementCandidate] = list()
         self.verification_report: List[str] = list()
+
+        # Static-generator/battery candidates: kept as their own list/track rather than merged into
+        # ``candidates``. They score in the same unit (MW of overload relief) as new-line/upgrade,
+        # but are capped at ``options.max_injection_mw`` (tens of MW) while a transmission line's
+        # implicit capacity is hundreds to thousands of MW - sharing one ranked list would starve
+        # them of verification slots regardless of how good a fit they are for their site.
+        self.injection_candidates: List[ReinforcementCandidate] = list()
+
+        # Voltage screening (base case, always on) and the shunt-reactor candidates it drives.
+        # Kept as its own list/track rather than merged into ``candidates``: shunt-reactor scores
+        # are in p.u. (voltage excess) while every other kind scores in MW (overload relief), so a
+        # single sorted list would let unit scale silently starve one kind of verification slots.
+        self.voltage_violations: List[VoltageViolationRecord] = list()
+        self.voltage_candidates: List[ReinforcementCandidate] = list()
 
         # Populated only when the generator ran in time-series critical-snapshot mode.
         self.critical_time_idx: Optional[int] = None
@@ -238,10 +421,26 @@ class CandidateGenerationResults:
     @property
     def verified_candidates(self) -> List[ReinforcementCandidate]:
         """
-        Candidates that passed verification: verified with a converged AC power flow and no new
-        violations introduced. This is the shortlist offered to the user in the GUI.
+        Overload-relief candidates that passed verification: verified with a converged AC power
+        flow and no new violations introduced. This is the shortlist offered to the user in the GUI.
         """
         return [c for c in self.candidates if c.verified_ok]
+
+    @property
+    def verified_injection_candidates(self) -> List[ReinforcementCandidate]:
+        """
+        Injection-relief (static generator/battery) candidates that passed verification: verified
+        with a converged AC power flow and no new violations introduced.
+        """
+        return [c for c in self.injection_candidates if c.verified_ok]
+
+    @property
+    def verified_voltage_candidates(self) -> List[ReinforcementCandidate]:
+        """
+        Voltage-relief (shunt reactor) candidates that passed verification: verified with a
+        converged AC power flow and no new violations introduced.
+        """
+        return [c for c in self.voltage_candidates if c.verified_ok]
 
     def summary_text(self) -> str:
         """
@@ -258,7 +457,8 @@ class CandidateGenerationResults:
             lines.append(f"Overloaded branches: {self.n_overloaded_at_critical}")
             lines.append(f"Voltage-violated buses: {self.n_voltage_violated_at_critical}")
             if len(self.voltage_violation_report):
-                lines.append("Voltage violations (flagged only, not addressed by candidates):")
+                lines.append("Voltage violations at the critical snapshot (see 'Voltage screening' "
+                             "section below for shunt-reactor candidates):")
                 for line in self.voltage_violation_report:
                     lines.append("  " + line)
             lines.append("")
@@ -282,15 +482,37 @@ class CandidateGenerationResults:
             lines.append("  No N-1 overloads found.")
         lines.append("")
 
-        # Steps 3-4: candidates
+        # Step 2: voltage screening (base case, always on)
+        lines.append("=== Voltage screening (base case) ===")
+        if len(self.voltage_violations):
+            for v in self.voltage_violations:
+                lines.append("  " + v.describe())
+        else:
+            lines.append("  No base-case voltage violations found.")
+        lines.append("")
+
+        # Steps 3-4: line/branch-scale overload-relief candidates (new line, upgrade)
         lines.append(f"=== Ranked candidates ({len(self.candidates)}) ===")
         if len(self.candidates) == 0:
             lines.append("  No candidates generated.")
         lines.append("")
 
+        # Steps 3-4: injection-scale overload-relief candidates (static generator, battery)
+        lines.append(f"=== Ranked injection-relief candidates (static generator/battery) "
+                     f"({len(self.injection_candidates)}) ===")
+        if len(self.injection_candidates) == 0:
+            lines.append("  No injection-relief candidates generated.")
+        lines.append("")
+
+        # Steps 3-4: voltage-relief (shunt reactor) candidates
+        lines.append(f"=== Ranked voltage-relief candidates (shunt reactors) ({len(self.voltage_candidates)}) ===")
+        if len(self.voltage_candidates) == 0:
+            lines.append("  No shunt-reactor candidates generated.")
+        lines.append("")
+
         # Step 5: verification
         if len(self.verification_report):
-            lines.append("=== Verification (AC PF + N-1) ===")
+            lines.append("=== Verification (AC PF + N-1 + voltage) ===")
             lines.extend("  " + r for r in self.verification_report)
 
         return "\n".join(lines)

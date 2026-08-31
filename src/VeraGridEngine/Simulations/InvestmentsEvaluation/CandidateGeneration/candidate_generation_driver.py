@@ -13,6 +13,7 @@ from VeraGridEngine.basic_structures import Vec, IntVec
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
 from VeraGridEngine.DataStructures.numerical_circuit import NumericalCircuit
+from VeraGridEngine.enumerations import ShuntControlMode, GeneratorControlMode
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
@@ -23,7 +24,8 @@ from VeraGridEngine.Simulations.InvestmentsEvaluation.CandidateGeneration.candid
     CandidateGenerationOptions,
 )
 from VeraGridEngine.Simulations.InvestmentsEvaluation.CandidateGeneration.candidate_generation_results import (
-    CandidateGenerationResults, ViolationRecord, ReinforcementCandidate, NEW_LINE, UPGRADE,
+    CandidateGenerationResults, ViolationRecord, VoltageViolationRecord, ReinforcementCandidate,
+    NEW_LINE, UPGRADE, SHUNT_REACTOR, STATIC_GENERATOR, BATTERY,
 )
 
 
@@ -32,11 +34,22 @@ class CandidateGenerationDriver(DriverTemplate):
     Candidate-investment generator for transmission expansion planning.
 
     Pipeline:
-      1. Fresh AC power flow (base case): per-branch loading, base-case feasibility.
-      2. LODF N-1 screening: flag branches overloaded under each single branch outage.
-      3. PTDF-ranked reinforcements: new-line corridors and rating upgrades.
-      4. Shortlist: candidates ranked by relief, annotated with the violations they relieve.
-      5. Fresh AC power flow verification of the top candidate(s).
+      1. Fresh AC power flow (base case): per-branch loading and bus voltage, base-case feasibility.
+      2. LODF N-1 screening (branches) + base-case voltage screening (buses): flag branches
+         overloaded under each single branch outage, and buses outside their voltage limits.
+         Voltage screening is base case only - no linear voltage-sensitivity ("QTDF") utility
+         exists in this codebase to make an N-1 pass cheap, and over-voltage is predominantly a
+         light-load/base-case phenomenon, so an N solve per contingency would be disproportionate.
+      3. PTDF-ranked reinforcements, kept as three independently ranked tracks (see ``run()``):
+         new-line corridors and rating upgrades (line/branch-scale MW relief), static generators
+         and batteries (injection-scale MW relief, capped by ``max_injection_mw`` - orders of
+         magnitude below a transmission line's implicit capacity, so mixing them into one ranked
+         list would starve the smaller-scale kinds of verification slots), and shunt reactors
+         (p.u. of voltage excess, an entirely different unit).
+      4. Shortlist: each track's candidates ranked by its own relief score, annotated with the
+         violations they relieve.
+      5. Fresh AC power flow verification of the top candidate(s) of each track, re-checking both
+         branch and voltage violations regardless of which kind is being verified.
 
     With ``options.use_time_series`` set, step 0 first scans the grid's time series for the
     hour with the most combined branch overloads and bus voltage violations, and the whole
@@ -63,17 +76,20 @@ class CandidateGenerationDriver(DriverTemplate):
     # ----------------------------------------------------------------------------------------------
     # Low-level helpers
     # ----------------------------------------------------------------------------------------------
-    def _run_ac_pf(self, grid: MultiCircuit, t_idx: Optional[int] = None) -> Tuple[bool, Vec]:
+    def _run_ac_pf(self, grid: MultiCircuit, t_idx: Optional[int] = None) -> Tuple[bool, Vec, Vec]:
         """
-        Run a fresh AC power flow and return (converged, active-power branch flows in MW).
+        Run a fresh AC power flow and return (converged, active-power branch flows in MW, bus
+        voltage magnitudes in p.u.).
 
         :param grid: The grid to solve.
         :param t_idx: Time index to solve at, or None for the grid's snapshot values.
-        :return: (converged, Sf.real) with Sf in compiled branch order.
+        :return: (converged, Sf.real, |voltage|), Sf and voltage in compiled branch/bus order.
         """
         pf = PowerFlowDriver(grid=grid, options=self.pf_options, t_idx=t_idx)
         pf.run()
-        return bool(pf.results.converged), np.asarray(pf.results.Sf.real, dtype=float)
+        return (bool(pf.results.converged),
+               np.asarray(pf.results.Sf.real, dtype=float),
+               np.asarray(np.abs(pf.results.voltage), dtype=float))
 
     def _find_critical_snapshot(self, time_indices: IntVec) -> Tuple[int, int, int, List[str]]:
         """
@@ -177,6 +193,40 @@ class CandidateGenerationDriver(DriverTemplate):
     def _violation_key(v: ViolationRecord) -> Tuple[str, str]:
         """Identity of a violation independent of branch indexing (survives adding a line)."""
         return (v.outage_name if not v.is_base_case else "__base__", v.monitored_name)
+
+    @staticmethod
+    def _screen_voltage(nc: NumericalCircuit, vm: Vec) -> List[VoltageViolationRecord]:
+        """
+        Base-case bus-voltage screening: flag every active bus whose voltage magnitude falls
+        outside its own [Vmin, Vmax]. No N-1 (post-contingency) pass is performed - see the class
+        docstring for why.
+
+        :param nc: Numerical circuit (source of bus names, active flags, Vmin/Vmax).
+        :param vm: Bus voltage magnitudes in p.u. (compiled bus order), from a converged AC PF.
+        :return: List of voltage violations.
+        """
+        bus_data = nc.bus_data
+        violations: List[VoltageViolationRecord] = list()
+
+        for i in range(nc.nbus):
+            if not bus_data.active[i]:
+                pass
+            else:
+                v = float(vm[i])
+                vmin_i = float(bus_data.Vmin[i])
+                vmax_i = float(bus_data.Vmax[i])
+                if v < vmin_i or v > vmax_i:
+                    violations.append(VoltageViolationRecord(bus_idx=i, bus_name=str(bus_data.names[i]),
+                                                              vm=v, vmin=vmin_i, vmax=vmax_i))
+                else:
+                    pass
+
+        return violations
+
+    @staticmethod
+    def _voltage_violation_key(v: VoltageViolationRecord) -> str:
+        """Identity of a voltage violation independent of bus indexing (survives adding a device)."""
+        return v.bus_name
 
     def _nearest_buses(self, buses: List, bus_idx: int, k: int) -> List[int]:
         """
@@ -347,36 +397,270 @@ class CandidateGenerationDriver(DriverTemplate):
 
         return candidates
 
+    def _make_shunt_reactor_candidates(self,
+                                       nc: NumericalCircuit,
+                                       buses: List,
+                                       voltage_violations: List[VoltageViolationRecord]
+                                       ) -> List[ReinforcementCandidate]:
+        """
+        One shunt-reactor candidate per over-voltage bus. Under-voltage buses are left unaddressed:
+        a reactor only absorbs reactive power (Bmin=0), so it cannot relieve Vm < Vmin.
+
+        Sizing avoids hand-building a full Ybus/Thevenin voltage sensitivity: ``Bmax`` is bounded
+        by a network-strength proxy (total MVA rating of active, monitorable branches incident to
+        the bus, standing in for short-circuit stiffness) and the standard decoupled
+        ``dQ ~= Sk * dV`` approximation, margined for headroom. The actual required B is sized by
+        the AC power flow's own continuous shunt-control logic during verification (step 5), within
+        [0, Bmax] - this estimate only bounds that search and seeds the CAPEX proxy used for ranking.
+
+        :param nc: Numerical circuit (source of branch endpoints/ratings and bus data).
+        :param buses: List of Bus devices (compiled bus order).
+        :param voltage_violations: Base-case voltage violations from ``_screen_voltage``.
+        :return: List of shunt-reactor candidates.
+        """
+        pbd = nc.passive_branch_data
+        candidates: List[ReinforcementCandidate] = list()
+
+        for v in voltage_violations:
+            if not v.is_overvoltage:
+                pass
+            else:
+                i = v.bus_idx
+
+                # Local network-strength proxy standing in for short-circuit stiffness (Sk).
+                sk_proxy = 0.0
+                for m in range(nc.nbr):
+                    if pbd.active[m] and pbd.rates[m] > 0.0 and (int(pbd.F[m]) == i or int(pbd.T[m]) == i):
+                        sk_proxy += float(pbd.rates[m])
+                if sk_proxy <= 0.0:
+                    sk_proxy = float(nc.Sbase)
+                else:
+                    pass
+
+                # Classic decoupled sizing estimate: dQ ~= Sk * dV, margined for solver headroom.
+                q_needed = v.excess * sk_proxy
+                bmax = self.options.shunt_bmax_margin * q_needed
+
+                cand = ReinforcementCandidate(kind=SHUNT_REACTOR)
+                cand.target_bus = buses[i]
+                cand.target_bus_idx = i
+                cand.shunt_vset = v.vmax
+                cand.shunt_bmax = bmax
+                cand.relieved_voltage_violations = [v]
+                cand.score = float(v.excess)
+                cand.capex = self.options.shunt_cost_per_mvar * bmax
+                candidates.append(cand)
+
+        return candidates
+
+    def _find_injection_sites(self,
+                              nc: NumericalCircuit,
+                              buses: List,
+                              violations: List[ViolationRecord]) -> List[int]:
+        """
+        Candidate bus indices for a real-power injection device: the endpoints of every overloaded
+        branch plus their nearest neighbours, mirroring the corridor enumeration in
+        ``_make_new_line_candidates`` (single buses here, not bus pairs).
+
+        :param nc: Numerical circuit (source of branch endpoints).
+        :param buses: List of Bus devices (compiled bus order).
+        :param violations: Branch-overload violations.
+        :return: Sorted, de-duplicated bus indices.
+        """
+        pbd = nc.passive_branch_data
+        sites: Set[int] = set()
+
+        monitored_branches = sorted({v.monitored_idx for v in violations})
+        for m in monitored_branches:
+            f, t = int(pbd.F[m]), int(pbd.T[m])
+            sites.add(f)
+            sites.add(t)
+            for n in self._nearest_buses(buses, f, self.options.top_n_corridors):
+                sites.add(n)
+            for n in self._nearest_buses(buses, t, self.options.top_n_corridors):
+                sites.add(n)
+
+        return sorted(sites)
+
+    def _size_injection_candidate(self,
+                                  site: int,
+                                  ptdf: np.ndarray,
+                                  violations: List[ViolationRecord]
+                                  ) -> Tuple[float, float, List[ViolationRecord]]:
+        """
+        Size a real-power injection at ``site`` against every branch-overload violation it can
+        validly relieve, capped by ``options.max_injection_mw``.
+
+        Unlike a new line, a single-direction injection cannot reroute flow both ways: a site only
+        validly helps a violation when its PTDF sensitivity has the sign that makes positive
+        generation reduce, not worsen, |flow| there (``sens * flow < 0``); the wrong-sign case is
+        excluded rather than mis-scored.
+
+        :param site: Candidate bus index.
+        :param ptdf: PTDF matrix (branches x buses).
+        :param violations: Branch-overload violations.
+        :return: (sized P in MW, total relief score in MW, violations estimated fully relieved).
+        """
+        thr = self.options.ptdf_threshold
+
+        # Pass 1: size P to fully clear the worst violation this site can validly help with.
+        p_needed = 0.0
+        for v in violations:
+            sens = ptdf[v.monitored_idx, site]
+            if abs(sens) < thr or sens * v.flow >= 0.0:
+                pass
+            else:
+                p_needed = max(p_needed, v.excess / abs(sens))
+
+        if p_needed <= 0.0:
+            return 0.0, 0.0, list()
+        else:
+            p_size = min(p_needed, self.options.max_injection_mw)
+
+            # Pass 2: score exactly like the new-line corridor scoring - capped partial relief per
+            # violation, full credit only when the sized injection is estimated to fully clear it.
+            relieved: List[ViolationRecord] = list()
+            score = 0.0
+            for v in violations:
+                sens = ptdf[v.monitored_idx, site]
+                if abs(sens) < thr or sens * v.flow >= 0.0:
+                    pass
+                else:
+                    delta = abs(sens) * p_size
+                    relief_v = min(delta, v.excess)
+                    if relief_v > 0.0:
+                        score += relief_v
+                        if delta >= v.excess:
+                            relieved.append(v)
+                        else:
+                            pass
+                    else:
+                        pass
+
+            return p_size, score, relieved
+
+    def _make_static_generator_candidates(self,
+                                          nc: NumericalCircuit,
+                                          buses: List,
+                                          ptdf: np.ndarray,
+                                          violations: List[ViolationRecord]
+                                          ) -> List[ReinforcementCandidate]:
+        """
+        One static-generator candidate per viable injection site: real-power overload relief only,
+        a non-wires alternative to a new line or upgrade.
+
+        :param nc: Numerical circuit.
+        :param buses: List of Bus devices (compiled bus order).
+        :param ptdf: PTDF matrix (branches x buses).
+        :param violations: Branch-overload violations.
+        :return: List of static-generator candidates.
+        """
+        candidates: List[ReinforcementCandidate] = list()
+
+        for site in self._find_injection_sites(nc=nc, buses=buses, violations=violations):
+            p_size, score, relieved = self._size_injection_candidate(site, ptdf, violations)
+            if score <= 0.0 or len(relieved) == 0:
+                pass
+            else:
+                cand = ReinforcementCandidate(kind=STATIC_GENERATOR)
+                cand.injection_bus = buses[site]
+                cand.injection_bus_idx = site
+                cand.injection_p = p_size
+                cand.injection_snom = p_size
+                cand.relieved_violations = relieved
+                cand.score = float(score)
+                cand.capex = self.options.static_gen_cost_per_mw * p_size
+                candidates.append(cand)
+
+        return candidates
+
+    def _make_battery_candidates(self,
+                                 nc: NumericalCircuit,
+                                 buses: List,
+                                 ptdf: np.ndarray,
+                                 violations: List[ViolationRecord],
+                                 voltage_violations: List[VoltageViolationRecord]
+                                 ) -> List[ReinforcementCandidate]:
+        """
+        One battery candidate per viable injection site, sized identically to the static generator
+        for real-power relief (single-snapshot sizing, no multi-period dispatch in v1). Voltage
+        support is a free side effect of the default voltage-controlled behaviour applied in
+        ``ReinforcementCandidate.apply()`` - not separately sized here; if a site happens to
+        coincide with a screened over-voltage bus, that violation is attached purely for reporting
+        and does not affect targeting/score.
+
+        :param nc: Numerical circuit.
+        :param buses: List of Bus devices (compiled bus order).
+        :param ptdf: PTDF matrix (branches x buses).
+        :param violations: Branch-overload violations.
+        :param voltage_violations: Base-case voltage violations, for informational attachment only.
+        :return: List of battery candidates.
+        """
+        voltage_by_bus: Dict[int, VoltageViolationRecord] = {v.bus_idx: v for v in voltage_violations}
+        candidates: List[ReinforcementCandidate] = list()
+
+        for site in self._find_injection_sites(nc=nc, buses=buses, violations=violations):
+            p_size, score, relieved = self._size_injection_candidate(site, ptdf, violations)
+            if score <= 0.0 or len(relieved) == 0:
+                pass
+            else:
+                cand = ReinforcementCandidate(kind=BATTERY)
+                cand.injection_bus = buses[site]
+                cand.injection_bus_idx = site
+                cand.injection_p = p_size
+                cand.battery_pmax = p_size
+                cand.battery_enom = p_size * self.options.battery_duration_hours
+                cand.injection_snom = p_size
+                cand.relieved_violations = relieved
+                if site in voltage_by_bus:
+                    cand.relieved_voltage_violations = [voltage_by_bus[site]]
+                else:
+                    pass
+                cand.score = float(score)
+                # Priced by Enom (which already encodes Pmax x duration), not by P alone - matches
+                # the bundled power+energy costing convention the source figure uses (see options).
+                cand.capex = self.options.battery_cost_per_mwh * cand.battery_enom
+                candidates.append(cand)
+
+        return candidates
+
     # ----------------------------------------------------------------------------------------------
     # Verification (step 5)
     # ----------------------------------------------------------------------------------------------
     def _verify(self,
                 candidate: ReinforcementCandidate,
                 original_keys: Set[Tuple[str, str]],
+                original_voltage_keys: Set[str],
                 t_idx: Optional[int] = None) -> str:
         """
-        Apply the candidate to a copy of the grid, re-run AC PF + N-1 screening, and report whether
-        its targeted violations are cleared and whether any new violations appeared.
+        Apply the candidate to a copy of the grid, re-run AC PF + N-1 + voltage screening, and
+        report whether its targeted violations are cleared and whether any new violations appeared.
+        Both the branch and voltage checks run for every kind: a static-generator/battery injection
+        could in principle nudge a nearby bus's voltage via network coupling, and a shunt reactor's
+        Bmax cap could saturate without fully correcting voltage - either direction is caught here.
 
         :param candidate: Candidate to verify.
-        :param original_keys: Identities of all violations found in the original screening.
+        :param original_keys: Identities of all branch violations found in the original screening.
+        :param original_voltage_keys: Identities of all voltage violations found in the original
+                                      screening.
         :param t_idx: Time index to verify at, or None for the grid's snapshot values.
         :return: One-line verification report.
         """
         candidate.verified = True
         candidate.n_targeted = len(candidate.relieved_violations)
+        candidate.n_voltage_targeted = len(candidate.relieved_voltage_violations)
 
         cpy = self.grid.copy()
+        cpy_buses = cpy.get_buses()
 
         if candidate.kind == NEW_LINE:
-            cpy_buses = cpy.get_buses()
             line = dev.Line(bus_from=cpy_buses[candidate.bus_from_idx],
                             bus_to=cpy_buses[candidate.bus_to_idx],
                             name=candidate.name,
                             r=candidate.r, x=candidate.x, b=candidate.b,
                             rate=candidate.rate)
             cpy.add_line(line)
-        else:
+        elif candidate.kind == UPGRADE:
             target_idtag = candidate.target_branch.idtag
             for br in cpy.get_branches(add_switch=True):
                 if br.idtag == target_idtag:
@@ -387,35 +671,79 @@ class CandidateGenerationDriver(DriverTemplate):
                     if br_rate_prof is not None:
                         br_rate_prof.fill(candidate.new_rate)
                     break
+                else:
+                    pass
+        elif candidate.kind == SHUNT_REACTOR:
+            # Added directly active (no Investment wrapper) - testing "what if this existed",
+            # mirroring how NEW_LINE's verification copy adds an active Line.
+            shunt = dev.ControllableShunt(name="verify-shunt",
+                                          Bmin=0.0, Bmax=candidate.shunt_bmax,
+                                          Gmin=0.0, Gmax=0.0,
+                                          number_of_steps=1,
+                                          vset=candidate.shunt_vset,
+                                          control_mode=ShuntControlMode.Continuous,
+                                          active=True)
+            cpy.add_controllable_shunt(cpy_buses[candidate.target_bus_idx], shunt)
+        elif candidate.kind == STATIC_GENERATOR:
+            static_gen = dev.StaticGenerator(name="verify-staticgen",
+                                             P=candidate.injection_p, Q=0.0,
+                                             Snom=candidate.injection_snom, active=True)
+            cpy.add_static_generator(cpy_buses[candidate.injection_bus_idx], static_gen)
+        elif candidate.kind == BATTERY:
+            battery = dev.Battery(name="verify-battery",
+                                  P=candidate.injection_p, Pmin=0.0, Pmax=candidate.battery_pmax,
+                                  Enom=candidate.battery_enom,
+                                  control_mode=GeneratorControlMode.V, vset=1.0, active=True)
+            cpy.add_battery(cpy_buses[candidate.injection_bus_idx], battery)
+        else:
+            raise ValueError(f"Unhandled candidate kind: {candidate.kind}")
 
-        converged, base_flow = self._run_ac_pf(cpy, t_idx=t_idx)
+        converged, base_flow, vm = self._run_ac_pf(cpy, t_idx=t_idx)
         if not converged:
             candidate.verification_converged = False
             return f"{candidate.label()}: verification power flow did NOT converge."
-
-        candidate.verification_converged = True
+        else:
+            candidate.verification_converged = True
 
         nc = compile_numerical_circuit_at(cpy, t_idx=t_idx)
         if len(base_flow) != nc.nbr:
             # Cannot map flows onto branches reliably; treat as not verifiable.
             candidate.verification_converged = False
             return f"{candidate.label()}: verification skipped (branch count changed)."
+        else:
+            pass
 
         lin = LinearAnalysis(nc=nc)
         new_violations = self._screen(nc=nc, lodf=lin.LODF, base_flow=base_flow,
                                       base_threshold=self.options.base_overload_threshold,
                                       n1_threshold=self.options.n1_overload_threshold)
+        new_voltage_violations = self._screen_voltage(nc=nc, vm=vm)
+
         new_keys = {self._violation_key(v) for v in new_violations}
+        new_voltage_keys = {self._voltage_violation_key(v) for v in new_voltage_violations}
 
         targeted = {self._violation_key(v) for v in candidate.relieved_violations}
         resolved = targeted - new_keys
         introduced = new_keys - original_keys
 
+        targeted_v = {self._voltage_violation_key(v) for v in candidate.relieved_voltage_violations}
+        resolved_v = targeted_v - new_voltage_keys
+        introduced_v = new_voltage_keys - original_voltage_keys
+
         candidate.n_resolved = len(resolved)
         candidate.n_new_violations = len(introduced)
+        candidate.n_voltage_resolved = len(resolved_v)
+        candidate.n_new_voltage_violations = len(introduced_v)
 
-        return (f"{candidate.label()}: resolved {len(resolved)}/{len(targeted)} targeted violation(s); "
-                f"{len(introduced)} new violation(s).")
+        msg = (f"{candidate.label()}: resolved {len(resolved)}/{len(targeted)} targeted violation(s); "
+              f"{len(introduced)} new violation(s).")
+        if len(targeted_v) > 0 or len(introduced_v) > 0:
+            msg += (f" Voltage: resolved {len(resolved_v)}/{len(targeted_v)} targeted; "
+                   f"{len(introduced_v)} new.")
+        else:
+            pass
+
+        return msg
 
     # ----------------------------------------------------------------------------------------------
     # Main pipeline
@@ -453,7 +781,7 @@ class CandidateGenerationDriver(DriverTemplate):
 
         # --- Step 1: base case AC power flow ---
         self.report_text("Base case AC power flow...")
-        converged, base_flow = self._run_ac_pf(self.grid, t_idx=t_idx)
+        converged, base_flow, vm = self._run_ac_pf(self.grid, t_idx=t_idx)
         results.base_case_converged = converged
 
         if not converged:
@@ -485,7 +813,7 @@ class CandidateGenerationDriver(DriverTemplate):
                 loading = abs(base_flow[m]) / (pbd.rates[m] + 1e-9) * 100.0
                 results.base_loading_report.append(f"{str(pbd.names[m])}: {loading:.1f}%")
 
-        # --- Step 2: LODF N-1 screening ---
+        # --- Step 2: LODF N-1 screening + base-case voltage screening ---
         self.report_text("LODF N-1 screening...")
         lin = LinearAnalysis(nc=nc)
         violations = self._screen(nc=nc, lodf=lin.LODF, base_flow=base_flow,
@@ -494,16 +822,25 @@ class CandidateGenerationDriver(DriverTemplate):
         results.violations = violations
         results.base_case_feasible = (len(results.base_violations) == 0)
 
+        self.report_text("Voltage screening...")
+        voltage_violations = self._screen_voltage(nc=nc, vm=vm)
+        results.voltage_violations = voltage_violations
+
         for v in violations:
             self.logger.add_info(v.describe())
+        for v in voltage_violations:
+            self.logger.add_info(v.describe())
 
-        if len(violations) == 0:
-            self.logger.add_info("No base-case or N-1 violations found; no candidates needed.")
+        if len(violations) == 0 and len(voltage_violations) == 0:
+            self.logger.add_info("No base-case or N-1 violations, and no voltage violations found; "
+                                 "no candidates needed.")
             self.results = results
             self.toc()
             return
+        else:
+            pass
 
-        # --- Steps 3-4: candidate generation + ranking ---
+        # --- Steps 3-4: line/branch-scale overload-relief candidates (new line, upgrade) ---
         self.report_text("Ranking reinforcements (PTDF)...")
         candidates: List[ReinforcementCandidate] = list()
         candidates += self._make_upgrade_candidates(nc=nc, branch_by_idtag=branch_by_idtag,
@@ -511,15 +848,48 @@ class CandidateGenerationDriver(DriverTemplate):
         candidates += self._make_new_line_candidates(nc=nc, buses=buses,
                                                      branch_by_idtag=branch_by_idtag,
                                                      ptdf=lin.PTDF, violations=violations)
-
         candidates.sort(key=lambda c: c.score, reverse=True)
         results.candidates = candidates
 
-        # --- Step 5: verify top-k candidates ---
+        # --- Steps 3-4: injection-scale overload-relief candidates (static generator, battery) -
+        # own track, separate from the line/branch-scale one above: capped at max_injection_mw
+        # (tens of MW), these always score far below a transmission line's implicit capacity
+        # (hundreds-thousands of MW), so sharing one ranked list would starve them of verification
+        # slots regardless of how good a fit they are (see CandidateGenerationResults docstring) ---
+        self.report_text("Ranking injection-relief reinforcements (static generator, battery)...")
+        injection_candidates: List[ReinforcementCandidate] = list()
+        injection_candidates += self._make_static_generator_candidates(nc=nc, buses=buses,
+                                                                        ptdf=lin.PTDF,
+                                                                        violations=violations)
+        injection_candidates += self._make_battery_candidates(nc=nc, buses=buses, ptdf=lin.PTDF,
+                                                               violations=violations,
+                                                               voltage_violations=voltage_violations)
+        injection_candidates.sort(key=lambda c: c.score, reverse=True)
+        results.injection_candidates = injection_candidates
+
+        # --- Steps 3-4: voltage-relief candidate generation + ranking (own track, see
+        # CandidateGenerationResults.voltage_candidates docstring for why it's kept separate) ---
+        self.report_text("Ranking voltage-relief reinforcements...")
+        voltage_candidates = self._make_shunt_reactor_candidates(nc=nc, buses=buses,
+                                                                  voltage_violations=voltage_violations)
+        voltage_candidates.sort(key=lambda c: c.score, reverse=True)
+        results.voltage_candidates = voltage_candidates
+
+        # --- Step 5: verify top-k candidates of each of the three tracks ---
         original_keys = {self._violation_key(v) for v in violations}
+        original_voltage_keys = {self._voltage_violation_key(v) for v in voltage_violations}
         for cand in candidates[:max(0, self.options.verify_top_k)]:
-            self.report_text("Verifying top candidate(s)...")
-            results.verification_report.append(self._verify(cand, original_keys, t_idx=t_idx))
+            self.report_text("Verifying top overload-relief candidate(s)...")
+            results.verification_report.append(
+                self._verify(cand, original_keys, original_voltage_keys, t_idx=t_idx))
+        for cand in injection_candidates[:max(0, self.options.verify_top_k)]:
+            self.report_text("Verifying top injection-relief candidate(s)...")
+            results.verification_report.append(
+                self._verify(cand, original_keys, original_voltage_keys, t_idx=t_idx))
+        for cand in voltage_candidates[:max(0, self.options.verify_top_k)]:
+            self.report_text("Verifying top voltage-relief candidate(s)...")
+            results.verification_report.append(
+                self._verify(cand, original_keys, original_voltage_keys, t_idx=t_idx))
 
         self.results = results
         self.toc()
