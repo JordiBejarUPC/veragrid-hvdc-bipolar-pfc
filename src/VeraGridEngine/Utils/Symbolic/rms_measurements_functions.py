@@ -205,121 +205,189 @@ def build_rms_voltage_meter_outputs_from_polar(var_factory: VarFactory,
     return block, variables
 
 
-def build_rms_voltage_meter_outputs_from_dc(vdc: Expr,
-                                            nominal_frequency_hz: Expr) -> Dict[str, Expr]:
+def build_rms_voltage_meter_outputs_from_dc(var_factory: VarFactory,
+                                            vdc: Var,
+                                            nominal_frequency_hz: Expr)  -> Tuple[Block, List[Var]]:
     """
     Build the VeraGrid RMS output set of one DC voltage meter.
 
+    :param var_factory: Var factory.
     :param vdc: DC voltage magnitude.
     :param nominal_frequency_hz: Nominal frequency in Hz.
     :return: Signal-name to expression mapping.
     """
-    zero: Const = Const(0.0)
+    # zero: Const = Const(0.0)
+
+    # create block
+    block = Block()
+
+    # create_variables
+
+    u = var_factory.add_var(name="u", reference=VarPowerFlowReferenceType.U)
+    ur = var_factory.add_var(name="ur", reference=VarPowerFlowReferenceType.UR)
+
+    variables = [u, ur]
+
+    # fill block
+    block.algebraic_vars = variables
+    block.algebraic_eqs = [ur - vdc,
+                           u - vdc]
+
+    # Stable RMS names let native and imported controls consume the same meter.
+    return block, variables
 
     # The DC meter reuses the RMS names with zero quadrature and sequence channels.
-    return {
-        "ur": vdc,
-        "ui": zero,
-        "u": vdc,
-        "u2r": zero,
-        "u2i": zero,
-        "u2": zero,
-        "u0r": zero,
-        "u0i": zero,
-        "u0": zero,
-        "fref": nominal_frequency_hz,
-        "fe": nominal_frequency_hz,
-        "du": zero,
-        "dur": zero,
-        "dui": zero,
-        "du2": zero,
-        "du2r": zero,
-        "du2i": zero,
-        "du0": zero,
-        "du0r": zero,
-        "du0i": zero,
-        "ur_A": vdc,
-        "ur_B": vdc,
-        "ur_C": vdc,
-        "ui_A": zero,
-        "ui_B": zero,
-        "ui_C": zero,
-        "dur_A": zero,
-        "dur_B": zero,
-        "dur_C": zero,
-        "dui_A": zero,
-        "dui_B": zero,
-        "dui_C": zero,
-    }
+    # return {
+    #     "ur": vdc,
+        # "ui": zero,
+        # "u": vdc,
+        # "u2r": zero,
+        # "u2i": zero,
+        # "u2": zero,
+        # "u0r": zero,
+        # "u0i": zero,
+        # "u0": zero,
+        # "fref": nominal_frequency_hz,
+        # "fe": nominal_frequency_hz,
+        # "du": zero,
+        # "dur": zero,
+        # "dui": zero,
+        # "du2": zero,
+        # "du2r": zero,
+        # "du2i": zero,
+        # "du0": zero,
+        # "du0r": zero,
+        # "du0i": zero,
+        # "ur_A": vdc,
+        # "ur_B": vdc,
+        # "ur_C": vdc,
+        # "ui_A": zero,
+        # "ui_B": zero,
+        # "ui_C": zero,
+        # "dur_A": zero,
+        # "dur_B": zero,
+        # "dur_C": zero,
+        # "dui_A": zero,
+        # "dui_B": zero,
+        # "dui_C": zero,
+    # }
 
 
-def build_rms_current_meter_outputs_from_pq(vm: Expr,
-                                            va: Expr,
-                                            p: Expr,
-                                            q: Expr) -> Dict[str, Expr]:
+def build_rms_current_meter_outputs_from_pq(var_factory: VarFactory,
+                                            vm: Var,
+                                            va: Var,
+                                            p: Var,
+                                            q: Var) -> Tuple[Block, List[Var]]:
     """
     Build the VeraGrid RMS current outputs from ``P/Q`` and ``V``.
 
+    :param var_factory: Var factory.
     :param vm: Voltage magnitude.
     :param va: Voltage angle in radians.
     :param p: Active power.
     :param q: Reactive power.
     :return: Signal-name to expression mapping.
     """
-    zero: Const = Const(0.0)
-    eps: Const = Const(1e-9)
-    ur: Expr = vm * sym.cos(va)
-    ui: Expr = vm * sym.sin(va)
-    denom: Expr = (vm * vm) + eps
-    ir: Expr = (p * ur + q * ui) / denom
-    ii: Expr = (p * ui - q * ur) / denom
-    ir_b: Expr
-    ii_b: Expr
-    ir_c: Expr
-    ii_c: Expr
-    ir_b, ii_b = _rotate_complex_components(ir, ii, -2.0 * math.pi / 3.0)
-    ir_c, ii_c = _rotate_complex_components(ir, ii, 2.0 * math.pi / 3.0)
+
+    # create block
+    block = Block()
+
+    # create_variables
+
+    ur = var_factory.add_var(name="ur", reference=VarPowerFlowReferenceType.UR)
+    ui = var_factory.add_var(name="ui", reference=VarPowerFlowReferenceType.UI)
+    ir = var_factory.add_var(name="ui", reference=VarPowerFlowReferenceType.UI)
+    ii = var_factory.add_var(name="ui", reference=VarPowerFlowReferenceType.UI)
+    ir_b = var_factory.add_var(name="ui", reference=VarPowerFlowReferenceType.UI)
+    ii_b = var_factory.add_var(name="ui", reference=VarPowerFlowReferenceType.UI)
+    ir_c = var_factory.add_var(name="ui", reference=VarPowerFlowReferenceType.UI)
+    ii_c = var_factory.add_var(name="ui", reference=VarPowerFlowReferenceType.UI)
+
+
+    variables = [ur, ui, ir, ii, ir_b, ii_b, ir_c, ii_c]
+
+    ir_b_expr, ii_b_expr = _rotate_complex_components(ir, ii, -2.0 * math.pi / 3.0)
+    ir_c_expr, ii_c_expr = _rotate_complex_components(ir, ii, 2.0 * math.pi / 3.0)
+
+    # fill block
+    block.algebraic_vars = variables
+    block.algebraic_eqs = [ur - vm * sym.cos(va),
+                           ui -  vm * sym.sin(va),
+                           ir - (p * ur + q * ui) /(vm * vm) + Const(1e-9),
+                           ii - (p * ui - q * ur) / (vm * vm) + Const(1e-9),
+                           ir_b - ir_b_expr,
+                           ii_b - ii_b_expr,
+                           ir_c - ir_c_expr,
+                           ii_c - ii_c_expr]
+
+    # Stable RMS names let native and imported controls consume the same meter.
+    return block, variables
+    # zero: Const = Const(0.0)
+    # eps: Const = Const(1e-9)
+    # ur: Expr = vm * sym.cos(va)
+    # ui: Expr = vm * sym.sin(va)
+    # denom: Expr = (vm * vm) + Const(1e-9)
+    # ir: Expr = (p * ur + q * ui) /(vm * vm) + Const(1e-9)
+    # ii: Expr = (p * ui - q * ur) / (vm * vm) + Const(1e-9)
+    # ir_b: Expr
+    # ii_b: Expr
+    # ir_c: Expr
+    # ii_c: Expr
+
 
     # Aggregate and phase channels share one physically consistent phasor.
-    return {
-        "ir": ir,
-        "ii": ii,
-        "i": sym.sqrt((ir * ir) + (ii * ii) + eps),
-        "ia": sym.atan2(ii, ir),
-        "i2r": zero,
-        "i2i": zero,
-        "i2": zero,
-        "i0r": zero,
-        "i0i": zero,
-        "i0": zero,
-        "ir_A": ir,
-        "ir_B": ir_b,
-        "ir_C": ir_c,
-        "ii_A": ii,
-        "ii_B": ii_b,
-        "ii_C": ii_c,
-    }
+    # return {
+        # "ir": ir,
+        # "ii": ii,
+        # "i": sym.sqrt((ir * ir) + (ii * ii) + eps),
+        # "ia": sym.atan2(ii, ir),
+        # "i2r": zero,
+        # "i2i": zero,
+        # "i2": zero,
+        # "i0r": zero,
+        # "i0i": zero,
+        # "i0": zero,
+    #     "ir_A": ir,
+    #     "ir_B": ir_b,
+    #     "ir_C": ir_c,
+    #     "ii_A": ii,
+    #     "ii_B": ii_b,
+    #     "ii_C": ii_c,
+    # }
 
 
 def build_rms_current_meter_outputs_from_dc(
-        vdc: Expr,
-        p: Expr,
-) -> Dict[str, Expr]:
+        var_factory: VarFactory,
+        vdc: Var,
+        p: Var,
+) -> Tuple[Block, List[Var]]:
     """Build the RMS-editor current channels of one DC terminal.
 
     DC terminal power follows ``P = Vdc * Idc``.  The regularized quotient
     keeps the generated symbolic model finite while a bus is de-energized and
     uses the real current channel shared by the balanced meter interface.
 
+    :param var_factory: Var factory.
     :param vdc: DC terminal voltage.
     :param p: Signed active power at the same terminal.
     :return: Single signed ``Idc`` current expression.
     """
-    epsilon: Const = Const(1e-9)
-    direct_current: Expr = (p * vdc) / ((vdc * vdc) + epsilon)
-    result: Dict[str, Expr] = dict()
-    result["Idc"] = direct_current
-    return result
+
+    # create block
+    block = Block()
+
+    # create_variables
+
+    idc = var_factory.add_var(name="ur", reference=VarPowerFlowReferenceType.UR)
+
+    variables = [idc]
+
+    # fill block
+    block.algebraic_vars = variables
+    block.algebraic_eqs = [idc - (p * vdc) / ((vdc * vdc) + Const(1e-9))]
+
+    # Stable RMS names let native and imported controls consume the same meter.
+    return block, variables
 
 
 def build_rms_park_voltage_outputs(
