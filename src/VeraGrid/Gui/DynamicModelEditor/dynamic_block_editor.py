@@ -12,8 +12,10 @@ from PySide6.QtGui import (QDropEvent, QDragEnterEvent, QDragMoveEvent)
 from PySide6.QtCore import Qt, QPointF, Signal
 
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
+from VeraGridEngine.Devices.Substation.bus import Bus
 
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
+from VeraGridEngine.Utils.Symbolic.rms_measurements_functions import measurement_vars_dict, build_rms_voltage_meter_outputs_from_polar
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowReferenceType, ParamPowerFlowReferenceType, \
     DynamicSimulationMode, DynEditorGraphicsModes
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_algebraic_vars
@@ -43,6 +45,7 @@ from VeraGrid.Gui.DynamicModelEditor.block_editor import Ui_BlockEditorWindow
 import VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics as graph
 from VeraGrid.Session.dynamic_editor_entries import DynamicEditorEntry
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_library import DynamicEditorLibrary, LibraryTreeFilterProxyModel
+from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.measurements_dialog import MeasurementsDialog
 import VeraGrid.Gui.DynamicModelEditor.dynamic_editor_models as dialog_models
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_properties import (
     BlockStructuralEditRequest,
@@ -1866,12 +1869,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         elif not self.main_block.diagram.node_data:
             # here we add the connection variables to the main block
             if self.is_root_editor:
-                self.add_connection_vars()
+                self.add_connection_vars_basic()
             else:
                 pass
                 # self.add_api_obj_mapping()
 
-            self.add_connection_items()
+            self.add_measurements_items()
         else:
             pass
         # A legacy or partially bootstrapped atomic DAE can already own its
@@ -1962,6 +1965,53 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self._navigation_delegate.navigate_to_block(block)
         else:
             pass
+
+    def open_measurements_editor(self,
+                                 source_item: graph.MeasurementsItem,
+                                 x_pos: float,
+                                 y_pos: float) -> None:
+        """
+        Open the measurement dialog and create one block from accepted selections.
+
+        :param source_item: Measurement item that opened the dialog.
+        :param x_pos: Scene x coordinate of the double-clicked measurement item.
+        :param y_pos: Scene y coordinate of the double-clicked measurement item.
+        :return: None.
+        """
+        # The circuit owns the authoritative bus objects that the generated
+        # measurement block must reference after the modal selection is accepted.
+        buses_list: List[Bus] = list(self.circuit.buses)
+        vars_dict: Dict[BlockType, List[VarPowerFlowReferenceType]] = measurement_vars_dict
+        dialogue: MeasurementsDialog = MeasurementsDialog(
+            buses=buses_list,
+            measurement_vars_dict=vars_dict,
+            parent=self,
+        )
+
+        if dialogue.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+            bus: Bus
+            block_type: BlockType
+            inputs_list: List[VarPowerFlowReferenceType]
+            outputs_list: List[VarPowerFlowReferenceType]
+            bus, block_type, inputs_list, outputs_list = dialogue.get_user_info()
+            # The accepted configuration replaces the provisional graphics item,
+            # so remove that exact item through the editor-owned scene first.
+            if source_item.scene() is self.scene:
+                self.scene.removeItem(source_item)
+            else:
+                pass
+            self.create_measurements_block_item(
+                x_pos=x_pos,
+                y_pos=y_pos,
+                bus=bus,
+                block_type=block_type,
+                ref_inputs=inputs_list,
+                ref_outputs=outputs_list,
+            )
+        else:
+            pass
+
+
 
     def request_open_block_properties(self, block: Block) -> None:
         """
@@ -3274,6 +3324,207 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             layout_graph=layout_graph,
         )
 
+
+    def create_measurements_block_item_basic(self, block_type: BlockType) -> graph.MeasurementsItem | None:
+        """
+        Create and place one root-interface measurement item in the canvas.
+
+        :param block_type: Input or output connection type represented by the item.
+        :return: Created measurement item, or ``None`` when creation fails.
+        """
+        item_name: str = f"{block_type.name}"
+        measurements_item: graph.MeasurementsItem = graph.MeasurementsItem(editor=self,
+                                                                    var_factory=self.var_factory,
+                                                                    name=item_name,
+                                                                    mode=self.mode,
+                                                                    api_object=self.api_object)
+        block_model: Block = Block(name=item_name)
+
+
+        var: Var
+        if block_type == BlockType.INPUT_CONN:
+            for var in self.main_block.in_vars:
+                block_model.out_vars.append(var)
+
+        elif block_type == BlockType.OUTPUT_CONN:
+            for var in self.main_block.out_vars:
+                block_model.in_vars.append(var)
+
+        else:
+            pass
+
+        if block_model is not None:
+            # The symbolic block has to be attached first so the graphics item can build its ports from it.
+
+            measurements_item.set_subsystem(block_model)
+            measurements_item.position_changed_callback = self.build_position_changed_callback(block_model.uid)
+            measurements_item.build_item()
+
+            # The editor block is the authoritative model container for later save/rebuild steps.
+            self.main_block.add(block_model)
+            self.scene.addItem(measurements_item)
+
+            # Convert the visible viewport to scene coordinates so placement
+            # follows the canvas area regardless of zoom, scrolling, or size.
+            viewport_rect: QtCore.QRect = self.view.viewport().rect()
+            visible_scene_rect: QtCore.QRectF = self.view.mapToScene(
+                viewport_rect,
+            ).boundingRect()
+            item_center: QtCore.QPointF = measurements_item.boundingRect().center()
+            target_y: float = visible_scene_rect.center().y()
+
+            if block_type == BlockType.INPUT_CONN:
+                target_x: float = visible_scene_rect.left() + visible_scene_rect.width() * 0.25
+            elif block_type == BlockType.OUTPUT_CONN:
+                target_x = visible_scene_rect.left() + visible_scene_rect.width() * 0.75
+            else:
+                target_x = visible_scene_rect.center().x()
+
+            # QGraphicsItem positions refer to the item's local origin. Offset
+            # that origin so the block itself, rather than its corner, occupies
+            # the requested quarter and vertical centre.
+            x_pos: float = target_x - item_center.x()
+            y_pos: float = target_y - item_center.y()
+            measurements_item.setPos(QtCore.QPointF(x_pos, y_pos))
+
+            # Persist exactly the same top-left scene position used by the item
+            # so rebuilding the diagram retains the calculated alignment.
+            self.diagram.add_node(
+                name=item_name,
+                x=x_pos,
+                y=y_pos,
+                tpe=block_type.name,
+                device_uid=block_model.uid,
+            )
+
+            return measurements_item
+        else:
+            return None
+
+    def create_measurements_block(self, bus: ALL_DEV_TYPES,
+                                  block_type: BlockType,
+                                  ref_inputs: List[VarPowerFlowReferenceType],
+                                  ref_outputs: List[VarPowerFlowReferenceType]) -> Block:
+        """
+        create a measurements block
+
+        :param bus:
+        :type bus:
+        :param block_type:
+        :type block_type:
+        :param ref_inputs:
+        :type ref_inputs:
+        :param ref_outputs:
+        :type ref_outputs:
+        :return:
+        :rtype:
+        """
+
+        block: Block = Block()
+        vars_list: List[Var] = list()
+        nominal_frequency = Const(self.circuit.fBase)
+
+        # get bus variables
+        bus_vars = self.add_connection_vars(bus)
+
+        # build measurement block
+
+        if block_type == BlockType.INPUT_CONN:
+           vars_list = bus_vars
+
+
+        if block_type == BlockType.MEASUREMENTS_VOLTAGE_FROM_POLAR:
+            block, vars_list = build_rms_voltage_meter_outputs_from_polar(self.var_factory, bus_vars[0], bus_vars[1], nominal_frequency, nominal_frequency)
+        #
+        # elif block_type == BlockType.MEASUREMENTS_VOLTAGE_FROM_DC:
+        #
+        # elif block_type == BlockType.MEASUREMENTS_VOLTAGE_FROM_POLAR:
+        #
+        # elif block_type == BlockType.MEASUREMENTS_VOLTAGE_FROM_DC:
+        #
+        # elif block_type == BlockType.MEASUREMENTS_VOLTAGE_FROM_POLAR:
+        #
+        # elif block_type == BlockType.MEASUREMENTS_VOLTAGE_FROM_DC:
+
+        for var in vars_list:
+            if var.ref in ref_inputs:
+                block.in_vars.append(var)
+            else:
+                block.out_vars.append(var)
+
+        return block
+
+
+
+    def create_measurements_block_item(self, x_pos: float, y_pos: float, bus: ALL_DEV_TYPES | None = None,
+                                  block_type: BlockType = BlockType.INPUT_CONN,
+                                  ref_inputs: List[VarPowerFlowReferenceType] | None= None,
+                                  ref_outputs: List[VarPowerFlowReferenceType] | None = None)  -> graph.MeasurementsItem | None:
+        """
+        Create and place a measurements block item in the canvas scene.
+
+        :param bus:
+        :param block_type:
+        :param ref_inputs:
+        :param ref_outputs:
+        :return:
+        """
+
+        if bus is None:
+            bus = self.api_object.bus
+        else:
+            pass
+
+        if ref_inputs is None:
+            ref_inputs = []
+        else:
+            pass
+
+        if ref_outputs is None:
+            ref_outputs = [VarPowerFlowReferenceType.Va, VarPowerFlowReferenceType.Vm]
+        else:
+            pass
+
+        count: int = self.block_counters.get(block_type, 0) + 1
+
+        item_name: str = f"{block_type.name}"
+        measurements_item: graph.MeasurementsItem = graph.MeasurementsItem(editor=self,
+                                                                    var_factory=self.var_factory,
+                                                                    name=item_name,
+                                                                    mode=self.mode,
+                                                                    api_object=self.api_object)
+        block_model: Block = self.create_measurements_block(bus, block_type, ref_inputs, ref_outputs)
+
+        if block_model is not None:
+            # The symbolic block has to be attached first so the graphics item can build its ports from it.
+
+            measurements_item.set_subsystem(block_model)
+            measurements_item.position_changed_callback = self.build_position_changed_callback(block_model.uid)
+            measurements_item.build_item()
+
+            # The editor block is the authoritative model container for later save/rebuild steps.
+            self.main_block.add(block_model)
+            self.scene.addItem(measurements_item)
+
+            # Place the configured graphics item at the same scene coordinates
+            # that are persisted in the diagram model below.
+            measurements_item.setPos(QtCore.QPointF(x_pos, y_pos))
+
+            # Keep the diagram synchronized so later features can rebuild from the same data source.
+            self.diagram.add_node(
+                name=item_name,
+                x=x_pos,
+                y=y_pos,
+                tpe=block_type.name,
+                device_uid=block_model.uid
+            )
+
+            return measurements_item
+        else:
+            return None
+
+
+
     def create_connection_block_item(self, var: Var, block_type: BlockType, x_pos: float,
                                      y_pos: float, blocks_list: List[graph.BlockItem] | None) -> graph.BlockItem | None:
         """
@@ -3585,7 +3836,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     def create_library_payload_item(self,
                                     payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate,
                                     x_pos: float,
-                                    y_pos: float) -> graph.BlockItem | graph.GenericBlockItem | graph.RoundBaseArithmeticOpItem | graph.RectBaseArithmeticOpItem | graph.PairedItem | None:
+                                    y_pos: float) -> graph.BlockItem | graph.MeasurementsItem | graph.GenericBlockItem | graph.RoundBaseArithmeticOpItem | graph.RectBaseArithmeticOpItem | graph.PairedItem | None:
         """
         Materialize one library payload on the diagram scene.
 
@@ -3601,6 +3852,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         elif isinstance(payload, BlockType) and payload == BlockType.FROM_GOTO:
             items = self.create_signal_pair_item(x_pos=x_pos, y_pos=y_pos)
             return items[0] if items else None
+
+        elif isinstance(payload, BlockType) and payload == BlockType.INPUT_CONN:
+            return self.create_measurements_block_item(x_pos=x_pos, y_pos=y_pos)
 
         elif isinstance(payload, BlockType) and payload == BlockType.SUM:
             return self.create_basic_arithmetic_op_item(BlockType.SUM, x_pos, y_pos)
@@ -5396,7 +5650,29 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-    def add_connection_vars_rms(self) -> None:
+    def add_connection_vars_rms(self, bus) -> List[Var]:
+        """
+        Add a block with bus connection variables to connect the device (RMS)
+        :return: None.
+        """
+        bus_vars: List[Var] = list()
+
+        # get bus variables
+
+        if self.api_object.bus.is_dc:
+            Vdc, _, _ = get_bus_rms_algebraic_vars(bus.rms_model)
+            if Vdc is not None:
+                bus_vars.append(Vdc)
+            else:
+                pass
+        else:
+            _, Vm, Va = get_bus_rms_algebraic_vars(bus.rms_model)
+            bus_vars.append(Vm)
+            bus_vars.append(Va)
+
+        return bus_vars
+
+    def add_connection_vars_rms_basic(self) -> None:
         """
         Add a block with bus connection variables to connect the device (RMS)
         :return: None.
@@ -5513,7 +5789,52 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-    def add_connection_vars_emt(self) -> None:
+    def add_connection_vars_emt(self, bus) -> List[Var]:
+        """
+        Add a block with bus connection variables to connect the device (EMT)
+        :return: None.
+
+        :param bus:
+        """
+
+
+        bus_vars: List[Var] = list()
+        # connect bus variables
+
+        if bus.is_dc:
+            Vdc, _, _, _ = get_bus_emt_algebraic_vars(bus.emt_model)
+
+            if Vdc is not None:
+                bus_vars.append(Vdc)
+            else:
+                raise ValueError("Invalid EMT bus model: expected Vdc, None, None, None")
+        else:
+            v_N, v_A, v_B, v_C = get_bus_emt_algebraic_vars(bus.emt_model)
+
+            if v_N is not None:
+                bus_vars.append(v_N)
+
+            else:
+                pass
+            if v_A is not None:
+                bus_vars.append(v_A)
+
+            else:
+                pass
+            if v_B is not None:
+                bus_vars.append(v_B)
+
+            else:
+                pass
+            if v_C is not None:
+                bus_vars.append(v_C)
+
+            else:
+                pass
+
+        return bus_vars
+
+    def add_connection_vars_emt_basic(self) -> None:
         """
         Add a block with bus connection variables to connect the device (EMT)
         :return: None.
@@ -5710,8 +6031,27 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
+    def add_connection_vars(self, bus: ALL_DEV_TYPES) -> List[Var]:
+        """
+        Add the connection variables required to couple the edited device with the grid.
 
-    def add_connection_vars(self) -> None:
+        :param bus: the bus model
+
+        :return:
+        """
+        # specs: List[ConnectionVarSpec]
+
+        if self.mode == DynamicSimulationMode.RMS:
+            bus_vars = self.add_connection_vars_rms(bus)
+        elif self.mode == DynamicSimulationMode.EMT:
+            bus_vars = self.add_connection_vars_emt(bus)
+
+
+        else:
+            raise ValueError(f"Unsupported dynamic editor mode {self.mode}")
+        return bus_vars
+
+    def add_connection_vars_basic(self) -> None:
         """
         Add the connection variables required to couple the edited device with the grid.
 
@@ -5720,9 +6060,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         # specs: List[ConnectionVarSpec]
 
         if self.mode == DynamicSimulationMode.RMS:
-            self.add_connection_vars_rms()
+            self.add_connection_vars_rms_basic()
         elif self.mode == DynamicSimulationMode.EMT:
-            self.add_connection_vars_emt()
+            self.add_connection_vars_emt_basic()
 
 
         else:
@@ -6193,8 +6533,16 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
 
     def add_measurements_items(self):
-        # Here we need to create the measurements items
-        pass
+        """
+                Build graphical wrapper items for every root input and output variable.
+
+                :param blocks_list: Optional list that receives the created graphics items.
+                :return: None.
+                """
+
+        self.create_measurements_block_item_basic(BlockType.INPUT_CONN)
+
+        self.create_measurements_block_item_basic(BlockType.OUTPUT_CONN)
 
     def add_connection_items(self, blocks_list: List[graph.BlockItem] | None = None) -> None:
         """
@@ -10586,9 +10934,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         con: BlockDiagramConnection
 
         self.scene.clear()
-        self._ensure_root_interface_wrapper_nodes_exist()
-        self._remove_stale_root_interface_duplicate_children()
-        self._refresh_interface_wrapper_scene_items()
+        # self._ensure_root_interface_wrapper_nodes_exist()
+        # self._remove_stale_root_interface_duplicate_children()
+        # self._refresh_interface_wrapper_scene_items()
 
         # Recreate every persisted node, repairing old wrapper identities in place.
         for uid, node in self.diagram.node_data.items():
@@ -10616,72 +10964,72 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 graph.GenericBlockItem | None = None
 
             if block_type == BlockType.INPUT_CONN or block_type == BlockType.OUTPUT_CONN:
-                repaired_wrapper: Block | None = self._build_root_interface_wrapper_block(
-                    block_type=block_type,
-                    fallback_block_model=block_model,
-                    interface_index=self._get_root_interface_index_from_expected_order(block_type=block_type,
-                                                                                      node_uid=uid),
-                    wrapper_uid=uid,
-                )
-
-                if repaired_wrapper is not None:
-                    block_model = repaired_wrapper
-                    wrapper_is_registered: bool = False
-                    child_block: Block
-                    for child_block in self.main_block.children:
-                        if child_block is block_model:
-                            wrapper_is_registered = True
-                        else:
-                            pass
-
-                    if wrapper_is_registered:
-                        pass
-                    else:
-                        self.main_block.add(block_model)
+                # repaired_wrapper: Block | None = self._build_root_interface_wrapper_block(
+                #     block_type=block_type,
+                #     fallback_block_model=block_model,
+                #     interface_index=self._get_root_interface_index_from_expected_order(block_type=block_type,
+                #                                                                       node_uid=uid),
+                #     wrapper_uid=uid,
+                # )
+                #
+                # if repaired_wrapper is not None:
+                #     block_model = repaired_wrapper
+                #     wrapper_is_registered: bool = False
+                #     child_block: Block
+                #     for child_block in self.main_block.children:
+                #         if child_block is block_model:
+                #             wrapper_is_registered = True
+                #         else:
+                #             pass
+                #
+                #     if wrapper_is_registered:
+                #         pass
+                #     else:
+                #         self.main_block.add(block_model)
 
                     # Diagram endpoints always reference the wrapper block UID.
-                    node.device_uid = uid
-                    node.name = block_model.name
+                node.device_uid = uid
+                node.name = block_model.name
+                register_legacy_interface_uid_alias(
+                    aliases=legacy_interface_uid_aliases,
+                    old_uid=persisted_node_uid,
+                    repaired_uid=uid,
+                )
+                register_legacy_interface_uid_alias(
+                    aliases=legacy_interface_uid_aliases,
+                    old_uid=persisted_block_uid,
+                    repaired_uid=uid,
+                )
+
+                interface_var: Var | None = get_single_interface_var(block_model)
+                if interface_var is not None:
                     register_legacy_interface_uid_alias(
                         aliases=legacy_interface_uid_aliases,
-                        old_uid=persisted_node_uid,
+                        old_uid=interface_var.uid,
                         repaired_uid=uid,
                     )
-                    register_legacy_interface_uid_alias(
-                        aliases=legacy_interface_uid_aliases,
-                        old_uid=persisted_block_uid,
-                        repaired_uid=uid,
-                    )
-
-                    interface_var: Var | None = get_single_interface_var(block_model)
-                    if interface_var is not None:
-                        register_legacy_interface_uid_alias(
-                            aliases=legacy_interface_uid_aliases,
-                            old_uid=interface_var.uid,
-                            repaired_uid=uid,
-                        )
-                    else:
-                        pass
-
-                    block_item: graph.ProtectedConnectionBlockItem = graph.ProtectedConnectionBlockItem(
-                        editor=self,
-                        var_factory=self.var_factory,
-                        name=block_model.name,
-                        mode=self.mode,
-                        api_object=self.api_object,
-                    )
-                    block_item.set_subsystem(block_model)
-                    block_item.position_changed_callback = self.build_position_changed_callback(uid)
-                    block_item.build_item()
-                    block_item.recolour()
-                    self.scene.addItem(block_item)
-                    block_item.setPos(QPointF(node.x, node.y))
-                    uid_to_blockitem[uid] = block_item
-
-                    current_count: int = self.block_counters.get(block_type, 0) + 1
-                    self.block_counters[block_type] = current_count
                 else:
                     pass
+
+                block_item: graph.MeasurementsItem = graph.MeasurementsItem(
+                    editor=self,
+                    var_factory=self.var_factory,
+                    name=block_model.name,
+                    mode=self.mode,
+                    api_object=self.api_object,
+                )
+                block_item.set_subsystem(block_model)
+                block_item.position_changed_callback = self.build_position_changed_callback(uid)
+                block_item.build_item()
+                block_item.recolour()
+                self.scene.addItem(block_item)
+                block_item.setPos(QPointF(node.x, node.y))
+                uid_to_blockitem[uid] = block_item
+
+                current_count: int = self.block_counters.get(block_type, 0) + 1
+                self.block_counters[block_type] = current_count
+                # else:
+                #     pass
             elif block_model is None:
                 # Malformed non-interface nodes are skipped without aborting the rebuild.
                 pass

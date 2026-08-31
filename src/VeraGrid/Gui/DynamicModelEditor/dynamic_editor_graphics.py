@@ -718,7 +718,7 @@ class PortItem(QAbstractGraphicsShapeItem):
         self._build_path()
         self.setZValue(3)
         self.setAcceptHoverEvents(True)
-        self.subsystem: BlockItem | GenericBlockItem | PairedItem | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem = subsystem
+        self.subsystem: BlockItem | MeasurementsItem | GenericBlockItem | PairedItem | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem = subsystem
         self.connections: List["ConnectionItem"] | None = None
         self.index: int = index
         self.total: int = total
@@ -2728,6 +2728,415 @@ class BlockItem(QGraphicsRectItem):
         """
         if event.button() == Qt.MouseButton.LeftButton and self.subsys is not None:
             self.editor.request_open_block_properties(self.subsys)
+            event.accept()
+        else:
+            super().mouseDoubleClickEvent(event)
+
+    def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: object) -> object:
+        """Process one Qt graphics-item state change and propagate dependent geometry.
+
+        :param change: Qt graphics-item change kind.
+        :param value: Opaque value associated with the Qt change.
+        :return: Value produced by the graphics operation.
+        """
+        value = _handle_block_item_change(self, change, value)
+        if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
+            if self.position_changed_callback is not None:
+                self.position_changed_callback(value.x(), value.y())
+            else:
+                pass
+            port: PortItem
+            port_collection: List[PortItem]
+            for port_collection in (self.inputs, self.outputs):
+                for port in port_collection:
+                    if port.connections:
+                        conn: ConnectionItem
+                        for conn in port.connections:
+                            conn.update_path()
+                    else:
+                        pass
+            return super().itemChange(change, value)
+        else:
+            return super().itemChange(change, value)
+
+class MeasurementsItem(QGraphicsRectItem):
+    """Compact graphics item representing one nested symbolic subsystem."""
+
+    __slots__ = ()
+
+    def __init__(self,
+                 var_factory: VarFactory,
+                 name: str,
+                 editor: DynamicBlockEditorGUI,
+                 mode: DynamicSimulationMode,
+                 api_object: ALL_DEV_TYPES,
+                 position_changed_callback: BlockPositionChangedCallback | None = None
+                 ) -> None:
+        """Initialize the graphics object and its interaction state.
+
+        :param var_factory: Factory that owns symbolic variables.
+        :param name: Visible block name.
+        :param editor: Owning dynamic editor.
+        :param mode: Dynamic simulation mode.
+        :param api_object: Static network device associated with the model.
+        :param position_changed_callback: Typed callback used to persist movement.
+        :return: None.
+        """
+        super().__init__(0, 0, 80, 40)
+        self.editor: DynamicBlockEditorGUI = editor
+        self.var_factory: VarFactory = var_factory
+        self.api_object = api_object
+        self.mode = mode
+        self.name: str = name
+        self.name_item = QGraphicsTextItem(self.name, self)
+        self.position_changed_callback = position_changed_callback
+        self.resize_handle: ResizeHandle | None = None
+        self.resizing_from_handle: bool = False
+        self.subsys: Block | None = None
+
+        self.inputs: List[PortItem] = list()
+        self.outputs: List[PortItem] = list()
+        self.input_labels: List[QGraphicsTextItem] = list()
+        self.output_labels: List[QGraphicsTextItem] = list()
+        self._validation_highlighted: bool = False
+
+        self.setFlags(
+            QGraphicsItem.GraphicsItemFlag.ItemIsMovable |
+            QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
+            QGraphicsItem.GraphicsItemFlag.ItemSendsScenePositionChanges
+        )
+        self.setAcceptHoverEvents(True)
+        self._last_valid_pos: QPointF = QPointF(self.pos())
+
+    def recolour_mode(self) -> None:
+        """Apply the active editor palette to this graphics item.
+
+        :return: None.
+        """
+        self.name_item.setDefaultTextColor(self.editor.colors_palet.BLOCK_TITLE)
+        self.setBrush(QBrush(self.editor.colors_palet.BLOCK_FILL))
+        self.setPen(QPen(self.editor.colors_palet.BLOCK_BORDER, 1))
+        for input_label_item in self.input_labels:
+            input_label_item.setDefaultTextColor(self.editor.colors_palet.BLOCK_TITLE)
+        for output_label_item in self.output_labels:
+            output_label_item.setDefaultTextColor(self.editor.colors_palet.BLOCK_TITLE)
+
+    def recolour(self, use_custom_color: bool = False) -> None:
+        """Refresh this graphics item unless a custom colour must be preserved.
+
+        :param use_custom_color: Whether an existing custom colour is preserved.
+        :return: None.
+        """
+        if use_custom_color:
+            pass
+        else:
+            self.recolour_mode()
+
+    def set_subsystem(self, block: Block) -> None:
+        """Associate this graphics item with its authoritative symbolic block.
+
+        :param block: Authoritative symbolic block.
+        :return: None.
+        """
+        self.subsys = block
+
+    def refresh_block_name(self) -> None:
+        """
+        Refresh the visible block name from the authoritative symbolic block.
+
+        :return: None.
+        """
+        if self.subsys is not None:
+            # Compact block items also mirror the symbolic block name locally so
+            # the rendered label stays consistent after a rename from the editor.
+            self.name = self.subsys.name
+            self.name_item.setPlainText(self.name)
+            self.resize_to_content()
+            self._center_name()
+        else:
+            pass
+
+    def build_item(self) -> None:
+        """Build ports, labels, and resize controls from the symbolic block.
+
+        :return: None.
+        """
+        if self.subsys is not None:
+            # Reuse the title created by the constructor so only one name is
+            # rendered and repositioned when the block geometry changes.
+            n_inputs: int = len(self.subsys.in_vars)
+            n_outputs: int = len(self.subsys.out_vars)
+            self.inputs = [PortItem(self, self.editor, True, i, n_inputs) for i in range(n_inputs)]
+            self.outputs = [PortItem(self, self.editor, False, i, n_outputs) for i in range(n_outputs)]
+            for port_item in self.inputs:
+                port_item.recolour()
+            for port_item in self.outputs:
+                port_item.recolour()
+            self.input_labels = [self.create_port_label_item() for _ in range(n_inputs)]
+            self.output_labels = [self.create_port_label_item() for _ in range(n_outputs)]
+            self.refresh_port_metadata()
+
+            self.resize_to_content()
+        else:
+            pass
+
+    def create_port_label_item(self) -> QGraphicsTextItem:
+        """Create one non-interactive text label for a block port.
+
+        :return: Value produced by the graphics operation.
+        """
+        label_item: QGraphicsTextItem = QGraphicsTextItem("", self)
+        label_item.setDefaultTextColor(self.editor.colors_palet.PORT_LABEL_COLOR)
+        label_item.setZValue(4)
+        return label_item
+
+    def get_minimum_block_size(self) -> tuple[float, float]:
+
+        """Compute the minimum dimensions required by ports and labels.
+
+        :return: Value produced by the graphics operation.
+        """
+        port_rows: int = max(len(self.inputs), len(self.outputs), 1)
+        min_height: float = max(
+            EditorGraphicsCommonFeatures.BLOCK_COMPACT_MIN_HEIGHT,
+            EditorGraphicsCommonFeatures.BLOCK_COMPACT_HEADER_HEIGHT + EditorGraphicsCommonFeatures.BLOCK_COMPACT_PORT_SECTION_PADDING +
+            port_rows * EditorGraphicsCommonFeatures.BLOCK_COMPACT_PORT_ROW_HEIGHT
+        )
+        name_width = len(self.name) * 5
+        max_label_length = 0
+        if self.subsys:
+            var: Var
+            for var in self.subsys.in_vars:
+                max_label_length = max(max_label_length, len(var.name))
+            for var in self.subsys.out_vars:
+                max_label_length = max(max_label_length, len(var.name))
+        else:
+            pass
+        port_width = max_label_length * 5
+        min_width = max(EditorGraphicsCommonFeatures.BLOCK_COMPACT_MIN_WIDTH, name_width + 10, port_width + 20)
+        return min_width, min_height
+
+    def resize_to_content(self) -> None:
+        """Resize the block to fit its current ports, labels, and title.
+
+        :return: None.
+        """
+        self.prepareGeometryChange()
+        min_width: float
+        min_height: float
+        min_width, min_height = self.get_minimum_block_size()
+        QGraphicsRectItem.setRect(self, 0, 0, min_width, min_height)
+        self.update_ports()
+        # self.update_handle_position()
+        self._center_name()
+
+    def _center_name(self) -> None:
+        """Centre the block title below the current body rectangle.
+
+        :return: None.
+        """
+        if self.name_item is None:
+            return
+        else:
+            pass
+        rect = self.rect()
+        text_width: float = self.name_item.boundingRect().width()
+        self.name_item.setPos(
+            (rect.width() - text_width) / 2,
+            rect.height() + 5.0,
+        )
+
+    def refresh_port_metadata(self) -> None:
+        """Synchronize visible port variables, labels, and tooltips.
+
+        :return: None.
+        """
+        if self.subsys is not None:
+            i: int
+            port: PortItem
+            label_item: QGraphicsTextItem
+            variable_name: str
+            for i, port in enumerate(self.inputs):
+                port.base_var = self.subsys.in_vars[i]
+                variable_name = self.subsys.in_vars[i].name
+                port.setToolTip(_build_port_tooltip("Input", i, variable_name))
+                if i < len(self.input_labels):
+                    label_item = self.input_labels[i]
+                    label_item.setPlainText(
+                        truncate_port_label(variable_name, EditorGraphicsCommonFeatures.PORT_LABEL_MAX_CHARS))
+                else:
+                    pass
+
+            for i, port in enumerate(self.outputs):
+                port.base_var = self.subsys.out_vars[i]
+                variable_name = self.subsys.out_vars[i].name
+                port.setToolTip(_build_port_tooltip("Output", i, variable_name))
+                if i < len(self.output_labels):
+                    label_item = self.output_labels[i]
+                    label_item.setPlainText(
+                        truncate_port_label(variable_name, EditorGraphicsCommonFeatures.PORT_LABEL_MAX_CHARS))
+                else:
+                    pass
+
+            self.update_ports()
+
+        else:
+            pass
+
+    def paint(self,
+              painter: QPainter,
+              option: QtWidgets.QStyleOptionGraphicsItem,
+              widget: Optional[QWidget] = None) -> None:
+        """Paint the graphics item using its current palette and interaction state.
+
+        :param painter: Painter supplied by Qt.
+        :param option: Qt style options for the item.
+        :param widget: Optional target widget.
+        :return: None.
+        """
+        rect: QtCore.QRectF = self.rect()
+        outer_rect: QtCore.QRectF = rect.adjusted(2, 2, -2, -2)
+        body_rect: QtCore.QRectF = outer_rect
+        # Use the same small fixed corner radius as GenericBlockItem so both
+        # symbolic block representations share the same rectangular silhouette.
+        radius: float = 4.0
+
+        if self._validation_highlighted:
+            border_color: QColor = EditorGraphicsCommonFeatures.VALIDATION_HICHLIGHTED_BORDER
+        else:
+            border_color = (
+                EditorGraphicsCommonFeatures.BLOCK_BORDER_SELECTED
+                if self.isSelected()
+                else self.pen().color()
+            )
+
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+
+        # body
+        painter.setBrush(self.brush())
+        painter.setPen(QPen(border_color, 1.6))
+        painter.drawRoundedRect(body_rect, radius, radius)
+
+    def set_validation_highlighted(self, val: bool) -> None:
+        """
+        Toggle the validation overlay state for this compact block item.
+
+        :param val: Whether the block should be outlined as a validation issue.
+        :return: None.
+        """
+        self._validation_highlighted = val
+        self.update()
+
+    def resize_block(self, width: float, height: float) -> None:
+        """Resize the block while enforcing its content-derived minimum dimensions.
+
+        :param width: Requested body width.
+        :param height: Requested body height.
+        :return: None.
+        """
+        pass
+
+    def update_ports(self) -> None:
+        """Position ports and labels and refresh their attached connection paths.
+
+        :return: None.
+        """
+        block_height: float = self.rect().height()
+
+        i: int
+        port: PortItem
+        for i, port in enumerate(self.inputs):
+            input_spacing = block_height / (len(self.inputs) + 1)
+            port.setPos(0, input_spacing * (i + 1))
+
+        for i, port in enumerate(self.outputs):
+            output_spacing = block_height / (len(self.outputs) + 1)
+            port.setPos(self.rect().width(), output_spacing * (i + 1))
+
+        label_item: QGraphicsTextItem
+        for i, label_item in enumerate(self.input_labels):
+            port = self.inputs[i]
+            label_height: float = label_item.boundingRect().height()
+            label_item.setPos(
+                14.0,
+                port.pos().y() - label_height / 2.0,
+            )
+
+        for i, label_item in enumerate(self.output_labels):
+            port = self.outputs[i]
+            label_width: float = label_item.boundingRect().width()
+            label_height = label_item.boundingRect().height()
+            label_item.setPos(
+                self.rect().width() - label_width - 14.0,
+                port.pos().y() - label_height / 2.0,
+            )
+
+        port_collection: List[PortItem]
+        for port_collection in (self.inputs, self.outputs):
+            for port in port_collection:
+                if port.connections is not None:
+                    conn: ConnectionItem
+                    for conn in port.connections:
+                        conn.update_path()
+                else:
+                    pass
+
+    def hoverEnterEvent(self, event: QtWidgets.QGraphicsSceneHoverEvent) -> None:
+        """Apply the hover interaction state when the pointer enters the item.
+
+        :param event: Incoming Qt graphics event.
+        :return: None.
+        """
+        QApplication.setOverrideCursor(Qt.CursorShape.OpenHandCursor)
+        self.update()
+
+    def hoverLeaveEvent(self, event: QtWidgets.QGraphicsSceneHoverEvent) -> None:
+        """Restore the normal interaction state when the pointer leaves the item.
+
+        :param event: Incoming Qt graphics event.
+        :return: None.
+        """
+        QApplication.restoreOverrideCursor()
+        self.update()
+
+    def mousePressEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
+        """Handle a graphics-scene mouse press for this item.
+
+        :param event: Incoming Qt graphics event.
+        :return: None.
+        """
+        if event.button() == Qt.MouseButton.LeftButton:
+            _notify_block_item_manual_route_drag(self, started=True)
+        else:
+            pass
+        super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
+        """Finalize the current graphics interaction after mouse release.
+
+        :param event: Incoming Qt graphics event.
+        :return: None.
+        """
+        super().mouseReleaseEvent(event)
+        _notify_block_item_manual_route_drag(self, started=False)
+        _finalize_block_drop(self)
+
+    def mouseDoubleClickEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
+        """
+        Open the modal block properties dialogue on a left-button double click.
+
+        :param event: Incoming Qt event.
+        :return: None.
+        """
+        if event.button() == Qt.MouseButton.LeftButton:
+            # Pass scene coordinates because the replacement measurement block
+            # is inserted directly into the editor scene after configuration.
+            item_position: QPointF = self.scenePos()
+            self.editor.open_measurements_editor(
+                source_item=self,
+                x_pos=item_position.x(),
+                y_pos=item_position.y(),
+            )
             event.accept()
         else:
             super().mouseDoubleClickEvent(event)
