@@ -8,6 +8,8 @@ from typing import Iterator
 from PySide6 import QtCore, QtGui, QtWidgets
 import pytest
 
+import VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics as graph
+from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_properties import (
     BlockParameterDraftModel,
     BlockSymbolDraftModel,
@@ -58,8 +60,11 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_latex_renderer import (
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
+from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.enumerations import (
     BlockType,
+    DeviceType,
+    DynamicSimulationMode,
     ParamPowerFlowReferenceType,
     VarPowerFlowReferenceType,
 )
@@ -72,6 +77,7 @@ from VeraGridEngine.Templates.Rms.genrow_rms_template import get_genrow_rms_temp
 from VeraGridEngine.Templates.template_definition import TemplateDefinition, TemplateProp
 from VeraGridEngine.Templates.BasicBlockCatalog import (
     BasicBlockTemplateDescriptor,
+    get_basic_block_catalog_descriptor_by_key,
     get_editor_ready_basic_block_catalog_descriptors,
     load_basic_block_catalog_template,
 )
@@ -84,6 +90,70 @@ def get_qt_application() -> QtWidgets.QApplication:
         return QtWidgets.QApplication(list())
     else:
         return application
+
+
+class BlockPropertiesApiStub:
+    """Provide the minimum API-object contract required by the editor fixture."""
+
+    __slots__ = ("name", "rms_template", "emt_template", "device_type")
+
+    def __init__(self) -> None:
+        """Initialize an API object without an attached dynamic template.
+
+        :return: None.
+        """
+        self.name: str = "Block properties stub"
+        self.rms_template: None = None
+        self.emt_template: None = None
+        self.device_type: DeviceType = DeviceType.NoDevice
+
+
+def build_catalog_block_properties_editor() -> DynamicBlockEditorGUI:
+    """Build an EMT editor used to exercise catalogue-backed Block Properties.
+
+    :return: Visible dynamic editor with an empty root block.
+    """
+    # Ensure Qt owns an application before any editor widget is constructed.
+    application: QtWidgets.QApplication = get_qt_application()
+    _unused_application: QtWidgets.QApplication = application
+
+    # Use an isolated circuit and symbolic factory so each test owns its state.
+    editor: DynamicBlockEditorGUI = DynamicBlockEditorGUI(
+        var_factory=VarFactory(),
+        current_block=Block(),
+        api_object=BlockPropertiesApiStub(),
+        current_theme="Light",
+        mode=DynamicSimulationMode.EMT,
+        templates_list=list(),
+        circuit=MultiCircuit(),
+        is_root_editor=False,
+        modal=False,
+    )
+    editor.show()
+    editor.activateWindow()
+    return editor
+
+
+def build_catalog_block_item_for_properties(
+        editor: DynamicBlockEditorGUI,
+        template_key: str,
+) -> graph.GenericBlockItem:
+    """Materialize one catalogue block for a Block Properties test.
+
+    :param editor: Dynamic editor receiving the catalogue block.
+    :param template_key: Stable key of the requested Basic Block template.
+    :return: Materialized graphics item containing the symbolic block.
+    """
+    descriptor: BasicBlockTemplateDescriptor = (
+        get_basic_block_catalog_descriptor_by_key()[template_key]
+    )
+    block_item: object = editor.create_library_payload_item(
+        descriptor,
+        10.0,
+        20.0,
+    )
+    assert isinstance(block_item, graph.GenericBlockItem)
+    return block_item
 
 
 class AliasRenameReceiver(QtCore.QObject):
@@ -218,6 +288,120 @@ def close_block_property_dialogues() -> Iterator[None]:
             pass
     QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
     application.processEvents()
+
+
+def test_side_panel_contains_only_library_while_modal_loads_block_parameters() -> None:
+    """Keep parameter editing in Block Properties instead of the editor sidebar.
+
+    :return: None.
+    """
+    editor: DynamicBlockEditorGUI = build_catalog_block_properties_editor()
+    block_item: graph.GenericBlockItem = build_catalog_block_item_for_properties(
+        editor=editor,
+        template_key="pulse",
+    )
+    assert block_item.subsys is not None
+
+    # Select the catalogue block while the editor remains on its sole Library page.
+    editor.ui.toolBox.setCurrentWidget(editor.ui.page_7)
+    editor.scene.clearSelection()
+    block_item.setSelected(True)
+    QtWidgets.QApplication.processEvents()
+
+    assert editor.ui.toolBox.count() == 1
+    assert editor.ui.toolBox.currentWidget() is editor.ui.page_7
+
+    # Parameter rows belong to the dedicated Block Properties dialogue.
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
+        block=block_item.subsys,
+        block_type_name=graph.EditorGraphicsCommonFeatures.TEMPLATE_NODE_TYPE,
+        var_factory=editor.var_factory,
+    )
+    assert dialogue._parameter_model.rowCount() > 0
+    dialogue.close()
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_modal_parameter_edit_preserves_non_structural_block_identity() -> None:
+    """Edit a catalogue constant without reconstructing its symbolic block.
+
+    :return: None.
+    """
+    editor: DynamicBlockEditorGUI = build_catalog_block_properties_editor()
+    block_item: graph.GenericBlockItem = build_catalog_block_item_for_properties(
+        editor=editor,
+        template_key="pulse",
+    )
+    assert block_item.subsys is not None
+    target_block: Block = block_item.subsys
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
+        block=target_block,
+        block_type_name=graph.EditorGraphicsCommonFeatures.TEMPLATE_NODE_TYPE,
+        var_factory=editor.var_factory,
+    )
+    dialogue.blockApplied.connect(editor.on_block_properties_applied)
+    assert dialogue._parameter_model.rowCount() > 0
+    value_index: QtCore.QModelIndex = dialogue._parameter_model.index(0, 2)
+    assert dialogue._parameter_model.data(value_index) == "None"
+    changed_value: float = 1.0
+
+    # Apply one value edit through the same model used by the properties table.
+    assert dialogue._parameter_model.setData(
+        value_index,
+        changed_value,
+        QtCore.Qt.ItemDataRole.EditRole,
+    )
+    dialogue.apply_changes()
+
+    assert editor.get_block_from_main_block(target_block.uid) is target_block
+    assert float(str(dialogue._parameter_model.data(value_index))) == changed_value
+    dialogue.close()
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_parameter_modal_separates_runtime_modes_for_pulse_block() -> None:
+    """Keep events in General options and retained modes in Runtime logic.
+
+    :return: None.
+    """
+    editor: DynamicBlockEditorGUI = build_catalog_block_properties_editor()
+    block_item: graph.GenericBlockItem = build_catalog_block_item_for_properties(
+        editor=editor,
+        template_key="pulse",
+    )
+    assert block_item.subsys is not None
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
+        block=block_item.subsys,
+        block_type_name=graph.EditorGraphicsCommonFeatures.TEMPLATE_NODE_TYPE,
+        var_factory=editor.var_factory,
+    )
+
+    # Read the visible parameter categories before inspecting the runtime tab.
+    row_types: list[str] = list()
+    row_index: int
+    for row_index in range(dialogue._parameter_model.rowCount()):
+        index: QtCore.QModelIndex = dialogue._parameter_model.index(row_index, 0)
+        row_types.append(
+            str(
+                dialogue._parameter_model.data(
+                    index,
+                    QtCore.Qt.ItemDataRole.DisplayRole,
+                )
+            )
+        )
+
+    assert any(row_type.startswith("Dynamic parameter") for row_type in row_types)
+    assert not any(row_type.startswith("Mode parameter") for row_type in row_types)
+    assert dialogue._runtime_logic_editor._mode_model.rowCount() > 0
+    assert dialogue._tabs.tabText(2) == "Runtime logic"
+    dialogue.close()
+
+    editor.has_unapplied_changes = False
+    editor.close()
 
 
 def find_property_index(dialogue: DynamicBlockPropertiesDialog, name: str,
