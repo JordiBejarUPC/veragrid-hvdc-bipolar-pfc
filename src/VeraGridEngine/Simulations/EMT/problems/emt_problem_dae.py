@@ -2053,16 +2053,20 @@ class EmtProblemDae(EmtProblemTemplate):
                  pf_results_3ph: PowerFlowResults3Ph | None = None,
                  pf_results: PowerFlowResults | None = None,
                  progress_signal: DummySignal | None = None,
-                 progress_text: DummySignal | None = None) -> None:
+                 progress_text: DummySignal | None = None,
+                 logger: Logger|None = None) -> None:
         """
         Initializes the EMT Problem by parsing the grid and passing the
         resulting mathematical block to the BaseProblem constructor.
-        :param grid:
-        :param options:
-        :param pf_results_3Ph:
-        :param pf_results:
+        :param grid: MultiCircuit
+        :param options: EmtOptions
+        :param pf_results_3Ph: PowerFlowResults3Ph
+        :param pf_results: PowerFlowResults3Ph
+        :param progress_signal: progress_signal
+        :param progress_text: progress_text
+        :param logger: Logger
         """
-        self.logger = Logger()
+        self.logger = logger
         self.grid = grid
         self.options = options
         self._device_type_disposition: Dict[DeviceType, str] = _build_emt_device_type_disposition_table()
@@ -2344,14 +2348,17 @@ class EmtProblemDae(EmtProblemTemplate):
             pass
         else:
             detail_text: str = "; ".join(nonfinite_entries[:20])
-            self.logger.add_error(
-                msg="EMT initialization left non-finite state values.",
-                device=str(self.grid.name) if self.grid is not None else "emt_problem",
-                value=detail_text,
-                expected_value="Finite x0/dx0 for every EMT variable and differential variable",
-                device_class="EMT",
-                device_property="initialization_finiteness",
-            )
+            if self.logger is not None:
+                self.logger.add_error(
+                    msg="EMT initialization left non-finite state values.",
+                    device=str(self.grid.name) if self.grid is not None else "emt_problem",
+                    value=detail_text,
+                    expected_value="Finite x0/dx0 for every EMT variable and differential variable",
+                    device_class="EMT",
+                    device_property="initialization_finiteness",
+                )
+            else:
+                pass
             raise ValueError(
                 "EMT initialization produced non-finite values. "
                 f"First entries: {detail_text}"
@@ -2412,25 +2419,34 @@ class EmtProblemDae(EmtProblemTemplate):
         )
 
         if options.verbose > 0:
-            self.logger.add_debug(f"init guess = {self.init_guess}")
-            self.logger.add_debug(f"diff init guess = {self.diff_init_guess}")
+            if self.logger is not None:
+                self.logger.add_debug(f"init guess = {self.init_guess}")
+                self.logger.add_debug(f"diff init guess = {self.diff_init_guess}")
+            else:
+                pass
             if self.initialization_report is None:
                 pass
             else:
+                if self.logger is not None:
+                    self.logger.add_debug(
+                        f"EMT initialization used {self.initialization_report.method_used} | "
+                        f"status={self.initialization_report.status.name} | "
+                        f"res0={self.initialization_report.initial_residual_inf:.3e} | "
+                        f"resf={self.initialization_report.final_residual_inf:.3e} | "
+                        f"newton={self.initialization_report.newton_iterations} | "
+                        f"ptc={self.initialization_report.pseudo_transient_steps} | "
+                        f"auto_dx0={self.initialization_report.automatic_dx0_count}"
+                    )
+                else:
+                    pass
+            if self.logger is not None:
                 self.logger.add_debug(
-                    f"EMT initialization used {self.initialization_report.method_used} | "
-                    f"status={self.initialization_report.status.name} | "
-                    f"res0={self.initialization_report.initial_residual_inf:.3e} | "
-                    f"resf={self.initialization_report.final_residual_inf:.3e} | "
-                    f"newton={self.initialization_report.newton_iterations} | "
-                    f"ptc={self.initialization_report.pseudo_transient_steps} | "
-                    f"auto_dx0={self.initialization_report.automatic_dx0_count}"
+                    f"EMT electrical problem parsed in {t_done:.4f}s | "
+                    f"vars={self._n_vars} (state={self._n_state}, alg={self._n_alg}) | "
+                    f"eqs(state={len(self._state_eqs)}, alg={len(self._algebraic_eqs)})"
                 )
-            self.logger.add_debug(
-                f"EMT electrical problem parsed in {t_done:.4f}s | "
-                f"vars={self._n_vars} (state={self._n_state}, alg={self._n_alg}) | "
-                f"eqs(state={len(self._state_eqs)}, alg={len(self._algebraic_eqs)})"
-            )
+            else:
+                pass
 
     # ---------------------------------------------------------------------
     # init_eqs registration + explicit init execution
@@ -2745,19 +2761,25 @@ class EmtProblemDae(EmtProblemTemplate):
                     block_name: str = _get_block_name(mdl)
                     error_detail: str = f"{type(e).__name__}: {str(e)}"
 
-                    self.logger.add_warning(
-                        msg="EMT explicit initialization failed for device init block.",
-                        device=block_name,
-                        value=error_detail,
-                        expected_value="Successful explicit initialization",
-                        device_class="EMT",
-                        device_property="init_explicit"
-                    )
+                    if self.logger is not None:
+                        self.logger.add_warning(
+                            msg="EMT explicit initialization failed for device init block.",
+                            device=block_name,
+                            value=error_detail,
+                            expected_value="Successful explicit initialization",
+                            device_class="EMT",
+                            device_property="init_explicit"
+                        )
+                    else:
+                        pass
 
                     if self.options.verbose > 0:
-                        self.logger.add_debug(
-                            f"[EMT][init_explicit] failed for unified device block '{block_name}'. Error: {error_detail}"
-                        )
+                        if self.logger is not None:
+                            self.logger.add_debug(
+                                f"[EMT][init_explicit] failed for unified device block '{block_name}'. Error: {error_detail}"
+                            )
+                        else:
+                            pass
                         print(
                             f"EMT explicit initialization failed for unified device block {block_name}. "
                             f"Error detail: {error_detail}"
@@ -5468,10 +5490,13 @@ class EmtProblemDae(EmtProblemTemplate):
                         pass
 
             if len(bus_kcl_eqs) == 0:
-                self.logger.add_error(
-                    "Bus has no phases (no voltage vars)",
-                    value=str(bus_idx)
-                )
+                if self.logger is not None:
+                    self.logger.add_error(
+                        "Bus has no phases (no voltage vars)",
+                        value=str(bus_idx)
+                    )
+                else:
+                    pass
             else:
                 mdl.algebraic_eqs = bus_kcl_eqs
 
@@ -5566,39 +5591,73 @@ class EmtProblemDae(EmtProblemTemplate):
         :param emt_events_group: EMT events group to activate. ``None`` keeps all EMT events active.
         :return: None
         """
+        # Detect whether the requested group is already active. The special case
+        # with no explicitly selected group preserves the original behaviour where
+        # scheduled mode events determine whether the runtime layer is initialized.
         same_group_requested: bool
 
         if self._active_events_group is None:
-            same_group_requested = emt_events_group is None and len(self._scheduled_mode_events) > 0
+            same_group_requested = (
+                    emt_events_group is None
+                    and len(self._scheduled_mode_events) > 0
+            )
         elif emt_events_group is None:
             same_group_requested = False
         else:
-            same_group_requested = self._active_events_group.idtag == emt_events_group.idtag
+            same_group_requested = (
+                    self._active_events_group.idtag == emt_events_group.idtag
+            )
 
+        # Avoid rebuilding the runtime event expressions when the requested event
+        # group is already active.
         if same_group_requested:
             return
         else:
             pass
 
+        # Start from the original runtime parameter equations. Continuous events
+        # will progressively replace the affected equations with time-dependent
+        # expressions, while discrete events are stored separately.
         active_runtime_eqs: List[Any] = list(self._runtime_parameter_eqs0)
         scheduled_mode_events: Dict[int, List[Tuple[float, float, bool]]] = dict()
-        continuous_events: Dict[int, List[Dict[str, float | str | None]]] = {
-            parameter.uid: list()
-            for parameter in self.get_runtime_continuous_parameters()
-            if parameter.uid in self._continuous_event_parameter_uids
-        }
+        continuous_events: Dict[int, List[Dict[str, Any]]] = dict()
 
+        # Pre-register only those continuous runtime parameters that can actually
+        # receive continuous EMT events.
+        runtime_parameter: Any
+
+        for runtime_parameter in self.get_runtime_continuous_parameters():
+            runtime_parameter_uid: int = runtime_parameter.uid
+
+            if runtime_parameter_uid in self._continuous_event_parameter_uids:
+                continuous_events[runtime_parameter_uid] = list()
+            else:
+                pass
+
+        # Retrieve the events belonging to the requested group. A ``None`` group
+        # retains the original semantics implemented by the group resolver.
         emt_events: List[Any] = self._get_emt_events_for_group(emt_events_group)
 
+        # Classify every valid event as either a scheduled discrete update or a
+        # continuous runtime expression modification.
+        evt: Any
+
         for evt in emt_events:
-            parameter_uid: int | None = self._resolve_registered_event_parameter_uid(evt)
+            parameter_uid: int | None = self._resolve_registered_event_parameter_uid(
+                evt
+            )
 
             if parameter_uid is not None:
                 if self._event_targets_registered_parameter(evt, parameter_uid):
                     if parameter_uid in self._discrete_event_parameter_uids:
-                        event_list: List[Tuple[float, float, bool]] = scheduled_mode_events.setdefault(
-                            parameter_uid,
-                            list(),
+                        # Discrete mode parameters are updated only at their event
+                        # boundaries and therefore remain outside the continuous
+                        # piecewise expression construction.
+                        event_list: List[Tuple[float, float, bool]] = (
+                            scheduled_mode_events.setdefault(
+                                parameter_uid,
+                                list(),
+                            )
                         )
 
                         force_step_alignment: bool = bool(evt.force_step_alignment)
@@ -5612,16 +5671,30 @@ class EmtProblemDae(EmtProblemTemplate):
                         )
                     else:
                         if parameter_uid in continuous_events:
-                            transition_type: DynamicEventTransitionType = evt.transition_type
-                            end_time = evt.end_time
+                            # Continuous events are stored first and converted into
+                            # runtime expressions after all events have been
+                            # collected, so their chronological order can be
+                            # enforced deterministically.
+                            transition_type: DynamicEventTransitionType = (
+                                evt.transition_type
+                            )
+                            end_time_raw_event: Any = evt.end_time
+                            normalized_end_time: float | None
+
+                            if end_time_raw_event is None:
+                                normalized_end_time = None
+                            else:
+                                normalized_end_time = float(end_time_raw_event)
+
+                            continuous_event_spec: Dict[str, Any] = dict(
+                                time=float(evt.time),
+                                value=float(evt.value),
+                                end_time=normalized_end_time,
+                                transition_type=transition_type,
+                            )
 
                             continuous_events[parameter_uid].append(
-                                dict({
-                                    "time": float(evt.time),
-                                    "value": float(evt.value),
-                                    "end_time": None if end_time is None else float(end_time),
-                                    "transition_type": transition_type,
-                                })
+                                continuous_event_spec
                             )
                         else:
                             pass
@@ -5630,63 +5703,130 @@ class EmtProblemDae(EmtProblemTemplate):
             else:
                 pass
 
-        for parameter_uid, event_specs in continuous_events.items():
+        # Convert the collected continuous events into the runtime expressions used
+        # by the EMT solver. Each parameter is treated independently.
+        continuous_parameter_uid: int
+        event_specs: List[Dict[str, Any]]
+
+        for continuous_parameter_uid, event_specs in continuous_events.items():
             if len(event_specs) != 0:
-                runtime_idx: int | None = self.uid2idx_event_params.get(parameter_uid, None)
-                if runtime_idx is None:
-                    self.logger.add_warning(
-                        msg="EMT event targets one runtime parameter that is not registered in the active problem.",
-                        device_class="EMT",
-                        device_property="event_parameter_uid",
-                        value=str(parameter_uid),
-                        expected_value="Registered EMT runtime parameter",
-                    )
-                    continue
-                else:
-                    pass
-                sorted_specs: List[Dict[str, float | DynamicEventTransitionType | None]] = sorted(
-                    event_specs,
-                    key=_continuous_event_spec_time_sort_key,
+                runtime_idx: int | None = self.uid2idx_event_params.get(
+                    continuous_parameter_uid,
+                    None,
                 )
-                active_expr: Any = active_runtime_eqs[runtime_idx]
-                event_spec: Dict[str, float | DynamicEventTransitionType | None]
 
-                for event_spec in sorted_specs:
-                    if event_spec["transition_type"] == DynamicEventTransitionType.Ramp:
-                        start_time: float = float(event_spec["time"])
-                        end_time_raw: float | str | None = event_spec["end_time"]
+                if runtime_idx is not None:
+                    # Preserve the exact ordering semantics of the original
+                    # ``sorted(..., key=_continuous_event_spec_time_sort_key)``.
+                    # The helper is called explicitly rather than passed as a
+                    # function pointer. The original index provides stable ordering
+                    # when two events have identical sort keys.
+                    indexed_event_specs: List[
+                        Tuple[Any, int, Dict[str, Any]]
+                    ] = list()
 
-                        if end_time_raw is None:
-                            raise ValueError("Ramp EMT events require an end_time")
+                    event_spec_index: int
+                    event_spec_to_sort: Dict[str, Any]
+
+                    for event_spec_index, event_spec_to_sort in enumerate(event_specs):
+                        event_sort_key: Any = _continuous_event_spec_time_sort_key(
+                            event_spec_to_sort
+                        )
+
+                        indexed_event_specs.append(
+                            (
+                                event_sort_key,
+                                event_spec_index,
+                                event_spec_to_sort,
+                            )
+                        )
+
+                    indexed_event_specs.sort()
+
+                    # Begin with the parameter's current runtime expression. Events
+                    # are then layered chronologically on top of that expression.
+                    active_expr: Any = active_runtime_eqs[runtime_idx]
+                    indexed_event_spec: Tuple[Any, int, Dict[str, Any]]
+
+                    for indexed_event_spec in indexed_event_specs:
+                        event_spec: Dict[str, Any] = indexed_event_spec[2]
+                        transition_type_value: Any = event_spec["transition_type"]
+
+                        if (
+                                transition_type_value
+                                == DynamicEventTransitionType.Ramp
+                        ):
+                            # A ramp replaces the runtime expression between its
+                            # start and end times and reaches the requested final
+                            # value at the end of the interval.
+                            start_time: float = float(event_spec["time"])
+                            end_time_raw: Any = event_spec["end_time"]
+
+                            if end_time_raw is None:
+                                raise ValueError(
+                                    "Ramp EMT events require an end_time"
+                                )
+                            else:
+                                pass
+
+                            end_time: float = float(end_time_raw)
+
+                            if end_time > start_time:
+                                pass
+                            else:
+                                raise ValueError(
+                                    "Ramp EMT events require end_time greater than time"
+                                )
+
+                            active_expr = _build_ramp_runtime_expr(
+                                time_var=self._glob_time,
+                                start_time=start_time,
+                                end_time=end_time,
+                                before_expr=active_expr,
+                                final_value=float(event_spec["value"]),
+                            )
                         else:
-                            pass
+                            # Non-ramp continuous events are represented as an
+                            # instantaneous piecewise parameter value change.
+                            event_time_values: np.ndarray = np.asarray(
+                                (float(event_spec["time"]),),
+                                dtype=np.float64,
+                            )
+                            event_new_values: np.ndarray = np.asarray(
+                                (float(event_spec["value"]),),
+                                dtype=np.float64,
+                            )
 
-                        end_time: float = float(end_time_raw)
+                            active_expr = piecewise(
+                                time_var=self._glob_time,
+                                t_events=event_time_values,
+                                new_values=event_new_values,
+                                default_value=active_expr,
+                            )
 
-                        if end_time > start_time:
-                            pass
-                        else:
-                            raise ValueError("Ramp EMT events require end_time greater than time")
-
-                        active_expr = _build_ramp_runtime_expr(
-                            time_var=self._glob_time,
-                            start_time=start_time,
-                            end_time=end_time,
-                            before_expr=active_expr,
-                            final_value=float(event_spec["value"]),
+                    # Store the fully composed expression back in the same flat
+                    # runtime-vector position used by the solver.
+                    active_runtime_eqs[runtime_idx] = active_expr
+                else:
+                    # An event can only be applied when its parameter is present in
+                    # the finalized runtime parameter mapping.
+                    if self.logger is not None:
+                        self.logger.add_warning(
+                            msg=(
+                                "EMT event targets one runtime parameter that is "
+                                "not registered in the active problem."
+                            ),
+                            device_class="EMT",
+                            device_property="event_parameter_uid",
+                            value=str(continuous_parameter_uid),
+                            expected_value="Registered EMT runtime parameter",
                         )
                     else:
-                        active_expr = piecewise(
-                            time_var=self._glob_time,
-                            t_events=np.asarray([float(event_spec["time"])], dtype=np.float64),
-                            new_values=np.asarray([float(event_spec["value"])], dtype=np.float64),
-                            default_value=active_expr,
-                        )
-
-                active_runtime_eqs[runtime_idx] = active_expr
+                        pass
             else:
                 pass
 
+        # Commit the selected group and its newly constructed runtime event state.
         self._active_events_group = emt_events_group
         self._runtime_all_eqs_source = active_runtime_eqs
         self._scheduled_mode_events = scheduled_mode_events
@@ -5695,49 +5835,58 @@ class EmtProblemDae(EmtProblemTemplate):
         # updates; it does not change the parameter ordering. Reusing the existing
         # partition avoids rebuilding constant parameter buffers and repeated list
         # reconstruction during every event-group switch.
-        self._runtime_continuous_eqs = list()
-        self._runtime_mode_eqs = list()
-
+        #
         # ``active_runtime_eqs`` is already expressed in the flat runtime-vector
         # order used by ``uid2idx_event_params`` and by the solver runtime buffer.
         # Re-splitting it through ``_runtime_all_parameters_source`` would switch
         # back to source-block order and scramble retained mode parameters such as
         # Bergeron history terms. The slices keep the continuous/mode partition
         # aligned with the finalized flat parameter layout.
-        runtime_continuous_eqs: List[Any] = list(active_runtime_eqs[self._runtime_continuous_slice])
-        runtime_mode_eqs: List[Any] = list(active_runtime_eqs[self._runtime_mode_slice])
+        self._runtime_continuous_eqs = list(
+            active_runtime_eqs[self._runtime_continuous_slice]
+        )
+        self._runtime_mode_eqs = list(
+            active_runtime_eqs[self._runtime_mode_slice]
+        )
 
-        for equation in runtime_continuous_eqs:
-            self._runtime_continuous_eqs.append(equation)
+        # Rebuild the unified event-equation vector without concatenating lists,
+        # preserving the continuous-then-mode ordering expected by the solver.
+        self._event_parameters_eqs = list(self._runtime_continuous_eqs)
 
-        for equation in runtime_mode_eqs:
-            self._runtime_mode_eqs.append(equation)
+        runtime_mode_equation: Any
 
-        self._event_parameters_eqs = list()
+        for runtime_mode_equation in self._runtime_mode_eqs:
+            self._event_parameters_eqs.append(runtime_mode_equation)
 
-        for equation in self._runtime_continuous_eqs:
-            self._event_parameters_eqs.append(equation)
-
-        for equation in self._runtime_mode_eqs:
-            self._event_parameters_eqs.append(equation)
-
+        # Reset the cursor because scheduled mode events must be consumed again
+        # according to the newly activated group.
         self._mode_event_cursor = dict()
         self._initialize_mode_event_state()
 
-        if self.get_variable_parameter_number() > 0:
-            # Event-group activation must preserve the already resolved runtime
-            # operating point from explicit/native initialization. Rebuilding the
-            # vector from equation defaults here would erase PF-seeded and
-            # explicit-init-resolved parameters (for example Thevenin internal
-            # runtime references) just before the first simulation step.
+        # Event-group activation must preserve the already resolved runtime
+        # operating point from explicit/native initialization. Rebuilding the
+        # vector from equation defaults here would erase PF-seeded and
+        # explicit-init-resolved parameters, for example Thevenin internal runtime
+        # references, immediately before the first simulation step.
+        variable_parameter_number: int = self.get_variable_parameter_number()
+
+        if variable_parameter_number > 0:
             preserved_runtime_values: np.ndarray = self._event_params_values.copy()
+
             self._event_params_values = self._initialize_runtime_parameter_values(
                 0.0,
                 seed_values=preserved_runtime_values,
             )
-            self._event_params_values = self.def_event_params_fn(self._event_params_values, 0.0)
+
+            self._event_params_values = self.def_event_params_fn(
+                self._event_params_values,
+                0.0,
+            )
         else:
-            self._event_params_values = np.zeros(0, dtype=np.float64)
+            self._event_params_values = np.zeros(
+                0,
+                dtype=np.float64,
+            )
 
     # ---------------------------------------------------------------------
     # MAPPINGS
@@ -6096,14 +6245,17 @@ class EmtProblemDae(EmtProblemTemplate):
 
                 if source_count_dc == 0:
                     if abs(residual_dc) > 1.0e-9:
-                        self.logger.add_warning(
-                            msg="DC EMT injection residual could not be assigned.",
-                            device="EmtProblemDae",
-                            value=f"bus_index={bus_index}, residual={residual_dc}",
-                            expected_value="At least one source-like DC injection",
-                            device_class="EMT",
-                            device_property="injection_seed_store_3ph",
-                        )
+                        if self.logger is not None:
+                            self.logger.add_warning(
+                                msg="DC EMT injection residual could not be assigned.",
+                                device="EmtProblemDae",
+                                value=f"bus_index={bus_index}, residual={residual_dc}",
+                                expected_value="At least one source-like DC injection",
+                                device_class="EMT",
+                                device_property="injection_seed_store_3ph",
+                            )
+                        else:
+                            pass
                     else:
                         pass
                 else:
@@ -6144,14 +6296,17 @@ class EmtProblemDae(EmtProblemTemplate):
 
                 if source_count_ac == 0:
                     if np.max(np.abs(residual_ac)) > 1.0e-9:
-                        self.logger.add_warning(
-                            msg="AC EMT injection residual could not be assigned.",
-                            device="EmtProblemDae",
-                            value=f"bus_index={bus_index}, residual={residual_ac}",
-                            expected_value="At least one source-like AC injection",
-                            device_class="EMT",
-                            device_property="injection_seed_store_3ph",
-                        )
+                        if self.logger is not None:
+                            self.logger.add_warning(
+                                msg="AC EMT injection residual could not be assigned.",
+                                device="EmtProblemDae",
+                                value=f"bus_index={bus_index}, residual={residual_ac}",
+                                expected_value="At least one source-like AC injection",
+                                device_class="EMT",
+                                device_property="injection_seed_store_3ph",
+                            )
+                        else:
+                            pass
                     else:
                         pass
                 else:
@@ -6285,14 +6440,17 @@ class EmtProblemDae(EmtProblemTemplate):
 
                 if source_count_dc == 0:
                     if abs(residual_dc) > 1.0e-9:
-                        self.logger.add_warning(
-                            msg="Balanced DC EMT injection residual could not be assigned.",
-                            device="EmtProblemDae",
-                            value=f"bus_index={bus_index}, residual={residual_dc}",
-                            expected_value="At least one source-like DC injection",
-                            device_class="EMT",
-                            device_property="injection_seed_store_balanced",
-                        )
+                        if self.logger is not None:
+                            self.logger.add_warning(
+                                msg="Balanced DC EMT injection residual could not be assigned.",
+                                device="EmtProblemDae",
+                                value=f"bus_index={bus_index}, residual={residual_dc}",
+                                expected_value="At least one source-like DC injection",
+                                device_class="EMT",
+                                device_property="injection_seed_store_balanced",
+                            )
+                        else:
+                            pass
                     else:
                         pass
                 else:
@@ -6333,14 +6491,17 @@ class EmtProblemDae(EmtProblemTemplate):
 
                 if source_count_ac == 0:
                     if np.max(np.abs(residual_ac)) > 1.0e-9:
-                        self.logger.add_warning(
-                            msg="Balanced AC EMT injection residual could not be assigned.",
-                            device="EmtProblemDae",
-                            value=f"bus_index={bus_index}, residual={residual_ac}",
-                            expected_value="At least one source-like AC injection",
-                            device_class="EMT",
-                            device_property="injection_seed_store_balanced",
-                        )
+                        if self.logger is not None:
+                            self.logger.add_warning(
+                                msg="Balanced AC EMT injection residual could not be assigned.",
+                                device="EmtProblemDae",
+                                value=f"bus_index={bus_index}, residual={residual_ac}",
+                                expected_value="At least one source-like AC injection",
+                                device_class="EMT",
+                                device_property="injection_seed_store_balanced",
+                            )
+                        else:
+                            pass
                     else:
                         pass
                 else:
@@ -7043,72 +7204,281 @@ class EmtProblemDae(EmtProblemTemplate):
                     else:
                         a6_value = runtime_value
 
-        for phase_label in ["A", "B", "C"]:
-            voltage_var: Optional[Any] = _get_external_mapping_var_if_present(mdl, getattr(VarPowerFlowReferenceType, f"v_{phase_label}"))
-            voltage_derivative_var: Optional[Any] = _get_external_mapping_var_if_present(mdl, getattr(VarPowerFlowReferenceType, f"d_v_{phase_label}"))
-            current_var: Optional[Any] = _get_external_mapping_var_if_present(mdl, getattr(VarPowerFlowReferenceType, f"i_{phase_label}"))
-            u_var: Optional[Var] = _find_internal_var_for_init(mdl, f"u_{phase_label}")
-            q_var: Optional[Var] = _find_internal_var_for_init(mdl, f"q_{phase_label}")
-            v2_var: Optional[Var] = _find_internal_var_for_init(mdl, f"V{phase_label}2")
-            vm_var: Optional[Var] = _find_internal_var_for_init(mdl, f"Vm{phase_label}")
-            ratio_var: Optional[Var] = _find_internal_var_for_init(mdl, f"r{phase_label}")
-            p_var: Optional[Var] = _find_internal_var_for_init(mdl, f"P_{phase_label}")
-            q_load_var: Optional[Var] = _find_internal_var_for_init(mdl, f"Q_{phase_label}")
-            d_u_var: Optional[Var] = _find_internal_var_for_init(mdl, f"d_u_{phase_label}")
-            d_q_var: Optional[Var] = _find_internal_var_for_init(mdl, f"d_q_{phase_label}")
-            p0_var: Optional[Var] = _get_api_obj_mapping_local(self, mdl).get(getattr(ParamPowerFlowReferenceType, f"Pl0_{phase_label}"), None)
-            q0_var: Optional[Var] = _get_api_obj_mapping_local(self, mdl).get(getattr(ParamPowerFlowReferenceType, f"Ql0_{phase_label}"), None)
+        phase_label: str
 
-            if voltage_var is None or voltage_derivative_var is None or current_var is None or u_var is None or q_var is None or v2_var is None or vm_var is None or ratio_var is None or p_var is None or q_load_var is None or d_u_var is None or d_q_var is None or p0_var is None or q0_var is None:
-                continue
+        for phase_label in ("A", "B", "C"):
+
+            voltage_reference: VarPowerFlowReferenceType
+            voltage_derivative_reference: VarPowerFlowReferenceType
+            current_reference: VarPowerFlowReferenceType
+            p0_reference: ParamPowerFlowReferenceType
+            q0_reference: ParamPowerFlowReferenceType
+
+            # Select explicitly the power-flow references associated with each phase.
+            if phase_label == "A":
+                voltage_reference = VarPowerFlowReferenceType.v_A
+                voltage_derivative_reference = VarPowerFlowReferenceType.d_v_A
+                current_reference = VarPowerFlowReferenceType.i_A
+                p0_reference = ParamPowerFlowReferenceType.Pl0_A
+                q0_reference = ParamPowerFlowReferenceType.Ql0_A
+            elif phase_label == "B":
+                voltage_reference = VarPowerFlowReferenceType.v_B
+                voltage_derivative_reference = VarPowerFlowReferenceType.d_v_B
+                current_reference = VarPowerFlowReferenceType.i_B
+                p0_reference = ParamPowerFlowReferenceType.Pl0_B
+                q0_reference = ParamPowerFlowReferenceType.Ql0_B
             else:
-                pass
+                voltage_reference = VarPowerFlowReferenceType.v_C
+                voltage_derivative_reference = VarPowerFlowReferenceType.d_v_C
+                current_reference = VarPowerFlowReferenceType.i_C
+                p0_reference = ParamPowerFlowReferenceType.Pl0_C
+                q0_reference = ParamPowerFlowReferenceType.Ql0_C
 
-            v_value: Optional[float] = self.init_guess.get(voltage_var.uid, None)
-            d_v_value: Optional[float] = self._temp_init_guess.get(voltage_derivative_var.uid, None)
-            p0_value: Optional[float] = self._temp_init_guess.get(p0_var.uid, None)
-            q0_value: Optional[float] = self._temp_init_guess.get(q0_var.uid, None)
+            # Retrieve the external variables mapped to the corresponding power-flow references.
+            voltage_var: Optional[Any] = _get_external_mapping_var_if_present(
+                mdl,
+                voltage_reference,
+            )
+            voltage_derivative_var: Optional[Any] = _get_external_mapping_var_if_present(
+                mdl,
+                voltage_derivative_reference,
+            )
+            current_var: Optional[Any] = _get_external_mapping_var_if_present(
+                mdl,
+                current_reference,
+            )
 
-            if v_value is None or d_v_value is None or p0_value is None or q0_value is None:
-                continue
-            else:
-                pass
+            # Retrieve the internal variables required by the initialization equations.
+            u_var: Optional[Var] = _find_internal_var_for_init(
+                mdl,
+                f"u_{phase_label}",
+            )
+            q_var: Optional[Var] = _find_internal_var_for_init(
+                mdl,
+                f"q_{phase_label}",
+            )
+            v2_var: Optional[Var] = _find_internal_var_for_init(
+                mdl,
+                f"V{phase_label}2",
+            )
+            vm_var: Optional[Var] = _find_internal_var_for_init(
+                mdl,
+                f"Vm{phase_label}",
+            )
+            ratio_var: Optional[Var] = _find_internal_var_for_init(
+                mdl,
+                f"r{phase_label}",
+            )
+            p_var: Optional[Var] = _find_internal_var_for_init(
+                mdl,
+                f"P_{phase_label}",
+            )
+            q_load_var: Optional[Var] = _find_internal_var_for_init(
+                mdl,
+                f"Q_{phase_label}",
+            )
+            d_u_var: Optional[Var] = _find_internal_var_for_init(
+                mdl,
+                f"d_u_{phase_label}",
+            )
+            d_q_var: Optional[Var] = _find_internal_var_for_init(
+                mdl,
+                f"d_q_{phase_label}",
+            )
 
-            u_value: float = float(v_value)
-            q_value: float = float(-d_v_value / omega_value)
-            v2_value: float = float(u_value * u_value + q_value * q_value)
-            vm_value: float = float(np.sqrt(max(v2_value + eps_value, 0.0)))
-            ratio_value: float = float(vm_value / max(v0_value, 1.0e-12))
-            p_value: float = float(-(p0_value * (a1_value * ratio_value * ratio_value + a2_value * ratio_value + a3_value)))
-            q_load_value: float = float(-(q0_value * (a4_value * ratio_value * ratio_value + a5_value * ratio_value + a6_value)))
-            i_value: float = float(-(2.0 * (u_value * (-p_value) + q_value * (-q_load_value)) / max(v2_value + eps_value, 1.0e-12)))
-            d_u_value: float = float(d_v_value)
-            d_q_value: float = float(omega_value * u_value)
+            # Retrieve the phase active and reactive power parameters from the API mapping.
+            # The two calls are intentionally kept separate to preserve the original behavior.
+            p0_var: Optional[Var] = _get_api_obj_mapping_local(
+                self,
+                mdl,
+            ).get(
+                p0_reference,
+                None,
+            )
+            q0_var: Optional[Var] = _get_api_obj_mapping_local(
+                self,
+                mdl,
+            ).get(
+                q0_reference,
+                None,
+            )
 
-            for target_var, target_value in [
-                (u_var, u_value),
-                (q_var, q_value),
-                (v2_var, v2_value),
-                (vm_var, vm_value),
-                (ratio_var, ratio_value),
-                (p_var, p_value),
-                (q_load_var, q_load_value),
-                (current_var, i_value),
-            ]:
-                existing_value: Optional[float] = self.init_guess.get(target_var.uid, None)
-                if existing_value is None or not np.isfinite(existing_value):
-                    self.init_guess[target_var.uid] = float(target_value)
-                    self._temp_post_init_guess[target_var.uid] = float(target_value)
+            # Only initialize the phase when every variable required by the model is available.
+            if (
+                    voltage_var is not None
+                    and voltage_derivative_var is not None
+                    and current_var is not None
+                    and u_var is not None
+                    and q_var is not None
+                    and v2_var is not None
+                    and vm_var is not None
+                    and ratio_var is not None
+                    and p_var is not None
+                    and q_load_var is not None
+                    and d_u_var is not None
+                    and d_q_var is not None
+                    and p0_var is not None
+                    and q0_var is not None
+            ):
+                # Retrieve the network and power-flow values required to derive
+                # the initialization of the internal model variables.
+                v_value: Optional[float] = self.init_guess.get(
+                    voltage_var.uid,
+                    None,
+                )
+                d_v_value: Optional[float] = self._temp_init_guess.get(
+                    voltage_derivative_var.uid,
+                    None,
+                )
+                p0_value: Optional[float] = self._temp_init_guess.get(
+                    p0_var.uid,
+                    None,
+                )
+                q0_value: Optional[float] = self._temp_init_guess.get(
+                    q0_var.uid,
+                    None,
+                )
+
+                # Only evaluate the initialization equations when all required values exist.
+                if (
+                        v_value is not None
+                        and d_v_value is not None
+                        and p0_value is not None
+                        and q0_value is not None
+                ):
+                    # Recover the internal orthogonal voltage components from the
+                    # instantaneous voltage and its derivative.
+                    u_value: float = float(v_value)
+                    q_value: float = float(-d_v_value / omega_value)
+
+                    # Compute squared voltage magnitude and regularized voltage magnitude.
+                    v2_value: float = float(
+                        u_value * u_value
+                        + q_value * q_value
+                    )
+                    vm_value: float = float(
+                        np.sqrt(
+                            max(
+                                v2_value + eps_value,
+                                0.0,
+                            )
+                        )
+                    )
+
+                    # Normalize the voltage magnitude with respect to the reference voltage.
+                    ratio_value: float = float(
+                        vm_value
+                        / max(
+                            v0_value,
+                            1.0e-12,
+                        )
+                    )
+
+                    # Initialize active power using the voltage-dependent load characteristic.
+                    p_value: float = float(
+                        -(
+                                p0_value
+                                * (
+                                        a1_value * ratio_value * ratio_value
+                                        + a2_value * ratio_value
+                                        + a3_value
+                                )
+                        )
+                    )
+
+                    # Initialize reactive power using the voltage-dependent load characteristic.
+                    q_load_value: float = float(
+                        -(
+                                q0_value
+                                * (
+                                        a4_value * ratio_value * ratio_value
+                                        + a5_value * ratio_value
+                                        + a6_value
+                                )
+                        )
+                    )
+
+                    # Recover the phase current from the initialized voltage and load powers.
+                    i_value: float = float(
+                        -(
+                                2.0
+                                * (
+                                        u_value * (-p_value)
+                                        + q_value * (-q_load_value)
+                                )
+                                / max(
+                            v2_value + eps_value,
+                            1.0e-12,
+                        )
+                        )
+                    )
+
+                    # Initialize the derivatives associated with the orthogonal voltage states.
+                    d_u_value: float = float(d_v_value)
+                    d_q_value: float = float(
+                        omega_value * u_value
+                    )
+
+                    target_var: Any
+                    target_value: float
+
+                    # Initialize algebraic variables only when no finite value has already
+                    # been provided by a previous initialization stage.
+                    for target_var, target_value in (
+                            (u_var, u_value),
+                            (q_var, q_value),
+                            (v2_var, v2_value),
+                            (vm_var, vm_value),
+                            (ratio_var, ratio_value),
+                            (p_var, p_value),
+                            (q_load_var, q_load_value),
+                            (current_var, i_value),
+                    ):
+                        existing_value: Optional[float] = self.init_guess.get(
+                            target_var.uid,
+                            None,
+                        )
+
+                        if (
+                                existing_value is None
+                                or not np.isfinite(existing_value)
+                        ):
+                            self.init_guess[target_var.uid] = float(
+                                target_value
+                            )
+                            self._temp_post_init_guess[target_var.uid] = float(
+                                target_value
+                            )
+                        else:
+                            pass
+
+                    # Initialize differential variables only when no finite derivative
+                    # initialization has already been provided.
+                    for target_var, target_value in (
+                            (d_u_var, d_u_value),
+                            (d_q_var, d_q_value),
+                    ):
+                        existing_diff_value: Optional[float] = self.diff_init_guess.get(
+                            target_var.uid,
+                            None,
+                        )
+
+                        if (
+                                existing_diff_value is None
+                                or not np.isfinite(existing_diff_value)
+                        ):
+                            self.diff_init_guess[target_var.uid] = float(
+                                target_value
+                            )
+                            self._temp_post_diff_init_guess[target_var.uid] = float(
+                                target_value
+                            )
+                        else:
+                            pass
                 else:
                     pass
-
-            for target_var, target_value in [(d_u_var, d_u_value), (d_q_var, d_q_value)]:
-                existing_diff_value: Optional[float] = self.diff_init_guess.get(target_var.uid, None)
-                if existing_diff_value is None or not np.isfinite(existing_diff_value):
-                    self.diff_init_guess[target_var.uid] = float(target_value)
-                    self._temp_post_diff_init_guess[target_var.uid] = float(target_value)
-                else:
-                    pass
+            else:
+                pass
 
     def _get_vsc_terminal_indices(self,
                                   f_bus_idx: int,
@@ -10182,14 +10552,17 @@ class EmtProblemDae(EmtProblemTemplate):
         :return: Stack of reduced transition matrices or None.
         """
         if jac_evaluator is None:
-            self.logger.add_warning(
-                msg="No Jacobian evaluator was provided for Floquet Ak stack computation.",
-                device="EmtProblemDae",
-                value="None",
-                expected_value="Callable Jacobian evaluator",
-                device_class="EMT",
-                device_property="jac_evaluator"
-            )
+            if self.logger is not None:
+                self.logger.add_warning(
+                    msg="No Jacobian evaluator was provided for Floquet Ak stack computation.",
+                    device="EmtProblemDae",
+                    value="None",
+                    expected_value="Callable Jacobian evaluator",
+                    device_class="EMT",
+                    device_property="jac_evaluator"
+                )
+            else:
+                pass
             return None
         else:
             pass
