@@ -12,8 +12,11 @@ from VeraGridEngine.IO.fmu.importer.errors import (
     FmuModeError,
 )
 from VeraGridEngine.IO.fmu.importer.bindings import (
+    FmiThreeFloat64ConfigurationValue,
+    FmiThreeUInt64ConfigurationValue,
     FmuBindingDirection,
     FmuImportConfig,
+    FmuRefBinding,
     FmuVariableBinding,
     validate_bindings,
 )
@@ -23,6 +26,7 @@ from VeraGridEngine.IO.fmu.importer.model_description import (
     FmuVariableDescription,
     FmuVariableType,
     choose_fmu_mode,
+    select_declared_fmu_interface,
     list_fmu_variable_names,
     read_fmu_model_description,
 )
@@ -39,7 +43,6 @@ from VeraGridEngine.IO.fmu.importer.experimental_cs import (
     FmuCsDeviceAdapter,
     FmuCsDeviceSpec,
     FmuCsDomain,
-    FmuRefBinding,
     build_emt_fmu_cs_injection_template,
     build_rms_fmu_cs_injection_template,
     advance_rms_fmu_cs_devices,
@@ -87,6 +90,8 @@ __all__ = [
     "FmuDependencyError",
     "FmuImportError",
     "FmuModeError",
+    "FmiThreeFloat64ConfigurationValue",
+    "FmiThreeUInt64ConfigurationValue",
     "FmuBindingDirection",
     "FmuImportConfig",
     "FmuVariableBinding",
@@ -96,6 +101,7 @@ __all__ = [
     "FmuVariableDescription",
     "FmuVariableType",
     "choose_fmu_mode",
+    "select_declared_fmu_interface",
     "list_fmu_variable_names",
     "read_fmu_model_description",
     "FmuRuntimeHost",

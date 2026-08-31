@@ -643,6 +643,8 @@ def configure_fmu_template(template: FmuTemplate,
         fmu_path=normalized_path,
         preferred_mode=_to_interface_mode(mode),
     )
+    # Reject unsupported FMI versions before creating or storing a template.
+    template_config.resolve_execution_mode(metadata)
     input_bindings = _build_auto_input_bindings(metadata)
     output_bindings = _build_auto_output_bindings(metadata)
     output_defaults = _build_output_defaults(metadata, output_bindings)
