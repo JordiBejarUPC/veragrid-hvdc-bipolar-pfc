@@ -751,6 +751,7 @@ def _build_template_block(
     name: str,
     output_bindings: tuple[FmuRefBinding, ...],
     output_defaults: dict[VarPowerFlowReferenceType, float] | None,
+    input_bindings: tuple[FmuRefBinding, ...] = tuple(),
 ) -> Block:
     """Build the symbolic shell block for an imported FMU device.
 
@@ -758,8 +759,24 @@ def _build_template_block(
     :param name: Template name.
     :param output_bindings: FMU-to-VeraGrid bindings.
     :param output_defaults: Default values for each output reference.
+    :param input_bindings: VeraGrid-to-FMU bindings materialized as shell inputs.
     :return: Symbolic shell block.
     """
+
+    # Reject ambiguous directions before any variable is allocated so a failed
+    # request leaves the owning VarFactory unchanged.
+    reserved_references: set[VarPowerFlowReferenceType] = set()
+    output_binding: FmuRefBinding
+    for output_binding in output_bindings:
+        reserved_references.add(output_binding.reference)
+    input_binding: FmuRefBinding
+    for input_binding in input_bindings:
+        if input_binding.reference in reserved_references:
+            raise ValueError(
+                f"FMU reference {input_binding.reference.value!r} cannot be both an input and an output"
+            )
+        else:
+            reserved_references.add(input_binding.reference)
 
     algebraic_vars: list[Var]
     algebraic_eqs: list[Any]
@@ -771,9 +788,21 @@ def _build_template_block(
         output_bindings=output_bindings,
         output_defaults=output_defaults,
     )
+    input_vars: list[Var] = [
+        vfactory.add_var(
+            name=f"fmu_input_{binding.reference.value.replace('-', '_')}_{name}",
+            reference=binding.reference,
+        )
+        for binding in input_bindings
+    ]
+    binding_index: int
+    for binding_index in range(len(input_bindings)):
+        external_mapping[input_bindings[binding_index].reference] = input_vars[binding_index]
+
     return Block(
         algebraic_vars=algebraic_vars,
         algebraic_eqs=algebraic_eqs,
+        in_vars=input_vars,
         out_vars=list(algebraic_vars),
         event_dict=event_dict,
         external_mapping=external_mapping,
@@ -853,7 +882,13 @@ def build_emt_fmu_cs_injection_template(
     )
     template: EmtModelTemplate = EmtModelTemplate(name=name)
     template.tpe = device_tpe
-    template.block = _build_template_block(vfactory, name, output_bindings, output_defaults)
+    template.block = _build_template_block(
+        vfactory=vfactory,
+        name=name,
+        output_bindings=output_bindings,
+        output_defaults=output_defaults,
+        input_bindings=input_bindings,
+    )
     _ensure_emt_external_mapping_keys(template.block)
     template.block.api_obj_mapping = dict()
     template.block.api_obj_mapping[ParamPowerFlowReferenceType.Pl0_A] = None

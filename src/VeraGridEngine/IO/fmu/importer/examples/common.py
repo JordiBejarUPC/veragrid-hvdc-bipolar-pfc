@@ -5,10 +5,10 @@
 from __future__ import annotations
 from typing import Any
 from pathlib import Path
-from types import SimpleNamespace
 import uuid
 import numpy as np
 
+from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup
 from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.Injections.load import Load
@@ -16,11 +16,13 @@ from VeraGridEngine.Devices.Branches.line import Line
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.EMT.emt_driver import EmtSimulationDriver
+from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
 from VeraGridEngine.Simulations.Rms.rms_driver import RmsSimulationDriver
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
-from VeraGridEngine.Utils.Symbolic.bus_emt_template import BusEmtTemplate
+from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template_with_ref
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
@@ -28,6 +30,8 @@ from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.enumerations import (
     BranchImpedanceMode,
     DynamicIntegrationMethod,
+    EmtInitializationMethod,
+    EmtSolverTypes,
     SolverType,
     VarPowerFlowReferenceType,
 )
@@ -35,9 +39,8 @@ from VeraGridEngine.enumerations import (
 from VeraGridEngine.IO.fmu.exporter.api import export_fmu
 from VeraGridEngine.IO.fmu.exporter.config import ExportConfig as CsExportConfig, detect_target_platform as detect_cs_target_platform
 from VeraGridEngine.IO.fmu.exporter.compat import Block, Const, Var
-from VeraGridEngine.IO.fmu.importer.emt_boundary import build_emt_boundary_updater
-from VeraGridEngine.IO.fmu.importer.experimental_cs import FmuRefBinding, register_emt_fmu_cs_device
-from VeraGridEngine.IO.fmu.importer.experimental_me import FmuMeIntegrationMethod, register_emt_fmu_me_device
+from VeraGridEngine.IO.fmu.importer.experimental_cs import FmuRefBinding
+from VeraGridEngine.IO.fmu.importer.experimental_me import FmuMeIntegrationMethod
 from VeraGridEngine.IO.fmu.importer.model_description import FmuInterfaceMode
 from VeraGridEngine.IO.fmu.importer.user_api import (
     FmuDeviceAttachmentRequest,
@@ -145,6 +148,9 @@ def _build_emt_cs_source_block() -> Block:
     i_a: Var = Var("i_a_out")
     i_b: Var = Var("i_b_out")
     i_c: Var = Var("i_c_out")
+    v_a: Var = Var("v_a_in")
+    v_b: Var = Var("v_b_in")
+    v_c: Var = Var("v_c_in")
     return Block(
         state_vars=[x],
         state_eqs=[Const(1.0)],
@@ -153,6 +159,7 @@ def _build_emt_cs_source_block() -> Block:
         diff_vars=[dx],
         init_values={x: Const(0.0), i_a: Const(0.0), i_b: Const(0.0), i_c: Const(0.0)},
         init_eqs={i_a: Const(0.0), i_b: Const(0.0), i_c: Const(0.0)},
+        in_vars=[v_a, v_b, v_c],
         out_vars=[i_a, i_b, i_c],
     )
 
@@ -169,6 +176,8 @@ def _build_emt_me_source_block() -> Block:
     i_b: Var = Var("i_b_out")
     i_c: Var = Var("i_c_out")
     u: Var = Var("u")
+    v_b: Var = Var("v_b_in")
+    v_c: Var = Var("v_c_in")
     return Block(
         state_vars=[x],
         state_eqs=[Const(1.0) + u],
@@ -177,7 +186,7 @@ def _build_emt_me_source_block() -> Block:
         diff_vars=[dx],
         init_values={x: Const(0.0), i_a: Const(0.0), i_b: Const(0.0), i_c: Const(0.0)},
         init_eqs={i_a: Const(0.0), i_b: Const(0.0), i_c: Const(0.0)},
-        in_vars=[u],
+        in_vars=[u, v_b, v_c],
         out_vars=[i_a, i_b, i_c],
     )
 
@@ -358,100 +367,28 @@ def _build_emt_demo_grid() -> tuple[MultiCircuit, Load]:
     bus: Bus = Bus(name="Bus0", Vnom=10.0, is_slack=True)
     grid.add_bus(bus)
 
-    # The example forces a simple ABC bus shell because the demo grid has no EMT branches yet.
-    bus_template = BusEmtTemplate(vf=grid.var_factory, mask=[False, True, True, True], is_dc=bus.is_dc, name=f"{bus.name}_emt_template")
-
-    # The public setter copies the block through symbolic serialization and that path still rejects `None`
-    # entries present in EMT bus external mappings. For this controlled example we attach the template directly.
-    bus._emt_template = bus_template
-    bus._emt_model = bus_template.block
-
     generator: Generator = Generator(name="Gen0", P=0.0, vset=1.0, Snom=900.0, x1=0.2, r1=0.01)
-    generator_template = get_generator_thevenin_rl_emt_template_with_ref(grid=grid, gen=generator, name="emt_thevenin_source")
-
-    # The public setter still serializes through external mappings with `None` placeholders, so we attach directly.
-    generator._emt_template = generator_template
-    generator._emt_model = generator_template.block
+    generator_template = get_generator_thevenin_rl_emt_template_with_ref(
+        vf=grid.var_factory,
+        name="emt_thevenin_source",
+    )
     load: Load = Load(name="ImportedLoad", P=0.0, Q=0.0)
 
     grid.add_generator(bus=bus, api_obj=generator)
     grid.add_load(bus=bus, api_obj=load)
+
+    # Materialize the canonical ABC bus shell after the complete one-bus
+    # topology is known, matching the established EMT scripting lifecycle.
+    get_bus_emt_template(grid=grid, bus=bus)
+
+    # The public setter propagates the bus voltage identities into the source
+    # model before the real EMT problem compiles its equations.
+    set_emt_model(
+        device=generator,
+        model=generator_template.block,
+        var_factory=grid.var_factory,
+    )
     return grid, load
-
-
-class _ExampleEmtProblem:
-    """Minimal EMT harness used by the example scripts.
-
-    :param block: Imported FMU shell block.
-    :param bus_voltage_var: Optional EMT bus voltage variable used as FMU input.
-    """
-
-    __slots__ = ("uid2idx_event_params", "uid2idx_vars", "_fmu_cs_adapters", "_fmu_me_adapters", "calls")
-
-    def __init__(self, block: Block, bus_voltage_var: Var | None = None) -> None:
-        """Store the synthetic EMT harness state.
-
-        :return: None.
-        """
-
-        self.uid2idx_event_params: dict[int, int] = dict()
-        self.uid2idx_vars: dict[int, int] = dict()
-        event_index: int = 0
-        event_parameter: Var
-        for event_parameter in block.event_dict.keys():
-            self.uid2idx_event_params[event_parameter.uid] = event_index
-            event_index += 1
-        if bus_voltage_var is None:
-            pass
-        else:
-            self.uid2idx_vars[bus_voltage_var.uid] = 0
-        self._fmu_cs_adapters = list()
-        self._fmu_me_adapters = list()
-        self.calls: int = 0
-
-    def emt_boundary_update(self, t_curr: float, x_prev: np.ndarray, full_params: np.ndarray) -> None:
-        """Record one synthetic EMT boundary update call.
-
-        :param t_curr: Current simulation time.
-        :param x_prev: Accepted state vector.
-        :param full_params: Runtime-parameter vector.
-        :return: None.
-        """
-
-        self.calls += 1
-
-    def get_next_forced_event_time(self, t_prev: float, t_target: float):
-        """Return that the synthetic harness has no forced events.
-
-        :param t_prev: Previous time.
-        :param t_target: Candidate target time.
-        :return: None.
-        """
-
-        return None
-
-    def close(self) -> None:
-        """Provide the same close interface as the real EMT problem.
-
-        :return: None.
-        """
-
-        return
-
-
-def _build_emt_results_report_lines(params: np.ndarray, prefixes: tuple[str, ...]) -> tuple[str, ...]:
-    """Build a simple textual report from the synthetic EMT boundary harness.
-
-    :param params: Runtime-parameter vector.
-    :param prefixes: Label prefixes for the report.
-    :return: Summary lines.
-    """
-
-    lines: list[str] = list()
-    index: int
-    for index, prefix in enumerate(prefixes):
-        lines.append(f"{prefix} = {float(params[index]):.8f}")
-    return tuple(lines)
 
 
 def _build_rms_results_summary(driver: RmsSimulationDriver, load: Load) -> tuple[str, ...]:
@@ -608,32 +545,84 @@ def _build_emt_results_summary(driver: EmtSimulationDriver, load: Load) -> tuple
     if driver.results is None:
         raise RuntimeError("The EMT simulation did not produce results")
     else:
+        # A report represents one conclusive run, not the placeholder storage
+        # allocated for inactive or failed event groups.
+        active_group_count: int = 0
+        event_group: EmtEventsGroup
+        for event_group in driver.grid.emt_events_groups:
+            if event_group.active:
+                active_group_count += 1
+            else:
+                pass
+        available_group_indices: np.ndarray = np.flatnonzero(driver.results.has_event_group_results)
+        if active_group_count == 1 and available_group_indices.size == 1:
+            group_index: int = int(available_group_indices[0])
+        else:
+            raise RuntimeError(
+                "The EMT example requires exactly one active and available event group"
+            )
+
+        # Solver status must be affirmative before any preallocated numerical
+        # value can be presented as a successful native FMI result.
+        well_initialized: bool = bool(driver.results.well_initialized[group_index])
+        converged: bool = bool(driver.results.converged[group_index])
+        if well_initialized and converged:
+            pass
+        else:
+            raise RuntimeError(
+                "The EMT example did not initialize and converge successfully"
+            )
+
+        final_time_seconds: float = float(driver.results.time_array[-1].value) * 1.0e-9
+        final_time_matches: bool = bool(
+            np.isclose(
+                final_time_seconds,
+                driver.options.simulation_time,
+                rtol=0.0,
+                atol=1.0e-12,
+            )
+        )
+        if final_time_matches:
+            pass
+        else:
+            raise RuntimeError("The EMT example did not reach its configured terminal time")
+
         i_a_var: Var = load.emt_model.external_mapping[VarPowerFlowReferenceType.i_A]
         i_b_var: Var = load.emt_model.external_mapping[VarPowerFlowReferenceType.i_B]
         i_c_var: Var = load.emt_model.external_mapping[VarPowerFlowReferenceType.i_C]
-        i_a_final = _try_get_result_value(driver.results.values, driver.results.uid2idx.get(i_a_var.uid, None))
-        i_b_final = _try_get_result_value(driver.results.values, driver.results.uid2idx.get(i_b_var.uid, None))
-        i_c_final = _try_get_result_value(driver.results.values, driver.results.uid2idx.get(i_c_var.uid, None))
-        i_a_text: str
-        i_b_text: str
-        i_c_text: str
-        if i_a_final is None:
-            i_a_text = "not recorded"
+        i_a_final: float | None = _try_get_result_value(
+            driver.results.values, driver.results.uid2idx.get(i_a_var.uid, None)
+        )
+        i_b_final: float | None = _try_get_result_value(
+            driver.results.values, driver.results.uid2idx.get(i_b_var.uid, None)
+        )
+        i_c_final: float | None = _try_get_result_value(
+            driver.results.values, driver.results.uid2idx.get(i_c_var.uid, None)
+        )
+        if i_a_final is not None and i_b_final is not None and i_c_final is not None:
+            currents: np.ndarray = np.array([i_a_final, i_b_final, i_c_final], dtype=float)
         else:
-            i_a_text = f"{i_a_final:.8f}"
-        if i_b_final is None:
-            i_b_text = "not recorded"
+            raise RuntimeError("The EMT example did not record all three phase currents")
+
+        currents_are_finite: bool = bool(np.all(np.isfinite(currents)))
+        max_abs_current: float = float(np.max(np.abs(currents)))
+        current_balance: float = float(np.sum(currents))
+        if currents_are_finite and max_abs_current >= 1.0e-8 and abs(current_balance) <= 1.0e-6:
+            pass
         else:
-            i_b_text = f"{i_b_final:.8f}"
-        if i_c_final is None:
-            i_c_text = "not recorded"
-        else:
-            i_c_text = f"{i_c_final:.8f}"
+            raise RuntimeError(
+                "The EMT example currents are non-finite, placeholders, or unbalanced"
+            )
+
         return (
-            f"final_time = {driver.results.time_array[-1]}",
-            f"iA_final = {i_a_text}",
-            f"iB_final = {i_b_text}",
-            f"iC_final = {i_c_text}",
+            f"event_group_count = {active_group_count}",
+            f"well_initialized = {well_initialized}",
+            f"converged = {converged}",
+            f"final_time_seconds = {final_time_seconds:.12f}",
+            f"iA_final = {i_a_final:.8f}",
+            f"iB_final = {i_b_final:.8f}",
+            f"iC_final = {i_c_final:.8f}",
+            f"current_balance = {current_balance:.8e}",
         )
 
 
@@ -825,23 +814,22 @@ def run_emt_cs_example(output_dir: Path) -> Path:
         )
         return write_example_report(report_path, lines)
 
-    from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-    from VeraGridEngine.Devices.Substation.bus import Bus
-    from VeraGridEngine.Devices.Injections.load import Load
-    from VeraGridEngine.enumerations import DeviceType, VarPowerFlowReferenceType
-
-    grid = SimpleNamespace(var_factory=VarFactory(name="ExampleEmtCsVarFactory"))
-    load = Load(name="ImportedLoad", P=0.0, Q=0.0)
-    load.device_type = DeviceType.LoadDevice
-    bus = Bus(name="ExampleBus", Vnom=10.0)
-    bus._emt_model = Block()
-    load._bus = bus
+    grid: MultiCircuit
+    load: Load
+    grid, load = _build_emt_demo_grid()
+    grid.add_emt_events_group(EmtEventsGroup(name="default_emt_cs_example_group"))
+    pf_driver: PowerFlowDriver = PowerFlowDriver(grid=grid, options=_build_power_flow_options())
+    pf_driver.run()
 
     request = FmuDeviceAttachmentRequest(
         fmu_path=fmu_path,
         domain=FmuDeviceDomain.EMT,
         mode=FmuInterfaceMode.CO_SIMULATION,
-        input_bindings=tuple(),
+        input_bindings=(
+            FmuRefBinding(VarPowerFlowReferenceType.v_A, "v_a_in"),
+            FmuRefBinding(VarPowerFlowReferenceType.v_B, "v_b_in"),
+            FmuRefBinding(VarPowerFlowReferenceType.v_C, "v_c_in"),
+        ),
         output_bindings=(
             FmuRefBinding(VarPowerFlowReferenceType.i_A, "i_a_out"),
             FmuRefBinding(VarPowerFlowReferenceType.i_B, "i_b_out"),
@@ -855,24 +843,29 @@ def run_emt_cs_example(output_dir: Path) -> Path:
         extraction_root=output_dir,
     )
 
-    attached_block: Block = attach_fmu_to_device(load, grid, request)
-    load.idtag = "example-emt-cs-device"
-    problem = _ExampleEmtProblem(attached_block)
-    register_emt_fmu_cs_device(problem, load, attached_block)
-    boundary_updater = build_emt_boundary_updater(problem)
-
-    params = np.zeros(3, dtype=float)
-    try:
-        boundary_updater.update(0.0, np.zeros(1, dtype=float), params)
-        boundary_updater.update(1e-3, np.zeros(1, dtype=float), params)
-    finally:
-        boundary_updater.close()
+    # The public attachment stores the declarative device configuration. The
+    # real EMT problem reconstructs and registers the native adapter from it.
+    attach_fmu_to_device(load, grid, request)
+    emt_driver: EmtSimulationDriver = EmtSimulationDriver(
+        grid=grid,
+        options=EmtOptions(
+            time_step=5.0e-6,
+            simulation_time=1.0e-3,
+            tolerance=1.0e-6,
+            solver_type=EmtSolverTypes.Symbolic,
+            integration_method=DynamicIntegrationMethod.DaeTrapezoidal,
+            initialization_method=EmtInitializationMethod.Auto,
+            verbose=0,
+        ),
+        pf_results=pf_driver.results,
+        pf_results_3ph=None,
+    )
+    emt_driver.run()
 
     lines: tuple[str, ...] = (
         f"fmu_path = {fmu_path}",
         f"mode = {request.mode.value}",
-        f"boundary_calls = {problem.calls}",
-    ) + _build_emt_results_report_lines(params, ("iA_final", "iB_final", "iC_final"))
+    ) + _build_emt_results_summary(emt_driver, load)
     return write_example_report(report_path, lines)
 
 
@@ -896,22 +889,22 @@ def run_emt_me_example(output_dir: Path) -> Path:
         )
         return write_example_report(report_path, lines)
 
-    from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-    from VeraGridEngine.Devices.Substation.bus import Bus
-    from VeraGridEngine.Devices.Injections.load import Load
-    from VeraGridEngine.enumerations import DeviceType, VarPowerFlowReferenceType
-
-    grid = SimpleNamespace(var_factory=VarFactory(name="ExampleEmtMeVarFactory"))
-    load = Load(name="ImportedLoad", P=0.0, Q=0.0)
-    load.device_type = DeviceType.LoadDevice
-    bus = Bus(name="ExampleBus", Vnom=10.0)
-    load._bus = bus
+    grid: MultiCircuit
+    load: Load
+    grid, load = _build_emt_demo_grid()
+    grid.add_emt_events_group(EmtEventsGroup(name="default_emt_me_example_group"))
+    pf_driver: PowerFlowDriver = PowerFlowDriver(grid=grid, options=_build_power_flow_options())
+    pf_driver.run()
 
     request = FmuDeviceAttachmentRequest(
         fmu_path=fmu_path,
         domain=FmuDeviceDomain.EMT,
         mode=FmuInterfaceMode.MODEL_EXCHANGE,
-        input_bindings=(FmuRefBinding(VarPowerFlowReferenceType.v_A, "u"),),
+        input_bindings=(
+            FmuRefBinding(VarPowerFlowReferenceType.v_A, "u"),
+            FmuRefBinding(VarPowerFlowReferenceType.v_B, "v_b_in"),
+            FmuRefBinding(VarPowerFlowReferenceType.v_C, "v_c_in"),
+        ),
         output_bindings=(
             FmuRefBinding(VarPowerFlowReferenceType.i_A, "i_a_out"),
             FmuRefBinding(VarPowerFlowReferenceType.i_B, "i_b_out"),
@@ -926,25 +919,27 @@ def run_emt_me_example(output_dir: Path) -> Path:
         integration_method=FmuMeIntegrationMethod.EXPLICIT_EULER,
     )
 
-    attached_block: Block = attach_fmu_to_device(load, grid, request)
-    load.idtag = "example-emt-me-device"
-    bus_voltage_var = Var("example_bus_v_a")
-    bus._emt_model = Block(external_mapping={VarPowerFlowReferenceType.v_A: bus_voltage_var})
-    problem = _ExampleEmtProblem(attached_block, bus_voltage_var)
-    register_emt_fmu_me_device(problem, load, attached_block)
-    boundary_updater = build_emt_boundary_updater(problem)
-
-    x_snapshot = np.array([1.0], dtype=float)
-    params = np.zeros(3, dtype=float)
-    try:
-        boundary_updater.update(0.0, x_snapshot, params)
-        boundary_updater.update(1e-3, x_snapshot, params)
-    finally:
-        boundary_updater.close()
+    # The bus template already exposes the real phase-A voltage reference used
+    # by the Model Exchange input binding.
+    attach_fmu_to_device(load, grid, request)
+    emt_driver: EmtSimulationDriver = EmtSimulationDriver(
+        grid=grid,
+        options=EmtOptions(
+            time_step=5.0e-6,
+            simulation_time=1.0e-3,
+            tolerance=1.0e-6,
+            solver_type=EmtSolverTypes.Symbolic,
+            integration_method=DynamicIntegrationMethod.DaeTrapezoidal,
+            initialization_method=EmtInitializationMethod.Auto,
+            verbose=0,
+        ),
+        pf_results=pf_driver.results,
+        pf_results_3ph=None,
+    )
+    emt_driver.run()
 
     lines: tuple[str, ...] = (
         f"fmu_path = {fmu_path}",
         f"mode = {request.mode.value}",
-        f"boundary_calls = {problem.calls}",
-    ) + _build_emt_results_report_lines(params, ("iA_final", "iB_final", "iC_final"))
+    ) + _build_emt_results_summary(emt_driver, load)
     return write_example_report(report_path, lines)

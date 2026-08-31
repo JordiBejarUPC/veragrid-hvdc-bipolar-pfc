@@ -35,6 +35,7 @@ from VeraGridEngine.IO.fmu.importer.bindings import (
 from VeraGridEngine.IO.fmu.importer.device_config import load_fmu_me_device_config, restore_fmu_me_spec_from_record
 from VeraGridEngine.IO.fmu.importer.errors import FmuModeError
 from VeraGridEngine.IO.fmu.importer.experimental_cs import (
+    _build_template_block,
     _ensure_emt_external_mapping_keys,
 )
 from VeraGridEngine.IO.fmu.importer.model_description import FmuInterfaceMode, FmuModelDescription, FmuVariableDescription, read_fmu_model_description
@@ -1548,55 +1549,6 @@ def build_fmu_me_device_spec(
         raise ValueError(f"FMU ME device specs require a Model Exchange FMU, got {resolved_mode.value}")
 
 
-def _build_rms_me_output_shell_block(
-    vfactory: VarFactory,
-    name: str,
-    output_bindings: tuple[FmuRefBinding, ...],
-    output_defaults: dict[VarPowerFlowReferenceType, float] | None,
-) -> Block:
-    """Build the symbolic RMS shell used to expose FMU ME outputs to VeraGrid.
-
-    :param vfactory: Variable factory used by the owning grid.
-    :param name: Template name.
-    :param output_bindings: FMU-to-VeraGrid bindings.
-    :param output_defaults: Default output values before the first FMU step.
-    :return: Symbolic shell block.
-    """
-
-    defaults: dict[VarPowerFlowReferenceType, float]
-    if output_defaults is None:
-        defaults = dict()
-    else:
-        defaults = dict(output_defaults)
-
-    algebraic_vars: list[Var] = list()
-    algebraic_eqs: list[Any] = list()
-    event_dict: dict[Var, Const] = dict()
-    external_mapping: dict[VarPowerFlowReferenceType, Var] = dict()
-
-    binding: FmuRefBinding
-    for binding in output_bindings:
-        reference_name: str = binding.reference.value.replace("-", "_")
-        output_var: Var = vfactory.add_var(name=f"fmu_{reference_name}_{name}", reference=binding.reference)
-        parameter_var: Var = vfactory.add_var(name=f"fmu_param_{reference_name}_{name}")
-        default_value: float = float(defaults.get(binding.reference, 0.0))
-
-        # The FMU outputs are projected into runtime parameters so the RMS DAE sees a normal block.
-        event_dict[parameter_var] = vfactory.add_const(default_value)
-        algebraic_vars.append(output_var)
-        algebraic_eqs.append(output_var - parameter_var)
-        external_mapping[binding.reference] = output_var
-
-    return Block(
-        algebraic_vars=algebraic_vars,
-        algebraic_eqs=algebraic_eqs,
-        out_vars=list(algebraic_vars),
-        event_dict=event_dict,
-        external_mapping=external_mapping,
-        name=name,
-    )
-
-
 def build_rms_fmu_me_injection_template(
     vfactory: VarFactory,
     config: FmuImportConfig,
@@ -1652,7 +1604,7 @@ def build_rms_fmu_me_injection_template(
 
     template: RmsModelTemplate = RmsModelTemplate(name=name)
     template.tpe = device_tpe
-    template.block = _build_rms_me_output_shell_block(vfactory, name, output_bindings, output_defaults)
+    template.block = _build_template_block(vfactory, name, output_bindings, output_defaults)
     return template
 
 
@@ -1710,7 +1662,13 @@ def build_emt_fmu_me_injection_template(
 
     template: EmtModelTemplate = EmtModelTemplate(name=name)
     template.tpe = device_tpe
-    template.block = _build_rms_me_output_shell_block(vfactory, name, output_bindings, output_defaults)
+    template.block = _build_template_block(
+        vfactory=vfactory,
+        name=name,
+        output_bindings=output_bindings,
+        output_defaults=output_defaults,
+        input_bindings=input_bindings,
+    )
     _ensure_emt_external_mapping_keys(template.block)
     template.block.api_obj_mapping = dict()
     template.block.api_obj_mapping[ParamPowerFlowReferenceType.Pl0_A] = None
