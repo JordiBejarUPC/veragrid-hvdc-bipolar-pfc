@@ -3,6 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
+import math
 from typing import Tuple, List
 
 from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod, SubObjectType, RmsProblemTypes
@@ -26,6 +27,8 @@ class RmsOptions(OptionsTemplate):
         GCProp(key="tolerance", tpe=float),
         GCProp(key="use_init_values", tpe=bool),
         GCProp(key="max_iter", tpe=int),
+        GCProp(key="fmi_state_event_time_tolerance", tpe=float),
+        GCProp(key="fmi_state_event_max_iterations", tpe=int),
         GCProp(key="rms_event_groups", tpe=SubObjectType.ObjectsList),
     )
 
@@ -38,7 +41,9 @@ class RmsOptions(OptionsTemplate):
                  problem_type: RmsProblemTypes = RmsProblemTypes.PowerBalance,
                  use_init_values: bool = False,
                  max_iter: int = 1000,
-                 verbose: int = 0):
+                 verbose: int = 0,
+                 fmi_state_event_time_tolerance: float = 1e-9,
+                 fmi_state_event_max_iterations: int = 32):
         """
         RmsOptions
         :param time_step: time step of the simulations (s)
@@ -46,6 +51,8 @@ class RmsOptions(OptionsTemplate):
         :param max_iter: max number of iterations
         :param tolerance: Integration tolerance
         :param integration_method: Integration method (default Trapezoid)
+        :param fmi_state_event_time_tolerance: Absolute FMI ME event-time tolerance in seconds.
+        :param fmi_state_event_max_iterations: Maximum FMI ME event bisections.
         """
 
         OptionsTemplate.__init__(self, name='RmsSimulationOptions')
@@ -58,5 +65,28 @@ class RmsOptions(OptionsTemplate):
         self.tolerance: float = tolerance
         self.use_init_values: bool = use_init_values
         self.max_iter: int = max_iter
+        if (
+            math.isfinite(fmi_state_event_time_tolerance)
+            and fmi_state_event_time_tolerance > 0.0
+        ):
+            self.fmi_state_event_time_tolerance: float = (
+                fmi_state_event_time_tolerance
+            )
+        else:
+            raise ValueError(
+                "RMS FMI state-event time tolerance must be finite and positive"
+            )
+        if (
+            isinstance(fmi_state_event_max_iterations, int)
+            and not isinstance(fmi_state_event_max_iterations, bool)
+            and fmi_state_event_max_iterations > 0
+        ):
+            self.fmi_state_event_max_iterations: int = (
+                fmi_state_event_max_iterations
+            )
+        else:
+            raise ValueError(
+                "RMS FMI state-event maximum iterations must be a positive integer"
+            )
         self.verbose = verbose
 

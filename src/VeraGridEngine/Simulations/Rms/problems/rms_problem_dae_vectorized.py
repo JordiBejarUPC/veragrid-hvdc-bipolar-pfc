@@ -45,8 +45,11 @@ from VeraGridEngine.IO.fmu.importer.experimental_cs import (
 from VeraGridEngine.IO.fmu.importer.experimental_me import (
     advance_rms_fmu_me_devices,
     close_rms_fmu_me_devices,
+    get_next_rms_fmu_me_event_time,
     initialize_rms_fmu_me_devices,
+    _prepare_rms_fmu_me_state_event_retry,
     register_rms_fmu_me_device,
+    resolve_rms_fmu_me_devices,
 )
 
 # Previous mapper:
@@ -1547,11 +1550,26 @@ class RmsProblemDaeVec(RmsProblemTemplate):
         if self._procedural_logic_updater is not None:
             t_proc = self._procedural_logic_updater.get_next_forced_event_time(t_prev, t_target)
 
+        t_fmu: Optional[float] = get_next_rms_fmu_me_event_time(
+            problem=self,
+            t_prev=t_prev,
+            t_target=t_target,
+        )
+        native_event_time: Optional[float]
         if t_mode is None:
-            return t_proc
-        if t_proc is None:
-            return t_mode
-        return min(t_mode, t_proc)
+            native_event_time = t_proc
+        else:
+            if t_proc is None:
+                native_event_time = t_mode
+            else:
+                native_event_time = min(t_mode, t_proc)
+        if native_event_time is None:
+            return t_fmu
+        else:
+            if t_fmu is None:
+                return native_event_time
+            else:
+                return min(native_event_time, t_fmu)
 
     def _initialize_procedural_logic_updater(self) -> None:
         entries: List = list()
@@ -2563,6 +2581,36 @@ class RmsProblemDaeVec(RmsProblemTemplate):
             advance_rms_fmu_me_devices(problem=self, time_value=t, x_snapshot=x_snapshot, step_size=h)
         else:
             pass
+
+    def resolve_fmu_me_devices(self, accepted: bool) -> float | None:
+        """Resolve all prepared FMI ME candidates after one RMS step.
+
+        :param accepted: Whether the RMS numerical step converged.
+        :return: Earlier state-event retry time, or ``None``.
+        """
+
+        if len(self._fmu_me_adapters) > 0:
+            return resolve_rms_fmu_me_devices(
+                problem=self,
+                accepted=accepted,
+            )
+        else:
+            return None
+
+    def prepare_fmu_me_state_event_retry(self) -> float | None:
+        """Localize an ME state event before any CS device advances.
+
+        :return: Global shortened target time, or ``None``.
+        """
+
+        if len(self._fmu_me_adapters) > 0:
+            return _prepare_rms_fmu_me_state_event_retry(
+                problem=self,
+                state_event_time_tolerance=self.options.fmi_state_event_time_tolerance,
+                state_event_max_iterations=self.options.fmi_state_event_max_iterations,
+            )
+        else:
+            return None
 
     def close_fmu_me_devices(self) -> None:
         """
