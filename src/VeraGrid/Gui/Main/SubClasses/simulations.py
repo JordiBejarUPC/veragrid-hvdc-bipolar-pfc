@@ -558,7 +558,7 @@ class SimulationsMain(TimeEventsMain):
 
             drv, res = self.session.linear_power_flow
             if res is None:
-                self.show_warning_toast("Run a linear analysis to enable filter contingencies by sensitivity")
+                self.show_warning_toast(self.tr("Run a linear analysis to enable filter contingencies by sensitivity"))
                 mdl = None
                 self.ui.contingency_filter_by_comboBox.setCurrentIndex(0)
             else:
@@ -1030,7 +1030,7 @@ class SimulationsMain(TimeEventsMain):
             objects_from: List[AREA_TYPES] = [devs_from[i] for i in from_idx]
         else:
             objects_from: List[AREA_TYPES] = []
-            self.show_error_toast("No from areas!")
+            self.show_error_toast(self.tr("No from areas!"))
 
         if self.ui.toListView.model() is not None:
             dev_tpe_to = self.ui.toComboBox.currentData()
@@ -1039,7 +1039,7 @@ class SimulationsMain(TimeEventsMain):
             objects_to: List[AREA_TYPES] = [devs_to[i] for i in to_idx]
         else:
             objects_to: List[AREA_TYPES] = []
-            self.show_error_toast("No to areas!")
+            self.show_error_toast(self.tr("No to areas!"))
 
         info: dev.InterAggregationInfo = self.circuit.get_inter_aggregation_info(objects_from=objects_from,
                                                                                  objects_to=objects_to)
@@ -1447,7 +1447,7 @@ class SimulationsMain(TimeEventsMain):
                                 info_msg(self.tr("No RMS Events Group was added. The RMS simulation can't run."))
 
                 else:
-                    self.show_warning_toast('Another rms simulation is running already...')
+                    self.show_warning_toast(self.tr('Another rms simulation is running already...'))
 
             else:
                 pass
@@ -1503,7 +1503,7 @@ class SimulationsMain(TimeEventsMain):
 
 
                 else:
-                    self.show_warning_toast('Another EMT simulation is running already...')
+                    self.show_warning_toast(self.tr('Another EMT simulation is running already...'))
 
             else:
                 pass
@@ -1571,7 +1571,7 @@ class SimulationsMain(TimeEventsMain):
                                  text_func=self.ui.progress_label.setText)
 
             else:
-                self.show_warning_toast('Another simulation of the same type is running...')
+                self.show_warning_toast(self.tr('Another simulation of the same type is running...'))
         else:
             pass
 
@@ -1614,7 +1614,7 @@ class SimulationsMain(TimeEventsMain):
                                  text_func=self.ui.progress_label.setText)
 
             else:
-                self.show_warning_toast('Another simulation of the same type is running...')
+                self.show_warning_toast(self.tr('Another simulation of the same type is running...'))
         else:
             pass
 
@@ -1635,9 +1635,9 @@ class SimulationsMain(TimeEventsMain):
             self.colour_diagrams()
 
             if results.converged:
-                self.show_info_toast("Power flow converged :)")
+                self.show_info_toast(self.tr("Power flow converged :)"))
             else:
-                self.show_warning_toast("Power flow not converged :/")
+                self.show_warning_toast(self.tr("Power flow not converged :/"))
 
         else:
             warning_msg(self.tr('There are no power flow results.\nIs there any slack bus or generator?'), self.tr('Power flow'))
@@ -1684,7 +1684,7 @@ class SimulationsMain(TimeEventsMain):
                                  text_func=self.ui.progress_label.setText)
 
             else:
-                self.show_warning_toast('Another simulation of the same type is running...')
+                self.show_warning_toast(self.tr('Another simulation of the same type is running...'))
         else:
             pass
 
@@ -1705,9 +1705,9 @@ class SimulationsMain(TimeEventsMain):
             self.colour_diagrams()
 
             if results.converged:
-                self.show_info_toast("Power flow 3ph converged :)")
+                self.show_info_toast(self.tr("Power flow 3ph converged :)"))
             else:
-                self.show_warning_toast("Power flow 3ph not converged :/")
+                self.show_warning_toast(self.tr("Power flow 3ph not converged :/"))
 
         else:
             warning_msg(self.tr('There are no power flow results.\nIs there any slack bus or generator?'),
@@ -1752,9 +1752,9 @@ class SimulationsMain(TimeEventsMain):
                                      prog_func=self.ui.progressBar.setValue,
                                      text_func=self.ui.progress_label.setText)
                 else:
-                    self.show_warning_toast('There are no time series.')
+                    self.show_warning_toast(self.tr('There are no time series.'))
             else:
-                self.show_warning_toast('Another three-phase time series power flow is being executed now...')
+                self.show_warning_toast(self.tr('Another three-phase time series power flow is being executed now...'))
         else:
             pass
 
@@ -1774,7 +1774,7 @@ class SimulationsMain(TimeEventsMain):
             self.update_available_results()
             self.colour_diagrams()
         else:
-            self.show_warning_toast('No results for the three-phase time series simulation.')
+            self.show_warning_toast(self.tr('No results for the three-phase time series simulation.'))
 
         if not self.session.is_anything_running():
             self.UNLOCK()
@@ -1830,7 +1830,7 @@ class SimulationsMain(TimeEventsMain):
                                  text_func=self.ui.progress_label.setText)
 
             else:
-                self.show_warning_toast('Another simulation of the same type is running...')
+                self.show_warning_toast(self.tr('Another simulation of the same type is running...'))
         else:
             pass
 
@@ -1851,9 +1851,9 @@ class SimulationsMain(TimeEventsMain):
             self.colour_diagrams()
 
             if results.converged:
-                self.show_info_toast("State estimation converged :)")
+                self.show_info_toast(self.tr("State estimation converged :)"))
             else:
-                self.show_warning_toast("State estimation not converged :/")
+                self.show_warning_toast(self.tr("State estimation not converged :/"))
 
         else:
             warning_msg(self.tr('There are no state estimation results.\nIs there any slack bus or generator?'),
@@ -1989,7 +1989,7 @@ class SimulationsMain(TimeEventsMain):
                                  prog_func=self.ui.progressBar.setValue,
                                  text_func=self.ui.progress_label.setText)
             else:
-                self.show_warning_toast('Another PTDF is being executed now...')
+                self.show_warning_toast(self.tr('Another PTDF is being executed now...'))
         else:
             pass
 
@@ -2011,7 +2011,7 @@ class SimulationsMain(TimeEventsMain):
             self.update_available_results()
             self.colour_diagrams()
         else:
-            self.show_warning_toast('Something went wrong, There are no PTDF results.')
+            self.show_warning_toast(self.tr('Something went wrong, There are no PTDF results.'))
 
         if not self.session.is_anything_running():
             self.UNLOCK()
@@ -2044,7 +2044,7 @@ class SimulationsMain(TimeEventsMain):
                 else:
                     warning_msg(self.tr('Another PTDF time series is being executed now...'))
             else:
-                self.show_warning_toast('There are no time series...')
+                self.show_warning_toast(self.tr('There are no time series...'))
 
     def post_linear_analysis_ts(self):
         """
@@ -2069,10 +2069,10 @@ class SimulationsMain(TimeEventsMain):
             if results.S.shape[0] > 0:
                 self.colour_diagrams()
             else:
-                self.show_warning_toast('Cannot colour because the PTDF results have zero time steps :/')
+                self.show_warning_toast(self.tr('Cannot colour because the PTDF results have zero time steps :/'))
 
         else:
-            self.show_warning_toast('Something went wrong, There are no PTDF Time series results.')
+            self.show_warning_toast(self.tr('Something went wrong, There are no PTDF Time series results.'))
 
         if not self.session.is_anything_running():
             self.UNLOCK()
@@ -2128,10 +2128,10 @@ class SimulationsMain(TimeEventsMain):
                                      prog_func=self.ui.progressBar.setValue,
                                      text_func=self.ui.progress_label.setText)
                 else:
-                    self.show_warning_toast('Another contingency analysis is being executed now...')
+                    self.show_warning_toast(self.tr('Another contingency analysis is being executed now...'))
 
             else:
-                self.show_warning_toast('There are no contingency groups declared...')
+                self.show_warning_toast(self.tr('There are no contingency groups declared...'))
         else:
             pass
 
@@ -2154,7 +2154,7 @@ class SimulationsMain(TimeEventsMain):
 
             self.colour_diagrams()
         else:
-            self.show_error_toast('Something went wrong, There are no contingency analysis results.')
+            self.show_error_toast(self.tr('Something went wrong, There are no contingency analysis results.'))
 
         if not self.session.is_anything_running():
             self.UNLOCK()
@@ -2189,12 +2189,12 @@ class SimulationsMain(TimeEventsMain):
                                          prog_func=self.ui.progressBar.setValue,
                                          text_func=self.ui.progress_label.setText)
                     else:
-                        self.show_warning_toast('Another LODF is being executed now...')
+                        self.show_warning_toast(self.tr('Another LODF is being executed now...'))
                 else:
-                    self.show_warning_toast('There are no time series...')
+                    self.show_warning_toast(self.tr('There are no time series...'))
 
             else:
-                self.show_warning_toast('There are no contingency groups declared...')
+                self.show_warning_toast(self.tr('There are no contingency groups declared...'))
 
         else:
             pass
@@ -2221,7 +2221,7 @@ class SimulationsMain(TimeEventsMain):
 
             self.colour_diagrams()
         else:
-            self.show_error_toast('Something went wrong, There are no contingency time series results.')
+            self.show_error_toast(self.tr('Something went wrong, There are no contingency time series results.'))
 
         if not self.session.is_anything_running():
             self.UNLOCK()
@@ -2260,7 +2260,7 @@ class SimulationsMain(TimeEventsMain):
                         Pf_hvdc = pf_results.Pf_hvdc.real
                         use_provided_flows = True
                     else:
-                        self.show_warning_toast('There were no power flow values available. Linear flows will be used.')
+                        self.show_warning_toast(self.tr('There were no power flow values available. Linear flows will be used.'))
                         use_provided_flows = False
                         Pf_hvdc = None
                         Pf = None
@@ -2309,7 +2309,7 @@ class SimulationsMain(TimeEventsMain):
                 self.LOCK()
 
             else:
-                self.show_warning_toast('Another contingency analysis is being executed now...')
+                self.show_warning_toast(self.tr('Another contingency analysis is being executed now...'))
 
         else:
             pass
@@ -2332,7 +2332,7 @@ class SimulationsMain(TimeEventsMain):
             self.update_available_results()
             self.colour_diagrams()
         else:
-            self.show_error_toast('Something went wrong, There are no ATC results.')
+            self.show_error_toast(self.tr('Something went wrong, There are no ATC results.'))
 
         if not self.session.is_anything_running():
             self.UNLOCK()
@@ -2429,9 +2429,9 @@ class SimulationsMain(TimeEventsMain):
                     self.LOCK()
 
                 else:
-                    self.show_warning_toast('Another ATC time series is being executed now...')
+                    self.show_warning_toast(self.tr('Another ATC time series is being executed now...'))
             else:
-                self.show_warning_toast('There are no time series!')
+                self.show_warning_toast(self.tr('There are no time series!'))
         else:
             pass
 
@@ -2456,7 +2456,7 @@ class SimulationsMain(TimeEventsMain):
             self.update_available_results()
             self.colour_diagrams()
         else:
-            self.show_error_toast('Something went wrong, There are no ATC time series results.')
+            self.show_error_toast(self.tr('Something went wrong, There are no ATC time series results.'))
 
         if not self.session.is_anything_running():
             self.UNLOCK()
@@ -2610,9 +2610,9 @@ class SimulationsMain(TimeEventsMain):
                                              prog_func=self.ui.progressBar.setValue,
                                              text_func=self.ui.progress_label.setText)
                         else:
-                            self.show_warning_toast('Check the selected start and finnish time series indices.')
+                            self.show_warning_toast(self.tr('Check the selected start and finnish time series indices.'))
                 else:
-                    self.show_warning_toast('Another voltage collapse simulation is running...')
+                    self.show_warning_toast(self.tr('Another voltage collapse simulation is running...'))
             else:
                 info_msg(self.tr('Run a power flow simulation first.\n'
                          'The results are needed to initialize this simulation.'))
@@ -2634,10 +2634,10 @@ class SimulationsMain(TimeEventsMain):
                 self.update_available_results()
                 self.colour_diagrams()
             else:
-                self.show_warning_toast('The voltage stability did not converge.\n'
-                                        'Is this case already at the collapse limit?', 5000)
+                self.show_warning_toast(self.tr('The voltage stability did not converge.\n'
+                                        'Is this case already at the collapse limit?'), 5000)
         else:
-            self.show_error_toast('Something went wrong, There are no voltage stability results.')
+            self.show_error_toast(self.tr('Something went wrong, There are no voltage stability results.'))
 
         if not self.session.is_anything_running():
             self.UNLOCK()
@@ -2677,9 +2677,9 @@ class SimulationsMain(TimeEventsMain):
                                      text_func=self.ui.progress_label.setText)
 
                 else:
-                    self.show_warning_toast('There are no time series.')
+                    self.show_warning_toast(self.tr('There are no time series.'))
             else:
-                self.show_warning_toast('Another time series power flow is being executed now...')
+                self.show_warning_toast(self.tr('Another time series power flow is being executed now...'))
         else:
             pass
 
@@ -2703,7 +2703,7 @@ class SimulationsMain(TimeEventsMain):
             self.colour_diagrams()
 
         else:
-            self.show_warning_toast('No results for the time series simulation.')
+            self.show_warning_toast(self.tr('No results for the time series simulation.'))
 
         if not self.session.is_anything_running():
             self.UNLOCK()
@@ -2745,10 +2745,10 @@ class SimulationsMain(TimeEventsMain):
                                      prog_func=self.ui.progressBar.setValue,
                                      text_func=self.ui.progress_label.setText)
                 else:
-                    self.show_warning_toast('Stochastic power flow needs at least one time-series sample.')
+                    self.show_warning_toast(self.tr('Stochastic power flow needs at least one time-series sample.'))
 
             else:
-                self.show_warning_toast('Another Monte Carlo simulation is running...')
+                self.show_warning_toast(self.tr('Another Monte Carlo simulation is running...'))
 
         else:
             pass
@@ -2842,11 +2842,11 @@ class SimulationsMain(TimeEventsMain):
             inter_aggregation_info: dev.InterAggregationInfo | None = self.get_compatible_from_to_buses_and_inter_branches()
 
             if len(inter_aggregation_info.lst_from) == 0:
-                self.show_error_toast('The area "from" has no buses!', 5000)
+                self.show_error_toast(self.tr('The area "from" has no buses!'), 5000)
                 return None
 
             if len(inter_aggregation_info.lst_to) == 0:
-                self.show_error_toast('The area "to" has no buses!', 5000)
+                self.show_error_toast(self.tr('The area "to" has no buses!'), 5000)
                 return None
         else:
             inter_aggregation_info = None
@@ -2937,7 +2937,7 @@ class SimulationsMain(TimeEventsMain):
                                  text_func=self.ui.progress_label.setText)
 
             else:
-                self.show_warning_toast('Another OPF is being run...')
+                self.show_warning_toast(self.tr('Another OPF is being run...'))
         else:
             pass
 
@@ -2952,12 +2952,12 @@ class SimulationsMain(TimeEventsMain):
             self.remove_simulation(SimulationTypes.OPF_run)
 
             if results.converged:
-                self.show_info_toast("Optimal power flow converged :)")
+                self.show_info_toast(self.tr("Optimal power flow converged :)"))
             else:
-                self.show_warning_toast('Optimal power flow not converged :/\n'
+                self.show_warning_toast(self.tr('Optimal power flow not converged :/\n'
                                         'Check that all Branches have rating and \n'
                                         'that the generator bounds are ok.\n'
-                                        'You may also use the diagnostic tool (F8)',
+                                        'You may also use the diagnostic tool (F8)'),
                                         duration=4000)
 
             self.update_available_results()
@@ -3008,14 +3008,14 @@ class SimulationsMain(TimeEventsMain):
                                              text_func=self.ui.progress_label.setText)
 
                     else:
-                        self.show_warning_toast('There are no time series...')
+                        self.show_warning_toast(self.tr('There are no time series...'))
 
                 else:
-                    self.show_warning_toast('Another OPF time series is running already...')
+                    self.show_warning_toast(self.tr('Another OPF time series is running already...'))
             else:
-                self.show_error_toast("The grid doesn't have time series :/")
+                self.show_error_toast(self.tr("The grid doesn't have time series :/"))
         else:
-            self.show_warning_toast('Nothing to simulate...')
+            self.show_warning_toast(self.tr('Nothing to simulate...'))
 
     def post_opf_time_series(self):
         """
@@ -3124,7 +3124,7 @@ class SimulationsMain(TimeEventsMain):
                                      text_func=self.ui.progress_label.setText)
 
             else:
-                self.show_warning_toast('Another OPF is being run...')
+                self.show_warning_toast(self.tr('Another OPF is being run...'))
         else:
             pass
 
@@ -3191,9 +3191,9 @@ class SimulationsMain(TimeEventsMain):
                                          text_func=self.ui.progress_label.setText)
 
                 else:
-                    self.show_warning_toast('Another Optimal NCT time series is being run...')
+                    self.show_warning_toast(self.tr('Another Optimal NCT time series is being run...'))
             else:
-                self.show_error_toast("The grid doesn't have time series :/")
+                self.show_error_toast(self.tr("The grid doesn't have time series :/"))
         else:
             pass
 
@@ -3247,7 +3247,7 @@ class SimulationsMain(TimeEventsMain):
                                  text_func=self.ui.progress_label.setText)
 
             else:
-                self.show_error_toast('There are no PTDF results :/')
+                self.show_error_toast(self.tr('There are no PTDF results :/'))
 
         else:
             # delete_with_dialogue the markers
@@ -3292,7 +3292,7 @@ class SimulationsMain(TimeEventsMain):
                                  text_func=self.ui.progress_label.setText)
 
             else:
-                self.show_warning_toast('Another inputs analysis is being run...')
+                self.show_warning_toast(self.tr('Another inputs analysis is being run...'))
         else:
             pass
 
@@ -3463,7 +3463,7 @@ class SimulationsMain(TimeEventsMain):
                                 engine=self.get_preferred_engine()
                             )
                         else:
-                            self.show_warning_toast('Linear OPF investment studies need time data...')
+                            self.show_warning_toast(self.tr('Linear OPF investment studies need time data...'))
                             return
 
                     elif obj_fn_tpe == InvestmentsEvaluationObjectives.GenerationAdequacy:
@@ -3477,7 +3477,7 @@ class SimulationsMain(TimeEventsMain):
                                 time_indices=self.get_time_indices()
                             )
                         else:
-                            self.show_warning_toast('Adequacy studies need time data...')
+                            self.show_warning_toast(self.tr('Adequacy studies need time data...'))
                             return
 
                     elif obj_fn_tpe == InvestmentsEvaluationObjectives.SimpleDispatch:
@@ -3493,11 +3493,11 @@ class SimulationsMain(TimeEventsMain):
                                 time_indices=self.get_time_indices()
                             )
                         else:
-                            self.show_warning_toast('Adequacy studies need time data...')
+                            self.show_warning_toast(self.tr('Adequacy studies need time data...'))
                             return
 
                     else:
-                        self.show_error_toast("Objective not supported yet :/")
+                        self.show_error_toast(self.tr("Objective not supported yet :/"))
                         return
 
                     drv = sim.InvestmentsEvaluationDriver(
@@ -3517,7 +3517,7 @@ class SimulationsMain(TimeEventsMain):
                     self.LOCK()
 
                 else:
-                    self.show_warning_toast('Another contingency analysis is being executed now...')
+                    self.show_warning_toast(self.tr('Another contingency analysis is being executed now...'))
             else:
                 warning_msg(self.tr("There are no investment groups, "
                             "you need to create some so that VeraGrid can evaluate them ;)"))
@@ -3597,7 +3597,7 @@ class SimulationsMain(TimeEventsMain):
             # apply result-based colouring after the baseline + best-Pareto state is set
             self.colour_diagrams()
         else:
-            self.show_error_toast('Something went wrong, There are no investments evaluation results.')
+            self.show_error_toast(self.tr('Something went wrong, There are no investments evaluation results.'))
 
         if not self.session.is_anything_running():
             self.UNLOCK()
@@ -3629,12 +3629,12 @@ class SimulationsMain(TimeEventsMain):
                                      text_func=self.ui.progress_label.setText)
 
                 else:
-                    warning_msg('You cannot find {0} clusters for {1} time steps.\n'
-                                'Modify the number of clusters in the ML settings.'.format(n_points, nt),
+                    warning_msg(self.tr('You cannot find {0} clusters for {1} time steps.\n'
+                                'Modify the number of clusters in the ML settings.').format(n_points, nt),
                                 title=self.tr("Clustering"))
 
             else:
-                self.show_warning_toast('Another clustering is being executed now...')
+                self.show_warning_toast(self.tr('Another clustering is being executed now...'))
         else:
             pass
 
@@ -3652,7 +3652,7 @@ class SimulationsMain(TimeEventsMain):
 
             self.update_available_results()
         else:
-            self.show_error_toast('Something went wrong, There are no power short circuit results.')
+            self.show_error_toast(self.tr('Something went wrong, There are no power short circuit results.'))
 
         if not self.session.is_anything_running():
             self.UNLOCK()
@@ -3746,7 +3746,7 @@ class SimulationsMain(TimeEventsMain):
                                  prog_func=self.ui.progressBar.setValue,
                                  text_func=self.ui.progress_label.setText)
             else:
-                self.show_warning_toast('Another nodal capacity study is being run...')
+                self.show_warning_toast(self.tr('Another nodal capacity study is being run...'))
 
     def run_nodal_capacity_time_series(self):
         """
@@ -3796,7 +3796,7 @@ class SimulationsMain(TimeEventsMain):
                                      text_func=self.ui.progress_label.setText)
 
             else:
-                self.show_warning_toast('Another OPF time series is running already...')
+                self.show_warning_toast(self.tr('Another OPF time series is running already...'))
 
         else:
             pass
@@ -3873,9 +3873,9 @@ class SimulationsMain(TimeEventsMain):
                                      text_func=self.ui.progress_label.setText)
 
                 else:
-                    self.show_warning_toast('Another reliability study is running already...')
+                    self.show_warning_toast(self.tr('Another reliability study is running already...'))
             else:
-                self.show_warning_toast('Reliability studies need time data...')
+                self.show_warning_toast(self.tr('Reliability studies need time data...'))
         else:
             pass
 
@@ -3914,8 +3914,8 @@ class SimulationsMain(TimeEventsMain):
         if rms_options.simulation_time > 0.0:
 
             if pf_results is None:
-                info_msg('Run a power flow simulation first.\n'
-                         'The results are needed to initialize this simulation.')
+                info_msg(self.tr('Run a power flow simulation first.\n'
+                         'The results are needed to initialize this simulation.'))
             else:
                 if bool(pf_results.converged):
                     self.add_simulation(SimulationTypes.RmsDynamic_run)
@@ -3945,8 +3945,7 @@ class SimulationsMain(TimeEventsMain):
 
         :return: None.
         """
-        _, results = self.session.rms_dynamic_simulation
-        rms_thread: GcThread | None = self.session.threads.get(SimulationTypes.RmsDynamic_run, None)
+        drv, results = self.session.rms_dynamic_simulation
 
         # A completed or failed worker is no longer an active simulation. Keep
         # this cleanup outside the results branch because an engine validation
@@ -3985,7 +3984,7 @@ class SimulationsMain(TimeEventsMain):
                     for group_name in bad_initialization_names:
                         self.show_warning_toast(f"Simulation bad initialized for {group_name}:/")
                 else:
-                    self.show_info_toast("Simulation well initialized for all active simulation groups :)")
+                    self.show_info_toast(self.tr("Simulation well initialized for all active simulation groups :)"))
 
                 # Report convergence failures only for groups that were part of
                 # the executed simulation batch.
@@ -4001,13 +4000,13 @@ class SimulationsMain(TimeEventsMain):
                     for group_name in not_converged_names:
                         self.show_warning_toast(f"Simulation not converged for {group_name}:/")
                 else:
-                    self.show_info_toast("Simulation converged for all active simulation groups :)")
+                    self.show_info_toast(self.tr("Simulation converged for all active simulation groups :)"))
             else:
-                self.show_info_toast("There are no active RMS event groups to report.")
+                self.show_info_toast(self.tr("There are no active RMS event groups to report."))
 
         else:
-            if rms_thread.logger.has_logs():
-                self.show_logs(logger=rms_thread.logger, name="RMS simulation error")
+            if drv.logger.has_logs():
+                self.show_logs(logger=drv.logger, name="RMS simulation error")
             else:
                 warning_msg(self.tr('There are no rms simulation results.'), self.tr('Rms simulation'))
 
@@ -4083,9 +4082,7 @@ class SimulationsMain(TimeEventsMain):
 
         :return: None.
         """
-        _, results = self.session.emt_dynamic_simulation
-        emt_driver, _unused_results = self.session.emt_dynamic_simulation
-        emt_thread: GcThread | None = self.session.threads.get(SimulationTypes.EmtDynamic_run, None)
+        drv, results = self.session.emt_dynamic_simulation
 
         # A failed construction has no results object, but it has still finished.
         # Always clear the running entry so the GUI unlocks and can run again.
@@ -4147,8 +4144,8 @@ class SimulationsMain(TimeEventsMain):
 
             # GcThread carries both the uncaught exception and the driver's logs,
             # so it is the authoritative source for construction failures.
-            if emt_thread.logger.has_logs():
-                self.show_logs(logger=emt_thread.logger, name="EMT simulation error")
+            if drv.logger.has_logs():
+                self.show_logs(logger=drv.logger, name="EMT simulation error")
                 has_detailed_logs = True
             else:
                 pass
@@ -4158,8 +4155,8 @@ class SimulationsMain(TimeEventsMain):
             # already merges those records and duplicate dialogs obscure the cause.
             if has_detailed_logs:
                 pass
-            elif emt_driver is not None and emt_driver.logger.has_logs():
-                self.show_logs(logger=emt_driver.logger, name="EMT simulation logs")
+            elif drv is not None and drv.logger.has_logs():
+                self.show_logs(logger=drv.logger, name="EMT simulation logs")
                 has_detailed_logs = True
             else:
                 pass
@@ -4222,7 +4219,7 @@ class SimulationsMain(TimeEventsMain):
 
             self._remote_jobs.pop(driver_idtag)
 
-            self.show_info_toast(f"Remote results received!")
+            self.show_info_toast(self.tr("Remote results received!"))
 
     def run_rms_small_signal_stability(self):
         """
@@ -4277,7 +4274,7 @@ class SimulationsMain(TimeEventsMain):
                                  'The results are needed to initialize this simulation.'))
 
             else:
-                self.show_warning_toast('Another Small-Signal stability analysis simulation is running already...')
+                self.show_warning_toast(self.tr('Another Small-Signal stability analysis simulation is running already...'))
 
         else:
             pass
@@ -4287,8 +4284,8 @@ class SimulationsMain(TimeEventsMain):
 
         :return:
         """
-        _, results = self.session.small_signal_stability_simulation
-        rms_thread: GcThread | None = self.session.threads.get(SimulationTypes.RmsSmallSignal_run, None)
+        drv, results = self.session.small_signal_stability_simulation
+
 
         # The simulation is no longer part of the active-run list whether it
         # succeeded or failed.  Leaving it there makes subsequent runs appear
@@ -4296,12 +4293,12 @@ class SimulationsMain(TimeEventsMain):
         self.remove_simulation(SimulationTypes.RmsSmallSignal_run)
         self.update_available_results()
 
-        if results is not None and (rms_thread is None or not rms_thread.has_failed()):
-            self.show_info_toast("Small-signal stability analysis RMS has finished correctly!")
+        if results is not None:
+            self.show_info_toast(self.tr("Small-signal stability analysis RMS has finished correctly!"))
 
         else:
-            if rms_thread is not None and rms_thread.logger.has_logs():
-                self.show_logs(logger=rms_thread.logger, name="RMS small-signal simulation error")
+            if drv.logger.has_logs():
+                self.show_logs(logger=drv.logger, name="RMS small-signal simulation error")
             else:
                 pass
 
@@ -4363,7 +4360,7 @@ class SimulationsMain(TimeEventsMain):
                         info_msg(self.tr('Run a power flow simulation first.\n'
                                  'The results are needed to initialize this simulation.'))
             else:
-                self.show_warning_toast('Another Small-Signal stability analysis EMT simulation is running already...')
+                self.show_warning_toast(self.tr('Another Small-Signal stability analysis EMT simulation is running already...'))
 
         else:
             pass
@@ -4381,7 +4378,7 @@ class SimulationsMain(TimeEventsMain):
         self.update_available_results()
 
         if results is not None:
-            self.show_info_toast("Small-Signal stability analysis EMT has finished correctly!")
+            self.show_info_toast(self.tr("Small-Signal stability analysis EMT has finished correctly!"))
 
         else:
             if driver.logger.has_logs():
@@ -4483,7 +4480,7 @@ class SimulationsMain(TimeEventsMain):
 
         # Block re-entry: only one catalogue optimization at a time.
         if self.session.is_this_running(SimulationTypes.CatalogueOptimization_run):
-            self.show_warning_toast('Another catalogue optimization is already running...')
+            self.show_warning_toast(self.tr('Another catalogue optimization is already running...'))
             return
         else:
             pass
