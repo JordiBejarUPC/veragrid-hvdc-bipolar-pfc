@@ -175,25 +175,29 @@ class AboutDialogueGuiGUI(QtWidgets.QDialog):
         self.upgrade_cmd: List[str] = ['']
 
         if version_code == 1:
-            addendum = '\nThere is a newer version: ' + latest_version
+            addendum = '\n' + self.tr('There is a newer version: ') + latest_version
 
             self.upgrade_cmd = get_upgrade_command(latest_version)
             command = ' '.join(self.upgrade_cmd)
-            self.ui.updateLabel.setText('\n\nTerminal command to update:\n\n' + command)
+            self.ui.updateLabel.setText('\n\n' + self.tr('Terminal command to update:') + '\n\n' + command)
             self.ui.updateButton.setVisible(True)
 
         elif version_code == -1:
-            addendum = '\nThis version is newer than the version available in the repositories (' + latest_version + ')'
+            addendum = (
+                    '\n'
+                    + self.tr('This version is newer than the version available in the repositories')
+                    + '(' + latest_version + ')'
+            )
             self.ui.updateLabel.setText(addendum)
             self.ui.updateButton.setVisible(False)
 
         elif version_code == 0:
-            addendum = '\nVeraGrid is up to date.'
+            addendum = '\n' +  self.tr('VeraGrid is up to date.')
             self.ui.updateLabel.setText(addendum)
             self.ui.updateButton.setVisible(False)
 
         elif version_code == -2:
-            addendum = '\nIt was impossible to check for a newer version'
+            addendum = '\n' +  self.tr('It was impossible to check for a newer version')
             self.ui.updateLabel.setText(addendum)
             self.ui.updateButton.setVisible(False)
 
@@ -203,9 +207,9 @@ class AboutDialogueGuiGUI(QtWidgets.QDialog):
             self.ui.updateButton.setVisible(False)
 
         # self.ui.mainLabel.setText(about_msg)
-        self.ui.versionLabel.setText('VeraGrid version: ' + __VeraGrid_VERSION__ + ', ' + addendum)
         self.ui.copyrightLabel.setText(copyright_msg)
-        self.ui.contributorsLabel.setText(contributors_msg)
+        self.ui.contributorsTextEdit.setPlainText(contributors_msg)
+        self.ui.contributorsTextEdit.setReadOnly(True)
 
         # click
         self.ui.updateButton.clicked.connect(self.update)
@@ -262,11 +266,17 @@ class AboutDialogueGuiGUI(QtWidgets.QDialog):
         self.ui.librariesTableWidget.setItem(2, 3, QtWidgets.QTableWidgetItem(str(PGM_AVAILABLE)))
 
     def fill_libs(self):
+        """
 
+        :return:
+        """
         self.ui.allLibsTableWidget.setColumnCount(5)
         self.ui.allLibsTableWidget.setHorizontalHeaderLabels([
-            self.tr("Package"), self.tr("Version"), self.tr("License"),
-            self.tr("Installation Path"), self.tr("Dependencies")
+            self.tr("Package"),
+            self.tr("Version"),
+            self.tr("License"),
+            self.tr("Installation Path"),
+            self.tr("Dependencies")
         ])
 
         pkgs = sorted(get_packages(), key=lambda x: x[0].lower())
@@ -281,7 +291,7 @@ class AboutDialogueGuiGUI(QtWidgets.QDialog):
 
         self.ui.allLibsTableWidget.resizeColumnsToContents()
 
-    def msg(self, text, title="Warning"):
+    def msg(self, text: str, title: str = "Warning"):
         """
         Message box
         :param text: Text to display
@@ -374,7 +384,6 @@ class AboutDialogueGuiGUI(QtWidgets.QDialog):
             license_txt = file.read()
 
         self.ui.licenseTextEdit.setPlainText(license_txt)
-
 
 # if __name__ == "__main__":
 #     app = QtWidgets.QApplication(sys.argv)
