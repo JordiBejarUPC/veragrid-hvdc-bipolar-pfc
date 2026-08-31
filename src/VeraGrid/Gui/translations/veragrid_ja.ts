@@ -14,17 +14,16 @@
         <translation>について</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="49"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="87"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;VeraGrid&lt;/span&gt; has been carefully crafted since 2015 to serve as a platform for research and consultancy. Visit &lt;a href=&quot;https://www.eroots.tech/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;eRoots&lt;/span&gt;&lt;/a&gt; for more details. The source of VeraGrid can be found &lt;a href=&quot;https://github.com/SanPen/VeraGrid&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;here.&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;VeraGrid&lt;/span&gt;は、調査とコンサルティングのプラットフォームとして機能するために、2015 年以来慎重に作成されてきました。訪問&lt;a href=&quot;https://www.eroots.tech/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;eRoots&lt;/span&gt;&lt;/a&gt;詳細については。 VeraGrid のソースが見つかります。&lt;a href=&quot;https://github.com/SanPen/VeraGrid&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;ここ。&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="112"/>
         <source>version</source>
-        <translation>バージョン</translation>
+        <translation type="vanished">バージョン</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="128"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="68"/>
         <source>Copyright</source>
         <translation>著作権</translation>
     </message>
@@ -34,42 +33,39 @@
         <translation>貢献者</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="170"/>
         <source>TextLabel</source>
-        <translation>TextLabel</translation>
+        <translation type="vanished">TextLabel</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="184"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="174"/>
         <source>Libraries</source>
         <translation>図書館</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="190"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="180"/>
         <source>Copy the table</source>
         <translation>テーブルをコピーする</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="210"/>
         <source>Update VeraGrid. If you are on windows don&apos;t do this.</source>
-        <translation>VeraGrid を更新します。 Windows を使用している場合は、これを行わないでください。</translation>
+        <translation type="vanished">VeraGrid を更新します。 Windows を使用している場合は、これを行わないでください。</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="254"/>
         <source>Optional libraries</source>
-        <translation>オプションのライブラリ</translation>
+        <translation type="vanished">オプションのライブラリ</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="264"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="211"/>
         <source>License</source>
         <translation>ライセンス</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="270"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="217"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;This program comes with absolutelly no warranty. This is free software, and you are welcome to redistribute it under the conditions set by the license. VeraGrid is licensed under the &lt;a href=&quot;https://www.mozilla.org/en-US/MPL/2.0/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;Mozilla Public License V2&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;このプログラムには一切の保証がありません。これはフリーソフトウェアですので、ライセンスに定められた条件の下で再配布することができます。 VeraGrid は、以下に基づいてライセンスされています。&lt;a href=&quot;https://www.mozilla.org/en-US/MPL/2.0/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;Mozilla パブリック ライセンス V2&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="291"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="238"/>
         <source>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;meta charset=&quot;utf-8&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
@@ -127,7 +123,7 @@ li.checked::マーカー { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&
     </message>
     <message>
         <source>Not installed</source>
-        <translation>未インストール</translation>
+        <translation type="vanished">未インストール</translation>
     </message>
     <message>
         <source>Package</source>
@@ -143,11 +139,75 @@ li.checked::マーカー { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&
     </message>
     <message>
         <source>licensed</source>
-        <translation>ライセンス</translation>
+        <translation type="vanished">ライセンス</translation>
     </message>
     <message>
         <source>supported version</source>
+        <translation type="vanished">サポートされているバージョン</translation>
+    </message>
+    <message>
+        <source>Action</source>
+        <translation>アクション</translation>
+    </message>
+    <message>
+        <source>Command output:</source>
+        <translation>コマンド出力:</translation>
+    </message>
+    <message>
+        <source>Exit code: {code}</source>
+        <translation>終了コード: {code}</translation>
+    </message>
+    <message>
+        <source>False</source>
+        <translation>偽</translation>
+    </message>
+    <message>
+        <source>Information</source>
+        <translation>情報</translation>
+    </message>
+    <message>
+        <source>Install</source>
+        <translation>インストール</translation>
+    </message>
+    <message>
+        <source>Installed</source>
+        <translation>インストール済み</translation>
+    </message>
+    <message>
+        <source>Installed version</source>
+        <translation>インストール済みバージョン</translation>
+    </message>
+    <message>
+        <source>Licensed</source>
+        <translation>ライセンス</translation>
+    </message>
+    <message>
+        <source>Newest version</source>
+        <translation>最新バージョン</translation>
+    </message>
+    <message>
+        <source>Supported version</source>
         <translation>サポートされているバージョン</translation>
+    </message>
+    <message>
+        <source>Unknown</source>
+        <translation>不明</translation>
+    </message>
+    <message>
+        <source>Update</source>
+        <translation>更新</translation>
+    </message>
+    <message>
+        <source>Warning</source>
+        <translation>警告</translation>
+    </message>
+    <message>
+        <source>{name} update failed after {attempts} attempt(s).</source>
+        <translation>{name} の更新が {attempts} 回の試行後に失敗しました。</translation>
+    </message>
+    <message>
+        <source>{name} updated successfully after {attempts} attempt(s)</source>
+        <translation>{name} は {attempts} 回の試行後に正常に更新されました。</translation>
     </message>
 </context>
 <context>
@@ -1791,11 +1851,11 @@ Are you sure?</source>
     </message>
     <message>
         <source>None</source>
-        <translation>なし</translation>
+        <translation type="vanished">なし</translation>
     </message>
     <message>
         <source>Search</source>
-        <translation>検索</translation>
+        <translation type="vanished">検索</translation>
     </message>
 </context>
 <context>
@@ -14922,6 +14982,17 @@ You need to load or create a grid!</source>
     <message>
         <source>Question</source>
         <translation>質問</translation>
+    </message>
+</context>
+<context>
+    <name>DeviceSelectorPanel</name>
+    <message>
+        <source>None</source>
+        <translation>なし</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>検索</translation>
     </message>
 </context>
 </TS>

@@ -14,17 +14,16 @@
         <translation>Για</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="49"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="87"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;VeraGrid&lt;/span&gt; has been carefully crafted since 2015 to serve as a platform for research and consultancy. Visit &lt;a href=&quot;https://www.eroots.tech/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;eRoots&lt;/span&gt;&lt;/a&gt; for more details. The source of VeraGrid can be found &lt;a href=&quot;https://github.com/SanPen/VeraGrid&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;here.&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;VeraGrid&lt;/span&gt;έχει δημιουργηθεί προσεκτικά από το 2015 για να χρησιμεύσει ως πλατφόρμα για έρευνα και παροχή συμβουλών. Επίσκεψη&lt;a href=&quot;https://www.eroots.tech/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;eRoots&lt;/span&gt;&lt;/a&gt;για περισσότερες λεπτομέρειες. Μπορείτε να βρείτε την πηγή του VeraGrid&lt;a href=&quot;https://github.com/SanPen/VeraGrid&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;εδώ.&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="112"/>
         <source>version</source>
-        <translation>εκδοχή</translation>
+        <translation type="vanished">εκδοχή</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="128"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="68"/>
         <source>Copyright</source>
         <translation>Πνευματική ιδιοκτησία</translation>
     </message>
@@ -34,42 +33,39 @@
         <translation>Συνεισφέροντες</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="170"/>
         <source>TextLabel</source>
-        <translation>TextLabel</translation>
+        <translation type="vanished">TextLabel</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="184"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="174"/>
         <source>Libraries</source>
         <translation>Βιβλιοθήκες</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="190"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="180"/>
         <source>Copy the table</source>
         <translation>Αντιγράψτε τον πίνακα</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="210"/>
         <source>Update VeraGrid. If you are on windows don&apos;t do this.</source>
-        <translation>Ενημέρωση VeraGrid. Εάν είστε σε Windows μην το κάνετε αυτό.</translation>
+        <translation type="vanished">Ενημέρωση VeraGrid. Εάν είστε σε Windows μην το κάνετε αυτό.</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="254"/>
         <source>Optional libraries</source>
-        <translation>Προαιρετικές βιβλιοθήκες</translation>
+        <translation type="vanished">Προαιρετικές βιβλιοθήκες</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="264"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="211"/>
         <source>License</source>
         <translation>Αδεια</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="270"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="217"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;This program comes with absolutelly no warranty. This is free software, and you are welcome to redistribute it under the conditions set by the license. VeraGrid is licensed under the &lt;a href=&quot;https://www.mozilla.org/en-US/MPL/2.0/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;Mozilla Public License V2&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;Αυτό το πρόγραμμα έρχεται με καμία απολύτως εγγύηση. Αυτό είναι δωρεάν λογισμικό και μπορείτε να το αναδιανείμετε υπό τους όρους που ορίζονται από την άδεια χρήσης. Το VeraGrid αδειοδοτείται βάσει του&lt;a href=&quot;https://www.mozilla.org/en-US/MPL/2.0/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;Δημόσια άδεια Mozilla V2&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="291"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="238"/>
         <source>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;meta charset=&quot;utf-8&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
@@ -127,7 +123,7 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
     </message>
     <message>
         <source>Not installed</source>
-        <translation>Δεν είναι εγκατεστημένο</translation>
+        <translation type="vanished">Δεν είναι εγκατεστημένο</translation>
     </message>
     <message>
         <source>Package</source>
@@ -143,11 +139,75 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
     </message>
     <message>
         <source>licensed</source>
-        <translation>με άδεια</translation>
+        <translation type="vanished">με άδεια</translation>
     </message>
     <message>
         <source>supported version</source>
-        <translation>υποστηριζόμενη έκδοση</translation>
+        <translation type="vanished">υποστηριζόμενη έκδοση</translation>
+    </message>
+    <message>
+        <source>Action</source>
+        <translation>Δράση</translation>
+    </message>
+    <message>
+        <source>Command output:</source>
+        <translation>Έξοδος εντολής:</translation>
+    </message>
+    <message>
+        <source>Exit code: {code}</source>
+        <translation>Κωδικός εξόδου: {code}</translation>
+    </message>
+    <message>
+        <source>False</source>
+        <translation>Λανθασμένο</translation>
+    </message>
+    <message>
+        <source>Information</source>
+        <translation>Πληροφορίες</translation>
+    </message>
+    <message>
+        <source>Install</source>
+        <translation>Εγκατάσταση</translation>
+    </message>
+    <message>
+        <source>Installed</source>
+        <translation>Εγκατεστημένο</translation>
+    </message>
+    <message>
+        <source>Installed version</source>
+        <translation>Εγκατεστημένη έκδοση</translation>
+    </message>
+    <message>
+        <source>Licensed</source>
+        <translation>Επιτρεσμένο</translation>
+    </message>
+    <message>
+        <source>Newest version</source>
+        <translation>Τελευταία έκδοση</translation>
+    </message>
+    <message>
+        <source>Supported version</source>
+        <translation>Υποστηριζόμενη έκδοση</translation>
+    </message>
+    <message>
+        <source>Unknown</source>
+        <translation>Άγνωστο</translation>
+    </message>
+    <message>
+        <source>Update</source>
+        <translation>Ενημέρωση</translation>
+    </message>
+    <message>
+        <source>Warning</source>
+        <translation>Προειδοποίηση</translation>
+    </message>
+    <message>
+        <source>{name} update failed after {attempts} attempt(s).</source>
+        <translation>Η ενημέρωση του {name} απέτυχε μετά από {attempts} προσπάθεια/προσπάθειες.</translation>
+    </message>
+    <message>
+        <source>{name} updated successfully after {attempts} attempt(s)</source>
+        <translation>Το {name} ενημερώθηκε επιτυχώς μετά από {attempts} προσπάθεια/προσπάθειες.</translation>
     </message>
 </context>
 <context>
@@ -1791,11 +1851,11 @@ Are you sure?</translation>
     </message>
     <message>
         <source>None</source>
-        <translation>Κανένα</translation>
+        <translation type="vanished">Κανένα</translation>
     </message>
     <message>
         <source>Search</source>
-        <translation>Ερευνα</translation>
+        <translation type="vanished">Ερευνα</translation>
     </message>
 </context>
 <context>
@@ -14924,6 +14984,17 @@ You need to load or create a grid!</source>
     <message>
         <source>Question</source>
         <translation>Ερώτηση</translation>
+    </message>
+</context>
+<context>
+    <name>DeviceSelectorPanel</name>
+    <message>
+        <source>None</source>
+        <translation>Κανένα</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>Ερευνα</translation>
     </message>
 </context>
 </TS>

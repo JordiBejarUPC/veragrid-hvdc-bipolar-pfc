@@ -14,17 +14,16 @@
         <translation>परिचय</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="49"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="87"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;VeraGrid&lt;/span&gt; has been carefully crafted since 2015 to serve as a platform for research and consultancy. Visit &lt;a href=&quot;https://www.eroots.tech/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;eRoots&lt;/span&gt;&lt;/a&gt; for more details. The source of VeraGrid can be found &lt;a href=&quot;https://github.com/SanPen/VeraGrid&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;here.&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;VeraGrid&lt;/span&gt; को 2015 से अनुसंधान और परामर्श के लिए एक मंच के रूप में सावधानीपूर्वक विकसित किया गया है। अधिक जानकारी के लिए &lt;a href=&quot;https://www.eroots.tech/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;eRoots&lt;/span&gt;&lt;/a&gt; देखें। VeraGrid का स्रोत कोड &lt;a href=&quot;https://github.com/SanPen/VeraGrid&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;यहाँ&lt;/span&gt;&lt;/a&gt; उपलब्ध है।&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="112"/>
         <source>version</source>
-        <translation>संस्करण</translation>
+        <translation type="vanished">संस्करण</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="128"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="68"/>
         <source>Copyright</source>
         <translation>कॉपीराइट</translation>
     </message>
@@ -34,32 +33,29 @@
         <translation>योगदानकर्ता</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="170"/>
         <source>TextLabel</source>
-        <translation>पाठ लेबल</translation>
+        <translation type="vanished">पाठ लेबल</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="184"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="174"/>
         <source>Libraries</source>
         <translation>लाइब्रेरी</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="190"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="180"/>
         <source>Copy the table</source>
         <translation>तालिका की प्रतिलिपि बनाएँ</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="210"/>
         <source>Update VeraGrid. If you are on windows don&apos;t do this.</source>
-        <translation>VeraGrid को अपडेट करें। यदि आप Windows पर हैं, तो यह न करें।</translation>
+        <translation type="vanished">VeraGrid को अपडेट करें। यदि आप Windows पर हैं, तो यह न करें।</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="254"/>
         <source>Optional libraries</source>
-        <translation>वैकल्पिक लाइब्रेरी</translation>
+        <translation type="vanished">वैकल्पिक लाइब्रेरी</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="264"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="211"/>
         <source>License</source>
         <translation>लाइसेंस</translation>
     </message>
@@ -69,15 +65,15 @@
     </message>
     <message>
         <source>supported version</source>
-        <translation>समर्थित संस्करण</translation>
+        <translation type="vanished">समर्थित संस्करण</translation>
     </message>
     <message>
         <source>licensed</source>
-        <translation>लाइसेंस प्राप्त</translation>
+        <translation type="vanished">लाइसेंस प्राप्त</translation>
     </message>
     <message>
         <source>Not installed</source>
-        <translation>स्थापित नहीं है</translation>
+        <translation type="vanished">स्थापित नहीं है</translation>
     </message>
     <message>
         <source>Package</source>
@@ -96,12 +92,12 @@
         <translation>निर्भरताएँ</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="270"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="217"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;This program comes with absolutelly no warranty. This is free software, and you are welcome to redistribute it under the conditions set by the license. VeraGrid is licensed under the &lt;a href=&quot;https://www.mozilla.org/en-US/MPL/2.0/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;Mozilla Public License V2&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;यह प्रोग्राम बिल्कुल बिना किसी वारंटी के आता है। यह मुक्त सॉफ़्टवेयर है, और आप लाइसेंस में निर्धारित शर्तों के अनुसार इसे पुनर्वितरित कर सकते हैं। VeraGrid &lt;a href=&quot;https://www.mozilla.org/en-US/MPL/2.0/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;Mozilla Public License V2&lt;/span&gt;&lt;/a&gt; के अंतर्गत लाइसेंस प्राप्त है।&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="291"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="238"/>
         <source>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;meta charset=&quot;utf-8&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
@@ -150,6 +146,70 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <source>True</source>
         <translation>सत्य</translation>
+    </message>
+    <message>
+        <source>Action</source>
+        <translation>कार्य</translation>
+    </message>
+    <message>
+        <source>Command output:</source>
+        <translation>कमांड आउटपुट:</translation>
+    </message>
+    <message>
+        <source>Exit code: {code}</source>
+        <translation>एग्जिट कोड: {code}</translation>
+    </message>
+    <message>
+        <source>False</source>
+        <translation>असत्य</translation>
+    </message>
+    <message>
+        <source>Information</source>
+        <translation>जानकारी</translation>
+    </message>
+    <message>
+        <source>Install</source>
+        <translation>इंस्टॉल करें</translation>
+    </message>
+    <message>
+        <source>Installed</source>
+        <translation>स्थापित</translation>
+    </message>
+    <message>
+        <source>Installed version</source>
+        <translation>स्थापित संस्करण</translation>
+    </message>
+    <message>
+        <source>Licensed</source>
+        <translation>लाइसेंस प्राप्त</translation>
+    </message>
+    <message>
+        <source>Newest version</source>
+        <translation>नवीनतम संस्करण</translation>
+    </message>
+    <message>
+        <source>Supported version</source>
+        <translation>समर्थित संस्करण</translation>
+    </message>
+    <message>
+        <source>Unknown</source>
+        <translation>अज्ञात</translation>
+    </message>
+    <message>
+        <source>Update</source>
+        <translation>अपडेट करें</translation>
+    </message>
+    <message>
+        <source>Warning</source>
+        <translation>चेतावनी</translation>
+    </message>
+    <message>
+        <source>{name} update failed after {attempts} attempt(s).</source>
+        <translation>{name} को {attempts} प्रयास(ों) के बाद अपडेट करने में विफलता।</translation>
+    </message>
+    <message>
+        <source>{name} updated successfully after {attempts} attempt(s)</source>
+        <translation>{name} {attempts} प्रयास(ों) के बाद सफलतापूर्वक अपडेट किया गया।</translation>
     </message>
 </context>
 <context>
@@ -1231,11 +1291,11 @@ Are you sure?</source>
     </message>
     <message>
         <source>None</source>
-        <translation>कोई नहीं</translation>
+        <translation type="vanished">कोई नहीं</translation>
     </message>
     <message>
         <source>Search</source>
-        <translation>खोजें</translation>
+        <translation type="vanished">खोजें</translation>
     </message>
 </context>
 <context>
@@ -14179,6 +14239,17 @@ You need to load or create a grid!</source>
     <message>
         <source>Question</source>
         <translation>प्रश्न</translation>
+    </message>
+</context>
+<context>
+    <name>DeviceSelectorPanel</name>
+    <message>
+        <source>None</source>
+        <translation>कोई नहीं</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>खोजें</translation>
     </message>
 </context>
 </TS>

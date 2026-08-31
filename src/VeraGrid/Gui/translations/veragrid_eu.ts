@@ -14,17 +14,16 @@
         <translation>Buruz</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="49"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="87"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;VeraGrid&lt;/span&gt; has been carefully crafted since 2015 to serve as a platform for research and consultancy. Visit &lt;a href=&quot;https://www.eroots.tech/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;eRoots&lt;/span&gt;&lt;/a&gt; for more details. The source of VeraGrid can be found &lt;a href=&quot;https://github.com/SanPen/VeraGrid&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;here.&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;VeraGrid&lt;/span&gt; 2015az geroztik kontu handiz landu da ikerketarako eta aholkularitzarako plataforma izateko. Bisitatu &lt;a href=&quot;https://www.eroots.tech/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;eRoots&lt;/span&gt;&lt;/a&gt; xehetasun gehiagorako. The source of VeraGrid can be found &lt;a href=&quot;https://github.com/SanPen/VeraGrid&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;hemen.&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="112"/>
         <source>version</source>
-        <translation>bertsioa</translation>
+        <translation type="vanished">bertsioa</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="128"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="68"/>
         <source>Copyright</source>
         <translation>Copyright</translation>
     </message>
@@ -34,42 +33,39 @@
         <translation>Laguntzaileak</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="170"/>
         <source>TextLabel</source>
-        <translation>TextLabel</translation>
+        <translation type="vanished">TextLabel</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="184"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="174"/>
         <source>Libraries</source>
         <translation>Liburutegiak</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="190"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="180"/>
         <source>Copy the table</source>
         <translation>Kopiatu taula</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="210"/>
         <source>Update VeraGrid. If you are on windows don&apos;t do this.</source>
-        <translation>Eguneratu VeraGrid. If you are on windows don&apos;t do this.</translation>
+        <translation type="vanished">Eguneratu VeraGrid. If you are on windows don&apos;t do this.</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="254"/>
         <source>Optional libraries</source>
-        <translation>Aukerako liburutegiak</translation>
+        <translation type="vanished">Aukerako liburutegiak</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="264"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="211"/>
         <source>License</source>
         <translation>Lizentzia</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="270"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="217"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;This program comes with absolutelly no warranty. This is free software, and you are welcome to redistribute it under the conditions set by the license. VeraGrid is licensed under the &lt;a href=&quot;https://www.mozilla.org/en-US/MPL/2.0/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;Mozilla Public License V2&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;This program comes with absolutelly no warranty. Hau software librea da, eta lizentziak ezarritako baldintzetan birbanatzeko aukera dago. VeraGrid is licensed under the &lt;a href=&quot;https://www.mozilla.org/en-US/MPL/2.0/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;Mozilla Public License V2&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="291"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="238"/>
         <source>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;meta charset=&quot;utf-8&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
@@ -129,7 +125,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
     </message>
     <message>
         <source>Not installed</source>
-        <translation>Ez dago instalatuta</translation>
+        <translation type="vanished">Ez dago instalatuta</translation>
     </message>
     <message>
         <source>Package</source>
@@ -145,11 +141,75 @@ li.checked::marker { content: &quot;\2612&quot;; }
     </message>
     <message>
         <source>licensed</source>
-        <translation>Lizenciado</translation>
+        <translation type="vanished">Lizenciado</translation>
     </message>
     <message>
         <source>supported version</source>
-        <translation>mendikatu bertsioa</translation>
+        <translation type="vanished">mendikatu bertsioa</translation>
+    </message>
+    <message>
+        <source>Action</source>
+        <translation>Akzioa</translation>
+    </message>
+    <message>
+        <source>Command output:</source>
+        <translation>Komandoaren iragarkia:</translation>
+    </message>
+    <message>
+        <source>Exit code: {code}</source>
+        <translation>Irakasterako koda: {code}</translation>
+    </message>
+    <message>
+        <source>False</source>
+        <translation>Ez</translation>
+    </message>
+    <message>
+        <source>Information</source>
+        <translation>Informazioa</translation>
+    </message>
+    <message>
+        <source>Install</source>
+        <translation>Instalatu</translation>
+    </message>
+    <message>
+        <source>Installed</source>
+        <translation>Instalatu</translation>
+    </message>
+    <message>
+        <source>Installed version</source>
+        <translation>Instalatu dagoen berrsioa</translation>
+    </message>
+    <message>
+        <source>Licensed</source>
+        <translation>Lizenciado</translation>
+    </message>
+    <message>
+        <source>Newest version</source>
+        <translation>Berriena berrsioa</translation>
+    </message>
+    <message>
+        <source>Supported version</source>
+        <translation>Zigiltzatutako berrsioa</translation>
+    </message>
+    <message>
+        <source>Unknown</source>
+        <translation>Ez da zertan</translation>
+    </message>
+    <message>
+        <source>Update</source>
+        <translation>Uragra</translation>
+    </message>
+    <message>
+        <source>Warning</source>
+        <translation>Abisua</translation>
+    </message>
+    <message>
+        <source>{name} update failed after {attempts} attempt(s).</source>
+        <translation>{name} uragra egin nahi ez zen {attempts} saltako ostean.</translation>
+    </message>
+    <message>
+        <source>{name} updated successfully after {attempts} attempt(s)</source>
+        <translation>{name} uragra egin zuen araupantzahiko {attempts} saltako ostean.</translation>
     </message>
 </context>
 <context>
@@ -1793,11 +1853,11 @@ Are you sure?</translation>
     </message>
     <message>
         <source>None</source>
-        <translation>Ninguno</translation>
+        <translation type="vanished">Ninguno</translation>
     </message>
     <message>
         <source>Search</source>
-        <translation>Bilatu</translation>
+        <translation type="vanished">Bilatu</translation>
     </message>
 </context>
 <context>
@@ -14944,6 +15004,17 @@ Ekarri edo sortu ekarri-erakunde bat!</translation>
     <message>
         <source>Question</source>
         <translation>Galdera</translation>
+    </message>
+</context>
+<context>
+    <name>DeviceSelectorPanel</name>
+    <message>
+        <source>None</source>
+        <translation>Ninguno</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>Bilatu</translation>
     </message>
 </context>
 </TS>

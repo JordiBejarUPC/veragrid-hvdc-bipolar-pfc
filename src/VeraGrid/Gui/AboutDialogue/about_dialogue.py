@@ -150,20 +150,27 @@ def get_installed_package_version(package_name: str) -> str:
     return package_version
 
 
-def get_package_upgrade_command(package_name: str, latest_version: str) -> List[str]:
+def get_package_install_command(package_name: str, latest_version: str) -> List[str]:
     """
-    Build a pip upgrade command for one package.
+    Build a pip install or upgrade command for one package.
 
     :param package_name: Distribution package name.
-    :param latest_version: Version to install.
+    :param latest_version: Version to install, or empty for the newest resolvable package.
     :return: Split command suitable for subprocess execution.
     """
+    package_spec: str
+
+    if len(latest_version) > 0:
+        package_spec = f"{package_name}=={latest_version}"
+    else:
+        package_spec = package_name
+
     command: List[str] = [
         sys.executable,
         "-m",
         "pip",
         "install",
-        f"{package_name}=={latest_version}",
+        package_spec,
         "--upgrade",
         "--break-system-packages",
     ]
@@ -201,34 +208,46 @@ def run_upgrade_command(command: List[str], max_attempts: int) -> tuple[int, str
     :return: Final exit code, collected command output and number of attempts used.
     """
     attempt_number: int = 0
-    process_result: subprocess.CompletedProcess[str]
+    process: subprocess.Popen[str]
     output_chunks: List[str] = list()
-    output_text: str
+    attempt_chunks: List[str]
+    output_line: str
+    return_code: int = 1
 
     while attempt_number < max_attempts:
         attempt_number = attempt_number + 1
+        attempt_chunks = list()
+        output_chunks.append(f"Attempt {attempt_number}")
+        print(f"Attempt {attempt_number}: {' '.join(command)}", flush=True)
 
-        # Capture stdout and stderr together because pip error details are
-        # useful both for retries and for the final message shown to the user.
-        process_result = subprocess.run(
+        # Stream stdout and stderr together so the console shows the live pip
+        # progress while the final dialog can still include the same details.
+        process = subprocess.Popen(
             command,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True
         )
 
-        output_text = process_result.stdout if process_result.stdout is not None else ""
-        output_chunks.append(f"Attempt {attempt_number}\n{output_text}")
+        if process.stdout is not None:
+            for output_line in process.stdout:
+                print(output_line, end="", flush=True)
+                attempt_chunks.append(output_line)
+        else:
+            pass
 
-        if process_result.returncode == 0:
-            return process_result.returncode, "\n\n".join(output_chunks), attempt_number
+        return_code = process.wait()
+        output_chunks.append("".join(attempt_chunks))
+
+        if return_code == 0:
+            return return_code, "\n\n".join(output_chunks), attempt_number
         else:
             if attempt_number < max_attempts:
                 time.sleep(1.0)
             else:
                 pass
 
-    return process_result.returncode, "\n\n".join(output_chunks), attempt_number
+    return return_code, "\n\n".join(output_chunks), attempt_number
 
 
 def translate_about_dialog(source_text: str, disambiguation: str | None = None, n: int = -1) -> str:
@@ -283,15 +302,19 @@ class AboutDialogueGuiGUI(QtWidgets.QDialog):
         """
         return translate_about_dialog(source_text, disambiguation, n)
 
-    def fill_optional_libs(self):
+    def fill_optional_libs(self) -> None:
         """
+        Fill the optional libraries table with installed and available package data.
 
-        :return:
+        :return: None.
         """
         rows: List[OptionalLibraryStatus] = list()
         veragrid_latest_version: str | None = find_latest_version(package_name="VeraGrid")
         gslv_installed_version: str = get_installed_package_version(package_name="pygslv")
         pgm_installed_version: str = get_installed_package_version(package_name="power-grid-model")
+        pandapower_installed_version: str = get_installed_package_version(package_name="pandapower")
+        pypsa_installed_version: str = get_installed_package_version(package_name="pypsa")
+        pypowsybl_installed_version: str = get_installed_package_version(package_name="pypowsybl")
 
         rows.append(OptionalLibraryStatus(
             name="VeraGrid",
@@ -320,6 +343,33 @@ class AboutDialogueGuiGUI(QtWidgets.QDialog):
             supported_version=PGM_RECOMMENDED_VERSION,
             licensed=PGM_AVAILABLE,
         ))
+        rows.append(OptionalLibraryStatus(
+            name="pandapower",
+            package_name="pandapower",
+            installed=len(pandapower_installed_version) > 0,
+            installed_version=pandapower_installed_version,
+            latest_version=find_latest_version(package_name="pandapower") or "",
+            supported_version="",
+            licensed=len(pandapower_installed_version) > 0,
+        ))
+        rows.append(OptionalLibraryStatus(
+            name="PyPSA",
+            package_name="pypsa",
+            installed=len(pypsa_installed_version) > 0,
+            installed_version=pypsa_installed_version,
+            latest_version=find_latest_version(package_name="pypsa") or "",
+            supported_version="",
+            licensed=len(pypsa_installed_version) > 0,
+        ))
+        rows.append(OptionalLibraryStatus(
+            name="pypowsybl",
+            package_name="pypowsybl",
+            installed=len(pypowsybl_installed_version) > 0,
+            installed_version=pypowsybl_installed_version,
+            latest_version=find_latest_version(package_name="pypowsybl") or "",
+            supported_version="",
+            licensed=len(pypowsybl_installed_version) > 0,
+        ))
 
         self.ui.librariesTableWidget.setColumnCount(7)
         self.ui.librariesTableWidget.setRowCount(len(rows))
@@ -330,7 +380,7 @@ class AboutDialogueGuiGUI(QtWidgets.QDialog):
             self.tr("Newest version"),
             self.tr("Supported version"),
             self.tr("Licensed"),
-            self.tr("Update"),
+            self.tr("Action"),
         ])
 
         row_idx: int
@@ -346,7 +396,7 @@ class AboutDialogueGuiGUI(QtWidgets.QDialog):
             if library_status.installed:
                 installed_version = library_status.installed_version
             else:
-                installed_version = self.tr("Not installed")
+                installed_version = ""
 
             if len(library_status.latest_version) > 0:
                 latest_version = library_status.latest_version
@@ -364,32 +414,42 @@ class AboutDialogueGuiGUI(QtWidgets.QDialog):
             self.ui.librariesTableWidget.setCellWidget(
                 row_idx,
                 6,
-                self.create_optional_library_update_button(library_status=library_status),
+                self.create_optional_library_action_button(library_status=library_status),
             )
 
         self.ui.librariesTableWidget.resizeColumnsToContents()
 
-    def create_optional_library_update_button(self, library_status: OptionalLibraryStatus) -> QtWidgets.QPushButton:
+    def create_optional_library_action_button(self, library_status: OptionalLibraryStatus) -> QtWidgets.QPushButton:
         """
-        Create the update button for one optional library row.
+        Create the install or update button for one optional library row.
 
         :param library_status: Optional library status.
-        :return: Configured update button.
+        :return: Configured action button.
         """
-        button: QtWidgets.QPushButton = QtWidgets.QPushButton(self.tr("Update"))
+        if library_status.installed:
+            if can_update_package(
+                    installed=library_status.installed,
+                    installed_version=library_status.installed_version,
+                    latest_version=library_status.latest_version):
+                text: str = self.tr("Update")
+                enabled: bool = True
+            else:
+                text = self.tr("Installed")
+                enabled = False
+        else:
+            text = self.tr("Install")
+            enabled = True
+
+        button: QtWidgets.QPushButton = QtWidgets.QPushButton(text)
         button.setProperty("package_name", library_status.package_name)
         button.setProperty("latest_version", library_status.latest_version)
-        button.setEnabled(can_update_package(
-            installed=library_status.installed,
-            installed_version=library_status.installed_version,
-            latest_version=library_status.latest_version,
-        ))
-        button.clicked.connect(self.update_optional_library)
+        button.setEnabled(enabled)
+        button.clicked.connect(self.install_or_update_optional_library)
         return button
 
-    def update_optional_library(self, checked: bool = False) -> None:
+    def install_or_update_optional_library(self, checked: bool = False) -> None:
         """
-        Update the package associated with the clicked optional library row.
+        Install or update the package associated with the clicked optional library row.
 
         :param checked: Qt button checked state.
         :return: None.
@@ -405,7 +465,7 @@ class AboutDialogueGuiGUI(QtWidgets.QDialog):
             if package_name == "VeraGrid":
                 command: List[str] = get_upgrade_command(latest_version=latest_version)
             else:
-                command = get_package_upgrade_command(package_name=package_name, latest_version=latest_version)
+                command = get_package_install_command(package_name=package_name, latest_version=latest_version)
 
             return_code, command_output, attempts_used = run_upgrade_command(
                 command=command,
