@@ -41,7 +41,7 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidg
 from VeraGrid.Gui.GridReduce.grid_reduce import GridReduceDialogue
 from VeraGrid.Gui.SubstationDesigner.substation_designer import SubstationDesigner
 from VeraGrid.Gui.general_dialogues import (LogsDialogue, CustomQuestionDialogue, CheckListDialogue,
-                                            NewConnectedDeviceDialogue)
+                                            NewConnectedDeviceDialogue, DeviceSelectorDialogue)
 from VeraGrid.Gui.DeviceEditors.TransformerEditor.transformer_device_editor import TransformerDeviceEditorDialog
 from VeraGrid.Gui.DeviceEditors.Transformer3wEditor.transformer3w_device_editor import Transformer3WDeviceEditorDialog
 from VeraGrid.Gui.DeviceEditors.ControllableShuntEditor.controllable_shunt_device_editor import (
@@ -1194,26 +1194,35 @@ class DataBaseTableMain(DiagramsMain):
                         bus_count=3,
                         buses=buses,
                         parent=self,
+                        allow_last_bus_none=True,
                     )
                     if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
                         selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
-                        if selected_buses[0] is not None and selected_buses[1] is not None and selected_buses[2] is not None:
+                        if selected_buses[0] is not None and selected_buses[1] is not None:
                             bus_from: ALL_DEV_TYPES = selected_buses[0]
                             bus_to: ALL_DEV_TYPES = selected_buses[1]
-                            bus_dc_n: ALL_DEV_TYPES = selected_buses[2]
+                            bus_dc_n: ALL_DEV_TYPES | None = selected_buses[2]
 
-                            if isinstance(bus_from, dev.Bus) and isinstance(bus_to, dev.Bus) and isinstance(bus_dc_n, dev.Bus):
+                            if isinstance(bus_from, dev.Bus) and isinstance(bus_to, dev.Bus):
                                 has_ac_dc_pair: bool = bus_from.is_dc != bus_to.is_dc
-                                has_dc_negative_bus: bool = bus_dc_n.is_dc
 
-                                if has_ac_dc_pair and has_dc_negative_bus:
+                                if bus_dc_n is None:
+                                    has_valid_dc_negative_bus: bool = True
+                                elif isinstance(bus_dc_n, dev.Bus):
+                                    has_valid_dc_negative_bus = bus_dc_n.is_dc
+                                else:
+                                    has_valid_dc_negative_bus = False
+
+                                if has_ac_dc_pair and has_valid_dc_negative_bus:
                                     obj: dev.VSC = dev.VSC(name=dlg.get_name(),
                                                            bus_from=bus_from,
                                                            bus_to=bus_to,
                                                            bus_dc_n=bus_dc_n)
                                     self.circuit.add_element(obj=obj)
                                 else:
-                                    self.show_warning_toast(self.tr("VSC devices need one AC bus and two DC buses."))
+                                    self.show_warning_toast(
+                                        self.tr("VSC devices need one AC bus, one DC bus, and an optional DC bus.")
+                                    )
                             else:
                                 pass
                         else:
@@ -1314,6 +1323,62 @@ class DataBaseTableMain(DiagramsMain):
             elif elm_type == DeviceType.BusDevice:
                 self.circuit.add_bus(dev.Bus(name=f'Bus {self.circuit.get_bus_number() + 1}'))
 
+            elif elm_type == DeviceType.ContingencyDevice:
+                target_devices_by_type: Dict[DeviceType, List[ALL_DEV_TYPES]] = dict()
+                supported_device_types: Tuple[DeviceType, ...] = (
+                    DeviceType.DCLineDevice,
+                    DeviceType.LineDevice,
+                    DeviceType.HVDCLineDevice,
+                    DeviceType.Transformer2WDevice,
+                    DeviceType.WindingDevice,
+                    DeviceType.SeriesReactanceDevice,
+                    DeviceType.UpfcDevice,
+                    DeviceType.GeneratorDevice,
+                    DeviceType.BatteryDevice,
+                    DeviceType.StaticGeneratorDevice,
+                )
+                target_device_count: int = 0
+
+                for target_device_type in supported_device_types:
+                    target_devices: List[ALL_DEV_TYPES] = list(
+                        self.circuit.get_elements_by_type(device_type=target_device_type)
+                    )
+                    target_devices_by_type[target_device_type] = target_devices
+                    target_device_count = target_device_count + len(target_devices)
+
+                if target_device_count > 0:
+                    dlg: DeviceSelectorDialogue = DeviceSelectorDialogue(
+                        devices_by_type=target_devices_by_type,
+                        allow_none=False,
+                        parent=self,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_device: ALL_DEV_TYPES | None = dlg.get_selected_device()
+                        if isinstance(selected_device, EditableDevice):
+                            if len(self.circuit.contingency_groups) > 0:
+                                contingency_group: dev.ContingencyGroup = self.circuit.contingency_groups[0]
+                            else:
+                                contingency_group = dev.ContingencyGroup(
+                                    name=f"Contingency group {self.circuit.get_contingency_groups_number() + 1}",
+                                    category="single",
+                                )
+                                self.circuit.add_contingency_group(contingency_group)
+
+                            contingency: dev.Contingency = dev.Contingency(
+                                device=selected_device,
+                                code=selected_device.code,
+                                name=f"Contingency {selected_device.name}",
+                                value=0,
+                                group=contingency_group,
+                            )
+                            self.circuit.add_contingency(contingency)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no supported devices to target."))
+
             elif elm_type == DeviceType.ContingencyGroupDevice:
                 group = dev.ContingencyGroup(
                     name=f"Contingency group {self.circuit.get_contingency_groups_number() + 1}"
@@ -1326,9 +1391,148 @@ class DataBaseTableMain(DiagramsMain):
                 )
                 self.circuit.add_remedial_action_group(group)
 
+            elif elm_type == DeviceType.RemedialActionDevice:
+                target_devices_by_type: Dict[DeviceType, List[ALL_DEV_TYPES]] = dict()
+                supported_device_types: Tuple[DeviceType, ...] = (
+                    DeviceType.DCLineDevice,
+                    DeviceType.LineDevice,
+                    DeviceType.HVDCLineDevice,
+                    DeviceType.Transformer2WDevice,
+                    DeviceType.WindingDevice,
+                    DeviceType.SeriesReactanceDevice,
+                    DeviceType.UpfcDevice,
+                    DeviceType.GeneratorDevice,
+                    DeviceType.BatteryDevice,
+                    DeviceType.StaticGeneratorDevice,
+                )
+                target_device_count: int = 0
+
+                for target_device_type in supported_device_types:
+                    target_devices: List[ALL_DEV_TYPES] = list(
+                        self.circuit.get_elements_by_type(device_type=target_device_type)
+                    )
+                    target_devices_by_type[target_device_type] = target_devices
+                    target_device_count = target_device_count + len(target_devices)
+
+                if target_device_count > 0:
+                    dlg: DeviceSelectorDialogue = DeviceSelectorDialogue(
+                        devices_by_type=target_devices_by_type,
+                        allow_none=False,
+                        parent=self,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_device: ALL_DEV_TYPES | None = dlg.get_selected_device()
+                        if isinstance(selected_device, EditableDevice):
+                            if len(self.circuit.remedial_action_groups) > 0:
+                                remedial_action_group: dev.RemedialActionGroup = self.circuit.remedial_action_groups[0]
+                            else:
+                                remedial_action_group = dev.RemedialActionGroup(
+                                    name=(
+                                        f"Remedial actions group "
+                                        f"{self.circuit.get_remedial_action_groups_number() + 1}"
+                                    ),
+                                    category="single",
+                                )
+                                self.circuit.add_remedial_action_group(remedial_action_group)
+
+                            remedial_action: dev.RemedialAction = dev.RemedialAction(
+                                device=selected_device,
+                                code=selected_device.code,
+                                name=f"RA {selected_device.name}",
+                                value=0,
+                                group=remedial_action_group,
+                            )
+                            self.circuit.add_remedial_action(remedial_action)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no supported devices to target."))
+
             elif elm_type == DeviceType.InvestmentsGroupDevice:
                 group = dev.InvestmentsGroup(name=f"Investments group {len(self.circuit.investments_groups) + 1}")
                 self.circuit.add_investments_group(group)
+
+            elif elm_type == DeviceType.InvestmentDevice:
+                target_devices_by_type: Dict[DeviceType, List[ALL_DEV_TYPES]] = dict()
+                all_devices_by_type: Dict[DeviceType, Dict[str, ALL_DEV_TYPES]] = (
+                    self.circuit.get_all_elements_dict_by_type(string_keys=False)
+                )
+                excluded_device_types: Set[DeviceType] = set((
+                    DeviceType.ContingencyDevice,
+                    DeviceType.ContingencyGroupDevice,
+                    DeviceType.InvestmentDevice,
+                    DeviceType.InvestmentsGroupDevice,
+                    DeviceType.ShortCircuitEvent,
+                    DeviceType.RemedialActionDevice,
+                    DeviceType.RemedialActionGroupDevice,
+                ))
+                target_device_count: int = 0
+
+                for target_device_type, target_devices_dict in all_devices_by_type.items():
+                    if target_device_type in excluded_device_types:
+                        pass
+                    else:
+                        target_devices: List[ALL_DEV_TYPES] = list(target_devices_dict.values())
+                        target_devices_by_type[target_device_type] = target_devices
+                        target_device_count = target_device_count + len(target_devices)
+
+                if target_device_count > 0:
+                    dlg: DeviceSelectorDialogue = DeviceSelectorDialogue(
+                        devices_by_type=target_devices_by_type,
+                        allow_none=False,
+                        parent=self,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_device: ALL_DEV_TYPES | None = dlg.get_selected_device()
+                        if isinstance(selected_device, EditableDevice):
+                            if len(self.circuit.investments_groups) > 0:
+                                investment_group: dev.InvestmentsGroup = self.circuit.investments_groups[0]
+                            else:
+                                investment_group = dev.InvestmentsGroup(
+                                    name=f"Investments group {len(self.circuit.investments_groups) + 1}",
+                                    category="single",
+                                )
+                                self.circuit.add_investments_group(investment_group)
+
+                            investment: dev.Investment = dev.Investment(
+                                device=selected_device,
+                                code=selected_device.code,
+                                name=f"{selected_device.type_name}: {selected_device.name}",
+                                CAPEX=0.0,
+                                group=investment_group,
+                            )
+                            self.circuit.add_investment(investment)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no devices to target."))
+
+            elif elm_type == DeviceType.ShortCircuitEvent:
+                buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
+                if len(buses) > 0:
+                    dlg: DeviceSelectorDialogue = DeviceSelectorDialogue(
+                        devices_by_type={DeviceType.BusDevice: buses},
+                        allow_none=False,
+                        parent=self,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_device: ALL_DEV_TYPES | None = dlg.get_selected_device()
+                        if isinstance(selected_device, dev.Bus):
+                            short_circuit_event: dev.ShortCircuitEvent = dev.ShortCircuitEvent(
+                                name=f"{selected_device.name} fault",
+                                device=selected_device,
+                            )
+                            self.circuit.add_short_circuit_event(short_circuit_event)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no buses to connect this device."))
 
             elif elm_type == DeviceType.BranchGroupDevice:
                 group = dev.BranchGroup(name=f"Branch group {self.circuit.get_branch_groups_number() + 1}")

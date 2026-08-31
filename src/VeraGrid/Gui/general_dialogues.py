@@ -682,7 +682,8 @@ class NewConnectedDeviceDialogue(CenteredDialog):
                  name: str,
                  bus_count: int,
                  buses: List[ALL_DEV_TYPES],
-                 parent: QtWidgets.QWidget | None = None) -> None:
+                 parent: QtWidgets.QWidget | None = None,
+                 allow_last_bus_none: bool = False) -> None:
         """
         Constructor.
 
@@ -690,6 +691,7 @@ class NewConnectedDeviceDialogue(CenteredDialog):
         :param bus_count: Number of buses that must be selected.
         :param buses: Available buses.
         :param parent: Parent widget.
+        :param allow_last_bus_none: Allow the last bus slot to remain empty.
         """
         CenteredDialog.__init__(self, parent=parent)
 
@@ -697,6 +699,7 @@ class NewConnectedDeviceDialogue(CenteredDialog):
         self.resize(520, 180 + 30 * bus_count)
 
         self.buses: List[ALL_DEV_TYPES] = buses
+        self.allow_last_bus_none: bool = allow_last_bus_none
         self.bus_connection: BusConnectionObject = BusConnectionObject(bus_count=bus_count)
 
         self.main_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self)
@@ -738,9 +741,15 @@ class NewConnectedDeviceDialogue(CenteredDialog):
         has_repeated_buses: bool = False
         selected_bus_set: set[ALL_DEV_TYPES] = set()
 
-        for selected_bus in self.bus_connection.get_buses():
+        selected_buses: List[ALL_DEV_TYPES | None] = self.bus_connection.get_buses()
+        last_bus_idx: int = len(selected_buses) - 1
+
+        for bus_idx, selected_bus in enumerate(selected_buses):
             if selected_bus is None:
-                has_all_buses = False
+                if self.allow_last_bus_none and bus_idx == last_bus_idx:
+                    pass
+                else:
+                    has_all_buses = False
             else:
                 if selected_bus in selected_bus_set:
                     has_repeated_buses = True

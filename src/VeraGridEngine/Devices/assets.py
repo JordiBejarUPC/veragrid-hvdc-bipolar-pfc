@@ -8900,12 +8900,11 @@ class Assets:
             elm = dev.ShortCircuitEvent()
 
         elif elm_type == DeviceType.RemedialActionDevice:
-            elm = dev.Contingency()
-            dictionary_of_lists = {DeviceType.RemedialActionDevice: self.remedial_action_groups, }
+            elm = dev.RemedialAction()
+            dictionary_of_lists = {DeviceType.RemedialActionGroupDevice: self.remedial_action_groups, }
 
         elif elm_type == DeviceType.RemedialActionGroupDevice:
             elm = dev.RemedialActionGroup()
-            dictionary_of_lists = {DeviceType.ContingencyGroupDevice: self.get_contingency_groups(), }
 
         elif elm_type == DeviceType.InvestmentDevice:
             elm = dev.Investment()
