@@ -5669,7 +5669,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             del self.main_block.external_mapping[mapping_key]
 
     def remove_item(self,
-                    item: graph.BlockItem | graph.GenericBlockItem | graph.ConnectionItem | graph.RoundBaseArithmeticOpItem | graph.RectBaseArithmeticOpItem | graph.PairedItem) -> None:
+                    item: graph.BlockItem | graph.MeasurementsItem | graph.GenericBlockItem | graph.ConnectionItem | graph.RoundBaseArithmeticOpItem | graph.RectBaseArithmeticOpItem | graph.PairedItem) -> None:
         """
         Remove a block or connection from scene and model state.
 
@@ -5679,7 +5679,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         if isinstance(item, graph.ConnectionItem):
             self.remove_connection_item(item)
             self.mark_unapplied_changes()
-        elif isinstance(item, (graph.BlockItem, graph.GenericBlockItem, graph.RoundBaseArithmeticOpItem,
+        elif isinstance(item, (graph.BlockItem, graph.GenericBlockItem, graph.MeasurementsItem, graph.RoundBaseArithmeticOpItem,
                                graph.RectBaseArithmeticOpItem | graph.PairedItem)):
             self.remove_block_item(item)
             self.mark_unapplied_changes()

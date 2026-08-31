@@ -172,7 +172,7 @@ class MeasurementsDialog(QtWidgets.QDialog):
         bus_layout: QtWidgets.QFormLayout = QtWidgets.QFormLayout()
         # Keep the selector compact while leaving enough room for " BUS 0" and
         # the platform-specific drop-down indicator.
-        self._bus_combo.setFixedWidth(80)
+        self._bus_combo.setFixedWidth(140)
         self._bus_combo.setSizePolicy(
             QtWidgets.QSizePolicy.Policy.Fixed,
             QtWidgets.QSizePolicy.Policy.Fixed,

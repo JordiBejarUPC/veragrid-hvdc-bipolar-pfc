@@ -4317,7 +4317,7 @@ class DiagramScene(QGraphicsScene):
             if isinstance(
                     item,
                     (GenericBlockItem, BlockItem, ConnectionItem,
-                     RoundBaseArithmeticOpItem, RectBaseArithmeticOpItem, UnOpItem),
+                     RoundBaseArithmeticOpItem, RectBaseArithmeticOpItem, UnOpItem, MeasurementsItem),
             ):
                 self.context_item = item
                 menu: QMenu = QMenu()
