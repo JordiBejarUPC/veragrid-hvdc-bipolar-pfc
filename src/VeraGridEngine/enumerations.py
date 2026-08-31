@@ -1763,12 +1763,13 @@ class PrpCat(Enum):
     ActionType
     """
     All = 'All'
+    MT = 'Metadata'
+    TP = 'Topology'
     PF = 'Power flow'
     PF3 = 'Power flow (unbalanced)'
     SC = "Short Circuit"
     OPF = 'Optimal Power flow'
     CON = "Contingencies"
-    TP = 'Topology'
     REL = 'Reliability'
     NTC = 'Net Transfer Capacity'
     INV = "Investments"

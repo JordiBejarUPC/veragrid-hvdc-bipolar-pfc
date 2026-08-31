@@ -1710,6 +1710,14 @@ Are you sure?</source>
         <translation>Dit verwijdert alle bussen en hun verbonden elementen die niet geselecteerd waren. Dit kan niet ongedaan gemaakt worden en het is gevaarlijk als u niet weet wat u doet. 
 Weet u zeker?</translation>
     </message>
+    <message>
+        <source>There are no buses to connect this device.</source>
+        <translation>Er zijn geen bussen om dit apparaat mee te verbinden.</translation>
+    </message>
+    <message>
+        <source>VSC devices need one AC bus and two DC buses.</source>
+        <translation>VSC-apparaten hebben één AC-bus en twee DC-bussen nodig.</translation>
+    </message>
 </context>
 <context>
     <name>DcLineDeviceEditor</name>
@@ -1773,6 +1781,21 @@ Weet u zeker?</translation>
         <location filename="../DeviceEditors/DcLineEditor/dc_line_editor_gui.ui" line="98"/>
         <source>Accept</source>
         <translation>Accepteren</translation>
+    </message>
+</context>
+<context>
+    <name>DeviceSelectorDialogue</name>
+    <message>
+        <source>Device selection</source>
+        <translation>Apparaatselectie</translation>
+    </message>
+    <message>
+        <source>None</source>
+        <translation>Geen</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>Zoekopdracht</translation>
     </message>
 </context>
 <context>
@@ -5968,6 +5991,17 @@ Wilt u doorgaan zonder een sjabloon?</translation>
     </message>
 </context>
 <context>
+    <name>MapLibraryModel</name>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>Sleep {name} in het schema</translation>
+    </message>
+    <message>
+        <source>Substation</source>
+        <translation>Onderstation</translation>
+    </message>
+</context>
+<context>
     <name>MapLineContainer</name>
     <message>
         <source>Do you want to update the time series active status accordingly?</source>
@@ -6073,6 +6107,17 @@ Wilt u doorgaan zonder een sjabloon?</translation>
 Cancel it and close the window?</source>
         <translation>Er draait een importprocedure.
 Annuleren en het venster sluiten?</translation>
+    </message>
+</context>
+<context>
+    <name>NewConnectedDeviceDialogue</name>
+    <message>
+        <source>Name</source>
+        <translation>Naam</translation>
+    </message>
+    <message>
+        <source>New device</source>
+        <translation>Nieuw apparaat</translation>
     </message>
 </context>
 <context>
@@ -6855,6 +6900,37 @@ Dit verwijdert de directe kindscenario&apos;s nadat hun wijzigingen zijn toegepa
     <message>
         <source>Set Current Scenario</source>
         <translation>Huidig scenario instellen</translation>
+    </message>
+</context>
+<context>
+    <name>SchematicLibraryModel</name>
+    <message>
+        <source>3W-Transformer</source>
+        <translation>3W-Transformatie</translation>
+    </message>
+    <message>
+        <source>Bus</source>
+        <translation>Bus</translation>
+    </message>
+    <message>
+        <source>Connectivity bus</source>
+        <translation>Connectiviteitsbus</translation>
+    </message>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>Sleep {name} in het schema</translation>
+    </message>
+    <message>
+        <source>Fluid-node</source>
+        <translation>Vloeistofknoop</translation>
+    </message>
+    <message>
+        <source>NW-Transformer</source>
+        <translation>NW-Transformatie</translation>
+    </message>
+    <message>
+        <source>VSC</source>
+        <translation>VSC</translation>
     </message>
 </context>
 <context>
@@ -8051,6 +8127,272 @@ De resultaten zijn nodig om deze simulatie te initialiseren.</translation>
 Resolve the operating point before running this RMS simulation.</source>
         <translation>De stroomstroom is niet geconvergeerd.
 Los het operationele punt op voordat u deze RMS-simulatie uitvoert.</translation>
+    </message>
+    <message>
+        <source>Adequacy studies need time data...</source>
+        <translation>Adequaatheidsstudies hebben tijdgegevens nodig...</translation>
+    </message>
+    <message>
+        <source>Another ATC time series is being executed now...</source>
+        <translation>Een andere ATC tijdreeks wordt nu uitgevoerd...</translation>
+    </message>
+    <message>
+        <source>Another EMT simulation is running already...</source>
+        <translation>Er draait al een andere EMT-simulatie...</translation>
+    </message>
+    <message>
+        <source>Another LODF is being executed now...</source>
+        <translation>Een andere LODF wordt nu uitgevoerd...</translation>
+    </message>
+    <message>
+        <source>Another Monte Carlo simulation is running...</source>
+        <translation>Er draait al een andere Monte Carlo-simulatie...</translation>
+    </message>
+    <message>
+        <source>Another OPF is being run...</source>
+        <translation>Er wordt al een andere OPF uitgevoerd...</translation>
+    </message>
+    <message>
+        <source>Another OPF time series is running already...</source>
+        <translation>Er draait al een andere OPF tijdreeks...</translation>
+    </message>
+    <message>
+        <source>Another Optimal NCT time series is being run...</source>
+        <translation>Er wordt al een andere Optimal NCT tijdreeks uitgevoerd...</translation>
+    </message>
+    <message>
+        <source>Another PTDF is being executed now...</source>
+        <translation>Een andere PTDF wordt nu uitgevoerd...</translation>
+    </message>
+    <message>
+        <source>Another Small-Signal stability analysis EMT simulation is running already...</source>
+        <translation>Er draait al een andere Small-Signal stabiliteitsanalyse EMT-simulatie...</translation>
+    </message>
+    <message>
+        <source>Another Small-Signal stability analysis simulation is running already...</source>
+        <translation>Er draait al een andere Small-Signal stabiliteitsanalyse-simulatie...</translation>
+    </message>
+    <message>
+        <source>Another catalogue optimization is already running...</source>
+        <translation>Er draait al een andere catalogusoptimalisatie...</translation>
+    </message>
+    <message>
+        <source>Another clustering is being executed now...</source>
+        <translation>Een andere clustering wordt nu uitgevoerd...</translation>
+    </message>
+    <message>
+        <source>Another contingency analysis is being executed now...</source>
+        <translation>Een andere contingentieanalyse wordt nu uitgevoerd...</translation>
+    </message>
+    <message>
+        <source>Another inputs analysis is being run...</source>
+        <translation>Er wordt al een andere inputanalyse uitgevoerd...</translation>
+    </message>
+    <message>
+        <source>Another nodal capacity study is being run...</source>
+        <translation>Er wordt al een andere knooppuntcapaciteitsstudie uitgevoerd...</translation>
+    </message>
+    <message>
+        <source>Another reliability study is running already...</source>
+        <translation>Er draait al een andere betrouwbaarheidsstudie...</translation>
+    </message>
+    <message>
+        <source>Another rms simulation is running already...</source>
+        <translation>Er draait al een andere rms-simulatie...</translation>
+    </message>
+    <message>
+        <source>Another simulation of the same type is running...</source>
+        <translation>Er draait al een andere simulatie van hetzelfde type...</translation>
+    </message>
+    <message>
+        <source>Another three-phase time series power flow is being executed now...</source>
+        <translation>Een andere driefasige tijdreeks stroomstroom wordt nu uitgevoerd...</translation>
+    </message>
+    <message>
+        <source>Another time series power flow is being executed now...</source>
+        <translation>Een andere tijdreeks stroomstroom wordt nu uitgevoerd...</translation>
+    </message>
+    <message>
+        <source>Another voltage collapse simulation is running...</source>
+        <translation>Er draait al een andere spanningsinstortingssimulatie...</translation>
+    </message>
+    <message>
+        <source>Cannot colour because the PTDF results have zero time steps :/</source>
+        <translation>Kan niet kleuren omdat de PTDF-resultaten nul tijdstappen hebben :/</translation>
+    </message>
+    <message>
+        <source>Check the selected start and finnish time series indices.</source>
+        <translation>Controleer de geselecteerde start- en eindtijdreeksindices.</translation>
+    </message>
+    <message>
+        <source>Linear OPF investment studies need time data...</source>
+        <translation>Lineaire OPF investeringsstudies hebben tijdgegevens nodig...</translation>
+    </message>
+    <message>
+        <source>No from areas!</source>
+        <translation>Geen van gebieden!</translation>
+    </message>
+    <message>
+        <source>No results for the three-phase time series simulation.</source>
+        <translation>Geen resultaten voor de driefasige tijdreeks simulatie.</translation>
+    </message>
+    <message>
+        <source>No results for the time series simulation.</source>
+        <translation>Geen resultaten voor de tijdreeks simulatie.</translation>
+    </message>
+    <message>
+        <source>No to areas!</source>
+        <translation>Geen naar gebieden!</translation>
+    </message>
+    <message>
+        <source>Nothing to simulate...</source>
+        <translation>Niets om te simuleren...</translation>
+    </message>
+    <message>
+        <source>Objective not supported yet :/</source>
+        <translation>Doel niet ondersteund :/</translation>
+    </message>
+    <message>
+        <source>Optimal power flow converged :)</source>
+        <translation>Optimale stroomstroom is geconvergeerd :)</translation>
+    </message>
+    <message>
+        <source>Optimal power flow not converged :/
+Check that all Branches have rating and 
+that the generator bounds are ok.
+You may also use the diagnostic tool (F8)</source>
+        <translation>Optimale stroomstroom is niet geconvergeerd :/
+Controleer of alle takken een rating hebben en 
+of de generatorgrenzen in orde zijn.
+U kunt ook het diagnostische hulpmiddel gebruiken (F8)</translation>
+    </message>
+    <message>
+        <source>Power flow 3ph converged :)</source>
+        <translation>Driefasige stroomstroom is geconvergeerd :)</translation>
+    </message>
+    <message>
+        <source>Power flow 3ph not converged :/</source>
+        <translation>Driefasige stroomstroom is niet geconvergeerd :/</translation>
+    </message>
+    <message>
+        <source>Power flow converged :)</source>
+        <translation>Stroomstroom is geconvergeerd :)</translation>
+    </message>
+    <message>
+        <source>Power flow not converged :/</source>
+        <translation>Stroomstroom is niet geconvergeerd :/</translation>
+    </message>
+    <message>
+        <source>Reliability studies need time data...</source>
+        <translation>Betrouwbaarheidsstudies hebben tijdgegevens nodig...</translation>
+    </message>
+    <message>
+        <source>Remote results received!</source>
+        <translation>Externe resultaten ontvangen!</translation>
+    </message>
+    <message>
+        <source>Run a linear analysis to enable filter contingencies by sensitivity</source>
+        <translation>Voer een lineaire analyse uit om filtercontingenties op basis van gevoeligheid in te schakelen</translation>
+    </message>
+    <message>
+        <source>Simulation converged for all active simulation groups :)</source>
+        <translation>Simulatie is geconvergeerd voor alle actieve simulatiegroepen :)</translation>
+    </message>
+    <message>
+        <source>Simulation well initialized for all active simulation groups :)</source>
+        <translation>Simulatie is goed geïnitialiseerd voor alle actieve simulatiegroepen :)</translation>
+    </message>
+    <message>
+        <source>Small-Signal stability analysis EMT has finished correctly!</source>
+        <translation>Small-Signal stabiliteitsanalyse EMT is correct voltooid!</translation>
+    </message>
+    <message>
+        <source>Small-signal stability analysis RMS has finished correctly!</source>
+        <translation>Small-signal stabiliteitsanalyse RMS is correct voltooid!</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no ATC results.</source>
+        <translation>Er is iets misgegaan, er zijn geen ATC-resultaten.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no ATC time series results.</source>
+        <translation>Er is iets misgegaan, er zijn geen ATC tijdreeksresultaten.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no PTDF Time series results.</source>
+        <translation>Er is iets misgegaan, er zijn geen PTDF tijdreeksresultaten.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no PTDF results.</source>
+        <translation>Er is iets misgegaan, er zijn geen PTDF-resultaten.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no contingency analysis results.</source>
+        <translation>Iets is misgegaan, er zijn geen resultaten van de contingentieanalyse.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no contingency time series results.</source>
+        <translation>Iets is misgegaan, er zijn geen resultaten van de contingentie tijdreeksen.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no investments evaluation results.</source>
+        <translation>Iets is misgegaan, er zijn geen resultaten van de investeringsbeoordeling.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no voltage stability results.</source>
+        <translation>Iets is misgegaan, er zijn geen resultaten van de spanningsstabiliteit.</translation>
+    </message>
+    <message>
+        <source>State estimation converged :)</source>
+        <translation>Toestandsschatting geconvergeerd :)</translation>
+    </message>
+    <message>
+        <source>State estimation not converged :/</source>
+        <translation>Toestandsschatting niet geconvergeerd :/</translation>
+    </message>
+    <message>
+        <source>Stochastic power flow needs at least one time-series sample.</source>
+        <translation>Stochastische stroomafvoer vereist minstens één tijdreeksmonster.</translation>
+    </message>
+    <message>
+        <source>The grid doesn&apos;t have time series :/</source>
+        <translation>Het net heeft geen tijdreeksen :/</translation>
+    </message>
+    <message>
+        <source>The voltage stability did not converge.
+Is this case already at the collapse limit?</source>
+        <translation>De spanningsstabiliteit is niet geconvergeerd.
+Is dit geval al bij de instortlimiet?</translation>
+    </message>
+    <message>
+        <source>There are no PTDF results :/</source>
+        <translation>Er zijn geen PTDF-resultaten :/</translation>
+    </message>
+    <message>
+        <source>There are no active RMS event groups to report.</source>
+        <translation>Er zijn geen actieve RMS-gebeurtenisgroepen om te rapporteren.</translation>
+    </message>
+    <message>
+        <source>There are no contingency groups declared...</source>
+        <translation>Er zijn geen contingentiegroepen gedeclareerd...</translation>
+    </message>
+    <message>
+        <source>There are no time series!</source>
+        <translation>Er zijn geen tijdreeksen!</translation>
+    </message>
+    <message>
+        <source>There are no time series.</source>
+        <translation>Er zijn geen tijdreeksen.</translation>
+    </message>
+    <message>
+        <source>There are no time series...</source>
+        <translation>Er zijn geen tijdreeksen...</translation>
+    </message>
+    <message>
+        <source>You cannot find {0} clusters for {1} time steps.
+Modify the number of clusters in the ML settings.</source>
+        <translation>U kunt {0} clusters niet vinden voor {1} tijdstappen.
+Pas het aantal clusters aan in de ML-instellingen.</translation>
     </message>
 </context>
 <context>
@@ -13917,7 +14259,7 @@ U moet een net laden of aanmaken!</translation>
         <location filename="../Main/MainWindow.ui" line="11827"/>
         <location filename="../Main/MainWindow.ui" line="11830"/>
         <source>Stop &quot;stuff running right now&quot;</source>
-        <translation>Stop "alles wat nu draait"</translation>
+        <translation>Stop &quot;alles wat nu draait&quot;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11968"/>
