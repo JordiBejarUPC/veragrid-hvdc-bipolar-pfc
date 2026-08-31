@@ -246,6 +246,7 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec_rms_template") -> R
         name="genqec"
     )
 
+    templ.comment = 'Generator GENQEC RMS model with quadratic saturation'
     return templ
 
 
@@ -438,6 +439,7 @@ def get_governor_rms(vfactory: VarFactory, name: str = "Governor") -> RmsModelTe
 
     )
 
+    templ.comment = 'Reusable generator governor RMS control block'
     return templ
 
 
@@ -546,6 +548,7 @@ def get_stabilizer_rms(vfactory: VarFactory, name: str = "stabilizer") -> RmsMod
     templ.block.add(vars_block)
     templ.block.add(block_1)
 
+    templ.comment = 'Reusable generator stabilizer RMS control block'
     return templ
 
 
@@ -777,6 +780,7 @@ def get_exciter_rms(vfactory: VarFactory, name: str = "exciter") -> RmsModelTemp
         },
     )
 
+    templ.comment = 'Reusable generator exciter RMS control block'
     return templ
 
 
@@ -1067,4 +1071,5 @@ def get_complete_generator_template_rms(vfactory: VarFactory, name="complete_gen
 
     templ.block.name = name
 
+    templ.comment = 'Complete generator RMS model with GENQEC, exciter, governor, and stabilizer'
     return templ

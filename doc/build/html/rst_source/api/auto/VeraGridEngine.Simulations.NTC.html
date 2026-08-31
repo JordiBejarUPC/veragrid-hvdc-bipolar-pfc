@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VeraGridEngine.Simulations.NTC package &mdash; VeraGrid 6.5.5 documentation</title>
+  <title>VeraGridEngine.Simulations.NTC package &mdash; VeraGrid 6.5.6 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
@@ -15,7 +15,7 @@
   
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../../../_static/documentation_options.js?v=276d7aeb"></script>
+      <script src="../../../_static/documentation_options.js?v=1095f081"></script>
       <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
       <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/js/theme.js"></script>
@@ -438,7 +438,7 @@ and accumulate their linear effect on the branch flows that they influence.</p>
 :param logger
 :param corrective_contingencies: if True, allow corrective re-dispatch of the VSC/HVDC
 :param group_indices: subset of multi-contingency indices to formulate (None = all)
-:param group_rows: per group index, the row indices to enforce 
+:param group_rows: per group index, the row indices to enforce
 :param vsc_delta_store: per group index, the persistent VSC Δ variable dictionary
 :param hvdc_delta_store: per group index, the persistent HVDC Δ variable dictionary
 :param preservation_done: group indices whose exchange-preservation equality is already</p>
@@ -1841,6 +1841,22 @@ slacks plus the post-contingency relaxation slacks.</p>
 
 </dd></dl>
 
+<dl class="py function">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_results.contingency_report_row_order">
+<span class="sig-prename descclassname"><span class="pre">VeraGridEngine.Simulations.NTC.ntc_results.</span></span><span class="sig-name descname"><span class="pre">contingency_report_row_order</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">entries</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">int64</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Simulations/NTC/ntc_results.html#contingency_report_row_order"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_results.contingency_report_row_order" title="Link to this definition"></a></dt>
+<dd><p>Order contingency-flow report rows so hours stay together.</p>
+<p>Time is the primary key. Outage index and watched-branch index follow so
+each hour stays grouped the same way the formulation stored the pairs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>entries</strong> – list of (t, m, c, …) tuples</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>permutation of row indices</p>
+</dd>
+</dl>
+</dd></dl>
+
 </section>
 <section id="module-VeraGridEngine.Simulations.NTC.ntc_ts_driver">
 <span id="veragridengine-simulations-ntc-ntc-ts-driver-module"></span><h2>VeraGridEngine.Simulations.NTC.ntc_ts_driver module<a class="headerlink" href="#module-VeraGridEngine.Simulations.NTC.ntc_ts_driver" title="Link to this heading"></a></h2>
@@ -1977,6 +1993,36 @@ slacks plus the post-contingency relaxation slacks.</p>
 <dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_ts_results.OptimalNetTransferCapacityTimeSeriesResults.dSbus">
 <span class="sig-name descname"><span class="pre">dSbus</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_ts_results.OptimalNetTransferCapacityTimeSeriesResults.dSbus" title="Link to this definition"></a></dt>
 <dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_ts_results.OptimalNetTransferCapacityTimeSeriesResults.get_solution_states">
+<span class="sig-name descname"><span class="pre">get_solution_states</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">slack_tol_mw</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="VeraGridEngine.html#VeraGridEngine.enumerations.SolutionState" title="VeraGridEngine.enumerations.SolutionState"><span class="pre">SolutionState</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Simulations/NTC/ntc_ts_results.html#OptimalNetTransferCapacityTimeSeriesResults.get_solution_states"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_ts_results.OptimalNetTransferCapacityTimeSeriesResults.get_solution_states" title="Link to this definition"></a></dt>
+<dd><p>Classify each time step as Optimal, Relaxed, or NotOptimal.</p>
+<p>Optimal: the solver converged and total slack is within tolerance.
+Relaxed: the solver converged, but only by relaxing limits.
+NotOptimal: the solver did not reach optimality.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>slack_tol_mw</strong> – total slack below which the hour counts as clean</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>one solution state per time step</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_ts_results.OptimalNetTransferCapacityTimeSeriesResults.get_total_slack_mw">
+<span class="sig-name descname"><span class="pre">get_total_slack_mw</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">float64</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Simulations/NTC/ntc_ts_results.html#OptimalNetTransferCapacityTimeSeriesResults.get_total_slack_mw"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_ts_results.OptimalNetTransferCapacityTimeSeriesResults.get_total_slack_mw" title="Link to this definition"></a></dt>
+<dd><p>Total limit-relaxation slack of each time step in MW.</p>
+<p>Base-case overload slacks plus post-contingency relaxation slacks.
+Strict runs have no flow slacks, so the result is zero per hour.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>slack per time step in MW</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_ts_results.OptimalNetTransferCapacityTimeSeriesResults.hvdc_Pf">

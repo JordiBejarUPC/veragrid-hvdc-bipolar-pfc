@@ -66,6 +66,8 @@ from VeraGrid.Gui.FileDialogues.PsseDialogue.psse_import import PsseImportDialog
 from VeraGrid.Gui.ProceduralGrid.procedural_grid import ProceduralGridWindow
 from VeraGrid.Gui.AiAgent.ai_chat_dialogue import AiChatDialogue, AiBackendState
 from VeraGrid.Gui.AiAgent.ai_backend import ProviderType
+from VeraGrid.Gui.FileDialogues.CGMESDialogue.cgmes_import import CgmesImportDialogue
+from VeraGrid.Gui.FileDialogues.DgsDialogue.dgs_import import DgsImportDialogue
 from VeraGrid.Gui.i18n import (
     ActionShortcutState,
     ApplicationTranslator,
@@ -332,6 +334,8 @@ class BaseMainGui(QMainWindow):
         self.ai_backend_state: AiBackendState = self.build_default_ai_backend_state()
         self.ai_restore_visible: bool = False
         self.translation_controller: ApplicationTranslator | None = None
+        self.cgmes_import_dialogue: CgmesImportDialogue | None = None
+        self.dgs_import_dialogue: DgsImportDialogue | None = None
 
         # available engines --------------------------------------------------------------------------------------------
         engine_lst = [EngineType.VeraGrid]

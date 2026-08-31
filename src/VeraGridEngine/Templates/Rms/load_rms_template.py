@@ -9,7 +9,7 @@ from VeraGridEngine.enumerations import ParamPowerFlowReferenceType, VarPowerFlo
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Expr, Var
-
+from VeraGridEngine.enumerations import VoltageDependentPowerModel
 
 class LoadRmsTemplate(TemplateDefinition):
     """Definition of the editable RMS constant-power load."""
@@ -121,3 +121,87 @@ def get_load_rms_template(
     templ.block.out_vars = list([Pl, Ql])
 
     return templ
+
+
+def get_voltage_dependent_power_rms_template(
+        vfactory: VarFactory,
+        voltage_model: VoltageDependentPowerModel,
+        name: str = "Voltage-dependent power RMS template",
+) -> RmsModelTemplate:
+    """Build a static injection initialized from its load-flow power.
+
+    Retaining ``P0``, ``Q0`` and ``V0`` reproduces either a voltage-aligned
+    constant-current source, where terminal power scales with ``Vm/V0``, or a
+    constant shunt admittance, where it scales with ``(Vm/V0)^2``.  The model
+    therefore remains completely determined by the exported DGS operating
+    point and does not require PowerFactory at run time.
+
+    :param vfactory: Variable factory owned by the imported circuit.
+    :param voltage_model: Physical voltage dependency to reproduce.
+    :param name: Human-readable model name shown in the dynamic editor.
+    :return: RMS template implementing the selected initialized power law.
+    """
+    template: RmsModelTemplate = RmsModelTemplate()
+    template.tpe = DeviceType.LoadDevice
+    template.name = name
+
+    # The bus voltage is supplied by the normal RMS network connection path.
+    voltage_magnitude: Var = vfactory.add_var(
+        "Vm",
+        reference=VarPowerFlowReferenceType.Vm,
+    )
+    voltage_angle: Var = vfactory.add_var(
+        "Va",
+        reference=VarPowerFlowReferenceType.Va,
+    )
+
+    # These retained references are sampled after the load-flow operating
+    # point is closed, matching PowerFactory's Yload = I(ldf) / U(ldf).
+    initial_active_power: Var = vfactory.add_var("P0")
+    initial_reactive_power: Var = vfactory.add_var("Q0")
+    initial_voltage_magnitude: Var = vfactory.add_var("V0")
+    active_power: Var = vfactory.add_var(
+        "P",
+        reference=VarPowerFlowReferenceType.P,
+    )
+    reactive_power: Var = vfactory.add_var(
+        "Q",
+        reference=VarPowerFlowReferenceType.Q,
+    )
+    normalized_voltage: Expr = voltage_magnitude / initial_voltage_magnitude
+    voltage_power_factor: Expr
+    if voltage_model == VoltageDependentPowerModel.ConstantCurrent:
+        # With a current vector aligned to the terminal-voltage angle, both P
+        # and Q scale linearly with voltage magnitude while their ratio stays
+        # fixed at the solved operating point.
+        voltage_power_factor = normalized_voltage
+    else:
+        # A constant admittance produces complex power proportional to the
+        # squared terminal-voltage magnitude.
+        voltage_power_factor = normalized_voltage * normalized_voltage
+
+    # Event parameters retain the initialized operating point while still
+    # allowing the standard RMS event machinery to alter load references.
+    load_block: Block = Block(
+        name=name,
+        in_vars=list([voltage_magnitude, voltage_angle]),
+        out_vars=list([active_power, reactive_power]),
+        algebraic_vars=list([active_power, reactive_power]),
+        algebraic_eqs=list([
+            active_power - initial_active_power * voltage_power_factor,
+            reactive_power - initial_reactive_power * voltage_power_factor,
+        ]),
+        event_dict=dict([
+            (initial_active_power, active_power),
+            (initial_reactive_power, reactive_power),
+            (initial_voltage_magnitude, voltage_magnitude),
+        ]),
+        external_mapping=dict([
+            (VarPowerFlowReferenceType.Va, voltage_angle),
+            (VarPowerFlowReferenceType.Vm, voltage_magnitude),
+            (VarPowerFlowReferenceType.P, active_power),
+            (VarPowerFlowReferenceType.Q, reactive_power),
+        ]),
+    )
+    template.block = load_block
+    return template
