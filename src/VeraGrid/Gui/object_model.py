@@ -44,38 +44,112 @@ class DeviceSelectorDelegate(QtWidgets.QItemDelegate):
         self.devices_by_type: Dict[DeviceType, List[ALL_DEV_TYPES]] = devices_by_type
         self.allow_none: bool = allow_none
 
+    @QtCore.Slot(object)
+    def commit_selector_value(self, selected_device: object) -> None:
+        """
+        Commit the selector popup value to the table model.
+
+        :param selected_device: Selected device or None.
+        :return: None.
+        """
+        del selected_device
+        editor: QtCore.QObject | None = self.sender()
+
+        if isinstance(editor, QtWidgets.QWidget):
+            self.commitData.emit(editor)
+            self.closeEditor.emit(editor)
+        else:
+            pass
+
+    @QtCore.Slot()
+    def close_selector_value(self) -> None:
+        """
+        Close the selector popup without committing.
+
+        :return: None.
+        """
+        editor: QtCore.QObject | None = self.sender()
+
+        if isinstance(editor, QtWidgets.QWidget):
+            self.closeEditor.emit(editor)
+        else:
+            pass
+
     def createEditor(self,
                      parent: QtWidgets.QWidget,
                      option: QtWidgets.QStyleOptionViewItem,
-                     index: QtCore.QModelIndex) -> QtWidgets.QWidget | None:
+                     index: QtCore.QModelIndex) -> QtWidgets.QWidget:
         """
-        Open the selector dialogue for one editable device reference.
+        Create a searchable selector popup for one editable device reference.
 
         :param parent: Parent widget.
         :param option: Editor style option.
         :param index: Edited model index.
-        :return: None because the modal dialogue writes directly to the model.
+        :return: Searchable selector popup.
         """
-        # Local import avoids the module cycle with general_dialogues.
-        from VeraGrid.Gui.general_dialogues import DeviceSelectorDialogue
+        del option
+        del index
+        from VeraGrid.Gui.general_dialogues import DeviceSelectorPanel
 
-        dialogue: DeviceSelectorDialogue = DeviceSelectorDialogue(
+        editor: DeviceSelectorPanel = DeviceSelectorPanel(
             devices_by_type=self.devices_by_type,
             allow_none=self.allow_none,
             parent=parent,
         )
-        accepted: int = dialogue.exec()
+        editor.setWindowFlags(QtCore.Qt.WindowType.Popup)
+        editor.resize(500, 400)
+        editor.selection_made.connect(self.commit_selector_value)
+        editor.selection_cancelled.connect(self.close_selector_value)
+        return editor
 
-        if accepted == QtWidgets.QDialog.DialogCode.Accepted:
-            if dialogue.has_selection:
-                selected_device: ALL_DEV_TYPES | None = dialogue.get_selected_device()
-                index.model().setData(index, selected_device)
+    def setModelData(self,
+                     editor: QtWidgets.QWidget,
+                     model: QtCore.QAbstractItemModel,
+                     index: QtCore.QModelIndex) -> None:
+        """
+        Write the selected device from the selector popup to the model.
+
+        :param editor: Selector popup editor.
+        :param model: Edited model.
+        :param index: Edited cell index.
+        :return: None.
+        """
+        from VeraGrid.Gui.general_dialogues import DeviceSelectorPanel
+
+        if isinstance(editor, DeviceSelectorPanel):
+            if editor.has_selection:
+                selected_device: ALL_DEV_TYPES | None = editor.get_selected_device()
+                model.setData(index, selected_device)
             else:
                 pass
         else:
             pass
 
-        return None
+    def updateEditorGeometry(self,
+                             editor: QtWidgets.QWidget,
+                             option: QtWidgets.QStyleOptionViewItem,
+                             index: QtCore.QModelIndex) -> None:
+        """
+        Position the selector popup next to the edited cell.
+
+        :param editor: Selector popup editor.
+        :param option: Edited cell style option.
+        :param index: Edited model index.
+        :return: None.
+        """
+        del index
+        view: QtWidgets.QWidget | None = option.widget
+        size: QtCore.QSize = QtCore.QSize(500, 400)
+
+        if view is None:
+            editor.setGeometry(QtCore.QRect(option.rect.topLeft(), size))
+        else:
+            if isinstance(view, QtWidgets.QAbstractItemView):
+                top_left: QtCore.QPoint = view.viewport().mapToGlobal(option.rect.bottomLeft())
+            else:
+                top_left = view.mapToGlobal(option.rect.bottomLeft())
+
+            editor.setGeometry(QtCore.QRect(top_left, size))
 
 
 class ObjectsModel(WrappableTableModel):

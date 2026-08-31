@@ -333,10 +333,13 @@ class LogsDialogue(CenteredDialog):
         cb.setText(txt)
 
 
-class DeviceSelectorDialogue(CenteredDialog):
+class DeviceSelectorPanel(QtWidgets.QFrame):
     """
-    Dialogue to select one device from a searchable device tree.
+    Searchable panel to select one device from a device tree.
     """
+
+    selection_made = QtCore.Signal(object)
+    selection_cancelled = QtCore.Signal()
 
     def __init__(self,
                  devices_by_type: Dict[DeviceType, List[ALL_DEV_TYPES]],
@@ -349,10 +352,7 @@ class DeviceSelectorDialogue(CenteredDialog):
         :param allow_none: Add a selectable None entry.
         :param parent: Parent widget.
         """
-        CenteredDialog.__init__(self, parent=parent)
-
-        self.setWindowTitle(self.tr("Device selection"))
-        self.resize(500, 600)
+        QtWidgets.QFrame.__init__(self, parent=parent)
 
         self.devices_by_type: Dict[DeviceType, List[ALL_DEV_TYPES]] = devices_by_type
         self.allow_none: bool = allow_none
@@ -391,6 +391,17 @@ class DeviceSelectorDialogue(CenteredDialog):
         self.button_box.rejected.connect(self.reject)
 
         self.fill_tree()
+
+    def _finish_selection(self, selected_device: ALL_DEV_TYPES | None) -> None:
+        """
+        Store and emit one valid selection.
+
+        :param selected_device: Selected device or None.
+        :return: None.
+        """
+        self.selected_device = selected_device
+        self.has_selection = True
+        self.selection_made.emit(selected_device)
 
     def fill_tree(self) -> None:
         """
@@ -473,9 +484,7 @@ class DeviceSelectorDialogue(CenteredDialog):
         ) is True
 
         if is_selectable_value:
-            self.selected_device = selected_device
-            self.has_selection = True
-            CenteredDialog.accept(self)
+            self._finish_selection(selected_device=selected_device)
         else:
             pass
 
@@ -499,13 +508,19 @@ class DeviceSelectorDialogue(CenteredDialog):
             ) is True
 
             if is_selectable_value:
-                self.selected_device = selected_device
-                self.has_selection = True
-                CenteredDialog.accept(self)
+                self._finish_selection(selected_device=selected_device)
             else:
                 pass
         else:
             pass
+
+    def reject(self) -> None:
+        """
+        Emit cancellation.
+
+        :return: None.
+        """
+        self.selection_cancelled.emit()
 
     def get_selected_device(self) -> ALL_DEV_TYPES | None:
         """
@@ -514,6 +529,57 @@ class DeviceSelectorDialogue(CenteredDialog):
         :return: Selected device or None.
         """
         return self.selected_device
+
+
+class DeviceSelectorDialogue(CenteredDialog):
+    """
+    Dialogue to select one device from a searchable device tree.
+    """
+
+    def __init__(self,
+                 devices_by_type: Dict[DeviceType, List[ALL_DEV_TYPES]],
+                 allow_none: bool = False,
+                 parent: QtWidgets.QWidget | None = None) -> None:
+        """
+        Constructor.
+
+        :param devices_by_type: Dictionary with device types and their devices.
+        :param allow_none: Add a selectable None entry.
+        :param parent: Parent widget.
+        """
+        CenteredDialog.__init__(self, parent=parent)
+
+        self.setWindowTitle(self.tr("Device selection"))
+        self.resize(500, 600)
+
+        self.panel: DeviceSelectorPanel = DeviceSelectorPanel(
+            devices_by_type=devices_by_type,
+            allow_none=allow_none,
+            parent=self,
+        )
+
+        self.main_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self)
+        self.main_layout.addWidget(self.panel)
+
+        self.panel.selection_made.connect(self.accept)
+        self.panel.selection_cancelled.connect(self.reject)
+
+    @property
+    def has_selection(self) -> bool:
+        """
+        Return whether a selectable row has been accepted.
+
+        :return: True when a value was selected.
+        """
+        return self.panel.has_selection
+
+    def get_selected_device(self) -> ALL_DEV_TYPES | None:
+        """
+        Get the selected device.
+
+        :return: Selected device or None.
+        """
+        return self.panel.get_selected_device()
 
 
 class BusConnectionObject:
