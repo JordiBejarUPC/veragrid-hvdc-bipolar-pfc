@@ -1784,6 +1784,21 @@ Are you sure?</source>
     </message>
 </context>
 <context>
+    <name>DeviceSelectorDialogue</name>
+    <message>
+        <source>Device selection</source>
+        <translation>デバイスの選択</translation>
+    </message>
+    <message>
+        <source>None</source>
+        <translation>なし</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>検索</translation>
+    </message>
+</context>
+<context>
     <name>DgsExportDialog</name>
     <message>
         <location filename="../FileDialogues/DgsDialogue/dgs_export_gui.ui" line="14"/>
@@ -5976,6 +5991,17 @@ Do you want to continue without a template?</source>
     </message>
 </context>
 <context>
+    <name>MapLibraryModel</name>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>回路図に {name} をドラッグ＆ドロップ</translation>
+    </message>
+    <message>
+        <source>Substation</source>
+        <translation>変電所</translation>
+    </message>
+</context>
+<context>
     <name>MapLineContainer</name>
     <message>
         <source>Do you want to update the time series active status accordingly?</source>
@@ -6081,6 +6107,17 @@ Do you want to continue without a template?</source>
 Cancel it and close the window?</source>
         <translation>インポート処理が実行中です。
 キャンセルしてウィンドウを閉じますか？</translation>
+    </message>
+</context>
+<context>
+    <name>NewConnectedDeviceDialogue</name>
+    <message>
+        <source>Name</source>
+        <translation>名前</translation>
+    </message>
+    <message>
+        <source>New device</source>
+        <translation>新しいデバイス</translation>
     </message>
 </context>
 <context>
@@ -6863,6 +6900,37 @@ This will remove the direct child scenarios after their changes are applied.</so
     <message>
         <source>Set Current Scenario</source>
         <translation>現在のシナリオとして設定</translation>
+    </message>
+</context>
+<context>
+    <name>SchematicLibraryModel</name>
+    <message>
+        <source>3W-Transformer</source>
+        <translation>3Wトランスフォーマー</translation>
+    </message>
+    <message>
+        <source>Bus</source>
+        <translation>母線</translation>
+    </message>
+    <message>
+        <source>Connectivity bus</source>
+        <translation>接続バス</translation>
+    </message>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>回路図に {name} をドラッグ＆ドロップ</translation>
+    </message>
+    <message>
+        <source>Fluid-node</source>
+        <translation>流体ノード</translation>
+    </message>
+    <message>
+        <source>NW-Transformer</source>
+        <translation>NWトランスフォーマー</translation>
+    </message>
+    <message>
+        <source>VSC</source>
+        <translation>VSC</translation>
     </message>
 </context>
 <context>
@@ -8285,7 +8353,7 @@ You may also use the diagnostic tool (F8)</source>
         <translation>確率的潮流計算には、少なくとも1つの時系列サンプルが必要です。</translation>
     </message>
     <message>
-        <source>The grid doesn't have time series :/</source>
+        <source>The grid doesn&apos;t have time series :/</source>
         <translation>グリッドに時系列データがありません :/</translation>
     </message>
     <message>
@@ -14854,32 +14922,6 @@ You need to load or create a grid!</source>
     <message>
         <source>Question</source>
         <translation>質問</translation>
-    </message>
-</context>
-<context>
-    <name>DeviceSelectorDialogue</name>
-    <message>
-        <source>Device selection</source>
-        <translation>デバイスの選択</translation>
-    </message>
-    <message>
-        <source>None</source>
-        <translation>なし</translation>
-    </message>
-    <message>
-        <source>Search</source>
-        <translation>検索</translation>
-    </message>
-</context>
-<context>
-    <name>NewConnectedDeviceDialogue</name>
-    <message>
-        <source>Name</source>
-        <translation>名前</translation>
-    </message>
-    <message>
-        <source>New device</source>
-        <translation>新しいデバイス</translation>
     </message>
 </context>
 </TS>

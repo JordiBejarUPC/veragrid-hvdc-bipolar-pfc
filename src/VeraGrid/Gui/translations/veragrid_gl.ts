@@ -1786,6 +1786,21 @@ Are you sure?</source>
     </message>
 </context>
 <context>
+    <name>DeviceSelectorDialogue</name>
+    <message>
+        <source>Device selection</source>
+        <translation>Selección de dispositivo</translation>
+    </message>
+    <message>
+        <source>None</source>
+        <translation>Ningún</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>Busca</translation>
+    </message>
+</context>
+<context>
     <name>DgsExportDialog</name>
     <message>
         <location filename="../FileDialogues/DgsDialogue/dgs_export_gui.ui" line="14"/>
@@ -5978,6 +5993,17 @@ Por favor, corrixa os datos e inténtelo de novo.</translation>
     </message>
 </context>
 <context>
+    <name>MapLibraryModel</name>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>Arrastrar e soltar {name} no esquemático</translation>
+    </message>
+    <message>
+        <source>Substation</source>
+        <translation>Subestación</translation>
+    </message>
+</context>
+<context>
     <name>MapLineContainer</name>
     <message>
         <source>Do you want to update the time series active status accordingly?</source>
@@ -6083,6 +6109,17 @@ Por favor, corrixa os datos e inténtelo de novo.</translation>
 Cancel it and close the window?</source>
         <translation>Hai un procedemento de importación en curso.
 ¿Cancelalo e fechar a ventalla?</translation>
+    </message>
+</context>
+<context>
+    <name>NewConnectedDeviceDialogue</name>
+    <message>
+        <source>Name</source>
+        <translation>Nome</translation>
+    </message>
+    <message>
+        <source>New device</source>
+        <translation>Dispositivo novo</translation>
     </message>
 </context>
 <context>
@@ -6865,6 +6902,37 @@ This will remove the direct child scenarios after their changes are applied.</so
         <translation>Fusionar {child_count} escenario(s) filh@s en &apos;{scenario_name}&apos;?
 
 Isto eliminará os escenarios filh@s directos despois de aplicarse os seus cambios.</translation>
+    </message>
+</context>
+<context>
+    <name>SchematicLibraryModel</name>
+    <message>
+        <source>3W-Transformer</source>
+        <translation>Transformador 3W</translation>
+    </message>
+    <message>
+        <source>Bus</source>
+        <translation>Bus</translation>
+    </message>
+    <message>
+        <source>Connectivity bus</source>
+        <translation>Barra de conectividade</translation>
+    </message>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>Arrastrar e soltar {name} no esquemático</translation>
+    </message>
+    <message>
+        <source>Fluid-node</source>
+        <translation>Nodo de fluido</translation>
+    </message>
+    <message>
+        <source>NW-Transformer</source>
+        <translation>Transformador NW</translation>
+    </message>
+    <message>
+        <source>VSC</source>
+        <translation>VSC</translation>
     </message>
 </context>
 <context>
@@ -8308,7 +8376,7 @@ Tamén pode usar a ferramenta de diagnóstico (F8)</translation>
         <translation>O fluxo de potencia estocástico necesita ao menos unha amostra de series de tempo.</translation>
     </message>
     <message>
-        <source>The grid doesn't have time series :/</source>
+        <source>The grid doesn&apos;t have time series :/</source>
         <translation>A red non ten series de tempo :/</translation>
     </message>
     <message>
@@ -14877,32 +14945,6 @@ Necesitas carregar ou crear unha rede!</translation>
     <message>
         <source>Question</source>
         <translation>Pregunta</translation>
-    </message>
-</context>
-<context>
-    <name>DeviceSelectorDialogue</name>
-    <message>
-        <source>Device selection</source>
-        <translation>Selección de dispositivo</translation>
-    </message>
-    <message>
-        <source>None</source>
-        <translation>Ningún</translation>
-    </message>
-    <message>
-        <source>Search</source>
-        <translation>Busca</translation>
-    </message>
-</context>
-<context>
-    <name>NewConnectedDeviceDialogue</name>
-    <message>
-        <source>Name</source>
-        <translation>Nome</translation>
-    </message>
-    <message>
-        <source>New device</source>
-        <translation>Dispositivo novo</translation>
     </message>
 </context>
 </TS>

@@ -136,31 +136,26 @@ class SchematicLibraryModel(QStandardItemModel):
 
         self.setColumnCount(1)
 
-        self.bus_name = "Bus"
-        self.cn_name = "Connectivity bus"
-        self.transformer3w_name = "3W-Transformer"
-        self.transformer_nw_name = "NW-Transformer"
-        self.fluid_node_name = "Fluid-node"
-        self.vsc_name = "VSC"  # Add VSC name
+        self.add(name=self.tr("Bus"), device_type=DeviceType.BusBarDevice, icon_name="bus_icon")
+        self.add(name=self.tr("Connectivity bus"), device_type=DeviceType.BusDevice, icon_name="cn_icon")
+        self.add(name=self.tr("3W-Transformer"), device_type=DeviceType.Transformer3WDevice, icon_name="transformer3w")
+        self.add(name=self.tr("NW-Transformer"), device_type=DeviceType.TransformerNwDevice, icon_name="transformerNw")
+        self.add(name=self.tr("Fluid-node"), device_type=DeviceType.FluidNodeDevice, icon_name="dam")
+        self.add(name=self.tr("VSC"), device_type=DeviceType.VscDevice, icon_name="to_vsc")
 
-        self.add(name=self.bus_name, icon_name="bus_icon")
-        self.add(name=self.cn_name, icon_name="cn_icon")
-        self.add(name=self.transformer3w_name, icon_name="transformer3w")
-        self.add(name=self.transformer_nw_name, icon_name="transformerNw")
-        self.add(name=self.fluid_node_name, icon_name="dam")
-        self.add(name=self.vsc_name, icon_name="to_vsc")
-
-    def add(self, name: str, icon_name: str):
+    def add(self, name: str, device_type: DeviceType, icon_name: str) -> None:
         """
         Add element to the library
         :param name: Name of the element
+        :param device_type: Device type to identify the element independently of the translated label.
         :param icon_name: Icon name, the path is taken care of
         :return:
         """
         _icon = QIcon()
         _icon.addPixmap(QPixmap(f":/Icons/icons/{icon_name}.png"))
         _item = QStandardItem(_icon, name)
-        _item.setToolTip(f"Drag & drop {name} into the schematic")
+        _item.setData(device_type, Qt.ItemDataRole.UserRole)
+        _item.setToolTip(self.tr("Drag & drop {name} into the schematic").format(name=name))
         self.appendRow(_item)
 
     @staticmethod
@@ -180,35 +175,35 @@ class SchematicLibraryModel(QStandardItemModel):
 
         :return:
         """
-        return self.to_bytes_array(self.bus_name)
+        return self.to_bytes_array(DeviceType.BusBarDevice.name)
 
     def get_3w_transformer_mime_data(self) -> QByteArray:
         """
 
         :return:
         """
-        return self.to_bytes_array(self.transformer3w_name)
+        return self.to_bytes_array(DeviceType.Transformer3WDevice.name)
 
     def get_nw_transformer_mime_data(self) -> QByteArray:
         """
 
         :return:
         """
-        return self.to_bytes_array(self.transformer_nw_name)
+        return self.to_bytes_array(DeviceType.TransformerNwDevice.name)
 
     def get_fluid_node_mime_data(self) -> QByteArray:
         """
 
         :return:
         """
-        return self.to_bytes_array(self.fluid_node_name)
+        return self.to_bytes_array(DeviceType.FluidNodeDevice.name)
 
     def get_connectivity_node_mime_data(self) -> QByteArray:
         """
 
         :return:
         """
-        return self.to_bytes_array(self.cn_name)
+        return self.to_bytes_array(DeviceType.BusDevice.name)
 
     def mimeTypes(self) -> List[str]:
         """
@@ -222,7 +217,7 @@ class SchematicLibraryModel(QStandardItemModel):
         Get mime data for VSC.
         :return:
         """
-        return self.to_bytes_array(self.vsc_name)
+        return self.to_bytes_array(DeviceType.VscDevice.name)
 
     def mimeData(self, idxs: List[QModelIndex]) -> QMimeData:
         """
@@ -233,13 +228,18 @@ class SchematicLibraryModel(QStandardItemModel):
         mimedata = QMimeData()
         for idx in idxs:
             if idx.isValid():
-                txt = self.data(idx, Qt.ItemDataRole.DisplayRole)
+                device_type = self.data(idx, Qt.ItemDataRole.UserRole)
 
-                data = QByteArray()
-                stream = QDataStream(data, QIODevice.OpenModeFlag.WriteOnly)
-                stream.writeQString(txt)
+                if isinstance(device_type, DeviceType):
+                    data = QByteArray()
+                    stream = QDataStream(data, QIODevice.OpenModeFlag.WriteOnly)
+                    stream.writeQString(device_type.name)
 
-                mimedata.setData('component/name', data)
+                    mimedata.setData('component/name', data)
+                else:
+                    pass
+            else:
+                pass
         return mimedata
 
     def flags(self, index: QModelIndex) -> Qt.ItemFlag:

@@ -1784,6 +1784,21 @@ Sei sicuro?</translation>
     </message>
 </context>
 <context>
+    <name>DeviceSelectorDialogue</name>
+    <message>
+        <source>Device selection</source>
+        <translation>Selezione dispositivo</translation>
+    </message>
+    <message>
+        <source>None</source>
+        <translation>Nessuno</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>Ricerca</translation>
+    </message>
+</context>
+<context>
     <name>DgsExportDialog</name>
     <message>
         <location filename="../FileDialogues/DgsDialogue/dgs_export_gui.ui" line="14"/>
@@ -5976,6 +5991,17 @@ Vuoi continuare senza un modello?</translation>
     </message>
 </context>
 <context>
+    <name>MapLibraryModel</name>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>Trascina e rilascia {name} nello schema</translation>
+    </message>
+    <message>
+        <source>Substation</source>
+        <translation>Sottostazione</translation>
+    </message>
+</context>
+<context>
     <name>MapLineContainer</name>
     <message>
         <source>Do you want to update the time series active status accordingly?</source>
@@ -6081,6 +6107,17 @@ Vuoi continuare senza un modello?</translation>
 Cancel it and close the window?</source>
         <translation>È in corso una procedura di importazione.
 Annullarla e chiudere la finestra?</translation>
+    </message>
+</context>
+<context>
+    <name>NewConnectedDeviceDialogue</name>
+    <message>
+        <source>Name</source>
+        <translation>Nome</translation>
+    </message>
+    <message>
+        <source>New device</source>
+        <translation>Nuovo dispositivo</translation>
     </message>
 </context>
 <context>
@@ -6863,6 +6900,37 @@ Ciò rimuoverà i vari scenari figli diretti dopo che i loro cambiamenti saranno
     <message>
         <source>Set Current Scenario</source>
         <translation>Imposta Scenario Corrente</translation>
+    </message>
+</context>
+<context>
+    <name>SchematicLibraryModel</name>
+    <message>
+        <source>3W-Transformer</source>
+        <translation>Trasformatore 3W</translation>
+    </message>
+    <message>
+        <source>Bus</source>
+        <translation>Bus</translation>
+    </message>
+    <message>
+        <source>Connectivity bus</source>
+        <translation>Bus di connettività</translation>
+    </message>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>Trascina e rilascia {name} nello schema</translation>
+    </message>
+    <message>
+        <source>Fluid-node</source>
+        <translation>Nodo fluido</translation>
+    </message>
+    <message>
+        <source>NW-Transformer</source>
+        <translation>Trasformatore NW</translation>
+    </message>
+    <message>
+        <source>VSC</source>
+        <translation>VSC</translation>
     </message>
 </context>
 <context>
@@ -8066,11 +8134,11 @@ Risolvere il punto operativo prima di eseguire questa simulazione RMS.</translat
     </message>
     <message>
         <source>Another ATC time series is being executed now...</source>
-        <translation>Viene eseguita un'altra serie temporale ATC...</translation>
+        <translation>Viene eseguita un&apos;altra serie temporale ATC...</translation>
     </message>
     <message>
         <source>Another EMT simulation is running already...</source>
-        <translation>È già in esecuzione un'altra simulazione EMT...</translation>
+        <translation>È già in esecuzione un&apos;altra simulazione EMT...</translation>
     </message>
     <message>
         <source>Another LODF is being executed now...</source>
@@ -8086,11 +8154,11 @@ Risolvere il punto operativo prima di eseguire questa simulazione RMS.</translat
     </message>
     <message>
         <source>Another OPF time series is running already...</source>
-        <translation>È già in esecuzione un'altra serie temporale OPF...</translation>
+        <translation>È già in esecuzione un&apos;altra serie temporale OPF...</translation>
     </message>
     <message>
         <source>Another Optimal NCT time series is being run...</source>
-        <translation>Viene eseguita un'altra serie temporale NCT Ottimale...</translation>
+        <translation>Viene eseguita un&apos;altra serie temporale NCT Ottimale...</translation>
     </message>
     <message>
         <source>Another PTDF is being executed now...</source>
@@ -8098,15 +8166,15 @@ Risolvere il punto operativo prima di eseguire questa simulazione RMS.</translat
     </message>
     <message>
         <source>Another Small-Signal stability analysis EMT simulation is running already...</source>
-        <translation>È già in esecuzione un'altra simulazione EMT di analisi di stabilità a piccolo segnale...</translation>
+        <translation>È già in esecuzione un&apos;altra simulazione EMT di analisi di stabilità a piccolo segnale...</translation>
     </message>
     <message>
         <source>Another Small-Signal stability analysis simulation is running already...</source>
-        <translation>È già in esecuzione un'altra simulazione di analisi di stabilità a piccolo segnale...</translation>
+        <translation>È già in esecuzione un&apos;altra simulazione di analisi di stabilità a piccolo segnale...</translation>
     </message>
     <message>
         <source>Another catalogue optimization is already running...</source>
-        <translation>È già in esecuzione un'altra ottimizzazione del catalogo...</translation>
+        <translation>È già in esecuzione un&apos;altra ottimizzazione del catalogo...</translation>
     </message>
     <message>
         <source>Another clustering is being executed now...</source>
@@ -8114,11 +8182,11 @@ Risolvere il punto operativo prima di eseguire questa simulazione RMS.</translat
     </message>
     <message>
         <source>Another contingency analysis is being executed now...</source>
-        <translation>Viene eseguita un'altra analisi di contingenza...</translation>
+        <translation>Viene eseguita un&apos;altra analisi di contingenza...</translation>
     </message>
     <message>
         <source>Another inputs analysis is being run...</source>
-        <translation>Viene eseguita un'altra analisi degli input...</translation>
+        <translation>Viene eseguita un&apos;altra analisi degli input...</translation>
     </message>
     <message>
         <source>Another nodal capacity study is being run...</source>
@@ -8130,7 +8198,7 @@ Risolvere il punto operativo prima di eseguire questa simulazione RMS.</translat
     </message>
     <message>
         <source>Another rms simulation is running already...</source>
-        <translation>È già in esecuzione un'altra simulazione rms...</translation>
+        <translation>È già in esecuzione un&apos;altra simulazione rms...</translation>
     </message>
     <message>
         <source>Another simulation of the same type is running...</source>
@@ -8224,7 +8292,7 @@ Potete anche usare lo strumento diagnostico (F8)</translation>
     </message>
     <message>
         <source>Run a linear analysis to enable filter contingencies by sensitivity</source>
-        <translation>Eseguire un'analisi lineare per abilitare le contingenze del filtro tramite sensibilità</translation>
+        <translation>Eseguire un&apos;analisi lineare per abilitare le contingenze del filtro tramite sensibilità</translation>
     </message>
     <message>
         <source>Simulation converged for all active simulation groups :)</source>
@@ -8236,11 +8304,11 @@ Potete anche usare lo strumento diagnostico (F8)</translation>
     </message>
     <message>
         <source>Small-Signal stability analysis EMT has finished correctly!</source>
-        <translation>L'analisi di stabilità a piccolo segnale EMT è terminata correttamente!</translation>
+        <translation>L&apos;analisi di stabilità a piccolo segnale EMT è terminata correttamente!</translation>
     </message>
     <message>
         <source>Small-signal stability analysis RMS has finished correctly!</source>
-        <translation>L'analisi di stabilità a piccolo segnale RMS è terminata correttamente!</translation>
+        <translation>L&apos;analisi di stabilità a piccolo segnale RMS è terminata correttamente!</translation>
     </message>
     <message>
         <source>Something went wrong, There are no ATC results.</source>
@@ -8287,7 +8355,7 @@ Potete anche usare lo strumento diagnostico (F8)</translation>
         <translation>Il flusso di potenza stocastico richiede almeno un campione di serie temporali.</translation>
     </message>
     <message>
-        <source>The grid doesn't have time series :/</source>
+        <source>The grid doesn&apos;t have time series :/</source>
         <translation>La rete non ha serie temporali :/</translation>
     </message>
     <message>
@@ -14856,32 +14924,6 @@ Devi caricare o creare una rete!</translation>
     <message>
         <source>Question</source>
         <translation>Domanda</translation>
-    </message>
-</context>
-<context>
-    <name>DeviceSelectorDialogue</name>
-    <message>
-        <source>Device selection</source>
-        <translation>Selezione dispositivo</translation>
-    </message>
-    <message>
-        <source>None</source>
-        <translation>Nessuno</translation>
-    </message>
-    <message>
-        <source>Search</source>
-        <translation>Ricerca</translation>
-    </message>
-</context>
-<context>
-    <name>NewConnectedDeviceDialogue</name>
-    <message>
-        <source>Name</source>
-        <translation>Nome</translation>
-    </message>
-    <message>
-        <source>New device</source>
-        <translation>Nuovo dispositivo</translation>
     </message>
 </context>
 </TS>

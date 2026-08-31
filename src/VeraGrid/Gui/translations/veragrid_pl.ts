@@ -1260,6 +1260,21 @@ Czy na pewno?</translation>
     </message>
 </context>
 <context>
+    <name>DeviceSelectorDialogue</name>
+    <message>
+        <source>Device selection</source>
+        <translation>Wybór urządzenia</translation>
+    </message>
+    <message>
+        <source>None</source>
+        <translation>Żaden</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>Szukaj</translation>
+    </message>
+</context>
+<context>
     <name>DgsExportDialog</name>
     <message>
         <location filename="../FileDialogues/DgsDialogue/dgs_export_gui.ui" line="14"/>
@@ -5444,6 +5459,17 @@ Czy chcesz kontynuować bez szablonu?</translation>
     </message>
 </context>
 <context>
+    <name>MapLibraryModel</name>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>Przeciągnij i upuść {name} na schemat</translation>
+    </message>
+    <message>
+        <source>Substation</source>
+        <translation>Podstacja</translation>
+    </message>
+</context>
+<context>
     <name>MapLineContainer</name>
     <message>
         <source>Do you want to update the time series active status accordingly?</source>
@@ -5549,6 +5575,17 @@ Czy chcesz kontynuować bez szablonu?</translation>
 Cancel it and close the window?</source>
         <translation>Trwa procedura importu.
 Czy anulować i zamknąć okno?</translation>
+    </message>
+</context>
+<context>
+    <name>NewConnectedDeviceDialogue</name>
+    <message>
+        <source>Name</source>
+        <translation>Nazwa</translation>
+    </message>
+    <message>
+        <source>New device</source>
+        <translation>Nowe urządzenie</translation>
     </message>
 </context>
 <context>
@@ -6331,6 +6368,37 @@ Usunie to bezpośrednie scenariusze potomne po zastosowaniu ich zmian.</translat
     <message>
         <source>Set Current Scenario</source>
         <translation>Ustaw Bieżący Scenariusz</translation>
+    </message>
+</context>
+<context>
+    <name>SchematicLibraryModel</name>
+    <message>
+        <source>3W-Transformer</source>
+        <translation>Transformator 3W</translation>
+    </message>
+    <message>
+        <source>Bus</source>
+        <translation>Sztyna</translation>
+    </message>
+    <message>
+        <source>Connectivity bus</source>
+        <translation>Szyna połączeniowa</translation>
+    </message>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>Przeciągnij i upuść {name} na schemat</translation>
+    </message>
+    <message>
+        <source>Fluid-node</source>
+        <translation>Węzeł płynu</translation>
+    </message>
+    <message>
+        <source>NW-Transformer</source>
+        <translation>Transformator NW</translation>
+    </message>
+    <message>
+        <source>VSC</source>
+        <translation>VSC</translation>
     </message>
 </context>
 <context>
@@ -7609,7 +7677,7 @@ You may also use the diagnostic tool (F8)</translation>
         <translation>Przepływ mocy stochastyczny wymaga co najmniej jednej próbki szeregu czasowego.</translation>
     </message>
     <message>
-        <source>The grid doesn't have time series :/</source>
+        <source>The grid doesn&apos;t have time series :/</source>
         <translation>Sieć nie ma szeregów czasowych :/</translation>
     </message>
     <message>
@@ -14165,32 +14233,6 @@ Musisz załadować lub utworzyć sieć!</translation>
     <message>
         <source>Warning</source>
         <translation>Ostrzeżenie</translation>
-    </message>
-</context>
-<context>
-    <name>DeviceSelectorDialogue</name>
-    <message>
-        <source>Device selection</source>
-        <translation>Wybór urządzenia</translation>
-    </message>
-    <message>
-        <source>None</source>
-        <translation>Żaden</translation>
-    </message>
-    <message>
-        <source>Search</source>
-        <translation>Szukaj</translation>
-    </message>
-</context>
-<context>
-    <name>NewConnectedDeviceDialogue</name>
-    <message>
-        <source>Name</source>
-        <translation>Nazwa</translation>
-    </message>
-    <message>
-        <source>New device</source>
-        <translation>Nowe urządzenie</translation>
     </message>
 </context>
 </TS>

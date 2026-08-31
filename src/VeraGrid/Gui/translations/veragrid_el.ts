@@ -1784,6 +1784,21 @@ Are you sure?</translation>
     </message>
 </context>
 <context>
+    <name>DeviceSelectorDialogue</name>
+    <message>
+        <source>Device selection</source>
+        <translation>Επιλογή συσκευής</translation>
+    </message>
+    <message>
+        <source>None</source>
+        <translation>Κανένα</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>Ερευνα</translation>
+    </message>
+</context>
+<context>
     <name>DgsExportDialog</name>
     <message>
         <location filename="../FileDialogues/DgsDialogue/dgs_export_gui.ui" line="14"/>
@@ -5976,6 +5991,17 @@ Please correct the data and try again.</source>
     </message>
 </context>
 <context>
+    <name>MapLibraryModel</name>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>Σύρετε και αφήστε το {name} στο διάγραμμα</translation>
+    </message>
+    <message>
+        <source>Substation</source>
+        <translation>Μικρός σταθμός</translation>
+    </message>
+</context>
+<context>
     <name>MapLineContainer</name>
     <message>
         <source>Do you want to update the time series active status accordingly?</source>
@@ -6081,6 +6107,17 @@ Please correct the data and try again.</source>
 Cancel it and close the window?</source>
         <translation>There is an import procedure running.
 Cancel it and close the window?</translation>
+    </message>
+</context>
+<context>
+    <name>NewConnectedDeviceDialogue</name>
+    <message>
+        <source>Name</source>
+        <translation>Ονομα</translation>
+    </message>
+    <message>
+        <source>New device</source>
+        <translation>Νέα συσκευή</translation>
     </message>
 </context>
 <context>
@@ -6863,6 +6900,37 @@ This will remove the direct child scenarios after their changes are applied.</so
         <translation>Θέλετε να συγχωνεύσετε {child_count} παιδικά σενάρια στο &apos;{scenario_name}&apos;?
 
 Αυτό θα αφαιρέσει τα άμεσα παιδικά σενάρια αφού εφαρμοστούν οι αλλαγές τους.</translation>
+    </message>
+</context>
+<context>
+    <name>SchematicLibraryModel</name>
+    <message>
+        <source>3W-Transformer</source>
+        <translation>Τρανσფორმაτορας 3W</translation>
+    </message>
+    <message>
+        <source>Bus</source>
+        <translation>Ζυγός</translation>
+    </message>
+    <message>
+        <source>Connectivity bus</source>
+        <translation>Κεφαλίδα συνδεσιμότητας</translation>
+    </message>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>Σύρετε και αφήστε το {name} στο διάγραμμα</translation>
+    </message>
+    <message>
+        <source>Fluid-node</source>
+        <translation>Νόδος fluid</translation>
+    </message>
+    <message>
+        <source>NW-Transformer</source>
+        <translation>Τρανσფორმაτορας NW</translation>
+    </message>
+    <message>
+        <source>VSC</source>
+        <translation>VSC</translation>
     </message>
 </context>
 <context>
@@ -8287,7 +8355,7 @@ You may also use the diagnostic tool (F8)</translation>
         <translation>Η στατιστική ροή ισχύος απαιτεί τουλάχιστον ένα δείγμα χρονοσειράς.</translation>
     </message>
     <message>
-        <source>The grid doesn't have time series :/</source>
+        <source>The grid doesn&apos;t have time series :/</source>
         <translation>Το δίκτυο δεν έχει χρονοσειρές :/</translation>
     </message>
     <message>
@@ -14856,32 +14924,6 @@ You need to load or create a grid!</source>
     <message>
         <source>Question</source>
         <translation>Ερώτηση</translation>
-    </message>
-</context>
-<context>
-    <name>DeviceSelectorDialogue</name>
-    <message>
-        <source>Device selection</source>
-        <translation>Επιλογή συσκευής</translation>
-    </message>
-    <message>
-        <source>None</source>
-        <translation>Κανένα</translation>
-    </message>
-    <message>
-        <source>Search</source>
-        <translation>Ερευνα</translation>
-    </message>
-</context>
-<context>
-    <name>NewConnectedDeviceDialogue</name>
-    <message>
-        <source>Name</source>
-        <translation>Ονομα</translation>
-    </message>
-    <message>
-        <source>New device</source>
-        <translation>Νέα συσκευή</translation>
     </message>
 </context>
 </TS>

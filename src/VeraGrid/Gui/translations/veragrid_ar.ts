@@ -1784,6 +1784,21 @@ Are you sure?</source>
     </message>
 </context>
 <context>
+    <name>DeviceSelectorDialogue</name>
+    <message>
+        <source>Device selection</source>
+        <translation>اختيار الجهاز</translation>
+    </message>
+    <message>
+        <source>None</source>
+        <translation>لا شيء</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>يبحث</translation>
+    </message>
+</context>
+<context>
     <name>DgsExportDialog</name>
     <message>
         <location filename="../FileDialogues/DgsDialogue/dgs_export_gui.ui" line="14"/>
@@ -5976,6 +5991,17 @@ Please correct the data and try again.</source>
     </message>
 </context>
 <context>
+    <name>MapLibraryModel</name>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>اسحب وأفلت {name} في المخطط</translation>
+    </message>
+    <message>
+        <source>Substation</source>
+        <translation>محطة فرعية</translation>
+    </message>
+</context>
+<context>
     <name>MapLineContainer</name>
     <message>
         <source>Do you want to update the time series active status accordingly?</source>
@@ -6081,6 +6107,17 @@ Please correct the data and try again.</source>
 Cancel it and close the window?</source>
         <translation>هناك إجراء استيراد قيد التشغيل.
 هل تريد إلغاؤه وإغلاق النافذة؟</translation>
+    </message>
+</context>
+<context>
+    <name>NewConnectedDeviceDialogue</name>
+    <message>
+        <source>Name</source>
+        <translation>اسم</translation>
+    </message>
+    <message>
+        <source>New device</source>
+        <translation>جهاز جديد</translation>
     </message>
 </context>
 <context>
@@ -6863,6 +6900,37 @@ This will remove the direct child scenarios after their changes are applied.</so
         <translation>هل تريد دمج {child_count} سيناريو فرعي في &apos;{scenario_name}&apos;؟
 
 سيؤدي هذا إلى إزالة السيناريوهات الفرعية المباشرة بعد تطبيق تغييراتها.</translation>
+    </message>
+</context>
+<context>
+    <name>SchematicLibraryModel</name>
+    <message>
+        <source>3W-Transformer</source>
+        <translation>محول 3W</translation>
+    </message>
+    <message>
+        <source>Bus</source>
+        <translation>قضيب</translation>
+    </message>
+    <message>
+        <source>Connectivity bus</source>
+        <translation>حافلة التوصيل</translation>
+    </message>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>اسحب وأفلت {name} في المخطط</translation>
+    </message>
+    <message>
+        <source>Fluid-node</source>
+        <translation>عقدة المائع</translation>
+    </message>
+    <message>
+        <source>NW-Transformer</source>
+        <translation>محول NW</translation>
+    </message>
+    <message>
+        <source>VSC</source>
+        <translation>VSC</translation>
     </message>
 </context>
 <context>
@@ -8286,7 +8354,7 @@ You may also use the diagnostic tool (F8)</source>
         <translation>يتطلب تدفق الطاقة العشوائي عينة سلسلة زمنية واحدة على الأقل.</translation>
     </message>
     <message>
-        <source>The grid doesn't have time series :/</source>
+        <source>The grid doesn&apos;t have time series :/</source>
         <translation>الشبكة لا تحتوي على سلاسل زمنية :/</translation>
     </message>
     <message>
@@ -14855,32 +14923,6 @@ You need to load or create a grid!</source>
     <message>
         <source>Question</source>
         <translation>سؤال</translation>
-    </message>
-</context>
-<context>
-    <name>DeviceSelectorDialogue</name>
-    <message>
-        <source>Device selection</source>
-        <translation>اختيار الجهاز</translation>
-    </message>
-    <message>
-        <source>None</source>
-        <translation>لا شيء</translation>
-    </message>
-    <message>
-        <source>Search</source>
-        <translation>يبحث</translation>
-    </message>
-</context>
-<context>
-    <name>NewConnectedDeviceDialogue</name>
-    <message>
-        <source>Name</source>
-        <translation>اسم</translation>
-    </message>
-    <message>
-        <source>New device</source>
-        <translation>جهاز جديد</translation>
     </message>
 </context>
 </TS>

@@ -1786,6 +1786,21 @@ Are you sure?</translation>
     </message>
 </context>
 <context>
+    <name>DeviceSelectorDialogue</name>
+    <message>
+        <source>Device selection</source>
+        <translation>Aparatu aukeraketa</translation>
+    </message>
+    <message>
+        <source>None</source>
+        <translation>Ninguno</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>Bilatu</translation>
+    </message>
+</context>
+<context>
     <name>DgsExportDialog</name>
     <message>
         <location filename="../FileDialogues/DgsDialogue/dgs_export_gui.ui" line="14"/>
@@ -5977,6 +5992,17 @@ Please correct the data and try again.</translation>
     </message>
 </context>
 <context>
+    <name>MapLibraryModel</name>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>Drag &amp; drop {name} into the esquematikari</translation>
+    </message>
+    <message>
+        <source>Substation</source>
+        <translation>Azpiestazioa</translation>
+    </message>
+</context>
+<context>
     <name>MapLineContainer</name>
     <message>
         <source>Do you want to update the time series active status accordingly?</source>
@@ -6082,6 +6108,17 @@ Please correct the data and try again.</translation>
 Cancel it and close the window?</source>
         <translation>Ingizko prozedura bat lanatzen da.
 Tixatu eta ingurukoak xijutatu?</translation>
+    </message>
+</context>
+<context>
+    <name>NewConnectedDeviceDialogue</name>
+    <message>
+        <source>Name</source>
+        <translation>Izena</translation>
+    </message>
+    <message>
+        <source>New device</source>
+        <translation>Berri aparatu</translation>
     </message>
 </context>
 <context>
@@ -6864,6 +6901,37 @@ This will remove the direct child scenarios after their changes are applied.</so
         <translation>Merge {child_count} child scenario(s) into &apos;{scenario_name}&apos;?
 
 This will remove the direct child scenarios after their changes are applied.</translation>
+    </message>
+</context>
+<context>
+    <name>SchematicLibraryModel</name>
+    <message>
+        <source>3W-Transformer</source>
+        <translation>3W-Transformer</translation>
+    </message>
+    <message>
+        <source>Bus</source>
+        <translation>Bus</translation>
+    </message>
+    <message>
+        <source>Connectivity bus</source>
+        <translation>Buhiketa-busa</translation>
+    </message>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>Drag &amp; drop {name} into the esquematikari</translation>
+    </message>
+    <message>
+        <source>Fluid-node</source>
+        <translation>Fluid-node</translation>
+    </message>
+    <message>
+        <source>NW-Transformer</source>
+        <translation>NW-Transformer</translation>
+    </message>
+    <message>
+        <source>VSC</source>
+        <translation>VSC</translation>
     </message>
 </context>
 <context>
@@ -8307,7 +8375,7 @@ You may also use the diagnostic tool (F8)</translation>
         <translation>Potentzia-erroskoak azkenikko ardurakako amostra bat behar du.</translation>
     </message>
     <message>
-        <source>The grid doesn't have time series :/</source>
+        <source>The grid doesn&apos;t have time series :/</source>
         <translation>Sareak ardurak ez ditu :/</translation>
     </message>
     <message>
@@ -14876,32 +14944,6 @@ Ekarri edo sortu ekarri-erakunde bat!</translation>
     <message>
         <source>Question</source>
         <translation>Galdera</translation>
-    </message>
-</context>
-<context>
-    <name>DeviceSelectorDialogue</name>
-    <message>
-        <source>Device selection</source>
-        <translation>Aparatu aukeraketa</translation>
-    </message>
-    <message>
-        <source>None</source>
-        <translation>Ninguno</translation>
-    </message>
-    <message>
-        <source>Search</source>
-        <translation>Bilatu</translation>
-    </message>
-</context>
-<context>
-    <name>NewConnectedDeviceDialogue</name>
-    <message>
-        <source>Name</source>
-        <translation>Izena</translation>
-    </message>
-    <message>
-        <source>New device</source>
-        <translation>Berri aparatu</translation>
     </message>
 </context>
 </TS>

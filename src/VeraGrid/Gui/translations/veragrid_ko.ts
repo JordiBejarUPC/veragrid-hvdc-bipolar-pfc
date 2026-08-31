@@ -1794,6 +1794,21 @@ Are you sure?</source>
     </message>
 </context>
 <context>
+    <name>DeviceSelectorDialogue</name>
+    <message>
+        <source>Device selection</source>
+        <translation>장치 선택</translation>
+    </message>
+    <message>
+        <source>None</source>
+        <translation>없음</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>찾다</translation>
+    </message>
+</context>
+<context>
     <name>DgsExportDialog</name>
     <message>
         <location filename="../FileDialogues/DgsDialogue/dgs_export_gui.ui" line="14"/>
@@ -5986,6 +6001,17 @@ Do you want to continue without a template?</source>
     </message>
 </context>
 <context>
+    <name>MapLibraryModel</name>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>도식도에 {name}을(를) 드래그 앤 드롭하세요</translation>
+    </message>
+    <message>
+        <source>Substation</source>
+        <translation>지서</translation>
+    </message>
+</context>
+<context>
     <name>MapLineContainer</name>
     <message>
         <source>Do you want to update the time series active status accordingly?</source>
@@ -6091,6 +6117,17 @@ Do you want to continue without a template?</source>
 Cancel it and close the window?</source>
         <translation>가져오기 절차가 실행 중입니다.
 취소하고 창을 닫으시겠습니까?</translation>
+    </message>
+</context>
+<context>
+    <name>NewConnectedDeviceDialogue</name>
+    <message>
+        <source>Name</source>
+        <translation>이름</translation>
+    </message>
+    <message>
+        <source>New device</source>
+        <translation>새 장치</translation>
     </message>
 </context>
 <context>
@@ -6873,6 +6910,37 @@ This will remove the direct child scenarios after their changes are applied.</so
     <message>
         <source>Set Current Scenario</source>
         <translation>현재 시나리오 설정</translation>
+    </message>
+</context>
+<context>
+    <name>SchematicLibraryModel</name>
+    <message>
+        <source>3W-Transformer</source>
+        <translation>3W-트랜스포머</translation>
+    </message>
+    <message>
+        <source>Bus</source>
+        <translation>버스</translation>
+    </message>
+    <message>
+        <source>Connectivity bus</source>
+        <translation>연결 버스</translation>
+    </message>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>도식도에 {name}을(를) 드래그 앤 드롭하세요</translation>
+    </message>
+    <message>
+        <source>Fluid-node</source>
+        <translation>유체 노드</translation>
+    </message>
+    <message>
+        <source>NW-Transformer</source>
+        <translation>NW-트랜스포머</translation>
+    </message>
+    <message>
+        <source>VSC</source>
+        <translation>VSC</translation>
     </message>
 </context>
 <context>
@@ -8296,7 +8364,7 @@ You may also use the diagnostic tool (F8)</source>
         <translation>확률적 전력 흐름은 최소한 하나의 시계열 샘플이 필요합니다.</translation>
     </message>
     <message>
-        <source>The grid doesn't have time series :/</source>
+        <source>The grid doesn&apos;t have time series :/</source>
         <translation>그리드에 시계열 데이터가 없습니다 :/</translation>
     </message>
     <message>
@@ -14865,32 +14933,6 @@ You need to load or create a grid!</source>
     <message>
         <source>Question</source>
         <translation>질문</translation>
-    </message>
-</context>
-<context>
-    <name>DeviceSelectorDialogue</name>
-    <message>
-        <source>Device selection</source>
-        <translation>장치 선택</translation>
-    </message>
-    <message>
-        <source>None</source>
-        <translation>없음</translation>
-    </message>
-    <message>
-        <source>Search</source>
-        <translation>찾다</translation>
-    </message>
-</context>
-<context>
-    <name>NewConnectedDeviceDialogue</name>
-    <message>
-        <source>Name</source>
-        <translation>이름</translation>
-    </message>
-    <message>
-        <source>New device</source>
-        <translation>새 장치</translation>
     </message>
 </context>
 </TS>

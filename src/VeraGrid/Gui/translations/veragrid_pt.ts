@@ -1786,6 +1786,21 @@ Tem a certeza?</translation>
     </message>
 </context>
 <context>
+    <name>DeviceSelectorDialogue</name>
+    <message>
+        <source>Device selection</source>
+        <translation>Seleção de dispositivo</translation>
+    </message>
+    <message>
+        <source>None</source>
+        <translation>Nenhum</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>Pesquisar</translation>
+    </message>
+</context>
+<context>
     <name>DgsExportDialog</name>
     <message>
         <location filename="../FileDialogues/DgsDialogue/dgs_export_gui.ui" line="14"/>
@@ -5978,6 +5993,17 @@ Deseja continuar sem um modelo?</translation>
     </message>
 </context>
 <context>
+    <name>MapLibraryModel</name>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>Arraste e solte {name} no esquemático</translation>
+    </message>
+    <message>
+        <source>Substation</source>
+        <translation>Subestação</translation>
+    </message>
+</context>
+<context>
     <name>MapLineContainer</name>
     <message>
         <source>Do you want to update the time series active status accordingly?</source>
@@ -6083,6 +6109,17 @@ Deseja continuar sem um modelo?</translation>
 Cancel it and close the window?</source>
         <translation>Existe um procedimento de importação em execução.
 Cancelar e fechar a janela?</translation>
+    </message>
+</context>
+<context>
+    <name>NewConnectedDeviceDialogue</name>
+    <message>
+        <source>Name</source>
+        <translation>Nome</translation>
+    </message>
+    <message>
+        <source>New device</source>
+        <translation>Dispositivo novo</translation>
     </message>
 </context>
 <context>
@@ -6865,6 +6902,37 @@ Isto removerá os cenários filhos diretos após as suas alterações serem apli
     <message>
         <source>Set Current Scenario</source>
         <translation>Definir Cenário Atual</translation>
+    </message>
+</context>
+<context>
+    <name>SchematicLibraryModel</name>
+    <message>
+        <source>3W-Transformer</source>
+        <translation>Transformador 3W</translation>
+    </message>
+    <message>
+        <source>Bus</source>
+        <translation>Bus</translation>
+    </message>
+    <message>
+        <source>Connectivity bus</source>
+        <translation>Barramento de conectividade</translation>
+    </message>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>Arraste e solte {name} no esquemático</translation>
+    </message>
+    <message>
+        <source>Fluid-node</source>
+        <translation>Nó de fluido</translation>
+    </message>
+    <message>
+        <source>NW-Transformer</source>
+        <translation>Transformador NW</translation>
+    </message>
+    <message>
+        <source>VSC</source>
+        <translation>VSC</translation>
     </message>
 </context>
 <context>
@@ -8308,7 +8376,7 @@ Pode também usar a ferramenta de diagnóstico (F8)</translation>
         <translation>O fluxo de potência estocástico precisa de pelo menos uma amostra de série temporal.</translation>
     </message>
     <message>
-        <source>The grid doesn't have time series :/</source>
+        <source>The grid doesn&apos;t have time series :/</source>
         <translation>A rede não tem séries temporais :/</translation>
     </message>
     <message>
@@ -14877,32 +14945,6 @@ Tem de carregar ou criar uma rede!</translation>
     <message>
         <source>Question</source>
         <translation>Pergunta</translation>
-    </message>
-</context>
-<context>
-    <name>DeviceSelectorDialogue</name>
-    <message>
-        <source>Device selection</source>
-        <translation>Seleção de dispositivo</translation>
-    </message>
-    <message>
-        <source>None</source>
-        <translation>Nenhum</translation>
-    </message>
-    <message>
-        <source>Search</source>
-        <translation>Pesquisar</translation>
-    </message>
-</context>
-<context>
-    <name>NewConnectedDeviceDialogue</name>
-    <message>
-        <source>Name</source>
-        <translation>Nome</translation>
-    </message>
-    <message>
-        <source>New device</source>
-        <translation>Dispositivo novo</translation>
     </message>
 </context>
 </TS>

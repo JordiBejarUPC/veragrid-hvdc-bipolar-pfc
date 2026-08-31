@@ -1786,6 +1786,21 @@ Combreu?</translation>
     </message>
 </context>
 <context>
+    <name>DeviceSelectorDialogue</name>
+    <message>
+        <source>Device selection</source>
+        <translation>Selecció de dispositius</translation>
+    </message>
+    <message>
+        <source>None</source>
+        <translation>Cap</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>Cerca</translation>
+    </message>
+</context>
+<context>
     <name>DgsExportDialog</name>
     <message>
         <location filename="../FileDialogues/DgsDialogue/dgs_export_gui.ui" line="14"/>
@@ -5978,6 +5993,17 @@ Si us plau, corregiu les dades i proveu de nou.</translation>
     </message>
 </context>
 <context>
+    <name>MapLibraryModel</name>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>Arrascar i deixar {name} al esquemàtic</translation>
+    </message>
+    <message>
+        <source>Substation</source>
+        <translation>Subestació</translation>
+    </message>
+</context>
+<context>
     <name>MapLineContainer</name>
     <message>
         <source>Do you want to update the time series active status accordingly?</source>
@@ -6083,6 +6109,17 @@ Si us plau, corregiu les dades i proveu de nou.</translation>
 Cancel it and close the window?</source>
         <translation>Hi ha un procés d&apos;importació en execució.
 Esc el procés i tanca la finestra?</translation>
+    </message>
+</context>
+<context>
+    <name>NewConnectedDeviceDialogue</name>
+    <message>
+        <source>Name</source>
+        <translation>Nom</translation>
+    </message>
+    <message>
+        <source>New device</source>
+        <translation>Nou dispositiu</translation>
     </message>
 </context>
 <context>
@@ -6865,6 +6902,37 @@ This will remove the direct child scenarios after their changes are applied.</so
         <translation>¿Mergear {child_count} escenari(s) filials en &apos;{scenario_name}&apos;?
 
 Esto eliminarà els escenaris filials directes després d&apos;aplicar-ne els canvis.</translation>
+    </message>
+</context>
+<context>
+    <name>SchematicLibraryModel</name>
+    <message>
+        <source>3W-Transformer</source>
+        <translation>Transformador 3W</translation>
+    </message>
+    <message>
+        <source>Bus</source>
+        <translation>Bus</translation>
+    </message>
+    <message>
+        <source>Connectivity bus</source>
+        <translation>Bus de connectivitat</translation>
+    </message>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>Arrascar i deixar {name} al esquemàtic</translation>
+    </message>
+    <message>
+        <source>Fluid-node</source>
+        <translation>Nod de fluid</translation>
+    </message>
+    <message>
+        <source>NW-Transformer</source>
+        <translation>Transformador NW</translation>
+    </message>
+    <message>
+        <source>VSC</source>
+        <translation>VSC</translation>
     </message>
 </context>
 <context>
@@ -8081,91 +8149,91 @@ Resolgueu el punt operatiu abans de executar aquesta simulació RMS.</translatio
     </message>
     <message>
         <source>Adequacy studies need time data...</source>
-        <translation>Els estudis d'adequació necessiten dades temporals...</translation>
+        <translation>Els estudis d&apos;adequació necessiten dades temporals...</translation>
     </message>
     <message>
         <source>Another ATC time series is being executed now...</source>
-        <translation>S'està executant una altra sèrie de temps ATC...</translation>
+        <translation>S&apos;està executant una altra sèrie de temps ATC...</translation>
     </message>
     <message>
         <source>Another EMT simulation is running already...</source>
-        <translation>Ja s'està executant una altra simulació EMT...</translation>
+        <translation>Ja s&apos;està executant una altra simulació EMT...</translation>
     </message>
     <message>
         <source>Another LODF is being executed now...</source>
-        <translation>S'està executant un altre LODF ara...</translation>
+        <translation>S&apos;està executant un altre LODF ara...</translation>
     </message>
     <message>
         <source>Another Monte Carlo simulation is running...</source>
-        <translation>S'està executant una altra simulació de Monte Carlo...</translation>
+        <translation>S&apos;està executant una altra simulació de Monte Carlo...</translation>
     </message>
     <message>
         <source>Another OPF is being run...</source>
-        <translation>S'està executant un altre OPF...</translation>
+        <translation>S&apos;està executant un altre OPF...</translation>
     </message>
     <message>
         <source>Another OPF time series is running already...</source>
-        <translation>Ja s'està executant una altra sèrie de temps OPF...</translation>
+        <translation>Ja s&apos;està executant una altra sèrie de temps OPF...</translation>
     </message>
     <message>
         <source>Another Optimal NCT time series is being run...</source>
-        <translation>S'està executant una altra sèrie de temps NCT Optimal...</translation>
+        <translation>S&apos;està executant una altra sèrie de temps NCT Optimal...</translation>
     </message>
     <message>
         <source>Another PTDF is being executed now...</source>
-        <translation>S'està executant un altre PTDF ara...</translation>
+        <translation>S&apos;està executant un altre PTDF ara...</translation>
     </message>
     <message>
         <source>Another Small-Signal stability analysis EMT simulation is running already...</source>
-        <translation>Ja s'està executant una altra simulació EMT d'anàlisi de estabilitat de petit senyal...</translation>
+        <translation>Ja s&apos;està executant una altra simulació EMT d&apos;anàlisi de estabilitat de petit senyal...</translation>
     </message>
     <message>
         <source>Another Small-Signal stability analysis simulation is running already...</source>
-        <translation>Ja s'està executant una altra simulació d'anàlisi de estabilitat de petit senyal...</translation>
+        <translation>Ja s&apos;està executant una altra simulació d&apos;anàlisi de estabilitat de petit senyal...</translation>
     </message>
     <message>
         <source>Another catalogue optimization is already running...</source>
-        <translation>Ja s'està executant una altra optimització de catàleg...</translation>
+        <translation>Ja s&apos;està executant una altra optimització de catàleg...</translation>
     </message>
     <message>
         <source>Another clustering is being executed now...</source>
-        <translation>S'està executant un altre agrupament ara...</translation>
+        <translation>S&apos;està executant un altre agrupament ara...</translation>
     </message>
     <message>
         <source>Another contingency analysis is being executed now...</source>
-        <translation>S'està executant un altre anàlisi de contingència ara...</translation>
+        <translation>S&apos;està executant un altre anàlisi de contingència ara...</translation>
     </message>
     <message>
         <source>Another inputs analysis is being run...</source>
-        <translation>S'està executant un altre anàlisi d'inputs...</translation>
+        <translation>S&apos;està executant un altre anàlisi d&apos;inputs...</translation>
     </message>
     <message>
         <source>Another nodal capacity study is being run...</source>
-        <translation>S'està executant un altre estudi de capacitat nodal...</translation>
+        <translation>S&apos;està executant un altre estudi de capacitat nodal...</translation>
     </message>
     <message>
         <source>Another reliability study is running already...</source>
-        <translation>Ja s'està executant un altre estudi de fiabilitat...</translation>
+        <translation>Ja s&apos;està executant un altre estudi de fiabilitat...</translation>
     </message>
     <message>
         <source>Another rms simulation is running already...</source>
-        <translation>Ja s'està executant una altra simulació rms...</translation>
+        <translation>Ja s&apos;està executant una altra simulació rms...</translation>
     </message>
     <message>
         <source>Another simulation of the same type is running...</source>
-        <translation>S'està executant una altra simulació del mateix tipus...</translation>
+        <translation>S&apos;està executant una altra simulació del mateix tipus...</translation>
     </message>
     <message>
         <source>Another three-phase time series power flow is being executed now...</source>
-        <translation>S'està executant un altre flux de potència de sèrie de temps trifàs ara...</translation>
+        <translation>S&apos;està executant un altre flux de potència de sèrie de temps trifàs ara...</translation>
     </message>
     <message>
         <source>Another time series power flow is being executed now...</source>
-        <translation>S'està executant un altre flux de potència de sèrie de temps ara...</translation>
+        <translation>S&apos;està executant un altre flux de potència de sèrie de temps ara...</translation>
     </message>
     <message>
         <source>Another voltage collapse simulation is running...</source>
-        <translation>S'està executant una altra simulació de col·lapse de tensió...</translation>
+        <translation>S&apos;està executant una altra simulació de col·lapse de tensió...</translation>
     </message>
     <message>
         <source>Cannot colour because the PTDF results have zero time steps :/</source>
@@ -8177,7 +8245,7 @@ Resolgueu el punt operatiu abans de executar aquesta simulació RMS.</translatio
     </message>
     <message>
         <source>Linear OPF investment studies need time data...</source>
-        <translation>Els estudis d'inversió OPF lineal necessiten dades temporals...</translation>
+        <translation>Els estudis d&apos;inversió OPF lineal necessiten dades temporals...</translation>
     </message>
     <message>
         <source>No from areas!</source>
@@ -8215,7 +8283,7 @@ You may also use the diagnostic tool (F8)</source>
         <translation>Flux de potència òptim no convergent :/
 Verifiqueu que totes les Rames tenen classificació i 
 que els límits del generador estan correctes.
-També podeu utilitzar l'eina de diagnòstic (F8)</translation>
+També podeu utilitzar l&apos;eina de diagnòstic (F8)</translation>
     </message>
     <message>
         <source>Power flow 3ph converged :)</source>
@@ -8255,11 +8323,11 @@ També podeu utilitzar l'eina de diagnòstic (F8)</translation>
     </message>
     <message>
         <source>Small-Signal stability analysis EMT has finished correctly!</source>
-        <translation>L'anàlisi de estabilitat de petit senyal EMT ha acabat correctament!</translation>
+        <translation>L&apos;anàlisi de estabilitat de petit senyal EMT ha acabat correctament!</translation>
     </message>
     <message>
         <source>Small-signal stability analysis RMS has finished correctly!</source>
-        <translation>L'anàlisi de estabilitat de petit senyal RMS ha acabat correctament!</translation>
+        <translation>L&apos;anàlisi de estabilitat de petit senyal RMS ha acabat correctament!</translation>
     </message>
     <message>
         <source>Something went wrong, There are no ATC results.</source>
@@ -8279,7 +8347,7 @@ També podeu utilitzar l'eina de diagnòstic (F8)</translation>
     </message>
     <message>
         <source>Something went wrong, There are no contingency analysis results.</source>
-        <translation>Es va produir un error, no hi ha resultats d'anàlisi de contingències.</translation>
+        <translation>Es va produir un error, no hi ha resultats d&apos;anàlisi de contingències.</translation>
     </message>
     <message>
         <source>Something went wrong, There are no contingency time series results.</source>
@@ -8287,7 +8355,7 @@ També podeu utilitzar l'eina de diagnòstic (F8)</translation>
     </message>
     <message>
         <source>Something went wrong, There are no investments evaluation results.</source>
-        <translation>Es va produir un error, no hi ha resultats d'avaluació d'inversions.</translation>
+        <translation>Es va produir un error, no hi ha resultats d&apos;avaluació d&apos;inversions.</translation>
     </message>
     <message>
         <source>Something went wrong, There are no voltage stability results.</source>
@@ -8295,18 +8363,18 @@ També podeu utilitzar l'eina de diagnòstic (F8)</translation>
     </message>
     <message>
         <source>State estimation converged :)</source>
-        <translation>L'estimació d'estat ha convergit :)</translation>
+        <translation>L&apos;estimació d&apos;estat ha convergit :)</translation>
     </message>
     <message>
         <source>State estimation not converged :/</source>
-        <translation>L'estimació d'estat no ha convergit :/</translation>
+        <translation>L&apos;estimació d&apos;estat no ha convergit :/</translation>
     </message>
     <message>
         <source>Stochastic power flow needs at least one time-series sample.</source>
         <translation>El flux de potència estocàstic necessita almenys una mostra de sèrie temporal.</translation>
     </message>
     <message>
-        <source>The grid doesn't have time series :/</source>
+        <source>The grid doesn&apos;t have time series :/</source>
         <translation>La xarxa no té sèries temporals :/</translation>
     </message>
     <message>
@@ -8321,7 +8389,7 @@ Is this case already at the collapse limit?</source>
     </message>
     <message>
         <source>There are no active RMS event groups to report.</source>
-        <translation>No hi ha grups d'esdeveniment RMS actius de reportar.</translation>
+        <translation>No hi ha grups d&apos;esdeveniment RMS actius de reportar.</translation>
     </message>
     <message>
         <source>There are no contingency groups declared...</source>
@@ -8343,7 +8411,7 @@ Is this case already at the collapse limit?</source>
         <source>You cannot find {0} clusters for {1} time steps.
 Modify the number of clusters in the ML settings.</source>
         <translation>No es poden trobar {0} clusters per a {1} passos temporals.
-Modifica el nombre de clusters a la configuració d'ML.</translation>
+Modifica el nombre de clusters a la configuració d&apos;ML.</translation>
     </message>
 </context>
 <context>
@@ -14875,32 +14943,6 @@ Ha de carregar o crear una xarxa!</translation>
     <message>
         <source>Question</source>
         <translation>Pregunta</translation>
-    </message>
-</context>
-<context>
-    <name>DeviceSelectorDialogue</name>
-    <message>
-        <source>Device selection</source>
-        <translation>Selecció de dispositius</translation>
-    </message>
-    <message>
-        <source>None</source>
-        <translation>Cap</translation>
-    </message>
-    <message>
-        <source>Search</source>
-        <translation>Cerca</translation>
-    </message>
-</context>
-<context>
-    <name>NewConnectedDeviceDialogue</name>
-    <message>
-        <source>Name</source>
-        <translation>Nom</translation>
-    </message>
-    <message>
-        <source>New device</source>
-        <translation>Nou dispositiu</translation>
     </message>
 </context>
 </TS>

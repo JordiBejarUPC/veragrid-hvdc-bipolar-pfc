@@ -1224,6 +1224,21 @@ Are you sure?</source>
     </message>
 </context>
 <context>
+    <name>DeviceSelectorDialogue</name>
+    <message>
+        <source>Device selection</source>
+        <translation>उपकरण चयन</translation>
+    </message>
+    <message>
+        <source>None</source>
+        <translation>कोई नहीं</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>खोजें</translation>
+    </message>
+</context>
+<context>
     <name>DgsExportDialog</name>
     <message>
         <location filename="../FileDialogues/DgsDialogue/dgs_export_gui.ui" line="14"/>
@@ -5408,6 +5423,17 @@ Please correct the data and try again.</source>
     </message>
 </context>
 <context>
+    <name>MapLibraryModel</name>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>&quot;{name}&quot; को स्कीमेटिक में ड्रैग और ड्रॉप करें</translation>
+    </message>
+    <message>
+        <source>Substation</source>
+        <translation>सबस्टेशन</translation>
+    </message>
+</context>
+<context>
     <name>MapLineContainer</name>
     <message>
         <source>Do you want to update the time series active status accordingly?</source>
@@ -5513,6 +5539,17 @@ Please correct the data and try again.</source>
 Cancel it and close the window?</source>
         <translation>एक आयात प्रक्रिया चल रही है।
 क्या आप इसे रद्द करके विंडो बंद करना चाहते हैं?</translation>
+    </message>
+</context>
+<context>
+    <name>NewConnectedDeviceDialogue</name>
+    <message>
+        <source>Name</source>
+        <translation>नाम</translation>
+    </message>
+    <message>
+        <source>New device</source>
+        <translation>नया उपकरण</translation>
     </message>
 </context>
 <context>
@@ -6295,6 +6332,37 @@ This will remove the direct child scenarios after their changes are applied.</so
         <translation>क्या {child_count} चाइल्ड परिदृश्य(ओं) को &apos;{scenario_name}&apos; में मर्ज करें?
 
 ऐसा करने से उनके परिवर्तन लागू होने के बाद सीधे चाइल्ड परिदृश्य हटा दिए जाएंगे।</translation>
+    </message>
+</context>
+<context>
+    <name>SchematicLibraryModel</name>
+    <message>
+        <source>3W-Transformer</source>
+        <translation>3W-ट्रांसफार्मर</translation>
+    </message>
+    <message>
+        <source>Bus</source>
+        <translation>बस</translation>
+    </message>
+    <message>
+        <source>Connectivity bus</source>
+        <translation>कनेक्टिविटी बस</translation>
+    </message>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>&quot;{name}&quot; को स्कीमेटिक में ड्रैग और ड्रॉप करें</translation>
+    </message>
+    <message>
+        <source>Fluid-node</source>
+        <translation>फ्लूइड-नोड</translation>
+    </message>
+    <message>
+        <source>NW-Transformer</source>
+        <translation>NW-ट्रांसफार्मर</translation>
+    </message>
+    <message>
+        <source>VSC</source>
+        <translation>VSC</translation>
     </message>
 </context>
 <context>
@@ -7547,7 +7615,7 @@ You may also use the diagnostic tool (F8)</source>
         <translation>स्टोकेस्टिक पावर फ्लो के लिए कम से कम एक समय-श्रृंखला नमूने की आवश्यकता है।</translation>
     </message>
     <message>
-        <source>The grid doesn't have time series :/</source>
+        <source>The grid doesn&apos;t have time series :/</source>
         <translation>ग्रिड में समय श्रृंखला नहीं है :/</translation>
     </message>
     <message>
@@ -14111,32 +14179,6 @@ You need to load or create a grid!</source>
     <message>
         <source>Question</source>
         <translation>प्रश्न</translation>
-    </message>
-</context>
-<context>
-    <name>DeviceSelectorDialogue</name>
-    <message>
-        <source>Device selection</source>
-        <translation>उपकरण चयन</translation>
-    </message>
-    <message>
-        <source>None</source>
-        <translation>कोई नहीं</translation>
-    </message>
-    <message>
-        <source>Search</source>
-        <translation>खोजें</translation>
-    </message>
-</context>
-<context>
-    <name>NewConnectedDeviceDialogue</name>
-    <message>
-        <source>Name</source>
-        <translation>नाम</translation>
-    </message>
-    <message>
-        <source>New device</source>
-        <translation>नया उपकरण</translation>
     </message>
 </context>
 </TS>

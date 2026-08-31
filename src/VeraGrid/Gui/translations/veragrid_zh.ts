@@ -1794,6 +1794,21 @@ Are you sure?</source>
     </message>
 </context>
 <context>
+    <name>DeviceSelectorDialogue</name>
+    <message>
+        <source>Device selection</source>
+        <translation>设备选择</translation>
+    </message>
+    <message>
+        <source>None</source>
+        <translation>无</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>搜索</translation>
+    </message>
+</context>
+<context>
     <name>DgsExportDialog</name>
     <message>
         <location filename="../FileDialogues/DgsDialogue/dgs_export_gui.ui" line="14"/>
@@ -5986,6 +6001,17 @@ Do you want to continue without a template?</source>
     </message>
 </context>
 <context>
+    <name>MapLibraryModel</name>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>将 {name} 拖放到原理图</translation>
+    </message>
+    <message>
+        <source>Substation</source>
+        <translation>变电站</translation>
+    </message>
+</context>
+<context>
     <name>MapLineContainer</name>
     <message>
         <source>Do you want to update the time series active status accordingly?</source>
@@ -6091,6 +6117,17 @@ Do you want to continue without a template?</source>
 Cancel it and close the window?</source>
         <translation>正在运行导入程序。
 是否取消并关闭窗口？</translation>
+    </message>
+</context>
+<context>
+    <name>NewConnectedDeviceDialogue</name>
+    <message>
+        <source>Name</source>
+        <translation>名称</translation>
+    </message>
+    <message>
+        <source>New device</source>
+        <translation>新设备</translation>
     </message>
 </context>
 <context>
@@ -6873,6 +6910,37 @@ This will remove the direct child scenarios after their changes are applied.</so
     <message>
         <source>Set Current Scenario</source>
         <translation>设置当前场景</translation>
+    </message>
+</context>
+<context>
+    <name>SchematicLibraryModel</name>
+    <message>
+        <source>3W-Transformer</source>
+        <translation>3W-变压器</translation>
+    </message>
+    <message>
+        <source>Bus</source>
+        <translation>母线</translation>
+    </message>
+    <message>
+        <source>Connectivity bus</source>
+        <translation>连接总线</translation>
+    </message>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>将 {name} 拖放到原理图</translation>
+    </message>
+    <message>
+        <source>Fluid-node</source>
+        <translation>流体节点</translation>
+    </message>
+    <message>
+        <source>NW-Transformer</source>
+        <translation>NW-变压器</translation>
+    </message>
+    <message>
+        <source>VSC</source>
+        <translation>VSC</translation>
     </message>
 </context>
 <context>
@@ -8314,7 +8382,7 @@ You may also use the diagnostic tool (F8)</source>
         <translation>随机潮流需要至少一个时间序列样本。</translation>
     </message>
     <message>
-        <source>The grid doesn't have time series :/</source>
+        <source>The grid doesn&apos;t have time series :/</source>
         <translation>电网没有时间序列 :/</translation>
     </message>
     <message>
@@ -14883,32 +14951,6 @@ You need to load or create a grid!</source>
     <message>
         <source>Question</source>
         <translation>问题</translation>
-    </message>
-</context>
-<context>
-    <name>DeviceSelectorDialogue</name>
-    <message>
-        <source>Device selection</source>
-        <translation>设备选择</translation>
-    </message>
-    <message>
-        <source>None</source>
-        <translation>无</translation>
-    </message>
-    <message>
-        <source>Search</source>
-        <translation>搜索</translation>
-    </message>
-</context>
-<context>
-    <name>NewConnectedDeviceDialogue</name>
-    <message>
-        <source>Name</source>
-        <translation>名称</translation>
-    </message>
-    <message>
-        <source>New device</source>
-        <translation>新设备</translation>
     </message>
 </context>
 </TS>

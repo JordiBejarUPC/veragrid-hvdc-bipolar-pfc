@@ -1786,6 +1786,21 @@ Sind Sie sicher?</translation>
     </message>
 </context>
 <context>
+    <name>DeviceSelectorDialogue</name>
+    <message>
+        <source>Device selection</source>
+        <translation>Gerätewahl</translation>
+    </message>
+    <message>
+        <source>None</source>
+        <translation>Keine</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>Suchen</translation>
+    </message>
+</context>
+<context>
     <name>DgsExportDialog</name>
     <message>
         <location filename="../FileDialogues/DgsDialogue/dgs_export_gui.ui" line="14"/>
@@ -5978,6 +5993,17 @@ Bitte korrigieren Sie die Daten und versuchen Sie es erneut.</translation>
     </message>
 </context>
 <context>
+    <name>MapLibraryModel</name>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>Ziehen und Ablegen von {name} in das Schema</translation>
+    </message>
+    <message>
+        <source>Substation</source>
+        <translation>Umspannwerk</translation>
+    </message>
+</context>
+<context>
     <name>MapLineContainer</name>
     <message>
         <source>Do you want to update the time series active status accordingly?</source>
@@ -6083,6 +6109,17 @@ Bitte korrigieren Sie die Daten und versuchen Sie es erneut.</translation>
 Cancel it and close the window?</source>
         <translation>Es wird ein Importvorgang ausgeführt.
 Soll dieser abgebrochen und das Fenster geschlossen werden?</translation>
+    </message>
+</context>
+<context>
+    <name>NewConnectedDeviceDialogue</name>
+    <message>
+        <source>Name</source>
+        <translation>Name</translation>
+    </message>
+    <message>
+        <source>New device</source>
+        <translation>Neues Gerät</translation>
     </message>
 </context>
 <context>
@@ -6865,6 +6902,37 @@ This will remove the direct child scenarios after their changes are applied.</so
         <translation>{child_count} Kind-Szenario(s) in &apos;{scenario_name}&apos; zusammenführen?
 
 Dies entfernt die direkten Kind-Szenarien, nachdem ihre Änderungen angewendet wurden.</translation>
+    </message>
+</context>
+<context>
+    <name>SchematicLibraryModel</name>
+    <message>
+        <source>3W-Transformer</source>
+        <translation>3W-Transformator</translation>
+    </message>
+    <message>
+        <source>Bus</source>
+        <translation>Bus</translation>
+    </message>
+    <message>
+        <source>Connectivity bus</source>
+        <translation>Verbindungsbus</translation>
+    </message>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>Ziehen und Ablegen von {name} in das Schema</translation>
+    </message>
+    <message>
+        <source>Fluid-node</source>
+        <translation>Flüssigkeitsknoten</translation>
+    </message>
+    <message>
+        <source>NW-Transformer</source>
+        <translation>NW-Transformator</translation>
+    </message>
+    <message>
+        <source>VSC</source>
+        <translation>VSC</translation>
     </message>
 </context>
 <context>
@@ -8308,7 +8376,7 @@ Sie können auch das Diagnosewerkzeug (F8) verwenden.</translation>
         <translation>Der stochastische Stromfluss benötigt mindestens eine Zeitreihenprobe.</translation>
     </message>
     <message>
-        <source>The grid doesn't have time series :/</source>
+        <source>The grid doesn&apos;t have time series :/</source>
         <translation>Das Netz hat keine Zeitreihen :/</translation>
     </message>
     <message>
@@ -14877,32 +14945,6 @@ Sie müssen ein Netz laden oder erstellen!</translation>
     <message>
         <source>Question</source>
         <translation>Frage</translation>
-    </message>
-</context>
-<context>
-    <name>DeviceSelectorDialogue</name>
-    <message>
-        <source>Device selection</source>
-        <translation>Gerätewahl</translation>
-    </message>
-    <message>
-        <source>None</source>
-        <translation>Keine</translation>
-    </message>
-    <message>
-        <source>Search</source>
-        <translation>Suchen</translation>
-    </message>
-</context>
-<context>
-    <name>NewConnectedDeviceDialogue</name>
-    <message>
-        <source>Name</source>
-        <translation>Name</translation>
-    </message>
-    <message>
-        <source>New device</source>
-        <translation>Neues Gerät</translation>
     </message>
 </context>
 </TS>

@@ -1784,6 +1784,21 @@ Weet u zeker?</translation>
     </message>
 </context>
 <context>
+    <name>DeviceSelectorDialogue</name>
+    <message>
+        <source>Device selection</source>
+        <translation>Apparaatselectie</translation>
+    </message>
+    <message>
+        <source>None</source>
+        <translation>Geen</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>Zoekopdracht</translation>
+    </message>
+</context>
+<context>
     <name>DgsExportDialog</name>
     <message>
         <location filename="../FileDialogues/DgsDialogue/dgs_export_gui.ui" line="14"/>
@@ -5976,6 +5991,17 @@ Wilt u doorgaan zonder een sjabloon?</translation>
     </message>
 </context>
 <context>
+    <name>MapLibraryModel</name>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>Sleep {name} in het schema</translation>
+    </message>
+    <message>
+        <source>Substation</source>
+        <translation>Onderstation</translation>
+    </message>
+</context>
+<context>
     <name>MapLineContainer</name>
     <message>
         <source>Do you want to update the time series active status accordingly?</source>
@@ -6081,6 +6107,17 @@ Wilt u doorgaan zonder een sjabloon?</translation>
 Cancel it and close the window?</source>
         <translation>Er draait een importprocedure.
 Annuleren en het venster sluiten?</translation>
+    </message>
+</context>
+<context>
+    <name>NewConnectedDeviceDialogue</name>
+    <message>
+        <source>Name</source>
+        <translation>Naam</translation>
+    </message>
+    <message>
+        <source>New device</source>
+        <translation>Nieuw apparaat</translation>
     </message>
 </context>
 <context>
@@ -6863,6 +6900,37 @@ Dit verwijdert de directe kindscenario&apos;s nadat hun wijzigingen zijn toegepa
     <message>
         <source>Set Current Scenario</source>
         <translation>Huidig scenario instellen</translation>
+    </message>
+</context>
+<context>
+    <name>SchematicLibraryModel</name>
+    <message>
+        <source>3W-Transformer</source>
+        <translation>3W-Transformatie</translation>
+    </message>
+    <message>
+        <source>Bus</source>
+        <translation>Bus</translation>
+    </message>
+    <message>
+        <source>Connectivity bus</source>
+        <translation>Connectiviteitsbus</translation>
+    </message>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>Sleep {name} in het schema</translation>
+    </message>
+    <message>
+        <source>Fluid-node</source>
+        <translation>Vloeistofknoop</translation>
+    </message>
+    <message>
+        <source>NW-Transformer</source>
+        <translation>NW-Transformatie</translation>
+    </message>
+    <message>
+        <source>VSC</source>
+        <translation>VSC</translation>
     </message>
 </context>
 <context>
@@ -8287,7 +8355,7 @@ U kunt ook het diagnostische hulpmiddel gebruiken (F8)</translation>
         <translation>Stochastische stroomafvoer vereist minstens één tijdreeksmonster.</translation>
     </message>
     <message>
-        <source>The grid doesn't have time series :/</source>
+        <source>The grid doesn&apos;t have time series :/</source>
         <translation>Het net heeft geen tijdreeksen :/</translation>
     </message>
     <message>
@@ -14856,32 +14924,6 @@ U moet een net laden of aanmaken!</translation>
     <message>
         <source>Question</source>
         <translation>Vraag</translation>
-    </message>
-</context>
-<context>
-    <name>DeviceSelectorDialogue</name>
-    <message>
-        <source>Device selection</source>
-        <translation>Apparaatselectie</translation>
-    </message>
-    <message>
-        <source>None</source>
-        <translation>Geen</translation>
-    </message>
-    <message>
-        <source>Search</source>
-        <translation>Zoekopdracht</translation>
-    </message>
-</context>
-<context>
-    <name>NewConnectedDeviceDialogue</name>
-    <message>
-        <source>Name</source>
-        <translation>Naam</translation>
-    </message>
-    <message>
-        <source>New device</source>
-        <translation>Nieuw apparaat</translation>
     </message>
 </context>
 </TS>
