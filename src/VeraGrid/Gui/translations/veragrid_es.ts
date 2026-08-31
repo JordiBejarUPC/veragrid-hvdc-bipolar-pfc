@@ -9428,7 +9428,7 @@ You need to load or create a grid!</source>
     </message>
     <message>
         <source>Fluid node</source>
-        <translation>Nodo fluido</translation>
+        <translation>Nodo de fluido</translation>
     </message>
     <message>
         <source>Fluid nodes</source>
@@ -11044,7 +11044,7 @@ You need to load or create a grid!</source>
     </message>
     <message>
         <source>Control PC</source>
-        <translation>Controlar PC</translation>
+        <translation>PC de control</translation>
     </message>
     <message>
         <source>Net transfer capacity slack</source>
