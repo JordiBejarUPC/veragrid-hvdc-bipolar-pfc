@@ -41,7 +41,7 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidg
 from VeraGrid.Gui.GridReduce.grid_reduce import GridReduceDialogue
 from VeraGrid.Gui.SubstationDesigner.substation_designer import SubstationDesigner
 from VeraGrid.Gui.general_dialogues import (LogsDialogue, CustomQuestionDialogue, CheckListDialogue,
-                                            NewBusConnectedDeviceDialogue)
+                                            NewConnectedDeviceDialogue)
 from VeraGrid.Gui.DeviceEditors.TransformerEditor.transformer_device_editor import TransformerDeviceEditorDialog
 from VeraGrid.Gui.DeviceEditors.Transformer3wEditor.transformer3w_device_editor import Transformer3WDeviceEditorDialog
 from VeraGrid.Gui.DeviceEditors.ControllableShuntEditor.controllable_shunt_device_editor import (
@@ -874,7 +874,7 @@ class DataBaseTableMain(DiagramsMain):
             if elm_type == DeviceType.LoadDevice:
                 buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
                 if len(buses) > 0:
-                    dlg: NewBusConnectedDeviceDialogue = NewBusConnectedDeviceDialogue(
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
                         name=f'{elm_type.value} {len(self.circuit.loads) + 1}',
                         bus_count=1,
                         buses=buses,
@@ -896,7 +896,7 @@ class DataBaseTableMain(DiagramsMain):
             elif elm_type == DeviceType.StaticGeneratorDevice:
                 buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
                 if len(buses) > 0:
-                    dlg: NewBusConnectedDeviceDialogue = NewBusConnectedDeviceDialogue(
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
                         name=f'{elm_type.value} {len(self.circuit.static_generators) + 1}',
                         bus_count=1,
                         buses=buses,
@@ -918,7 +918,7 @@ class DataBaseTableMain(DiagramsMain):
             elif elm_type == DeviceType.GeneratorDevice:
                 buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
                 if len(buses) > 0:
-                    dlg: NewBusConnectedDeviceDialogue = NewBusConnectedDeviceDialogue(
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
                         name=f'{elm_type.value} {len(self.circuit.generators) + 1}',
                         bus_count=1,
                         buses=buses,
@@ -940,7 +940,7 @@ class DataBaseTableMain(DiagramsMain):
             elif elm_type == DeviceType.BatteryDevice:
                 buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
                 if len(buses) > 0:
-                    dlg: NewBusConnectedDeviceDialogue = NewBusConnectedDeviceDialogue(
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
                         name=f'{elm_type.value} {len(self.circuit.batteries) + 1}',
                         bus_count=1,
                         buses=buses,
@@ -962,7 +962,7 @@ class DataBaseTableMain(DiagramsMain):
             elif elm_type == DeviceType.ShuntDevice:
                 buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
                 if len(buses) > 0:
-                    dlg: NewBusConnectedDeviceDialogue = NewBusConnectedDeviceDialogue(
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
                         name=f'{elm_type.value} {len(self.circuit.shunts) + 1}',
                         bus_count=1,
                         buses=buses,
@@ -984,7 +984,7 @@ class DataBaseTableMain(DiagramsMain):
             elif elm_type == DeviceType.ExternalGridDevice:
                 buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
                 if len(buses) > 0:
-                    dlg: NewBusConnectedDeviceDialogue = NewBusConnectedDeviceDialogue(
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
                         name=f'{elm_type.value} {len(self.circuit.external_grids) + 1}',
                         bus_count=1,
                         buses=buses,
@@ -1006,7 +1006,7 @@ class DataBaseTableMain(DiagramsMain):
             elif elm_type == DeviceType.CurrentInjectionDevice:
                 buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
                 if len(buses) > 0:
-                    dlg: NewBusConnectedDeviceDialogue = NewBusConnectedDeviceDialogue(
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
                         name=f'{elm_type.value} {len(self.circuit.current_injections) + 1}',
                         bus_count=1,
                         buses=buses,
@@ -1028,7 +1028,7 @@ class DataBaseTableMain(DiagramsMain):
             elif elm_type == DeviceType.ControllableShuntDevice:
                 buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
                 if len(buses) > 0:
-                    dlg: NewBusConnectedDeviceDialogue = NewBusConnectedDeviceDialogue(
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
                         name=f'{elm_type.value} {len(self.circuit.controllable_shunts) + 1}',
                         bus_count=1,
                         buses=buses,
@@ -1050,7 +1050,7 @@ class DataBaseTableMain(DiagramsMain):
             elif elm_type == DeviceType.LineDevice:
                 buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
                 if len(buses) > 0:
-                    dlg: NewBusConnectedDeviceDialogue = NewBusConnectedDeviceDialogue(
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
                         name=f'{elm_type.value} {len(self.circuit.lines) + 1}',
                         bus_count=2,
                         buses=buses,
@@ -1073,7 +1073,7 @@ class DataBaseTableMain(DiagramsMain):
             elif elm_type == DeviceType.DCLineDevice:
                 buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
                 if len(buses) > 0:
-                    dlg: NewBusConnectedDeviceDialogue = NewBusConnectedDeviceDialogue(
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
                         name=f'{elm_type.value} {len(self.circuit.dc_lines) + 1}',
                         bus_count=2,
                         buses=buses,
@@ -1096,7 +1096,7 @@ class DataBaseTableMain(DiagramsMain):
             elif elm_type == DeviceType.Transformer2WDevice:
                 buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
                 if len(buses) > 0:
-                    dlg: NewBusConnectedDeviceDialogue = NewBusConnectedDeviceDialogue(
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
                         name=f'{elm_type.value} {len(self.circuit.transformers2w) + 1}',
                         bus_count=2,
                         buses=buses,
@@ -1119,7 +1119,7 @@ class DataBaseTableMain(DiagramsMain):
             elif elm_type == DeviceType.Transformer3WDevice:
                 buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
                 if len(buses) > 0:
-                    dlg: NewBusConnectedDeviceDialogue = NewBusConnectedDeviceDialogue(
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
                         name=f'{elm_type.value} {len(self.circuit.transformers3w) + 1}',
                         bus_count=3,
                         buses=buses,
@@ -1143,7 +1143,7 @@ class DataBaseTableMain(DiagramsMain):
             elif elm_type == DeviceType.TransformerNwDevice:
                 buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
                 if len(buses) > 0:
-                    dlg: NewBusConnectedDeviceDialogue = NewBusConnectedDeviceDialogue(
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
                         name=f'{elm_type.value} {len(self.circuit.transformers_nw) + 1}',
                         bus_count=3,
                         buses=buses,
@@ -1166,7 +1166,7 @@ class DataBaseTableMain(DiagramsMain):
             elif elm_type == DeviceType.HVDCLineDevice:
                 buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
                 if len(buses) > 0:
-                    dlg: NewBusConnectedDeviceDialogue = NewBusConnectedDeviceDialogue(
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
                         name=f'{elm_type.value} {len(self.circuit.hvdc_lines) + 1}',
                         bus_count=2,
                         buses=buses,
@@ -1189,7 +1189,7 @@ class DataBaseTableMain(DiagramsMain):
             elif elm_type == DeviceType.VscDevice:
                 buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
                 if len(buses) > 0:
-                    dlg: NewBusConnectedDeviceDialogue = NewBusConnectedDeviceDialogue(
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
                         name=f'{elm_type.value} {len(self.circuit.vsc_devices) + 1}',
                         bus_count=3,
                         buses=buses,
@@ -1226,7 +1226,7 @@ class DataBaseTableMain(DiagramsMain):
             elif elm_type == DeviceType.UpfcDevice:
                 buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
                 if len(buses) > 0:
-                    dlg: NewBusConnectedDeviceDialogue = NewBusConnectedDeviceDialogue(
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
                         name=f'{elm_type.value} {len(self.circuit.upfc_devices) + 1}',
                         bus_count=2,
                         buses=buses,
@@ -1249,7 +1249,7 @@ class DataBaseTableMain(DiagramsMain):
             elif elm_type == DeviceType.SeriesReactanceDevice:
                 buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
                 if len(buses) > 0:
-                    dlg: NewBusConnectedDeviceDialogue = NewBusConnectedDeviceDialogue(
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
                         name=f'{elm_type.value} {len(self.circuit.series_reactances) + 1}',
                         bus_count=2,
                         buses=buses,

@@ -16,7 +16,9 @@ from PySide6.QtWidgets import (QApplication, QDialog, QTableView, QVBoxLayout, Q
 from PySide6.QtCore import Qt, QAbstractTableModel, QModelIndex
 from VeraGridEngine.basic_structures import Logger, IntVec
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
+from VeraGridEngine.Devices.Parents.editable_device import GCProp
 from VeraGrid.Gui.gui_functions import ComboModel, get_list_model, get_checked_indices, get_chck_list_model
+from VeraGrid.Gui.Icons.icon_associations import device_type_icons
 from VeraGrid.Gui.object_model import ObjectsModel
 from VeraGridEngine.enumerations import (FaultType, MethodShortCircuit, PhasesShortCircuit, FileType, CGMESVersions,
                                          DeviceType)
@@ -327,11 +329,13 @@ class DeviceSelectorDialogue(CenteredDialog):
 
     def __init__(self,
                  devices_by_type: Dict[DeviceType, List[ALL_DEV_TYPES]],
+                 allow_none: bool = False,
                  parent: QtWidgets.QWidget | None = None) -> None:
         """
         Constructor.
 
         :param devices_by_type: Dictionary with device types and their devices.
+        :param allow_none: Add a selectable None entry.
         :param parent: Parent widget.
         """
         CenteredDialog.__init__(self, parent=parent)
@@ -340,7 +344,9 @@ class DeviceSelectorDialogue(CenteredDialog):
         self.resize(500, 600)
 
         self.devices_by_type: Dict[DeviceType, List[ALL_DEV_TYPES]] = devices_by_type
+        self.allow_none: bool = allow_none
         self.selected_device: ALL_DEV_TYPES | None = None
+        self.has_selection: bool = False
 
         # Build the visible search controls before the model is populated.
         self.main_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self)
@@ -383,20 +389,44 @@ class DeviceSelectorDialogue(CenteredDialog):
         """
         self.source_model.clear()
 
+        if self.allow_none:
+            # The None row clears an existing object link through the same selector flow.
+            none_item: QtGui.QStandardItem = QtGui.QStandardItem(self.tr("None"))
+            none_item.setEditable(False)
+            none_item.setData(True, QtCore.Qt.ItemDataRole.UserRole + 1)
+            self.source_model.appendRow(none_item)
+        else:
+            pass
+
         for device_type, devices in self.devices_by_type.items():
-            # Device type rows group leaves but are not assignable values.
-            device_type_item: QtGui.QStandardItem = QtGui.QStandardItem(device_type.value)
-            device_type_item.setEditable(False)
-            device_type_item.setSelectable(False)
+            if len(devices) > 0:
+                # Device type rows group leaves but are not assignable values.
+                device_type_item: QtGui.QStandardItem = QtGui.QStandardItem(device_type.value)
+                icon_path: str | None = device_type_icons.get(device_type.value, None)
+                if icon_path is not None:
+                    device_type_item.setIcon(QtGui.QIcon(icon_path))
+                else:
+                    pass
 
-            for device in devices:
-                # Device objects are stored in UserRole while names remain the visible text.
-                device_item: QtGui.QStandardItem = QtGui.QStandardItem(device.name)
-                device_item.setEditable(False)
-                device_item.setData(device, QtCore.Qt.ItemDataRole.UserRole)
-                device_type_item.appendRow(device_item)
+                device_type_item.setEditable(False)
+                device_type_item.setSelectable(False)
 
-            self.source_model.appendRow(device_type_item)
+                for device in devices:
+                    # Device objects are stored in UserRole while names remain the visible text.
+                    device_item: QtGui.QStandardItem = QtGui.QStandardItem(device.name)
+                    if icon_path is not None:
+                        device_item.setIcon(QtGui.QIcon(icon_path))
+                    else:
+                        pass
+
+                    device_item.setEditable(False)
+                    device_item.setData(device, QtCore.Qt.ItemDataRole.UserRole)
+                    device_item.setData(True, QtCore.Qt.ItemDataRole.UserRole + 1)
+                    device_type_item.appendRow(device_item)
+
+                self.source_model.appendRow(device_type_item)
+            else:
+                pass
 
         self.tree_view.expandAll()
 
@@ -426,9 +456,14 @@ class DeviceSelectorDialogue(CenteredDialog):
             source_index,
             QtCore.Qt.ItemDataRole.UserRole,
         )
+        is_selectable_value: bool = self.source_model.data(
+            source_index,
+            QtCore.Qt.ItemDataRole.UserRole + 1,
+        ) is True
 
-        if selected_device is not None:
+        if is_selectable_value:
             self.selected_device = selected_device
+            self.has_selection = True
             CenteredDialog.accept(self)
         else:
             pass
@@ -447,9 +482,14 @@ class DeviceSelectorDialogue(CenteredDialog):
                 source_index,
                 QtCore.Qt.ItemDataRole.UserRole,
             )
+            is_selectable_value: bool = self.source_model.data(
+                source_index,
+                QtCore.Qt.ItemDataRole.UserRole + 1,
+            ) is True
 
-            if selected_device is not None:
+            if is_selectable_value:
                 self.selected_device = selected_device
+                self.has_selection = True
                 CenteredDialog.accept(self)
             else:
                 pass
@@ -465,7 +505,98 @@ class DeviceSelectorDialogue(CenteredDialog):
         return self.selected_device
 
 
-class NewBusConnectedDeviceDialogue(CenteredDialog):
+class BusConnectionObject:
+    """
+    Minimal object used by ObjectsModel to edit a list of bus connections.
+    """
+
+    __slots__ = ("device_type", "property_list", "selected_buses")
+
+    def __init__(self, bus_count: int) -> None:
+        """
+        Constructor.
+
+        :param bus_count: Number of bus properties to expose.
+        """
+        self.device_type: DeviceType = DeviceType.BusDevice
+        self.property_list: List[GCProp] = list()
+        self.selected_buses: List[ALL_DEV_TYPES | None] = list()
+
+        if bus_count == 1:
+            self.property_list.append(GCProp(prop_name="bus",
+                                             units="",
+                                             tpe=DeviceType.BusDevice,
+                                             definition="Connection bus"))
+            self.selected_buses.append(None)
+        else:
+            self.property_list.append(GCProp(prop_name="bus_from",
+                                             units="",
+                                             tpe=DeviceType.BusDevice,
+                                             definition="From bus"))
+            self.selected_buses.append(None)
+            self.property_list.append(GCProp(prop_name="bus_to",
+                                             units="",
+                                             tpe=DeviceType.BusDevice,
+                                             definition="To bus"))
+            self.selected_buses.append(None)
+
+            for i in range(2, bus_count):
+                bus_number: int = i + 1
+                self.property_list.append(GCProp(prop_name=f"bus_{bus_number}",
+                                                 units="",
+                                                 tpe=DeviceType.BusDevice,
+                                                 definition=f"Bus {bus_number}"))
+                self.selected_buses.append(None)
+
+    def get_value(self, prop: GCProp, t_idx: int | None) -> ALL_DEV_TYPES | None:
+        """
+        Get one bus property value.
+
+        :param prop: Property descriptor.
+        :param t_idx: Unused time index.
+        :return: Selected bus or None.
+        """
+        for i, local_prop in enumerate(self.property_list):
+            if prop.name == local_prop.name:
+                return self.selected_buses[i]
+            else:
+                pass
+
+        return None
+
+    def set_value(self, prop: GCProp, t_idx: int | None, value: ALL_DEV_TYPES | None) -> None:
+        """
+        Set one bus property value.
+
+        :param prop: Property descriptor.
+        :param t_idx: Unused time index.
+        :param value: Selected bus.
+        :return: None.
+        """
+        for i, local_prop in enumerate(self.property_list):
+            if prop.name == local_prop.name:
+                self.selected_buses[i] = value
+            else:
+                pass
+
+    def get_buses(self) -> List[ALL_DEV_TYPES | None]:
+        """
+        Get the selected buses in property order.
+
+        :return: Selected bus list.
+        """
+        return self.selected_buses
+
+    def __str__(self) -> str:
+        """
+        Get the row header label.
+
+        :return: Object label.
+        """
+        return "Buses"
+
+
+class NewConnectedDeviceDialogue(CenteredDialog):
     """
     Dialogue to define a new device name and its connected buses.
     """
@@ -486,35 +617,30 @@ class NewBusConnectedDeviceDialogue(CenteredDialog):
         CenteredDialog.__init__(self, parent=parent)
 
         self.setWindowTitle(self.tr("New device"))
-        self.resize(420, 120 + 42 * bus_count)
+        self.resize(520, 180 + 30 * bus_count)
 
         self.buses: List[ALL_DEV_TYPES] = buses
-        self.selected_buses: List[ALL_DEV_TYPES | None] = list()
-        self.bus_labels: List[QtWidgets.QLabel] = list()
-        self.bus_buttons: List[QtWidgets.QPushButton] = list()
+        self.bus_connection: BusConnectionObject = BusConnectionObject(bus_count=bus_count)
 
         self.main_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self)
         self.name_edit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
         self.name_edit.setText(name)
+        self.bus_table: QtWidgets.QTableView = QtWidgets.QTableView(self)
+        self.bus_model: ObjectsModel = ObjectsModel(
+            objects=[self.bus_connection],
+            property_list=self.bus_connection.property_list,
+            time_index=None,
+            parent=self.bus_table,
+            editable=True,
+            transposed=True,
+            dictionary_of_lists={DeviceType.BusDevice: self.buses},
+        )
+        self.bus_table.setModel(self.bus_model)
+        self.bus_table.horizontalHeader().setStretchLastSection(True)
 
         self.main_layout.addWidget(QtWidgets.QLabel(self.tr("Name"), self))
         self.main_layout.addWidget(self.name_edit)
-
-        for i in range(bus_count):
-            self.selected_buses.append(None)
-
-            row_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout()
-            bus_label: QtWidgets.QLabel = QtWidgets.QLabel(self.tr("None"), self)
-            bus_button: QtWidgets.QPushButton = QtWidgets.QPushButton(self.tr("Select bus") + f" {i + 1}", self)
-            bus_button.setProperty("bus_index", i)
-            bus_button.clicked.connect(self.select_bus_click)
-
-            self.bus_labels.append(bus_label)
-            self.bus_buttons.append(bus_button)
-
-            row_layout.addWidget(bus_button)
-            row_layout.addWidget(bus_label)
-            self.main_layout.addLayout(row_layout)
+        self.main_layout.addWidget(self.bus_table)
 
         self.button_box: QtWidgets.QDialogButtonBox = QtWidgets.QDialogButtonBox(
             QtWidgets.QDialogButtonBox.StandardButton.Ok | QtWidgets.QDialogButtonBox.StandardButton.Cancel,
@@ -524,39 +650,6 @@ class NewBusConnectedDeviceDialogue(CenteredDialog):
         self.button_box.rejected.connect(self.reject)
         self.main_layout.addWidget(self.button_box)
 
-    def select_bus_click(self) -> None:
-        """
-        Open the bus selector for the clicked bus slot.
-
-        :return: None.
-        """
-        sender: QtCore.QObject | None = self.sender()
-
-        if isinstance(sender, QtWidgets.QPushButton):
-            bus_index_data: object = sender.property("bus_index")
-
-            if isinstance(bus_index_data, int):
-                dialogue: DeviceSelectorDialogue = DeviceSelectorDialogue(
-                    devices_by_type={DeviceType.BusDevice: self.buses},
-                    parent=self,
-                )
-                accepted: int = dialogue.exec()
-
-                if accepted == QtWidgets.QDialog.DialogCode.Accepted:
-                    selected_bus: ALL_DEV_TYPES | None = dialogue.get_selected_device()
-
-                    if selected_bus is not None:
-                        self.selected_buses[bus_index_data] = selected_bus
-                        self.bus_labels[bus_index_data].setText(selected_bus.name)
-                    else:
-                        pass
-                else:
-                    pass
-            else:
-                pass
-        else:
-            pass
-
     def accept(self) -> None:
         """
         Accept only when the name and all bus slots are filled.
@@ -565,14 +658,19 @@ class NewBusConnectedDeviceDialogue(CenteredDialog):
         """
         has_name: bool = self.name_edit.text().strip() != ""
         has_all_buses: bool = True
+        has_repeated_buses: bool = False
+        selected_bus_set: set[ALL_DEV_TYPES] = set()
 
-        for selected_bus in self.selected_buses:
+        for selected_bus in self.bus_connection.get_buses():
             if selected_bus is None:
                 has_all_buses = False
             else:
-                pass
+                if selected_bus in selected_bus_set:
+                    has_repeated_buses = True
+                else:
+                    selected_bus_set.add(selected_bus)
 
-        if has_name and has_all_buses:
+        if has_name and has_all_buses and not has_repeated_buses:
             CenteredDialog.accept(self)
         else:
             pass
@@ -591,7 +689,7 @@ class NewBusConnectedDeviceDialogue(CenteredDialog):
 
         :return: Selected bus list.
         """
-        return self.selected_buses
+        return self.bus_connection.get_buses()
 
 
 class ElementsDialogue(CenteredDialog):

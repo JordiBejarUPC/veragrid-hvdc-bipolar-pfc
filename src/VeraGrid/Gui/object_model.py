@@ -14,6 +14,7 @@ from typing import Callable
 from enum import EnumMeta
 from VeraGrid.Gui.gui_functions import (IntDelegate, ComboDelegate, TextDelegate, FloatDelegate, ColorPickerDelegate,
                                         ComplexDelegate, LineLocationsDelegate, DateTimeDelegate)
+from VeraGrid.Gui.Icons.icon_associations import device_type_icons
 from VeraGrid.Gui.wrappable_table_model import WrappableTableModel
 from VeraGridEngine.Devices import Bus, ContingencyGroup
 from VeraGridEngine.Devices.Parents.editable_device import GCProp, GCPROP_TYPES
@@ -29,48 +30,46 @@ class DeviceSelectorDelegate(QtWidgets.QItemDelegate):
 
     def __init__(self,
                  parent: QtWidgets.QTableView,
-                 devices_by_type: Dict[DeviceType, List[ALL_DEV_TYPES]]) -> None:
+                 devices_by_type: Dict[DeviceType, List[ALL_DEV_TYPES]],
+                 allow_none: bool = True) -> None:
         """
         Constructor.
 
         :param parent: QTableView parent object.
         :param devices_by_type: Dictionary with device types and their devices.
+        :param allow_none: Add a selectable None entry.
         """
         QtWidgets.QItemDelegate.__init__(self, parent)
 
         self.devices_by_type: Dict[DeviceType, List[ALL_DEV_TYPES]] = devices_by_type
+        self.allow_none: bool = allow_none
 
     def createEditor(self,
                      parent: QtWidgets.QWidget,
                      option: QtWidgets.QStyleOptionViewItem,
                      index: QtCore.QModelIndex) -> QtWidgets.QWidget | None:
         """
-        Open the selector dialogue when the current model value is empty.
+        Open the selector dialogue for one editable device reference.
 
         :param parent: Parent widget.
         :param option: Editor style option.
         :param index: Edited model index.
         :return: None because the modal dialogue writes directly to the model.
         """
-        current_value: Any = index.model().data(index, role=QtCore.Qt.ItemDataRole.EditRole)
+        # Local import avoids the module cycle with general_dialogues.
+        from VeraGrid.Gui.general_dialogues import DeviceSelectorDialogue
 
-        if current_value is None:
-            # Local import avoids the module cycle with general_dialogues.
-            from VeraGrid.Gui.general_dialogues import DeviceSelectorDialogue
+        dialogue: DeviceSelectorDialogue = DeviceSelectorDialogue(
+            devices_by_type=self.devices_by_type,
+            allow_none=self.allow_none,
+            parent=parent,
+        )
+        accepted: int = dialogue.exec()
 
-            dialogue: DeviceSelectorDialogue = DeviceSelectorDialogue(
-                devices_by_type=self.devices_by_type,
-                parent=parent,
-            )
-            accepted: int = dialogue.exec()
-
-            if accepted == QtWidgets.QDialog.DialogCode.Accepted:
+        if accepted == QtWidgets.QDialog.DialogCode.Accepted:
+            if dialogue.has_selection:
                 selected_device: ALL_DEV_TYPES | None = dialogue.get_selected_device()
-
-                if selected_device is not None:
-                    index.model().setData(index, selected_device)
-                else:
-                    pass
+                index.model().setData(index, selected_device)
             else:
                 pass
         else:
@@ -251,17 +250,20 @@ class ObjectsModel(WrappableTableModel):
                     F(i, delegate)
 
                 elif self._get_delegate_objects(i) is not None:
-                    # foreign key objects drop-down
+                    # Foreign key object references use the searchable device selector.
                     objs = self._get_delegate_objects(i)
-                    if self._is_bus_property_type(tpe=tpe):
-                        delegate = DeviceSelectorDelegate(
-                            parent=self.parent,
-                            devices_by_type={DeviceType.BusDevice: objs},
-                        )
+                    if isinstance(tpe, DeviceType):
+                        device_type: DeviceType = tpe
                     else:
-                        delegate = ComboDelegate(parent=self.parent,
-                                                 objects=[None] + objs,
-                                                 object_names=['None'] + [x.name for x in objs])
+                        if len(objs) > 0:
+                            device_type: DeviceType = objs[0].device_type
+                        else:
+                            device_type: DeviceType = DeviceType.NoDevice
+
+                    delegate = DeviceSelectorDelegate(
+                        parent=self.parent,
+                        devices_by_type={device_type: objs},
+                    )
                     F(i, delegate)
 
                 else:
@@ -486,6 +488,34 @@ class ObjectsModel(WrappableTableModel):
 
                 if self.property_list[attr_idx].is_color:
                     return QtGui.QColor(str(self.data_with_type(index)))
+                else:
+                    pass
+
+            elif role == QtCore.Qt.ItemDataRole.DecorationRole:
+
+                delegate_objects: List[ALL_DEV_TYPES] | None = self._get_delegate_objects(attr_idx)
+                has_selector_data: bool = delegate_objects is not None
+                is_editable_cell: bool = bool(self.flags(index) & QtCore.Qt.ItemFlag.ItemIsEditable)
+
+                if has_selector_data and is_editable_cell:
+                    tpe: GCPROP_TYPES = self.attribute_types[attr_idx]
+
+                    if isinstance(tpe, DeviceType):
+                        device_type: DeviceType = tpe
+                    else:
+                        if delegate_objects is not None and len(delegate_objects) > 0:
+                            device_type: DeviceType = delegate_objects[0].device_type
+                        else:
+                            device_type: DeviceType = DeviceType.NoDevice
+
+                    icon_path: str | None = device_type_icons.get(device_type.value, None)
+
+                    if icon_path is not None:
+                        return QtGui.QIcon(icon_path)
+                    else:
+                        return QtGui.QIcon(":/Icons/icons/link-to-selection.png")
+                else:
+                    pass
 
         return None
 
