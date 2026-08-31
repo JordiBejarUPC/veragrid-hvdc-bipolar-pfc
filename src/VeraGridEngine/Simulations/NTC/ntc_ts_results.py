@@ -7,9 +7,10 @@ import numpy as np
 from typing import List, Union, TYPE_CHECKING
 
 from VeraGridEngine.Simulations.results_template import ResultsTemplate, ResultsProperty
-from VeraGridEngine.enumerations import ResultTypes, StudyResultsType
+from VeraGridEngine.enumerations import ResultTypes, StudyResultsType, SolutionState
 from VeraGridEngine.Simulations.results_table import ResultsTable, DeviceType
-from VeraGridEngine.basic_structures import StrVec, DateVec, Vec, IntVec, Mat, CxMat, ObjMat, BoolVec
+from VeraGridEngine.Simulations.NTC.ntc_results import worst_contingency_report_table
+from VeraGridEngine.basic_structures import StrVec, DateVec, Vec, IntVec, Mat, CxMat, ObjMat, BoolVec, IntMat, ObjVec
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGridEngine.Simulations.Clustering.clustering_results import ClusteringResults
@@ -37,8 +38,8 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
         ResultsProperty(name='loading', tpe=CxMat, old_names=list(), expandable=True),
         ResultsProperty(name='losses', tpe=CxMat, old_names=list(), expandable=True),
         ResultsProperty(name='phase_shift', tpe=CxMat, old_names=list(), expandable=True),
-        ResultsProperty(name='rates', tpe=Vec, old_names=list(), expandable=True),
-        ResultsProperty(name='contingency_rates', tpe=Vec, old_names=list(), expandable=True),
+        ResultsProperty(name='rates', tpe=Vec, old_names=list(), expandable=False),
+        ResultsProperty(name='contingency_rates', tpe=Vec, old_names=list(), expandable=False),
         ResultsProperty(name='alpha', tpe=CxMat, old_names=list(), expandable=True),
         ResultsProperty(name='monitor_logic', tpe=ObjMat, old_names=list(), expandable=True),
         ResultsProperty(name='hvdc_Pf', tpe=Mat, old_names=list(), expandable=True),
@@ -52,10 +53,16 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
         ResultsProperty(name='inter_space_branches', tpe=list, old_names=list(), expandable=False),
         ResultsProperty(name='inter_space_hvdc', tpe=list, old_names=list(), expandable=False),
         ResultsProperty(name='inter_space_vsc', tpe=list, old_names=list(), expandable=False),
-        ResultsProperty(name='converged', tpe=BoolVec, old_names=list(), expandable=False),
+        ResultsProperty(name='converged', tpe=BoolVec, old_names=list(), expandable=True),
         ResultsProperty(name='inter_area_flows', tpe=Vec, old_names=list(), expandable=True),
         ResultsProperty(name='contingency_flows_list', tpe=list, old_names=list(), expandable=False),
         ResultsProperty(name='strict_formulation', tpe=bool, old_names=list(), expandable=False),
+        ResultsProperty(name='contingency_group_device_names', tpe=ObjVec, old_names=list(), expandable=False),
+        ResultsProperty(name='worst_contingency_idx', tpe=IntMat, old_names=list(), expandable=True),
+        ResultsProperty(name='worst_contingency_flow', tpe=Mat, old_names=list(), expandable=True),
+        ResultsProperty(name='worst_contingency_loading', tpe=Mat, old_names=list(), expandable=True),
+        ResultsProperty(name='alpha_n1_worst', tpe=Mat, old_names=list(), expandable=True),
+        ResultsProperty(name='loading_threshold_to_report', tpe=float, old_names=list(), expandable=False),
     )
 
     __slots__ = (
@@ -96,6 +103,12 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
         "strict_formulation",
         "converged",
         "inter_area_flows",
+        "contingency_group_device_names",
+        "worst_contingency_idx",
+        "worst_contingency_flow",
+        "worst_contingency_loading",
+        "alpha_n1_worst",
+        "loading_threshold_to_report",
     )
 
     def __init__(self,
@@ -135,6 +148,7 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
                     ResultTypes.BranchTapAngle,
                     ResultTypes.BranchMonitoring,
                     ResultTypes.AvailableTransferCapacityAlpha,
+                    ResultTypes.AvailableTransferCapacityAlphaN1,
                 ],
                 ResultTypes.HvdcResults: [
                     ResultTypes.HvdcPowerFrom,
@@ -145,6 +159,8 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
                 ],
                 ResultTypes.FlowReports: [
                     ResultTypes.NetTransferCapacity,
+                    ResultTypes.NetTransferCapacitySlack,
+                    ResultTypes.NetTransferCapacityStatus,
                     ResultTypes.ContingencyFlowsReport,
                     ResultTypes.InterSpaceBranchPower,
                     ResultTypes.InterSpaceBranchLoading,
@@ -214,6 +230,91 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
         self.converged = np.zeros(nt, dtype=bool)
         self.inter_area_flows = np.zeros(nt, dtype=float)
 
+        n_g: int = len(contingency_group_names)
+        self.contingency_group_device_names = np.empty(n_g, dtype=object)
+        for i_g in range(n_g):
+            self.contingency_group_device_names[i_g] = ""
+        self.worst_contingency_idx = np.full((nt, m), -1, dtype=int)
+        self.worst_contingency_flow = np.zeros((nt, m), dtype=float)
+        self.loading_threshold_to_report: float = 98.0
+        self.worst_contingency_loading = np.zeros((nt, m), dtype=float)
+        self.alpha_n1_worst = np.zeros((nt, m), dtype=float)
+
+    def get_total_slack_mw(self) -> Vec:
+        """
+        Total limit-relaxation slack of each time step in MW.
+
+        Base-case overload slacks plus post-contingency relaxation slacks.
+        Strict runs have no flow slacks, so the result is zero per hour.
+
+        :return: slack per time step in MW
+        """
+        total: Vec = np.sum(np.abs(self.overloads), axis=1).astype(float)
+        n_total: int = int(total.shape[0])
+
+        if self.strict_formulation:
+            return total
+        else:
+            n_clustered: int = 0
+            for item in self.contingency_flows_list:
+                t_probe: int = int(item[0])
+                if t_probe + 1 > n_clustered:
+                    n_clustered = t_probe + 1
+                else:
+                    pass
+
+            if n_clustered == 0:
+                return total
+            else:
+                con_slack: Vec = np.zeros(n_clustered, dtype=float)
+                for item in self.contingency_flows_list:
+                    t_i, m_i, c_i, flow_i, neg_i, pos_i = item
+                    t_int: int = int(t_i)
+                    if isinstance(neg_i, float) and isinstance(pos_i, float) and 0 <= t_int < n_clustered:
+                        con_slack[t_int] = con_slack[t_int] + abs(neg_i) + abs(pos_i)
+                    else:
+                        pass
+
+                sample_idx: IntVec | None = self.original_sample_idx
+                if n_clustered == n_total:
+                    total = total + con_slack
+                elif sample_idx is not None and int(sample_idx.shape[0]) == n_total:
+                    h: int
+                    for h in range(n_total):
+                        cluster_t: int = int(sample_idx[h])
+                        if 0 <= cluster_t < n_clustered:
+                            total[h] = total[h] + con_slack[cluster_t]
+                        else:
+                            pass
+                else:
+                    pass
+
+                return total
+
+    def get_solution_states(self, slack_tol_mw: float = 0.1) -> List[SolutionState]:
+        """
+        Classify each time step as Optimal, Relaxed, or NotOptimal.
+
+        Optimal: the solver converged and total slack is within tolerance.
+        Relaxed: the solver converged, but only by relaxing limits.
+        NotOptimal: the solver did not reach optimality.
+
+        :param slack_tol_mw: total slack below which the hour counts as clean
+        :return: one solution state per time step
+        """
+        slacks: Vec = self.get_total_slack_mw()
+        n_time: int = len(self.converged)
+        states: List[SolutionState] = list()
+        t: int
+        for t in range(n_time):
+            if bool(self.converged[t]):
+                if slacks[t] <= slack_tol_mw:
+                    states.append(SolutionState.Optimal)
+                else:
+                    states.append(SolutionState.Relaxed)
+            else:
+                states.append(SolutionState.NotOptimal)
+        return states
 
     def mdl(self, result_type) -> ResultsTable:
         """
@@ -345,6 +446,19 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
                 idx_device_type=DeviceType.BranchDevice
             )
 
+        elif result_type == ResultTypes.AvailableTransferCapacityAlphaN1:
+            return ResultsTable(
+                data=self.alpha_n1_worst,
+                index=self.time_array,
+                columns=self.branch_names,
+                title=str(result_type.value),
+                ylabel='(p.u.)',
+                xlabel='',
+                units='',
+                cols_device_type=DeviceType.NoDevice,
+                idx_device_type=DeviceType.BranchDevice
+            )
+
         elif result_type == ResultTypes.InterSpaceBranchPower:
 
             nt = len(self.time_array)
@@ -422,7 +536,6 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
             )
 
         elif result_type == ResultTypes.NetTransferCapacity:
-            # achieved inter area exchange per time step
             return ResultsTable(
                 data=self.inter_area_flows.reshape(-1, 1),
                 index=self.time_array,
@@ -433,39 +546,52 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
                 idx_device_type=DeviceType.NoDevice
             )
 
-        elif result_type == ResultTypes.ContingencyFlowsReport:
-            data = list()
-            cols = list()
-            columns = ['Time index', 'Monitored index', 'Contingency group index',
-                       'Time array', 'Contingency branch', 'Contingency group',
-                       'Flow (MW)', 'Loading (%)']
-            for entry in self.contingency_flows_list:
-                # The strict formulation stores (t, m, c, flow) with no slacks,
-                # while the non-strict one stores (t, m, c, flow, neg_slack, pos_slack).
-                if self.strict_formulation:
-                    t, m, c, contingency = entry
-                    flow_c = contingency
-                else:
-                    t, m, c, contingency, negative_slack, positive_slack = entry
-                    flow_c = contingency - negative_slack + positive_slack
-                cols.append("")
-                loading_c = abs(flow_c) / self.contingency_rates[m] * 100
-                data.append([
-                    t, m, c, str(self.time_array[t]), self.branch_names[m], self.contingency_group_names[c],
-                    np.round(flow_c, 4),
-                    np.round(loading_c, 4)
-                ])
-
+        elif result_type == ResultTypes.NetTransferCapacitySlack:
+            slacks: Vec = self.get_total_slack_mw()
             return ResultsTable(
-                data=np.array(data, dtype=object),
-                index=np.array(cols),
-                columns=columns,
+                data=slacks.reshape(-1, 1),
+                index=self.time_array,
+                columns=np.array(['Total slack (MW)']),
                 title=str(result_type.value),
-                ylabel='',
-                xlabel='',
-                units='',
+                ylabel='(MW)',
                 cols_device_type=DeviceType.NoDevice,
                 idx_device_type=DeviceType.NoDevice
+            )
+
+        elif result_type == ResultTypes.NetTransferCapacityStatus:
+            # enum quality of each hour, kept off the float table
+            states: List[SolutionState] = self.get_solution_states()
+            n_time: int = len(states)
+            data: np.ndarray = np.empty((n_time, 1), dtype=object)
+            t: int
+            for t in range(n_time):
+                data[t, 0] = states[t]
+            return ResultsTable(
+                data=data,
+                index=self.time_array,
+                columns=np.array(['Status']),
+                title=str(result_type.value),
+                ylabel='',
+                cols_device_type=DeviceType.NoDevice,
+                idx_device_type=DeviceType.NoDevice
+            )
+
+        elif result_type == ResultTypes.ContingencyFlowsReport:
+            return worst_contingency_report_table(
+                time_array=self.time_array,
+                branch_names=self.branch_names,
+                group_names=self.contingency_group_names,
+                group_device_names=self.contingency_group_device_names,
+                worst_idx=self.worst_contingency_idx,
+                worst_flow=self.worst_contingency_flow,
+                worst_loading=self.worst_contingency_loading,
+                alpha=self.alpha,
+                alpha_n1=self.alpha_n1_worst,
+                monitor_logic=self.monitor_logic,
+                flow_n=np.real(self.Sf),
+                ntc=self.inter_area_flows,
+                contingency_rates=self.contingency_rates,
+                loading_threshold_pct=self.loading_threshold_to_report
             )
 
         else:

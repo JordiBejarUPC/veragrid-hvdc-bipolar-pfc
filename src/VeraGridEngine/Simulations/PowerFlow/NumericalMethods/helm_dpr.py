@@ -343,19 +343,35 @@ def dpr_power_mismatch(Ybus: CscMat,
     :return: Power-flow mismatch norm.
     """
 
-    Scalc: CxVec = cf.compute_power(Ybus, V)
-    q_idx: IntVec = np.r_[pq, pqv]
+    if dpr_voltage_is_valid(V=V):
+        Scalc: CxVec = cf.compute_power(Ybus, V)
+        q_idx: IntVec = np.r_[pq, pqv]
 
-    # The mismatch must match the algebraic model solved by the coefficient matrix:
-    # active power at every non-slack bus, reactive power at PQ/PVQ buses, and PVQ voltage magnitude constraints.
-    fx: np.ndarray = np.r_[
-        (Scalc - S0)[no_slack].real,
-        (Scalc - S0)[q_idx].imag,
-        np.abs(V[pqv]) - np.abs(Vset[pqv])
-    ]
-    norm_f: float = float(cf.compute_fx_error(fx))
+        # The mismatch must match the algebraic model solved by the coefficient matrix:
+        # active power at every non-slack bus, reactive power at PQ/PVQ buses, and PVQ voltage magnitude constraints.
+        fx: np.ndarray = np.r_[
+            (Scalc - S0)[no_slack].real,
+            (Scalc - S0)[q_idx].imag,
+            np.abs(V[pqv]) - np.abs(Vset[pqv])
+        ]
+        norm_f: float = float(cf.compute_fx_error(fx))
+    else:
+        norm_f = np.inf
 
     return norm_f
+
+
+def dpr_voltage_is_valid(V: CxVec) -> bool:
+    """
+    Check that a DPR voltage candidate is numerically usable.
+
+    :param V: Full voltage vector candidate.
+    :return: True if the voltage can safely be used in sparse nonlinear calculations.
+    """
+
+    valid: bool = bool(np.all(np.isfinite(V)) and np.all(np.abs(V) < 1.0e6))
+
+    return valid
 
 
 def dpr_angle_guard(V: CxVec, sl: IntVec, no_slack: IntVec) -> bool:
@@ -624,7 +640,9 @@ def dpr_select_candidate(Ybus: CscMat,
                                                     pq=pq,
                                                     pqv=pqv,
                                                     Vset=Vset)
-            scaled_ok: bool = bool(np.isfinite(scaled_norm) and dpr_angle_guard(Vscaled, sl, no_slack))
+            scaled_ok: bool = bool(np.isfinite(scaled_norm)
+                                   and dpr_voltage_is_valid(V=Vscaled)
+                                   and dpr_angle_guard(Vscaled, sl, no_slack))
 
             if scaled_ok and scaled_norm < candidate_norm:
                 Vcandidate = Vscaled

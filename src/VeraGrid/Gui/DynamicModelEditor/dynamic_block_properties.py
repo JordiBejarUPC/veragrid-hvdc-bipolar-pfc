@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import ast
+import keyword
 from enum import Enum
 from io import StringIO
 import re
@@ -492,6 +493,17 @@ class BlockStructuralSettingsModel(QtCore.QAbstractTableModel):
         super().__init__(parent)
         self._properties: List[TemplateProp] = list(properties)
         self._original_values: List[str] = [repr(prop.value) for prop in self._properties]
+
+    def reload(self, properties: Sequence[TemplateProp]) -> None:
+        """Refresh builder values and their clean baseline after a successful Apply.
+
+        :param properties: Current general or special properties of the builder.
+        :return: None.
+        """
+        self.beginResetModel()
+        self._properties = list(properties)
+        self._original_values = list(repr(prop.value) for prop in self._properties)
+        self.endResetModel()
 
     def rowCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
         """
@@ -1057,6 +1069,39 @@ class BlockSymbolDraftRow:
         else:
             return 0.0
 
+    def get_value_text(self) -> str:
+        """Return the unapplied parameter expression.
+
+        :return: Text supplied when adding or editing this symbol.
+        """
+        return self._value_text
+
+    def set_value_text(self, value: str) -> None:
+        """Stage parameter text without changing the underlying block.
+
+        :param value: Numeric or symbolic initialization expression.
+        :return: None.
+        """
+        self._value_text = value
+
+    def parse_dynamic_expression(self, namespace: Mapping[str, Expr]) -> Expr:
+        """Validate a new dynamic parameter with the existing expression parser.
+
+        :param namespace: Complete draft or applied symbol identities.
+        :return: Scalar numeric or symbolic initialization expression.
+        :raises ValueError: If the parameter identity or expression is invalid.
+        """
+        variable: Expr | None = namespace.get(self._name, None)
+        if not isinstance(variable, Var):
+            raise ValueError(f"Unknown dynamic parameter '{self._name}'")
+        else:
+            draft: ParameterDraftRow = ParameterDraftRow(
+                category="Dynamic parameter", owner=self._owner, variable=variable,
+                expression=Const(0.0), kind=BlockSymbolKind.EVENT_PARAMETER,
+            )
+            draft.set_draft_text(self._value_text)
+            return draft.parse_event_expression(namespace)
+
 
 def get_symbol_kind(block: Block, variable: Var) -> BlockSymbolKind:
     """
@@ -1227,6 +1272,13 @@ class BlockSymbolDraftModel(QtCore.QAbstractTableModel):
                     owner,
                     variable,
                 )
+                # Composite blocks may expose a child's static parameter only
+                # through api_obj_mapping. It is still a parameter, not an
+                # output-only variable, and must keep its static mapping editor.
+                if static_reference is not None and kind == BlockSymbolKind.OUTPUT_ONLY:
+                    kind = BlockSymbolKind.PARAMETER
+                else:
+                    pass
                 self._rows.append(
                     BlockSymbolDraftRow(
                         owner,
@@ -1629,12 +1681,34 @@ class BlockSymbolDraftModel(QtCore.QAbstractTableModel):
                 names_seen.add(name)
             else:
                 pass
-            if row.is_new() and row.kind_supports_value():
+            if row.is_new() and row.kind_supports_value() and row.get_kind() != BlockSymbolKind.EVENT_PARAMETER:
                 row.parse_value()
             else:
                 pass
+        # New expressions can reference symbols added later in the form, so
+        # parse them only once every temporary identity is in the namespace.
+        self.get_new_event_expressions(namespace)
         self._validate_unique_mappings()
         return namespace
+
+    def get_new_event_expressions(self, namespace: Mapping[str, Expr]) -> List[tuple[Block, Var, Expr]]:
+        """Include new dynamic parameters in pre-Apply dependency validation.
+
+        :param namespace: Complete namespace including pending symbols.
+        :return: New owner, parameter and parsed-expression triples.
+        """
+        expressions: List[tuple[Block, Var, Expr]] = list()
+        row: BlockSymbolDraftRow
+        for row in self._rows:
+            if row.is_new() and row.get_kind() == BlockSymbolKind.EVENT_PARAMETER:
+                variable: Expr | None = namespace.get(row.get_name(), None)
+                if isinstance(variable, Var):
+                    expressions.append((row.get_owner(), variable, row.parse_dynamic_expression(namespace)))
+                else:
+                    pass
+            else:
+                pass
+        return expressions
 
     def _validate_unique_mappings(self) -> None:
         """
@@ -1692,10 +1766,16 @@ class BlockSymbolDraftModel(QtCore.QAbstractTableModel):
             else:
                 pass
 
+        new_event_rows: List[BlockSymbolDraftRow] = list()
         row: BlockSymbolDraftRow
         for row in self._rows:
             variable: Var | None = row.get_variable()
             if variable is None:
+                if row.get_kind() == BlockSymbolKind.EVENT_PARAMETER:
+                    new_event_rows.append(row)
+                    initial_value: float = 0.0
+                else:
+                    initial_value = row.parse_value()
                 if row.get_kind() == BlockSymbolKind.DIFFERENTIAL:
                     derivative_base_row: BlockSymbolDraftRow | None = row.get_derivative_base_row()
                     if derivative_base_row is not None:
@@ -1712,7 +1792,7 @@ class BlockSymbolDraftModel(QtCore.QAbstractTableModel):
                 # before continuing so a derivative can preserve ``base_var``.
                 row.set_variable(variable)
                 reclassify_block_symbol(
-                    row.get_owner(), variable, row.get_kind(), row.parse_value(), var_factory
+                    row.get_owner(), variable, row.get_kind(), initial_value, var_factory
                 )
             else:
                 if row.get_kind() != row.get_original_kind():
@@ -1728,6 +1808,22 @@ class BlockSymbolDraftModel(QtCore.QAbstractTableModel):
             else:
                 pass
             apply_symbol_mapping(row.get_owner(), variable, row)
+
+        # All new identities now exist. Rebind expressions to those exact
+        # Vars rather than retaining the temporary validation namespace.
+        applied_namespace: Dict[str, Expr] = dict()
+        for row in self._rows:
+            variable = row.get_variable()
+            if variable is not None:
+                applied_namespace[row.get_name()] = variable
+            else:
+                pass
+        for row in new_event_rows:
+            variable = row.get_variable()
+            if variable is not None:
+                row.get_owner().event_dict[variable] = row.parse_dynamic_expression(applied_namespace)
+            else:
+                pass
 
     def has_new_symbols(self) -> bool:
         """
@@ -2063,140 +2159,6 @@ def build_reclassified_constant(previous_constant: Const | None,
         return var_factory.add_const(value=numeric_value, name=name)
 
 
-class SymbolKindDelegate(QtWidgets.QStyledItemDelegate):
-    """Combo-box delegate for the finite set of symbol primary roles."""
-
-    __slots__ = ()
-
-    def createEditor(self,
-                     parent: QtWidgets.QWidget,
-                     option: QtWidgets.QStyleOptionViewItem,
-                     index: QtCore.QModelIndex) -> QtWidgets.QWidget:
-        """
-        Create a role combo box for one symbol row.
-
-        :param parent: Owning Qt widget.
-        :param option: Value supplied for ``option``.
-        :param index: Value supplied for ``index``.
-        :return: Role combo-box editor for the requested symbol row.
-        """
-        _unused_option: QtWidgets.QStyleOptionViewItem = option
-        _unused_index: QtCore.QModelIndex = index
-        combo: QtWidgets.QComboBox = QtWidgets.QComboBox(parent)
-        kind: BlockSymbolKind
-        for kind in BlockSymbolKind:
-            combo.addItem(kind.value)
-        return combo
-
-    def setEditorData(self, editor: QtWidgets.QWidget, index: QtCore.QModelIndex) -> None:
-        """
-        Select the row's current role in the combo editor.
-
-        :param editor: Value supplied for ``editor``.
-        :param index: Value supplied for ``index``.
-        :return: None.
-        """
-        if isinstance(editor, QtWidgets.QComboBox):
-            current_text: str = str(index.data(Qt.ItemDataRole.EditRole))
-            editor.setCurrentText(current_text)
-        else:
-            pass
-
-    def setModelData(self,
-                     editor: QtWidgets.QWidget,
-                     model: QtCore.QAbstractItemModel,
-                     index: QtCore.QModelIndex) -> None:
-        """
-        Commit the selected enum label to the draft model.
-
-        :param editor: Value supplied for ``editor``.
-        :param model: Value supplied for ``model``.
-        :param index: Value supplied for ``index``.
-        :return: None.
-        """
-        if isinstance(editor, QtWidgets.QComboBox):
-            model.setData(index, editor.currentText(), Qt.ItemDataRole.EditRole)
-        else:
-            pass
-
-
-class SymbolMappingDelegate(QtWidgets.QStyledItemDelegate):
-    """Typed combo delegate for power-flow and device-static mappings."""
-
-    __slots__ = ()
-
-    def createEditor(self,
-                     parent: QtWidgets.QWidget,
-                     option: QtWidgets.QStyleOptionViewItem,
-                     index: QtCore.QModelIndex) -> QtWidgets.QWidget:
-        """Create a mapping combo appropriate for the source symbol kind.
-
-        :param parent: Owning table viewport.
-        :param option: Qt style information.
-        :param index: Proxy-model mapping cell.
-        :return: Typed mapping combo.
-        """
-        _unused_option: QtWidgets.QStyleOptionViewItem = option
-        combo: QtWidgets.QComboBox = QtWidgets.QComboBox(parent)
-        combo.setEditable(True)
-        combo.addItem("None")
-        proxy_model: QtCore.QAbstractItemModel | None = index.model()
-        row: BlockSymbolDraftRow | None = None
-        if isinstance(proxy_model, BlockSymbolFilterProxyModel):
-            source_index: QtCore.QModelIndex = proxy_model.mapToSource(index)
-            source_model: QtCore.QAbstractItemModel | None = proxy_model.sourceModel()
-            if isinstance(source_model, BlockSymbolDraftModel):
-                row = source_model.get_row(source_index.row())
-            else:
-                pass
-        else:
-            pass
-
-        if row is not None and row.supports_external_reference():
-            external_reference: VarPowerFlowReferenceType
-            for external_reference in VarPowerFlowReferenceType:
-                combo.addItem(f"VarPowerFlowReferenceType.{external_reference.name}")
-        elif row is not None and row.supports_static_reference():
-            static_reference: ParamPowerFlowReferenceType
-            for static_reference in ParamPowerFlowReferenceType:
-                combo.addItem(f"ParamPowerFlowReferenceType.{static_reference.name}")
-        else:
-            pass
-        return combo
-
-    def setEditorData(self, editor: QtWidgets.QWidget, index: QtCore.QModelIndex) -> None:
-        """Select the currently staged mapping label.
-
-        :param editor: Mapping combo created for the cell.
-        :param index: Edited proxy-model index.
-        :return: None.
-        """
-        if isinstance(editor, QtWidgets.QComboBox):
-            current_text: str = str(index.data(Qt.ItemDataRole.EditRole))
-            if len(current_text) == 0:
-                editor.setCurrentText("None")
-            else:
-                editor.setCurrentText(current_text)
-        else:
-            pass
-
-    def setModelData(self,
-                     editor: QtWidgets.QWidget,
-                     model: QtCore.QAbstractItemModel,
-                     index: QtCore.QModelIndex) -> None:
-        """Commit one selected typed mapping to the proxy model.
-
-        :param editor: Active mapping combo.
-        :param model: Variable or parameter proxy model.
-        :param index: Edited mapping cell.
-        :return: None.
-        """
-        if isinstance(editor, QtWidgets.QComboBox):
-            model.setData(index, editor.currentText(), Qt.ItemDataRole.EditRole)
-        else:
-            pass
-
-
 class BlockParameterDraftModel(QtCore.QAbstractTableModel):
     """Stage dynamic-parameter expressions from ``event_dict`` until Apply.
 
@@ -2248,6 +2210,41 @@ class BlockParameterDraftModel(QtCore.QAbstractTableModel):
         self._rows.clear()
         self._load_rows(block)
         self.endResetModel()
+
+    def find_value_index(self, owner: Block, variable: Var | None) -> QtCore.QModelIndex:
+        """Resolve a symbol to its existing expression draft by identity.
+
+        :param owner: Block owning the parameter, including composite exposures.
+        :param variable: Existing symbolic identity, or None for a pending symbol.
+        :return: Value cell, or an invalid index for a newly added parameter.
+        """
+        row_index: int
+        row: ParameterDraftRow
+        for row_index, row in enumerate(self._rows):
+            if row.get_owner() is owner and row.get_variable() is variable:
+                return self.index(row_index, 2)
+            else:
+                pass
+        return QtCore.QModelIndex()
+
+    def rename_draft_identifiers(self, renames: Sequence[tuple[str, str]]) -> None:
+        """Keep edited expressions aligned with the editor-owned symbol rename.
+
+        :param renames: Old and new identifier pairs propagated by the editor.
+        :return: None.
+        """
+        row_index: int
+        row: ParameterDraftRow
+        for row_index, row in enumerate(self._rows):
+            updated_text: str = row.get_draft_text()
+            old_name: str
+            new_name: str
+            for old_name, new_name in renames:
+                updated_text = replace_dae_identifier(updated_text, old_name, new_name)
+            if updated_text != row.get_draft_text():
+                self.setData(self.index(row_index, 2), updated_text)
+            else:
+                pass
 
     def _append_event_parameter_rows(self,
                                      category: str,
@@ -2776,6 +2773,15 @@ class BlockCodeBuffer:
         :return: Whether the user changed this equation buffer.
         """
         return self._code != self._original_code
+
+    def accept_source(self, code: str) -> None:
+        """Keep accepted source text as the baseline for subsequent edits.
+
+        :param code: Validated source, including the user's comments and formatting.
+        :return: None.
+        """
+        self._code = code
+        self._original_code = code
 
 
 class DaeCodeHighlighter(QtGui.QSyntaxHighlighter):
@@ -4487,6 +4493,27 @@ def _get_documentation_relative_path(block_type_name: str, block_name: str) -> s
         return f"library/catalog/typ_{catalogue_type_match.group(1)}.md"
     else:
         pass
+    # Use persisted native types, not editable display names, for the RMS
+    # components, using the same RMS documentation section as other devices.
+    rms_pages: Dict[BlockType, str] = dict((
+        (BlockType.GFL_VSC_HVDC_RMS, "hvdc_vsc_gfl.md"),
+        (BlockType.VSC_PLL_RMS, "vsc_pll.md"),
+        (BlockType.VSC_ELECTRICAL_RMS, "vsc_electrical.md"),
+        (BlockType.VSC_ACTIVE_CONTROL_RMS, "vsc_active_control.md"),
+        (BlockType.VSC_REACTIVE_CONTROL_RMS, "vsc_reactive_control.md"),
+        (BlockType.VSC_CURRENT_LIMITER_RMS, "vsc_current_limiter.md"),
+        (BlockType.VSC_VD_HAT_RMS, "vsc_vd_hat.md"),
+        (BlockType.VSC_VQ_HAT_RMS, "vsc_vq_hat.md"),
+        (BlockType.VSC_DC_LINK_RMS, "vsc_dc_link.md"),
+        (BlockType.VSC_TERMINAL_POWER_RMS, "vsc_terminal_power.md"),
+        (BlockType.DC_LINE_RMS, "dc_line.md"),
+    ))
+    native_type: BlockType | None = BlockType.__members__.get(normalized, None)
+    rms_page: str | None = rms_pages.get(native_type, None) if native_type is not None else None
+    if rms_page is not None:
+        return "RMS/" + rms_page
+    else:
+        pass
     mapping: Dict[str, str] = dict((("GENERIC", "library/generic.md"), ("CONST", "library/constant.md"), ("GAIN", "library/gain.md"), ("ABS", "library/absolute_value.md"), ("SUM", "library/sum.md"), ("PRODUCT", "library/product.md"), ("FROM_GOTO", "library/from_goto.md"), ("LINE_RMS", "RMS/line.md"), ("LOAD_RMS", "RMS/load.md"), ("GENRAW", "RMS/genrou_genrow.md"), ("GENQEC", "RMS/genqec.md"), ("GOV_RMS", "RMS/governor.md"), ("STAB_RMS", "RMS/stabilizer.md"), ("EXCITER_RMS", "RMS/exciter.md"), ("EMT_GENERATOR", "EMT/sauer_pai_generator.md"), ("GOV_EMT", "EMT/governor.md"), ("STAB_EMT", "EMT/stabilizer.md"), ("EXCITER_EMT", "EMT/exciter.md"), ("EMT_PI_LINE", "EMT/pi_line_abc.md"), ("EMT_BERGERON_LINE", "EMT/bergeron_line_abc.md"), ("EMT_JMARTI_LINE", "EMT/jmarti_line.md"), ("EMT_DC_LINE", "EMT/dc_line.md"), ("EXP_LOAD_EMT", "library/exp_load_emt.md"), ("ZIP_LOAD_EMT", "EMT/zip_load_abc.md"), ("DC_LOAD_EMT", "EMT/dc_load.md"), ("EMT_THEVENIN", "EMT/thevenin_generator.md"), ("TRAFO_EMT", "library/trafo_emt.md"), ("XFMR_TRANSFORMER", "library/xfmr_transformer.md"), ("INDUCTION_MOTOR_EMT", "EMT/single_cage_induction_motor.md"), ("PV_POWER_PLANT_EMT", "EMT/pv_plant_grid_following.md"), ("PV_EMT", "EMT/pv_plant_grid_following.md"), ("COMPLETE_PSEUDO_VSC_EMT", "EMT/full_pseudo_converter.md"), ("GFL_CONVERTER_RMS", "RMS/converter.md"), ("BESS_EMT", "EMT/bess.md"), ("BATTERY_EMT", "library/battery_emt.md"), ("VOLTAGE_SOURCE_EMT", "library/voltage_source_emt.md"), ("CURRENT_SOURCE_EMT", "library/current_source_emt.md"), ("CONTROLLED_VOLTAGE_SOURCE_EMT", "library/controlled_voltage_source_emt.md"), ("CONTROLLED_CURRENT_SOURCE_EMT", "library/controlled_current_source_emt.md"), ("ARBITRARY_WAVEFORM_VOLTAGE_SOURCE_EMT", "library/arbitrary_waveform_voltage_source_emt.md"), ("ARBITRARY_WAVEFORM_CURRENT_SOURCE_EMT", "library/arbitrary_waveform_current_source_emt.md"), ("BALANCED_3PH_VOLTAGE_SOURCE_EMT", "library/balanced_3ph_voltage_source_emt.md"), ("BALANCED_3PH_CURRENT_SOURCE_EMT", "library/balanced_3ph_current_source_emt.md"), ("CONTROLLED_BALANCED_3PH_VOLTAGE_SOURCE_EMT", "library/controlled_balanced_3ph_voltage_source_emt.md"), ("CONTROLLED_BALANCED_3PH_CURRENT_SOURCE_EMT", "library/controlled_balanced_3ph_current_source_emt.md"), ("DC_VOLTAGE_SOURCE_EMT", "library/dc_voltage_source_emt.md"), ("DC_CURRENT_SOURCE_EMT", "library/dc_current_source_emt.md"), ("CONTROLLED_DC_VOLTAGE_SOURCE_EMT", "library/controlled_dc_voltage_source_emt.md"), ("CONTROLLED_DC_CURRENT_SOURCE_EMT", "library/controlled_dc_current_source_emt.md"), ("STEP_VOLTAGE_SOURCE_EMT", "library/step_voltage_source_emt.md"), ("STEP_CURRENT_SOURCE_EMT", "library/step_current_source_emt.md"), ("RAMP_VOLTAGE_SOURCE_EMT", "library/ramp_voltage_source_emt.md"), ("RAMP_CURRENT_SOURCE_EMT", "library/ramp_current_source_emt.md"), ("DOUBLE_EXPONENTIAL_CURRENT_SOURCE_EMT", "library/double_exponential_current_source_emt.md"), ("HEIDLER_CURRENT_SOURCE_EMT", "library/heidler_current_source_emt.md"), ("CIGRE_SURGE_CURRENT_SOURCE_EMT", "library/cigre_surge_current_source_emt.md"), ("R_LOAD_EMT", "library/r_load_emt.md"), ("L_LOAD_EMT", "library/l_load_emt.md"), ("C_LOAD_EMT", "library/c_load_emt.md"), ("RLC_COMBO_EMT", "library/rlc_combo_emt.md"), ("GROUND_EMT", "library/ground_emt.md"), ("GROUNDING_LINK_EMT", "library/grounding_link_emt.md"), ("SWITCH_EMT", "library/switch_emt.md"), ("FAULT_EMT", "EMT/fault.md"), ("NONLINEAR_RESISTOR_EMT", "library/nonlinear_resistor_emt.md"), ("INVERSE_LOOKUP_ARRAY", "library/inverse-lookup-array-object-linear.md"), ("LOOKUP_ARRAY_LINEAR", "library/lookup_array.md"), ("LOOKUP_ARRAY_SPLINE", "library/lookup_array.md"), ("LOOKUP_MATRIX_LINEAR", "library/lookup_matrix.md"), ("LOOKUP_MATRIX_SPLINE", "library/lookup_matrix.md"), ("PI_CURRENT_CONTROLLER", "library/pi_current_controller.md"), ("PI_POWER_CONTROLLER", "library/pi_power_controller.md"), ("PLL_TRANSFORM_RMS", "library/pll_transformer.md"),))
     relative_path: str | None = mapping.get(normalized, None)
     if relative_path is not None:
@@ -4578,166 +4605,351 @@ def _get_documentation_relative_path(block_type_name: str, block_name: str) -> s
         return None
 
 
-class TableTextFilterProxyModel(QtCore.QSortFilterProxyModel):
-    """Filter a flat table by visible text in any column."""
+class BlockPropertyTreeModel(QtGui.QStandardItemModel):
+    """Present structural and symbol drafts in a single owner-grouped tree.
 
-    __slots__ = ("_search_text",)
+    Leaf items store persistent source indexes, not copies of editable values.
+    All reads and writes therefore use the existing validation/apply models.
+    """
 
-    def __init__(self, parent: QtCore.QObject | None = None) -> None:
-        """Create an initially unfiltered table proxy.
+    aboutToRebuild = Signal()
+    rebuilt = Signal()
+    pendingNameChanged = Signal(str, str)
+    __slots__ = ("_root_block", "_symbols", "_parameters", "_structure")
 
-        :param parent: Owning Qt object.
-        :return: None.
-        """
-        super().__init__(parent)
-        self._search_text: str = ""
-
-    def set_search_text(self, search_text: str) -> None:
-        """Set the case-insensitive text required in a visible row.
-
-        :param search_text: User-entered table query.
-        :return: None.
-        """
-        self._search_text = search_text.strip().lower()
-        self.beginFilterChange()
-        self.endFilterChange(QtCore.QSortFilterProxyModel.Direction.Rows)
-
-    def filterAcceptsRow(self,
-                         source_row: int,
-                         source_parent: QtCore.QModelIndex) -> bool:
-        """Return whether any source cell contains the current query.
-
-        :param source_row: Candidate source row.
-        :param source_parent: Candidate source parent.
-        :return: Whether the row matches the query.
-        """
-        source_model: QtCore.QAbstractItemModel | None = self.sourceModel()
-        if len(self._search_text) == 0:
-            return True
-        elif source_model is None:
-            return False
-        else:
-            pass
-
-        matches: bool = False
-        column: int
-        for column in range(source_model.columnCount(source_parent)):
-            cell_index: QtCore.QModelIndex = source_model.index(source_row, column, source_parent)
-            cell_value: object = source_model.data(cell_index, Qt.ItemDataRole.DisplayRole)
-            if self._search_text in str(cell_value).lower():
-                matches = True
-            else:
-                pass
-        return matches
-
-
-class BlockSymbolFilterProxyModel(QtCore.QSortFilterProxyModel):
-    """Filter the shared symbol draft into variables or parameters."""
-
-    __slots__ = ("_category", "_search_text")
-
-    def __init__(self,
-                 category: BlockSymbolCategory,
+    def __init__(self, root: Block, symbols: BlockSymbolDraftModel,
+                 parameters: BlockParameterDraftModel, structure: BlockStructuralSettingsModel,
                  parent: QtCore.QObject | None = None) -> None:
-        """Create one category-specific symbol proxy.
+        """Connect the hierarchy to the existing staged models.
 
-        :param category: Visible symbol category.
+        :param root: Block whose recursive owners are displayed.
+        :param symbols: Authoritative symbol draft used by Apply.
+        :param parameters: Existing dynamic-parameter expression drafts.
+        :param structure: General structural settings, excluding special settings.
         :param parent: Owning Qt object.
         :return: None.
         """
         super().__init__(parent)
-        self._category: BlockSymbolCategory = category
-        self._search_text: str = ""
+        self._root_block: Block = root
+        self._symbols: BlockSymbolDraftModel = symbols
+        self._parameters: BlockParameterDraftModel = parameters
+        self._structure: BlockStructuralSettingsModel = structure
+        self._symbols.rowsInserted.connect(self.rebuild)
+        self._symbols.rowsRemoved.connect(self.rebuild)
+        self._symbols.modelReset.connect(self.rebuild)
+        self._parameters.modelReset.connect(self.refresh_values)
+        self._symbols.dataChanged.connect(self.refresh_values)
+        self._parameters.dataChanged.connect(self.refresh_values)
+        self._structure.dataChanged.connect(self.refresh_values)
+        self.rebuild()
 
-    def set_search_text(self, search_text: str) -> None:
-        """Set the case-insensitive text required in a symbol row.
+    def append_source_row(self, parent_item: QtGui.QStandardItem,
+                          source_index: QtCore.QModelIndex) -> None:
+        """Attach an unpopulated display row referencing an existing draft.
 
-        :param search_text: User-entered table query.
+        :param parent_item: Owner or structural group receiving the leaf.
+        :param source_index: First-column index in the backing draft model.
         :return: None.
         """
-        self._search_text = search_text.strip().lower()
-        self.beginFilterChange()
-        self.endFilterChange(QtCore.QSortFilterProxyModel.Direction.Rows)
+        items: List[QtGui.QStandardItem] = list(QtGui.QStandardItem() for _ in range(4))
+        items[0].setData(QtCore.QPersistentModelIndex(source_index), Qt.ItemDataRole.UserRole)
+        parent_item.appendRow(items)
 
-    def filterAcceptsRow(self,
-                         source_row: int,
-                         source_parent: QtCore.QModelIndex) -> bool:
-        """Return whether one source symbol belongs in this category.
+    @QtCore.Slot()
+    def rebuild(self) -> None:
+        """Rebuild owner groups after symbol insertion, removal or rebinding.
 
-        :param source_row: Candidate source row.
-        :param source_parent: Candidate source parent.
-        :return: ``True`` when the symbol belongs in this proxy.
+        :return: None.
         """
-        _unused_source_parent: QtCore.QModelIndex = source_parent
-        source_model: QtCore.QAbstractItemModel | None = self.sourceModel()
-        if isinstance(source_model, BlockSymbolDraftModel):
-            row: BlockSymbolDraftRow | None = source_model.get_row(source_row)
-        else:
-            row = None
-
-        if row is None:
-            return False
-        else:
-            parameter_kinds: set[BlockSymbolKind] = set((BlockSymbolKind.PARAMETER, BlockSymbolKind.EVENT_PARAMETER,))
-            is_runtime_mode: bool = row.get_kind() == BlockSymbolKind.MODE_PARAMETER
-            is_parameter: bool = row.get_kind() in parameter_kinds
-            if is_runtime_mode:
-                category_matches: bool = False
-            elif self._category == BlockSymbolCategory.PARAMETERS:
-                category_matches = is_parameter
-            else:
-                category_matches = not is_parameter
-
-        if not category_matches:
-            return False
-        elif len(self._search_text) == 0:
-            return True
+        # Capture expanded branches before Qt clears the view's index state.
+        self.aboutToRebuild.emit()
+        self.clear()
+        self.setHorizontalHeaderLabels(list(("Name", "Type", "Value / PF reference", "Output")))
+        if self._structure.rowCount() > 0:
+            structure_group: QtGui.QStandardItem = QtGui.QStandardItem(self.tr("General structure"))
+            structure_group.setEditable(False)
+            self.appendRow(structure_group)
+            row_index: int
+            for row_index in range(self._structure.rowCount()):
+                self.append_source_row(structure_group, self._structure.index(row_index, 0))
         else:
             pass
 
-        column: int
-        for column in range(source_model.columnCount(source_parent)):
-            source_index: QtCore.QModelIndex = source_model.index(source_row, column, source_parent)
-            source_value: object = source_model.data(source_index, Qt.ItemDataRole.DisplayRole)
-            if self._search_text in str(source_value).lower():
+        # Retain owners even when empty so users can select where to add the
+        # first parameter or variable. Owner labels match Equation owner.
+        category: BlockSymbolCategory
+        for category in (BlockSymbolCategory.PARAMETERS, BlockSymbolCategory.VARIABLES):
+            category_group: QtGui.QStandardItem = QtGui.QStandardItem(category.value)
+            category_group.setEditable(False)
+            category_group.setData(category, Qt.ItemDataRole.UserRole + 2)
+            self.appendRow(category_group)
+            owner_index: int
+            owner: Block
+            for owner_index, owner in enumerate(self._root_block.get_all_blocks()):
+                owner_item: QtGui.QStandardItem = QtGui.QStandardItem(f"{owner.name} [{owner_index + 1}]")
+                owner_item.setEditable(False)
+                owner_item.setData(owner, Qt.ItemDataRole.UserRole + 1)
+                owner_item.setData(category, Qt.ItemDataRole.UserRole + 2)
+                category_group.appendRow(owner_item)
+                symbol_index: int
+                for symbol_index in range(self._symbols.rowCount()):
+                    row: BlockSymbolDraftRow | None = self._symbols.get_row(symbol_index)
+                    if row is None or row.get_owner() is not owner or row.get_kind() == BlockSymbolKind.MODE_PARAMETER:
+                        pass
+                    else:
+                        is_parameter: bool = row.get_kind() in (
+                            BlockSymbolKind.PARAMETER, BlockSymbolKind.EVENT_PARAMETER,
+                        )
+                        if is_parameter == (category == BlockSymbolCategory.PARAMETERS):
+                            self.append_source_row(owner_item, self._symbols.index(symbol_index, 0))
+                        else:
+                            pass
+        self.rebuilt.emit()
+
+    def source_index(self, index: QtCore.QModelIndex) -> QtCore.QModelIndex:
+        """Resolve a tree leaf without parsing names or owner labels.
+
+        :param index: Tree cell, possibly a category or owner branch.
+        :return: Persistent source row converted to an ordinary model index.
+        """
+        if not index.isValid():
+            return QtCore.QModelIndex()
+        else:
+            stored: object = super().data(index.siblingAtColumn(0), Qt.ItemDataRole.UserRole)
+        if isinstance(stored, QtCore.QPersistentModelIndex) and stored.isValid():
+            return QtCore.QModelIndex(stored)
+        else:
+            return QtCore.QModelIndex()
+
+    def symbol_row(self, index: QtCore.QModelIndex) -> BlockSymbolDraftRow | None:
+        """Return a symbol draft for a leaf, excluding structural rows.
+
+        :param index: Tree cell selected or edited by the user.
+        :return: Existing draft row, or None for a non-symbol node.
+        """
+        source: QtCore.QModelIndex = self.source_index(index)
+        if source.isValid() and source.model() is self._symbols:
+            return self._symbols.get_row(source.row())
+        else:
+            return None
+
+    def data(self, index: QtCore.QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> object:
+        """Read values directly from the underlying drafts.
+
+        :param index: Requested tree cell.
+        :param role: Qt display, edit, tooltip or checkbox role.
+        :return: Source data or the category/owner label.
+        """
+        source: QtCore.QModelIndex = self.source_index(index)
+        if not source.isValid() or role >= Qt.ItemDataRole.UserRole:
+            return super().data(index, role)
+        elif source.model() is self._structure:
+            if index.column() in (0, 2):
+                return self._structure.data(source.siblingAtColumn(index.column() // 2), role)
+            else:
+                return None
+        else:
+            row: BlockSymbolDraftRow | None = self._symbols.get_row(source.row())
+        if row is None:
+            return None
+        elif index.column() != 2:
+            source_columns: tuple[int, ...] = (1, 2, 4, 3)
+            requested_role: int = Qt.ItemDataRole.DisplayRole if role == Qt.ItemDataRole.ToolTipRole else role
+            return self._symbols.data(source.siblingAtColumn(source_columns[index.column()]), requested_role)
+        elif row.get_kind() == BlockSymbolKind.EVENT_PARAMETER:
+            value_index: QtCore.QModelIndex = self._parameters.find_value_index(row.get_owner(), row.get_variable())
+            if value_index.isValid():
+                return self._parameters.data(value_index, role)
+            elif role in (Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.EditRole):
+                return row.get_value_text()
+            else:
+                return None
+        elif row.get_kind() == BlockSymbolKind.PARAMETER and row.get_static_reference() is None:
+            if role == Qt.ItemDataRole.DisplayRole:
+                return self.tr("Missing PF mapping")
+            elif role == Qt.ItemDataRole.ToolTipRole:
+                return self.tr(
+                    "Template issue: static parameters require api_obj_mapping. "
+                    "An independently editable parameter should be in event_dict. "
+                    "This refactor does not migrate templates automatically."
+                )
+            else:
+                return self._symbols.data(source.siblingAtColumn(4), role)
+        elif role == Qt.ItemDataRole.ToolTipRole:
+            return str(self._symbols.data(source.siblingAtColumn(4))) + "\n" + self.tr(
+                "Power-flow reference; variable mappings are used for initialization."
+            )
+        elif role == Qt.ItemDataRole.DisplayRole:
+            reference: ParamPowerFlowReferenceType | VarPowerFlowReferenceType | None = (
+                row.get_static_reference() if row.supports_static_reference() else row.get_external_reference()
+            )
+            if reference is not None:
+                return reference.name
+            else:
+                return self.tr("None")
+        else:
+            return self._symbols.data(source.siblingAtColumn(4), role)
+
+    def flags(self, index: QtCore.QModelIndex) -> Qt.ItemFlag:
+        """Expose only the edits supported by each backing draft.
+
+        :param index: Tree cell queried by the view.
+        :return: Selection, editing and output-checkbox permissions.
+        """
+        source: QtCore.QModelIndex = self.source_index(index)
+        if not source.isValid():
+            return super().flags(index)
+        elif source.model() is self._structure:
+            if index.column() == 2:
+                return self._structure.flags(source.siblingAtColumn(1))
+            else:
+                return Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
+        else:
+            row: BlockSymbolDraftRow | None = self.symbol_row(index)
+        if index.column() == 2 and row is not None and row.get_kind() == BlockSymbolKind.EVENT_PARAMETER:
+            return Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEditable
+        elif index.column() == 1:
+            # Role changes remain in the add-symbol form. Renaming existing
+            # symbols uses the editor-owned request rather than direct writes.
+            return Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
+        else:
+            columns: tuple[int, ...] = (1, 2, 4, 3)
+            return self._symbols.flags(source.siblingAtColumn(columns[index.column()]))
+
+    def setData(self, index: QtCore.QModelIndex, value: object,
+                role: int = Qt.ItemDataRole.EditRole) -> bool:
+        """Forward cell edits to the models used by Validate and Apply.
+
+        :param index: Edited tree cell.
+        :param value: Editor value or checkbox state.
+        :param role: Qt edit role.
+        :return: Whether the backing model accepted the edit.
+        """
+        source: QtCore.QModelIndex = self.source_index(index)
+        if not source.isValid() or role >= Qt.ItemDataRole.UserRole:
+            return super().setData(index, value, role)
+        elif source.model() is self._structure:
+            if index.column() == 2:
+                return self._structure.setData(source.siblingAtColumn(1), value, role)
+            else:
+                return False
+        else:
+            row: BlockSymbolDraftRow | None = self.symbol_row(index)
+        if index.column() == 2 and row is not None and row.get_kind() == BlockSymbolKind.EVENT_PARAMETER:
+            value_index: QtCore.QModelIndex = self._parameters.find_value_index(row.get_owner(), row.get_variable())
+            if value_index.isValid():
+                return self._parameters.setData(value_index, value, role)
+            elif role == Qt.ItemDataRole.EditRole:
+                row.set_value_text(str(value))
+                self.dataChanged.emit(index, index)
                 return True
             else:
-                pass
-        return False
-
-    def headerData(self,
-                   section: int,
-                   orientation: Qt.Orientation,
-                   role: int = Qt.ItemDataRole.DisplayRole) -> object:
-        """Return the mapping title and explanation for this symbol category.
-
-        :param section: Requested proxy column.
-        :param orientation: Header orientation.
-        :param role: Requested Qt data role.
-        :return: Category-specific mapping header or source-model data.
-        """
-        if section == 4 and orientation == Qt.Orientation.Horizontal:
-            if role == Qt.ItemDataRole.DisplayRole:
-                if self._category == BlockSymbolCategory.PARAMETERS:
-                    result: object = self.tr("Static parameter mapping")
-                else:
-                    result = self.tr("Power-flow derived initialization")
-            elif role == Qt.ItemDataRole.ToolTipRole:
-                if self._category == BlockSymbolCategory.PARAMETERS:
-                    result = self.tr(
-                        "Maps a static parameter through ParamPowerFlowReferenceType "
-                        "to block.api_obj_mapping. Dynamic parameters are not editable here."
-                    )
-                else:
-                    result = self.tr(
-                        "Initializes a variable through VarPowerFlowReferenceType "
-                        "and block.external_mapping."
-                    )
-            else:
-                result = super().headerData(section, orientation, role)
+                return False
         else:
-            result = super().headerData(section, orientation, role)
-        return result
+            columns: tuple[int, ...] = (1, 2, 4, 3)
+            if index.column() == 0 and row is not None and row.is_new():
+                old_name: str = row.get_name()
+                new_name: str = str(value).strip()
+                if not new_name.isidentifier() or keyword.iskeyword(new_name):
+                    return False
+                else:
+                    other_index: int
+                    for other_index in range(self._symbols.rowCount()):
+                        other_row: BlockSymbolDraftRow | None = self._symbols.get_row(other_index)
+                        if other_row is not None and other_row is not row and other_row.get_name() == new_name:
+                            return False
+                        else:
+                            pass
+                accepted: bool = self._symbols.setData(source.siblingAtColumn(1), new_name, role)
+                if accepted and old_name != row.get_name():
+                    self.pendingNameChanged.emit(old_name, row.get_name())
+                else:
+                    pass
+                return accepted
+            elif index.column() == 2 and isinstance(value, ParamPowerFlowReferenceType):
+                return self._symbols.setData(source.siblingAtColumn(4), f"ParamPowerFlowReferenceType.{value.name}", role)
+            elif index.column() == 2 and isinstance(value, VarPowerFlowReferenceType):
+                return self._symbols.setData(source.siblingAtColumn(4), f"VarPowerFlowReferenceType.{value.name}", role)
+            elif index.column() == 2 and value is None:
+                return self._symbols.setData(source.siblingAtColumn(4), "None", role)
+            else:
+                return self._symbols.setData(source.siblingAtColumn(columns[index.column()]), value, role)
+
+    @QtCore.Slot()
+    def refresh_values(self) -> None:
+        """Repaint source changes without rebuilding expanded owner branches.
+
+        :return: None.
+        """
+        group_row: int
+        for group_row in range(self.rowCount()):
+            group: QtCore.QModelIndex = self.index(group_row, 0)
+            child_row: int
+            for child_row in range(self.rowCount(group)):
+                child: QtCore.QModelIndex = self.index(child_row, 0, group)
+                self.dataChanged.emit(child, child.siblingAtColumn(3))
+                if self.rowCount(child) > 0:
+                    self.dataChanged.emit(self.index(0, 0, child), self.index(self.rowCount(child) - 1, 3, child))
+                else:
+                    pass
+
+
+class BlockPropertyValueDelegate(StructuralSettingDelegate):
+    """Use existing structural editors and typed power-flow reference combos."""
+
+    __slots__ = ()
+
+    def createEditor(self, parent: QtWidgets.QWidget, option: QtWidgets.QStyleOptionViewItem,
+                     index: QtCore.QModelIndex) -> QtWidgets.QWidget:
+        """Select an expression editor, mapping combo or structural editor.
+
+        :param parent: Owning view viewport.
+        :param option: Native view style options.
+        :param index: Tree value cell.
+        :return: Editor appropriate for the represented property.
+        """
+        model: QtCore.QAbstractItemModel | None = index.model()
+        if isinstance(model, BlockPropertyTreeModel):
+            source: QtCore.QModelIndex = model.source_index(index)
+            row: BlockSymbolDraftRow | None = model.symbol_row(index)
+        else:
+            source = QtCore.QModelIndex()
+            row = None
+        if source.isValid() and isinstance(source.model(), BlockStructuralSettingsModel):
+            return super().createEditor(parent, option, source.siblingAtColumn(1))
+        elif row is None or row.get_kind() == BlockSymbolKind.EVENT_PARAMETER:
+            return QtWidgets.QLineEdit(parent)
+        else:
+            combo: QtWidgets.QComboBox = QtWidgets.QComboBox(parent)
+            combo.addItem(self.tr("None"), None)
+            if row.supports_static_reference():
+                static_reference: ParamPowerFlowReferenceType
+                for static_reference in ParamPowerFlowReferenceType:
+                    combo.addItem(f"ParamPowerFlowReferenceType.{static_reference.name}", static_reference)
+            else:
+                external_reference: VarPowerFlowReferenceType
+                for external_reference in VarPowerFlowReferenceType:
+                    combo.addItem(f"VarPowerFlowReferenceType.{external_reference.name}", external_reference)
+            return combo
+
+    def setModelData(self, editor: QtWidgets.QWidget, model: QtCore.QAbstractItemModel,
+                     index: QtCore.QModelIndex) -> None:
+        """Pass mapping enums independently of their displayed labels.
+
+        :param editor: Active text, mapping or structural editor.
+        :param model: Backing tree model.
+        :param index: Edited value cell.
+        :return: None.
+        """
+        if isinstance(model, BlockPropertyTreeModel) and isinstance(editor, QtWidgets.QComboBox):
+            row: BlockSymbolDraftRow | None = model.symbol_row(index)
+            if row is not None:
+                model.setData(index, editor.currentData(), Qt.ItemDataRole.EditRole)
+            else:
+                super().setModelData(editor, model, index)
+        else:
+            super().setModelData(editor, model, index)
+
 
 class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
     """Property editor content for one Dynamic Model Editor block."""
@@ -4759,17 +4971,16 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         "_special_structural_model",
         "_var_factory",
         "_parameter_model",
-        "_general_parameter_proxy",
-        "_general_parameter_search",
-        "_general_parameter_table",
         "_symbol_model",
+        "_property_tree_model",
+        "_property_tree",
+        "_property_search",
+        "_expanded_property_groups",
+        "_equation_panel",
+        "_equations_button",
+        "_restore_properties_button",
+        "_last_property_width",
         "_runtime_logic_editor",
-        "_variable_symbol_proxy",
-        "_parameter_symbol_proxy",
-        "_symbol_table",
-        "_parameter_symbol_table",
-        "_variable_symbol_search",
-        "_parameter_symbol_search",
         "_new_symbol_owner",
         "_new_symbol_name",
         "_new_symbol_category",
@@ -4797,9 +5008,9 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         "_dae_search_status",
         "_dae_highlighter",
         "_validate_code_button",
-        "_general_options_splitter",
         "_dae_splitter",
-        "_symbol_panel_splitter",
+        "_equation_tools_splitter",
+        "_add_symbol_group",
         "_latex_model",
         "_latex_selection_tree",
         "_latex_select_all_button",
@@ -4865,31 +5076,27 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         )
         self._var_factory: VarFactory = var_factory
         self._parameter_model: BlockParameterDraftModel = BlockParameterDraftModel(block, self)
-        self._general_parameter_proxy: TableTextFilterProxyModel = TableTextFilterProxyModel(self)
-        self._general_parameter_proxy.setSourceModel(self._parameter_model)
-        self._general_parameter_search: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
-        self._general_parameter_search.setClearButtonEnabled(True)
-        self._general_parameter_search.setPlaceholderText(self.tr("Search parameters..."))
-        self._general_parameter_table: QtWidgets.QTableView = QtWidgets.QTableView(self)
         self._symbol_model: BlockSymbolDraftModel = BlockSymbolDraftModel(block, self)
-        self._variable_symbol_proxy: BlockSymbolFilterProxyModel = BlockSymbolFilterProxyModel(
-            BlockSymbolCategory.VARIABLES,
-            self,
+        self._property_tree_model: BlockPropertyTreeModel = BlockPropertyTreeModel(
+            block, self._symbol_model, self._parameter_model, self._general_structural_model, self,
         )
-        self._variable_symbol_proxy.setSourceModel(self._symbol_model)
-        self._parameter_symbol_proxy: BlockSymbolFilterProxyModel = BlockSymbolFilterProxyModel(
-            BlockSymbolCategory.PARAMETERS,
-            self,
-        )
-        self._parameter_symbol_proxy.setSourceModel(self._symbol_model)
-        self._symbol_table: QtWidgets.QTableView = QtWidgets.QTableView(self)
-        self._parameter_symbol_table: QtWidgets.QTableView = QtWidgets.QTableView(self)
-        self._variable_symbol_search: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
-        self._variable_symbol_search.setClearButtonEnabled(True)
-        self._variable_symbol_search.setPlaceholderText(self.tr("Search variables..."))
-        self._parameter_symbol_search: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
-        self._parameter_symbol_search.setClearButtonEnabled(True)
-        self._parameter_symbol_search.setPlaceholderText(self.tr("Search parameters..."))
+        self._property_tree: QtWidgets.QTreeView = QtWidgets.QTreeView(self)
+        self._property_search: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+        self._property_search.setClearButtonEnabled(True)
+        self._property_search.setPlaceholderText(self.tr("Search properties..."))
+        self._expanded_property_groups: set[tuple[str, int | None]] = set()
+        self._equations_button: QtWidgets.QToolButton = QtWidgets.QToolButton(self)
+        # self._equations_button.setText(self.tr("Equations"))
+        self._equations_button.setIcon(QtGui.QIcon(":/Icons/icons/equation.png"))
+        self._equations_button.setIconSize(QtCore.QSize(35, 35))
+        self._equations_button.setFixedSize(40, 40)
+        self._equations_button.setAccessibleName(self.tr("DAE editor"))
+        self._equations_button.setToolTip(self.tr("Show or hide Python code and LaTeX rendering tool"))
+        self._equations_button.setCheckable(True)
+        self._restore_properties_button: QtWidgets.QToolButton = QtWidgets.QToolButton(self)
+        self._restore_properties_button.setText(self.tr("Show properties"))
+        self._restore_properties_button.hide()
+        self._last_property_width: int = 0
         self._new_symbol_owner: QtWidgets.QComboBox = QtWidgets.QComboBox(self)
         self._new_symbol_name: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
         self._new_symbol_category: QtWidgets.QComboBox = QtWidgets.QComboBox(self)
@@ -4958,14 +5165,10 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         )
         self._refresh_dae_language_context()
         self._validate_code_button: QtWidgets.QPushButton = QtWidgets.QPushButton(
-            self.tr("Validate all code"), self
-        )
-        self._general_options_splitter: QtWidgets.QSplitter = QtWidgets.QSplitter(
-            Qt.Orientation.Vertical,
-            self,
+            self.tr("Validate model"), self
         )
         self._dae_splitter: QtWidgets.QSplitter = QtWidgets.QSplitter(Qt.Orientation.Horizontal, self)
-        self._symbol_panel_splitter: QtWidgets.QSplitter = QtWidgets.QSplitter(
+        self._equation_tools_splitter: QtWidgets.QSplitter = QtWidgets.QSplitter(
             Qt.Orientation.Vertical,
             self,
         )
@@ -5021,12 +5224,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             self._prepared_to_delete = True
             self._runtime_logic_editor.prepare_to_delete()
             self._dae_editor.prepare_to_delete()
-            self._general_parameter_table.setModel(None)
-            self._symbol_table.setModel(None)
-            self._parameter_symbol_table.setModel(None)
-            self._general_parameter_proxy.setSourceModel(None)
-            self._variable_symbol_proxy.setSourceModel(None)
-            self._parameter_symbol_proxy.setSourceModel(None)
+            self._property_tree.setModel(None)
             self._dae_highlighter.setDocument(None)
             self._latex_selection_tree.clear()
             self._equation_owner_combo.clear()
@@ -5094,42 +5292,30 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self.setModal(True)
 
         general_page: QtWidgets.QWidget = self._build_general_page()
-        dae_page: QtWidgets.QWidget = self._build_dae_page()
-        runtime_page: QtWidgets.QWidget = self._runtime_logic_editor
         general_index: int = self._tabs.addTab(general_page, self.tr("General options"))
-        dae_index: int = self._tabs.addTab(dae_page, self.tr("DAE model"))
-        runtime_index: int = self._tabs.addTab(runtime_page, self.tr("Runtime logic"))
         self._tabs.setTabIcon(general_index, QtGui.QIcon(":/Icons/icons/gear.png"))
-        self._tabs.setTabIcon(dae_index, QtGui.QIcon(":/Icons/icons/edit.png"))
-        self._tabs.setTabIcon(runtime_index, QtGui.QIcon())
+        # Keep runtime data and validation, but defer its UI to a later change.
+        self._runtime_logic_editor.hide()
         if self._special_structural_model.rowCount() > 0:
             special_page: QtWidgets.QWidget = self._build_special_settings_page()
-            special_index: int = self._tabs.addTab(special_page, self.tr("Special settings"))
-            self._tabs.setTabIcon(special_index, QtGui.QIcon(":/Icons/icons/gear.png"))
+            special_index: int = self._tabs.addTab(special_page, self.tr("Special configuration"))
+            self._tabs.setTabIcon(special_index, QtGui.QIcon(":/Icons/icons/edit.png"))
         else:
             pass
 
     def _build_general_page(self) -> QtWidgets.QWidget:
-        """
-        Build block identity, configuration, and numeric parameter controls.
+        """Compose compact properties and independently collapsible equation tools.
 
-        :return: Page containing block identity, configuration, and numeric parameter controls.
+        :return: General options page with the existing add-symbol form.
         """
         page: QtWidgets.QWidget = QtWidgets.QWidget(self)
         layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(page)
+        layout.setContentsMargins(6, 6, 6, 6)
         identity_group: QtWidgets.QGroupBox = QtWidgets.QGroupBox(
-            self.tr("Block configuration"),
-            self._general_options_splitter,
+            self.tr("Block configuration"), page,
         )
         identity_layout: QtWidgets.QFormLayout = QtWidgets.QFormLayout(identity_group)
-        identity_layout.addRow(self.tr("Name"), QtWidgets.QLabel(self._block.name, identity_group))
-        identity_layout.addRow(self.tr("Catalogue type"), QtWidgets.QLabel(self._block_type_name, identity_group))
-        identity_layout.addRow(self.tr("Inputs"), QtWidgets.QLabel(str(len(self._block.in_vars)), identity_group))
-        identity_layout.addRow(self.tr("Outputs"), QtWidgets.QLabel(str(len(self._block.out_vars)), identity_group))
-        identity_layout.addRow(
-            self.tr("Advanced runtime logic"),
-            QtWidgets.QLabel(build_advanced_logic_summary(self._block), identity_group),
-        )
+        identity_layout.addRow(self.tr("Type"), QtWidgets.QLabel(self._block_type_name, identity_group))
         # Online documentation describes the immutable library definition. It
         # remains useful for edited instances, but the tooltip must make clear
         # that local equations and symbols can intentionally differ from it.
@@ -5160,120 +5346,238 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         documentation_button_layout.setContentsMargins(0, 0, 0, 0)
         documentation_button_layout.addWidget(self._block_info_button)
         documentation_button_layout.addStretch(1)
-        identity_layout.addRow(self.tr("Online documentation"), documentation_button_layout)
+        identity_layout.addRow(self.tr("Documentation"), documentation_button_layout)
 
-        # The splitter must be able to hide the configuration fields while
-        # retaining the group-box title as a stable visual landmark. Removing
-        # the layout's minimum-size constraint permits that clipping, while an
-        # explicit title-height minimum prevents the whole panel disappearing.
-        identity_layout.setSizeConstraint(QtWidgets.QLayout.SizeConstraint.SetNoConstraint)
-        collapsed_configuration_height: int = max(
-            28,
-            identity_group.fontMetrics().height() + 14,
-        )
-        identity_group.setMinimumHeight(collapsed_configuration_height)
-        identity_group.setSizePolicy(
-            QtWidgets.QSizePolicy.Policy.Expanding,
-            QtWidgets.QSizePolicy.Policy.Ignored,
-        )
-        self._general_options_splitter.addWidget(identity_group)
+        layout.addWidget(identity_group)
+        toolbar: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout()
+        toolbar.addWidget(self._restore_properties_button)
+        toolbar.addStretch(1)
+        toolbar.addWidget(self._equations_button)
+        layout.addLayout(toolbar)
 
-        # Generated-structure controls belong with the parameter editor below
-        # the handle. This keeps the resize boundary directly after Block
-        # configuration for every kind of catalogue block.
-        parameter_panel: QtWidgets.QWidget = QtWidgets.QWidget(self._general_options_splitter)
-        parameter_panel_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(parameter_panel)
-        parameter_panel_layout.setContentsMargins(0, 0, 0, 0)
-        parameter_panel_layout.setSizeConstraint(QtWidgets.QLayout.SizeConstraint.SetNoConstraint)
+        self._dae_splitter.addWidget(self._build_property_tree_panel(self._dae_splitter))
+        self._equation_panel: QtWidgets.QTabWidget = self._build_equation_panel(self._equation_tools_splitter)
+        actions_panel: QtWidgets.QWidget = self._build_equation_actions_panel(self._equation_tools_splitter)
+        self._equation_tools_splitter.addWidget(self._equation_panel)
+        self._equation_tools_splitter.addWidget(actions_panel)
+        self._equation_tools_splitter.setHandleWidth(6)
+        self._equation_tools_splitter.setChildrenCollapsible(False)
+        self._equation_tools_splitter.setStretchFactor(0, 1)
+        self._equation_tools_splitter.setStretchFactor(1, 0)
+        self._dae_splitter.addWidget(self._equation_tools_splitter)
+        self._dae_splitter.setHandleWidth(6)
+        self._dae_splitter.setCollapsible(0, True)
+        self._dae_splitter.setCollapsible(1, False)
+        self._dae_splitter.setStretchFactor(0, 1)
+        self._dae_splitter.setStretchFactor(1, 1)
+        # Visibility changes reuse this widget; they never regenerate source.
+        self._equation_tools_splitter.hide()
+        layout.addWidget(self._dae_splitter, 1)
+        return page
 
-        if self._general_structural_model.rowCount() > 0:
-            structure_group: QtWidgets.QGroupBox = QtWidgets.QGroupBox(
-                self.tr("Generated structure"),
-                parameter_panel,
-            )
-            structure_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(structure_group)
-            structure_table: QtWidgets.QTableView = QtWidgets.QTableView(structure_group)
-            structure_table.setModel(self._general_structural_model)
-            structure_table.setItemDelegateForColumn(1, StructuralSettingDelegate(structure_table))
-            structure_table.setAlternatingRowColors(True)
-            structure_header: QtWidgets.QHeaderView = structure_table.horizontalHeader()
-            configure_interactive_table_header(structure_header, list((300, 620,)))
+    @QtCore.Slot(bool)
+    def toggle_equation_panel(self, visible: bool) -> None:
+        """Show existing equation tools without modifying their document.
 
-            # Size the table from its actual settings instead of accepting the
-            # large generic QTableView size hint. Five rows preserve the former
-            # panel height as an upper bound; longer builders scroll inside the
-            # table and leave the remaining dialogue height to Parameters.
-            maximum_visible_structure_rows: int = 5
-            visible_structure_rows: int = min(
-                self._general_structural_model.rowCount(),
-                maximum_visible_structure_rows,
+        :param visible: Whether the equation action is checked.
+        :return: None.
+        """
+        self._equation_tools_splitter.setVisible(visible)
+        if visible:
+            available_width: int = self._dae_splitter.width()
+            # Opening equations reserves three quarters for editing code.
+            property_width: int = available_width // 4
+            self._dae_splitter.setSizes(list((property_width, max(1, available_width - property_width))))
+            # The form's native minimum height propagates through its dock
+            # host. Resizing this child directly would be undone by that host.
+            actions_height: int = max(
+                self._add_symbol_group.sizeHint().height(), self._validate_code_button.sizeHint().height(),
             )
-            structure_rows_height: int = 0
-            structure_row: int
-            structure_vertical_header: QtWidgets.QHeaderView = structure_table.verticalHeader()
-            for structure_row in range(visible_structure_rows):
-                structure_rows_height += structure_vertical_header.sectionSize(structure_row)
-            structure_table_height: int = (
-                structure_header.sizeHint().height()
-                + structure_rows_height
-                + (structure_table.frameWidth() * 2)
+            available_height: int = (
+                self._equation_tools_splitter.height() - self._equation_tools_splitter.handleWidth()
             )
-            structure_table.setMinimumHeight(structure_table_height)
-            structure_table.setMaximumHeight(structure_table_height)
-            structure_layout.addWidget(structure_table)
-            structure_group.setSizePolicy(
-                QtWidgets.QSizePolicy.Policy.Expanding,
-                QtWidgets.QSizePolicy.Policy.Fixed,
-            )
-            parameter_panel_layout.addWidget(structure_group)
+            self._equation_tools_splitter.setSizes(list((max(1, available_height - actions_height), actions_height)))
+        else:
+            # Hiding equations after collapsing properties must not leave the
+            # whole page empty. Qt redistributes all space to the left pane.
+            self._dae_splitter.setSizes(list((max(1, self._dae_splitter.width()), 0)))
+        self._restore_properties_button.setVisible(visible and self._dae_splitter.sizes()[0] == 0)
+
+    @QtCore.Slot()
+    def restore_properties_panel(self) -> None:
+        """Recover the last nonzero property width from a fully folded pane.
+
+        :return: None.
+        """
+        available_width: int = self._dae_splitter.width()
+        property_width: int = self._last_property_width or available_width // 4
+        self._dae_splitter.setSizes(list((property_width, max(1, available_width - property_width))))
+        self._restore_properties_button.hide()
+
+    @QtCore.Slot(int, int)
+    def on_properties_splitter_moved(self, position: int, index: int) -> None:
+        """Remember expanded width and expose recovery when properties fold.
+
+        :param position: Handle position in the splitter.
+        :param index: Handle index supplied by Qt.
+        :return: None.
+        """
+        _unused_position: int = position
+        _unused_index: int = index
+        property_width: int = self._dae_splitter.sizes()[0]
+        if property_width > 0:
+            self._last_property_width = property_width
+        else:
+            pass
+        self._restore_properties_button.setVisible(self._equations_button.isChecked() and property_width == 0)
+
+    @QtCore.Slot()
+    def remember_property_tree(self) -> None:
+        """Remember expanded categories and owners before source rows change.
+
+        :return: None.
+        """
+        self._expanded_property_groups.clear()
+        group_row: int
+        for group_row in range(self._property_tree_model.rowCount()):
+            group: QtCore.QModelIndex = self._property_tree_model.index(group_row, 0)
+            label: str = str(group.data())
+            if self._property_tree.isExpanded(group):
+                self._expanded_property_groups.add((label, None))
+            else:
+                pass
+            owner_row: int
+            for owner_row in range(self._property_tree_model.rowCount(group)):
+                owner_index: QtCore.QModelIndex = self._property_tree_model.index(owner_row, 0, group)
+                owner: object = owner_index.data(Qt.ItemDataRole.UserRole + 1)
+                if isinstance(owner, Block) and self._property_tree.isExpanded(owner_index):
+                    self._expanded_property_groups.add((label, owner.uid))
+                else:
+                    pass
+
+    @QtCore.Slot()
+    def restore_property_tree(self) -> None:
+        """Restore owner branches and spanning category rows after rebuilding.
+
+        :return: None.
+        """
+        # The saved set starts empty, so all branches open collapsed. Later
+        # model refreshes restore only the branches the user chose to expand.
+        group_row: int
+        for group_row in range(self._property_tree_model.rowCount()):
+            group: QtCore.QModelIndex = self._property_tree_model.index(group_row, 0)
+            label: str = str(group.data())
+            self._property_tree.setFirstColumnSpanned(group_row, QtCore.QModelIndex(), True)
+            self._property_tree.setExpanded(group, (label, None) in self._expanded_property_groups)
+            owner_row: int
+            for owner_row in range(self._property_tree_model.rowCount(group)):
+                owner_index: QtCore.QModelIndex = self._property_tree_model.index(owner_row, 0, group)
+                owner: object = owner_index.data(Qt.ItemDataRole.UserRole + 1)
+                if isinstance(owner, Block):
+                    self._property_tree.setFirstColumnSpanned(owner_row, group, True)
+                    self._property_tree.setExpanded(
+                        owner_index, (label, owner.uid) in self._expanded_property_groups,
+                    )
+                else:
+                    pass
+        self.filter_properties(self._property_search.text())
+
+    @QtCore.Slot(str)
+    def filter_properties(self, search_text: str) -> None:
+        """Filter leaves while retaining matching ancestor categories and owners.
+
+        :param search_text: Case-insensitive property or owner search.
+        :return: None.
+        """
+        self._filter_property_branch(QtCore.QModelIndex(), search_text.strip().casefold(), False)
+
+    def _filter_property_branch(self, parent: QtCore.QModelIndex, query: str, ancestor_matches: bool) -> bool:
+        """Apply a recursive visibility filter without sorting the DAE lists.
+
+        :param parent: Branch whose immediate children are examined.
+        :param query: Normalized search text.
+        :param ancestor_matches: Whether the owner's label already matched.
+        :return: Whether at least one child should remain visible.
+        """
+        any_match: bool = False
+        row: int
+        for row in range(self._property_tree_model.rowCount(parent)):
+            index: QtCore.QModelIndex = self._property_tree_model.index(row, 0, parent)
+            matches: bool = ancestor_matches or len(query) == 0
+            column: int
+            for column in range(4):
+                if query in str(index.siblingAtColumn(column).data()).casefold():
+                    matches = True
+                else:
+                    pass
+            if self._property_tree_model.rowCount(index) > 0:
+                matches = self._filter_property_branch(index, query, matches)
+                if matches and len(query) > 0:
+                    self._property_tree.setExpanded(index, True)
+                else:
+                    pass
+            else:
+                pass
+            self._property_tree.setRowHidden(row, parent, not matches)
+            any_match = any_match or matches
+        return any_match
+
+    @QtCore.Slot(QtCore.QModelIndex)
+    def on_property_selected(self, index: QtCore.QModelIndex) -> None:
+        """Preselect the add-symbol owner without switching equation buffers.
+
+        :param index: Clicked property or owner branch.
+        :return: None.
+        """
+        row: BlockSymbolDraftRow | None = self._property_tree_model.symbol_row(index)
+        branch: QtCore.QModelIndex = index.parent() if row is not None else index.siblingAtColumn(0)
+        owner: object = branch.data(Qt.ItemDataRole.UserRole + 1)
+        category: object = branch.data(Qt.ItemDataRole.UserRole + 2)
+        if isinstance(owner, Block):
+            owner_index: int = self._new_symbol_owner.findData(owner)
+            self._new_symbol_owner.setCurrentIndex(owner_index)
+        else:
+            pass
+        if isinstance(category, BlockSymbolCategory):
+            self._new_symbol_category.setCurrentIndex(self._new_symbol_category.findData(category))
         else:
             pass
 
-        parameters_group: QtWidgets.QGroupBox = QtWidgets.QGroupBox(
-            self.tr("Parameters"),
-            parameter_panel,
-        )
-        parameters_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(parameters_group)
-        parameters_layout.addWidget(self._general_parameter_search)
-        self._general_parameter_table.setParent(parameters_group)
-        self._general_parameter_table.setModel(self._general_parameter_proxy)
-        parameter_header: QtWidgets.QHeaderView = self._general_parameter_table.horizontalHeader()
-        configure_interactive_table_header(parameter_header, list((270, 520, 180,)))
-        # Match the compact catalogue-tree rhythm so long parameter lists show
-        # more engineering data without changing the editable column layout.
-        compact_row_height: int = self._general_parameter_table.fontMetrics().height() + 4
-        general_parameter_vertical_header: QtWidgets.QHeaderView = self._general_parameter_table.verticalHeader()
-        general_parameter_vertical_header.setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Fixed)
-        general_parameter_vertical_header.setDefaultSectionSize(compact_row_height)
-        self._general_parameter_table.setAlternatingRowColors(True)
-        self._general_parameter_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
-        parameters_layout.addWidget(self._general_parameter_table)
-        parameter_panel_layout.addWidget(parameters_group, 1)
+    @QtCore.Slot(QtCore.QModelIndex)
+    def on_property_double_clicked(self, index: QtCore.QModelIndex) -> None:
+        """Route existing-name edits through the established complete rename.
 
-        # Neither side may collapse to zero: at either extreme the user keeps
-        # a visible title and can drag the handle back without resetting the
-        # dialogue. Parameters receive most of the initial vertical space.
-        collapsed_parameter_height: int = max(
-            28,
-            parameters_group.fontMetrics().height() + 14,
-        )
-        parameter_panel.setMinimumHeight(collapsed_parameter_height)
-        parameter_panel.setSizePolicy(
-            QtWidgets.QSizePolicy.Policy.Expanding,
-            QtWidgets.QSizePolicy.Policy.Ignored,
-        )
-        self._general_options_splitter.setChildrenCollapsible(False)
-        self._general_options_splitter.setHandleWidth(6)
-        self._general_options_splitter.addWidget(parameter_panel)
-        self._general_options_splitter.setStretchFactor(0, 0)
-        self._general_options_splitter.setStretchFactor(1, 1)
-        preferred_configuration_height: int = identity_group.sizeHint().height()
-        preferred_parameter_height: int = max(360, preferred_configuration_height * 2)
-        self._general_options_splitter.setSizes(
-            list((preferred_configuration_height, preferred_parameter_height,))
-        )
-        layout.addWidget(self._general_options_splitter, 1)
-        return page
+        :param index: Double-clicked tree cell.
+        :return: None.
+        """
+        if index.column() == 0:
+            self.rename_property_symbol()
+        else:
+            pass
+
+    @QtCore.Slot()
+    def rename_property_symbol(self) -> None:
+        """Rename an existing symbol or start inline editing of a new draft.
+
+        :return: None.
+        """
+        index: QtCore.QModelIndex = self._property_tree.currentIndex().siblingAtColumn(0)
+        row: BlockSymbolDraftRow | None = self._property_tree_model.symbol_row(index)
+        if row is not None and row.is_new():
+            self._property_tree.edit(index)
+        else:
+            self._rename_selected_symbol(self._property_tree)
+
+    @QtCore.Slot()
+    def delete_property_symbol(self) -> None:
+        """Delete only a selected symbol, never a category or an owner branch.
+
+        :return: None.
+        """
+        if self._property_tree_model.symbol_row(self._property_tree.currentIndex()) is not None:
+            self._delete_selected_symbol(self._property_tree)
+        else:
+            pass
 
     def _build_special_settings_page(self) -> QtWidgets.QWidget:
         """
@@ -5292,7 +5596,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         )
         description.setWordWrap(True)
         layout.addWidget(description)
-        settings_table: QtWidgets.QTableView = QtWidgets.QTableView(page)
+        settings_table: QtWidgets.QAbstractItemView = QtWidgets.QTableView(page)
         settings_table.setModel(self._special_structural_model)
         settings_table.setItemDelegateForColumn(1, StructuralSettingDelegate(settings_table))
         settings_table.setAlternatingRowColors(True)
@@ -5301,20 +5605,18 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         layout.addWidget(settings_table, 1)
         return page
 
-    def _build_dae_page(self) -> QtWidgets.QWidget:
-        """
-        Build the resizable symbol browser and Python/LaTeX tools.
+    def _build_equation_panel(self, parent: QtWidgets.QWidget) -> QtWidgets.QTabWidget:
+        """Assemble the existing equation widgets independently of their host page.
 
-        :return: Page containing the resizable symbol browser and Python/LaTeX tools.
+        :param parent: Container that owns the Python and LaTeX panel.
+        :return: Equation tabs sharing the dialogue's code buffers and actions.
         """
-        page: QtWidgets.QWidget = QtWidgets.QWidget(self)
-        layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout(page)
-        symbol_panel: QtWidgets.QWidget = self._build_symbol_panel(page)
-        self._dae_splitter.addWidget(symbol_panel)
-
-        equation_tabs: QtWidgets.QTabWidget = QtWidgets.QTabWidget(self._dae_splitter)
+        equation_tabs: QtWidgets.QTabWidget = QtWidgets.QTabWidget(parent)
         python_page: QtWidgets.QWidget = QtWidgets.QWidget(equation_tabs)
         python_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(python_page)
+
+        # Populate the owner selector once during construction. Later panel
+        # visibility changes must retain these buffers and the active document.
         owner_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout()
         owner_layout.addWidget(QtWidgets.QLabel(self.tr("Equation owner"), python_page))
         buffer_index: int
@@ -5338,25 +5640,13 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._dae_editor.setFont(fixed_font)
         self._dae_editor.update_line_number_area_width(0)
         python_layout.addWidget(self._dae_editor, 1)
-        validation_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout()
-        validation_layout.addStretch(1)
-        self._validate_code_button.setIcon(QtGui.QIcon(":/Icons/icons/accept.png"))
-        validation_layout.addWidget(self._validate_code_button)
-        python_layout.addLayout(validation_layout)
         equation_tabs.addTab(python_page, self.tr("Python code"))
 
+        # Reuse the same LaTeX selection and export widgets so moving the panel
+        # does not create a second, potentially inconsistent equation view.
         latex_page: QtWidgets.QWidget = self._build_latex_export_page(equation_tabs)
         equation_tabs.addTab(latex_page, self.tr("LaTeX"))
-        self._dae_splitter.addWidget(equation_tabs)
-        # Keep the initial and resized layout close to one third symbols and
-        # two thirds equation tools. The handle remains fully interactive.
-        self._dae_splitter.setStretchFactor(0, 1)
-        self._dae_splitter.setStretchFactor(1, 2)
-        self._dae_splitter.setCollapsible(0, False)
-        self._dae_splitter.setCollapsible(1, False)
-        self._dae_splitter.setSizes(list((480, 960,)))
-        layout.addWidget(self._dae_splitter, 1)
-        return page
+        return equation_tabs
 
     def _build_latex_export_page(self, parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
         """Build equation selection, copyable source, and rendered PDF export.
@@ -5431,84 +5721,69 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         layout.addWidget(latex_splitter, 1)
         return page
 
-    def _build_symbol_panel(self, parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
-        """
-        Build the editable recursive variable and parameter table.
+    def _build_property_tree_panel(self, parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
+        """Build the full-height property browser independently of code tools.
 
-        :param parent: Owning Qt widget.
-        :return: Panel containing the editable recursive variable and parameter table.
+        :param parent: Horizontal splitter containing the property and code panes.
+        :return: Searchable property tree without an add-symbol form below it.
         """
         panel: QtWidgets.QWidget = QtWidgets.QWidget(parent)
-        # A compact minimum lets the splitter genuinely trade space between
-        # symbols and source code. Horizontal scrolling remains available only
-        # after the user deliberately makes this panel narrower.
         panel.setMinimumWidth(260)
-        panel_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(panel)
+        layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(panel)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self._property_search)
+        self._property_tree.setModel(self._property_tree_model)
+        self._property_tree.setItemsExpandable(True)
+        self._property_tree.setRootIsDecorated(True)
+        self._property_tree.setUniformRowHeights(True)
+        self._property_tree.setAlternatingRowColors(True)
+        self._property_tree.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
+        self._property_tree.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
+        self._property_tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self._property_tree.setItemDelegateForColumn(2, BlockPropertyValueDelegate(self._property_tree))
+        configure_interactive_table_header(self._property_tree.header(), list((170, 100, 230, 60)))
+        # Match the catalogue tree: the last column fills any remaining width
+        # so every row reaches the frame, including when equations are hidden.
+        self._property_tree.header().setStretchLastSection(True)
+        layout.addWidget(self._property_tree, 1)
+        self.restore_property_tree()
+        return panel
 
-        symbol_tabs: QtWidgets.QTabWidget = QtWidgets.QTabWidget(panel)
-        variable_page: QtWidgets.QWidget = QtWidgets.QWidget(symbol_tabs)
-        variable_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(variable_page)
-        variable_layout.setContentsMargins(0, 0, 0, 0)
-        variable_layout.addWidget(self._variable_symbol_search)
-        self._symbol_table.setModel(self._variable_symbol_proxy)
-        self._symbol_table.setItemDelegateForColumn(2, SymbolKindDelegate(self._symbol_table))
-        self._symbol_table.setItemDelegateForColumn(4, SymbolMappingDelegate(self._symbol_table))
-        self._symbol_table.setAlternatingRowColors(True)
-        self._symbol_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
-        self._symbol_table.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
-        self._symbol_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self._symbol_table.verticalHeader().setVisible(False)
-        # Use the same compact row rhythm as the catalogue selector while
-        # retaining the existing resizable columns and horizontal splitter.
-        compact_row_height: int = self._symbol_table.fontMetrics().height() + 4
-        variable_vertical_header: QtWidgets.QHeaderView = self._symbol_table.verticalHeader()
-        variable_vertical_header.setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Fixed)
-        variable_vertical_header.setDefaultSectionSize(compact_row_height)
-        symbol_header: QtWidgets.QHeaderView = self._symbol_table.horizontalHeader()
-        configure_interactive_table_header(
-            symbol_header,
-            list((65, 55, 80, 50, 110,)),
-        )
-        variable_layout.addWidget(self._symbol_table, 1)
-        symbol_tabs.addTab(variable_page, self.tr("Variables"))
+    def _build_equation_actions_panel(self, parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
+        """Place symbol creation and model validation beneath the equation tabs.
 
-        parameter_page: QtWidgets.QWidget = QtWidgets.QWidget(symbol_tabs)
-        parameter_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(parameter_page)
-        parameter_layout.setContentsMargins(0, 0, 0, 0)
-        parameter_layout.addWidget(self._parameter_symbol_search)
-        self._parameter_symbol_table.setModel(self._parameter_symbol_proxy)
-        self._parameter_symbol_table.setItemDelegateForColumn(
-            2,
-            SymbolKindDelegate(self._parameter_symbol_table),
-        )
-        self._parameter_symbol_table.setItemDelegateForColumn(
-            4,
-            SymbolMappingDelegate(self._parameter_symbol_table),
-        )
-        self._parameter_symbol_table.setAlternatingRowColors(True)
-        self._parameter_symbol_table.setSelectionBehavior(
-            QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
-        )
-        self._parameter_symbol_table.setSelectionMode(
-            QtWidgets.QAbstractItemView.SelectionMode.SingleSelection
-        )
-        self._parameter_symbol_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self._parameter_symbol_table.verticalHeader().setVisible(False)
-        parameter_vertical_header: QtWidgets.QHeaderView = self._parameter_symbol_table.verticalHeader()
-        parameter_vertical_header.setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Fixed)
-        parameter_vertical_header.setDefaultSectionSize(compact_row_height)
-        # Parameters reuse the staged symbol source model, but configuration
-        # constants can never be output ports. Hide the interface-only column
-        # instead of presenting a meaningless empty checkbox column.
-        self._parameter_symbol_table.setColumnHidden(3, True)
-        parameter_symbol_header: QtWidgets.QHeaderView = self._parameter_symbol_table.horizontalHeader()
-        configure_interactive_table_header(
-            parameter_symbol_header,
-            list((65, 55, 80, 50, 110,)),
-        )
-        parameter_layout.addWidget(self._parameter_symbol_table, 1)
-        symbol_tabs.addTab(parameter_page, self.tr("Parameters"))
-        add_group: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self.tr("Add symbol to selected block"), panel)
+        :param parent: Vertical splitter shared with the equation editor.
+        :return: Lower panel with a half-width form and a right-aligned action.
+        """
+        panel: QtWidgets.QWidget = QtWidgets.QWidget(parent)
+        layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout(panel)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(6)
+        self._add_symbol_group: QtWidgets.QGroupBox = self._build_add_symbol_form(panel)
+        layout.addWidget(self._add_symbol_group, 1)
+
+        # Equal layout stretches keep the form at half the editor width without
+        # resize callbacks. Validation remains available from either code tab.
+        validation_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout()
+        validation_layout.addStretch(1)
+        self._validate_code_button.setIcon(QtGui.QIcon(":/Icons/icons/accept.png"))
+        validation_layout.addWidget(self._validate_code_button, 0, Qt.AlignmentFlag.AlignRight)
+        layout.addLayout(validation_layout, 1)
+
+        # The dock and splitter must honour the complete form's height. Let Qt
+        # propagate this content minimum instead of resizing a dock-owned child.
+        # Horizontal sizing still follows the requested equal-width layout.
+        layout.setSizeConstraint(QtWidgets.QLayout.SizeConstraint.SetNoConstraint)
+        panel.setSizePolicy(QtWidgets.QSizePolicy.Policy.Ignored, QtWidgets.QSizePolicy.Policy.Minimum)
+        return panel
+
+    def _build_add_symbol_form(self, parent: QtWidgets.QWidget) -> QtWidgets.QGroupBox:
+        """Build symbol creation below the equation editor, in its toggleable pane.
+
+        :param parent: Lower actions panel shared with the validation button.
+        :return: Existing owner/category form with its stable field geometry.
+        """
+        add_group: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self.tr("Add symbol to selected block"), parent)
         add_layout: QtWidgets.QGridLayout = QtWidgets.QGridLayout(add_group)
         add_layout.setContentsMargins(6, 4, 6, 4)
         add_layout.setHorizontalSpacing(6)
@@ -5526,6 +5801,13 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             self._new_variable_options
         )
         variable_options_layout.setContentsMargins(0, 0, 0, 0)
+        # Optional checkboxes span both columns. Their text must not impose a
+        # different minimum grid width from the parameter controls they replace.
+        variable_options_layout.setSizeConstraint(QtWidgets.QLayout.SizeConstraint.SetNoConstraint)
+        self._new_variable_options.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Ignored,
+            QtWidgets.QSizePolicy.Policy.Fixed,
+        )
         variable_options_layout.addWidget(self._new_symbol_exported)
         variable_options_layout.addWidget(self._new_state_derivative)
         variable_options_layout.addStretch(1)
@@ -5550,8 +5832,10 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         )
         field_widget: QtWidgets.QWidget
         for field_widget in field_widgets:
+            # The splitter decides the available width. Long mapping options
+            # must not enlarge the grid when their category becomes visible.
             field_widget.setSizePolicy(
-                QtWidgets.QSizePolicy.Policy.Expanding,
+                QtWidgets.QSizePolicy.Policy.Ignored,
                 QtWidgets.QSizePolicy.Policy.Fixed,
             )
 
@@ -5582,6 +5866,22 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         add_layout.addWidget(self._new_static_reference, 4, 1)
         add_layout.addWidget(self._new_external_reference_label, 5, 0)
         add_layout.addWidget(self._new_external_reference, 5, 1)
+        # Reserve the optional rows even when hidden. The initial size hint
+        # then fits every symbol kind and category changes keep fields aligned.
+        optional_widgets: tuple[QtWidgets.QWidget, ...] = (
+            self._new_variable_options,
+            self._new_parameter_value_label,
+            self._new_parameter_value,
+            self._new_static_reference_label,
+            self._new_static_reference,
+            self._new_external_reference_label,
+            self._new_external_reference,
+        )
+        optional_widget: QtWidgets.QWidget
+        for optional_widget in optional_widgets:
+            optional_policy: QtWidgets.QSizePolicy = optional_widget.sizePolicy()
+            optional_policy.setRetainSizeWhenHidden(True)
+            optional_widget.setSizePolicy(optional_policy)
         # Optional rows have different visibility by symbol kind. A dedicated
         # expanding row absorbs that height difference so the stable fields at
         # the top never move when Variables and Parameters are exchanged.
@@ -5594,33 +5894,17 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         add_layout.addItem(form_spacer, 6, 0, 1, 2)
         add_layout.setRowStretch(6, 1)
         add_layout.addWidget(self._add_symbol_button, 7, 0, 1, 2)
-        # Permit the form contents to be clipped when the lower splitter pane
-        # is reduced. Its explicit minimum retains only the group-box title,
-        # which leaves a visible handle target for restoring the full form.
+        # Derive the vertical minimum from the actual controls and font. Keep
+        # horizontal constraints independent so category changes do not move
+        # the outer splitter or override the half-width form allocation.
         add_layout.setSizeConstraint(QtWidgets.QLayout.SizeConstraint.SetNoConstraint)
-        collapsed_add_symbol_height: int = max(
-            28,
-            add_group.fontMetrics().height() + 14,
-        )
-        add_group.setMinimumHeight(collapsed_add_symbol_height)
         add_group.setSizePolicy(
-            QtWidgets.QSizePolicy.Policy.Expanding,
             QtWidgets.QSizePolicy.Policy.Ignored,
+            QtWidgets.QSizePolicy.Policy.Minimum,
         )
-        # The user can trade form height for table height. This is deliberately
-        # a vertical splitter inside the horizontally resizable DAE page, so
-        # both dimensions remain independently adjustable.
-        self._symbol_panel_splitter.addWidget(symbol_tabs)
-        self._symbol_panel_splitter.addWidget(add_group)
-        self._symbol_panel_splitter.setStretchFactor(0, 1)
-        self._symbol_panel_splitter.setStretchFactor(1, 0)
-        self._symbol_panel_splitter.setCollapsible(0, False)
-        self._symbol_panel_splitter.setCollapsible(1, False)
-        self._symbol_panel_splitter.setSizes(list((560, 190,)))
-        panel_layout.addWidget(self._symbol_panel_splitter, 1)
         self.update_new_symbol_category()
         self.update_new_symbol_controls()
-        return panel
+        return add_group
 
     def _connect_signals(self) -> None:
         """
@@ -5638,11 +5922,26 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._add_symbol_button.clicked.connect(self.add_staged_symbol)
         self._symbol_model.dataChanged.connect(self.on_symbol_draft_changed)
         self._runtime_logic_editor.changed.connect(self.on_runtime_logic_changed)
-        self._symbol_table.customContextMenuRequested.connect(self.show_variable_context_menu)
-        self._parameter_symbol_table.customContextMenuRequested.connect(self.show_parameter_context_menu)
-        self._general_parameter_search.textChanged.connect(self.filter_general_parameters)
-        self._variable_symbol_search.textChanged.connect(self.filter_variables)
-        self._parameter_symbol_search.textChanged.connect(self.filter_parameters)
+        self._property_tree.customContextMenuRequested.connect(self.show_symbol_context_menu)
+        self._property_tree.doubleClicked.connect(self.on_property_double_clicked)
+        self._property_tree.clicked.connect(self.on_property_selected)
+        self._property_search.textChanged.connect(self.filter_properties)
+        self._property_tree_model.aboutToRebuild.connect(self.remember_property_tree)
+        self._property_tree_model.rebuilt.connect(self.restore_property_tree)
+        self._property_tree_model.pendingNameChanged.connect(self.on_pending_symbol_renamed)
+        self._equations_button.toggled.connect(self.toggle_equation_panel)
+        self._restore_properties_button.clicked.connect(self.restore_properties_panel)
+        self._dae_splitter.splitterMoved.connect(self.on_properties_splitter_moved)
+        rename_action: QtGui.QAction = QtGui.QAction(self.tr("Rename..."), self._property_tree)
+        rename_action.setShortcut(QtGui.QKeySequence(Qt.Key.Key_F2))
+        rename_action.setShortcutContext(Qt.ShortcutContext.WidgetShortcut)
+        rename_action.triggered.connect(self.rename_property_symbol)
+        self._property_tree.addAction(rename_action)
+        delete_action: QtGui.QAction = QtGui.QAction(self.tr("Delete"), self._property_tree)
+        delete_action.setShortcut(QtGui.QKeySequence(Qt.Key.Key_Delete))
+        delete_action.setShortcutContext(Qt.ShortcutContext.WidgetShortcut)
+        delete_action.triggered.connect(self.delete_property_symbol)
+        self._property_tree.addAction(delete_action)
         self._dae_code_search.textChanged.connect(self.update_dae_code_search)
         self._dae_code_search.returnPressed.connect(self.find_next_dae_code_match)
         self._dae_search_previous_button.clicked.connect(self.find_previous_dae_code_match)
@@ -5676,33 +5975,6 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                 self._status_label.setText(
                     self.tr("The online block documentation could not be opened in the system browser.")
                 )
-
-    @QtCore.Slot(str)
-    def filter_general_parameters(self, search_text: str) -> None:
-        """Filter numeric parameters in General options.
-
-        :param search_text: User-entered parameter query.
-        :return: None.
-        """
-        self._general_parameter_proxy.set_search_text(search_text)
-
-    @QtCore.Slot(str)
-    def filter_variables(self, search_text: str) -> None:
-        """Filter staged variables in the DAE model symbol table.
-
-        :param search_text: User-entered variable query.
-        :return: None.
-        """
-        self._variable_symbol_proxy.set_search_text(search_text)
-
-    @QtCore.Slot(str)
-    def filter_parameters(self, search_text: str) -> None:
-        """Filter staged parameters in the DAE model symbol table.
-
-        :param search_text: User-entered parameter query.
-        :return: None.
-        """
-        self._parameter_symbol_proxy.set_search_text(search_text)
 
     @QtCore.Slot(str)
     def update_dae_code_search(self, search_text: str) -> None:
@@ -5792,10 +6064,10 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             for child_index in range(old_root.childCount()):
                 old_child: QtWidgets.QTreeWidgetItem = old_root.child(child_index)
                 if old_child.checkState(0) == Qt.CheckState.Checked:
-                    buffer_value: object = old_child.data(0, Qt.ItemDataRole.UserRole)
+                    selected_owner: object = old_child.data(0, Qt.ItemDataRole.UserRole + 2)
                     section_value: object = old_child.data(0, Qt.ItemDataRole.UserRole + 1)
-                    if isinstance(buffer_value, int) and isinstance(section_value, str):
-                        selected_keys.add((buffer_value, section_value))
+                    if isinstance(selected_owner, Block) and isinstance(section_value, str):
+                        selected_keys.add((selected_owner.uid, section_value))
                     else:
                         pass
                 else:
@@ -5833,9 +6105,12 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                 )
                 section_item.setData(0, Qt.ItemDataRole.UserRole, buffer_index)
                 section_item.setData(0, Qt.ItemDataRole.UserRole + 1, section.value)
+                # Keep the owner object: its UID may exceed Qt's integer range,
+                # and its identity survives buffer reordering after Apply.
+                section_item.setData(0, Qt.ItemDataRole.UserRole + 2, owner_block)
                 if section_count > 0:
                     section_item.setFlags(section_item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
-                    if (buffer_index, section.value) in selected_keys:
+                    if (owner_block.uid, section.value) in selected_keys:
                         section_item.setCheckState(0, Qt.CheckState.Checked)
                     else:
                         section_item.setCheckState(0, Qt.CheckState.Unchecked)
@@ -6372,25 +6647,20 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         return result
 
     @QtCore.Slot(QtCore.QPoint)
-    def show_variable_context_menu(self, position: QtCore.QPoint) -> None:
-        """Show the right-click symbol actions for the Variables table.
+    def show_symbol_context_menu(self, position: QtCore.QPoint) -> None:
+        """Offer symbol actions only on tree leaves, not owner branches.
 
-        :param position: Viewport-local click position.
+        :param position: Click location in the property-tree viewport.
         :return: None.
         """
-        self._show_symbol_context_menu(self._symbol_table, position)
-
-    @QtCore.Slot(QtCore.QPoint)
-    def show_parameter_context_menu(self, position: QtCore.QPoint) -> None:
-        """Show the right-click symbol actions for the Parameters table.
-
-        :param position: Viewport-local click position.
-        :return: None.
-        """
-        self._show_symbol_context_menu(self._parameter_symbol_table, position)
+        index: QtCore.QModelIndex = self._property_tree.indexAt(position)
+        if self._property_tree_model.symbol_row(index) is not None:
+            self._show_symbol_context_menu(self._property_tree, position)
+        else:
+            pass
 
     def _show_symbol_context_menu(self,
-                                  table: QtWidgets.QTableView,
+                                  table: QtWidgets.QAbstractItemView,
                                   position: QtCore.QPoint) -> None:
         """Select the clicked row and offer valid symbol actions.
 
@@ -6400,7 +6670,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         """
         clicked_index: QtCore.QModelIndex = table.indexAt(position)
         if clicked_index.isValid():
-            table.selectRow(clicked_index.row())
+            table.setCurrentIndex(clicked_index)
             menu: QtWidgets.QMenu = QtWidgets.QMenu(table)
             source_row: BlockSymbolDraftRow | None = self._get_selected_symbol_row(table)
             rename_action: QtGui.QAction | None
@@ -6420,7 +6690,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             pass
 
     def _get_selected_symbol_row(self,
-                                 table: QtWidgets.QTableView) -> BlockSymbolDraftRow | None:
+                                 table: QtWidgets.QAbstractItemView) -> BlockSymbolDraftRow | None:
         """Resolve the single selected proxy row to its symbol draft.
 
         :param table: Variable or parameter table containing the selection.
@@ -6436,13 +6706,12 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         else:
             pass
         proxy_model: QtCore.QAbstractItemModel | None = table.model()
-        if isinstance(proxy_model, BlockSymbolFilterProxyModel):
-            source_index: QtCore.QModelIndex = proxy_model.mapToSource(selected_rows[0])
-            return self._symbol_model.get_row(source_index.row())
+        if isinstance(proxy_model, BlockPropertyTreeModel):
+            return proxy_model.symbol_row(selected_rows[0])
         else:
             return None
 
-    def _rename_selected_symbol(self, table: QtWidgets.QTableView) -> None:
+    def _rename_selected_symbol(self, table: QtWidgets.QAbstractItemView) -> None:
         """Request one complete editor-owned rename and refresh detached drafts.
 
         :param table: Variable or parameter table containing the selected row.
@@ -6502,28 +6771,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                 else:
                     pass
 
-            equation_buffer: BlockCodeBuffer
-            for equation_buffer in self._equation_buffers:
-                updated_code: str = equation_buffer.get_code()
-                old_name: str
-                new_name: str
-                for old_name, new_name in rename_pairs:
-                    updated_code = replace_dae_identifier(updated_code, old_name, new_name)
-                equation_buffer.set_code(updated_code)
-
-            self._symbol_model.refresh_existing_names()
-            self._namespace = self._build_joint_validation_namespace()
-            active_buffer: BlockCodeBuffer = self._equation_buffers[self._active_equation_buffer_index]
-
-            # Load the renamed source before rehighlighting it. Rehighlighting
-            # can emit a document change; while the editor still showed the
-            # old source, that signal wrote the stale text back over the newly
-            # updated active buffer.
-            self._loading_equation_buffer = True
-            self._dae_editor.setPlainText(active_buffer.get_code())
-            self._refresh_dae_language_context()
-            self._loading_equation_buffer = False
-            self._clear_dae_validation_feedback()
+            self._rename_detached_drafts(rename_pairs)
             self._status_label.setStyleSheet("color: #16825d;")
             self._status_label.setText(
                 self.tr("Variable renamed to '{name}'.").format(name=request.get_new_name())
@@ -6531,7 +6779,58 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         else:
             pass
 
-    def _delete_selected_symbol(self, table: QtWidgets.QTableView) -> None:
+    @QtCore.Slot(str, str)
+    def on_pending_symbol_renamed(self, old_name: str, new_name: str) -> None:
+        """Synchronize names before a newly added symbol has an Engine identity.
+
+        :param old_name: Previous pending identifier.
+        :param new_name: New identifier accepted in the tree.
+        :return: None.
+        """
+        self._rename_detached_drafts(list(((old_name, new_name),)))
+        self._property_tree_model.refresh_values()
+
+    def _rename_detached_drafts(self, rename_pairs: Sequence[tuple[str, str]]) -> None:
+        """Keep code and parameter expressions aligned with complete renames.
+
+        :param rename_pairs: All aliases changed by the editor or a pending row.
+        :return: None.
+        """
+        row_index: int
+        equation_buffer: BlockCodeBuffer
+        for equation_buffer in self._equation_buffers:
+            updated_code: str = equation_buffer.get_code()
+            old_name: str
+            new_name: str
+            for old_name, new_name in rename_pairs:
+                updated_code = replace_dae_identifier(updated_code, old_name, new_name)
+            equation_buffer.set_code(updated_code)
+
+        self._parameter_model.rename_draft_identifiers(rename_pairs)
+        for row_index in range(self._symbol_model.rowCount()):
+            pending_row: BlockSymbolDraftRow | None = self._symbol_model.get_row(row_index)
+            if pending_row is not None and pending_row.is_new():
+                pending_text: str = pending_row.get_value_text()
+                for old_name, new_name in rename_pairs:
+                    pending_text = replace_dae_identifier(pending_text, old_name, new_name)
+                pending_row.set_value_text(pending_text)
+            else:
+                pass
+        self._symbol_model.refresh_existing_names()
+        self._namespace = self._build_joint_validation_namespace()
+        active_buffer: BlockCodeBuffer = self._equation_buffers[self._active_equation_buffer_index]
+
+        # Load the renamed source before rehighlighting it. Rehighlighting
+        # can emit a document change; while the editor still showed the
+        # old source, that signal wrote the stale text back over the newly
+        # updated active buffer.
+        self._loading_equation_buffer = True
+        self._dae_editor.setPlainText(active_buffer.get_code())
+        self._refresh_dae_language_context()
+        self._loading_equation_buffer = False
+        self._clear_dae_validation_feedback()
+
+    def _delete_selected_symbol(self, table: QtWidgets.QAbstractItemView) -> None:
         """Stage deletion of the single selected proxy row.
 
         :param table: Table containing the selected row.
@@ -6548,8 +6847,8 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             pass
         proxy_model: QtCore.QAbstractItemModel | None = table.model()
         removed_owner: Block | None = None
-        if isinstance(proxy_model, BlockSymbolFilterProxyModel):
-            source_index: QtCore.QModelIndex = proxy_model.mapToSource(selected_rows[0])
+        if isinstance(proxy_model, BlockPropertyTreeModel):
+            source_index: QtCore.QModelIndex = proxy_model.source_index(selected_rows[0])
             selected_row: BlockSymbolDraftRow | None = self._symbol_model.get_row(source_index.row())
             if selected_row is not None:
                 removed_owner = selected_row.get_owner()
@@ -6660,6 +6959,11 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                 validation_namespace: Dict[str, Expr] = self._runtime_logic_editor.build_validation_namespace(
                     symbol_namespace
                 )
+            pending_expressions: List[tuple[Block, Var, Expr]] = self._parameter_model.get_pending_event_expressions(
+                validation_namespace
+            )
+            pending_expressions.extend(self._symbol_model.get_new_event_expressions(validation_namespace))
+            validate_event_parameter_expression_dependencies(self._block, pending_expressions)
         except (ValueError, TypeError) as error:
             self._show_validation_error(str(error))
             return
@@ -6872,6 +7176,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             pending_event_expressions = self._parameter_model.get_pending_event_expressions(
                 validation_namespace
             )
+            pending_event_expressions.extend(self._symbol_model.get_new_event_expressions(validation_namespace))
             validate_event_parameter_expression_dependencies(
                 root_block=self._block,
                 pending_expressions=pending_event_expressions,
@@ -6952,9 +7257,10 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                 )
                 self.structuralRebuildRequested.emit(rebuild_request)
             if rebuild_request.is_successful():
+                self.blockApplied.emit(self._block.uid)
+                self._refresh_after_apply(rebuilt_structure=True)
                 self._status_label.setStyleSheet("color: #16825d;")
                 self._status_label.setText(self.tr("Block structure rebuilt with the selected settings."))
-                self.blockApplied.emit(self._block.uid)
                 return
             else:
                 self._show_validation_error(rebuild_request.get_error_message())
@@ -7005,7 +7311,6 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                 event_owner.event_dict[event_variable] = event_expression
             else:
                 pass
-        self._parameter_model.reload(self._block)
         if has_new_symbols or has_new_modes:
             # Newly created symbols replace their temporary validation Vars, so
             # parse once more against the authoritative factory identities.
@@ -7027,12 +7332,10 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             target_block.init_eqs = equation_draft.get_init_eqs()
             target_block.diff_init_eqs = equation_draft.get_diff_init_eqs()
 
-        # Rebind rows created during this Apply to their authoritative Vars.
-        # This keeps subsequent edits in the still-open modal transactional.
-        self._symbol_model.reload(self._block)
-        self._refresh_dae_language_context()
-        active_draft: BlockEquationDraft = parsed_buffers[self._active_equation_buffer_index][1]
-        self._latex_model.set_draft(active_draft)
+        # The owning editor may repair aliases or expose additional interface
+        # blocks while rebuilding its scene. Refresh only after that callback.
+        self.blockApplied.emit(self._block.uid)
+        self._refresh_after_apply(rebuilt_structure=False)
         self._status_label.setStyleSheet("color: #16825d;")
         if runtime_logic_changes:
             self._status_label.setText(self.tr("DAE and runtime-logic changes applied to the editor working copy."))
@@ -7044,7 +7347,137 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             )
         else:
             self._status_label.setText(self.tr("Changes applied to the editor working copy."))
-        self.blockApplied.emit(self._block.uid)
+
+    def _reload_applied_models(self) -> None:
+        """Reload property models and hidden runtime drafts from the current block.
+
+        Reusing the table models keeps the tree delegates and signals attached.
+        Runtime drafts are recreated because structural edits can replace owners.
+
+        :return: None.
+        """
+        general_properties: List[TemplateProp] = list()
+        special_properties: List[TemplateProp] = list()
+        if self._structural_builder is not None:
+            general_properties, special_properties = split_structural_template_properties(self._structural_builder)
+        else:
+            pass
+        self._general_structural_model.reload(general_properties)
+        self._special_structural_model.reload(special_properties)
+        self._parameter_model.reload(self._block)
+        self._symbol_model.reload(self._block)
+
+        # Runtime editing is hidden, but its validation draft must likewise
+        # discard references to old children after structural regeneration.
+        self._namespace = build_block_symbol_namespace(self._block)
+        self._runtime_logic_editor.changed.disconnect(self.on_runtime_logic_changed)
+        self._runtime_logic_editor.prepare_to_delete()
+        self._runtime_logic_editor.deleteLater()
+        self._runtime_logic_editor = RuntimeLogicEditorWidget(self._block, self._namespace, self)
+        self._runtime_logic_editor.hide()
+        self._runtime_logic_editor.changed.connect(self.on_runtime_logic_changed)
+        self._namespace = self._runtime_logic_editor.build_validation_namespace(self._namespace)
+
+    def _refresh_after_apply(self, rebuilt_structure: bool) -> None:
+        """Rebind the complete properties page to the successfully applied model.
+
+        :param rebuilt_structure: Regenerate source when a builder replaced the model.
+        :return: None.
+        """
+        if self._prepared_to_delete:
+            return
+        else:
+            active_owner: Block = self._equation_buffers[self._active_equation_buffer_index].get_block()
+            selected_add_owner: object = self._new_symbol_owner.currentData()
+
+        # Keep accepted author text for surviving owners, but never reuse a
+        # buffer belonging to a removed child or a regenerated structural model.
+        old_buffers: Dict[int, BlockCodeBuffer] = dict()
+        buffer: BlockCodeBuffer
+        for buffer in self._equation_buffers:
+            old_buffers[buffer.get_block().uid] = buffer
+        rename_pairs: List[tuple[str, str]] = list()
+        row_index: int
+        for row_index in range(self._symbol_model.rowCount()):
+            row: BlockSymbolDraftRow | None = self._symbol_model.get_row(row_index)
+            variable: Var | None = row.get_variable() if row is not None else None
+            if row is not None and variable is not None and row.get_name() != variable.name:
+                rename_pairs.append((row.get_name(), variable.name))
+            else:
+                pass
+
+        previous_owner_signals: bool = self._equation_owner_combo.blockSignals(True)
+        previous_add_signals: bool = self._new_symbol_owner.blockSignals(True)
+        self._loading_equation_buffer = True
+        try:
+            self._reload_applied_models()
+
+            # Rebuild both owner selectors from the same current block order.
+            # Surviving owners retain source comments and their selections.
+            self._equation_buffers.clear()
+            self._equation_owner_combo.clear()
+            self._new_symbol_owner.clear()
+            self._active_equation_buffer_index = 0
+            selected_add_index: int = 0
+            owner_index: int
+            owner: Block
+            for owner_index, owner in enumerate(self._block.get_all_blocks()):
+                refreshed_buffer: BlockCodeBuffer = BlockCodeBuffer(owner)
+                old_buffer: BlockCodeBuffer | None = old_buffers.get(owner.uid, None)
+                if not rebuilt_structure and old_buffer is not None and old_buffer.get_block() is owner:
+                    accepted_source: str = old_buffer.get_code()
+                    old_name: str
+                    new_name: str
+                    for old_name, new_name in rename_pairs:
+                        accepted_source = replace_dae_identifier(accepted_source, old_name, new_name)
+                    accepted_source = synchronize_dae_variable_declarations(
+                        accepted_source,
+                        self._symbol_model.get_role_names(owner, BlockSymbolKind.STATE),
+                        self._symbol_model.get_role_names(owner, BlockSymbolKind.ALGEBRAIC),
+                        self._symbol_model.get_role_names(owner, BlockSymbolKind.DIFFERENTIAL),
+                    )
+                    refreshed_buffer.accept_source(accepted_source)
+                else:
+                    pass
+                self._equation_buffers.append(refreshed_buffer)
+                owner_label: str = f"{owner.name} [{owner_index + 1}]"
+                self._equation_owner_combo.addItem(owner_label, owner_index)
+                self._new_symbol_owner.addItem(owner_label, owner)
+                if owner is active_owner:
+                    self._active_equation_buffer_index = owner_index
+                else:
+                    pass
+                if owner is selected_add_owner:
+                    selected_add_index = owner_index
+                else:
+                    pass
+            # Refresh the visible document and previews only once all model
+            # identities are current, without firing intermediate owner changes.
+            self._equation_owner_combo.setCurrentIndex(self._active_equation_buffer_index)
+            self._new_symbol_owner.setCurrentIndex(selected_add_index)
+            active_buffer: BlockCodeBuffer = self._equation_buffers[self._active_equation_buffer_index]
+            if self._dae_editor.toPlainText() != active_buffer.get_code():
+                cursor_position: int = self._dae_editor.textCursor().position()
+                self._dae_editor.setPlainText(active_buffer.get_code())
+                cursor: QtGui.QTextCursor = self._dae_editor.textCursor()
+                cursor.setPosition(min(cursor_position, self._dae_editor.document().characterCount() - 1))
+                self._dae_editor.setTextCursor(cursor)
+            else:
+                pass
+            self._refresh_dae_language_context()
+            current_owner: Block = active_buffer.get_block()
+            self._latex_model.set_draft(BlockEquationDraft(
+                current_owner.state_eqs, current_owner.algebraic_eqs,
+                current_owner.init_eqs, current_owner.diff_init_eqs,
+            ))
+            self._rebuild_latex_selection_tree()
+            self.update_new_symbol_controls()
+            self.setWindowTitle(self.tr("Block properties - {name}").format(name=self._block.name))
+            self._clear_dae_validation_feedback()
+        finally:
+            self._loading_equation_buffer = False
+            self._equation_owner_combo.blockSignals(previous_owner_signals)
+            self._new_symbol_owner.blockSignals(previous_add_signals)
 
     def _show_equation_buffer_diagnostics(self,
                                           buffer_index: int,
@@ -7055,6 +7488,9 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         :param diagnostics: Diagnostics to underline in that buffer.
         :return: None.
         """
+        self._tabs.setCurrentIndex(0)
+        self._equations_button.setChecked(True)
+        self._equation_panel.setCurrentIndex(0)
         if buffer_index != self._active_equation_buffer_index:
             self._equation_owner_combo.setCurrentIndex(buffer_index)
         else:
@@ -7081,6 +7517,9 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         :param diagnostics: Ordered diagnostics for the visible source buffer.
         :return: None.
         """
+        self._tabs.setCurrentIndex(0)
+        self._equations_button.setChecked(True)
+        self._equation_panel.setCurrentIndex(0)
         self._dae_editor.set_diagnostics(diagnostics)
         if len(diagnostics) > 0:
             first_diagnostic: DaeCodeDiagnostic = diagnostics[0]

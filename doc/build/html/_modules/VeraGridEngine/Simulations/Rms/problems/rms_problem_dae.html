@@ -118,7 +118,11 @@
                                                     <span class="n">get_expression_vars</span><span class="p">,</span> <span class="n">hard_sat</span><span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.Utils.Symbolic.compiled_functions</span><span class="w"> </span><span class="kn">import</span> <span class="n">SymbolicParamsVector</span><span class="p">,</span> <span class="n">SymbolicDerivative</span><span class="p">,</span> <span class="n">SymbolicJacobian</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.Utils.Symbolic.block</span><span class="w"> </span><span class="kn">import</span> <span class="n">Block</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.enumerations</span><span class="w"> </span><span class="kn">import</span> <span class="n">VarPowerFlowReferenceType</span><span class="p">,</span> <span class="n">RmsInitializationMethod</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.enumerations</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">ParamPowerFlowReferenceType</span><span class="p">,</span>
+    <span class="n">VarPowerFlowReferenceType</span><span class="p">,</span>
+    <span class="n">RmsInitializationMethod</span><span class="p">,</span>
+<span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.basic_structures</span><span class="w"> </span><span class="kn">import</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">ObjVec</span><span class="p">,</span> <span class="n">BoolVec</span><span class="p">,</span> <span class="n">Logger</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.Simulations.PowerFlow.power_flow_driver</span><span class="w"> </span><span class="kn">import</span> <span class="n">PowerFlowResults</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.Simulations.Rms.rms_options</span><span class="w"> </span><span class="kn">import</span> <span class="n">RmsOptions</span>
@@ -160,6 +164,197 @@
 
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.Utils.procedural_logic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BlockProceduralLogicUpdater</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_get_static_mapping_keys_for_parameter</span><span class="p">(</span>
+        <span class="n">root_block</span><span class="p">:</span> <span class="n">Block</span><span class="p">,</span>
+        <span class="n">parameter</span><span class="p">:</span> <span class="n">Var</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">ParamPowerFlowReferenceType</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the static mapping keys that target one RMS parameter.</span>
+
+<span class="sd">    Saved RMS models synchronize their authoritative static mappings at the</span>
+<span class="sd">    root, while legacy models may still contain a mapping on a child block.</span>
+<span class="sd">    Traversing the complete hierarchy keeps unresolved-parameter diagnostics</span>
+<span class="sd">    useful for both representations.</span>
+
+<span class="sd">    :param root_block: Complete RMS model assigned to the static device.</span>
+<span class="sd">    :param parameter: Constant symbolic parameter being diagnosed.</span>
+<span class="sd">    :return: Static mapping keys whose target has the same immutable UID.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">mapping_keys</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ParamPowerFlowReferenceType</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+    <span class="n">candidate_block</span><span class="p">:</span> <span class="n">Block</span>
+    <span class="n">mapping_key</span><span class="p">:</span> <span class="n">ParamPowerFlowReferenceType</span>
+    <span class="n">mapping_target</span><span class="p">:</span> <span class="n">Var</span>
+
+    <span class="k">for</span> <span class="n">candidate_block</span> <span class="ow">in</span> <span class="n">root_block</span><span class="o">.</span><span class="n">get_all_blocks</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">mapping_key</span><span class="p">,</span> <span class="n">mapping_target</span> <span class="ow">in</span> <span class="n">candidate_block</span><span class="o">.</span><span class="n">api_obj_mapping</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">mapping_target</span><span class="o">.</span><span class="n">uid</span> <span class="o">==</span> <span class="n">parameter</span><span class="o">.</span><span class="n">uid</span><span class="p">:</span>
+                <span class="n">mapping_keys</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">mapping_key</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+    <span class="k">return</span> <span class="n">mapping_keys</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_get_static_parameter_value_by_uid</span><span class="p">(</span>
+        <span class="n">parameter</span><span class="p">:</span> <span class="n">Var</span><span class="p">,</span>
+        <span class="n">static_parameter_values</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Var</span><span class="p">,</span> <span class="n">Const</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Const</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a mapped RMS static value using symbolic UID identity.</span>
+
+<span class="sd">    Dynamic Editor persistence can clone a ``Var`` while preserving its UID.</span>
+<span class="sd">    Comparing UIDs therefore prevents a valid static mapping from being lost</span>
+<span class="sd">    merely because the dictionary contains a different Python object instance.</span>
+
+<span class="sd">    :param parameter: Symbolic parameter whose numerical value is required.</span>
+<span class="sd">    :param static_parameter_values: Values resolved from static API mappings.</span>
+<span class="sd">    :return: Mapped constant, or ``None`` when no mapping was resolved.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">direct_value</span><span class="p">:</span> <span class="n">Const</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">static_parameter_values</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">parameter</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">direct_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">direct_value</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+    <span class="n">mapped_parameter</span><span class="p">:</span> <span class="n">Var</span>
+    <span class="n">mapped_value</span><span class="p">:</span> <span class="n">Const</span>
+    <span class="k">for</span> <span class="n">mapped_parameter</span><span class="p">,</span> <span class="n">mapped_value</span> <span class="ow">in</span> <span class="n">static_parameter_values</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">mapped_parameter</span><span class="o">.</span><span class="n">uid</span> <span class="o">==</span> <span class="n">parameter</span><span class="o">.</span><span class="n">uid</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">mapped_value</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+    <span class="k">return</span> <span class="kc">None</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_resolve_rms_constant_parameter_value</span><span class="p">(</span>
+        <span class="n">device</span><span class="p">:</span> <span class="n">ALL_DEV_TYPES</span><span class="p">,</span>
+        <span class="n">root_block</span><span class="p">:</span> <span class="n">Block</span><span class="p">,</span>
+        <span class="n">owner_block</span><span class="p">:</span> <span class="n">Block</span><span class="p">,</span>
+        <span class="n">parameter</span><span class="p">:</span> <span class="n">Var</span><span class="p">,</span>
+        <span class="n">declared_value</span><span class="p">:</span> <span class="n">Const</span><span class="p">,</span>
+        <span class="n">static_parameter_values</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Var</span><span class="p">,</span> <span class="n">Const</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Const</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve one RMS constant before registering it in the DAE problem.</span>
+
+<span class="sd">    Numerical template constants are self-contained. A ``Const(None)`` is a</span>
+<span class="sd">    required static-device placeholder and is valid only when</span>
+<span class="sd">    ``api_obj_mapping`` has supplied a concrete value. Failing during problem</span>
+<span class="sd">    assembly keeps the null constant out of the numerical compiler and reports</span>
+<span class="sd">    the exact device and block contract that must be corrected.</span>
+
+<span class="sd">    :param device: Static device that owns the RMS model.</span>
+<span class="sd">    :param root_block: Complete RMS model assigned to ``device``.</span>
+<span class="sd">    :param owner_block: Block that declares the parameter.</span>
+<span class="sd">    :param parameter: Symbolic constant parameter.</span>
+<span class="sd">    :param declared_value: Value stored in ``owner_block.parameters``.</span>
+<span class="sd">    :param static_parameter_values: Values resolved from ``api_obj_mapping``.</span>
+<span class="sd">    :return: Concrete constant to register in the RMS problem.</span>
+<span class="sd">    :raises ValueError: If neither the model nor the static mapping supplies a</span>
+<span class="sd">        numerical value.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">mapped_value</span><span class="p">:</span> <span class="n">Const</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">_get_static_parameter_value_by_uid</span><span class="p">(</span>
+        <span class="n">parameter</span><span class="o">=</span><span class="n">parameter</span><span class="p">,</span>
+        <span class="n">static_parameter_values</span><span class="o">=</span><span class="n">static_parameter_values</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">resolved_value</span><span class="p">:</span> <span class="n">Const</span>
+
+    <span class="k">if</span> <span class="n">mapped_value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">resolved_value</span> <span class="o">=</span> <span class="n">declared_value</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">resolved_value</span> <span class="o">=</span> <span class="n">mapped_value</span>
+
+    <span class="k">if</span> <span class="n">resolved_value</span><span class="o">.</span><span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">mapping_keys</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ParamPowerFlowReferenceType</span><span class="p">]</span> <span class="o">=</span> <span class="n">_get_static_mapping_keys_for_parameter</span><span class="p">(</span>
+            <span class="n">root_block</span><span class="o">=</span><span class="n">root_block</span><span class="p">,</span>
+            <span class="n">parameter</span><span class="o">=</span><span class="n">parameter</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">mapping_names</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+        <span class="n">mapping_key</span><span class="p">:</span> <span class="n">ParamPowerFlowReferenceType</span>
+
+        <span class="k">for</span> <span class="n">mapping_key</span> <span class="ow">in</span> <span class="n">mapping_keys</span><span class="p">:</span>
+            <span class="n">mapping_names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">mapping_key</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">mapping_names</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">mapping_diagnostic</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="s2">&quot;the parameter is not targeted by any api_obj_mapping entry&quot;</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">mapping_diagnostic</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="s2">&quot;api_obj_mapping targets it through [&quot;</span>
+                <span class="o">+</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">mapping_names</span><span class="p">)</span>
+                <span class="o">+</span> <span class="s2">&quot;], but the static mapper produced no value&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;Unresolved RMS constant parameter &quot;</span>
+            <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;&#39;</span><span class="si">{</span><span class="n">parameter</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; in block &#39;</span><span class="si">{</span><span class="n">owner_block</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; of &quot;</span>
+            <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">device_type</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2"> &#39;</span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">mapping_diagnostic</span><span class="si">}</span><span class="s2">. &quot;</span>
+            <span class="o">+</span> <span class="s2">&quot;A parameter declared as Const(None) must be linked to a supported &quot;</span>
+            <span class="o">+</span> <span class="s2">&quot;static device property through the RMS root api_obj_mapping.&quot;</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+    <span class="k">return</span> <span class="n">resolved_value</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_resolve_rms_runtime_parameter_expression</span><span class="p">(</span>
+        <span class="n">device</span><span class="p">:</span> <span class="n">ALL_DEV_TYPES</span><span class="p">,</span>
+        <span class="n">owner_block</span><span class="p">:</span> <span class="n">Block</span><span class="p">,</span>
+        <span class="n">parameter</span><span class="p">:</span> <span class="n">Var</span><span class="p">,</span>
+        <span class="n">declared_expression</span><span class="p">:</span> <span class="n">Expr</span> <span class="o">|</span> <span class="n">Const</span><span class="p">,</span>
+        <span class="n">is_discrete_parameter</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Expr</span> <span class="o">|</span> <span class="n">Const</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve one RMS runtime parameter before DAE compilation.</span>
+
+<span class="sd">    Runtime parameters normally carry a numerical or symbolic expression in</span>
+<span class="sd">    ``event_dict``. A null source is valid only when block normalization has</span>
+<span class="sd">    retained an explicit initialization equation or discrete mode logic owns a</span>
+<span class="sd">    separate runtime initialization path.</span>
+
+<span class="sd">    :param device: Static device that owns the RMS model.</span>
+<span class="sd">    :param owner_block: Block that declares the runtime parameter.</span>
+<span class="sd">    :param parameter: Runtime symbolic parameter.</span>
+<span class="sd">    :param declared_expression: Expression stored in ``event_dict`` or</span>
+<span class="sd">        ``mode_dict``.</span>
+<span class="sd">    :param is_discrete_parameter: Whether mode logic initializes the parameter.</span>
+<span class="sd">    :return: Effective initialization expression registered by the problem.</span>
+<span class="sd">    :raises ValueError: If an ordinary runtime parameter has no usable source.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">effective_expression</span><span class="p">:</span> <span class="n">Expr</span> <span class="o">|</span> <span class="n">Const</span> <span class="o">=</span> <span class="n">declared_expression</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">declared_expression</span><span class="p">,</span> <span class="n">Const</span><span class="p">)</span> <span class="ow">and</span> <span class="n">declared_expression</span><span class="o">.</span><span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">initialization_expression</span><span class="p">:</span> <span class="n">Expr</span> <span class="o">|</span> <span class="n">Const</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">initialization_variable</span><span class="p">:</span> <span class="n">Var</span>
+        <span class="n">candidate_expression</span><span class="p">:</span> <span class="n">Expr</span> <span class="o">|</span> <span class="n">Const</span>
+
+        <span class="k">for</span> <span class="n">initialization_variable</span><span class="p">,</span> <span class="n">candidate_expression</span> <span class="ow">in</span> <span class="n">owner_block</span><span class="o">.</span><span class="n">init_eqs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">initialization_variable</span><span class="o">.</span><span class="n">uid</span> <span class="o">==</span> <span class="n">parameter</span><span class="o">.</span><span class="n">uid</span><span class="p">:</span>
+                <span class="n">initialization_expression</span> <span class="o">=</span> <span class="n">candidate_expression</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+        <span class="k">if</span> <span class="n">initialization_expression</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">effective_expression</span> <span class="o">=</span> <span class="n">initialization_expression</span>
+        <span class="k">elif</span> <span class="n">is_discrete_parameter</span><span class="p">:</span>
+            <span class="c1"># Discrete registration supplies its own zero baseline and retains</span>
+            <span class="c1"># the symbolic mode expression for later transitions.</span>
+            <span class="n">effective_expression</span> <span class="o">=</span> <span class="n">declared_expression</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;Unresolved RMS dynamic parameter &quot;</span>
+                <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;&#39;</span><span class="si">{</span><span class="n">parameter</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; in block &#39;</span><span class="si">{</span><span class="n">owner_block</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; of &quot;</span>
+                <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">device_type</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2"> &#39;</span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39;. &quot;</span>
+                <span class="o">+</span> <span class="s2">&quot;Provide a numerical/symbolic value in event_dict or an &quot;</span>
+                <span class="o">+</span> <span class="s2">&quot;initialization equation for the same parameter.&quot;</span>
+            <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+    <span class="k">return</span> <span class="n">effective_expression</span>
+
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_tic</span><span class="p">():</span>
     <span class="k">return</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
@@ -839,9 +1034,6 @@
                                                             <span class="n">problem_mapping</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_static_parameters_values_mapping</span><span class="p">,</span>
                                                             <span class="n">logger</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 
-                <span class="n">_</span><span class="p">,</span> <span class="n">Vmf</span><span class="p">,</span> <span class="n">Vaf</span> <span class="o">=</span> <span class="n">get_bus_rms_algebraic_vars</span><span class="p">(</span><span class="n">elm</span><span class="o">.</span><span class="n">bus_from</span><span class="o">.</span><span class="n">rms_model</span><span class="p">)</span>
-                <span class="n">_</span><span class="p">,</span> <span class="n">Vmt</span><span class="p">,</span> <span class="n">Vat</span> <span class="o">=</span> <span class="n">get_bus_rms_algebraic_vars</span><span class="p">(</span><span class="n">elm</span><span class="o">.</span><span class="n">bus_to</span><span class="o">.</span><span class="n">rms_model</span><span class="p">)</span>
-
                 <span class="bp">self</span><span class="o">.</span><span class="n">add_variables_to_compilation_dicts</span><span class="p">(</span><span class="n">elm</span><span class="p">,</span> <span class="n">elm</span><span class="o">.</span><span class="n">rms_model</span><span class="p">)</span>
                 <span class="n">register_rms_fmu_cs_device</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">elm</span><span class="p">,</span> <span class="n">elm</span><span class="o">.</span><span class="n">rms_model</span><span class="p">)</span>
                 <span class="n">register_rms_fmu_me_device</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">elm</span><span class="p">,</span> <span class="n">elm</span><span class="o">.</span><span class="n">rms_model</span><span class="p">)</span>
@@ -852,22 +1044,33 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">set_init_guess</span><span class="p">(</span><span class="n">elm</span><span class="o">.</span><span class="n">rms_model</span><span class="p">,</span> <span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">Pt</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">St</span><span class="p">[</span><span class="n">branch_num</span><span class="p">]</span><span class="o">.</span><span class="n">real</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">set_init_guess</span><span class="p">(</span><span class="n">elm</span><span class="o">.</span><span class="n">rms_model</span><span class="p">,</span> <span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">Qt</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">St</span><span class="p">[</span><span class="n">branch_num</span><span class="p">]</span><span class="o">.</span><span class="n">imag</span><span class="p">)</span>
 
-                <span class="k">if</span> <span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">If_dc</span> <span class="ow">in</span> <span class="n">elm</span><span class="o">.</span><span class="n">rms_model</span><span class="o">.</span><span class="n">external_mapping</span> <span class="ow">and</span> <span class="n">Vmf</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="k">if</span> <span class="n">Vmf</span><span class="o">.</span><span class="n">uid</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">uid2idx_vars</span><span class="p">:</span>
-                        <span class="n">vmf_idx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">uid2idx_vars</span><span class="p">[</span><span class="n">Vmf</span><span class="o">.</span><span class="n">uid</span><span class="p">]</span>
-                        <span class="k">if</span> <span class="n">vmf_idx</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_guess</span><span class="p">:</span>
-                            <span class="n">vmf0</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_guess</span><span class="p">[</span><span class="n">vmf_idx</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">elm</span><span class="o">.</span><span class="n">rms_model</span><span class="o">.</span><span class="n">external_mapping</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">If_dc</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">from_voltage_dc</span><span class="p">:</span> <span class="n">Var</span> <span class="o">|</span> <span class="kc">None</span>
+                    <span class="n">from_voltage_dc</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">get_bus_rms_algebraic_vars</span><span class="p">(</span><span class="n">bus_rms_model</span><span class="o">=</span><span class="n">elm</span><span class="o">.</span><span class="n">bus_from</span><span class="o">.</span><span class="n">rms_model</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">from_voltage_dc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="c1"># Reuse the DC-bus value already initialized from the PF so</span>
+                        <span class="c1"># the branch current and its terminal voltage share one seed.</span>
+                        <span class="n">from_voltage_raw</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">complex</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_guess</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                            <span class="n">from_voltage_dc</span><span class="o">.</span><span class="n">uid</span><span class="p">,</span>
+                            <span class="kc">None</span><span class="p">,</span>
+                        <span class="p">)</span>
+                        <span class="n">from_current</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
 
-                            <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">vmf0</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">1e-9</span><span class="p">:</span>
-                                <span class="bp">self</span><span class="o">.</span><span class="n">set_init_guess</span><span class="p">(</span>
-                                    <span class="n">elm</span><span class="o">.</span><span class="n">rms_model</span><span class="p">,</span>
-                                    <span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">If_dc</span><span class="p">,</span>
-                                    <span class="bp">self</span><span class="o">.</span><span class="n">Sf</span><span class="p">[</span><span class="n">branch_num</span><span class="p">]</span><span class="o">.</span><span class="n">real</span> <span class="o">/</span> <span class="n">vmf0</span><span class="p">,</span>
-                                <span class="p">)</span>
+                        <span class="k">if</span> <span class="n">from_voltage_raw</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                            <span class="n">from_voltage</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">from_voltage_raw</span><span class="p">))</span>
+                            <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">from_voltage</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">1.0e-9</span><span class="p">:</span>
+                                <span class="n">from_current</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Sf</span><span class="p">[</span><span class="n">branch_num</span><span class="p">]</span><span class="o">.</span><span class="n">real</span> <span class="o">/</span> <span class="n">from_voltage</span><span class="p">)</span>
+                            <span class="k">else</span><span class="p">:</span>
+                                <span class="c1"># A de-energized DC terminal cannot define current from P/V.</span>
+                                <span class="k">pass</span>
                         <span class="k">else</span><span class="p">:</span>
                             <span class="k">pass</span>
+
+                        <span class="bp">self</span><span class="o">.</span><span class="n">set_init_guess</span><span class="p">(</span><span class="n">elm</span><span class="o">.</span><span class="n">rms_model</span><span class="p">,</span> <span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">If_dc</span><span class="p">,</span> <span class="n">from_current</span><span class="p">)</span>
                     <span class="k">else</span><span class="p">:</span>
                         <span class="k">pass</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">pass</span>
 
                 <span class="c1"># Run explicit initialization for branches to solve algebraic equations</span>
                 <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">elm</span><span class="p">,</span> <span class="n">Transformer2W</span><span class="p">):</span>
@@ -2286,15 +2489,23 @@
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Parameter &#39;</span><span class="si">{</span><span class="n">ep</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; (uid=</span><span class="si">{</span><span class="n">ep</span><span class="o">.</span><span class="n">uid</span><span class="si">}</span><span class="s2">) is already registered in the system. &quot;</span>
                                  <span class="sa">f</span><span class="s2">&quot;Previous device may have created a duplicate parameter.&quot;</span><span class="p">)</span>
 
+            <span class="n">resolved_parameter_value</span><span class="p">:</span> <span class="n">Const</span> <span class="o">=</span> <span class="n">_resolve_rms_constant_parameter_value</span><span class="p">(</span>
+                <span class="n">device</span><span class="o">=</span><span class="n">elm</span><span class="p">,</span>
+                <span class="n">root_block</span><span class="o">=</span><span class="n">elm</span><span class="o">.</span><span class="n">rms_model</span><span class="p">,</span>
+                <span class="n">owner_block</span><span class="o">=</span><span class="n">mdl</span><span class="p">,</span>
+                <span class="n">parameter</span><span class="o">=</span><span class="n">ep</span><span class="p">,</span>
+                <span class="n">declared_value</span><span class="o">=</span><span class="n">const</span><span class="p">,</span>
+                <span class="n">static_parameter_values</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_static_parameters_values_mapping</span><span class="p">,</span>
+            <span class="p">)</span>
+
             <span class="bp">self</span><span class="o">.</span><span class="n">_compiler_names_dict</span><span class="p">[</span><span class="n">ep</span><span class="o">.</span><span class="n">uid</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">CONSTANT_PARAMS_NAME</span><span class="si">}</span><span class="s2">[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_n_params</span><span class="si">}</span><span class="s2">]&quot;</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_alias_names_dict</span><span class="p">[</span><span class="n">ep</span><span class="o">.</span><span class="n">uid</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">CONSTANT_PARAMS_NAME</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_n_params</span><span class="si">}</span><span class="s2">&quot;</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_uid2idx_params</span><span class="p">[</span><span class="n">ep</span><span class="o">.</span><span class="n">uid</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n_params</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_constant_parameters</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ep</span><span class="p">)</span>
-            <span class="c1"># search value in self._static_parameters_values_mapping</span>
-            <span class="k">if</span> <span class="n">ep</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_static_parameters_values_mapping</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_parameters_values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_static_parameters_values_mapping</span><span class="p">[</span><span class="n">ep</span><span class="p">])</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_parameters_values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">const</span><span class="p">)</span>
+            <span class="c1"># Register only the already validated concrete value. This keeps a</span>
+            <span class="c1"># missing static mapping from reaching the numerical compiler as a</span>
+            <span class="c1"># late, context-free ``None`` conversion error.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_parameters_values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">resolved_parameter_value</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_n_params</span> <span class="o">+=</span> <span class="mi">1</span>
 
         <span class="c1"># m is for variable parameters</span>
@@ -2310,19 +2521,17 @@
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Event parameter &#39;</span><span class="si">{</span><span class="n">ep</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; (uid=</span><span class="si">{</span><span class="n">ep</span><span class="o">.</span><span class="n">uid</span><span class="si">}</span><span class="s2">) is already registered in the system. &quot;</span>
                                  <span class="sa">f</span><span class="s2">&quot;Previous device may have created a duplicate event parameter.&quot;</span><span class="p">)</span>
 
+            <span class="n">effective_eq</span><span class="p">:</span> <span class="n">Expr</span> <span class="o">|</span> <span class="n">Const</span> <span class="o">=</span> <span class="n">_resolve_rms_runtime_parameter_expression</span><span class="p">(</span>
+                <span class="n">device</span><span class="o">=</span><span class="n">elm</span><span class="p">,</span>
+                <span class="n">owner_block</span><span class="o">=</span><span class="n">mdl</span><span class="p">,</span>
+                <span class="n">parameter</span><span class="o">=</span><span class="n">ep</span><span class="p">,</span>
+                <span class="n">declared_expression</span><span class="o">=</span><span class="n">eq</span><span class="p">,</span>
+                <span class="n">is_discrete_parameter</span><span class="o">=</span><span class="n">ep</span><span class="o">.</span><span class="n">uid</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_discrete_event_parameter_uids</span><span class="p">,</span>
+            <span class="p">)</span>
+
             <span class="bp">self</span><span class="o">.</span><span class="n">_compiler_names_dict</span><span class="p">[</span><span class="n">ep</span><span class="o">.</span><span class="n">uid</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">VARIABLE_PARAMS_NAME</span><span class="si">}</span><span class="s2">[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_n_event_params</span><span class="si">}</span><span class="s2">]&quot;</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_alias_names_dict</span><span class="p">[</span><span class="n">ep</span><span class="o">.</span><span class="n">uid</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">VARIABLE_PARAMS_NAME</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_n_event_params</span><span class="si">}</span><span class="s2">&quot;</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_uid2idx_event_params</span><span class="p">[</span><span class="n">ep</span><span class="o">.</span><span class="n">uid</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n_event_params</span>
-
-            <span class="n">effective_eq</span><span class="p">:</span> <span class="n">Expr</span> <span class="o">|</span> <span class="n">Const</span> <span class="o">=</span> <span class="n">eq</span>
-            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">eq</span><span class="p">,</span> <span class="n">Const</span><span class="p">)</span> <span class="ow">and</span> <span class="n">eq</span><span class="o">.</span><span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">init_eq_for_ep</span><span class="p">:</span> <span class="n">Expr</span> <span class="o">|</span> <span class="n">Const</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-                <span class="k">for</span> <span class="n">init_var</span><span class="p">,</span> <span class="n">init_eq</span> <span class="ow">in</span> <span class="n">mdl</span><span class="o">.</span><span class="n">init_eqs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-                    <span class="k">if</span> <span class="n">init_var</span><span class="o">.</span><span class="n">uid</span> <span class="o">==</span> <span class="n">ep</span><span class="o">.</span><span class="n">uid</span><span class="p">:</span>
-                        <span class="n">init_eq_for_ep</span> <span class="o">=</span> <span class="n">init_eq</span>
-                        <span class="k">break</span>
-                <span class="k">if</span> <span class="n">init_eq_for_ep</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="n">effective_eq</span> <span class="o">=</span> <span class="n">init_eq_for_ep</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">_variable_parameters</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ep</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_event_parameters_eqs0</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">effective_eq</span><span class="p">)</span>
@@ -2371,27 +2580,24 @@
 
 <div class="viewcode-block" id="RmsProblemDae.set_init_guess">
 <a class="viewcode-back" href="../../../../../rst_source/api/auto/VeraGridEngine.Simulations.Rms.problems.html#VeraGridEngine.Simulations.Rms.problems.rms_problem_dae.RmsProblemDae.set_init_guess">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">set_init_guess</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mdl</span><span class="p">:</span> <span class="n">Block</span><span class="p">,</span> <span class="n">reference_powerflow</span><span class="p">:</span> <span class="n">VarPowerFlowReferenceType</span><span class="p">,</span> <span class="n">val</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_init_guess</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                       <span class="n">mdl</span><span class="p">:</span> <span class="n">Block</span><span class="p">,</span>
+                       <span class="n">reference_powerflow</span><span class="p">:</span> <span class="n">VarPowerFlowReferenceType</span><span class="p">,</span>
+                       <span class="n">val</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        add values from powerflow to initial guess</span>
+<span class="sd">        Store a power-flow value as the initial guess of a mapped RMS variable.</span>
 
-<span class="sd">        :param mdl:</span>
-<span class="sd">        :type mdl:</span>
-<span class="sd">        :param reference_powerflow:</span>
-<span class="sd">        :type reference_powerflow:</span>
-<span class="sd">        :param val:</span>
-<span class="sd">        :type val:</span>
-<span class="sd">        :return:</span>
-<span class="sd">        :rtype:self._</span>
+<span class="sd">        :param mdl: RMS model containing the external power-flow mapping.</span>
+<span class="sd">        :param reference_powerflow: Power-flow quantity identifying the target variable.</span>
+<span class="sd">        :param val: Initial value expressed in the RMS model&#39;s units.</span>
+<span class="sd">        :return: None.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">reference_powerflow</span> <span class="ow">in</span> <span class="n">mdl</span><span class="o">.</span><span class="n">external_mapping</span><span class="p">:</span>
-            <span class="n">var</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">external_mapping</span><span class="p">[</span><span class="n">reference_powerflow</span><span class="p">]</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">init_guess</span><span class="p">[</span><span class="n">var</span><span class="o">.</span><span class="n">uid</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span></div>
+        <span class="n">var</span><span class="p">:</span> <span class="n">Var</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">external_mapping</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">reference_powerflow</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">var</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">init_guess</span><span class="p">[</span><span class="n">var</span><span class="o">.</span><span class="n">uid</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">pass</span></div>
 
-            <span class="c1"># print(f&quot;DEBUG: set_init_guess {reference_powerflow.value} = {val} for var {var.name} (uid={var.uid})&quot;)</span>
-        <span class="c1"># else:</span>
-            <span class="c1"># print(</span>
-                <span class="c1"># f&quot;DEBUG: set_init_guess {reference_powerflow.value} NOT FOUND in external_mapping. Available: {[k.value for k in mdl.external_mapping.keys()]}&quot;)</span>
 
 <div class="viewcode-block" id="RmsProblemDae.get_equation_at">
 <a class="viewcode-back" href="../../../../../rst_source/api/auto/VeraGridEngine.Simulations.Rms.problems.html#VeraGridEngine.Simulations.Rms.problems.rms_problem_dae.RmsProblemDae.get_equation_at">[docs]</a>

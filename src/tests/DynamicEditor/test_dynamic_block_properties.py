@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Iterator
 
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 import pytest
 
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_properties import (
@@ -16,8 +16,10 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_block_properties import (
     BlockCodeBuffer,
     BlockEquationDraft,
     BlockVariableRenameRequest,
+    BlockStructuralEditRequest,
     DaeCodeDiagnostic,
     DynamicBlockPropertiesDialog,
+    DynamicBlockPropertiesDockWidget,
     build_block_symbol_namespace,
     build_equation_code,
     parse_equation_code,
@@ -25,6 +27,7 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_block_properties import (
     resolve_block_documentation_url,
     serialize_dae_expression,
     synchronize_dae_variable_declarations,
+    TemplateProp
 )
 from VeraGrid.Gui.DynamicModelEditor.dynamic_equation_pdf import (
     EquationExportEntry,
@@ -62,10 +65,11 @@ from VeraGridEngine.enumerations import (
 )
 from VeraGridEngine.Utils.Symbolic.block import Block, normalize_event_parameter_initialization
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var, get_expression_vars, symbolic_to_string
+from VeraGridEngine.Utils.procedural_logic import HardSaturationLogic
 from VeraGridEngine.Templates.Emt.generator_emt_type_template import get_governor_emt
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template_v2 import get_genqec_rms
 from VeraGridEngine.Templates.Rms.genrow_rms_template import get_genrow_rms_template
-from VeraGridEngine.Templates.template_definition import TemplateDefinition
+from VeraGridEngine.Templates.template_definition import TemplateDefinition, TemplateProp
 from VeraGridEngine.Templates.BasicBlockCatalog import (
     BasicBlockTemplateDescriptor,
     get_editor_ready_basic_block_catalog_descriptors,
@@ -129,6 +133,70 @@ class AliasRenameReceiver(QtCore.QObject):
             pass
 
 
+class AppliedSceneRefreshReceiver(QtCore.QObject):
+    """Model the owning editor updating names and children after Apply."""
+
+    __slots__ = ("_root", "_new_child", "_variable")
+
+    def __init__(self, root: Block, new_child: Block, variable: Var) -> None:
+        """Keep the scene-side identities changed by the synchronous callback.
+
+        :param root: Working block whose owners are reordered.
+        :param new_child: Interface child introduced by scene reconstruction.
+        :param variable: Existing variable whose display alias is restored.
+        :return: None.
+        """
+        super().__init__()
+        self._root: Block = root
+        self._new_child: Block = new_child
+        self._variable: Var = variable
+
+    @QtCore.Slot(object)
+    def refresh_scene(self, uid: object) -> None:
+        """Apply only the scene updates belonging to this receiver's block.
+
+        :param uid: Identity emitted after the block data is committed.
+        :return: None.
+        """
+        if uid == self._root.uid:
+            self._root.name = "Refreshed root"
+            self._variable.set_name("restored_state")
+            if self._new_child not in self._root.children:
+                self._root.children.insert(0, self._new_child)
+            else:
+                pass
+        else:
+            pass
+
+
+class StructuralRefreshReceiver(QtCore.QObject):
+    """Replace one child without evaluating a real template or simulation."""
+
+    __slots__ = ("_replacement",)
+
+    def __init__(self, replacement: Block) -> None:
+        """Keep the generated child supplied by the structural test.
+
+        :param replacement: Model used as the successful rebuild result.
+        :return: None.
+        """
+        super().__init__()
+        self._replacement: Block = replacement
+
+    @QtCore.Slot(object)
+    def rebuild(self, request: object) -> None:
+        """Complete a rebuild using the public synchronous request interface.
+
+        :param request: Structural request from the properties dialog.
+        :return: None.
+        """
+        if isinstance(request, BlockStructuralEditRequest):
+            request.get_block().children = list((self._replacement,))
+            request.set_result(True, "")
+        else:
+            pass
+
+
 @pytest.fixture(autouse=True)
 def close_block_property_dialogues() -> Iterator[None]:
     """Destroy every modal created by a test before the next Qt test starts.
@@ -150,6 +218,32 @@ def close_block_property_dialogues() -> Iterator[None]:
             pass
     QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
     application.processEvents()
+
+
+def find_property_index(dialogue: DynamicBlockPropertiesDialog, name: str,
+                        owner: Block | None = None) -> QtCore.QModelIndex:
+    """Locate a leaf through the tree's existing symbol identity.
+
+    :param dialogue: Open properties containing the hierarchical model.
+    :param name: Local symbol name to select.
+    :param owner: Optional owner used to distinguish repeated names.
+    :return: Name-column index, or an invalid index if absent.
+    """
+    group_row: int
+    for group_row in range(dialogue._property_tree_model.rowCount()):
+        group: QtCore.QModelIndex = dialogue._property_tree_model.index(group_row, 0)
+        owner_row: int
+        for owner_row in range(dialogue._property_tree_model.rowCount(group)):
+            parent: QtCore.QModelIndex = dialogue._property_tree_model.index(owner_row, 0, group)
+            symbol_row: int
+            for symbol_row in range(dialogue._property_tree_model.rowCount(parent)):
+                index: QtCore.QModelIndex = dialogue._property_tree_model.index(symbol_row, 0, parent)
+                draft: BlockSymbolDraftRow | None = dialogue._property_tree_model.symbol_row(index)
+                if draft is not None and draft.get_name() == name and (owner is None or draft.get_owner() is owner):
+                    return index
+                else:
+                    pass
+    return QtCore.QModelIndex()
 
 
 def build_test_block() -> tuple[Block, Var, Var, Const]:
@@ -368,18 +462,10 @@ def test_dialogue_rename_updates_each_connected_local_name_in_dae_code() -> None
     rename_receiver: AliasRenameReceiver = AliasRenameReceiver(dialogue, "k1")
     dialogue.variableRenameRequested.connect(rename_receiver.apply_rename)
 
-    source_proxy_row: int | None = None
-    proxy_row: int
-    for proxy_row in range(dialogue._variable_symbol_proxy.rowCount()):
-        displayed_name: object = dialogue._variable_symbol_proxy.index(proxy_row, 1).data()
-        if displayed_name == "const_CONST_1":
-            source_proxy_row = proxy_row
-        else:
-            pass
-    assert source_proxy_row is not None
-
-    dialogue._symbol_table.selectRow(source_proxy_row)
-    dialogue._rename_selected_symbol(dialogue._symbol_table)
+    source_index: QtCore.QModelIndex = find_property_index(dialogue, "const_CONST_1")
+    assert source_index.isValid()
+    dialogue._property_tree.setCurrentIndex(source_index)
+    dialogue.rename_property_symbol()
 
     assert source_variable.name == "k1"
     assert connected_variable.name == "k1"
@@ -516,11 +602,10 @@ def test_invalid_dialog_draft_does_not_mutate_block() -> None:
     block, state_variable, parameter_variable, parameter_constant = build_test_block()
     original_state_equation: object = block.state_eqs[0]
     dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(block, "GENERIC", VarFactory())
-    assert dialogue._tabs.count() == 3
+    assert dialogue._tabs.count() == 1
     assert dialogue._tabs.tabText(0) == "General options"
-    assert dialogue._tabs.tabText(1) == "DAE model"
-    assert dialogue._tabs.tabText(2) == "Runtime logic"
-    assert dialogue._tabs.tabIcon(2).isNull()
+    assert not dialogue._tabs.tabIcon(0).isNull()
+    assert dialogue._runtime_logic_editor.isHidden()
     assert dialogue._block_info_button.isEnabled()
     assert "original predefined library block" in dialogue._block_info_button.toolTip()
     assert "may differ" in dialogue._block_info_button.toolTip()
@@ -706,13 +791,11 @@ def test_new_state_derivative_is_visible_and_preserves_its_base_variable() -> No
 
     dialogue.add_staged_symbol()
 
-    staged_variable_names: list[str] = list()
-    proxy_row: int
-    for proxy_row in range(dialogue._variable_symbol_proxy.rowCount()):
-        name_index: QtCore.QModelIndex = dialogue._variable_symbol_proxy.index(proxy_row, 1)
-        staged_variable_names.append(str(name_index.data()))
-    assert staged_variable_names == ["d111", "d_d111"]
-    assert dialogue._variable_symbol_proxy.index(1, 2).data() == BlockSymbolKind.DIFFERENTIAL.value
+    state_index: QtCore.QModelIndex = find_property_index(dialogue, "d111")
+    derivative_index: QtCore.QModelIndex = find_property_index(dialogue, "d_d111")
+    assert state_index.isValid()
+    assert derivative_index.isValid()
+    assert derivative_index.siblingAtColumn(1).data() == BlockSymbolKind.DIFFERENTIAL.value
     assert block.state_vars == list()
     assert block.diff_vars == list()
 
@@ -731,10 +814,8 @@ def test_new_state_derivative_is_visible_and_preserves_its_base_variable() -> No
     assert [variable.name for variable in block.diff_vars] == ["d_d111"]
     assert block.diff_vars[0].base_var is block.state_vars[0]
     assert block.state_vars[0].diff_var is block.diff_vars[0]
-    assert [
-        str(dialogue._variable_symbol_proxy.index(proxy_row, 1).data())
-        for proxy_row in range(dialogue._variable_symbol_proxy.rowCount())
-    ] == ["d111", "d_d111"]
+    assert find_property_index(dialogue, "d111").isValid()
+    assert find_property_index(dialogue, "d_d111").isValid()
     dialogue.close()
 
 
@@ -770,16 +851,10 @@ def test_new_variables_immediately_update_dae_variable_declarations() -> None:
     assert "algebraic_vars = [torque]" in algebraic_code
     assert "diff_vars = [d_speed]" in algebraic_code
 
-    speed_proxy_row: int | None = None
-    proxy_row: int
-    for proxy_row in range(dialogue._variable_symbol_proxy.rowCount()):
-        if dialogue._variable_symbol_proxy.index(proxy_row, 1).data() == "speed":
-            speed_proxy_row = proxy_row
-        else:
-            pass
-    assert speed_proxy_row is not None
-    dialogue._symbol_table.selectRow(speed_proxy_row)
-    dialogue._delete_selected_symbol(dialogue._symbol_table)
+    speed_index: QtCore.QModelIndex = find_property_index(dialogue, "speed")
+    assert speed_index.isValid()
+    dialogue._property_tree.setCurrentIndex(speed_index)
+    dialogue.delete_property_symbol()
     staged_removal_code: str = dialogue._dae_editor.toPlainText()
     assert "state_vars = []" in staged_removal_code
     assert "algebraic_vars = [torque]" in staged_removal_code
@@ -821,16 +896,10 @@ def test_deleted_variables_immediately_update_dae_variable_declarations() -> Non
     removal_index: int
     for removal_index in range(len(names_to_remove)):
         target_name: str = names_to_remove[removal_index]
-        target_proxy_row: int | None = None
-        proxy_row: int
-        for proxy_row in range(dialogue._variable_symbol_proxy.rowCount()):
-            if dialogue._variable_symbol_proxy.index(proxy_row, 1).data() == target_name:
-                target_proxy_row = proxy_row
-            else:
-                pass
-        assert target_proxy_row is not None
-        dialogue._symbol_table.selectRow(target_proxy_row)
-        dialogue._delete_selected_symbol(dialogue._symbol_table)
+        target_index: QtCore.QModelIndex = find_property_index(dialogue, target_name)
+        assert target_index.isValid()
+        dialogue._property_tree.setCurrentIndex(target_index)
+        dialogue.delete_property_symbol()
         updated_code: str = dialogue._dae_editor.toPlainText()
         assert expected_declarations[removal_index] in updated_code
         if target_name == "d_speed":
@@ -883,81 +952,182 @@ def test_new_input_is_applied_without_offering_external_mapping() -> None:
     dialogue.close()
 
 
-def test_add_symbol_fields_keep_one_width_across_symbol_categories() -> None:
-    """Optional variable and parameter fields must share the form field column."""
+# def test_add_symbol_fields_keep_one_width_across_symbol_categories() -> None:
+#     """Optional variable and parameter fields must share the form field column."""
+#     application: QtWidgets.QApplication = get_qt_application()
+#     var_factory: VarFactory = VarFactory()
+#     block: Block = Block(name="field_widths")
+#     dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
+#         block,
+#         "GENERIC",
+#         var_factory,
+#     )
+#     dialogue.resize(900, 700)
+#     dialogue.show()
+#     dialogue._tabs.setCurrentIndex(1)
+#     application.processEvents()
+#
+#     stable_fields: tuple[QtWidgets.QWidget, ...] = (
+#         dialogue._new_symbol_owner,
+#         dialogue._new_symbol_name,
+#         dialogue._new_symbol_category,
+#         dialogue._new_symbol_kind,
+#     )
+#     dialogue._new_symbol_category.setCurrentText("Variables")
+#     dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.INPUT.value)
+#     application.processEvents()
+#     variable_vertical_geometries: List[tuple[int, int]] = list()
+#     stable_field: QtWidgets.QWidget
+#     for stable_field in stable_fields:
+#         variable_position: QtCore.QPoint = stable_field.mapTo(
+#             dialogue,
+#             QtCore.QPoint(0, 0),
+#         )
+#         variable_vertical_geometries.append((variable_position.y(), stable_field.height()))
+#
+#     dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.STATE.value)
+#     application.processEvents()
+#     shared_field_geometry: tuple[int, int] = (
+#         dialogue._new_symbol_owner.x(),
+#         dialogue._new_symbol_owner.width(),
+#     )
+#     variable_fields: tuple[QtWidgets.QWidget, ...] = (
+#         dialogue._new_symbol_name,
+#         dialogue._new_symbol_category,
+#         dialogue._new_symbol_kind,
+#         dialogue._new_external_reference,
+#     )
+#     variable_field: QtWidgets.QWidget
+#     for variable_field in variable_fields:
+#         assert (variable_field.x(), variable_field.width()) == shared_field_geometry
+#
+#     dialogue._new_symbol_category.setCurrentText("Parameters")
+#     dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.EVENT_PARAMETER.value)
+#     application.processEvents()
+#     parameter_vertical_geometries: List[tuple[int, int]] = list()
+#     for stable_field in stable_fields:
+#         parameter_position: QtCore.QPoint = stable_field.mapTo(
+#             dialogue,
+#             QtCore.QPoint(0, 0),
+#         )
+#         parameter_vertical_geometries.append((parameter_position.y(), stable_field.height()))
+#     assert parameter_vertical_geometries == variable_vertical_geometries
+#     assert dialogue._new_parameter_value.isVisible()
+#     assert (
+#         dialogue._new_parameter_value.x(),
+#         dialogue._new_parameter_value.width(),
+#     ) == shared_field_geometry
+#
+#     dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.PARAMETER.value)
+#     application.processEvents()
+#     assert dialogue._new_static_reference.isVisible()
+#     assert (
+#         dialogue._new_static_reference.x(),
+#         dialogue._new_static_reference.width(),
+#     ) == shared_field_geometry
+#     assert dialogue._new_external_reference_label.text() == "Power-flow variable"
+#     dialogue.close()
+
+
+@pytest.mark.parametrize("kind", (
+    BlockSymbolKind.INPUT, BlockSymbolKind.STATE, BlockSymbolKind.EVENT_PARAMETER, BlockSymbolKind.PARAMETER,
+))
+def test_opening_equations_fully_expands_symbol_form(kind: BlockSymbolKind) -> None:
+    """Opening code tools fits styled controls and prevents form compression.
+
+    :param kind: Symbol category whose optional controls must remain visible.
+    :return: None.
+    """
     application: QtWidgets.QApplication = get_qt_application()
-    var_factory: VarFactory = VarFactory()
-    block: Block = Block(name="field_widths")
-    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
-        block,
-        "GENERIC",
-        var_factory,
-    )
-    dialogue.resize(900, 700)
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(Block(name="form"), "GENERIC", VarFactory())
+    # Simulate taller styled controls without changing system DPI or fonts.
+    # The previous fixed 190-pixel allocation cannot fit even the main rows.
+    dialogue.setStyleSheet("QComboBox, QLineEdit, QDoubleSpinBox { min-height: 36px; }")
+    dialogue.resize(1200, 900)
+    if kind in (BlockSymbolKind.EVENT_PARAMETER, BlockSymbolKind.PARAMETER):
+        dialogue._new_symbol_category.setCurrentText("Parameters")
+    else:
+        dialogue._new_symbol_category.setCurrentText("Variables")
+    dialogue._new_symbol_kind.setCurrentText(kind.value)
     dialogue.show()
-    dialogue._tabs.setCurrentIndex(1)
     application.processEvents()
 
-    stable_fields: tuple[QtWidgets.QWidget, ...] = (
-        dialogue._new_symbol_owner,
-        dialogue._new_symbol_name,
-        dialogue._new_symbol_category,
-        dialogue._new_symbol_kind,
-    )
-    dialogue._new_symbol_category.setCurrentText("Variables")
-    dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.INPUT.value)
-    application.processEvents()
-    variable_vertical_geometries: List[tuple[int, int]] = list()
-    stable_field: QtWidgets.QWidget
-    for stable_field in stable_fields:
-        variable_position: QtCore.QPoint = stable_field.mapTo(
-            dialogue,
-            QtCore.QPoint(0, 0),
-        )
-        variable_vertical_geometries.append((variable_position.y(), stable_field.height()))
-
-    dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.STATE.value)
-    application.processEvents()
-    shared_field_geometry: tuple[int, int] = (
-        dialogue._new_symbol_owner.x(),
-        dialogue._new_symbol_owner.width(),
-    )
-    variable_fields: tuple[QtWidgets.QWidget, ...] = (
-        dialogue._new_symbol_name,
-        dialogue._new_symbol_category,
-        dialogue._new_symbol_kind,
-        dialogue._new_external_reference,
-    )
-    variable_field: QtWidgets.QWidget
-    for variable_field in variable_fields:
-        assert (variable_field.x(), variable_field.width()) == shared_field_geometry
-
-    dialogue._new_symbol_category.setCurrentText("Parameters")
-    dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.EVENT_PARAMETER.value)
-    application.processEvents()
-    parameter_vertical_geometries: List[tuple[int, int]] = list()
-    for stable_field in stable_fields:
-        parameter_position: QtCore.QPoint = stable_field.mapTo(
-            dialogue,
-            QtCore.QPoint(0, 0),
-        )
-        parameter_vertical_geometries.append((parameter_position.y(), stable_field.height()))
-    assert parameter_vertical_geometries == variable_vertical_geometries
-    assert dialogue._new_parameter_value.isVisible()
-    assert (
-        dialogue._new_parameter_value.x(),
-        dialogue._new_parameter_value.width(),
-    ) == shared_field_geometry
-
-    dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.PARAMETER.value)
-    application.processEvents()
-    assert dialogue._new_static_reference.isVisible()
-    assert (
-        dialogue._new_static_reference.x(),
-        dialogue._new_static_reference.width(),
-    ) == shared_field_geometry
-    assert dialogue._new_external_reference_label.text() == "Power-flow variable"
+    # Reopening and dragging the divider must retain a complete form without
+    # regenerating the editor or discarding the user's source text.
+    dialogue._dae_editor.insertPlainText("# Preserve this pending edit\n")
+    pending_code: str = dialogue._dae_editor.toPlainText()
+    opening: int
+    for opening in range(2):
+        dialogue._equations_button.click()
+        application.processEvents()
+        group: QtWidgets.QGroupBox = dialogue._add_symbol_group
+        assert group.height() >= group.sizeHint().height()
+        assert dialogue._dae_editor.toPlainText() == pending_code
+        assert dialogue._new_symbol_owner.height() >= 36
+        child: QtWidgets.QWidget
+        for child in group.findChildren(QtWidgets.QWidget):
+            if child.isVisibleTo(group):
+                child_rect: QtCore.QRect = QtCore.QRect(child.mapTo(group, QtCore.QPoint()), child.size())
+                assert group.contentsRect().contains(child_rect)
+                if isinstance(child, QtWidgets.QLabel):
+                    assert child.height() >= child.fontMetrics().height()
+                else:
+                    pass
+            else:
+                pass
+        if opening == 0:
+            total_height: int = sum(dialogue._equation_tools_splitter.sizes())
+            dialogue._equation_tools_splitter.setSizes(list((total_height, 0)))
+            application.processEvents()
+            assert group.height() >= group.sizeHint().height()
+            dialogue._equations_button.click()
+        else:
+            pass
     dialogue.close()
+
+
+@pytest.mark.parametrize("floating", (True, False))
+def test_dock_hosted_symbol_form_is_fully_visible_when_equations_open(floating: bool) -> None:
+    """The actual dock host must accommodate the form, not clip a resized child.
+
+    :param floating: Whether properties float or remain docked in a main window.
+    :return: None.
+    """
+    application: QtWidgets.QApplication = get_qt_application()
+    host: QtWidgets.QMainWindow = QtWidgets.QMainWindow()
+    host.resize(1200, 700)
+    host.setCentralWidget(QtWidgets.QWidget(host))
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
+        Block(name="hosted_form"), "GENERIC", VarFactory(), parent=host,
+    )
+    dock: DynamicBlockPropertiesDockWidget = DynamicBlockPropertiesDockWidget(dialogue, host)
+    host.addDockWidget(QtCore.Qt.DockWidgetArea.RightDockWidgetArea, dock)
+    dock.setFloating(floating)
+    dock.setStyleSheet("QComboBox, QLineEdit, QDoubleSpinBox { min-height: 36px; }")
+    host.show()
+    dock.resize(1200, 700)
+    dock.show()
+    application.processEvents()
+    try:
+        dialogue._equations_button.click()
+        application.processEvents()
+        QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.LayoutRequest)
+        application.processEvents()
+        group: QtWidgets.QGroupBox = dialogue._add_symbol_group
+        assert group.height() >= group.sizeHint().height()
+        # Local containment is not enough: a managed QDialog can extend beyond
+        # its dock if it is resized directly, leaving lower controls invisible.
+        form_in_dock: QtCore.QRect = QtCore.QRect(group.mapTo(dock, QtCore.QPoint()), group.size())
+        assert dock.contentsRect().contains(form_in_dock)
+        button_in_dock: QtCore.QRect = QtCore.QRect(
+            dialogue._add_symbol_button.mapTo(dock, QtCore.QPoint()), dialogue._add_symbol_button.size(),
+        )
+        assert dock.contentsRect().contains(button_in_dock)
+    finally:
+        dock.close()
+        host.close()
+        host.deleteLater()
+        application.processEvents()
 
 
 def test_legacy_equation_backed_output_does_not_block_new_input() -> None:
@@ -1324,6 +1494,92 @@ def test_validate_button_marks_a_cross_line_unmatched_opening_parenthesis() -> N
     dialogue.close()
 
 
+def test_equation_panel_contains_existing_python_and_latex_controls() -> None:
+    """Keep all equation tools in one panel independently of its host page.
+
+    :return: None.
+    """
+    application: QtWidgets.QApplication = get_qt_application()
+    child: Block = Block(name="equation_child")
+    root: Block = Block(name="equation_root", children=list((child,)))
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
+        root,
+        "GENERIC",
+        VarFactory(),
+    )
+
+    # The extraction must preserve the existing two-tab equation surface and
+    # retain both owners without duplicating the selector or its code buffers.
+    equation_panel: QtWidgets.QWidget = dialogue._equation_panel
+    assert isinstance(equation_panel, QtWidgets.QTabWidget)
+    assert equation_panel.count() == 2
+    assert equation_panel.tabText(0) == "Python code"
+    assert equation_panel.tabText(1) == "LaTeX"
+    assert dialogue._equation_owner_combo.count() == 2
+    assert len(dialogue._equation_buffers) == 2
+    assert equation_panel.widget(0).isAncestorOf(dialogue._equation_owner_combo)
+    assert equation_panel.widget(0).isAncestorOf(dialogue._dae_code_search)
+    assert equation_panel.widget(0).isAncestorOf(dialogue._dae_editor)
+    assert not equation_panel.isAncestorOf(dialogue._validate_code_button)
+    assert dialogue._equation_tools_splitter.widget(1).isAncestorOf(dialogue._validate_code_button)
+    assert dialogue._validate_code_button.text() == "Validate model"
+    assert equation_panel.widget(1).isAncestorOf(dialogue._latex_selection_tree)
+    assert equation_panel.widget(1).isAncestorOf(dialogue._latex_source_preview)
+    assert equation_panel.widget(1).isAncestorOf(dialogue._export_rendered_button)
+    dialogue.close()
+    application.processEvents()
+
+
+def test_relocating_equation_panel_preserves_pending_code_and_undo() -> None:
+    """Moving an existing panel must not rebuild the active document or its draft.
+
+    :return: None.
+    """
+    application: QtWidgets.QApplication = get_qt_application()
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
+        Block(name="relocated_equations"),
+        "GENERIC",
+        VarFactory(),
+    )
+    equation_panel: QtWidgets.QWidget = dialogue._equation_panel
+    assert isinstance(equation_panel, QtWidgets.QTabWidget)
+    original_code: str = dialogue._dae_editor.toPlainText()
+    owner_index: int = dialogue._equation_owner_combo.currentIndex()
+
+    # Make a real text edit so both the pending buffer and the document's undo
+    # history can reveal an accidental replacement during panel relocation.
+    dialogue._dae_editor.insertPlainText("# Pending equation edit\n")
+    pending_code: str = dialogue._dae_editor.toPlainText()
+    dialogue._dae_code_search.setText("Pending equation edit")
+    equation_panel.setCurrentIndex(1)
+    assert dialogue._dae_editor.document().isUndoAvailable()
+
+    # Simulate moving the tools to General options using Qt ownership only.
+    # The new container remains owned by the dialogue for normal cleanup.
+    new_host: QtWidgets.QWidget = QtWidgets.QWidget(dialogue)
+    new_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(new_host)
+    equation_panel.setParent(new_host)
+    new_layout.addWidget(equation_panel)
+    equation_panel.hide()
+    equation_panel.show()
+
+    assert equation_panel.parentWidget() is new_host
+    assert equation_panel.currentIndex() == 1
+    assert dialogue._equation_owner_combo.currentIndex() == owner_index
+    assert dialogue._dae_editor.toPlainText() == pending_code
+    assert dialogue._equation_buffers[owner_index].get_code() == pending_code
+    assert dialogue._dae_code_search.text() == "Pending equation edit"
+    assert dialogue._dae_editor.document().isUndoAvailable()
+
+    # Undo must still update the original buffer through its existing signal
+    # connection, proving that the panel did not acquire a detached editor.
+    dialogue._dae_editor.undo()
+    assert dialogue._dae_editor.toPlainText() == original_code
+    assert dialogue._equation_buffers[owner_index].get_code() == original_code
+    dialogue.close()
+    application.processEvents()
+
+
 def test_every_block_properties_table_column_is_manually_resizable() -> None:
     """No table column in the modal may remain locked to stretch or contents."""
     application: QtWidgets.QApplication = get_qt_application()
@@ -1342,19 +1598,13 @@ def test_every_block_properties_table_column_is_manually_resizable() -> None:
         VarFactory(),
     )
     dialogue.show()
-    dialogue._tabs.setCurrentIndex(1)
+    dialogue._equations_button.setChecked(True)
     application.processEvents()
 
     initial_split_sizes: list[int] = dialogue._dae_splitter.sizes()
     initial_split_total: int = sum(initial_split_sizes)
-    assert 0.64 <= initial_split_sizes[1] / initial_split_total <= 0.68
-    assert [dialogue._symbol_table.columnWidth(index) for index in range(5)] == [
-        65,
-        55,
-        80,
-        50,
-        110,
-    ]
+    assert 0.73 <= initial_split_sizes[1] / initial_split_total <= 0.77
+    assert dialogue._property_tree_model.columnCount() == 4
 
     table: QtWidgets.QTableView
     for table in dialogue.findChildren(QtWidgets.QTableView):
@@ -1368,24 +1618,13 @@ def test_every_block_properties_table_column_is_manually_resizable() -> None:
         assert latex_header.sectionResizeMode(
             latex_column_index
         ) == QtWidgets.QHeaderView.ResizeMode.Interactive
-    variable_page: QtWidgets.QWidget | None = dialogue._symbol_table.parentWidget()
-    if variable_page is not None and variable_page.parentWidget() is not None:
-        symbol_tabs_widget: QtWidgets.QWidget | None = variable_page.parentWidget().parentWidget()
-    else:
-        symbol_tabs_widget = None
-    assert isinstance(symbol_tabs_widget, QtWidgets.QTabWidget)
-    symbol_tabs_widget.setCurrentWidget(variable_page)
-    application.processEvents()
-    assert dialogue._symbol_table.horizontalScrollBar().maximum() == 0
-    parameter_page: QtWidgets.QWidget | None = dialogue._parameter_symbol_table.parentWidget()
-    assert parameter_page is not None
-    symbol_tabs_widget.setCurrentWidget(parameter_page)
-    application.processEvents()
-    assert dialogue._parameter_symbol_table.horizontalScrollBar().maximum() == 0
+    tree_header: QtWidgets.QHeaderView = dialogue._property_tree.header()
+    for column_index in range(tree_header.count()):
+        assert tree_header.sectionResizeMode(column_index) == QtWidgets.QHeaderView.ResizeMode.Interactive
 
     # The same splitter handle must support both requested directions instead
-    # of pinning the symbol panel to its initial one-third allocation.
-    dialogue._dae_splitter.setSizes(list([320, initial_split_total - 320]))
+    # of pinning the symbol panel to its initial quarter-width allocation.
+    dialogue._dae_splitter.setSizes(list([260, initial_split_total - 260]))
     application.processEvents()
     reduced_sizes: list[int] = dialogue._dae_splitter.sizes()
     assert reduced_sizes[0] < initial_split_sizes[0]
@@ -1394,90 +1633,115 @@ def test_every_block_properties_table_column_is_manually_resizable() -> None:
     expanded_sizes: list[int] = dialogue._dae_splitter.sizes()
     assert expanded_sizes[0] > initial_split_sizes[0]
 
-    # The vertical handle must likewise let the table consume space from the
-    # add-symbol form, which remains usable at its minimum size.
-    initial_vertical_sizes: list[int] = dialogue._symbol_panel_splitter.sizes()
+    # The vertical handle can give extra space to the form and return it to
+    # the code, but must stop before the form's controls become clipped.
+    dialogue.resize(dialogue.width(), dialogue.height() + 200)
+    application.processEvents()
+    initial_vertical_sizes: list[int] = dialogue._equation_tools_splitter.sizes()
     initial_vertical_total: int = sum(initial_vertical_sizes)
-    dialogue._symbol_panel_splitter.setSizes(
-        list([initial_vertical_total - 130, 130])
+    expanded_form_height: int = initial_vertical_sizes[1] + 60
+    dialogue._equation_tools_splitter.setSizes(
+        list((initial_vertical_total - expanded_form_height, expanded_form_height))
     )
     application.processEvents()
-    enlarged_table_sizes: list[int] = dialogue._symbol_panel_splitter.sizes()
-    assert enlarged_table_sizes[0] > initial_vertical_sizes[0]
-    assert enlarged_table_sizes[1] < initial_vertical_sizes[1]
+    enlarged_form_sizes: list[int] = dialogue._equation_tools_splitter.sizes()
+    assert enlarged_form_sizes[0] < initial_vertical_sizes[0]
+    assert enlarged_form_sizes[1] > initial_vertical_sizes[1]
 
-    # The form may be folded until only its group title remains. It must keep
-    # that minimum height so the pane and its handle cannot disappear.
-    add_symbol_group: QtWidgets.QWidget = dialogue._symbol_panel_splitter.widget(1)
+    # Even an attempted complete collapse must stop at the full content height.
+    actions_panel: QtWidgets.QWidget = dialogue._equation_tools_splitter.widget(1)
+    add_symbol_group: QtWidgets.QWidget = dialogue._add_symbol_group
     assert isinstance(add_symbol_group, QtWidgets.QGroupBox)
     assert add_symbol_group.title() == "Add symbol to selected block"
-    dialogue._symbol_panel_splitter.setSizes(list((initial_vertical_total, 0,)))
+    dialogue._equation_tools_splitter.setSizes(list((initial_vertical_total, 0,)))
     application.processEvents()
-    collapsed_form_sizes: list[int] = dialogue._symbol_panel_splitter.sizes()
-    assert collapsed_form_sizes[0] > enlarged_table_sizes[0]
-    assert collapsed_form_sizes[1] == add_symbol_group.minimumHeight()
+    minimum_form_sizes: list[int] = dialogue._equation_tools_splitter.sizes()
+    assert minimum_form_sizes[0] > enlarged_form_sizes[0]
+    assert minimum_form_sizes[1] >= actions_panel.minimumSizeHint().height()
+    assert add_symbol_group.height() >= add_symbol_group.sizeHint().height()
     assert add_symbol_group.isVisible()
     dialogue.close()
 
 
-def test_general_options_splitter_resizes_configuration_and_parameters() -> None:
-    """The General options handle must retain each pane at its title-height minimum.
+@pytest.mark.parametrize("equations_visible", (False, True))
+def test_property_tree_rows_fill_available_width(equations_visible: bool) -> None:
+    """Property rows fill their frame as the window and equation pane change.
+
+    :param equations_visible: Whether the code pane shares the available width.
+    :return: None.
+    """
+    application: QtWidgets.QApplication = get_qt_application()
+    variable: Var = Var("output_signal")
+    block: Block = Block(name="full_width", out_vars=list((variable,)))
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(block, "GENERIC", VarFactory())
+    dialogue.show()
+    dialogue._equations_button.setChecked(equations_visible)
+    tree: QtWidgets.QTreeView = dialogue._property_tree
+    # Width checks need visible leaf rows; the dialog starts fully collapsed.
+    tree.expandAll()
+    header: QtWidgets.QHeaderView = tree.header()
+    last_cell: QtCore.QModelIndex = find_property_index(dialogue, variable.name).siblingAtColumn(3)
+    assert last_cell.isValid()
+    assert header.stretchLastSection()
+
+    # Native header stretching must follow both enlarging and shrinking the
+    # viewport, without custom resize handlers or changing other column widths.
+    window_width: int
+    for window_width in (1200, 1600, 1200):
+        dialogue.resize(window_width, 700)
+        application.processEvents()
+        # Narrow panes retain manual column widths and scroll horizontally;
+        # wider panes stretch the last column to avoid an empty right margin.
+        assert header.length() >= tree.viewport().width()
+        if tree.viewport().width() >= 560:
+            assert header.length() == tree.viewport().width()
+        else:
+            # Qt can retain a previously stretched last-column width when
+            # there is no room for all columns; horizontal scrolling is valid.
+            pass
+        assert tree.visualRect(last_cell).right() >= tree.viewport().width() - 1
+        assert header.sectionSize(0) == 170
+        assert header.sectionSize(1) == 100
+        assert header.sectionSize(2) == 230
+    dialogue.close()
+
+
+def test_general_options_splitter_collapses_and_restores_properties() -> None:
+    """Properties must collapse fully without losing the equation document.
 
     :return: None.
     """
     application: QtWidgets.QApplication = get_qt_application()
-    _unused_application: QtWidgets.QApplication = application
-    block: Block
-    state_variable: Var
-    parameter_variable: Var
-    parameter_constant: Const
-    block, state_variable, parameter_variable, parameter_constant = build_test_block()
-    _unused_state_variable: Var = state_variable
-    _unused_parameter_variable: Var = parameter_variable
-    _unused_parameter_constant: Const = parameter_constant
-    dynamic_parameter: Var = Var("dynamic_parameter")
-    block.event_dict[dynamic_parameter] = Const(0.1)
     dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
-        block,
-        "GENERIC",
-        VarFactory(),
+        Block(name="splitter"), "GENERIC", VarFactory(),
     )
     dialogue.show()
-    dialogue._tabs.setCurrentIndex(0)
+    assert dialogue._equation_tools_splitter.isHidden()
+    dialogue._equations_button.click()
     application.processEvents()
+    original_code: str = dialogue._dae_editor.toPlainText()
+    available_width: int = sum(dialogue._dae_splitter.sizes())
+    assert dialogue._dae_splitter.orientation() == QtCore.Qt.Orientation.Horizontal
 
-    splitter: QtWidgets.QSplitter = dialogue._general_options_splitter
-    configuration_group: QtWidgets.QWidget = splitter.widget(0)
-    parameter_panel: QtWidgets.QWidget = splitter.widget(1)
-    initial_sizes: list[int] = splitter.sizes()
-    available_height: int = sum(initial_sizes)
-    assert splitter.orientation() == QtCore.Qt.Orientation.Vertical
-    assert splitter.count() == 2
-    assert isinstance(configuration_group, QtWidgets.QGroupBox)
-    assert configuration_group.title() == "Block configuration"
-    assert initial_sizes[1] > initial_sizes[0]
-
-    # Requesting a zero-sized configuration pane must stop at its title, not
-    # collapse the widget and strand the splitter handle.
-    splitter.setSizes(list((0, available_height,)))
+    dialogue._dae_splitter.moveSplitter(0, 1)
     application.processEvents()
-    collapsed_sizes: list[int] = splitter.sizes()
-    assert collapsed_sizes[0] == configuration_group.minimumHeight()
-    assert configuration_group.isVisible()
-    assert collapsed_sizes[1] > initial_sizes[1]
+    assert dialogue._dae_splitter.sizes()[0] == 0
+    assert dialogue._restore_properties_button.isVisible()
+    assert dialogue._dae_editor.toPlainText() == original_code
+    dialogue._restore_properties_button.click()
+    assert dialogue._dae_splitter.sizes()[0] > 0
 
-    # The same handle must also enlarge Block configuration by taking space
-    # back from Parameters.
-    splitter.setSizes(list((available_height - parameter_panel.minimumHeight(), 0,)))
-    application.processEvents()
-    expanded_sizes: list[int] = splitter.sizes()
-    assert expanded_sizes[0] > initial_sizes[0]
-    assert expanded_sizes[1] == parameter_panel.minimumHeight()
+    # The top action must also recover a usable page if code is hidden while
+    # the property panel is completely folded.
+    dialogue._dae_splitter.setSizes(list((0, available_width)))
+    dialogue._equations_button.click()
+    assert dialogue._equation_tools_splitter.isHidden()
+    assert dialogue._dae_splitter.sizes()[0] > 0
     dialogue.close()
 
 
-def test_generated_structure_height_follows_its_visible_settings() -> None:
-    """A short generated-structure table must not consume empty parameter space.
+def test_generated_structure_is_the_first_tree_branch() -> None:
+    """General structural settings share the tree without an extra fixed table.
 
     :return: None.
     """
@@ -1502,28 +1766,128 @@ def test_generated_structure_height_follows_its_visible_settings() -> None:
     dialogue._tabs.setCurrentIndex(0)
     application.processEvents()
 
-    structure_group: QtWidgets.QGroupBox | None = None
-    candidate_group: QtWidgets.QGroupBox
-    for candidate_group in dialogue.findChildren(QtWidgets.QGroupBox):
-        if candidate_group.title() == "Generated structure":
-            structure_group = candidate_group
-        else:
-            pass
-    assert structure_group is not None
-    structure_table: QtWidgets.QTableView | None = structure_group.findChild(QtWidgets.QTableView)
-    assert structure_table is not None
-    structure_model: QtCore.QAbstractItemModel | None = structure_table.model()
-    assert structure_model is not None
-    assert structure_model.rowCount() == 2
-    expected_table_height: int = (
-        structure_table.horizontalHeader().sizeHint().height()
-        + structure_table.verticalHeader().sectionSize(0)
-        + structure_table.verticalHeader().sectionSize(1)
-        + (structure_table.frameWidth() * 2)
+    tree: QtCore.QAbstractItemModel = dialogue._property_tree_model
+    structure_group: QtCore.QModelIndex = tree.index(0, 0)
+    assert structure_group.data() == "General structure"
+    assert tree.rowCount(structure_group) == dialogue._general_structural_model.rowCount()
+    assert tree.index(1, 0).data() == "Parameters"
+    assert tree.index(2, 0).data() == "Variables"
+    assert tree.index(0, 0, structure_group).data() == dialogue._general_structural_model.index(0, 0).data()
+    assert tree.index(0, 2, structure_group).data() == dialogue._general_structural_model.index(0, 1).data()
+    dialogue.close()
+
+
+def test_apply_refreshes_code_baseline_and_latex_without_losing_comments() -> None:
+    """Accepted edits stay visible and become clean drafts for the next Apply.
+
+    :return: None.
+    """
+    application: QtWidgets.QApplication = get_qt_application()
+    state: Var = Var("state")
+    root: Block = Block(name="root", state_vars=list((state,)), state_eqs=list((Const(2.0),)))
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(root, "GENERIC", VarFactory())
+    source: str = dialogue._dae_editor.toPlainText().replace("state: 2.0", "state: 7.0")
+    dialogue._dae_editor.setPlainText("# Keep the author's explanation\n" + source)
+    dialogue._latex_selection_tree.topLevelItem(0).child(0).setCheckState(0, QtCore.Qt.CheckState.Checked)
+    dialogue.apply_changes()
+    application.processEvents()
+
+    assert "Changes applied" in dialogue._status_label.text()
+    assert symbolic_to_string(root.state_eqs[0]) == "7.0"
+    assert "# Keep the author's explanation" in dialogue._dae_editor.toPlainText()
+    assert not dialogue._equation_buffers[0].has_changes()
+    assert "7" in dialogue._latex_source_preview.toPlainText()
+    assert dialogue._latex_selection_tree.topLevelItem(0).child(0).checkState(0) == QtCore.Qt.CheckState.Checked
+    dialogue.apply_changes()
+    assert "Changes applied" in dialogue._status_label.text()
+    assert not dialogue._equation_buffers[0].has_changes()
+    dialogue.close()
+
+
+def test_apply_refreshes_owner_lists_tree_aliases_and_latex_after_scene_callback() -> None:
+    """Refresh after scene reconstruction and retain selections by owner identity.
+
+    :return: None.
+    """
+    application: QtWidgets.QApplication = get_qt_application()
+    state: Var = Var("aliased_state")
+    child: Block = Block(name="original", state_vars=list((state,)), state_eqs=list((Const(3.0),)))
+    extra_state: Var = Var("extra_state")
+    extra: Block = Block(name="new interface", state_vars=list((extra_state,)), state_eqs=list((Const(4.0),)))
+    root: Block = Block(name="root", children=list((child,)))
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(root, "GENERIC", VarFactory())
+    receiver: AppliedSceneRefreshReceiver = AppliedSceneRefreshReceiver(root, extra, state)
+    dialogue.blockApplied.connect(receiver.refresh_scene)
+    dialogue._equation_owner_combo.setCurrentIndex(1)
+    dialogue._new_symbol_owner.setCurrentIndex(1)
+    dialogue._dae_editor.insertPlainText("# Child comment\n")
+    dialogue._latex_selection_tree.topLevelItem(1).child(0).setCheckState(0, QtCore.Qt.CheckState.Checked)
+    dialogue.apply_changes()
+    application.processEvents()
+
+    assert "Changes applied" in dialogue._status_label.text()
+    assert "Refreshed root" in dialogue.windowTitle()
+    assert dialogue._equation_owner_combo.count() == 3
+    assert dialogue._new_symbol_owner.count() == 3
+    assert dialogue._equation_owner_combo.currentIndex() == 2
+    assert dialogue._new_symbol_owner.currentData() is child
+    assert dialogue._new_symbol_owner.itemData(1) is extra
+    assert find_property_index(dialogue, "extra_state", extra).isValid()
+    assert find_property_index(dialogue, "restored_state", child).isValid()
+    assert not find_property_index(dialogue, "aliased_state", child).isValid()
+    assert "# Child comment" in dialogue._dae_editor.toPlainText()
+    assert "state_vars = [restored_state]" in dialogue._dae_editor.toPlainText()
+    assert "aliased_state" not in dialogue._dae_editor.toPlainText()
+    assert not any(buffer.has_changes() for buffer in dialogue._equation_buffers)
+    assert dialogue._latex_selection_tree.topLevelItemCount() == 3
+    assert dialogue._latex_selection_tree.topLevelItem(1).child(0).checkState(0) == QtCore.Qt.CheckState.Unchecked
+    assert dialogue._latex_selection_tree.topLevelItem(2).child(0).checkState(0) == QtCore.Qt.CheckState.Checked
+    assert dialogue.validate_dae_code()
+    dialogue.close()
+
+
+def test_structural_apply_refreshes_removed_owners_and_accepts_new_baselines() -> None:
+    """A rebuild discards obsolete children and permits the next edit or Apply.
+
+    :return: None.
+    """
+    application: QtWidgets.QApplication = get_qt_application()
+    var_factory: VarFactory = VarFactory()
+    count: TemplateProp = TemplateProp("count", "", "Generated child count", int, 1)
+    builder: TemplateDefinition = TemplateDefinition(var_factory, list((count,)))
+    old_child: Block = Block(name="old")
+    state: Var = Var("new_state")
+    replacement: Block = Block(name="rebuilt", state_vars=list((state,)), state_eqs=list((Const(8.0),)))
+    root: Block = Block(name="root", children=list((old_child,)))
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
+        root, "GENERIC", var_factory,
+        structural_block_type=BlockType.GFL_VSC_HVDC_RMS, structural_builder=builder,
     )
-    assert structure_table.minimumHeight() == expected_table_height
-    assert structure_table.maximumHeight() == expected_table_height
-    assert dialogue._general_parameter_table.height() > structure_table.height()
+    receiver: StructuralRefreshReceiver = StructuralRefreshReceiver(replacement)
+    dialogue.structuralRebuildRequested.connect(receiver.rebuild)
+    dialogue._equation_owner_combo.setCurrentIndex(1)
+    dialogue._new_symbol_owner.setCurrentIndex(1)
+    dialogue._dae_editor.insertPlainText("# Previously applied child source\n")
+    dialogue.apply_changes()
+    assert not dialogue._equation_buffers[1].has_changes()
+
+    assert dialogue._general_structural_model.setData(dialogue._general_structural_model.index(0, 1), "2")
+    dialogue.apply_changes()
+    application.processEvents()
+    assert "Block structure rebuilt" in dialogue._status_label.text()
+    assert not dialogue._general_structural_model.has_changes()
+    assert dialogue._new_symbol_owner.count() == 2
+    assert dialogue._new_symbol_owner.itemData(1) is replacement
+    assert dialogue._new_symbol_owner.currentData() is root
+    assert dialogue._equation_owner_combo.currentIndex() == 0
+    assert dialogue._equation_buffers[1].get_block() is replacement
+    assert "state_vars = [new_state]" in dialogue._equation_buffers[1].get_code()
+    assert "Previously applied" not in dialogue._equation_buffers[1].get_code()
+    assert find_property_index(dialogue, "new_state", replacement).isValid()
+    assert dialogue._latex_selection_tree.topLevelItem(1).text(0) == "rebuilt"
+    assert not any(buffer.has_changes() for buffer in dialogue._equation_buffers)
+    dialogue.apply_changes()
+    assert "Changes applied" in dialogue._status_label.text()
     dialogue.close()
 
 
@@ -1790,6 +2154,53 @@ def test_every_basic_catalogue_template_resolves_its_own_markdown() -> None:
         ), descriptor.display_label
 
 
+@pytest.mark.parametrize("block_type, page_name", (
+    (BlockType.GFL_VSC_HVDC_RMS, "hvdc_vsc_gfl"),
+    (BlockType.VSC_PLL_RMS, "vsc_pll"),
+    (BlockType.VSC_ELECTRICAL_RMS, "vsc_electrical"),
+    (BlockType.VSC_ACTIVE_CONTROL_RMS, "vsc_active_control"),
+    (BlockType.VSC_REACTIVE_CONTROL_RMS, "vsc_reactive_control"),
+    (BlockType.VSC_CURRENT_LIMITER_RMS, "vsc_current_limiter"),
+    (BlockType.VSC_VD_HAT_RMS, "vsc_vd_hat"),
+    (BlockType.VSC_VQ_HAT_RMS, "vsc_vq_hat"),
+    (BlockType.VSC_DC_LINK_RMS, "vsc_dc_link"),
+    (BlockType.VSC_TERMINAL_POWER_RMS, "vsc_terminal_power"),
+    (BlockType.DC_LINE_RMS, "dc_line"),
+))
+def test_rms_component_block_info_uses_native_type_after_rename(
+        block_type: BlockType,
+        page_name: str,
+) -> None:
+    """Enable each RMS component's published reference despite a display rename.
+
+    :param block_type: Persisted Library type used by Block properties.
+    :param page_name: Expected page in the existing RMS documentation section.
+    :return: None.
+    """
+    application: QtWidgets.QApplication = get_qt_application()
+    _unused_application: QtWidgets.QApplication = application
+    expected_url: str = (
+        "https://veragrid.readthedocs.io/en/latest/md_source/dyn_templates/RMS/"
+        + page_name + ".html"
+    )
+    # The page belongs to the predefined native type, not the user's current
+    # name. In particular, a DC-line RMS entry must not fall back to EMT docs.
+    renamed_block: Block = Block(name="Renamed component for the practical session")
+    assert resolve_block_documentation_url(block_type.name, renamed_block.name) == expected_url
+    assert resolve_block_documentation_url(block_type.name.lower(), block_type.name) == expected_url
+
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
+        renamed_block, block_type.name, VarFactory(),
+    )
+    try:
+        # Inspect the same button that dispatches open_block_documentation;
+        # never launch a browser or require an online documentation build.
+        assert dialogue._block_info_button.isEnabled()
+        assert dialogue._block_documentation_url == expected_url
+    finally:
+        dialogue.close()
+
+
 def test_custom_block_disables_online_catalogue_documentation() -> None:
     """A genuinely custom node must not pretend to have catalogue documentation."""
     application: QtWidgets.QApplication = get_qt_application()
@@ -1807,8 +2218,8 @@ def test_custom_block_disables_online_catalogue_documentation() -> None:
     dialogue.close()
 
 
-def test_symbol_tables_are_separated_and_never_repeat_parameter_values() -> None:
-    """The DAE page must separate symbols and leave values to General Options."""
+def test_property_tree_groups_symbols_without_migrating_unmapped_static_parameters() -> None:
+    """Property groups share drafts and flag inconsistent static templates."""
     application: QtWidgets.QApplication = get_qt_application()
     _unused_application: QtWidgets.QApplication = application
     block: Block
@@ -1821,20 +2232,13 @@ def test_symbol_tables_are_separated_and_never_repeat_parameter_values() -> None
     _unused_parameter_constant: Const = parameter_constant
     dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(block, "GENERIC", VarFactory())
 
-    assert dialogue._symbol_model.columnCount() == 5
-    assert dialogue._symbol_model.headerData(2, QtCore.Qt.Orientation.Horizontal) == "Type"
-    assert dialogue._symbol_model.headerData(4, QtCore.Qt.Orientation.Horizontal) == "Mapping"
-    assert dialogue._variable_symbol_proxy.headerData(4, QtCore.Qt.Orientation.Horizontal) == (
-        "Power-flow derived initialization"
-    )
-    assert dialogue._parameter_symbol_proxy.headerData(4, QtCore.Qt.Orientation.Horizontal) == (
-        "Static parameter mapping"
-    )
-    assert dialogue._variable_symbol_proxy.rowCount() == 1
-    assert dialogue._parameter_symbol_proxy.rowCount() == 1
-    assert dialogue._symbol_table.model() is dialogue._variable_symbol_proxy
-    assert dialogue._parameter_symbol_table.model() is dialogue._parameter_symbol_proxy
-    assert dialogue._parameter_symbol_table.isColumnHidden(3)
+    assert dialogue._property_tree.model() is dialogue._property_tree_model
+    assert dialogue._property_tree_model.columnCount() == 4
+    assert dialogue._property_tree_model.index(0, 0).data() == "Parameters"
+    assert dialogue._property_tree_model.index(1, 0).data() == "Variables"
+    assert find_property_index(dialogue, "x").isValid()
+    assert find_property_index(dialogue, "gain").siblingAtColumn(2).data() == "Missing PF mapping"
+    assert parameter_variable not in block.event_dict
     dialogue.close()
 
 
@@ -1858,24 +2262,17 @@ def test_block_properties_searches_filter_tables_and_navigate_python_code() -> N
         VarFactory(),
     )
 
-    dialogue._variable_symbol_search.setText("x")
-    assert dialogue._variable_symbol_proxy.rowCount() == 1
-    dialogue._variable_symbol_search.setText("missing")
-    assert dialogue._variable_symbol_proxy.rowCount() == 0
-
-    dialogue._parameter_symbol_search.setText("gain")
-    assert dialogue._parameter_symbol_proxy.rowCount() == 1
-    dialogue._parameter_symbol_search.setText("runtime_coefficient")
-    assert dialogue._parameter_symbol_proxy.rowCount() == 1
-    dialogue._parameter_symbol_search.setText("missing")
-    assert dialogue._parameter_symbol_proxy.rowCount() == 0
-
-    dialogue._general_parameter_search.setText("runtime_coefficient")
-    assert dialogue._general_parameter_proxy.rowCount() == 1
-    dialogue._general_parameter_search.setText("gain")
-    assert dialogue._general_parameter_proxy.rowCount() == 0
-    dialogue._general_parameter_search.setText("missing")
-    assert dialogue._general_parameter_proxy.rowCount() == 0
+    state_index: QtCore.QModelIndex = find_property_index(dialogue, "x")
+    gain_index: QtCore.QModelIndex = find_property_index(dialogue, "gain")
+    event_index: QtCore.QModelIndex = find_property_index(dialogue, "runtime_coefficient")
+    dialogue._property_search.setText("runtime_coefficient")
+    assert not dialogue._property_tree.isRowHidden(event_index.row(), event_index.parent())
+    assert dialogue._property_tree.isRowHidden(gain_index.row(), gain_index.parent())
+    assert dialogue._property_tree.isRowHidden(state_index.row(), state_index.parent())
+    dialogue._property_search.setText("missing")
+    assert dialogue._property_tree.isRowHidden(event_index.row(), event_index.parent())
+    dialogue._property_search.clear()
+    assert not dialogue._property_tree.isRowHidden(state_index.row(), state_index.parent())
 
     dialogue._dae_code_search.setText("state_eqs")
     active_match: int
@@ -1913,6 +2310,336 @@ def test_block_properties_dialogue_opens_at_a_moderate_size() -> None:
 
     assert dialogue.size() == QtCore.QSize(1200, 700)
     dialogue.close()
+
+
+def test_property_tree_edits_values_mappings_and_outputs_transactionally() -> None:
+    """Tree edits must reach the existing drafts and mutate only on Apply.
+
+    :return: None.
+    """
+    application: QtWidgets.QApplication = get_qt_application()
+    state: Var = Var("x")
+    static: Var = Var("rated")
+    dynamic: Var = Var("gain")
+    block: Block = Block(
+        name="tree_edits", state_vars=list((state,)), state_eqs=list((dynamic,)),
+        parameters=dict(((static, Const(10.0)),)), event_dict=dict(((dynamic, Const(2.0)),)),
+        api_obj_mapping=dict(((ParamPowerFlowReferenceType.Pl0, static),)),
+    )
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(block, "GENERIC", VarFactory())
+    static_index: QtCore.QModelIndex = find_property_index(dialogue, "rated").siblingAtColumn(2)
+    dynamic_index: QtCore.QModelIndex = find_property_index(dialogue, "gain").siblingAtColumn(2)
+    state_index: QtCore.QModelIndex = find_property_index(dialogue, "x")
+    assert static_index.data() == "Pl0"
+    assert dialogue._property_tree_model.setData(static_index, ParamPowerFlowReferenceType.Ql0)
+    assert dialogue._property_tree_model.setData(dynamic_index, "rated / 2")
+    assert dialogue._property_tree_model.setData(state_index.siblingAtColumn(2), VarPowerFlowReferenceType.Q)
+    assert dialogue._property_tree_model.setData(
+        state_index.siblingAtColumn(3), QtCore.Qt.CheckState.Checked, QtCore.Qt.ItemDataRole.CheckStateRole,
+    )
+    assert block.event_dict[dynamic].value == 2.0
+    assert block.out_vars == list()
+    assert ParamPowerFlowReferenceType.Pl0 in block.api_obj_mapping
+    dialogue.apply_changes()
+    assert "applied" in dialogue._status_label.text().lower()
+    assert get_expression_vars(block.event_dict[dynamic]) == list((static,))
+    assert block.api_obj_mapping[ParamPowerFlowReferenceType.Ql0] is static
+    assert block.external_mapping[VarPowerFlowReferenceType.Q] is state
+    assert block.out_vars == list((state,))
+    dialogue.close()
+    application.processEvents()
+
+
+def test_new_dynamic_parameter_expression_binds_applied_identities() -> None:
+    """An expression edited before the first Apply must bind real Vars afterwards.
+
+    :return: None.
+    """
+    application: QtWidgets.QApplication = get_qt_application()
+    base: Var = Var("base")
+    block: Block = Block(name="new_expression", event_dict=dict(((base, Const(2.0)),)))
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(block, "GENERIC", VarFactory())
+    dialogue._new_symbol_category.setCurrentText("Parameters")
+    dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.EVENT_PARAMETER.value)
+    dialogue._new_symbol_name.setText("scaled")
+    dialogue.add_staged_symbol()
+    value_index: QtCore.QModelIndex = find_property_index(dialogue, "scaled").siblingAtColumn(2)
+    assert value_index.isValid()
+    assert dialogue._property_tree_model.setData(value_index, "base * 3")
+    dialogue.validate_complete_dae_code()
+    assert dialogue._status_label.text() == "DAE code is valid."
+    dialogue.apply_changes()
+    applied_row: BlockSymbolDraftRow | None = dialogue._property_tree_model.symbol_row(
+        find_property_index(dialogue, "scaled"),
+    )
+    assert applied_row is not None
+    applied_variable: Var | None = applied_row.get_variable()
+    assert applied_variable is not None
+    assert get_expression_vars(block.event_dict[applied_variable]) == list((base,))
+    assert "base" in str(find_property_index(dialogue, "scaled").siblingAtColumn(2).data())
+    dialogue.close()
+    application.processEvents()
+
+
+def test_pending_symbol_rename_updates_code_and_parameter_expressions() -> None:
+    """Inline renaming a new symbol must not leave its earlier name in drafts.
+
+    :return: None.
+    """
+    application: QtWidgets.QApplication = get_qt_application()
+    gain: Var = Var("gain")
+    block: Block = Block(name="pending_rename", event_dict=dict(((gain, Const(2.0)),)))
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(block, "GENERIC", VarFactory())
+    dialogue._new_symbol_name.setText("speed")
+    dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.STATE.value)
+    dialogue.add_staged_symbol()
+    dialogue._dae_editor.setPlainText(
+        "state_vars = [speed]\nstate_eqs = {speed: gain}\nalgebraic_eqs = []\ninit_eqs = {}\ndiff_init_eqs = {}"
+    )
+    assert dialogue._property_tree_model.setData(find_property_index(dialogue, "gain").siblingAtColumn(2), "speed + 1")
+    assert not dialogue._property_tree_model.setData(find_property_index(dialogue, "speed"), "gain")
+    assert dialogue._property_tree_model.setData(find_property_index(dialogue, "speed"), "omega")
+    assert "speed" not in dialogue._dae_editor.toPlainText()
+    assert "state_vars = [omega]" in dialogue._dae_editor.toPlainText()
+    assert find_property_index(dialogue, "gain").siblingAtColumn(2).data() == "omega + 1"
+    dialogue.apply_changes()
+    assert block.state_vars[0].name == "omega"
+    assert get_expression_vars(block.event_dict[gain]) == block.state_vars
+    dialogue.close()
+    application.processEvents()
+
+
+def test_composite_static_mapping_is_grouped_as_a_parameter() -> None:
+    """A root exposing a child parameter through api_obj_mapping is not a variable.
+
+    :return: None.
+    """
+    application: QtWidgets.QApplication = get_qt_application()
+    rating: Var = Var("rating")
+    child: Block = Block(name="child", parameters=dict(((rating, Const(10.0)),)))
+    root: Block = Block(
+        name="root", children=list((child,)), api_obj_mapping=dict(((ParamPowerFlowReferenceType.Pl0, rating),)),
+    )
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(root, "GENERIC", VarFactory())
+    root_index: QtCore.QModelIndex = find_property_index(dialogue, "rating", root)
+    assert root_index.parent().parent().data() == "Parameters"
+    assert root_index.siblingAtColumn(2).data() == "Pl0"
+    dialogue.apply_changes()
+    assert "applied" in dialogue._status_label.text().lower()
+    assert root.api_obj_mapping[ParamPowerFlowReferenceType.Pl0] is rating
+    assert rating not in root.parameters
+    assert rating in child.parameters
+    dialogue.close()
+    application.processEvents()
+
+
+def test_new_dynamic_parameter_cycles_are_rejected_before_apply() -> None:
+    """Pending expressions participate in the same cycle checks as existing ones.
+
+    :return: None.
+    """
+    application: QtWidgets.QApplication = get_qt_application()
+    block: Block = Block(name="pending_cycle")
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(block, "GENERIC", VarFactory())
+    dialogue._new_symbol_category.setCurrentText("Parameters")
+    dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.EVENT_PARAMETER.value)
+    name: str
+    for name in ("first_gain", "second_gain"):
+        dialogue._new_symbol_name.setText(name)
+        dialogue.add_staged_symbol()
+    assert dialogue._property_tree_model.setData(
+        find_property_index(dialogue, "first_gain").siblingAtColumn(2), "second_gain + 1",
+    )
+    assert dialogue._property_tree_model.setData(
+        find_property_index(dialogue, "second_gain").siblingAtColumn(2), "first_gain + 1",
+    )
+    dialogue.validate_complete_dae_code()
+    assert "Cyclic" in dialogue._status_label.text()
+    dialogue.apply_changes()
+    assert "Cyclic" in dialogue._status_label.text()
+    assert block.event_dict == dict()
+    dialogue.close()
+    application.processEvents()
+
+
+def test_hidden_runtime_is_preserved_by_noop_apply() -> None:
+    """Removing the runtime tab must not erase modes or procedural instances.
+
+    :return: None.
+    """
+    application: QtWidgets.QApplication = get_qt_application()
+    source: Var = Var("source")
+    mode: Var = Var("saturation_mode")
+    mode_initial: Const = Const(0.0)
+    logic: HardSaturationLogic = HardSaturationLogic("saturation_mode", source, Const(-1.0), Const(1.0))
+    block: Block = Block(
+        name="hidden_runtime", algebraic_vars=list((source,)), algebraic_eqs=list((source,)),
+        mode_dict=dict(((mode, mode_initial),)), procedural_logic=list((logic,)),
+    )
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(block, "GENERIC", VarFactory())
+    assert dialogue._tabs.count() == 1
+    assert dialogue._runtime_logic_editor.isHidden()
+    dialogue.apply_changes()
+    assert "applied" in dialogue._status_label.text().lower()
+    assert block.mode_dict[mode] is mode_initial
+    assert block.procedural_logic[0] is logic
+    assert logic.u_expr is source
+    dialogue.close()
+    application.processEvents()
+
+
+def test_property_tree_starts_collapsed_and_preserves_expansion_after_apply() -> None:
+    """All categories and owners start folded; Apply retains deliberate expansion.
+
+    :return: None.
+    """
+    application: QtWidgets.QApplication = get_qt_application()
+    var_factory: VarFactory = VarFactory()
+    child: Block = Block(name="child", in_vars=list((Var("child_input"),)))
+    root: Block = Block(name="root", in_vars=list((Var("root_input"),)), children=list((child,)))
+    count: TemplateProp = TemplateProp("count", "", "Generated child count", int, 1)
+    builder: TemplateDefinition = TemplateDefinition(var_factory, list((count,)))
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
+        root, "GENERIC", var_factory, structural_builder=builder,
+    )
+    dialogue.show()
+    application.processEvents()
+    tree: QtWidgets.QTreeView = dialogue._property_tree
+    model: QtCore.QAbstractItemModel = dialogue._property_tree_model
+    assert model.rowCount() == 3
+    group_row: int
+    for group_row in range(model.rowCount()):
+        group: QtCore.QModelIndex = model.index(group_row, 0)
+        assert not tree.isExpanded(group)
+        owner_row: int
+        for owner_row in range(model.rowCount(group)):
+            assert not tree.isExpanded(model.index(owner_row, 0, group))
+
+    # Expanding one owner must not expand its sibling, including after Apply
+    # rebuilds the models and the user toggles the equation editor.
+    variables: QtCore.QModelIndex = model.index(2, 0)
+    tree.setExpanded(variables, True)
+    tree.setExpanded(model.index(1, 0, variables), True)
+    dialogue.apply_changes()
+    dialogue._equations_button.setChecked(True)
+    application.processEvents()
+    assert "Changes applied" in dialogue._status_label.text()
+    variables = model.index(2, 0)
+    assert tree.isExpanded(variables)
+    assert tree.isExpanded(model.index(1, 0, variables))
+    assert not tree.isExpanded(model.index(0, 0, variables))
+    assert not tree.isExpanded(model.index(0, 0))
+    assert not tree.isExpanded(model.index(1, 0))
+    dialogue.close()
+
+
+def test_property_owner_selection_and_collapsed_branches_survive_additions() -> None:
+    """Owner selection guides the form without expanding explicitly folded groups.
+
+    :return: None.
+    """
+    application: QtWidgets.QApplication = get_qt_application()
+    child: Block = Block(name="child")
+    root: Block = Block(name="root", children=list((child,)))
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(root, "GENERIC", VarFactory())
+    category: QtCore.QModelIndex = dialogue._property_tree_model.index(0, 0)
+    child_index: QtCore.QModelIndex = dialogue._property_tree_model.index(1, 0, category)
+    dialogue.on_property_selected(child_index)
+    assert dialogue._new_symbol_owner.currentData() is child
+    assert dialogue._new_symbol_category.currentText() == "Parameters"
+    dialogue._property_tree.collapseAll()
+    dialogue._new_symbol_name.setText("child_gain")
+    dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.EVENT_PARAMETER.value)
+    dialogue.add_staged_symbol()
+    assert find_property_index(dialogue, "child_gain", child).isValid()
+    assert not dialogue._property_tree.isExpanded(dialogue._property_tree_model.index(0, 0))
+    assert not dialogue._property_tree.isExpanded(dialogue._property_tree_model.index(1, 0))
+    dialogue.close()
+    application.processEvents()
+
+
+def test_property_layout_visual_capture(tmp_path: Path) -> None:
+    """Capture both layouts for review while checking the compact configuration.
+
+    :param tmp_path: Isolated pytest output directory for review images.
+    :return: None.
+    """
+    application: QtWidgets.QApplication = get_qt_application()
+    # Qt's Windows offscreen plugin does not discover system fonts on every
+    # host. Register existing fonts for this capture only; no fonts are shipped
+    # or installed and other platforms retain their normal font discovery.
+    font_ids: list[int] = list()
+    font_path: Path
+    for font_path in (Path("C:/Windows/Fonts/segoeui.ttf"), Path("C:/Windows/Fonts/consola.ttf")):
+        if font_path.is_file():
+            font_ids.append(QtGui.QFontDatabase.addApplicationFont(str(font_path)))
+        else:
+            pass
+    state: Var = Var("speed")
+    gain: Var = Var("gain")
+    block: Block = Block(
+        name="Example control", state_vars=list((state,)), state_eqs=list((gain,)),
+        event_dict=dict(((gain, Const(2.0)),)), out_vars=list((state,)),
+    )
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(block, "GENERIC", VarFactory())
+    if len(font_ids) == 2 and all(font_id >= 0 for font_id in font_ids):
+        dialogue.setFont(QtGui.QFont("Segoe UI", 9))
+        dialogue._dae_editor.setFont(QtGui.QFont("Consolas", 10))
+    else:
+        pass
+    dialogue.show()
+    application.processEvents()
+    configuration: QtWidgets.QGroupBox | None = None
+    group: QtWidgets.QGroupBox
+    for group in dialogue.findChildren(QtWidgets.QGroupBox):
+        if group.title() == "Block configuration":
+            configuration = group
+        else:
+            pass
+    assert configuration is not None
+    form: QtWidgets.QLayout | None = configuration.layout()
+    assert isinstance(form, QtWidgets.QFormLayout)
+    assert form.rowCount() == 2
+    # Configuration and the right-aligned toggle precede both splitter panes.
+    # Symbol creation must never occupy the property browser's lower half.
+    configuration_top: QtCore.QPoint = configuration.mapTo(dialogue, QtCore.QPoint())
+    toggle_top: QtCore.QPoint = dialogue._equations_button.mapTo(dialogue, QtCore.QPoint())
+    splitter_top: QtCore.QPoint = dialogue._dae_splitter.mapTo(dialogue, QtCore.QPoint())
+    assert configuration_top.y() + configuration.height() <= toggle_top.y()
+    assert toggle_top.y() + dialogue._equations_button.height() <= splitter_top.y()
+    assert dialogue._equations_button.text() == "Equations"
+    assert abs(toggle_top.x() + dialogue._equations_button.width()
+               - splitter_top.x() - dialogue._dae_splitter.width()) <= 2
+    assert not dialogue._add_symbol_group.isVisible()
+    assert not dialogue._validate_code_button.isVisible()
+    assert not dialogue._dae_editor.isVisible()
+    assert dialogue.grab().save(str(tmp_path / "properties.png"))
+    dialogue._equations_button.click()
+    application.processEvents()
+    assert dialogue._add_symbol_group.isVisible()
+    assert dialogue._dae_editor.isVisible()
+    assert dialogue._equation_tools_splitter.widget(0) is dialogue._equation_panel
+    actions_panel: QtWidgets.QWidget = dialogue._equation_tools_splitter.widget(1)
+    assert actions_panel.isAncestorOf(dialogue._add_symbol_group)
+    assert actions_panel.isAncestorOf(dialogue._validate_code_button)
+    assert dialogue._equation_panel.geometry().bottom() < actions_panel.y()
+    assert abs(2 * dialogue._add_symbol_group.width() + 6 - actions_panel.width()) <= 1
+    assert dialogue._validate_code_button.isVisible()
+    assert dialogue._validate_code_button.text() == "Validate model"
+    assert dialogue._validate_code_button.x() > dialogue._add_symbol_group.geometry().right()
+    assert dialogue._validate_code_button.geometry().right() == actions_panel.width() - 1
+    assert dialogue._dae_splitter.widget(0).height() == dialogue._equation_tools_splitter.height()
+    assert abs(3 * dialogue._dae_splitter.sizes()[0] - dialogue._dae_splitter.sizes()[1]) <= 4
+    assert dialogue.grab().save(str(tmp_path / "properties-equations.png"))
+    print(f"Block properties review images: {tmp_path}")
+    dialogue.close()
+    application.processEvents()
+    font_id: int
+    for font_id in font_ids:
+        if font_id >= 0:
+            QtGui.QFontDatabase.removeApplicationFont(font_id)
+        else:
+            pass
 
 
 def test_symbol_mapping_column_applies_power_flow_and_device_references() -> None:
@@ -2254,7 +2981,7 @@ def test_genqec_equations_compile_as_mathtext_and_wrap_long_roots() -> None:
 
 
 def test_lookup_and_jmarti_builders_expose_conditional_special_settings() -> None:
-    """Structured lookup data and JMarti options belong in the optional fourth tab."""
+    """Structured lookup data and JMarti options belong in the optional second tab."""
     application: QtWidgets.QApplication = get_qt_application()
     _unused_application: QtWidgets.QApplication = application
     block_type: BlockType
@@ -2280,7 +3007,7 @@ def test_lookup_and_jmarti_builders_expose_conditional_special_settings() -> Non
         tab_index: int
         for tab_index in range(dialogue._tabs.count()):
             tab_names.append(dialogue._tabs.tabText(tab_index))
-        assert "Special settings" in tab_names
+        assert tab_names == list(("General options", "Special configuration"))
         if block_type == BlockType.EMT_JMARTI_LINE:
             assert dialogue._special_structural_model.rowCount() > 20
         else:

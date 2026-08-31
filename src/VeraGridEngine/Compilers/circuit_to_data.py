@@ -73,6 +73,7 @@ def set_bus_control_voltage(i: int,
                             bus_voltage_used: BoolVec,
                             bus_data: BusData,
                             candidate_Vm: float,
+                            use_stored_guess: bool,
                             logger: Logger) -> None:
     """
     Set the bus control voltage
@@ -83,6 +84,7 @@ def set_bus_control_voltage(i: int,
     :param bus_voltage_used: Array of flags indicating if a bus voltage has been modified before
     :param bus_data: BusData
     :param candidate_Vm: Voltage set point that you want to set
+    :param use_stored_guess: Use the stored seed values?
     :param logger: Logger
     """
     if bus_data.bus_types[i] != BusMode.Slack_tpe.value:  # if it is not Slack
@@ -97,23 +99,18 @@ def set_bus_control_voltage(i: int,
             # bus_data.bus_types[i] = BusMode.PV_tpe.value  # set as PV
             bus_data.set_bus_mode(i, BusMode.PV_tpe)
 
-    if not bus_voltage_used[i]:
-        if remote_control and j > -1 and j != i:
-            # initialize the remote bus voltage to the control value but preserve angle while updating magnitude
-            existing_angle = np.angle(bus_data.Vbus[j])
-            bus_data.Vbus[j] = rect(candidate_Vm, existing_angle)
-            bus_voltage_used[j] = True
-        else:
-            # initialize the local bus voltage to the control value but preserve angle while updating magnitude
-            existing_angle = np.angle(bus_data.Vbus[i])
-            bus_data.Vbus[i] = rect(candidate_Vm, existing_angle)
-            bus_voltage_used[i] = True
+    controlled_bus_idx = j if remote_control and j > -1 and j != i else i
 
-    elif candidate_Vm != bus_data.Vbus[i]:
+    if not bus_voltage_used[controlled_bus_idx]:
+        existing_angle = np.angle(bus_data.Vbus[controlled_bus_idx])
+        bus_data.Vbus[controlled_bus_idx] = rect(candidate_Vm, existing_angle)
+        bus_voltage_used[controlled_bus_idx] = True
+
+    elif not np.isclose(candidate_Vm, abs(bus_data.Vbus[controlled_bus_idx])):
         logger.add_error(msg='Different control voltage set points',
                          device=bus_name,
                          value=candidate_Vm,
-                         expected_value=bus_data.Vbus[i])
+                         expected_value=abs(bus_data.Vbus[controlled_bus_idx]))
 
 
 def normalize_upper_bound(lower: float,
@@ -406,6 +403,7 @@ def get_load_data(data: LoadData,
                   bus_data: BusData,
                   t_idx: int | None,
                   logger: Logger,
+                  use_stored_guess: bool = False,
                   opf_results: Union[OptimalPowerFlowResults, None] = None,
                   fill_three_phase: bool = False) -> LoadData:
     """
@@ -480,20 +478,30 @@ def get_load_data(data: LoadData,
                     Y_abc = any([elm.get_Y1_at(t_idx), elm.get_Y2_at(t_idx), elm.get_Y3_at(t_idx)])
 
                     if not Y_abc:
-                        data.Y3_star[4 * ii + 0, 1] = -1 * elm.get_Y_at(t_idx) / 3
-                        data.Y3_star[4 * ii + 0, 2] = -1 * elm.get_Y_at(t_idx) / 3
-                        data.Y3_star[4 * ii + 0, 3] = -1 * elm.get_Y_at(t_idx) / 3
-                        data.Y3_star[4 * ii + 1, 1] = elm.get_Y_at(t_idx) / 3
-                        data.Y3_star[4 * ii + 2, 2] = elm.get_Y_at(t_idx) / 3
-                        data.Y3_star[4 * ii + 3, 3] = elm.get_Y_at(t_idx) / 3
+                        if elm.conn == ShuntConnectionType.NeutralStar:
+                            data.Y3_star[4 * ii + 0, 1] = -1 * elm.get_Y_at(t_idx) / 3
+                            data.Y3_star[4 * ii + 0, 2] = -1 * elm.get_Y_at(t_idx) / 3
+                            data.Y3_star[4 * ii + 0, 3] = -1 * elm.get_Y_at(t_idx) / 3
+                            data.Y3_star[4 * ii + 1, 1] = elm.get_Y_at(t_idx) / 3
+                            data.Y3_star[4 * ii + 2, 2] = elm.get_Y_at(t_idx) / 3
+                            data.Y3_star[4 * ii + 3, 3] = elm.get_Y_at(t_idx) / 3
+                        else:
+                            data.Y3_star[4 * ii + 1, 1] = elm.get_Y_at(t_idx) / 3
+                            data.Y3_star[4 * ii + 2, 2] = elm.get_Y_at(t_idx) / 3
+                            data.Y3_star[4 * ii + 3, 3] = elm.get_Y_at(t_idx) / 3
 
                     else:
-                        data.Y3_star[4 * ii + 0, 1] = -1 * elm.get_Y1_at(t_idx)
-                        data.Y3_star[4 * ii + 0, 2] = -1 * elm.get_Y2_at(t_idx)
-                        data.Y3_star[4 * ii + 0, 3] = -1 * elm.get_Y3_at(t_idx)
-                        data.Y3_star[4 * ii + 1, 1] = elm.get_Y1_at(t_idx)
-                        data.Y3_star[4 * ii + 2, 2] = elm.get_Y2_at(t_idx)
-                        data.Y3_star[4 * ii + 3, 3] = elm.get_Y3_at(t_idx)
+                        if elm.conn == ShuntConnectionType.NeutralStar:
+                            data.Y3_star[4 * ii + 0, 1] = -1 * elm.get_Y1_at(t_idx)
+                            data.Y3_star[4 * ii + 0, 2] = -1 * elm.get_Y2_at(t_idx)
+                            data.Y3_star[4 * ii + 0, 3] = -1 * elm.get_Y3_at(t_idx)
+                            data.Y3_star[4 * ii + 1, 1] = elm.get_Y1_at(t_idx)
+                            data.Y3_star[4 * ii + 2, 2] = elm.get_Y2_at(t_idx)
+                            data.Y3_star[4 * ii + 3, 3] = elm.get_Y3_at(t_idx)
+                        else:
+                            data.Y3_star[4 * ii + 1, 1] = elm.get_Y1_at(t_idx)
+                            data.Y3_star[4 * ii + 2, 2] = elm.get_Y2_at(t_idx)
+                            data.Y3_star[4 * ii + 3, 3] = elm.get_Y3_at(t_idx)
 
                 elif elm.conn == ShuntConnectionType.FloatingStar:
 
@@ -693,6 +701,7 @@ def get_load_data(data: LoadData,
                                         bus_data=bus_data,
                                         bus_voltage_used=bus_voltage_used,
                                         candidate_Vm=elm.get_Vm_at(t_idx),
+                                        use_stored_guess=use_stored_guess,
                                         logger=logger)
 
             elif elm.mode == ExternalGridMode.PV:
@@ -704,6 +713,7 @@ def get_load_data(data: LoadData,
                                         bus_data=bus_data,
                                         bus_voltage_used=bus_voltage_used,
                                         candidate_Vm=elm.get_Vm_at(t_idx),
+                                        use_stored_guess=use_stored_guess,
                                         logger=logger)
 
             data.S[ii] += elm.get_S_at(t_idx)
@@ -801,6 +811,7 @@ def get_shunt_data(
         bus_data: BusData,
         t_idx: int | None,
         logger: Logger,
+        use_stored_guess: bool = False,
         control_remote_voltage: bool = True,
         fill_three_phase: bool = False
 ) -> None:
@@ -836,6 +847,7 @@ def get_shunt_data(
             data.mttr[k] = elm.mttr
 
             data.active[k] = elm.get_active_at(t_idx)
+            data.grounds_neutral[k] = elm.phN and elm.conn == ShuntConnectionType.GroundedStar
             data.Y[k] = elm.get_Y_at(t_idx)
 
             if fill_three_phase:
@@ -845,36 +857,33 @@ def get_shunt_data(
                     Y_abc = any([elm.get_Ya_at(t_idx), elm.get_Yb_at(t_idx), elm.get_Yc_at(t_idx)])
 
                     if not Y_abc:
-                        data.Y3_star[4 * ii + 0, 1] = -1 * elm.get_Y_at(t_idx) / 3
-                        data.Y3_star[4 * ii + 0, 2] = -1 * elm.get_Y_at(t_idx) / 3
-                        data.Y3_star[4 * ii + 0, 3] = -1 * elm.get_Y_at(t_idx) / 3
                         data.Y3_star[4 * ii + 1, 1] = elm.get_Y_at(t_idx) / 3
                         data.Y3_star[4 * ii + 2, 2] = elm.get_Y_at(t_idx) / 3
                         data.Y3_star[4 * ii + 3, 3] = elm.get_Y_at(t_idx) / 3
 
                     else:
-                        data.Y3_star[4 * ii + 0, 1] = -1 * elm.get_Ya_at(t_idx)
-                        data.Y3_star[4 * ii + 0, 2] = -1 * elm.get_Yb_at(t_idx)
-                        data.Y3_star[4 * ii + 0, 3] = -1 * elm.get_Yc_at(t_idx)
                         data.Y3_star[4 * ii + 1, 1] = elm.get_Ya_at(t_idx)
                         data.Y3_star[4 * ii + 2, 2] = elm.get_Yb_at(t_idx)
                         data.Y3_star[4 * ii + 3, 3] = elm.get_Yc_at(t_idx)
 
-                elif elm.conn == ShuntConnectionType.FloatingStar:
+                elif (elm.conn == ShuntConnectionType.FloatingStar
+                      or (elm.conn == ShuntConnectionType.NeutralStar and not elm.phN)):
 
                     # Admittances
                     Ya = elm.get_Ya_at(t_idx)
                     Yb = elm.get_Yb_at(t_idx)
                     Yc = elm.get_Yc_at(t_idx)
 
-                    if Ya != 0.0 + 0.0j and Yb != 0.0 + 0.0j and Yc != 0.0 + 0.0j:
-                        data.A_floating_star[ii] = Ya / (Ya + Yb + Yc)
-                        data.B_floating_star[ii] = Yb / (Ya + Yb + Yc)
-                        data.C_floating_star[ii] = Yc / (Ya + Yb + Yc)
+                    Ysum = Ya + Yb + Yc
 
-                        A = Ya / (Ya + Yb + Yc)
-                        B = Yb / (Ya + Yb + Yc)
-                        C = Yc / (Ya + Yb + Yc)
+                    if Ysum != 0.0 + 0.0j:
+                        data.A_floating_star[ii] = Ya / Ysum
+                        data.B_floating_star[ii] = Yb / Ysum
+                        data.C_floating_star[ii] = Yc / Ysum
+
+                        A = Ya / Ysum
+                        B = Yb / Ysum
+                        C = Yc / Ysum
 
                         # First row
                         data.Y3_star[4 * ii + 1, 1] = (1 - A) * Ya
@@ -953,8 +962,12 @@ def get_shunt_data(
             data.vset[ii] = elm.Vset
             data.vmin[ii] = elm.Vmin
             data.vmax[ii] = elm.Vmax
-            data.qmin[ii] = elm.Bmin
-            data.qmax[ii] = elm.Bmax
+            if elm.control_mode == ShuntControlMode.Continuous:
+                data.qmin[ii] = -elm.Bmax
+                data.qmax[ii] = -elm.Bmin
+            else:
+                data.qmin[ii] = elm.Bmin
+                data.qmax[ii] = elm.Bmax
 
             data.step[ii] = elm.step
             data.g_steps.insert(i=ii, x=np.insert(np.cumsum(elm.g_steps), 0, 0))
@@ -962,6 +975,9 @@ def get_shunt_data(
 
             data.active[ii] = elm.get_active_at(t_idx)
             data.cost[ii] = elm.get_Cost_at(t_idx)
+
+            if elm.control_mode == ShuntControlMode.Locked:
+                data.Y[ii] += elm.get_Y_at(t_idx)
 
             if elm.control_mode == ShuntControlMode.Continuous:
                 data.Y[ii] += elm.get_Y_at(t_idx)
@@ -1010,6 +1026,7 @@ def get_shunt_data(
                                         bus_data=bus_data,
                                         bus_voltage_used=bus_voltage_used,
                                         candidate_Vm=elm.get_Vset_at(t_idx),
+                                        use_stored_guess=use_stored_guess,
                                         logger=logger)
 
             if elm.use_kw:
@@ -1037,6 +1054,7 @@ def fill_generator_parent(
         logger: Logger,
         bus_data: BusData,
         t_idx: int | None = None,
+        use_stored_guess: bool = False,
         control_remote_voltage: bool = True,
         fill_three_phase: bool = False
 ) -> None:
@@ -1157,9 +1175,9 @@ def fill_generator_parent(
                                     bus_data=bus_data,
                                     bus_voltage_used=bus_voltage_used,
                                     candidate_Vm=elm.get_Vset_at(t_idx),
+                                    use_stored_guess=use_stored_guess,
                                     logger=logger)
-            # we pick this value to initialize
-            data.q[k] = elm.get_Q_at(t_idx)
+            data.q[k] = 0.0
 
         elif elm.control_mode == GeneratorControlMode.Q:
             data.q[k] = elm.get_Q_at(t_idx)
@@ -1213,6 +1231,7 @@ def get_generator_data(
         t_idx: int | None,
         opf_results: VALID_OPF_RESULTS | None = None,
         time_series: bool = False,
+        use_stored_guess: bool = False,
         control_remote_voltage: bool = True,
         fill_three_phase: bool = False
 ) -> Dict[str, int]:
@@ -1246,6 +1265,7 @@ def get_generator_data(
                               bus_voltage_used=bus_voltage_used,
                               logger=logger,
                               t_idx=t_idx,
+                              use_stored_guess=use_stored_guess,
                               control_remote_voltage=control_remote_voltage,
                               fill_three_phase=fill_three_phase)
 
@@ -2463,6 +2483,7 @@ def compile_numerical_circuit_at(circuit: MultiCircuit,
         logger=logger,
         opf_results=opf_results,
         control_remote_voltage=control_remote_voltage,
+        use_stored_guess=use_stored_guess,
         fill_three_phase=fill_three_phase
     )
 
@@ -2488,6 +2509,7 @@ def compile_numerical_circuit_at(circuit: MultiCircuit,
         bus_data=nc.bus_data,
         t_idx=t_idx,
         logger=logger,
+        use_stored_guess=use_stored_guess,
         control_remote_voltage=control_remote_voltage,
         fill_three_phase=fill_three_phase
     )
@@ -2500,6 +2522,7 @@ def compile_numerical_circuit_at(circuit: MultiCircuit,
         bus_data=nc.bus_data,
         t_idx=t_idx,
         logger=logger,
+        use_stored_guess=use_stored_guess,
         opf_results=opf_results,
         fill_three_phase=fill_three_phase
     )

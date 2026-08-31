@@ -117,7 +117,9 @@
                                                         <span class="n">find_var_by_persisted_identity</span><span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.Utils.Symbolic</span><span class="w"> </span><span class="kn">import</span> <span class="n">SharedVarReferenceType</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.Utils.Symbolic.symbolic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Var</span><span class="p">,</span> <span class="n">Expr</span><span class="p">,</span> <span class="n">Const</span><span class="p">,</span> <span class="n">BinOp</span><span class="p">,</span> <span class="n">UnOp</span><span class="p">,</span> <span class="n">Func</span><span class="p">,</span> <span class="n">Func2</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.Utils.Symbolic.block</span><span class="w"> </span><span class="kn">import</span> <span class="n">Block</span><span class="p">,</span> <span class="n">normalize_dynamic_connection_intents</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.Utils.Symbolic.block</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span><span class="n">Block</span><span class="p">,</span>
+                                                 <span class="n">normalize_dynamic_connection_intents</span><span class="p">,</span>
+                                                 <span class="n">normalize_event_parameter_initialization</span><span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.Utils.Symbolic.dynamic_connection_intent</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span><span class="n">DynamicConnectionIntent</span><span class="p">,</span>
                                                                      <span class="n">DynamicConnectionIntentDirection</span><span class="p">,</span>
                                                                      <span class="n">dynamic_connection_intent_from_dict</span><span class="p">,</span>
@@ -854,6 +856,8 @@
 <span class="sd">        :param main: is it the main block?</span>
 <span class="sd">        :return: Dictionary representing the block</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">normalize_event_parameter_initialization</span><span class="p">(</span><span class="n">block</span><span class="o">=</span><span class="n">blk</span><span class="p">)</span>
+
         <span class="c1"># One registry is shared by every expression owned by this block. Child</span>
         <span class="c1"># blocks create their own registry when ``save_block`` recurses.</span>
         <span class="n">composite_expression_ids</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
@@ -1782,6 +1786,7 @@
                                   <span class="n">field_name</span><span class="o">=</span><span class="s2">&quot;connection_intents&quot;</span><span class="p">,</span>
                                   <span class="n">missing_uid</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
         <span class="n">normalize_dynamic_connection_intents</span><span class="p">(</span><span class="n">block</span><span class="o">=</span><span class="n">block</span><span class="p">)</span>
+        <span class="n">normalize_event_parameter_initialization</span><span class="p">(</span><span class="n">block</span><span class="o">=</span><span class="n">block</span><span class="p">)</span>
 
         <span class="n">diagram_data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;diagram&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">diagram_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -2285,6 +2290,7 @@
             <span class="p">))</span>
 
     <span class="n">normalize_dynamic_connection_intents</span><span class="p">(</span><span class="n">block</span><span class="o">=</span><span class="n">new_block</span><span class="p">)</span>
+    <span class="n">normalize_event_parameter_initialization</span><span class="p">(</span><span class="n">block</span><span class="o">=</span><span class="n">new_block</span><span class="p">)</span>
 
     <span class="n">extra_key</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">extra_value</span><span class="p">:</span> <span class="n">Any</span>
