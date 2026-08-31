@@ -1720,6 +1720,14 @@ Are you sure?</source>
         <translation>이 작업은 선택되지 않은 모든 버스와 연결된 요소를 삭제합니다. 이 작업은 되돌릴 수 없으며, 무엇을 하는지 모른다면 위험합니다. 
 정말 확실합니까?</translation>
     </message>
+    <message>
+        <source>There are no buses to connect this device.</source>
+        <translation>이 장치를 연결할 버스가 없습니다.</translation>
+    </message>
+    <message>
+        <source>VSC devices need one AC bus and two DC buses.</source>
+        <translation>VSC 장치는 AC 버스 1개와 DC 버스 2개가 필요합니다.</translation>
+    </message>
 </context>
 <context>
     <name>DcLineDeviceEditor</name>
@@ -8061,6 +8069,272 @@ Resolve the operating point before running this RMS simulation.</source>
         <translation>전력 흐름이 수렴하지 않았습니다.
 이 RMS 시뮬레이션을 실행하기 전에 운전점을 해결하십시오.</translation>
     </message>
+    <message>
+        <source>Adequacy studies need time data...</source>
+        <translation>적정성 연구에는 시간 데이터가 필요합니다...</translation>
+    </message>
+    <message>
+        <source>Another ATC time series is being executed now...</source>
+        <translation>다른 ATC 시계열이 현재 실행 중입니다...</translation>
+    </message>
+    <message>
+        <source>Another EMT simulation is running already...</source>
+        <translation>다른 EMT 시뮬레이션이 이미 실행 중입니다...</translation>
+    </message>
+    <message>
+        <source>Another LODF is being executed now...</source>
+        <translation>다른 LODF가 현재 실행 중입니다...</translation>
+    </message>
+    <message>
+        <source>Another Monte Carlo simulation is running...</source>
+        <translation>다른 몬테카를로 시뮬레이션이 실행 중입니다...</translation>
+    </message>
+    <message>
+        <source>Another OPF is being run...</source>
+        <translation>다른 OPF가 실행 중입니다...</translation>
+    </message>
+    <message>
+        <source>Another OPF time series is running already...</source>
+        <translation>다른 OPF 시계열이 이미 실행 중입니다...</translation>
+    </message>
+    <message>
+        <source>Another Optimal NCT time series is being run...</source>
+        <translation>다른 최적 NCT 시계열이 실행 중입니다...</translation>
+    </message>
+    <message>
+        <source>Another PTDF is being executed now...</source>
+        <translation>다른 PTDF가 현재 실행 중입니다...</translation>
+    </message>
+    <message>
+        <source>Another Small-Signal stability analysis EMT simulation is running already...</source>
+        <translation>다른 고신호 안정도 분석 EMT 시뮬레이션이 이미 실행 중입니다...</translation>
+    </message>
+    <message>
+        <source>Another Small-Signal stability analysis simulation is running already...</source>
+        <translation>다른 고신호 안정도 분석 시뮬레이션이 이미 실행 중입니다...</translation>
+    </message>
+    <message>
+        <source>Another catalogue optimization is already running...</source>
+        <translation>다른 카탈로그 최적화가 이미 실행 중입니다...</translation>
+    </message>
+    <message>
+        <source>Another clustering is being executed now...</source>
+        <translation>다른 클러스터링이 현재 실행 중입니다...</translation>
+    </message>
+    <message>
+        <source>Another contingency analysis is being executed now...</source>
+        <translation>다른 비상 상황 분석이 현재 실행 중입니다...</translation>
+    </message>
+    <message>
+        <source>Another inputs analysis is being run...</source>
+        <translation>다른 입력 분석이 실행 중입니다...</translation>
+    </message>
+    <message>
+        <source>Another nodal capacity study is being run...</source>
+        <translation>다른 노드 용량 연구가 실행 중입니다...</translation>
+    </message>
+    <message>
+        <source>Another reliability study is running already...</source>
+        <translation>다른 신뢰도 연구가 이미 실행 중입니다...</translation>
+    </message>
+    <message>
+        <source>Another rms simulation is running already...</source>
+        <translation>다른 rms 시뮬레이션이 이미 실행 중입니다...</translation>
+    </message>
+    <message>
+        <source>Another simulation of the same type is running...</source>
+        <translation>동일 유형의 다른 시뮬레이션이 실행 중입니다...</translation>
+    </message>
+    <message>
+        <source>Another three-phase time series power flow is being executed now...</source>
+        <translation>다른 3상 시계열 전력 흐름이 현재 실행 중입니다...</translation>
+    </message>
+    <message>
+        <source>Another time series power flow is being executed now...</source>
+        <translation>다른 시계열 전력 흐름이 현재 실행 중입니다...</translation>
+    </message>
+    <message>
+        <source>Another voltage collapse simulation is running...</source>
+        <translation>다른 전압 붕괴 시뮬레이션이 실행 중입니다...</translation>
+    </message>
+    <message>
+        <source>Cannot colour because the PTDF results have zero time steps :/</source>
+        <translation>PTDF 결과에 시간 단계가 0개이므로 색칠할 수 없습니다 :/</translation>
+    </message>
+    <message>
+        <source>Check the selected start and finnish time series indices.</source>
+        <translation>선택한 시작 및 종료 시계열 인덱스를 확인하십시오.</translation>
+    </message>
+    <message>
+        <source>Linear OPF investment studies need time data...</source>
+        <translation>선형 OPF 투자 연구에는 시간 데이터가 필요합니다...</translation>
+    </message>
+    <message>
+        <source>No from areas!</source>
+        <translation>원본 지역이 없습니다!</translation>
+    </message>
+    <message>
+        <source>No results for the three-phase time series simulation.</source>
+        <translation>3상 시계열 시뮬레이션에 대한 결과가 없습니다.</translation>
+    </message>
+    <message>
+        <source>No results for the time series simulation.</source>
+        <translation>시계열 시뮬레이션에 대한 결과가 없습니다.</translation>
+    </message>
+    <message>
+        <source>No to areas!</source>
+        <translation>대상 지역이 없습니다!</translation>
+    </message>
+    <message>
+        <source>Nothing to simulate...</source>
+        <translation>시뮬레이션할 것이 없습니다...</translation>
+    </message>
+    <message>
+        <source>Objective not supported yet :/</source>
+        <translation>목적이 아직 지원되지 않습니다 :/</translation>
+    </message>
+    <message>
+        <source>Optimal power flow converged :)</source>
+        <translation>최적 전력 흐름이 수렴했습니다 :)</translation>
+    </message>
+    <message>
+        <source>Optimal power flow not converged :/
+Check that all Branches have rating and 
+that the generator bounds are ok.
+You may also use the diagnostic tool (F8)</source>
+        <translation>최적 전력 흐름이 수렴하지 않았습니다 :/
+모든 분기가 정격값을 가지고 있고
+발전기 경계가 올바른지 확인하십시오.
+진단 도구(F8)를 사용할 수도 있습니다.</translation>
+    </message>
+    <message>
+        <source>Power flow 3ph converged :)</source>
+        <translation>3상 전력 흐름이 수렴했습니다 :)</translation>
+    </message>
+    <message>
+        <source>Power flow 3ph not converged :/</source>
+        <translation>3상 전력 흐름이 수렴하지 않았습니다 :/</translation>
+    </message>
+    <message>
+        <source>Power flow converged :)</source>
+        <translation>전력 흐름이 수렴했습니다 :)</translation>
+    </message>
+    <message>
+        <source>Power flow not converged :/</source>
+        <translation>전력 흐름이 수렴하지 않았습니다 :/</translation>
+    </message>
+    <message>
+        <source>Reliability studies need time data...</source>
+        <translation>신뢰도 연구에는 시간 데이터가 필요합니다...</translation>
+    </message>
+    <message>
+        <source>Remote results received!</source>
+        <translation>원격 결과 수신!</translation>
+    </message>
+    <message>
+        <source>Run a linear analysis to enable filter contingencies by sensitivity</source>
+        <translation>민감도를 통해 필터 비상 상황을 활성화하려면 선형 분석을 실행하십시오.</translation>
+    </message>
+    <message>
+        <source>Simulation converged for all active simulation groups :)</source>
+        <translation>모든 활성 시뮬레이션 그룹에 대해 시뮬레이션이 수렴했습니다 :)</translation>
+    </message>
+    <message>
+        <source>Simulation well initialized for all active simulation groups :)</source>
+        <translation>모든 활성 시뮬레이션 그룹에 대해 시뮬레이션이 잘 초기화되었습니다 :)</translation>
+    </message>
+    <message>
+        <source>Small-Signal stability analysis EMT has finished correctly!</source>
+        <translation>고신호 안정도 분석 EMT가 올바르게 완료되었습니다!</translation>
+    </message>
+    <message>
+        <source>Small-signal stability analysis RMS has finished correctly!</source>
+        <translation>고신호 안정도 분석 RMS가 올바르게 완료되었습니다!</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no ATC results.</source>
+        <translation>무언가 잘못되었습니다. ATC 결과가 없습니다.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no ATC time series results.</source>
+        <translation>무언가 잘못되었습니다. ATC 시계열 결과가 없습니다.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no PTDF Time series results.</source>
+        <translation>무언가 잘못되었습니다. PTDF 시계열 결과가 없습니다.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no PTDF results.</source>
+        <translation>무언가 잘못되었습니다. PTDF 결과가 없습니다.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no contingency analysis results.</source>
+        <translation>무언가 잘못되었습니다. 비상 상황 분석 결과가 없습니다.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no contingency time series results.</source>
+        <translation>무언가 잘못되었습니다. 비상 상황 시계열 결과가 없습니다.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no investments evaluation results.</source>
+        <translation>무언가 잘못되었습니다. 투자 평가 결과가 없습니다.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no voltage stability results.</source>
+        <translation>무언가 잘못되었습니다. 전압 안정도 결과가 없습니다.</translation>
+    </message>
+    <message>
+        <source>State estimation converged :)</source>
+        <translation>상태 추정이 수렴했습니다 :)</translation>
+    </message>
+    <message>
+        <source>State estimation not converged :/</source>
+        <translation>상태 추정이 수렴하지 않았습니다 :/</translation>
+    </message>
+    <message>
+        <source>Stochastic power flow needs at least one time-series sample.</source>
+        <translation>확률적 전력 흐름은 최소한 하나의 시계열 샘플이 필요합니다.</translation>
+    </message>
+    <message>
+        <source>The grid doesn't have time series :/</source>
+        <translation>그리드에 시계열 데이터가 없습니다 :/</translation>
+    </message>
+    <message>
+        <source>The voltage stability did not converge.
+Is this case already at the collapse limit?</source>
+        <translation>전압 안정도가 수렴하지 않았습니다.
+이 경우가 이미 붕괴 한계에 도달했습니까?</translation>
+    </message>
+    <message>
+        <source>There are no PTDF results :/</source>
+        <translation>PTDF 결과가 없습니다 :/</translation>
+    </message>
+    <message>
+        <source>There are no active RMS event groups to report.</source>
+        <translation>보고할 활성 RMS 이벤트 그룹이 없습니다.</translation>
+    </message>
+    <message>
+        <source>There are no contingency groups declared...</source>
+        <translation>선언된 비상 상황 그룹이 없습니다...</translation>
+    </message>
+    <message>
+        <source>There are no time series!</source>
+        <translation>시계열 데이터가 없습니다!</translation>
+    </message>
+    <message>
+        <source>There are no time series.</source>
+        <translation>시계열 데이터가 없습니다.</translation>
+    </message>
+    <message>
+        <source>There are no time series...</source>
+        <translation>시계열 데이터가 없습니다...</translation>
+    </message>
+    <message>
+        <source>You cannot find {0} clusters for {1} time steps.
+Modify the number of clusters in the ML settings.</source>
+        <translation>{1} 시간 단계에 대해 {0}개의 클러스터를 찾을 수 없습니다.
+ML 설정에서 클러스터 수를 수정하십시오.</translation>
+    </message>
 </context>
 <context>
     <name>SubstationDesigner</name>
@@ -13926,7 +14200,7 @@ You need to load or create a grid!</source>
         <location filename="../Main/MainWindow.ui" line="11827"/>
         <location filename="../Main/MainWindow.ui" line="11830"/>
         <source>Stop &quot;stuff running right now&quot;</source>
-        <translation>"현재 실행 중인 작업" 중지</translation>
+        <translation>&quot;현재 실행 중인 작업&quot; 중지</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11968"/>
@@ -14591,6 +14865,32 @@ You need to load or create a grid!</source>
     <message>
         <source>Question</source>
         <translation>질문</translation>
+    </message>
+</context>
+<context>
+    <name>DeviceSelectorDialogue</name>
+    <message>
+        <source>Device selection</source>
+        <translation>장치 선택</translation>
+    </message>
+    <message>
+        <source>None</source>
+        <translation>없음</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>찾다</translation>
+    </message>
+</context>
+<context>
+    <name>NewConnectedDeviceDialogue</name>
+    <message>
+        <source>Name</source>
+        <translation>이름</translation>
+    </message>
+    <message>
+        <source>New device</source>
+        <translation>새 장치</translation>
     </message>
 </context>
 </TS>

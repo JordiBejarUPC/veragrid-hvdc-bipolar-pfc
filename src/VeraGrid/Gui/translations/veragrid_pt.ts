@@ -1712,6 +1712,14 @@ Are you sure?</source>
         <translation>Isto irá apagar todos os barramentos e os seus elementos conectados que não foram selecionados. Isto não pode ser desfeito e é perigoso se não souber o que está a fazer. 
 Tem a certeza?</translation>
     </message>
+    <message>
+        <source>There are no buses to connect this device.</source>
+        <translation>Não há barramentos para conectar este dispositivo.</translation>
+    </message>
+    <message>
+        <source>VSC devices need one AC bus and two DC buses.</source>
+        <translation>Os dispositivos VSC precisam de um barramento CA e dois barramentos CC.</translation>
+    </message>
 </context>
 <context>
     <name>DcLineDeviceEditor</name>
@@ -8073,6 +8081,272 @@ Resolve the operating point before running this RMS simulation.</source>
         <translation>O fluxo de potência não convergiu.
 Resolva o ponto de operação antes de executar esta simulação RMS.</translation>
     </message>
+    <message>
+        <source>Adequacy studies need time data...</source>
+        <translation>Os estudos de adequação precisam de dados temporais...</translation>
+    </message>
+    <message>
+        <source>Another ATC time series is being executed now...</source>
+        <translation>Outra série temporal ATC está a ser executada agora...</translation>
+    </message>
+    <message>
+        <source>Another EMT simulation is running already...</source>
+        <translation>Outra simulação EMT já está a correr...</translation>
+    </message>
+    <message>
+        <source>Another LODF is being executed now...</source>
+        <translation>Outro LODF está a ser executado agora...</translation>
+    </message>
+    <message>
+        <source>Another Monte Carlo simulation is running...</source>
+        <translation>Outra simulação Monte Carlo está a correr...</translation>
+    </message>
+    <message>
+        <source>Another OPF is being run...</source>
+        <translation>Outro OPF está a ser executado...</translation>
+    </message>
+    <message>
+        <source>Another OPF time series is running already...</source>
+        <translation>Outra série temporal OPF já está a correr...</translation>
+    </message>
+    <message>
+        <source>Another Optimal NCT time series is being run...</source>
+        <translation>Outra série temporal NCT Ótima está a ser executada...</translation>
+    </message>
+    <message>
+        <source>Another PTDF is being executed now...</source>
+        <translation>Outro PTDF está a ser executado agora...</translation>
+    </message>
+    <message>
+        <source>Another Small-Signal stability analysis EMT simulation is running already...</source>
+        <translation>Outra simulação EMT de análise de estabilidade de pequeno sinal já está a correr...</translation>
+    </message>
+    <message>
+        <source>Another Small-Signal stability analysis simulation is running already...</source>
+        <translation>Outra simulação de análise de estabilidade de pequeno sinal já está a correr...</translation>
+    </message>
+    <message>
+        <source>Another catalogue optimization is already running...</source>
+        <translation>Outra otimização de catálogo já está a correr...</translation>
+    </message>
+    <message>
+        <source>Another clustering is being executed now...</source>
+        <translation>Outro agrupamento está a ser executado agora...</translation>
+    </message>
+    <message>
+        <source>Another contingency analysis is being executed now...</source>
+        <translation>Outra análise de contingência está a ser executada agora...</translation>
+    </message>
+    <message>
+        <source>Another inputs analysis is being run...</source>
+        <translation>Outra análise de entradas está a ser executada...</translation>
+    </message>
+    <message>
+        <source>Another nodal capacity study is being run...</source>
+        <translation>Outro estudo de capacidade nodal está a ser executado...</translation>
+    </message>
+    <message>
+        <source>Another reliability study is running already...</source>
+        <translation>Outro estudo de fiabilidade já está a correr...</translation>
+    </message>
+    <message>
+        <source>Another rms simulation is running already...</source>
+        <translation>Outra simulação RMS já está a correr...</translation>
+    </message>
+    <message>
+        <source>Another simulation of the same type is running...</source>
+        <translation>Outra simulação do mesmo tipo está a correr...</translation>
+    </message>
+    <message>
+        <source>Another three-phase time series power flow is being executed now...</source>
+        <translation>Outro fluxo de potência trifásico em série temporal está a ser executado agora...</translation>
+    </message>
+    <message>
+        <source>Another time series power flow is being executed now...</source>
+        <translation>Outro fluxo de potência em série temporal está a ser executado agora...</translation>
+    </message>
+    <message>
+        <source>Another voltage collapse simulation is running...</source>
+        <translation>Outra simulação de colapso de tensão está a correr...</translation>
+    </message>
+    <message>
+        <source>Cannot colour because the PTDF results have zero time steps :/</source>
+        <translation>Não é possível colorir porque os resultados PTDF têm zero passos de tempo :/</translation>
+    </message>
+    <message>
+        <source>Check the selected start and finnish time series indices.</source>
+        <translation>Verifique os índices de série temporal de início e fim selecionados.</translation>
+    </message>
+    <message>
+        <source>Linear OPF investment studies need time data...</source>
+        <translation>Os estudos de investimento OPF linear precisam de dados temporais...</translation>
+    </message>
+    <message>
+        <source>No from areas!</source>
+        <translation>Sem áreas de origem!</translation>
+    </message>
+    <message>
+        <source>No results for the three-phase time series simulation.</source>
+        <translation>Sem resultados para a simulação trifásica em série temporal.</translation>
+    </message>
+    <message>
+        <source>No results for the time series simulation.</source>
+        <translation>Sem resultados para a simulação em série temporal.</translation>
+    </message>
+    <message>
+        <source>No to areas!</source>
+        <translation>Sem áreas de destino!</translation>
+    </message>
+    <message>
+        <source>Nothing to simulate...</source>
+        <translation>Nada para simular...</translation>
+    </message>
+    <message>
+        <source>Objective not supported yet :/</source>
+        <translation>Objetivo ainda não suportado :/</translation>
+    </message>
+    <message>
+        <source>Optimal power flow converged :)</source>
+        <translation>Fluxo de potência ótimo convergiu :)</translation>
+    </message>
+    <message>
+        <source>Optimal power flow not converged :/
+Check that all Branches have rating and 
+that the generator bounds are ok.
+You may also use the diagnostic tool (F8)</source>
+        <translation>Fluxo de potência ótimo não convergiu :/
+Verifique se todos os Ramos têm classificação e 
+se os limites do gerador estão OK.
+Pode também usar a ferramenta de diagnóstico (F8)</translation>
+    </message>
+    <message>
+        <source>Power flow 3ph converged :)</source>
+        <translation>Fluxo de potência 3f convergiu :)</translation>
+    </message>
+    <message>
+        <source>Power flow 3ph not converged :/</source>
+        <translation>Fluxo de potência 3f não convergiu :/</translation>
+    </message>
+    <message>
+        <source>Power flow converged :)</source>
+        <translation>Fluxo de potência convergiu :)</translation>
+    </message>
+    <message>
+        <source>Power flow not converged :/</source>
+        <translation>Fluxo de potência não convergiu :/</translation>
+    </message>
+    <message>
+        <source>Reliability studies need time data...</source>
+        <translation>Os estudos de fiabilidade precisam de dados temporais...</translation>
+    </message>
+    <message>
+        <source>Remote results received!</source>
+        <translation>Resultados remotos recebidos!</translation>
+    </message>
+    <message>
+        <source>Run a linear analysis to enable filter contingencies by sensitivity</source>
+        <translation>Execute uma análise linear para habilitar contingências de filtro por sensibilidade</translation>
+    </message>
+    <message>
+        <source>Simulation converged for all active simulation groups :)</source>
+        <translation>Simulação convergiu para todos os grupos de simulação ativos :)</translation>
+    </message>
+    <message>
+        <source>Simulation well initialized for all active simulation groups :)</source>
+        <translation>Simulação bem inicializada para todos os grupos de simulação ativos :)</translation>
+    </message>
+    <message>
+        <source>Small-Signal stability analysis EMT has finished correctly!</source>
+        <translation>A análise de estabilidade de pequeno sinal EMT terminou corretamente!</translation>
+    </message>
+    <message>
+        <source>Small-signal stability analysis RMS has finished correctly!</source>
+        <translation>A análise de estabilidade de pequeno sinal RMS terminou corretamente!</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no ATC results.</source>
+        <translation>Algo correu mal, Não há resultados ATC.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no ATC time series results.</source>
+        <translation>Algo correu mal, Não há resultados de série temporal ATC.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no PTDF Time series results.</source>
+        <translation>Algo correu mal, Não há resultados de série temporal PTDF.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no PTDF results.</source>
+        <translation>Algo correu mal, Não há resultados PTDF.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no contingency analysis results.</source>
+        <translation>Algo correu mal, não existem resultados de análise de contingência.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no contingency time series results.</source>
+        <translation>Algo correu mal, não existem resultados de séries temporais de contingência.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no investments evaluation results.</source>
+        <translation>Algo correu mal, não existem resultados de avaliação de investimentos.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no voltage stability results.</source>
+        <translation>Algo correu mal, não existem resultados de estabilidade de tensão.</translation>
+    </message>
+    <message>
+        <source>State estimation converged :)</source>
+        <translation>Estimação de estado convergiu :)</translation>
+    </message>
+    <message>
+        <source>State estimation not converged :/</source>
+        <translation>Estimação de estado não convergiu :/</translation>
+    </message>
+    <message>
+        <source>Stochastic power flow needs at least one time-series sample.</source>
+        <translation>O fluxo de potência estocástico precisa de pelo menos uma amostra de série temporal.</translation>
+    </message>
+    <message>
+        <source>The grid doesn't have time series :/</source>
+        <translation>A rede não tem séries temporais :/</translation>
+    </message>
+    <message>
+        <source>The voltage stability did not converge.
+Is this case already at the collapse limit?</source>
+        <translation>A estabilidade de tensão não convergiu.
+Este caso já está no limite de colapso?</translation>
+    </message>
+    <message>
+        <source>There are no PTDF results :/</source>
+        <translation>Não existem resultados PTDF :/</translation>
+    </message>
+    <message>
+        <source>There are no active RMS event groups to report.</source>
+        <translation>Não existem grupos de eventos RMS ativos para reportar.</translation>
+    </message>
+    <message>
+        <source>There are no contingency groups declared...</source>
+        <translation>Não foram declarados grupos de contingência...</translation>
+    </message>
+    <message>
+        <source>There are no time series!</source>
+        <translation>Não existem séries temporais!</translation>
+    </message>
+    <message>
+        <source>There are no time series.</source>
+        <translation>Não existem séries temporais.</translation>
+    </message>
+    <message>
+        <source>There are no time series...</source>
+        <translation>Não existem séries temporais...</translation>
+    </message>
+    <message>
+        <source>You cannot find {0} clusters for {1} time steps.
+Modify the number of clusters in the ML settings.</source>
+        <translation>Não foi possível encontrar {0} clusters para {1} passos de tempo.
+Modifique o número de clusters nas configurações de ML.</translation>
+    </message>
 </context>
 <context>
     <name>SubstationDesigner</name>
@@ -13938,7 +14212,7 @@ Tem de carregar ou criar uma rede!</translation>
         <location filename="../Main/MainWindow.ui" line="11827"/>
         <location filename="../Main/MainWindow.ui" line="11830"/>
         <source>Stop &quot;stuff running right now&quot;</source>
-        <translation>Parar "coisas a correr agora"</translation>
+        <translation>Parar &quot;coisas a correr agora&quot;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11968"/>
@@ -14603,6 +14877,32 @@ Tem de carregar ou criar uma rede!</translation>
     <message>
         <source>Question</source>
         <translation>Pergunta</translation>
+    </message>
+</context>
+<context>
+    <name>DeviceSelectorDialogue</name>
+    <message>
+        <source>Device selection</source>
+        <translation>Seleção de dispositivo</translation>
+    </message>
+    <message>
+        <source>None</source>
+        <translation>Nenhum</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>Pesquisar</translation>
+    </message>
+</context>
+<context>
+    <name>NewConnectedDeviceDialogue</name>
+    <message>
+        <source>Name</source>
+        <translation>Nome</translation>
+    </message>
+    <message>
+        <source>New device</source>
+        <translation>Dispositivo novo</translation>
     </message>
 </context>
 </TS>
