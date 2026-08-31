@@ -705,18 +705,28 @@ class RmsProblemDaeVec(RmsProblemTemplate):
                 pt_init = St_vsc[i].real
                 qt_init = St_vsc[i].imag
                 vm_t = np.abs(self.power_flow_results.voltage[t])
-                im_init = np.sqrt(pt_init * pt_init + qt_init * qt_init) / (vm_t + 1e-12)
+                im_init: float = float(
+                    np.sqrt(pt_init * pt_init + qt_init * qt_init)
+                    / (vm_t + 1e-12)
+                )
 
                 if i < len(self.power_flow_results.It_vsc):
-                    it_mag = np.abs(self.power_flow_results.It_vsc[i]) / self.grid.Sbase
+                    # Power-flow VSC currents already use the system per-unit
+                    # base expected by the RMS physical-terminal equations.
+                    it_mag: float = float(
+                        np.abs(self.power_flow_results.It_vsc[i])
+                    )
                     if np.isfinite(it_mag) and it_mag > 0.0:
                         im_init = it_mag
+                    else:
+                        pass
+                else:
+                    pass
 
                 self.set_init_guess(mdl, VarPowerFlowReferenceType.Pf, Sf_vsc)
                 self.set_init_guess(mdl, VarPowerFlowReferenceType.Pt, pt_init)
                 self.set_init_guess(mdl, VarPowerFlowReferenceType.Qt, qt_init)
                 if VarPowerFlowReferenceType.Im in mdl.external_mapping:
-                    im_init = float(np.abs(self.power_flow_results.It_vsc[i]) / self.grid.Sbase)
                     self.set_init_guess(mdl, VarPowerFlowReferenceType.Im, im_init)
                 else:
                     pass
