@@ -32,19 +32,30 @@ class CenteredDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-    def showEvent(self, event):
+    def showEvent(self, event: QtGui.QShowEvent) -> None:
         """
 
         :param event:
         :return:
         """
         super().showEvent(event)
-        if self.parent():
-            parent_geo = self.parent().geometry()
-            self.move(
-                parent_geo.center().x() - self.width() // 2,
-                parent_geo.center().y() - self.height() // 2
-            )
+        parent_widget: QtWidgets.QWidget | None = self.parentWidget()
+        screen: QtGui.QScreen | None
+        target_center: QtCore.QPoint
+        dialog_geometry: QtCore.QRect = self.frameGeometry()
+
+        if parent_widget is None:
+            screen = QApplication.primaryScreen()
+
+            if screen is None:
+                target_center = QtCore.QPoint(0, 0)
+            else:
+                target_center = screen.availableGeometry().center()
+        else:
+            target_center = parent_widget.window().frameGeometry().center()
+
+        dialog_geometry.moveCenter(target_center)
+        self.move(dialog_geometry.topLeft())
 
 
 class NewProfilesStructureDialogue(CenteredDialog):
