@@ -2008,7 +2008,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         # The circuit owns the authoritative bus objects that the generated
         # measurement block must reference after the modal selection is accepted.
         buses_list: List[Bus] = list(self.circuit.buses)
-        vars_dict: Dict[BlockType, List[VarPowerFlowReferenceType]] = measurement_vars_dict
+        vars_dict: Dict[str, Dict[BlockType, List[VarPowerFlowReferenceType]]] = measurement_vars_dict
         dialogue: MeasurementsDialog = MeasurementsDialog(
             buses=buses_list,
             measurement_vars_dict=vars_dict,

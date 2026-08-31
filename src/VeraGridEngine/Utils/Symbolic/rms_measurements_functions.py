@@ -15,35 +15,22 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var
 from VeraGridEngine.enumerations import BlockType, VarPowerFlowReferenceType
 
-measurement_vars_dict = {BlockType.MEASUREMENTS_VOLTAGE_FROM_POLAR: [VarPowerFlowReferenceType.UR, VarPowerFlowReferenceType.UI, VarPowerFlowReferenceType.U,
-                                                                             VarPowerFlowReferenceType.U2R, VarPowerFlowReferenceType.U2I, VarPowerFlowReferenceType.U2,
-                                                                             VarPowerFlowReferenceType.U0R, VarPowerFlowReferenceType.U0I, VarPowerFlowReferenceType.U0,
-                                                                             VarPowerFlowReferenceType.FREF, VarPowerFlowReferenceType.FE, VarPowerFlowReferenceType.DU,
-                                                                             VarPowerFlowReferenceType.DUR, VarPowerFlowReferenceType.DUI, VarPowerFlowReferenceType.DU2,
-                                                                             VarPowerFlowReferenceType.DU2R, VarPowerFlowReferenceType.DU2I, VarPowerFlowReferenceType.DU0,
-                                                                             VarPowerFlowReferenceType.DU0R, VarPowerFlowReferenceType.DU0I, VarPowerFlowReferenceType.UR_A,
-                                                                             VarPowerFlowReferenceType.UR_B, VarPowerFlowReferenceType.UR_C, VarPowerFlowReferenceType.UI_A,
-                                                                             VarPowerFlowReferenceType.UI_B, VarPowerFlowReferenceType.UI_C, VarPowerFlowReferenceType.DUR_A,
-                                                                             VarPowerFlowReferenceType.DUR_B, VarPowerFlowReferenceType.DUR_C, VarPowerFlowReferenceType.DUI_A,
-                                                                             VarPowerFlowReferenceType.DUI_B, VarPowerFlowReferenceType.DUI_C],
-        BlockType.MEASUREMENTS_VOLTAGE_FROM_DC: [VarPowerFlowReferenceType.UR, VarPowerFlowReferenceType.UI, VarPowerFlowReferenceType.U,
-                                                                             VarPowerFlowReferenceType.U2R, VarPowerFlowReferenceType.U2I, VarPowerFlowReferenceType.U2,
-                                                                             VarPowerFlowReferenceType.U0R, VarPowerFlowReferenceType.U0I, VarPowerFlowReferenceType.U0,
-                                                                             VarPowerFlowReferenceType.FREF, VarPowerFlowReferenceType.FE, VarPowerFlowReferenceType.DU,
-                                                                             VarPowerFlowReferenceType.DUR, VarPowerFlowReferenceType.DUI, VarPowerFlowReferenceType.DU2,
-                                                                             VarPowerFlowReferenceType.DU2R, VarPowerFlowReferenceType.DU2I, VarPowerFlowReferenceType.DU0,
-                                                                             VarPowerFlowReferenceType.DU0R, VarPowerFlowReferenceType.DU0I, VarPowerFlowReferenceType.UR_A,
-                                                                             VarPowerFlowReferenceType.UR_B, VarPowerFlowReferenceType.UR_C, VarPowerFlowReferenceType.UI_A,
-                                                                             VarPowerFlowReferenceType.UI_B, VarPowerFlowReferenceType.UI_C, VarPowerFlowReferenceType.DUR_A,
-                                                                             VarPowerFlowReferenceType.DUR_B, VarPowerFlowReferenceType.DUR_C, VarPowerFlowReferenceType.DUI_A,
-                                                                             VarPowerFlowReferenceType.DUI_B, VarPowerFlowReferenceType.DUI_C],
-        BlockType.MEASUREMENTS_CURRENT_FROM_PQ: [VarPowerFlowReferenceType.IR, VarPowerFlowReferenceType.II, VarPowerFlowReferenceType.I, VarPowerFlowReferenceType.IA,
-                                                 VarPowerFlowReferenceType.I2R, VarPowerFlowReferenceType.I2I, VarPowerFlowReferenceType.I2, VarPowerFlowReferenceType.I0R,
-                                                 VarPowerFlowReferenceType.I0I, VarPowerFlowReferenceType.IR_A, VarPowerFlowReferenceType.IR_B, VarPowerFlowReferenceType.IR_C,
-                                                 VarPowerFlowReferenceType.II_A, VarPowerFlowReferenceType.II_B, VarPowerFlowReferenceType.II_C],
-        BlockType.MEASUREMENTS_CURRENT_FROM_DC: [VarPowerFlowReferenceType.I_DC],
-        BlockType.MEASUREMENTS_CURRENT_PARK: [VarPowerFlowReferenceType.VD, VarPowerFlowReferenceType.VQ],
-        BlockType.MEASUREMENTS_PLL: [VarPowerFlowReferenceType.ID, VarPowerFlowReferenceType.IQ]}
+measurement_vars_dict = {"dc_bus": {BlockType.MEASUREMENTS_VOLTAGE_FROM_DC: [VarPowerFlowReferenceType.UR, VarPowerFlowReferenceType.U],
+                                    BlockType.MEASUREMENTS_CURRENT_FROM_DC: [VarPowerFlowReferenceType.I_DC]},
+
+                         "a_c_bus": {BlockType.MEASUREMENTS_VOLTAGE_FROM_POLAR: [VarPowerFlowReferenceType.U, VarPowerFlowReferenceType.UR_A, VarPowerFlowReferenceType.UR_B, VarPowerFlowReferenceType.UR_C, VarPowerFlowReferenceType.UI_A,
+                                                                             VarPowerFlowReferenceType.UI_B, VarPowerFlowReferenceType.UI_C],
+                                      BlockType.MEASUREMENTS_CURRENT_FROM_PQ: [VarPowerFlowReferenceType.UR,
+                                                                               VarPowerFlowReferenceType.UI,
+                                                                               VarPowerFlowReferenceType.IR,
+                                                                               VarPowerFlowReferenceType.II,
+                                                                               VarPowerFlowReferenceType.IR_B,
+                                                                               VarPowerFlowReferenceType.IR_C,
+                                                                               VarPowerFlowReferenceType.II_B,
+                                                                               VarPowerFlowReferenceType.II_C]}}
+
+        # BlockType.MEASUREMENTS_CURRENT_PARK: [VarPowerFlowReferenceType.VD, VarPowerFlowReferenceType.VQ],
+        # BlockType.MEASUREMENTS_PLL: [VarPowerFlowReferenceType.ID, VarPowerFlowReferenceType.IQ]}
 
 RMS_VOLTAGE_METER_OUTPUT_NAMES: tuple[str, ...] = (
     "ur", "ui", "u", "u2r", "u2i", "u2", "u0r", "u0i", "u0",
