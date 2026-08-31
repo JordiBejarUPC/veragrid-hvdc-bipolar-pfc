@@ -952,6 +952,12 @@ class DataBaseTableMain(DiagramsMain):
                 obj = dev.UndergroundLineType(name=name)
                 self.circuit.add_underground_line(obj)
 
+            elif elm_type == DeviceType.DcCableTypeDevice:
+
+                name = f'DC cable {len(self.circuit.dc_cable_types) + 1}'
+                obj = dev.DcCableType(name=name)
+                self.circuit.add_dc_cable_type(obj)
+
             elif elm_type == DeviceType.SequenceLineDevice:
 
                 name = f'Sequence line {len(self.circuit.sequence_line_types) + 1}'
