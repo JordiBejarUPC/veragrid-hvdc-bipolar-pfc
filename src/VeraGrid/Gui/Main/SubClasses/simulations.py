@@ -3946,7 +3946,7 @@ class SimulationsMain(TimeEventsMain):
         :return: None.
         """
         _, results = self.session.rms_dynamic_simulation
-        # rms_thread: GcThread | None = self.session.threads.get(SimulationTypes.RmsDynamic_run, None)
+        rms_thread: GcThread | None = self.session.threads.get(SimulationTypes.RmsDynamic_run, None)
 
         # A completed or failed worker is no longer an active simulation. Keep
         # this cleanup outside the results branch because an engine validation
@@ -4085,6 +4085,7 @@ class SimulationsMain(TimeEventsMain):
         """
         _, results = self.session.emt_dynamic_simulation
         emt_driver, _unused_results = self.session.emt_dynamic_simulation
+        emt_thread: GcThread | None = self.session.threads.get(SimulationTypes.EmtDynamic_run, None)
 
         # A failed construction has no results object, but it has still finished.
         # Always clear the running entry so the GUI unlocks and can run again.
