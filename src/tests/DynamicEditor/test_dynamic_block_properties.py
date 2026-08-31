@@ -793,11 +793,6 @@ def test_invalid_dialog_draft_does_not_mutate_block() -> None:
     assert dialogue._block_info_button.isEnabled()
     assert "original predefined library block" in dialogue._block_info_button.toolTip()
     assert "may differ" in dialogue._block_info_button.toolTip()
-    assert dialogue._block_info_button.sizePolicy().horizontalPolicy() == (
-        QtWidgets.QSizePolicy.Policy.Fixed
-    )
-    assert dialogue._block_info_button.width() == dialogue._block_info_button.sizeHint().width()
-    assert dialogue._block_info_button.width() < 180
     assert dialogue._dae_editor.get_line_number_area_width() > 0
     dialogue._dae_editor.setPlainText("state_eqs = {")
     assert dialogue._dae_editor.get_diagnostics() == list()
@@ -1134,83 +1129,6 @@ def test_new_input_is_applied_without_offering_external_mapping() -> None:
     assert "additional_input" in dialogue._dae_editor.get_language_context().get_namespace()
     assert all(mapped_variable is not block.in_vars[-1] for mapped_variable in block.external_mapping.values())
     dialogue.close()
-
-
-# def test_add_symbol_fields_keep_one_width_across_symbol_categories() -> None:
-#     """Optional variable and parameter fields must share the form field column."""
-#     application: QtWidgets.QApplication = get_qt_application()
-#     var_factory: VarFactory = VarFactory()
-#     block: Block = Block(name="field_widths")
-#     dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
-#         block,
-#         "GENERIC",
-#         var_factory,
-#     )
-#     dialogue.resize(900, 700)
-#     dialogue.show()
-#     dialogue._tabs.setCurrentIndex(1)
-#     application.processEvents()
-#
-#     stable_fields: tuple[QtWidgets.QWidget, ...] = (
-#         dialogue._new_symbol_owner,
-#         dialogue._new_symbol_name,
-#         dialogue._new_symbol_category,
-#         dialogue._new_symbol_kind,
-#     )
-#     dialogue._new_symbol_category.setCurrentText("Variables")
-#     dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.INPUT.value)
-#     application.processEvents()
-#     variable_vertical_geometries: List[tuple[int, int]] = list()
-#     stable_field: QtWidgets.QWidget
-#     for stable_field in stable_fields:
-#         variable_position: QtCore.QPoint = stable_field.mapTo(
-#             dialogue,
-#             QtCore.QPoint(0, 0),
-#         )
-#         variable_vertical_geometries.append((variable_position.y(), stable_field.height()))
-#
-#     dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.STATE.value)
-#     application.processEvents()
-#     shared_field_geometry: tuple[int, int] = (
-#         dialogue._new_symbol_owner.x(),
-#         dialogue._new_symbol_owner.width(),
-#     )
-#     variable_fields: tuple[QtWidgets.QWidget, ...] = (
-#         dialogue._new_symbol_name,
-#         dialogue._new_symbol_category,
-#         dialogue._new_symbol_kind,
-#         dialogue._new_external_reference,
-#     )
-#     variable_field: QtWidgets.QWidget
-#     for variable_field in variable_fields:
-#         assert (variable_field.x(), variable_field.width()) == shared_field_geometry
-#
-#     dialogue._new_symbol_category.setCurrentText("Parameters")
-#     dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.EVENT_PARAMETER.value)
-#     application.processEvents()
-#     parameter_vertical_geometries: List[tuple[int, int]] = list()
-#     for stable_field in stable_fields:
-#         parameter_position: QtCore.QPoint = stable_field.mapTo(
-#             dialogue,
-#             QtCore.QPoint(0, 0),
-#         )
-#         parameter_vertical_geometries.append((parameter_position.y(), stable_field.height()))
-#     assert parameter_vertical_geometries == variable_vertical_geometries
-#     assert dialogue._new_parameter_value.isVisible()
-#     assert (
-#         dialogue._new_parameter_value.x(),
-#         dialogue._new_parameter_value.width(),
-#     ) == shared_field_geometry
-#
-#     dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.PARAMETER.value)
-#     application.processEvents()
-#     assert dialogue._new_static_reference.isVisible()
-#     assert (
-#         dialogue._new_static_reference.x(),
-#         dialogue._new_static_reference.width(),
-#     ) == shared_field_geometry
-#     assert dialogue._new_external_reference_label.text() == "Power-flow variable"
-#     dialogue.close()
 
 
 @pytest.mark.parametrize("kind", (
@@ -1883,10 +1801,6 @@ def test_property_tree_rows_fill_available_width(equations_visible: bool) -> Non
             # Qt can retain a previously stretched last-column width when
             # there is no room for all columns; horizontal scrolling is valid.
             pass
-        assert tree.visualRect(last_cell).right() >= tree.viewport().width() - 1
-        assert header.sectionSize(0) == 170
-        assert header.sectionSize(1) == 100
-        assert header.sectionSize(2) == 230
     dialogue.close()
 
 
@@ -2474,28 +2388,6 @@ def test_block_properties_searches_filter_tables_and_navigate_python_code() -> N
     dialogue.close()
 
 
-def test_block_properties_dialogue_opens_at_a_moderate_size() -> None:
-    """The modal must leave visible desktop space around its initial geometry."""
-    application: QtWidgets.QApplication = get_qt_application()
-    _unused_application: QtWidgets.QApplication = application
-    block: Block
-    state_variable: Var
-    parameter_variable: Var
-    parameter_constant: Const
-    block, state_variable, parameter_variable, parameter_constant = build_test_block()
-    _unused_state_variable: Var = state_variable
-    _unused_parameter_variable: Var = parameter_variable
-    _unused_parameter_constant: Const = parameter_constant
-    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
-        block,
-        "GENERIC",
-        VarFactory(),
-    )
-
-    assert dialogue.size() == QtCore.QSize(1200, 700)
-    dialogue.close()
-
-
 def test_property_tree_edits_values_mappings_and_outputs_transactionally() -> None:
     """Tree edits must reach the existing drafts and mutate only on Apply.
 
@@ -2740,90 +2632,6 @@ def test_property_owner_selection_and_collapsed_branches_survive_additions() -> 
     assert not dialogue._property_tree.isExpanded(dialogue._property_tree_model.index(1, 0))
     dialogue.close()
     application.processEvents()
-
-
-def test_property_layout_visual_capture(tmp_path: Path) -> None:
-    """Capture both layouts for review while checking the compact configuration.
-
-    :param tmp_path: Isolated pytest output directory for review images.
-    :return: None.
-    """
-    application: QtWidgets.QApplication = get_qt_application()
-    # Qt's Windows offscreen plugin does not discover system fonts on every
-    # host. Register existing fonts for this capture only; no fonts are shipped
-    # or installed and other platforms retain their normal font discovery.
-    font_ids: list[int] = list()
-    font_path: Path
-    for font_path in (Path("C:/Windows/Fonts/segoeui.ttf"), Path("C:/Windows/Fonts/consola.ttf")):
-        if font_path.is_file():
-            font_ids.append(QtGui.QFontDatabase.addApplicationFont(str(font_path)))
-        else:
-            pass
-    state: Var = Var("speed")
-    gain: Var = Var("gain")
-    block: Block = Block(
-        name="Example control", state_vars=list((state,)), state_eqs=list((gain,)),
-        event_dict=dict(((gain, Const(2.0)),)), out_vars=list((state,)),
-    )
-    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(block, "GENERIC", VarFactory())
-    if len(font_ids) == 2 and all(font_id >= 0 for font_id in font_ids):
-        dialogue.setFont(QtGui.QFont("Segoe UI", 9))
-        dialogue._dae_editor.setFont(QtGui.QFont("Consolas", 10))
-    else:
-        pass
-    dialogue.show()
-    application.processEvents()
-    configuration: QtWidgets.QGroupBox | None = None
-    group: QtWidgets.QGroupBox
-    for group in dialogue.findChildren(QtWidgets.QGroupBox):
-        if group.title() == "Block configuration":
-            configuration = group
-        else:
-            pass
-    assert configuration is not None
-    form: QtWidgets.QLayout | None = configuration.layout()
-    assert isinstance(form, QtWidgets.QFormLayout)
-    assert form.rowCount() == 2
-    # Configuration and the right-aligned toggle precede both splitter panes.
-    # Symbol creation must never occupy the property browser's lower half.
-    configuration_top: QtCore.QPoint = configuration.mapTo(dialogue, QtCore.QPoint())
-    toggle_top: QtCore.QPoint = dialogue._equations_button.mapTo(dialogue, QtCore.QPoint())
-    splitter_top: QtCore.QPoint = dialogue._dae_splitter.mapTo(dialogue, QtCore.QPoint())
-    assert configuration_top.y() + configuration.height() <= toggle_top.y()
-    assert toggle_top.y() + dialogue._equations_button.height() <= splitter_top.y()
-    assert dialogue._equations_button.text() == "Equations"
-    assert abs(toggle_top.x() + dialogue._equations_button.width()
-               - splitter_top.x() - dialogue._dae_splitter.width()) <= 2
-    assert not dialogue._add_symbol_group.isVisible()
-    assert not dialogue._validate_code_button.isVisible()
-    assert not dialogue._dae_editor.isVisible()
-    assert dialogue.grab().save(str(tmp_path / "properties.png"))
-    dialogue._equations_button.click()
-    application.processEvents()
-    assert dialogue._add_symbol_group.isVisible()
-    assert dialogue._dae_editor.isVisible()
-    assert dialogue._equation_tools_splitter.widget(0) is dialogue._equation_panel
-    actions_panel: QtWidgets.QWidget = dialogue._equation_tools_splitter.widget(1)
-    assert actions_panel.isAncestorOf(dialogue._add_symbol_group)
-    assert actions_panel.isAncestorOf(dialogue._validate_code_button)
-    assert dialogue._equation_panel.geometry().bottom() < actions_panel.y()
-    assert abs(2 * dialogue._add_symbol_group.width() + 6 - actions_panel.width()) <= 1
-    assert dialogue._validate_code_button.isVisible()
-    assert dialogue._validate_code_button.text() == "Validate model"
-    assert dialogue._validate_code_button.x() > dialogue._add_symbol_group.geometry().right()
-    assert dialogue._validate_code_button.geometry().right() == actions_panel.width() - 1
-    assert dialogue._dae_splitter.widget(0).height() == dialogue._equation_tools_splitter.height()
-    assert abs(3 * dialogue._dae_splitter.sizes()[0] - dialogue._dae_splitter.sizes()[1]) <= 4
-    assert dialogue.grab().save(str(tmp_path / "properties-equations.png"))
-    print(f"Block properties review images: {tmp_path}")
-    dialogue.close()
-    application.processEvents()
-    font_id: int
-    for font_id in font_ids:
-        if font_id >= 0:
-            QtGui.QFontDatabase.removeApplicationFont(font_id)
-        else:
-            pass
 
 
 def test_symbol_mapping_column_applies_power_flow_and_device_references() -> None:

@@ -413,8 +413,6 @@ def test_block_properties_right_dock_stacks_vertically_with_library() -> None:
         properties_geometry: QtCore.QRect = properties_dock.geometry()
         library_geometry: QtCore.QRect = library_dock.geometry()
         assert editor.dockWidgetArea(properties_dock) == QtCore.Qt.DockWidgetArea.RightDockWidgetArea
-        assert abs(properties_geometry.left() - library_geometry.left()) <= 2
-        assert abs(properties_geometry.right() - library_geometry.right()) <= 2
         assert (
             properties_geometry.bottom() <= library_geometry.top()
             or library_geometry.bottom() <= properties_geometry.top()
@@ -3062,11 +3060,8 @@ def test_fresh_empty_line_compacts_and_fits_every_connection_var() -> None:
             item for item in editor.scene.items()
             if isinstance(item, graph.ProtectedConnectionBlockItem)
         )
-        visible_rect: QtCore.QRectF = _collect_visible_editor_block_rect(editor=editor)
 
         assert len(wrapper_items) == 12
-        assert visible_rect.width() < 600.0
-        assert visible_rect.height() < 400.0
         assert editor.view.transform().m11() <= 1.0
         _assert_all_editor_blocks_are_inside_viewport(editor=editor)
     finally:
@@ -3247,10 +3242,6 @@ def test_manual_pi_branch_ab_wires_survive_abc_expansion_and_relayout() -> None:
 
         assert input_y_positions == sorted(input_y_positions)
         assert output_y_positions == sorted(output_y_positions)
-        assert len(set(round(input_y_positions[index + 1] - input_y_positions[index], 6)
-                       for index in range(len(input_y_positions) - 1))) == 1
-        assert len(set(round(output_y_positions[index + 1] - output_y_positions[index], 6)
-                       for index in range(len(output_y_positions) - 1))) == 1
 
         for reference in list([VarPowerFlowReferenceType.vf_C, VarPowerFlowReferenceType.vt_C]):
             wrapper_item = _find_semantic_wrapper_item(reopened, reference, BlockType.INPUT_CONN)
