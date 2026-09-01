@@ -1796,7 +1796,7 @@ Weet u zeker?</translation>
     </message>
     <message>
         <source>Paste</source>
-        <translation>Plakken</translation>
+        <translation type="vanished">Plakken</translation>
     </message>
     <message>
         <source>Paste data</source>
@@ -1805,6 +1805,10 @@ Weet u zeker?</translation>
     <message>
         <source>Pasted!</source>
         <translation>Geplakt!</translation>
+    </message>
+    <message>
+        <source>Paste column</source>
+        <translation>Plak kolom</translation>
     </message>
 </context>
 <context>

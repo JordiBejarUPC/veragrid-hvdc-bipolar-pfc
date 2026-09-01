@@ -1806,7 +1806,7 @@ Are you sure?</translation>
     </message>
     <message>
         <source>Paste</source>
-        <translation>Pegar</translation>
+        <translation type="vanished">Pegar</translation>
     </message>
     <message>
         <source>Paste data</source>
@@ -1815,6 +1815,10 @@ Are you sure?</translation>
     <message>
         <source>Pasted!</source>
         <translation>¡Pegado!</translation>
+    </message>
+    <message>
+        <source>Paste column</source>
+        <translation>Pegar columna</translation>
     </message>
 </context>
 <context>

@@ -1806,7 +1806,7 @@ Are you sure?</source>
     </message>
     <message>
         <source>Paste</source>
-        <translation>粘贴</translation>
+        <translation type="vanished">粘贴</translation>
     </message>
     <message>
         <source>Paste data</source>
@@ -1815,6 +1815,10 @@ Are you sure?</source>
     <message>
         <source>Pasted!</source>
         <translation>已粘贴！</translation>
+    </message>
+    <message>
+        <source>Paste column</source>
+        <translation>粘贴列</translation>
     </message>
 </context>
 <context>

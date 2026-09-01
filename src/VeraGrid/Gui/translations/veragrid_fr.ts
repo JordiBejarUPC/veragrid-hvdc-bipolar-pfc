@@ -1798,7 +1798,7 @@ Are you sure?</source>
     </message>
     <message>
         <source>Paste</source>
-        <translation>Coller</translation>
+        <translation type="vanished">Coller</translation>
     </message>
     <message>
         <source>Paste data</source>
@@ -1807,6 +1807,10 @@ Are you sure?</source>
     <message>
         <source>Pasted!</source>
         <translation>Collé!</translation>
+    </message>
+    <message>
+        <source>Paste column</source>
+        <translation>Coller la colonne</translation>
     </message>
 </context>
 <context>

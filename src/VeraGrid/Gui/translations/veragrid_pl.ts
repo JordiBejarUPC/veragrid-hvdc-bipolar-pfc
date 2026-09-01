@@ -1272,7 +1272,7 @@ Czy na pewno?</translation>
     </message>
     <message>
         <source>Paste</source>
-        <translation>Wklej</translation>
+        <translation type="vanished">Wklej</translation>
     </message>
     <message>
         <source>Paste data</source>
@@ -1281,6 +1281,10 @@ Czy na pewno?</translation>
     <message>
         <source>Pasted!</source>
         <translation>Wklejono!</translation>
+    </message>
+    <message>
+        <source>Paste column</source>
+        <translation>Wklej kolumnę</translation>
     </message>
 </context>
 <context>

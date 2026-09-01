@@ -1238,7 +1238,7 @@ Are you sure?</source>
     </message>
     <message>
         <source>Paste</source>
-        <translation>貼上</translation>
+        <translation type="vanished">貼上</translation>
     </message>
     <message>
         <source>Paste data</source>
@@ -1247,6 +1247,10 @@ Are you sure?</source>
     <message>
         <source>Pasted!</source>
         <translation>已貼上!</translation>
+    </message>
+    <message>
+        <source>Paste column</source>
+        <translation>貼上欄</translation>
     </message>
 </context>
 <context>

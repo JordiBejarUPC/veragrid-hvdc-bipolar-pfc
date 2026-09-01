@@ -1798,7 +1798,7 @@ Are you sure?</translation>
     </message>
     <message>
         <source>Paste</source>
-        <translation>Kopiatu</translation>
+        <translation type="vanished">Kopiatu</translation>
     </message>
     <message>
         <source>Paste data</source>
@@ -1807,6 +1807,10 @@ Are you sure?</translation>
     <message>
         <source>Pasted!</source>
         <translation>Kokatu da!</translation>
+    </message>
+    <message>
+        <source>Paste column</source>
+        <translation>Kộtaba kokapatu</translation>
     </message>
 </context>
 <context>

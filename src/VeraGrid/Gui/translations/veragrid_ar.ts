@@ -1796,7 +1796,7 @@ Are you sure?</source>
     </message>
     <message>
         <source>Paste</source>
-        <translation>لصق</translation>
+        <translation type="vanished">لصق</translation>
     </message>
     <message>
         <source>Paste data</source>
@@ -1805,6 +1805,10 @@ Are you sure?</source>
     <message>
         <source>Pasted!</source>
         <translation>تم اللصق!</translation>
+    </message>
+    <message>
+        <source>Paste column</source>
+        <translation>لصق العمود</translation>
     </message>
 </context>
 <context>

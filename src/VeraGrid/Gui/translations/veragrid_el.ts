@@ -1796,7 +1796,7 @@ Are you sure?</translation>
     </message>
     <message>
         <source>Paste</source>
-        <translation>Επικόλληση</translation>
+        <translation type="vanished">Επικόλληση</translation>
     </message>
     <message>
         <source>Paste data</source>
@@ -1805,6 +1805,10 @@ Are you sure?</translation>
     <message>
         <source>Pasted!</source>
         <translation>Επικολλήθηκε!</translation>
+    </message>
+    <message>
+        <source>Paste column</source>
+        <translation>Επικόλληση στήλης</translation>
     </message>
 </context>
 <context>

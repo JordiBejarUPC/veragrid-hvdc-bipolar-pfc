@@ -1798,7 +1798,7 @@ Sind Sie sicher?</translation>
     </message>
     <message>
         <source>Paste</source>
-        <translation>Einfügen</translation>
+        <translation type="vanished">Einfügen</translation>
     </message>
     <message>
         <source>Paste data</source>
@@ -1807,6 +1807,10 @@ Sind Sie sicher?</translation>
     <message>
         <source>Pasted!</source>
         <translation>Eingefügt!</translation>
+    </message>
+    <message>
+        <source>Paste column</source>
+        <translation>Spalte einfügen</translation>
     </message>
 </context>
 <context>

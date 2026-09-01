@@ -1236,7 +1236,7 @@ Are you sure?</source>
     </message>
     <message>
         <source>Paste</source>
-        <translation>पेस्ट करें</translation>
+        <translation type="vanished">पेस्ट करें</translation>
     </message>
     <message>
         <source>Paste data</source>
@@ -1245,6 +1245,10 @@ Are you sure?</source>
     <message>
         <source>Pasted!</source>
         <translation>पेस्ट किया!</translation>
+    </message>
+    <message>
+        <source>Paste column</source>
+        <translation>कॉलम पेस्ट करें</translation>
     </message>
 </context>
 <context>

@@ -2291,7 +2291,7 @@ class DataBaseTableMain(DiagramsMain):
                               function_ptr=self.copy_objects_data)
 
             gf.add_menu_entry(menu=context_menu,
-                              text=self.tr("Paste"),
+                              text=self.tr("Paste column"),
                               icon_path=":/Icons/icons/paste.png",
                               function_ptr=self.paste_objects_data)
 

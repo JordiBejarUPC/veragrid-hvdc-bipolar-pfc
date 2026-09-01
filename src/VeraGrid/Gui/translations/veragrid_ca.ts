@@ -1798,7 +1798,7 @@ Combreu?</translation>
     </message>
     <message>
         <source>Paste</source>
-        <translation>Pausar</translation>
+        <translation type="vanished">Pausar</translation>
     </message>
     <message>
         <source>Paste data</source>
@@ -1807,6 +1807,10 @@ Combreu?</translation>
     <message>
         <source>Pasted!</source>
         <translation>Enganxat!</translation>
+    </message>
+    <message>
+        <source>Paste column</source>
+        <translation>Pastar columna</translation>
     </message>
 </context>
 <context>

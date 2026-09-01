@@ -1796,7 +1796,7 @@ Are you sure?</source>
     </message>
     <message>
         <source>Paste</source>
-        <translation>貼り付け</translation>
+        <translation type="vanished">貼り付け</translation>
     </message>
     <message>
         <source>Paste data</source>
@@ -1805,6 +1805,10 @@ Are you sure?</source>
     <message>
         <source>Pasted!</source>
         <translation>貼り付けました！</translation>
+    </message>
+    <message>
+        <source>Paste column</source>
+        <translation>列を貼り付け</translation>
     </message>
 </context>
 <context>
