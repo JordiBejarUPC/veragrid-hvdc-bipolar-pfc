@@ -143,6 +143,46 @@ class BlockClipboardEntry:
         return self._node_snapshot
 
 
+class SignalPairOutputClipboardEntry:
+    """Detached clipboard snapshot for one duplicable signal-pair output tag."""
+
+    __slots__ = (
+        "_signal_output_block_uid",
+        "_node_snapshot",
+    )
+
+    def __init__(self,
+                 signal_output_block_uid: int,
+                 node_snapshot: BlockDiagramNode) -> None:
+        """Capture a To tag that can be duplicated into its current pair.
+
+        The parent-diagram connection records are deliberately excluded. A
+        pasted To tag therefore exposes the same logical signal but starts
+        without downstream arrows, matching the existing Duplicate action.
+
+        :param signal_output_block_uid: UID of the copied To block.
+        :param node_snapshot: Presentation metadata for the copied To tag.
+        :return: None.
+        """
+        self._signal_output_block_uid: int = signal_output_block_uid
+        self._node_snapshot: BlockDiagramNode = node_snapshot
+
+    def get_signal_output_block_uid(self) -> int:
+        """
+        :return: UID of the copied To block used by the Duplicate operation.
+        """
+        return self._signal_output_block_uid
+
+    def get_node_snapshot(self) -> BlockDiagramNode:
+        """
+        :return: Detached parent-diagram presentation of the copied To tag.
+        """
+        return self._node_snapshot
+
+
+CanvasClipboardEntry: TypeAlias = BlockClipboardEntry | SignalPairOutputClipboardEntry
+
+
 def block_has_internal_equation_content(block: Block) -> bool:
     """Return whether a leaf block owns an operation worth drawing internally.
 
@@ -1561,7 +1601,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self._document = document
         self._block2blocktype: Dict[int, BlockType] = block2blocktype if block2blocktype is not None else dict()
         self._navigation_delegate = None
-        self._block_clipboard_entries: List[BlockClipboardEntry] = list()
+        self._block_clipboard_entries: List[CanvasClipboardEntry] = list()
         self._clipboard_paste_count: int = 0
         self.templates_list: List[
             RmsModelTemplate | EmtModelTemplate | FmuTemplate] = templates_list if templates_list is not None else list()
@@ -3678,15 +3718,16 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
     @QtCore.Slot()
     def copy_selected_blocks(self) -> None:
-        """Copy selected ordinary blocks without parent-diagram connections.
+        """Copy selected blocks and duplicable To tags without canvas arrows.
 
-        Each clipboard entry stores a detached snapshot. Pasting later calls
-        ``duplicate_block`` so the block, every child, and every symbolic
-        variable receive fresh identities while equations retain equal structure.
+        Ordinary blocks are detached completely so their symbolic variables
+        receive fresh identities on paste. A signal-pair To tag instead keeps
+        the identity of its live From owner, matching the existing Duplicate
+        action while still receiving a new block UID.
 
         :return: None.
         """
-        copied_entries: List[BlockClipboardEntry] = list()
+        copied_entries: List[CanvasClipboardEntry] = list()
         selected_item: QGraphicsItem
         for selected_item in self.scene.selectedItems():
             is_supported_block: bool = isinstance(
@@ -3726,6 +3767,34 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         node_snapshot=source_node.copy(),
                     )
                 )
+            elif isinstance(selected_item, graph.PairedItem) and not selected_item.is_signal_in:
+                signal_input_item: graph.PairedItem | None = None
+                paired_item: graph.PairedItem
+                if selected_item.paired_items is not None:
+                    for paired_item in selected_item.paired_items:
+                        if paired_item.is_signal_in and signal_input_item is None:
+                            signal_input_item = paired_item
+                        else:
+                            pass
+                else:
+                    pass
+
+                if signal_input_item is not None and signal_input_item.subsys is not None:
+                    output_node: BlockDiagramNode | None = self.diagram.node_data.get(
+                        selected_item.subsys.uid,
+                        None,
+                    )
+                    if output_node is not None:
+                        copied_entries.append(
+                            SignalPairOutputClipboardEntry(
+                                signal_output_block_uid=selected_item.subsys.uid,
+                                node_snapshot=output_node.copy(),
+                            )
+                        )
+                    else:
+                        pass
+                else:
+                    pass
             else:
                 pass
 
@@ -3748,32 +3817,69 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         paste_offset: float = 30.0 * float(self._clipboard_paste_count)
         pasted_block_uids: List[int] = list()
-        clipboard_entry: BlockClipboardEntry
+        clipboard_entry: CanvasClipboardEntry
         for clipboard_entry in self._block_clipboard_entries:
-            cloned_block: Block = duplicate_block(
-                block=clipboard_entry.get_block_snapshot(),
-                var_factory=self.var_factory,
-            )
             source_node: BlockDiagramNode = clipboard_entry.get_node_snapshot()
+            if isinstance(clipboard_entry, BlockClipboardEntry):
+                pasted_block: Block = duplicate_block(
+                    block=clipboard_entry.get_block_snapshot(),
+                    var_factory=self.var_factory,
+                )
+                # Only the node is added to the parent diagram. No connection
+                # record is copied, so pasted blocks never recreate arrows.
+                self.main_block.add(pasted_block)
+                self.diagram.add_node(
+                    name=pasted_block.name,
+                    x=float(source_node.x) + paste_offset,
+                    y=float(source_node.y) + paste_offset,
+                    tpe=source_node.tpe,
+                    device_uid=pasted_block.uid,
+                    api_object_name=source_node.api_object_name,
+                    state_ins=source_node.state_ins,
+                    state_outs=list(source_node.state_outs),
+                    algeb_ins=source_node.algeb_ins,
+                    algeb_outs=list(source_node.algeb_outs),
+                    color=source_node.color,
+                    subdiagram=pasted_block.diagram if source_node.sub_diagram is not None else None,
+                )
+                pasted_block_uids.append(pasted_block.uid)
+            elif isinstance(clipboard_entry, SignalPairOutputClipboardEntry):
+                source_output_item: DynamicBlockGraphicsItem | None = self.get_scene_item_by_block_uid(
+                    clipboard_entry.get_signal_output_block_uid()
+                )
+                if isinstance(source_output_item, graph.PairedItem):
+                    pasted_output_item: graph.PairedItem | None = graph.duplicate_paired_item(
+                        source_output_item
+                    )
+                else:
+                    pasted_output_item = None
 
-            # Only the node is added to the parent diagram. No connection record
-            # is copied, so neither external nor inter-selection arrows reappear.
-            self.main_block.add(cloned_block)
-            self.diagram.add_node(
-                name=cloned_block.name,
-                x=float(source_node.x) + paste_offset,
-                y=float(source_node.y) + paste_offset,
-                tpe=source_node.tpe,
-                device_uid=cloned_block.uid,
-                api_object_name=source_node.api_object_name,
-                state_ins=source_node.state_ins,
-                state_outs=list(source_node.state_outs),
-                algeb_ins=source_node.algeb_ins,
-                algeb_outs=list(source_node.algeb_outs),
-                color=source_node.color,
-                subdiagram=cloned_block.diagram if source_node.sub_diagram is not None else None,
-            )
-            pasted_block_uids.append(cloned_block.uid)
+                if pasted_output_item is not None and pasted_output_item.subsys is not None:
+                    pasted_output_item.setPos(QtCore.QPointF(
+                        float(source_node.x) + paste_offset,
+                        float(source_node.y) + paste_offset,
+                    ))
+                    # Replace Duplicate's default node metadata with the copied
+                    # presentation while deliberately omitting connections.
+                    self.diagram.add_node(
+                        name=pasted_output_item.subsys.name,
+                        x=pasted_output_item.pos().x(),
+                        y=pasted_output_item.pos().y(),
+                        tpe=source_node.tpe,
+                        device_uid=pasted_output_item.subsys.uid,
+                        api_object_name=source_node.api_object_name,
+                        state_ins=source_node.state_ins,
+                        state_outs=list(source_node.state_outs),
+                        algeb_ins=source_node.algeb_ins,
+                        algeb_outs=list(source_node.algeb_outs),
+                        color=source_node.color,
+                        subdiagram=None,
+                    )
+                    pasted_block_uids.append(pasted_output_item.subsys.uid)
+                else:
+                    pass
+            else:
+                pass
 
         self.rebuild_scene_from_diagram()
         self.scene.clearSelection()

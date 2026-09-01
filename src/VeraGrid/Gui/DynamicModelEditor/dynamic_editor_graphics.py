@@ -2276,29 +2276,6 @@ class PairedItem(QGraphicsPolygonItem):
         """
         QApplication.restoreOverrideCursor()
 
-    def _duplicate_paired_output(self, _checked: bool = False) -> None:
-        """Create another output tag for this signal-pair identity.
-
-        :param _checked: Unused QAction checked state supplied by Qt.
-        :return: None.
-        """
-        duplicate_paired_item(self)
-
-    def contextMenuEvent(self, event: QtWidgets.QGraphicsSceneContextMenuEvent) -> None:
-        """Show the duplicate action for output-side signal tags.
-
-        :param event: Incoming graphics-scene context-menu event.
-        :return: None.
-        """
-        if not self.is_signal_in and self.paired_items is not None:
-            menu: QMenu = QMenu()
-            duplicate_action: QAction = QAction("Duplicate", menu)
-            duplicate_action.triggered.connect(self._duplicate_paired_output)
-            menu.addAction(duplicate_action)
-            menu.exec(event.screenPos())
-        else:
-            super().contextMenuEvent(event)
-
     def mousePressEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
         """Handle a graphics-scene mouse press for this item.
 
@@ -4366,15 +4343,19 @@ class DiagramScene(QGraphicsScene):
                 menu = QMenu()
                 remove_action = QAction("Remove", menu)
                 menu.addAction(remove_action)
-                duplicate_action: QAction = QAction("Duplicate", menu)
-                menu.addAction(duplicate_action)
+                duplicate_action: QAction | None
+                if item.is_signal_in:
+                    duplicate_action = None
+                else:
+                    duplicate_action = QAction("Duplicate", menu)
+                    menu.addAction(duplicate_action)
                 color_action = QAction("Change Color", menu)
                 menu.addAction(color_action)
 
                 selected_action = menu.exec(event.screenPos())
                 if selected_action is remove_action:
                     self.remove_context_item()
-                elif selected_action is duplicate_action:
+                elif duplicate_action is not None and selected_action is duplicate_action:
                     duplicate_paired_item(item)
                 elif selected_action is color_action:
                     self.recolor_context_item()
