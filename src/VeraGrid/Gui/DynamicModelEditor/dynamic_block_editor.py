@@ -61,6 +61,7 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_utilities import (
     RlcComboBlockTemplateDefinition,
     get_blocktype2template_builder_dict,
     initialize_template_builder_from_block,
+    synchronize_vsc_library_initialization,
 )
 
 from VeraGrid.Gui.messages import yes_no_question
@@ -74,6 +75,7 @@ from VeraGridEngine.Utils.Symbolic.bus_rms_template import get_bus_rms_algebraic
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import (
     attach_emt_model_to_buses,
     register_saved_emt_model_vars_for_device,
+    synchronize_saved_rms_root_mappings_from_children,
     synchronize_saved_emt_root_parameters_from_children,
     unregister_saved_emt_model_var_connections_for_device,
 )
@@ -170,7 +172,10 @@ def get_structural_port_key(variable: Var) -> tuple[str, str]:
     if variable.ref is not None:
         return "reference", str(variable.ref.value)
     elif variable.shared_ref is not None:
-        return "shared", str(variable.shared_ref.value)
+        # Shared references are symbolic identities rather than enums. Their
+        # uid survives model serialization and therefore matches ports across
+        # scene reconstruction without relying on a potentially repeated name.
+        return "shared", str(variable.shared_ref.uid)
     else:
         return "name", variable.name
 
@@ -1584,15 +1589,33 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             if not is_root_interface_wrapper_block(block_model=child_block,
                                                    diagram=self.diagram)
         ]
+        atomic_leaf_has_internal_content: bool = (
+            not self.is_root_editor
+            and len(initial_non_interface_children) == 0
+            and block_has_internal_equation_content(self.main_block)
+        )
         bootstrap_missing_non_interface_graphics: bool = (
-            len(initial_non_interface_children) > 0
-            and not any(
-                child_block.uid in self.diagram.node_data
-                for child_block in initial_non_interface_children
+            (
+                len(initial_non_interface_children) > 0
+                and not any(
+                    child_block.uid in self.diagram.node_data
+                    for child_block in initial_non_interface_children
+                )
+            )
+            or (
+                atomic_leaf_has_internal_content
+                and self.main_block.uid not in self.diagram.node_data
             )
         )
+        # The navigation tab can retain the child editor's decomposition map
+        # while rebuilding an ancestor. Only mappings owned by visible children
+        # authorize the legacy missing-arrow repair at the current level.
+        current_block_has_mapped_decomposition_children: bool = any(
+            child_block.uid in self._block2blocktype
+            for child_block in initial_non_interface_children
+        )
         restore_missing_decomposed_connections: bool = (
-            len(self._block2blocktype) > 0
+            current_block_has_mapped_decomposition_children
             and len(initial_non_interface_children) > 0
             and len(self.diagram.node_data) > 0
             and len(self.diagram.con_data) == 0
@@ -1852,14 +1875,26 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.add_connection_items()
         else:
             pass
+        # A legacy or partially bootstrapped atomic DAE can already own its
+        # interface-wrapper nodes while lacking the central operation node.
+        # Materialize that node before rebuilding so the saved diagram cannot
+        # remain as disconnected boundary ports around an empty canvas.
+        if atomic_leaf_has_internal_content and self.main_block.uid not in self.diagram.node_data:
+            self.generate_block_item_for_block(self.main_block, 480.0, 260.0)
+        else:
+            pass
+
         self.rebuild_scene_from_diagram()
         if restore_missing_decomposed_connections:
             self._restore_missing_decomposed_layout_connections()
         else:
             pass
-        if self.main_block.children:
+        if self.main_block.children or atomic_leaf_has_internal_content:
             self._rebuild_missing_non_interface_connections(
-                rebuild_interface_connections=bootstrap_missing_non_interface_graphics,
+                rebuild_interface_connections=(
+                    bootstrap_missing_non_interface_graphics
+                    or atomic_leaf_has_internal_content
+                ),
             )
         else:
             pass
@@ -2677,7 +2712,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.scene.addItem(item)
 
             self.diagram.add_node(
-                name=item_name,
+                name=block_model.name,
                 x=x_pos,
                 y=y_pos,
                 tpe=block_type.name,
@@ -2718,6 +2753,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             block_item.set_subsystem(block_model)
             block_item.position_changed_callback = self.build_position_changed_callback(block_model.uid)
             block_item.build_item()
+            # The factory may give a native block a readable display name while
+            # keeping its enum identifier unchanged for persistence.
+            block_item.refresh_block_name()
 
             # The editor block is the authoritative model container for later save/rebuild steps.
             self.main_block.add(block_model)
@@ -2726,7 +2764,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
             # Keep the diagram synchronized so later features can rebuild from the same data source.
             self.diagram.add_node(
-                name=item_name,
+                name=block_model.name,
                 x=x_pos,
                 y=y_pos,
                 tpe=block_type.name,
@@ -6000,12 +6038,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self,
     ) -> tuple[dict[VarPowerFlowReferenceType, Var], dict[VarPowerFlowReferenceType, Var]]:
         """
-        Return the authoritative root interface for the active editor mode.
+        Return the authoritative interface for the active editor level.
 
         EMT derives its contract from the live bus topology. RMS models already
-        carry their authoritative bus contract in the root input/output vars,
-        so rebuilding RMS wrappers must use those vars instead of applying EMT
-        phase references to an RMS diagram.
+        carry their contract in block input/output variables. The device root
+        supplies the network-facing contract, while a nested block supplies its
+        own local boundary contract.
 
         :return: ``(input_vars_by_ref, output_vars_by_ref)``.
         """
@@ -6025,17 +6063,27 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         mapped_var: Var | None
         mapped_root_var: Var | None
 
-        for root_var in self.root_block.in_vars:
+        # At root level, the device root owns the network-facing contract. A
+        # nested editor instead owns a local boundary around the block being
+        # inspected. Binding nested wrappers to ``root_block`` would alias the
+        # internal Pf/Pt variables to the device connection variables merely
+        # by navigating into the block.
+        if self.is_root_editor:
+            interface_owner: Block = self.root_block
+        else:
+            interface_owner = self.main_block
+
+        for root_var in interface_owner.in_vars:
             input_vars_by_identity[root_var.non_mutable_uid] = root_var
 
-        for root_var in self.root_block.out_vars:
+        for root_var in interface_owner.out_vars:
             output_vars_by_identity[root_var.non_mutable_uid] = root_var
 
         # RMS branch roots reuse the endpoint bus variables, whose own refs are
         # the generic ``Vm``/``Va`` pair on both buses. The root external mapping
         # provides the authoritative side-specific refs (``Vmf``/``Vaf`` and
         # ``Vmt``/``Vat``), so resolve it before falling back to each Var.ref.
-        for mapping_ref, mapped_var in self.root_block.external_mapping.items():
+        for mapping_ref, mapped_var in interface_owner.external_mapping.items():
             if not isinstance(mapping_ref, VarPowerFlowReferenceType) or mapped_var is None:
                 pass
             else:
@@ -6051,7 +6099,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     else:
                         pass
 
-        for root_var in self.root_block.in_vars:
+        for root_var in interface_owner.in_vars:
             if (isinstance(root_var.ref, VarPowerFlowReferenceType)
                     and root_var.ref not in input_vars_by_ref
                     and root_var.non_mutable_uid not in mapped_input_identities):
@@ -6059,7 +6107,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             else:
                 pass
 
-        for root_var in self.root_block.out_vars:
+        for root_var in interface_owner.out_vars:
             if (isinstance(root_var.ref, VarPowerFlowReferenceType)
                     and root_var.ref not in output_vars_by_ref
                     and root_var.non_mutable_uid not in mapped_output_identities):
@@ -6148,7 +6196,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
 
 
-
+    def add_measurements_items(self):
+        # Here we need to create the measurements items
+        pass
 
     def add_connection_items(self, blocks_list: List[graph.BlockItem] | None = None) -> None:
         """
@@ -7781,16 +7831,28 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
         Recreate visible wires between editor interface blocks and visible model blocks.
 
-        EMT template-open sessions can rebuild the full editor interface without a
-        saved diagram that already contains those graphical wires. The root block
-        still carries the semantic ``ref`` tags, so reconnect the visible editor
-        interface to every visible block port that exposes the same EMT root ref.
+        Device-level EMT interfaces retain their topology-aware reference
+        translation. Nested RMS and atomic DAE editors additionally match ports
+        by their stable structural key, allowing ordinary shared-reference and
+        named signals to reconnect to their boundary wrappers after reopen.
 
         :param items_list: Visible non-interface block items.
         :return: None.
         """
+        # In an RMS root editor, wires between the device connection variables
+        # and a block dropped from the Library are exclusively user-authored.
+        # Only nested editors may infer their own boundary-to-equation wiring.
+        # Fresh complete root models are bootstrapped separately by their ELK
+        # layout, so this guard does not remove template-defined connections.
+        if self.is_root_editor and self.mode == DynamicSimulationMode.RMS:
+            return
+        else:
+            pass
+
         interface_inputs_by_ref: Dict[VarPowerFlowReferenceType, graph.ProtectedConnectionBlockItem] = dict()
         interface_outputs_by_ref: Dict[VarPowerFlowReferenceType, graph.ProtectedConnectionBlockItem] = dict()
+        interface_inputs_by_key: Dict[tuple[str, str], graph.ProtectedConnectionBlockItem] = dict()
+        interface_outputs_by_key: Dict[tuple[str, str], graph.ProtectedConnectionBlockItem] = dict()
         scene_item: QGraphicsItem
         node_data: BlockDiagramNode | None
         reference_var: Var | None
@@ -7819,6 +7881,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         interface_inputs_by_ref[reference_var.ref] = scene_item
                     else:
                         pass
+                    if isinstance(reference_var, Var):
+                        interface_inputs_by_key[get_structural_port_key(reference_var)] = scene_item
+                    else:
+                        pass
                 elif node_data.tpe == BlockType.OUTPUT_CONN.name:
                     if len(scene_item.subsys.in_vars) > 0:
                         reference_var = scene_item.subsys.in_vars[0]
@@ -7827,6 +7893,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
                     if isinstance(reference_var, Var) and isinstance(reference_var.ref, VarPowerFlowReferenceType):
                         interface_outputs_by_ref[reference_var.ref] = scene_item
+                    else:
+                        pass
+                    if isinstance(reference_var, Var):
+                        interface_outputs_by_key[get_structural_port_key(reference_var)] = scene_item
                     else:
                         pass
                 else:
@@ -7847,6 +7917,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                 interface_inputs_by_ref=interface_inputs_by_ref,
                                 model_ref=input_var.ref,
                             )
+                        if protected_item is None:
+                            protected_item = interface_inputs_by_key.get(get_structural_port_key(input_var), None)
+                        else:
+                            pass
                         if protected_item is not None and len(protected_item.outputs) > 0 and input_index < len(
                                 block_item.inputs):
                             if self._connection_exists_between_ports(protected_item.outputs[0],
@@ -7863,7 +7937,22 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         else:
                             pass
                     else:
-                        pass
+                        protected_item = interface_inputs_by_key.get(get_structural_port_key(input_var), None)
+                        if protected_item is not None and len(protected_item.outputs) > 0 and input_index < len(
+                                block_item.inputs):
+                            if self._connection_exists_between_ports(protected_item.outputs[0],
+                                                                    block_item.inputs[input_index]):
+                                pass
+                            else:
+                                connection_item = graph.ConnectionItem(
+                                    source_port=protected_item.outputs[0],
+                                    target_port=block_item.inputs[input_index],
+                                    diagram=self.diagram,
+                                    editor=self,
+                                )
+                                self.attach_new_connection_item(connection_item)
+                        else:
+                            pass
 
                 for output_index, output_var in enumerate(block_item.subsys.out_vars):
                     if isinstance(output_var.ref, VarPowerFlowReferenceType):
@@ -7874,6 +7963,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                 interface_outputs_by_ref=interface_outputs_by_ref,
                                 model_ref=output_var.ref,
                             )
+                        if protected_item is None:
+                            protected_item = interface_outputs_by_key.get(get_structural_port_key(output_var), None)
+                        else:
+                            pass
                         if protected_item is not None and len(protected_item.inputs) > 0 and output_index < len(
                                 block_item.outputs):
                             if self._connection_exists_between_ports(block_item.outputs[output_index],
@@ -7890,7 +7983,22 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         else:
                             pass
                     else:
-                        pass
+                        protected_item = interface_outputs_by_key.get(get_structural_port_key(output_var), None)
+                        if protected_item is not None and len(protected_item.inputs) > 0 and output_index < len(
+                                block_item.outputs):
+                            if self._connection_exists_between_ports(block_item.outputs[output_index],
+                                                                    protected_item.inputs[0]):
+                                pass
+                            else:
+                                connection_item = graph.ConnectionItem(
+                                    source_port=block_item.outputs[output_index],
+                                    target_port=protected_item.inputs[0],
+                                    diagram=self.diagram,
+                                    editor=self,
+                                )
+                                self.attach_new_connection_item(connection_item)
+                        else:
+                            pass
 
 
     def _get_editor_interface_input_item_for_ref(self,
@@ -9468,9 +9576,20 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 pass
             # Persist the edited RMS block back into the original model object.
             if self._document is not None:
+                # Individual VSC Library blocks keep their original ports.
+                # Bind only their initialization expressions before committing,
+                # including when their equations were decomposed for display.
+                synchronize_vsc_library_initialization(
+                    root=self._document.working_root_block,
+                    block_types=self._block2blocktype,
+                )
                 self._document.commit()
             else:
                 pass
+            # Complete RMS templates dropped from the Library are children of
+            # the editor-owned root. Synchronize their device and power-flow
+            # mappings before RMS initialization reads the root contract.
+            synchronize_saved_rms_root_mappings_from_children(device=self.api_object)
             # Rebuild the connected bus helper models so the saved block stays
             # consistent with the rest of the dynamic network representation.
             dialog_models.initialize_connected_bus_models_for_editor_assignment(api_object=self.api_object,
@@ -10857,8 +10976,58 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
+        properties_dialogue: DynamicBlockPropertiesDialog | None = self._block_properties_dialogue
+        if properties_dialogue is not None:
+            # The dialogue can outlive its editor until DeferredDelete is
+            # processed. Disconnect every Python receiver first so no queued
+            # properties signal can call into the dismantled editor.
+            try:
+                properties_dialogue.blockApplied.disconnect(
+                    self.on_block_properties_applied
+                )
+            except (RuntimeError, TypeError):
+                pass
+            try:
+                properties_dialogue.structuralRebuildRequested.disconnect(
+                    self.on_structural_rebuild_requested
+                )
+            except (RuntimeError, TypeError):
+                pass
+            try:
+                properties_dialogue.variableRenameRequested.disconnect(
+                    self.on_variable_rename_requested
+                )
+            except (RuntimeError, TypeError):
+                pass
+            try:
+                properties_dialogue.outputExportChangesRequested.disconnect(
+                    self.on_output_export_changes_requested
+                )
+            except (RuntimeError, TypeError):
+                pass
+        else:
+            pass
+
         properties_dock: DynamicBlockPropertiesDockWidget | None = self._block_properties_dock
         if properties_dock is not None:
+            try:
+                properties_dock.closed.disconnect(
+                    self.on_block_properties_dock_closed
+                )
+            except (RuntimeError, TypeError):
+                pass
+            try:
+                properties_dock.dockLocationChanged.disconnect(
+                    self.on_block_properties_dock_location_changed
+                )
+            except (RuntimeError, TypeError):
+                pass
+            try:
+                properties_dock.topLevelChanged.disconnect(
+                    self.on_block_properties_dock_top_level_changed
+                )
+            except (RuntimeError, TypeError):
+                pass
             properties_dock.prepare_to_delete()
             self.removeDockWidget(properties_dock)
             properties_dock.setParent(None)

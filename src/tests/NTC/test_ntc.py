@@ -3,9 +3,12 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 import os
+from typing import List
 import numpy as np
 import VeraGridEngine.api as gce
-from VeraGridEngine.enumerations import ConverterControlType
+from VeraGridEngine.enumerations import ConverterControlType, SolutionState, ResultTypes
+from VeraGridEngine.Simulations.NTC.ntc_ts_results import OptimalNetTransferCapacityTimeSeriesResults
+from VeraGridEngine.Simulations.Clustering.clustering_results import ClusteringResults
 
 
 TEST_GRID_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "grids"))
@@ -1510,7 +1513,7 @@ def test_hvdc_lines_tests():
                      + sum(res.hvdc_Pf[k] * sense for k, sense in res.inter_space_hvdc))
     assert np.isclose(exchange, 3000.0)
 
-    # the HVDC flows are part of the same degenerate optimum, 
+    # the HVDC flows are part of the same degenerate optimum,
     # so only their physical limits are asserted, not their value
     assert np.all(np.abs(res.hvdc_Pf) <= 1000.0 + 1e-6)
     assert np.isclose(res.inter_area_flows, 3000.0)
@@ -1917,6 +1920,143 @@ def test_ntc_free_mode_dominates_droop_mode() -> None:
             f"dominance violated (ctg={consider_contingencies}): free={ntc_free} < droop={ntc_droop}"
 
 
+def _vsc_control_state(vsc: gce.VSC) -> tuple:
+    """
+    Capture the VSC control snapshot that the GUI objects inspector shows.
+
+    :param vsc: Converter whose control pair is recorded.
+    :return: Control modes, set-points and remote devices.
+    """
+    control1_dev_id: str | None
+    control2_dev_id: str | None
+    if vsc.control1_dev is None:
+        control1_dev_id = None
+    else:
+        control1_dev_id = vsc.control1_dev.idtag
+    if vsc.control2_dev is None:
+        control2_dev_id = None
+    else:
+        control2_dev_id = vsc.control2_dev.idtag
+    return (vsc.control1, vsc.control2, vsc.control1_val, vsc.control2_val,
+            vsc.control1_val_droop, vsc.control2_val_droop,
+            control1_dev_id, control2_dev_id)
+
+
+def _assert_vsc_time_series_controls_match_snapshot(grid: gce.MultiCircuit) -> None:
+    """
+    Profiles and compilation at t = 0 must keep the snapshot VSC control pair.
+
+    :param grid: Circuit whose converters are checked.
+    :return: None
+    """
+    for vsc in grid.vsc_devices:
+        assert vsc.get_control1_at(0) == vsc.control1
+        assert vsc.get_control2_at(0) == vsc.control2
+        assert vsc.get_control1_val_at(0) == vsc.control1_val
+        assert vsc.get_control2_val_at(0) == vsc.control2_val
+        assert vsc.control1_prof[0] == vsc.control1
+        assert vsc.control2_prof[0] == vsc.control2
+
+    nc_snap = gce.compile_numerical_circuit_at(circuit=grid, t_idx=None)
+    nc_t0 = gce.compile_numerical_circuit_at(circuit=grid, t_idx=0)
+    assert np.array_equal(nc_snap.vsc_data.control1_int, nc_t0.vsc_data.control1_int)
+    assert np.array_equal(nc_snap.vsc_data.control2_int, nc_t0.vsc_data.control2_int)
+    assert np.allclose(nc_snap.vsc_data.control1_val, nc_t0.vsc_data.control1_val)
+    assert np.allclose(nc_snap.vsc_data.control2_val, nc_t0.vsc_data.control2_val)
+
+
+def test_ntc_ts_does_not_mutate_vsc_controls() -> None:
+    """
+    NTC time series must not write back into the VSC control modes or set-points.
+
+    This is the Pmode1 (Pac + Pdc) arrangement used on the large 6000h grids.
+    """
+    grid = gce.open_file(get_grid_path("NTC_8_bus_2pmode3_dc_bottleneck.veragrid"))
+    for vsc in grid.vsc_devices:
+        if vsc.control1 == ConverterControlType.Pdc_angle_droop:
+            vsc.control2 = ConverterControlType.Pdc
+            vsc.control2_val = 0.0
+            vsc.control1 = ConverterControlType.Pac
+            vsc.control1_val = 0.0
+            vsc.control1_dev = None
+        else:
+            pass
+
+    before = [_vsc_control_state(vsc) for vsc in grid.vsc_devices]
+    grid.create_profiles(3, step_length=1.0, step_unit='h')
+    _assert_vsc_time_series_controls_match_snapshot(grid)
+
+    area_from, area_to = grid.areas[0], grid.areas[1]
+    info = grid.get_inter_aggregation_info(objects_from=[area_from], objects_to=[area_to])
+    options = gce.OptimalNetTransferCapacityOptions(
+        sending_bus_idx=info.idx_bus_from,
+        receiving_bus_idx=info.idx_bus_to,
+        transfer_method=gce.AvailableTransferMode.InstalledPower,
+        skip_generation_limits=True,
+        consider_contingencies=True,
+        corrective_contingencies=True,
+        opf_options=gce.OptimalPowerFlowOptions(
+            contingency_groups_used=grid.get_contingency_groups_active()),
+        lin_options=gce.LinearAnalysisOptions(),
+    )
+    drv = gce.OptimalNetTransferCapacityTimeSeriesDriver(
+        grid=grid,
+        options=options,
+        time_indices=list(range(3)),
+    )
+    drv.run()
+
+    after = [_vsc_control_state(vsc) for vsc in grid.vsc_devices]
+    assert before == after
+    _assert_vsc_time_series_controls_match_snapshot(grid)
+
+
+def test_ntc_ts_does_not_mutate_pmode3_vsc_controls() -> None:
+    """
+    NTC time series must not write back into Pmode3 VSC control modes or set-points.
+
+    The 8-bus fixture already has the angle-droop pair (Pdc_angle_droop + Pac)
+    with a remote AC reference bus, matching the 6000h Pmode3 FR converters.
+    """
+    grid = gce.open_file(get_grid_path("NTC_8_bus_2pmode3_dc_bottleneck.veragrid"))
+    n_droop: int = 0
+    for vsc in grid.vsc_devices:
+        if vsc.control1 == ConverterControlType.Pdc_angle_droop:
+            n_droop += 1
+        else:
+            pass
+    assert n_droop >= 1
+
+    before = [_vsc_control_state(vsc) for vsc in grid.vsc_devices]
+    grid.create_profiles(3, step_length=1.0, step_unit='h')
+    _assert_vsc_time_series_controls_match_snapshot(grid)
+
+    area_from, area_to = grid.areas[0], grid.areas[1]
+    info = grid.get_inter_aggregation_info(objects_from=[area_from], objects_to=[area_to])
+    options = gce.OptimalNetTransferCapacityOptions(
+        sending_bus_idx=info.idx_bus_from,
+        receiving_bus_idx=info.idx_bus_to,
+        transfer_method=gce.AvailableTransferMode.InstalledPower,
+        skip_generation_limits=True,
+        consider_contingencies=True,
+        corrective_contingencies=True,
+        opf_options=gce.OptimalPowerFlowOptions(
+            contingency_groups_used=grid.get_contingency_groups_active()),
+        lin_options=gce.LinearAnalysisOptions(),
+    )
+    drv = gce.OptimalNetTransferCapacityTimeSeriesDriver(
+        grid=grid,
+        options=options,
+        time_indices=list(range(3)),
+    )
+    drv.run()
+
+    after = [_vsc_control_state(vsc) for vsc in grid.vsc_devices]
+    assert before == after
+    assert bool(np.all(drv.results.converged))
+    _assert_vsc_time_series_controls_match_snapshot(grid)
+
+
 def test_ntc_structural_n1_overload_is_relaxed_not_infeasible() -> None:
     """
     A structurally unavoidable N-1 overload must relax the limit (penalized slack, reported)
@@ -1924,7 +2064,7 @@ def test_ntc_structural_n1_overload_is_relaxed_not_infeasible() -> None:
 
     Grid: gen area -> tie -> radial pair A (rate=100, x=0.01) / B (rate=50, x=0.02) feeding a
     fixed 120 MW load. Base split is 80/40 (B at 80 % of its rating, so its N-1 limit is
-    enforced), but losing A forces all 120 MW through B. Thus 70 MW of violation where 
+    enforced), but losing A forces all 120 MW through B. Thus 70 MW of violation where
     no exchange reduction can remove. With slacks an optimal solution should be reached.
     """
     grid = gce.MultiCircuit()
@@ -1949,7 +2089,7 @@ def test_ntc_structural_n1_overload_is_relaxed_not_infeasible() -> None:
     grid.add_contingency_group(cg)
     grid.add_contingency(gce.Contingency(device=line_a, group=cg))
 
-    info = grid.get_inter_aggregation_info(objects_from=[a1], objects_to=[a2])
+    info = grid.get_inter_aggregation_info(objects_from=list([a1]), objects_to=list([a2]))
     opts = gce.OptimalNetTransferCapacityOptions(
         sending_bus_idx=info.idx_bus_from,
         receiving_bus_idx=info.idx_bus_to,
@@ -1968,6 +2108,288 @@ def test_ntc_structural_n1_overload_is_relaxed_not_infeasible() -> None:
     # the base flows are the physical 80/40 split, untouched by the relaxation
     assert np.isclose(float(res.Sf[1].real), 80.0, atol=1.0)
     assert np.isclose(float(res.Sf[2].real), 40.0, atol=1.0)
+
+
+def test_ntc_ts_solution_status_column() -> None:
+    """
+    The net-transfer-capacity time-series table reports Optimal, Relaxed, or
+    NotOptimal for each hour.
+    """
+    time_array: np.ndarray = np.array(['2020-01-01T00', '2020-01-01T01', '2020-01-01T02'],
+                                      dtype='datetime64[h]')
+    res = OptimalNetTransferCapacityTimeSeriesResults(
+        bus_names=np.array(['b1']),
+        branch_names=np.array(['br1']),
+        hvdc_names=np.array([]),
+        vsc_names=np.array([]),
+        contingency_group_names=np.array(['g1']),
+        time_array=time_array,
+        time_indices=np.array([0, 1, 2]),
+    )
+    res.converged[0] = True
+    res.converged[1] = True
+    res.converged[2] = False
+    res.overloads[0, 0] = 0.0
+    res.overloads[1, 0] = 5.0
+    res.inter_area_flows[0] = 100.0
+    res.inter_area_flows[1] = 90.0
+    res.inter_area_flows[2] = 0.0
+
+    states: List[SolutionState] = res.get_solution_states(slack_tol_mw=0.1)
+    assert states[0] == SolutionState.Optimal
+    assert states[1] == SolutionState.Relaxed
+    assert states[2] == SolutionState.NotOptimal
+
+    ntc_table = res.mdl(ResultTypes.NetTransferCapacity)
+    assert list(ntc_table.cols_c) == ['NTC (MW)']
+    assert ntc_table.data_c.dtype == float
+    assert ntc_table.data_c[0, 0] == 100.0
+
+    slack_table = res.mdl(ResultTypes.NetTransferCapacitySlack)
+    assert list(slack_table.cols_c) == ['Total slack (MW)']
+    assert slack_table.data_c.dtype == float
+    assert slack_table.data_c[0, 0] == 0.0
+    assert slack_table.data_c[1, 0] == 5.0
+    assert slack_table.data_c[2, 0] == 0.0
+
+    status_table = res.mdl(ResultTypes.NetTransferCapacityStatus)
+    assert list(status_table.cols_c) == ['Status']
+    assert status_table.data_c[0, 0] == SolutionState.Optimal
+    assert status_table.data_c[1, 0] == SolutionState.Relaxed
+    assert status_table.data_c[2, 0] == SolutionState.NotOptimal
+
+
+def test_ntc_ts_solution_status_expands_with_clustering() -> None:
+    """
+    After clustering expansion, the status table has one row per original hour and
+    each hour inherits the representative's Optimal / Relaxed / NotOptimal state.
+    """
+    full_nt: int = 10
+    time_all: np.ndarray = np.array(
+        [np.datetime64('2020-01-01T00') + np.timedelta64(h, 'h') for h in range(full_nt)]
+    )
+    time_indices: np.ndarray = np.array([0, 4, 8])
+    original_sample_idx: np.ndarray = np.array([0, 0, 0, 0, 1, 1, 1, 1, 2, 2])
+    clustering: ClusteringResults = ClusteringResults(
+        time_indices=time_indices,
+        sampled_probabilities=np.array([0.4, 0.4, 0.2]),
+        time_array=time_all,
+        original_sample_idx=original_sample_idx,
+    )
+
+    res = OptimalNetTransferCapacityTimeSeriesResults(
+        bus_names=np.array(['b1']),
+        branch_names=np.array(['br1']),
+        hvdc_names=np.array([]),
+        vsc_names=np.array([]),
+        contingency_group_names=np.array(['g1']),
+        time_array=time_all[time_indices],
+        time_indices=time_indices,
+        clustering_results=clustering,
+    )
+    res.converged[:] = np.array([True, True, False])
+    res.overloads[:, 0] = np.array([0.0, 5.0, 0.0])
+    res.inter_area_flows[:] = np.array([100.0, 90.0, 0.0])
+
+    res.expand_clustered_results()
+
+    assert len(res.time_array) == full_nt
+    assert res.converged.shape[0] == full_nt
+
+    status_table = res.mdl(ResultTypes.NetTransferCapacityStatus)
+    assert status_table.r == full_nt
+    assert list(status_table.cols_c) == ['Status']
+
+    expected: List[SolutionState] = (
+        [SolutionState.Optimal] * 4
+        + [SolutionState.Relaxed] * 4
+        + [SolutionState.NotOptimal] * 2
+    )
+    t: int
+    for t in range(full_nt):
+        assert status_table.data_c[t, 0] == expected[t]
+
+    ntc_table = res.mdl(ResultTypes.NetTransferCapacity)
+    assert ntc_table.r == full_nt
+    assert ntc_table.data_c[0, 0] == 100.0
+    assert ntc_table.data_c[4, 0] == 90.0
+    assert ntc_table.data_c[8, 0] == 0.0
+
+
+def test_ntc_ts_worst_contingency_report_expands_with_clustering() -> None:
+    """
+    After clustering expansion, the contingency report has one row per original hour
+    and per branch, and the timestamps cover the full original calendar.
+    """
+    full_nt: int = 10
+    time_all: np.ndarray = np.array(
+        [np.datetime64('2020-01-01T00') + np.timedelta64(h, 'h') for h in range(full_nt)]
+    )
+    time_indices: np.ndarray = np.array([0, 4, 8])
+    original_sample_idx: np.ndarray = np.array([0, 0, 0, 0, 1, 1, 1, 1, 2, 2])
+    clustering: ClusteringResults = ClusteringResults(
+        time_indices=time_indices,
+        sampled_probabilities=np.array([0.4, 0.4, 0.2]),
+        time_array=time_all,
+        original_sample_idx=original_sample_idx,
+    )
+
+    res = OptimalNetTransferCapacityTimeSeriesResults(
+        bus_names=np.array(['b1']),
+        branch_names=np.array(['br1']),
+        hvdc_names=np.array([]),
+        vsc_names=np.array([]),
+        contingency_group_names=np.array(['g1']),
+        time_array=time_all[time_indices],
+        time_indices=time_indices,
+        clustering_results=clustering,
+    )
+    res.contingency_group_device_names[0] = "line A"
+    res.inter_area_flows[:] = np.array([100.0, 90.0, 0.0])
+    res.Sf[:, 0] = np.array([10.0, 20.0, 5.0])
+    res.alpha[:, 0] = np.array([0.1, 0.2, 0.0])
+    res.alpha_n1_worst[:, 0] = np.array([0.3, 0.4, 0.0])
+    res.monitor_logic[:, 0] = np.array([1, 1, 0])
+    res.worst_contingency_idx[:, 0] = np.array([0, 0, -1])
+    res.worst_contingency_flow[:, 0] = np.array([12.0, 25.0, 5.0])
+    res.worst_contingency_loading[:, 0] = np.array([0.24, 0.50, 0.10])
+    res.contingency_rates[0] = 50.0
+    res.loading_threshold_to_report = 0.0
+
+    res.expand_clustered_results()
+
+    table = res.mdl(ResultTypes.ContingencyFlowsReport)
+    # 10 original hours times 1 branch
+    assert table.r == full_nt
+    columns = list(table.cols_c)
+
+    time_col: int = columns.index('Time')
+    t_idx_col: int = columns.index('Time index')
+    ntc_col: int = columns.index('NTC (MW)')
+    flow_n1_col: int = columns.index('Flow N-1 (MW)')
+    last_time: str = str(table.data_c[full_nt - 1, time_col])
+    assert '2020-01-01T09' in last_time.replace(' ', 'T')
+    assert table.data_c[0, t_idx_col] == 0
+    assert table.data_c[full_nt - 1, t_idx_col] == full_nt - 1
+    assert table.data_c[0, ntc_col] == 100.0
+    assert table.data_c[4, ntc_col] == 90.0
+    assert table.data_c[8, ntc_col] == 0.0
+    assert table.data_c[0, flow_n1_col] == 12.0
+    assert table.data_c[4, flow_n1_col] == 25.0
+    # cluster 2 has no worse N-1, so the table reports the N flow
+    assert table.data_c[8, flow_n1_col] == 5.0
+
+
+def test_ntc_worst_contingency_is_the_other_tie() -> None:
+    """
+    On a two area pair of radial branches, losing A means the load goes into B.
+
+    B's worst N-1 is therefore the outage of A, and the N-1 flow on B is the full load.
+    """
+    grid = gce.MultiCircuit()
+    a1 = gce.Area("A1")
+    a2 = gce.Area("A2")
+    grid.add_area(a1)
+    grid.add_area(a2)
+    b0 = gce.Bus("B0", Vnom=400, area=a1)
+    b0.is_slack = True
+    b1 = gce.Bus("B1", Vnom=400, area=a2)
+    b2 = gce.Bus("B2", Vnom=400, area=a2)
+    grid.add_bus(b0)
+    grid.add_bus(b1)
+    grid.add_bus(b2)
+    grid.add_generator(b0, gce.Generator("G", P=120, Pmax=1000, Pmin=0))
+    grid.add_load(b2, gce.Load("L", P=120))
+    line_tie = gce.Line(b0, b1, name="tie", x=0.01, rate=1000)
+    line_a = gce.Line(b1, b2, name="A", x=0.01, rate=100)
+    line_b = gce.Line(b1, b2, name="B", x=0.02, rate=50)
+    grid.add_line(line_tie)
+    grid.add_line(line_a)
+    grid.add_line(line_b)
+    cg = gce.ContingencyGroup(name="A out")
+    grid.add_contingency_group(cg)
+    grid.add_contingency(gce.Contingency(device=line_a, group=cg))
+
+    info = grid.get_inter_aggregation_info(objects_from=list([a1]), objects_to=list([a2]))
+    opts = gce.OptimalNetTransferCapacityOptions(
+        sending_bus_idx=info.idx_bus_from,
+        receiving_bus_idx=info.idx_bus_to,
+        transfer_method=gce.AvailableTransferMode.InstalledPower,
+        consider_contingencies=True,
+        use_branch_exchange_sensitivity=False,
+        opf_options=gce.OptimalPowerFlowOptions(contingency_groups_used=grid.contingency_groups),
+    )
+    drv = gce.OptimalNetTransferCapacityDriver(grid, opts)
+    drv.run()
+    res = drv.results
+
+    # branch order is tie, A, B
+    assert str(res.contingency_group_device_names[0]) == "A"
+    assert int(res.worst_contingency_idx[2]) == 0
+    assert float(res.worst_contingency_flow[2]) > 100.0
+    # A's own outage does not raise A's loading, so A keeps "no worse N-1"
+    assert int(res.worst_contingency_idx[1]) == -1
+
+    table = res.mdl(ResultTypes.ContingencyFlowsReport)
+    columns = list(table.cols_c)
+    assert 'Contingency branch' not in columns
+    assert 'Branch' in columns
+    assert 'Monitored' in columns
+    n1_col: int = columns.index('Flow N-1 (MW)')
+    grp_col: int = columns.index('Contingency group')
+    br_col: int = columns.index('Branch')
+    load_col: int = columns.index('Loading N-1 (%)')
+    found_b: bool = False
+    i_row: int
+    for i_row in range(table.r):
+        if table.data_c[i_row, br_col] == "B":
+            found_b = True
+            assert table.data_c[i_row, grp_col] == "A out"
+            assert float(table.data_c[i_row, n1_col]) > 100.0
+            assert float(table.data_c[i_row, load_col]) >= 98.0
+        else:
+            pass
+    assert found_b
+
+
+def test_ntc_ts_report_keeps_only_rows_above_loading_threshold() -> None:
+    """
+    The contingency report drops (hour, branch) pairs whose N-1 loading is below
+    the NTC loading threshold to report.
+    """
+    time_array: np.ndarray = np.array(['2020-01-01T00', '2020-01-01T01'], dtype='datetime64[h]')
+    res = OptimalNetTransferCapacityTimeSeriesResults(
+        bus_names=np.array(['b1']),
+        branch_names=np.array(['light', 'heavy']),
+        hvdc_names=np.array([]),
+        vsc_names=np.array([]),
+        contingency_group_names=np.array(['g1']),
+        time_array=time_array,
+        time_indices=np.array([0, 1]),
+    )
+    res.loading_threshold_to_report = 98.0
+    res.contingency_rates[:] = np.array([100.0, 100.0])
+    res.Sf[:, :] = 10.0
+    res.worst_contingency_idx[:, :] = 0
+    res.worst_contingency_flow[:, 0] = 50.0
+    res.worst_contingency_flow[:, 1] = 99.0
+    res.worst_contingency_loading[:, 0] = 0.50
+    res.worst_contingency_loading[:, 1] = 0.99
+    res.inter_area_flows[:] = 100.0
+
+    table = res.mdl(ResultTypes.ContingencyFlowsReport)
+    columns = list(table.cols_c)
+    br_col: int = columns.index('Branch')
+    t_col: int = columns.index('Time index')
+    assert table.r == 2
+    i_row: int
+    for i_row in range(table.r):
+        assert table.data_c[i_row, br_col] == 'heavy'
+        assert table.data_c[i_row, t_col] in (0, 1)
+
+    res.loading_threshold_to_report = 0.0
+    full_table = res.mdl(ResultTypes.ContingencyFlowsReport)
+    assert full_table.r == 4
 
 
 if __name__ == '__main__':

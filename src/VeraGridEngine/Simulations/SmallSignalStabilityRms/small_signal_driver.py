@@ -375,6 +375,7 @@ def run_dense_small_signal_stability(problem: RmsProblemTemplate,
 
     if verbose:
         print("Eigenvalues:", eigenvalues)
+        print("Participation Factors:", participation_factors)
 
     return eigenvalues,v, participation_factors, damping_ratios, conjugate_freq, A_orig, None
 
@@ -580,8 +581,8 @@ def run_sparse_small_signal_stability(problem: RmsProblemTemplate,
     # 5. STRICT MATCHING
     # To avoid Arnoldi asymmetries, we use a metric that combines Re and Im.
     # We sort from lowest to highest natural frequency.
-    order_R = np.argsort(np.abs(eigenvalues_R.imag) + np.abs(eigenvalues_R.real))
-    order_L = np.argsort(np.abs(eigenvalues_L.imag) + np.abs(eigenvalues_L.real))
+    order_R = np.argsort(np.abs(eigenvalues_R.imag) + np.abs(eigenvalues_R.real), kind="stable")
+    order_L = np.argsort(np.abs(eigenvalues_L.imag) + np.abs(eigenvalues_L.real), kind="stable")
 
     eigenvalues_R = eigenvalues_R[order_R]
 

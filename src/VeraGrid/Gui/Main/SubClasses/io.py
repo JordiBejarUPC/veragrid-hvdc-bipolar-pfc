@@ -37,6 +37,7 @@ from VeraGridEngine.Devices.multiverse import MultiVerse, ScenarioNode
 from VeraGridEngine.Compilers.circuit_to_pgm import PGM_AVAILABLE
 from VeraGridEngine.IO.file_save import FileSavingOptions
 from VeraGridEngine.IO.file_open import determine_file_type, FileOpen
+from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.enumerations import SimulationTypes, FileType
 from VeraGridEngine.IO.veragrid.contingency_parser import import_contingencies_from_json, export_contingencies_json_file
 from VeraGridEngine.IO.veragrid.catalogue import save_catalogue, load_catalogue
@@ -75,6 +76,21 @@ def get_session_tree_icon_map(session_data_dict: Dict[str, Dict[str, List[str]]]
                     pass
 
     return icon_map
+
+
+def open_logger_requires_dialog(logger: Logger) -> bool:
+    """Return whether a successful file-open log needs a modal dialogue.
+
+    Informational import diagnostics remain available in the logger but do not
+    interrupt a successful GUI open. Warnings and errors remain visible because
+    they describe states that require review before using the imported circuit.
+
+    :param logger: File-open diagnostic logger to classify.
+    :return: ``True`` when the logger contains at least one warning or error.
+    """
+    warning_count: int = logger.warning_count()
+    error_count: int = logger.error_count()
+    return warning_count > 0 or error_count > 0
 
 
 class IoMain(ScenariosMain):
@@ -272,14 +288,26 @@ class IoMain(ScenariosMain):
                     # Just open the file
                     self.open_file_now(filenames=file_names)
 
-    def new_project_now(self, create_default_diagrams: bool = True) -> None:
+    def new_project_now(self, create_default_diagrams: bool = True) -> bool:
         """
         Reset the current GUI state and create one empty project immediately.
 
         :param create_default_diagrams: Whether to create the default schematic
             and map diagrams for the new empty circuit.
-        :return: None.
+        :return: ``True`` when the project was replaced; ``False`` when an open
+            dynamic editor cancelled the replacement.
         """
+        # Dynamic editors retain direct references to their circuit, devices,
+        # symbolic blocks and working copies. Close the complete detachable
+        # workspace family before invalidating those project-owned objects.
+        dynamic_editors_closed: bool = self.dynamic_editor_workspace_session.close_all_for_project_replacement(
+            parent=self,
+        )
+        if dynamic_editors_closed:
+            pass
+        else:
+            return False
+
         # clear the circuit model
         self.circuit = MultiCircuit()
 
@@ -315,6 +343,7 @@ class IoMain(ScenariosMain):
             self.set_diagram_widget(self.diagram_widgets_list[0])
 
         self.collect_memory()
+        return True
 
     def new_project(self) -> None:
         """
@@ -752,10 +781,13 @@ class IoMain(ScenariosMain):
                               title=self.tr("File opening"))
                     return
 
-            self.file_name = normalized_filenames[0]
+            selected_file_name: str = normalized_filenames[0]
 
-            # store the working directory
-            self.project_directory = os.path.dirname(self.file_name)
+            # Store the selected directory immediately, but keep the current
+            # project's filename until the loaded circuit is accepted. This
+            # preserves the old project identity if a dynamic editor cancels
+            # the replacement after parsing has completed.
+            self.project_directory = os.path.dirname(selected_file_name)
 
             # lock the ui
             self.LOCK()
@@ -784,7 +816,7 @@ class IoMain(ScenariosMain):
                 self.cgmes_import_dialogue = CgmesImportDialogue(app=self, options=options)
                 self.cgmes_import_dialogue.exec()
             elif options.file_type == FileType.DGS:
-                self.dgs_import_dialogue = DgsImportDialogue(app=self, options=options)
+                self.dgs_import_dialogue = DgsImportDialogue(options=options)
                 self.dgs_import_dialogue.exec()
 
             # create thread
@@ -830,8 +862,20 @@ class IoMain(ScenariosMain):
 
             if self.open_file_thread_object.valid:
 
-                # assign the loaded circuit
-                self.new_project_now(create_default_diagrams=False)
+                # A successfully parsed file must not coexist with editors that
+                # retain devices from the previous circuit. If the user keeps
+                # unapplied editor changes, leave the old project untouched.
+                project_replacement_accepted: bool = self.new_project_now(create_default_diagrams=False)
+                if project_replacement_accepted:
+                    pass
+                else:
+                    self.show_info_toast(
+                        self.tr(
+                            "The file was loaded but the current project was kept "
+                            "because closing a dynamic editor was cancelled."
+                        )
+                    )
+                    return
 
                 if self.open_file_thread_object.multiverse is not None:
                     # A multiverse file already contains the complete scenario tree and active
@@ -917,15 +961,19 @@ class IoMain(ScenariosMain):
                         self.rosetta_gui.show()
                     else:
                         # else, show the logger if it is necessary
-                        if len(self.open_file_thread_object.logger) > 0:
+                        if open_logger_requires_dialog(self.open_file_thread_object.logger):
                             dlg = LogsDialogue(self.tr('Open CGMES file logger'), self.open_file_thread_object.logger)
                             dlg.exec()
+                        else:
+                            pass
 
                 else:
                     # else, show the logger if it is necessary
-                    if len(self.open_file_thread_object.logger) > 0:
+                    if open_logger_requires_dialog(self.open_file_thread_object.logger):
                         dlg = LogsDialogue(self.tr('Open file logger'), self.open_file_thread_object.logger)
                         dlg.exec()
+                    else:
+                        pass
 
                 if self._pending_remote_database_context is not None:
                     self.remote_database_file_idtag = str(self._pending_remote_database_context["file_idtag"])
@@ -1045,10 +1093,12 @@ class IoMain(ScenariosMain):
 
             new_circuit = self.open_file_thread_object.circuit
 
-            if len(self.open_file_thread_object.logger) > 0:
+            if open_logger_requires_dialog(self.open_file_thread_object.logger):
                 dlg = LogsDialogue(self.tr('Open file logger'),
                                    self.open_file_thread_object.logger)
                 dlg.exec()
+            else:
+                pass
 
             if self.open_file_thread_object.valid:
 
@@ -1130,6 +1180,17 @@ class IoMain(ScenariosMain):
         self.file_name = ''
         self.save_file()
 
+    @staticmethod
+    def is_direct_veragrid_save_path(file_name: str) -> bool:
+        """
+        Check whether the current file path is safe for direct VeraGrid overwrite.
+
+        :param file_name: Current GUI file path.
+        :return: ``True`` only for native VeraGrid archive files.
+        """
+        file_extension: str = pathlib.Path(file_name).suffix.lower()
+        return file_extension in (".veragrid", ".gridcal")
+
     def save_file(self) -> None:
         """
         Save the current project to disk using the active file target.
@@ -1150,7 +1211,7 @@ class IoMain(ScenariosMain):
             # gather comments
             self.circuit.comments = self.ui.comments_textEdit.toPlainText()
 
-            if self.file_name == '':
+            if self.file_name == '' or not self.is_direct_veragrid_save_path(file_name=self.file_name):
                 # if the global file_name is empty, ask where to save
                 fname = os.path.join(self.project_directory, self.ui.grid_name_line_edit.text())
 

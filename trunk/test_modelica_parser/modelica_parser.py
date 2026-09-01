@@ -352,7 +352,24 @@ class ModelicaXMLParser:
         if section_node is not None:
             self._recursive_equation_extract(section_node, target_list)
         else:
-            pass
+            # MXML places one ``equation`` container directly below the root
+            # ``class`` instead of wrapping it in ``ModelEquations``. Parse
+            # every expression in that container while keeping initial-equation
+            # discovery exclusive to its explicit section.
+            if section_name == "ModelEquations":
+                root_child: Element_tree.Element
+                for root_child in self.xml_root:
+                    root_child_tag: str = root_child.tag.split("}")[-1].lower()
+                    if root_child_tag == "equation":
+                        expression_node: Element_tree.Element
+                        for expression_node in root_child:
+                            target_list.append(self._parse_ast_node(expression_node))
+                        else:
+                            pass
+                    else:
+                        pass
+            else:
+                pass
 
     def _recursive_equation_extract(self, parent: Element_tree.Element, target_list: List[Expr]) -> None:
         """
@@ -434,6 +451,26 @@ class ModelicaXMLParser:
         tag = clean_tag.lower()
 
         children: List[Element_tree.Element] = list(node)
+
+        # MXML represents operators and functions through a typed ``builtin``
+        # attribute. Normalize that declarative spelling to the same tags used
+        # by the OpenModelica branch below, without evaluating source text.
+        if tag == "call" or tag == "operator":
+            builtin_name: str = str(node.attrib.get("builtin", "")).strip().lower()
+            if builtin_name == "+":
+                tag = "add"
+            elif builtin_name == "-":
+                tag = "sub"
+            elif builtin_name == "*":
+                tag = "mult"
+            elif builtin_name == "/":
+                tag = "div"
+            elif builtin_name == "^":
+                tag = "power"
+            else:
+                tag = builtin_name
+        else:
+            pass
 
         match tag:
             # ---------------------------------------------------------

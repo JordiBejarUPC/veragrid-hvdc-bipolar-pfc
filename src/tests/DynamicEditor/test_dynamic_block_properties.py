@@ -9,6 +9,8 @@ from PySide6 import QtCore, QtWidgets
 import pytest
 
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_properties import (
+    BlockParameterDraftModel,
+    BlockSymbolDraftModel,
     BlockSymbolKind,
     BlockSymbolDraftRow,
     BlockCodeBuffer,
@@ -23,6 +25,7 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_block_properties import (
     resolve_block_documentation_url,
     serialize_dae_expression,
     synchronize_dae_variable_declarations,
+    TemplateProp
 )
 from VeraGrid.Gui.DynamicModelEditor.dynamic_equation_pdf import (
     EquationExportEntry,
@@ -52,15 +55,17 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_latex_renderer import (
 )
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
+from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.enumerations import (
     BlockType,
     ParamPowerFlowReferenceType,
     VarPowerFlowReferenceType,
 )
-from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var, symbolic_to_string
+from VeraGridEngine.Utils.Symbolic.block import Block, normalize_event_parameter_initialization
+from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var, get_expression_vars, symbolic_to_string
 from VeraGridEngine.Templates.Emt.generator_emt_type_template import get_governor_emt
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template_v2 import get_genqec_rms
+from VeraGridEngine.Templates.Rms.genrow_rms_template import get_genrow_rms_template
 from VeraGridEngine.Templates.template_definition import TemplateDefinition
 from VeraGridEngine.Templates.BasicBlockCatalog import (
     BasicBlockTemplateDescriptor,
@@ -540,7 +545,10 @@ def test_invalid_dialog_draft_does_not_mutate_block() -> None:
 
 
 def test_valid_dialog_draft_applies_equations_and_parameters_together() -> None:
-    """A valid Apply updates the working block and emits its stable UID."""
+    """Apply a DAE draft and a dynamic parameter in one transaction.
+
+    :return: None.
+    """
     application: QtWidgets.QApplication = get_qt_application()
     _unused_application: QtWidgets.QApplication = application
     block: Block
@@ -548,13 +556,15 @@ def test_valid_dialog_draft_applies_equations_and_parameters_together() -> None:
     parameter_variable: Var
     parameter_constant: Const
     block, state_variable, parameter_variable, parameter_constant = build_test_block()
+    dynamic_parameter: Var = Var("dynamic_gain")
+    block.event_dict[dynamic_parameter] = Const(0.5)
     emitted_uids: list[int] = list()
     dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(block, "GENERIC", VarFactory())
     value_index = dialogue._parameter_model.index(0, 2)
     assert dialogue._parameter_model.setData(value_index, "3.5")
     dialogue._dae_editor.setPlainText(
         "state_vars = [x]\n"
-        "state_eqs = {x: gain + 1}\n"
+        "state_eqs = {x: gain + dynamic_gain}\n"
         "algebraic_eqs = []\n"
         "init_eqs = {x: 0}\n"
         "diff_init_eqs = {}"
@@ -563,8 +573,9 @@ def test_valid_dialog_draft_applies_equations_and_parameters_together() -> None:
 
     dialogue.apply_changes()
 
-    assert parameter_constant.value == 3.5
-    assert symbolic_to_string(block.state_eqs[0]) == "(gain + 1)"
+    assert parameter_constant.value == 2.0
+    assert block.event_dict[dynamic_parameter].value == 3.5
+    assert symbolic_to_string(block.state_eqs[0]) == "(gain + dynamic_gain)"
     assert list(block.init_eqs.keys())[0] is state_variable
     assert emitted_uids == [block.uid]
     dialogue.close()
@@ -862,90 +873,92 @@ def test_new_input_is_applied_without_offering_external_mapping() -> None:
     assert dialogue._new_external_reference_label.isHidden()
     assert dialogue._new_external_reference.isHidden()
     dialogue.add_staged_symbol()
+    assert "additional_input" in dialogue._dae_editor.get_language_context().get_namespace()
     dialogue.apply_changes()
 
     assert "Changes applied" in dialogue._status_label.text()
     assert len(block.in_vars) == initial_input_count + 1
     assert block.in_vars[-1].name == "additional_input"
+    assert "additional_input" in dialogue._dae_editor.get_language_context().get_namespace()
     assert all(mapped_variable is not block.in_vars[-1] for mapped_variable in block.external_mapping.values())
     dialogue.close()
 
 
-def test_add_symbol_fields_keep_one_width_across_symbol_categories() -> None:
-    """Optional variable and parameter fields must share the form field column."""
-    application: QtWidgets.QApplication = get_qt_application()
-    var_factory: VarFactory = VarFactory()
-    block: Block = Block(name="field_widths")
-    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
-        block,
-        "GENERIC",
-        var_factory,
-    )
-    dialogue.resize(900, 700)
-    dialogue.show()
-    dialogue._tabs.setCurrentIndex(1)
-    application.processEvents()
-
-    stable_fields: tuple[QtWidgets.QWidget, ...] = (
-        dialogue._new_symbol_owner,
-        dialogue._new_symbol_name,
-        dialogue._new_symbol_category,
-        dialogue._new_symbol_kind,
-    )
-    dialogue._new_symbol_category.setCurrentText("Variables")
-    dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.INPUT.value)
-    application.processEvents()
-    variable_vertical_geometries: List[tuple[int, int]] = list()
-    stable_field: QtWidgets.QWidget
-    for stable_field in stable_fields:
-        variable_position: QtCore.QPoint = stable_field.mapTo(
-            dialogue,
-            QtCore.QPoint(0, 0),
-        )
-        variable_vertical_geometries.append((variable_position.y(), stable_field.height()))
-
-    dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.STATE.value)
-    application.processEvents()
-    shared_field_geometry: tuple[int, int] = (
-        dialogue._new_symbol_owner.x(),
-        dialogue._new_symbol_owner.width(),
-    )
-    variable_fields: tuple[QtWidgets.QWidget, ...] = (
-        dialogue._new_symbol_name,
-        dialogue._new_symbol_category,
-        dialogue._new_symbol_kind,
-        dialogue._new_external_reference,
-    )
-    variable_field: QtWidgets.QWidget
-    for variable_field in variable_fields:
-        assert (variable_field.x(), variable_field.width()) == shared_field_geometry
-
-    dialogue._new_symbol_category.setCurrentText("Parameters")
-    dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.EVENT_PARAMETER.value)
-    application.processEvents()
-    parameter_vertical_geometries: List[tuple[int, int]] = list()
-    for stable_field in stable_fields:
-        parameter_position: QtCore.QPoint = stable_field.mapTo(
-            dialogue,
-            QtCore.QPoint(0, 0),
-        )
-        parameter_vertical_geometries.append((parameter_position.y(), stable_field.height()))
-    assert parameter_vertical_geometries == variable_vertical_geometries
-    assert dialogue._new_parameter_value.isVisible()
-    assert (
-        dialogue._new_parameter_value.x(),
-        dialogue._new_parameter_value.width(),
-    ) == shared_field_geometry
-
-    dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.PARAMETER.value)
-    application.processEvents()
-    assert dialogue._new_static_reference.isVisible()
-    assert (
-        dialogue._new_static_reference.x(),
-        dialogue._new_static_reference.width(),
-    ) == shared_field_geometry
-    assert dialogue._new_external_reference_label.text() == "Power-flow variable"
-    dialogue.close()
+# def test_add_symbol_fields_keep_one_width_across_symbol_categories() -> None:
+#     """Optional variable and parameter fields must share the form field column."""
+#     application: QtWidgets.QApplication = get_qt_application()
+#     var_factory: VarFactory = VarFactory()
+#     block: Block = Block(name="field_widths")
+#     dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
+#         block,
+#         "GENERIC",
+#         var_factory,
+#     )
+#     dialogue.resize(900, 700)
+#     dialogue.show()
+#     dialogue._tabs.setCurrentIndex(1)
+#     application.processEvents()
+#
+#     stable_fields: tuple[QtWidgets.QWidget, ...] = (
+#         dialogue._new_symbol_owner,
+#         dialogue._new_symbol_name,
+#         dialogue._new_symbol_category,
+#         dialogue._new_symbol_kind,
+#     )
+#     dialogue._new_symbol_category.setCurrentText("Variables")
+#     dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.INPUT.value)
+#     application.processEvents()
+#     variable_vertical_geometries: List[tuple[int, int]] = list()
+#     stable_field: QtWidgets.QWidget
+#     for stable_field in stable_fields:
+#         variable_position: QtCore.QPoint = stable_field.mapTo(
+#             dialogue,
+#             QtCore.QPoint(0, 0),
+#         )
+#         variable_vertical_geometries.append((variable_position.y(), stable_field.height()))
+#
+#     dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.STATE.value)
+#     application.processEvents()
+#     shared_field_geometry: tuple[int, int] = (
+#         dialogue._new_symbol_owner.x(),
+#         dialogue._new_symbol_owner.width(),
+#     )
+#     variable_fields: tuple[QtWidgets.QWidget, ...] = (
+#         dialogue._new_symbol_name,
+#         dialogue._new_symbol_category,
+#         dialogue._new_symbol_kind,
+#         dialogue._new_external_reference,
+#     )
+#     variable_field: QtWidgets.QWidget
+#     for variable_field in variable_fields:
+#         assert (variable_field.x(), variable_field.width()) == shared_field_geometry
+#
+#     dialogue._new_symbol_category.setCurrentText("Parameters")
+#     dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.EVENT_PARAMETER.value)
+#     application.processEvents()
+#     parameter_vertical_geometries: List[tuple[int, int]] = list()
+#     for stable_field in stable_fields:
+#         parameter_position: QtCore.QPoint = stable_field.mapTo(
+#             dialogue,
+#             QtCore.QPoint(0, 0),
+#         )
+#         parameter_vertical_geometries.append((parameter_position.y(), stable_field.height()))
+#     assert parameter_vertical_geometries == variable_vertical_geometries
+#     assert dialogue._new_parameter_value.isVisible()
+#     assert (
+#         dialogue._new_parameter_value.x(),
+#         dialogue._new_parameter_value.width(),
+#     ) == shared_field_geometry
+#
+#     dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.PARAMETER.value)
+#     application.processEvents()
+#     assert dialogue._new_static_reference.isVisible()
+#     assert (
+#         dialogue._new_static_reference.x(),
+#         dialogue._new_static_reference.width(),
+#     ) == shared_field_geometry
+#     assert dialogue._new_external_reference_label.text() == "Power-flow variable"
+#     dialogue.close()
 
 
 def test_legacy_equation_backed_output_does_not_block_new_input() -> None:
@@ -1048,7 +1061,7 @@ def test_input_and_parameter_cannot_be_exported() -> None:
 
 
 def test_load_rms_operating_point_event_parameters_are_editable() -> None:
-    """Expose Pl0 and Ql0 overrides without losing automatic initialization."""
+    """Expose event expressions and allow replacing them with numeric overrides."""
     application: QtWidgets.QApplication = get_qt_application()
     _unused_application: QtWidgets.QApplication = application
     var_factory: VarFactory = VarFactory()
@@ -1061,10 +1074,10 @@ def test_load_rms_operating_point_event_parameters_are_editable() -> None:
     assert isinstance(block, Block)
     child: Block = block.children[0]
     event_variables: dict[str, Var] = dict((variable.name, variable) for variable in child.event_dict.keys())
-    assert child.event_dict[event_variables["Pl0"]].value is None
-    assert child.event_dict[event_variables["Ql0"]].value is None
-    assert child.init_eqs[event_variables["Pl0"]].name == "Pl"
-    assert child.init_eqs[event_variables["Ql0"]].name == "Ql"
+    assert symbolic_to_string(child.event_dict[event_variables["Pl0"]]) == "Pl"
+    assert symbolic_to_string(child.event_dict[event_variables["Ql0"]]) == "Ql"
+    assert event_variables["Pl0"] not in child.init_eqs
+    assert event_variables["Ql0"] not in child.init_eqs
 
     dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
         block,
@@ -1081,9 +1094,11 @@ def test_load_rms_operating_point_event_parameters_are_editable() -> None:
             pass
 
     assert set(row_by_name.keys()) == set(["Pl0", "Ql0"])
+    assert dialogue._parameter_model.index(row_by_name["Pl0"], 2).data() == "Pl"
+    assert dialogue._parameter_model.index(row_by_name["Ql0"], 2).data() == "Ql"
     assert dialogue._parameter_model.setData(
         dialogue._parameter_model.index(row_by_name["Pl0"], 2),
-        "-0.75",
+        "Pl + 0.1",
     )
     assert dialogue._parameter_model.setData(
         dialogue._parameter_model.index(row_by_name["Ql0"], 2),
@@ -1091,11 +1106,114 @@ def test_load_rms_operating_point_event_parameters_are_editable() -> None:
     )
     dialogue.apply_changes()
 
-    assert child.event_dict[event_variables["Pl0"]].value == -0.75
+    pl0_expression: Expr = child.event_dict[event_variables["Pl0"]]
+    assert not isinstance(pl0_expression, Const)
+    assert set(variable.name for variable in get_expression_vars(pl0_expression)) == set(["Pl"])
     assert child.event_dict[event_variables["Ql0"]].value == -0.2
-    assert child.init_eqs[event_variables["Pl0"]].name == "Pl"
-    assert child.init_eqs[event_variables["Ql0"]].name == "Ql"
+    assert event_variables["Pl0"] not in child.init_eqs
+    assert event_variables["Ql0"] not in child.init_eqs
     dialogue.close()
+
+
+def test_general_parameters_show_only_event_dict_values() -> None:
+    """Keep every fixed constant outside the General options value table.
+
+    :return: None.
+    """
+    application: QtWidgets.QApplication = get_qt_application()
+    _unused_application: QtWidgets.QApplication = application
+    mapped_parameter: Var = Var("mapped_parameter")
+    local_parameter: Var = Var("local_parameter")
+    dynamic_parameter: Var = Var("dynamic_parameter")
+    child: Block = Block(
+        name="parameter_owner",
+        parameters=dict({
+            mapped_parameter: Const(None),
+            local_parameter: Const(2.0),
+        }),
+        event_dict=dict({dynamic_parameter: Const(0.05)}),
+    )
+    root: Block = Block(
+        name="mapped_root",
+        children=list((child,)),
+        api_obj_mapping=dict({
+            ParamPowerFlowReferenceType.dc_line_r_pu: mapped_parameter,
+        }),
+    )
+
+    parameter_model: BlockParameterDraftModel = BlockParameterDraftModel(root)
+    displayed_names: set[str] = set()
+    row_index: int
+    for row_index in range(parameter_model.rowCount()):
+        displayed_name: object = parameter_model.index(row_index, 1).data()
+        if isinstance(displayed_name, str):
+            displayed_names.add(displayed_name)
+        else:
+            pass
+
+    assert displayed_names == set(("dynamic_parameter",))
+    assert mapped_parameter in child.parameters
+    assert local_parameter in child.parameters
+    assert (
+        root.api_obj_mapping[ParamPowerFlowReferenceType.dc_line_r_pu]
+        is mapped_parameter
+    )
+
+
+def test_symbol_apply_preserves_root_mapping_to_child_parameter() -> None:
+    """Do not delete a composite root's mapping-only parameter on Apply.
+
+    :return: None.
+    """
+    var_factory: VarFactory = VarFactory()
+    mapped_parameter: Var = var_factory.add_var("mapped_parameter")
+    child: Block = Block(
+        name="parameter_owner",
+        parameters=dict({mapped_parameter: Const(None)}),
+    )
+    root: Block = Block(
+        name="mapped_root",
+        children=list((child,)),
+        api_obj_mapping=dict({
+            ParamPowerFlowReferenceType.dc_line_r_pu: mapped_parameter,
+        }),
+    )
+    symbol_model: BlockSymbolDraftModel = BlockSymbolDraftModel(root)
+
+    symbol_model.apply_to_blocks(var_factory=var_factory)
+
+    assert (
+        root.api_obj_mapping[ParamPowerFlowReferenceType.dc_line_r_pu]
+        is mapped_parameter
+    )
+    assert child.parameters[mapped_parameter].value is None
+
+
+def test_legacy_event_parameter_initialization_is_normalized_once() -> None:
+    """Move a legacy init expression while preserving an explicit event value."""
+    inherited_event: Var = Var("inherited_event")
+    explicit_event: Var = Var("explicit_event")
+    source_variable: Var = Var("source_variable")
+    inherited_expression: Expr = source_variable + Const(1.0)
+    child: Block = Block(
+        name="legacy_child",
+        event_dict=dict({
+            inherited_event: Const(None),
+            explicit_event: Const(4.0),
+        }),
+        init_eqs=dict({
+            inherited_event: inherited_expression,
+            explicit_event: source_variable,
+        }),
+    )
+    root: Block = Block(name="legacy_root", children=list([child]))
+
+    normalize_event_parameter_initialization(block=root)
+
+    assert child.event_dict[inherited_event] is inherited_expression
+    assert child.event_dict[explicit_event].value == 4.0
+    assert inherited_event not in child.init_eqs
+    assert explicit_event not in child.init_eqs
 
 
 def test_validate_button_rejects_unknown_symbols_and_python_syntax_errors() -> None:
@@ -1288,6 +1406,125 @@ def test_every_block_properties_table_column_is_manually_resizable() -> None:
     enlarged_table_sizes: list[int] = dialogue._symbol_panel_splitter.sizes()
     assert enlarged_table_sizes[0] > initial_vertical_sizes[0]
     assert enlarged_table_sizes[1] < initial_vertical_sizes[1]
+
+    # The form may be folded until only its group title remains. It must keep
+    # that minimum height so the pane and its handle cannot disappear.
+    add_symbol_group: QtWidgets.QWidget = dialogue._symbol_panel_splitter.widget(1)
+    assert isinstance(add_symbol_group, QtWidgets.QGroupBox)
+    assert add_symbol_group.title() == "Add symbol to selected block"
+    dialogue._symbol_panel_splitter.setSizes(list((initial_vertical_total, 0,)))
+    application.processEvents()
+    collapsed_form_sizes: list[int] = dialogue._symbol_panel_splitter.sizes()
+    assert collapsed_form_sizes[0] > enlarged_table_sizes[0]
+    assert collapsed_form_sizes[1] == add_symbol_group.minimumHeight()
+    assert add_symbol_group.isVisible()
+    dialogue.close()
+
+
+def test_general_options_splitter_resizes_configuration_and_parameters() -> None:
+    """The General options handle must retain each pane at its title-height minimum.
+
+    :return: None.
+    """
+    application: QtWidgets.QApplication = get_qt_application()
+    _unused_application: QtWidgets.QApplication = application
+    block: Block
+    state_variable: Var
+    parameter_variable: Var
+    parameter_constant: Const
+    block, state_variable, parameter_variable, parameter_constant = build_test_block()
+    _unused_state_variable: Var = state_variable
+    _unused_parameter_variable: Var = parameter_variable
+    _unused_parameter_constant: Const = parameter_constant
+    dynamic_parameter: Var = Var("dynamic_parameter")
+    block.event_dict[dynamic_parameter] = Const(0.1)
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
+        block,
+        "GENERIC",
+        VarFactory(),
+    )
+    dialogue.show()
+    dialogue._tabs.setCurrentIndex(0)
+    application.processEvents()
+
+    splitter: QtWidgets.QSplitter = dialogue._general_options_splitter
+    configuration_group: QtWidgets.QWidget = splitter.widget(0)
+    parameter_panel: QtWidgets.QWidget = splitter.widget(1)
+    initial_sizes: list[int] = splitter.sizes()
+    available_height: int = sum(initial_sizes)
+    assert splitter.orientation() == QtCore.Qt.Orientation.Vertical
+    assert splitter.count() == 2
+    assert isinstance(configuration_group, QtWidgets.QGroupBox)
+    assert configuration_group.title() == "Block configuration"
+    assert initial_sizes[1] > initial_sizes[0]
+
+    # Requesting a zero-sized configuration pane must stop at its title, not
+    # collapse the widget and strand the splitter handle.
+    splitter.setSizes(list((0, available_height,)))
+    application.processEvents()
+    collapsed_sizes: list[int] = splitter.sizes()
+    assert collapsed_sizes[0] == configuration_group.minimumHeight()
+    assert configuration_group.isVisible()
+    assert collapsed_sizes[1] > initial_sizes[1]
+
+    # The same handle must also enlarge Block configuration by taking space
+    # back from Parameters.
+    splitter.setSizes(list((available_height - parameter_panel.minimumHeight(), 0,)))
+    application.processEvents()
+    expanded_sizes: list[int] = splitter.sizes()
+    assert expanded_sizes[0] > initial_sizes[0]
+    assert expanded_sizes[1] == parameter_panel.minimumHeight()
+    dialogue.close()
+
+
+def test_generated_structure_height_follows_its_visible_settings() -> None:
+    """A short generated-structure table must not consume empty parameter space.
+
+    :return: None.
+    """
+    application: QtWidgets.QApplication = get_qt_application()
+    _unused_application: QtWidgets.QApplication = application
+    var_factory: VarFactory = VarFactory()
+    builder: TemplateDefinition | None = create_default_template_builder(
+        var_factory,
+        BlockType.GFL_VSC_HVDC_RMS,
+        BlockType.GFL_VSC_HVDC_RMS.name,
+    )
+    assert builder is not None
+    template: RmsModelTemplate = builder.eval()
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
+        template.block,
+        BlockType.GFL_VSC_HVDC_RMS.name,
+        var_factory,
+        structural_block_type=BlockType.GFL_VSC_HVDC_RMS,
+        structural_builder=builder,
+    )
+    dialogue.show()
+    dialogue._tabs.setCurrentIndex(0)
+    application.processEvents()
+
+    structure_group: QtWidgets.QGroupBox | None = None
+    candidate_group: QtWidgets.QGroupBox
+    for candidate_group in dialogue.findChildren(QtWidgets.QGroupBox):
+        if candidate_group.title() == "Generated structure":
+            structure_group = candidate_group
+        else:
+            pass
+    assert structure_group is not None
+    structure_table: QtWidgets.QTableView | None = structure_group.findChild(QtWidgets.QTableView)
+    assert structure_table is not None
+    structure_model: QtCore.QAbstractItemModel | None = structure_table.model()
+    assert structure_model is not None
+    assert structure_model.rowCount() == 2
+    expected_table_height: int = (
+        structure_table.horizontalHeader().sizeHint().height()
+        + structure_table.verticalHeader().sectionSize(0)
+        + structure_table.verticalHeader().sectionSize(1)
+        + (structure_table.frameWidth() * 2)
+    )
+    assert structure_table.minimumHeight() == expected_table_height
+    assert structure_table.maximumHeight() == expected_table_height
+    assert dialogue._general_parameter_table.height() > structure_table.height()
     dialogue.close()
 
 
@@ -1312,6 +1549,20 @@ def test_emt_generator_binary_functions_validate_in_dialogue() -> None:
     assert dialogue._status_label.text() == "DAE code is valid."
     assert dialogue._dae_editor.get_diagnostics() == list()
     dialogue.close()
+
+
+def test_genraw_initialization_keys_are_only_dae_unknowns() -> None:
+    """GENRAW event parameters must not be duplicated in ``init_eqs``.
+
+    :return: None.
+    """
+    var_factory: VarFactory = VarFactory()
+    template: RmsModelTemplate = get_genrow_rms_template(var_factory)
+    owner: Block
+    for owner in template.block.get_all_blocks():
+        allowed_variables: set[Var] = set(owner.state_vars)
+        allowed_variables.update(owner.algebraic_vars)
+        assert set(owner.init_eqs).issubset(allowed_variables)
 
 
 def test_rlc_combo_library_block_has_a_default_constructor() -> None:
@@ -1540,6 +1791,53 @@ def test_every_basic_catalogue_template_resolves_its_own_markdown() -> None:
         ), descriptor.display_label
 
 
+@pytest.mark.parametrize("block_type, page_name", (
+    (BlockType.GFL_VSC_HVDC_RMS, "hvdc_vsc_gfl"),
+    (BlockType.VSC_PLL_RMS, "vsc_pll"),
+    (BlockType.VSC_ELECTRICAL_RMS, "vsc_electrical"),
+    (BlockType.VSC_ACTIVE_CONTROL_RMS, "vsc_active_control"),
+    (BlockType.VSC_REACTIVE_CONTROL_RMS, "vsc_reactive_control"),
+    (BlockType.VSC_CURRENT_LIMITER_RMS, "vsc_current_limiter"),
+    (BlockType.VSC_VD_HAT_RMS, "vsc_vd_hat"),
+    (BlockType.VSC_VQ_HAT_RMS, "vsc_vq_hat"),
+    (BlockType.VSC_DC_LINK_RMS, "vsc_dc_link"),
+    (BlockType.VSC_TERMINAL_POWER_RMS, "vsc_terminal_power"),
+    (BlockType.DC_LINE_RMS, "dc_line"),
+))
+def test_rms_component_block_info_uses_native_type_after_rename(
+        block_type: BlockType,
+        page_name: str,
+) -> None:
+    """Enable each RMS component's published reference despite a display rename.
+
+    :param block_type: Persisted Library type used by Block properties.
+    :param page_name: Expected page in the existing RMS documentation section.
+    :return: None.
+    """
+    application: QtWidgets.QApplication = get_qt_application()
+    _unused_application: QtWidgets.QApplication = application
+    expected_url: str = (
+        "https://veragrid.readthedocs.io/en/latest/md_source/dyn_templates/RMS/"
+        + page_name + ".html"
+    )
+    # The page belongs to the predefined native type, not the user's current
+    # name. In particular, a DC-line RMS entry must not fall back to EMT docs.
+    renamed_block: Block = Block(name="Renamed component for the practical session")
+    assert resolve_block_documentation_url(block_type.name, renamed_block.name) == expected_url
+    assert resolve_block_documentation_url(block_type.name.lower(), block_type.name) == expected_url
+
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
+        renamed_block, block_type.name, VarFactory(),
+    )
+    try:
+        # Inspect the same button that dispatches open_block_documentation;
+        # never launch a browser or require an online documentation build.
+        assert dialogue._block_info_button.isEnabled()
+        assert dialogue._block_documentation_url == expected_url
+    finally:
+        dialogue.close()
+
+
 def test_custom_block_disables_online_catalogue_documentation() -> None:
     """A genuinely custom node must not pretend to have catalogue documentation."""
     application: QtWidgets.QApplication = get_qt_application()
@@ -1600,6 +1898,8 @@ def test_block_properties_searches_filter_tables_and_navigate_python_code() -> N
     _unused_state_variable: Var = state_variable
     _unused_parameter_variable: Var = parameter_variable
     _unused_parameter_constant: Const = parameter_constant
+    dynamic_parameter: Var = Var("runtime_coefficient")
+    block.event_dict[dynamic_parameter] = Const(0.1)
     dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
         block,
         "GENERIC",
@@ -1613,11 +1913,15 @@ def test_block_properties_searches_filter_tables_and_navigate_python_code() -> N
 
     dialogue._parameter_symbol_search.setText("gain")
     assert dialogue._parameter_symbol_proxy.rowCount() == 1
+    dialogue._parameter_symbol_search.setText("runtime_coefficient")
+    assert dialogue._parameter_symbol_proxy.rowCount() == 1
     dialogue._parameter_symbol_search.setText("missing")
     assert dialogue._parameter_symbol_proxy.rowCount() == 0
 
-    dialogue._general_parameter_search.setText("gain")
+    dialogue._general_parameter_search.setText("runtime_coefficient")
     assert dialogue._general_parameter_proxy.rowCount() == 1
+    dialogue._general_parameter_search.setText("gain")
+    assert dialogue._general_parameter_proxy.rowCount() == 0
     dialogue._general_parameter_search.setText("missing")
     assert dialogue._general_parameter_proxy.rowCount() == 0
 

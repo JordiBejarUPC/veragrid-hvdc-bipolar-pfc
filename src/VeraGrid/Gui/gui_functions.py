@@ -27,6 +27,133 @@ if TYPE_CHECKING:
 ComboStableKey = Union[str, int, float, bool, None]
 
 
+class BoolCheckboxDelegate(QtWidgets.QStyledItemDelegate):
+    """
+    Delegate that paints boolean values as checkboxes and toggles them on double click.
+    """
+
+    def __init__(self, parent: QtWidgets.QTableView) -> None:
+        """
+        Constructor.
+
+        :param parent: Parent table view.
+        """
+        QtWidgets.QStyledItemDelegate.__init__(self, parent)
+
+    def get_checkbox_rect(self, option: QtWidgets.QStyleOptionViewItem) -> QtCore.QRect:
+        """
+        Get a centered checkbox rectangle for one cell.
+
+        :param option: Cell style option.
+        :return: Checkbox rectangle.
+        """
+        checkbox_option: QtWidgets.QStyleOptionButton = QtWidgets.QStyleOptionButton()
+        style: QtWidgets.QStyle
+
+        if option.widget is not None:
+            style = option.widget.style()
+        else:
+            style = QtWidgets.QApplication.style()
+
+        checkbox_rect: QtCore.QRect = style.subElementRect(
+            QtWidgets.QStyle.SubElement.SE_CheckBoxIndicator,
+            checkbox_option,
+            option.widget,
+        )
+        x_position: int = option.rect.x() + int((option.rect.width() - checkbox_rect.width()) / 2)
+        y_position: int = option.rect.y() + int((option.rect.height() - checkbox_rect.height()) / 2)
+
+        return QtCore.QRect(x_position, y_position, checkbox_rect.width(), checkbox_rect.height())
+
+    def paint(self,
+              painter: QtGui.QPainter,
+              option: QtWidgets.QStyleOptionViewItem,
+              index: QtCore.QModelIndex) -> None:
+        """
+        Paint the cell as a centered checkbox.
+
+        :param painter: Painter.
+        :param option: Cell style option.
+        :param index: Model index.
+        :return: None.
+        """
+        if option.state & QtWidgets.QStyle.StateFlag.State_Selected:
+            painter.fillRect(option.rect, option.palette.highlight())
+        else:
+            painter.fillRect(option.rect, option.palette.base())
+
+        checkbox_option: QtWidgets.QStyleOptionButton = QtWidgets.QStyleOptionButton()
+        checkbox_option.rect = self.get_checkbox_rect(option=option)
+        checkbox_option.state = QtWidgets.QStyle.StateFlag.State_Enabled
+
+        if index.data(QtCore.Qt.ItemDataRole.CheckStateRole) == QtCore.Qt.CheckState.Checked:
+            checkbox_option.state = checkbox_option.state | QtWidgets.QStyle.StateFlag.State_On
+        else:
+            checkbox_option.state = checkbox_option.state | QtWidgets.QStyle.StateFlag.State_Off
+
+        if option.widget is not None:
+            option.widget.style().drawPrimitive(
+                QtWidgets.QStyle.PrimitiveElement.PE_IndicatorCheckBox,
+                checkbox_option,
+                painter,
+                option.widget,
+            )
+        else:
+            QtWidgets.QApplication.style().drawPrimitive(
+                QtWidgets.QStyle.PrimitiveElement.PE_IndicatorCheckBox,
+                checkbox_option,
+                painter,
+            )
+
+    def createEditor(self,
+                     parent: QtWidgets.QWidget,
+                     option: QtWidgets.QStyleOptionViewItem,
+                     index: QtCore.QModelIndex) -> None:
+        """
+        Disable edit widgets for checkbox cells.
+
+        :param parent: Parent widget.
+        :param option: Cell style option.
+        :param index: Model index.
+        :return: None.
+        """
+        del parent
+        del option
+        del index
+        return None
+
+    def editorEvent(self,
+                    event: QtCore.QEvent,
+                    model: QtCore.QAbstractItemModel,
+                    option: QtWidgets.QStyleOptionViewItem,
+                    index: QtCore.QModelIndex) -> bool:
+        """
+        Toggle the boolean value on double click.
+
+        :param event: Editor event.
+        :param model: Table model.
+        :param option: Cell style option.
+        :param index: Model index.
+        :return: True when the value was toggled.
+        """
+        del option
+
+        if event.type() == QtCore.QEvent.Type.MouseButtonDblClick:
+            if isinstance(event, QtGui.QMouseEvent) and event.button() == QtCore.Qt.MouseButton.LeftButton:
+                current_state: object = index.data(QtCore.Qt.ItemDataRole.CheckStateRole)
+
+                if current_state == QtCore.Qt.CheckState.Checked:
+                    new_state: QtCore.Qt.CheckState = QtCore.Qt.CheckState.Unchecked
+                else:
+                    new_state = QtCore.Qt.CheckState.Checked
+
+                return model.setData(index, new_state, QtCore.Qt.ItemDataRole.CheckStateRole)
+            else:
+                return False
+        else:
+            return False
+
+
 def translate_context_menu_text(text: str) -> str:
     """
     Translate one runtime-created context-menu label.
@@ -1603,7 +1730,7 @@ class SequenceEditorDialog(QtWidgets.QDialog):
     def __init__(self, parent, sequence_type: WaveformSequenceType | V_I_CurveSequenceType | X_Y_SequenceType ):
         super().__init__(parent)
         self.sequence_type = sequence_type
-        self.setWindowTitle("Sequence editor")
+        self.setWindowTitle(self.tr("Sequence editor"))
         self.setMinimumSize(600, 500)
 
         layout = QtWidgets.QVBoxLayout(self)
@@ -1744,8 +1871,8 @@ class SequenceEditorDialog(QtWidgets.QDialog):
             if row_count < 2:
                 QtWidgets.QMessageBox.warning(
                     self,
-                    "Invalid number of points",
-                    "At least two points are required.",
+                    self.tr("Invalid number of points"),
+                    self.tr("At least two points are required."),
                 )
                 return
 
@@ -1762,23 +1889,23 @@ class SequenceEditorDialog(QtWidgets.QDialog):
                 except ValueError:
                     QtWidgets.QMessageBox.warning(
                         self,
-                        "Invalid values",
-                        f"Non-numeric value in column 0 at row {row + 1}.",
+                        self.tr("Invalid values"),
+                        self.tr("Non-numeric value in column 0 at row {row_number}.").format(row_number=row + 1),
                     )
                     return
                 if prev_x is not None and x <= prev_x:
                     if self.sequence_type is WaveformSequenceType:
                         QtWidgets.QMessageBox.warning(
                             self,
-                            "Invalid waveform",
-                            "Arbitrary source waveform times must be strictly increasing.",
+                            self.tr("Invalid waveform"),
+                            self.tr("Arbitrary source waveform times must be strictly increasing."),
                         )
 
                     elif self.sequence_type is X_Y_SequenceType:
                         QtWidgets.QMessageBox.warning(
                             self,
-                            "Invalid points",
-                            "y points must be strictly increasing.",
+                            self.tr("Invalid points"),
+                            self.tr("y points must be strictly increasing."),
                         )
                     return
                 prev_x = x
@@ -1822,7 +1949,7 @@ class LookupMatrixEditorDialog(QtWidgets.QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Lookup matrix editor")
+        self.setWindowTitle(self.tr("Lookup matrix editor"))
         self.setMinimumSize(750, 650)
 
         main_layout = QtWidgets.QVBoxLayout(self)
@@ -2172,16 +2299,16 @@ class LookupMatrixEditorDialog(QtWidgets.QDialog):
         if len(x_vals) < 2:
             QtWidgets.QMessageBox.warning(
                 self,
-                "Invalid number of X points",
-                "At least two X breakpoints are required.",
+                self.tr("Invalid number of X points"),
+                self.tr("At least two X breakpoints are required."),
             )
             return
 
         if len(y_vals) < 2:
             QtWidgets.QMessageBox.warning(
                 self,
-                "Invalid number of Y points",
-                "At least two Y breakpoints are required.",
+                self.tr("Invalid number of Y points"),
+                self.tr("At least two Y breakpoints are required."),
             )
             return
 
@@ -2190,8 +2317,8 @@ class LookupMatrixEditorDialog(QtWidgets.QDialog):
             if x_vals[i] <= x_vals[i - 1]:
                 QtWidgets.QMessageBox.warning(
                     self,
-                    "Invalid X breakpoints",
-                    "X values must be strictly increasing.",
+                    self.tr("Invalid X breakpoints"),
+                    self.tr("X values must be strictly increasing."),
                 )
                 return
 
@@ -2200,8 +2327,8 @@ class LookupMatrixEditorDialog(QtWidgets.QDialog):
             if y_vals[i] <= y_vals[i - 1]:
                 QtWidgets.QMessageBox.warning(
                     self,
-                    "Invalid Y breakpoints",
-                    "Y values must be strictly increasing.",
+                    self.tr("Invalid Y breakpoints"),
+                    self.tr("Y values must be strictly increasing."),
                 )
                 return
 
@@ -2296,7 +2423,9 @@ class WindingTypeDelegate(QtWidgets.QItemDelegate):
             ("Neutral Star (Yn)", WindingType.NeutralStar),
             ("Floating Star (Y)", WindingType.FloatingStar),
             ("Delta", WindingType.Delta),
-            ("ZigZag (Z)", WindingType.ZigZag),
+            ("Grounded ZigZag (Zg)", WindingType.GroundedZigZag),
+            ("Neutral ZigZag (Zn)", WindingType.NeutralZigZag),
+            ("Floating ZigZag (Z)", WindingType.FloatingZigZag),
         ]
 
     @QtCore.Slot()

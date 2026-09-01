@@ -23,7 +23,7 @@ from VeraGridEngine.enumerations import (
     BranchGroupTypes,
     ConverterControlType
 )
-GSLV_RECOMMENDED_VERSION: str = "0.7.15"
+GSLV_RECOMMENDED_VERSION: str = "0.8.5"
 GSLV_VERSION: str = ''
 GSLV_AVAILABLE: bool = False
 
@@ -125,7 +125,9 @@ try:
         WindingType.GroundedStar: pg.WindingType.GroundedStar,
         WindingType.NeutralStar: pg.WindingType.NeutralStar,
         WindingType.Delta: pg.WindingType.Delta,
-        WindingType.ZigZag: pg.WindingType.ZigZag,
+        WindingType.GroundedZigZag: pg.WindingType.ZigZag,
+        WindingType.FloatingZigZag: pg.WindingType.ZigZag,
+        WindingType.NeutralZigZag: pg.WindingType.ZigZag,
     }
 
     windings_connection_dict = {

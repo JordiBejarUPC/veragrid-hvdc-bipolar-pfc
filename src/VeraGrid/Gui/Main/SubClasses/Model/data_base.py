@@ -40,7 +40,8 @@ from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import GridMapWidget, gener
 from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget, make_diagram_from_buses
 from VeraGrid.Gui.GridReduce.grid_reduce import GridReduceDialogue
 from VeraGrid.Gui.SubstationDesigner.substation_designer import SubstationDesigner
-from VeraGrid.Gui.general_dialogues import LogsDialogue, CustomQuestionDialogue, CheckListDialogue
+from VeraGrid.Gui.general_dialogues import (LogsDialogue, CustomQuestionDialogue, CheckListDialogue,
+                                            NewConnectedDeviceDialogue, DeviceSelectorDialogue)
 from VeraGrid.Gui.DeviceEditors.TransformerEditor.transformer_device_editor import TransformerDeviceEditorDialog
 from VeraGrid.Gui.DeviceEditors.Transformer3wEditor.transformer3w_device_editor import Transformer3WDeviceEditorDialog
 from VeraGrid.Gui.DeviceEditors.ControllableShuntEditor.controllable_shunt_device_editor import (
@@ -344,7 +345,43 @@ class DataBaseTableMain(DiagramsMain):
             mdl.copy_to_clipboard()
             self.show_info_toast('Copied!')
         else:
-            warning_msg('There is no data displayed, please display one', 'Copy profile to clipboard')
+            warning_msg(self.tr('There is no data displayed, please display one'), self.tr('Copy profile to clipboard'))
+
+    def paste_objects_data(self) -> None:
+        """
+        Paste clipboard values into the current displayed objects table.
+
+        :return: None.
+        """
+        mdl: ObjectModelFilterProxy | None = self.get_current_objects_model_view()
+
+        if mdl is not None:
+            selected_indexes: List[QtCore.QModelIndex] = self.ui.dataStructureTableView.selectedIndexes()
+
+            if len(selected_indexes) > 0:
+                rows: List[int] = sorted(set(index.row() for index in selected_indexes))
+                cols: List[int] = sorted(set(index.column() for index in selected_indexes))
+                row_idx: int = rows[0]
+                col_idx: int = cols[0]
+            else:
+                rows = list()
+                cols = list()
+                row_idx = 0
+                col_idx = 0
+
+            pasted_cells: int = mdl.paste_from_clipboard(
+                row_idx=row_idx,
+                col_idx=col_idx,
+                selected_rows=rows,
+                selected_cols=cols,
+            )
+
+            if pasted_cells > 0:
+                self.show_info_toast(self.tr('Pasted!'))
+            else:
+                self.show_warning_toast(self.tr('Nothing to paste'))
+        else:
+            warning_msg(self.tr('There is no data displayed, please display one'), self.tr('Paste data'))
 
     def get_db_object_selected_type(self) -> DeviceType | None:
         """
@@ -530,7 +567,7 @@ class DataBaseTableMain(DiagramsMain):
 
         if len(selected_objects):
 
-            ok = yes_no_question('Are you sure that you want to delete_with_dialogue the selected elements?', 'Delete')
+            ok = yes_no_question(self.tr('Are you sure that you want to delete_with_dialogue the selected elements?'), self.tr('Delete'))
             if ok:
                 for obj in selected_objects:
 
@@ -557,8 +594,8 @@ class DataBaseTableMain(DiagramsMain):
 
         if len(selected_objects):
 
-            ok = yes_no_question('Are you sure that you want to duplicate the selected elements?',
-                                 'Duplicate')
+            ok = yes_no_question(self.tr('Are you sure that you want to duplicate the selected elements?'),
+                                 self.tr('Duplicate'))
             if ok:
                 for obj in selected_objects:
                     cpy = obj.copy(forced_new_idtag=True)
@@ -581,8 +618,8 @@ class DataBaseTableMain(DiagramsMain):
 
             if selected_objects[0].device_type == DeviceType.SubstationDevice:
 
-                ok = yes_no_question('Are you sure that you want to merge the selected substations?',
-                                     'Merge')
+                ok = yes_no_question(self.tr('Are you sure that you want to merge the selected substations?'),
+                                     self.tr('Merge'))
                 if ok:
                     # merge substations into the first
                     self.circuit.merge_substations(selected_objects=selected_objects)
@@ -640,7 +677,7 @@ class DataBaseTableMain(DiagramsMain):
                     diagram.add_object_to_the_schematic(elm=device, logger=logger)
 
             if len(logger):
-                dlg = LogsDialogue(name="Add selected DB objects to current diagram", logger=logger)
+                dlg = LogsDialogue(name=self.tr("Add selected DB objects to current diagram"), logger=logger)
                 dlg.setModal(True)
                 dlg.exec()
 
@@ -767,10 +804,10 @@ class DataBaseTableMain(DiagramsMain):
         if len(selected_buses):
 
             ok = yes_no_question(
-                text="This will delete all buses and their connected elements that were not selected."
+                text=self.tr("This will delete all buses and their connected elements that were not selected."
                      "This cannot be undone and it is dangerous if you don't know"
-                     "what you are doing. \nAre you sure?",
-                title="Crop model to buses selection?")
+                     "what you are doing. \nAre you sure?"),
+                title=self.tr("Crop model to buses selection?"))
 
             if ok:
                 to_be_deleted = list()
@@ -870,7 +907,414 @@ class DataBaseTableMain(DiagramsMain):
 
         if model is not None and elm_type is not None:
 
-            if elm_type == DeviceType.SubstationDevice:
+            if elm_type == DeviceType.LoadDevice:
+                buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
+                if len(buses) > 0:
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
+                        name=f'{elm_type.value} {len(self.circuit.loads) + 1}',
+                        bus_count=1,
+                        buses=buses,
+                        parent=self,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
+                        if selected_buses[0] is not None:
+                            obj: dev.Load = dev.Load(name=dlg.get_name())
+                            obj.bus = selected_buses[0]
+                            self.circuit.add_element(obj=obj)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no buses to connect this device."))
+
+            elif elm_type == DeviceType.StaticGeneratorDevice:
+                buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
+                if len(buses) > 0:
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
+                        name=f'{elm_type.value} {len(self.circuit.static_generators) + 1}',
+                        bus_count=1,
+                        buses=buses,
+                        parent=self,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
+                        if selected_buses[0] is not None:
+                            obj: dev.StaticGenerator = dev.StaticGenerator(name=dlg.get_name())
+                            obj.bus = selected_buses[0]
+                            self.circuit.add_element(obj=obj)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no buses to connect this device."))
+
+            elif elm_type == DeviceType.GeneratorDevice:
+                buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
+                if len(buses) > 0:
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
+                        name=f'{elm_type.value} {len(self.circuit.generators) + 1}',
+                        bus_count=1,
+                        buses=buses,
+                        parent=self,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
+                        if selected_buses[0] is not None:
+                            obj: dev.Generator = dev.Generator(name=dlg.get_name())
+                            obj.bus = selected_buses[0]
+                            self.circuit.add_element(obj=obj)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no buses to connect this device."))
+
+            elif elm_type == DeviceType.BatteryDevice:
+                buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
+                if len(buses) > 0:
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
+                        name=f'{elm_type.value} {len(self.circuit.batteries) + 1}',
+                        bus_count=1,
+                        buses=buses,
+                        parent=self,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
+                        if selected_buses[0] is not None:
+                            obj: dev.Battery = dev.Battery(name=dlg.get_name())
+                            obj.bus = selected_buses[0]
+                            self.circuit.add_element(obj=obj)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no buses to connect this device."))
+
+            elif elm_type == DeviceType.ShuntDevice:
+                buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
+                if len(buses) > 0:
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
+                        name=f'{elm_type.value} {len(self.circuit.shunts) + 1}',
+                        bus_count=1,
+                        buses=buses,
+                        parent=self,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
+                        if selected_buses[0] is not None:
+                            obj: dev.Shunt = dev.Shunt(name=dlg.get_name())
+                            obj.bus = selected_buses[0]
+                            self.circuit.add_element(obj=obj)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no buses to connect this device."))
+
+            elif elm_type == DeviceType.ExternalGridDevice:
+                buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
+                if len(buses) > 0:
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
+                        name=f'{elm_type.value} {len(self.circuit.external_grids) + 1}',
+                        bus_count=1,
+                        buses=buses,
+                        parent=self,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
+                        if selected_buses[0] is not None:
+                            obj: dev.ExternalGrid = dev.ExternalGrid(name=dlg.get_name())
+                            obj.bus = selected_buses[0]
+                            self.circuit.add_element(obj=obj)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no buses to connect this device."))
+
+            elif elm_type == DeviceType.CurrentInjectionDevice:
+                buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
+                if len(buses) > 0:
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
+                        name=f'{elm_type.value} {len(self.circuit.current_injections) + 1}',
+                        bus_count=1,
+                        buses=buses,
+                        parent=self,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
+                        if selected_buses[0] is not None:
+                            obj: dev.CurrentInjection = dev.CurrentInjection(name=dlg.get_name())
+                            obj.bus = selected_buses[0]
+                            self.circuit.add_element(obj=obj)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no buses to connect this device."))
+
+            elif elm_type == DeviceType.ControllableShuntDevice:
+                buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
+                if len(buses) > 0:
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
+                        name=f'{elm_type.value} {len(self.circuit.controllable_shunts) + 1}',
+                        bus_count=1,
+                        buses=buses,
+                        parent=self,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
+                        if selected_buses[0] is not None:
+                            obj: dev.ControllableShunt = dev.ControllableShunt(name=dlg.get_name())
+                            obj.bus = selected_buses[0]
+                            self.circuit.add_element(obj=obj)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no buses to connect this device."))
+
+            elif elm_type == DeviceType.LineDevice:
+                buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
+                if len(buses) > 0:
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
+                        name=f'{elm_type.value} {len(self.circuit.lines) + 1}',
+                        bus_count=2,
+                        buses=buses,
+                        parent=self,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
+                        if selected_buses[0] is not None and selected_buses[1] is not None:
+                            obj: dev.Line = dev.Line(name=dlg.get_name(),
+                                                     bus_from=selected_buses[0],
+                                                     bus_to=selected_buses[1])
+                            self.circuit.add_element(obj=obj)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no buses to connect this device."))
+
+            elif elm_type == DeviceType.DCLineDevice:
+                buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
+                if len(buses) > 0:
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
+                        name=f'{elm_type.value} {len(self.circuit.dc_lines) + 1}',
+                        bus_count=2,
+                        buses=buses,
+                        parent=self,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
+                        if selected_buses[0] is not None and selected_buses[1] is not None:
+                            obj: dev.DcLine = dev.DcLine(name=dlg.get_name(),
+                                                         bus_from=selected_buses[0],
+                                                         bus_to=selected_buses[1])
+                            self.circuit.add_element(obj=obj)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no buses to connect this device."))
+
+            elif elm_type == DeviceType.Transformer2WDevice:
+                buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
+                if len(buses) > 0:
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
+                        name=f'{elm_type.value} {len(self.circuit.transformers2w) + 1}',
+                        bus_count=2,
+                        buses=buses,
+                        parent=self,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
+                        if selected_buses[0] is not None and selected_buses[1] is not None:
+                            obj: dev.Transformer2W = dev.Transformer2W(name=dlg.get_name(),
+                                                                       bus_from=selected_buses[0],
+                                                                       bus_to=selected_buses[1])
+                            self.circuit.add_element(obj=obj)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no buses to connect this device."))
+
+            elif elm_type == DeviceType.Transformer3WDevice:
+                buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
+                if len(buses) > 0:
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
+                        name=f'{elm_type.value} {len(self.circuit.transformers3w) + 1}',
+                        bus_count=3,
+                        buses=buses,
+                        parent=self,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
+                        if selected_buses[0] is not None and selected_buses[1] is not None and selected_buses[2] is not None:
+                            obj: dev.Transformer3W = dev.Transformer3W(name=dlg.get_name(),
+                                                                       bus1=selected_buses[0],
+                                                                       bus2=selected_buses[1],
+                                                                       bus3=selected_buses[2])
+                            self.circuit.add_element(obj=obj)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no buses to connect this device."))
+
+            elif elm_type == DeviceType.TransformerNwDevice:
+                buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
+                if len(buses) > 0:
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
+                        name=f'{elm_type.value} {len(self.circuit.transformers_nw) + 1}',
+                        bus_count=3,
+                        buses=buses,
+                        parent=self,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
+                        if selected_buses[0] is not None and selected_buses[1] is not None and selected_buses[2] is not None:
+                            obj: dev.TransformerNW = dev.TransformerNW(name=dlg.get_name(),
+                                                                       winding_count=len(selected_buses),
+                                                                       buses=selected_buses)
+                            self.circuit.add_element(obj=obj)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no buses to connect this device."))
+
+            elif elm_type == DeviceType.HVDCLineDevice:
+                buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
+                if len(buses) > 0:
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
+                        name=f'{elm_type.value} {len(self.circuit.hvdc_lines) + 1}',
+                        bus_count=2,
+                        buses=buses,
+                        parent=self,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
+                        if selected_buses[0] is not None and selected_buses[1] is not None:
+                            obj: dev.HvdcLine = dev.HvdcLine(name=dlg.get_name(),
+                                                             bus_from=selected_buses[0],
+                                                             bus_to=selected_buses[1])
+                            self.circuit.add_element(obj=obj)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no buses to connect this device."))
+
+            elif elm_type == DeviceType.VscDevice:
+                buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
+                if len(buses) > 0:
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
+                        name=f'{elm_type.value} {len(self.circuit.vsc_devices) + 1}',
+                        bus_count=3,
+                        buses=buses,
+                        parent=self,
+                        allow_last_bus_none=True,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
+                        if selected_buses[0] is not None and selected_buses[1] is not None:
+                            bus_from: ALL_DEV_TYPES = selected_buses[0]
+                            bus_to: ALL_DEV_TYPES = selected_buses[1]
+                            bus_dc_n: ALL_DEV_TYPES | None = selected_buses[2]
+
+                            if isinstance(bus_from, dev.Bus) and isinstance(bus_to, dev.Bus):
+                                has_ac_dc_pair: bool = bus_from.is_dc != bus_to.is_dc
+
+                                if bus_dc_n is None:
+                                    has_valid_dc_negative_bus: bool = True
+                                elif isinstance(bus_dc_n, dev.Bus):
+                                    has_valid_dc_negative_bus = bus_dc_n.is_dc
+                                else:
+                                    has_valid_dc_negative_bus = False
+
+                                if has_ac_dc_pair and has_valid_dc_negative_bus:
+                                    obj: dev.VSC = dev.VSC(name=dlg.get_name(),
+                                                           bus_from=bus_from,
+                                                           bus_to=bus_to,
+                                                           bus_dc_n=bus_dc_n)
+                                    self.circuit.add_element(obj=obj)
+                                else:
+                                    self.show_warning_toast(
+                                        self.tr("VSC devices need one AC bus, one DC bus, and an optional DC bus.")
+                                    )
+                            else:
+                                pass
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no buses to connect this device."))
+
+            elif elm_type == DeviceType.UpfcDevice:
+                buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
+                if len(buses) > 0:
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
+                        name=f'{elm_type.value} {len(self.circuit.upfc_devices) + 1}',
+                        bus_count=2,
+                        buses=buses,
+                        parent=self,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
+                        if selected_buses[0] is not None and selected_buses[1] is not None:
+                            obj: dev.UPFC = dev.UPFC(name=dlg.get_name(),
+                                                     bus_from=selected_buses[0],
+                                                     bus_to=selected_buses[1])
+                            self.circuit.add_element(obj=obj)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no buses to connect this device."))
+
+            elif elm_type == DeviceType.SeriesReactanceDevice:
+                buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
+                if len(buses) > 0:
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
+                        name=f'{elm_type.value} {len(self.circuit.series_reactances) + 1}',
+                        bus_count=2,
+                        buses=buses,
+                        parent=self,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
+                        if selected_buses[0] is not None and selected_buses[1] is not None:
+                            obj: dev.SeriesReactance = dev.SeriesReactance(name=dlg.get_name(),
+                                                                           bus_from=selected_buses[0],
+                                                                           bus_to=selected_buses[1])
+                            self.circuit.add_element(obj=obj)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no buses to connect this device."))
+
+            elif elm_type == DeviceType.SubstationDevice:
                 self.circuit.add_substation(dev.Substation(name=f'SE {self.circuit.get_substation_number() + 1}'))
                 self.update_from_to_list_views()
 
@@ -915,6 +1359,62 @@ class DataBaseTableMain(DiagramsMain):
             elif elm_type == DeviceType.BusDevice:
                 self.circuit.add_bus(dev.Bus(name=f'Bus {self.circuit.get_bus_number() + 1}'))
 
+            elif elm_type == DeviceType.ContingencyDevice:
+                target_devices_by_type: Dict[DeviceType, List[ALL_DEV_TYPES]] = dict()
+                supported_device_types: Tuple[DeviceType, ...] = (
+                    DeviceType.DCLineDevice,
+                    DeviceType.LineDevice,
+                    DeviceType.HVDCLineDevice,
+                    DeviceType.Transformer2WDevice,
+                    DeviceType.WindingDevice,
+                    DeviceType.SeriesReactanceDevice,
+                    DeviceType.UpfcDevice,
+                    DeviceType.GeneratorDevice,
+                    DeviceType.BatteryDevice,
+                    DeviceType.StaticGeneratorDevice,
+                )
+                target_device_count: int = 0
+
+                for target_device_type in supported_device_types:
+                    target_devices: List[ALL_DEV_TYPES] = list(
+                        self.circuit.get_elements_by_type(device_type=target_device_type)
+                    )
+                    target_devices_by_type[target_device_type] = target_devices
+                    target_device_count = target_device_count + len(target_devices)
+
+                if target_device_count > 0:
+                    dlg: DeviceSelectorDialogue = DeviceSelectorDialogue(
+                        devices_by_type=target_devices_by_type,
+                        allow_none=False,
+                        parent=self,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_device: ALL_DEV_TYPES | None = dlg.get_selected_device()
+                        if isinstance(selected_device, EditableDevice):
+                            if len(self.circuit.contingency_groups) > 0:
+                                contingency_group: dev.ContingencyGroup = self.circuit.contingency_groups[0]
+                            else:
+                                contingency_group = dev.ContingencyGroup(
+                                    name=f"Contingency group {self.circuit.get_contingency_groups_number() + 1}",
+                                    category="single",
+                                )
+                                self.circuit.add_contingency_group(contingency_group)
+
+                            contingency: dev.Contingency = dev.Contingency(
+                                device=selected_device,
+                                code=selected_device.code,
+                                name=f"Contingency {selected_device.name}",
+                                value=0,
+                                group=contingency_group,
+                            )
+                            self.circuit.add_contingency(contingency)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no supported devices to target."))
+
             elif elm_type == DeviceType.ContingencyGroupDevice:
                 group = dev.ContingencyGroup(
                     name=f"Contingency group {self.circuit.get_contingency_groups_number() + 1}"
@@ -927,9 +1427,148 @@ class DataBaseTableMain(DiagramsMain):
                 )
                 self.circuit.add_remedial_action_group(group)
 
+            elif elm_type == DeviceType.RemedialActionDevice:
+                target_devices_by_type: Dict[DeviceType, List[ALL_DEV_TYPES]] = dict()
+                supported_device_types: Tuple[DeviceType, ...] = (
+                    DeviceType.DCLineDevice,
+                    DeviceType.LineDevice,
+                    DeviceType.HVDCLineDevice,
+                    DeviceType.Transformer2WDevice,
+                    DeviceType.WindingDevice,
+                    DeviceType.SeriesReactanceDevice,
+                    DeviceType.UpfcDevice,
+                    DeviceType.GeneratorDevice,
+                    DeviceType.BatteryDevice,
+                    DeviceType.StaticGeneratorDevice,
+                )
+                target_device_count: int = 0
+
+                for target_device_type in supported_device_types:
+                    target_devices: List[ALL_DEV_TYPES] = list(
+                        self.circuit.get_elements_by_type(device_type=target_device_type)
+                    )
+                    target_devices_by_type[target_device_type] = target_devices
+                    target_device_count = target_device_count + len(target_devices)
+
+                if target_device_count > 0:
+                    dlg: DeviceSelectorDialogue = DeviceSelectorDialogue(
+                        devices_by_type=target_devices_by_type,
+                        allow_none=False,
+                        parent=self,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_device: ALL_DEV_TYPES | None = dlg.get_selected_device()
+                        if isinstance(selected_device, EditableDevice):
+                            if len(self.circuit.remedial_action_groups) > 0:
+                                remedial_action_group: dev.RemedialActionGroup = self.circuit.remedial_action_groups[0]
+                            else:
+                                remedial_action_group = dev.RemedialActionGroup(
+                                    name=(
+                                        f"Remedial actions group "
+                                        f"{self.circuit.get_remedial_action_groups_number() + 1}"
+                                    ),
+                                    category="single",
+                                )
+                                self.circuit.add_remedial_action_group(remedial_action_group)
+
+                            remedial_action: dev.RemedialAction = dev.RemedialAction(
+                                device=selected_device,
+                                code=selected_device.code,
+                                name=f"RA {selected_device.name}",
+                                value=0,
+                                group=remedial_action_group,
+                            )
+                            self.circuit.add_remedial_action(remedial_action)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no supported devices to target."))
+
             elif elm_type == DeviceType.InvestmentsGroupDevice:
                 group = dev.InvestmentsGroup(name=f"Investments group {len(self.circuit.investments_groups) + 1}")
                 self.circuit.add_investments_group(group)
+
+            elif elm_type == DeviceType.InvestmentDevice:
+                target_devices_by_type: Dict[DeviceType, List[ALL_DEV_TYPES]] = dict()
+                all_devices_by_type: Dict[DeviceType, Dict[str, ALL_DEV_TYPES]] = (
+                    self.circuit.get_all_elements_dict_by_type(string_keys=False)
+                )
+                excluded_device_types: Set[DeviceType] = set((
+                    DeviceType.ContingencyDevice,
+                    DeviceType.ContingencyGroupDevice,
+                    DeviceType.InvestmentDevice,
+                    DeviceType.InvestmentsGroupDevice,
+                    DeviceType.ShortCircuitEvent,
+                    DeviceType.RemedialActionDevice,
+                    DeviceType.RemedialActionGroupDevice,
+                ))
+                target_device_count: int = 0
+
+                for target_device_type, target_devices_dict in all_devices_by_type.items():
+                    if target_device_type in excluded_device_types:
+                        pass
+                    else:
+                        target_devices: List[ALL_DEV_TYPES] = list(target_devices_dict.values())
+                        target_devices_by_type[target_device_type] = target_devices
+                        target_device_count = target_device_count + len(target_devices)
+
+                if target_device_count > 0:
+                    dlg: DeviceSelectorDialogue = DeviceSelectorDialogue(
+                        devices_by_type=target_devices_by_type,
+                        allow_none=False,
+                        parent=self,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_device: ALL_DEV_TYPES | None = dlg.get_selected_device()
+                        if isinstance(selected_device, EditableDevice):
+                            if len(self.circuit.investments_groups) > 0:
+                                investment_group: dev.InvestmentsGroup = self.circuit.investments_groups[0]
+                            else:
+                                investment_group = dev.InvestmentsGroup(
+                                    name=f"Investments group {len(self.circuit.investments_groups) + 1}",
+                                    category="single",
+                                )
+                                self.circuit.add_investments_group(investment_group)
+
+                            investment: dev.Investment = dev.Investment(
+                                device=selected_device,
+                                code=selected_device.code,
+                                name=f"{selected_device.type_name}: {selected_device.name}",
+                                CAPEX=0.0,
+                                group=investment_group,
+                            )
+                            self.circuit.add_investment(investment)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no devices to target."))
+
+            elif elm_type == DeviceType.ShortCircuitEvent:
+                buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
+                if len(buses) > 0:
+                    dlg: DeviceSelectorDialogue = DeviceSelectorDialogue(
+                        devices_by_type={DeviceType.BusDevice: buses},
+                        allow_none=False,
+                        parent=self,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_device: ALL_DEV_TYPES | None = dlg.get_selected_device()
+                        if isinstance(selected_device, dev.Bus):
+                            short_circuit_event: dev.ShortCircuitEvent = dev.ShortCircuitEvent(
+                                name=f"{selected_device.name} fault",
+                                device=selected_device,
+                            )
+                            self.circuit.add_short_circuit_event(short_circuit_event)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no buses to connect this device."))
 
             elif elm_type == DeviceType.BranchGroupDevice:
                 group = dev.BranchGroup(name=f"Branch group {self.circuit.get_branch_groups_number() + 1}")
@@ -1059,8 +1698,14 @@ class DataBaseTableMain(DiagramsMain):
                 obj = dev.EmtEventsGroup(name=name)
                 self.circuit.add_emt_events_group(obj)
 
+            elif elm_type == DeviceType.ControlPc:
+
+                name = f'Control PC {len(self.circuit.control_pcs)}'
+                obj = dev.ControlPc(name=name)
+                self.circuit.add_control_pc(obj)
+
             else:
-                info_msg("This object does not support table-like addition.\nUse the schematic instead.")
+                info_msg(self.tr("This object does not support table-like addition.\nUse the schematic instead."))
                 return
 
             # update the view
@@ -1115,7 +1760,7 @@ class DataBaseTableMain(DiagramsMain):
                     elm: ALL_DEV_TYPES | None = model.get_object_at_proxy_row(proxy_row=idx_proxy)
 
                     if elm is None:
-                        info_msg('Choose an element from the table')
+                        info_msg(self.tr('Choose an element from the table'))
 
                     elif elm_type == DeviceType.OverheadLineTypeDevice:
 
@@ -1193,16 +1838,16 @@ class DataBaseTableMain(DiagramsMain):
 
                     else:
 
-                        warning_msg('No editor available.\n'
+                        warning_msg(self.tr('No editor available.\n'
                                     'The values can be changed from the table or '
-                                    'via context menus in the graphical interface.',
-                                    'Edit')
+                                    'via context menus in the graphical interface.'),
+                                    self.tr('Edit'))
                 else:
-                    info_msg('Choose an element from the table')
+                    info_msg(self.tr('Choose an element from the table'))
             else:
-                info_msg('Choose an element from the table')
+                info_msg(self.tr('Choose an element from the table'))
         else:
-            info_msg('Select a catalogue element and then a catalogue object')
+            info_msg(self.tr('Select a catalogue element and then a catalogue object'))
 
     def set_value_to_column(self):
         """
@@ -1218,7 +1863,7 @@ class DataBaseTableMain(DiagramsMain):
                 # update the view
                 self.view_objects_data()
             else:
-                info_msg('Select some element to serve as source to copy', 'Set value to column')
+                info_msg(self.tr('Select some element to serve as source to copy'), self.tr('Set value to column'))
         else:
             pass
 
@@ -1271,7 +1916,7 @@ class DataBaseTableMain(DiagramsMain):
                         self.set_big_bus_marker(buses=buses, color=color)
 
                 else:
-                    info_msg('Select some elements to highlight', 'Highlight')
+                    info_msg(self.tr('Select some elements to highlight'), self.tr('Highlight'))
             else:
                 pass
 
@@ -1304,14 +1949,17 @@ class DataBaseTableMain(DiagramsMain):
                     col_indices = list({index.column() for index in indices})
                     elm = model.get_object_at_proxy_row(proxy_row=0)
                     if elm is None:
-                        info_msg("No object found :(", "Highlight based on property")
+                        info_msg(self.tr("No object found :("), self.tr("Highlight based on property"))
                         return
                     else:
                         pass
                     attr = model.attributes[col_indices[0]]
                     gc_prop = elm.registered_properties[attr]
                     if gc_prop is None:
-                        info_msg(f"The proprty {attr} cannot be found :(", "Highlight based on property")
+                        info_msg(
+                            self.tr("The proprty {property_name} cannot be found :(").format(property_name=attr),
+                            self.tr("Highlight based on property"),
+                        )
                         return
 
                     if gc_prop.tpe in [float, int]:
@@ -1370,11 +2018,11 @@ class DataBaseTableMain(DiagramsMain):
                             self.set_big_bus_marker_colours(buses=buses, colors=colors, tool_tips=None)
 
                         else:
-                            info_msg('The maximum value is 0, so the coloring cannot be applied',
-                                     'Highlight based on property')
+                            info_msg(self.tr('The maximum value is 0, so the coloring cannot be applied'),
+                                     self.tr('Highlight based on property'))
                     else:
-                        info_msg('The selected property must be of a numeric type',
-                                 'Highlight based on property')
+                        info_msg(self.tr('The selected property must be of a numeric type'),
+                                 self.tr('Highlight based on property'))
 
                 else:
                     pass
@@ -1411,13 +2059,13 @@ class DataBaseTableMain(DiagramsMain):
                         logger.add_error("No object found for selected row", device=str(i))
 
                 if logger.size():
-                    logs_window = LogsDialogue("Assign to profile", logger=logger)
+                    logs_window = LogsDialogue(self.tr("Assign to profile"), logger=logger)
                     logs_window.exec()
                 else:
                     lst = ", ".join(attr_list)
                     self.show_info_toast(f"{lst} assigned to profile")
         else:
-            info_msg("Select a cell or a column first", "Assign to profile")
+            info_msg(self.tr("Select a cell or a column first"), self.tr("Assign to profile"))
 
     def objects_histogram_analysis_plot(self):
         """
@@ -1436,7 +2084,7 @@ class DataBaseTableMain(DiagramsMain):
             else:
                 pass
         else:
-            info_msg('Select a data structure')
+            info_msg(self.tr('Select a data structure'))
 
     def objects_smart_search(self):
         """
@@ -1476,14 +2124,14 @@ class DataBaseTableMain(DiagramsMain):
         :return:
         """
         ok = yes_no_question(
-            "This action removes all disconnected devices with no active profile and delete all small islands",
-            "Delete inconsistencies")
+            self.tr("This action removes all disconnected devices with no active profile and delete all small islands"),
+            self.tr("Delete inconsistencies"))
 
         if ok:
             logger = self.delete_shit()
 
             if len(logger) > 0:
-                dlg = LogsDialogue("Delete inconsistencies", logger)
+                dlg = LogsDialogue(self.tr("Delete inconsistencies"), logger)
                 dlg.setModal(True)
                 dlg.exec()
 
@@ -1538,14 +2186,14 @@ class DataBaseTableMain(DiagramsMain):
         Clean the DataBase
         """
 
-        ok = yes_no_question("This action may delete_with_dialogue unused objects and references, \nAre you sure?",
-                             title="DB clean")
+        ok = yes_no_question(self.tr("This action may delete_with_dialogue unused objects and references, \nAre you sure?"),
+                             title=self.tr("DB clean"))
 
         if ok:
             logger = self.circuit.clean()
 
             if len(logger) > 0:
-                dlg = LogsDialogue('DB clean logger', logger)
+                dlg = LogsDialogue(self.tr('DB clean logger'), logger)
                 dlg.exec()
 
     def scale(self):
@@ -1561,8 +2209,8 @@ class DataBaseTableMain(DiagramsMain):
         Call the detect substations logic
         """
 
-        ok = yes_no_question("Do you want to try to detect substations and voltage levels in the grid model?",
-                             "Detect substations")
+        ok = yes_no_question(self.tr("Do you want to try to detect substations and voltage levels in the grid model?"),
+                             self.tr("Detect substations"))
 
         if ok:
             val = 1.0 / (10.0 ** self.ui.rxThresholdSpinBox.value())
@@ -1573,8 +2221,8 @@ class DataBaseTableMain(DiagramsMain):
         """
         Call the detect facilities logic
         """
-        ok = yes_no_question("Do you want to try to detect facilities in the grid model?",
-                             "Detect facilities")
+        ok = yes_no_question(self.tr("Do you want to try to detect facilities in the grid model?"),
+                             self.tr("Detect facilities"))
 
         if ok:
             detect_facilities(grid=self.circuit)
@@ -1585,6 +2233,14 @@ class DataBaseTableMain(DiagramsMain):
         :param pos: Relative click position
         """
         if len(self.ui.dataStructuresTreeView.selectedIndexes()) > 0:
+            context_index: QtCore.QModelIndex = self.ui.dataStructureTableView.indexAt(pos)
+            selected_indexes: List[QtCore.QModelIndex] = self.ui.dataStructureTableView.selectedIndexes()
+
+            if context_index.isValid() and context_index not in selected_indexes:
+                self.ui.dataStructureTableView.setCurrentIndex(context_index)
+            else:
+                pass
+
             elm_type: DeviceType | None = self.get_db_object_selected_type()
 
             context_menu = QtWidgets.QMenu(parent=self.ui.diagramsListView)
@@ -1633,6 +2289,11 @@ class DataBaseTableMain(DiagramsMain):
                               text=self.tr("Copy table"),
                               icon_path=":/Icons/icons/copy.png",
                               function_ptr=self.copy_objects_data)
+
+            gf.add_menu_entry(menu=context_menu,
+                              text=self.tr("Paste column"),
+                              icon_path=":/Icons/icons/paste.png",
+                              function_ptr=self.paste_objects_data)
 
             gf.add_menu_entry(menu=context_menu,
                               text=self.tr("Set value to column"),
@@ -1718,10 +2379,10 @@ class DataBaseTableMain(DiagramsMain):
                 buses_to_replace=buses_to_replace
             )
 
-            dlg3 = CustomQuestionDialogue(title="New substation",
-                                          question="How do you want to represent the merged grid?",
-                                          answer1="Create new diagram",
-                                          answer2="Add to current diagram")
+            dlg3 = CustomQuestionDialogue(title=self.tr("New substation"),
+                                          question=self.tr("How do you want to represent the merged grid?"),
+                                          answer1=self.tr("Create new diagram"),
+                                          answer2=self.tr("Add to current diagram"))
             dlg3.exec()
 
             if dlg3.accepted_answer == 1:
@@ -1784,9 +2445,9 @@ class DataBaseTableMain(DiagramsMain):
         Change values of x,y in the database using the latitude and longitude of the buses
         :return:
         """
-        ok = yes_no_question(text="Setting the database buses x,y position from their latitude and longitude "
+        ok = yes_no_question(text=self.tr("Setting the database buses x,y position from their latitude and longitude "
                                   "values will change the buses values but not the current diagrams. "
-                                  "New diagrams will use the new values",
+                                  "New diagrams will use the new values"),
                              title="")
 
         if ok:
@@ -1802,9 +2463,9 @@ class DataBaseTableMain(DiagramsMain):
         Restore investments to the circuit
         :return:
         """
-        ok = yes_no_question(text="This action will restore the circuit to the state before the last investment "
-                                  "modification. Do you want to proceed?",
-                             title="Restore investments")
+        ok = yes_no_question(text=self.tr("This action will restore the circuit to the state before the last investment "
+                                  "modification. Do you want to proceed?"),
+                             title=self.tr("Restore investments"))
 
         if ok:
             self.circuit.restore_investments()

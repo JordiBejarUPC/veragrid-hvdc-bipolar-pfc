@@ -5,6 +5,10 @@ from __future__ import annotations
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from VeraGrid.Gui.base_python_code_editor import BasePythonCodeEditor
+from VeraGrid.Gui.DynamicModelEditor.dae_code_completion import (
+    DaeCompletionEntry,
+    DaeLanguageContext,
+)
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_properties import (
     BlockEquationDraft,
     DaeCodeDiagnostic,
@@ -128,6 +132,145 @@ def test_dae_editor_owns_diagnostics_and_search_state() -> None:
     application.processEvents()
 
 
+def test_dae_editor_completes_staged_symbols_with_tab() -> None:
+    """Verify Tab inserts only symbols from the safe DAE context.
+
+    :return: None.
+    """
+    application: QtWidgets.QApplication = get_qt_application()
+    _unused_application: QtWidgets.QApplication = application
+    voltage: Var = Var("Vm")
+    angle: Var = Var("Va")
+    editor: DaeCodeEditor = DaeCodeEditor(
+        symbol_namespace=dict((("Vm", voltage), ("Va", angle)))
+    )
+    context: DaeLanguageContext = DaeLanguageContext(
+        namespace=dict((("Vm", voltage), ("Va", angle))),
+        symbol_entries=list((
+            DaeCompletionEntry("Vm", "Vm", "Vm", "Input variable"),
+            DaeCompletionEntry("Va", "Va", "Va", "Input variable"),
+        )),
+        initializable_names=list(),
+        state_names=list(),
+        algebraic_names=list(),
+        differential_names=list(),
+    )
+    editor.set_language_context(context)
+    editor.setPlainText("algebraic_eqs = [\n    0 = V")
+    text_cursor: QtGui.QTextCursor = editor.textCursor()
+    text_cursor.movePosition(QtGui.QTextCursor.MoveOperation.End)
+    editor.setTextCursor(text_cursor)
+    editor.resize(500, 240)
+    editor.show()
+    editor.setFocus()
+    application.processEvents()
+
+    editor._trigger_manual_completion()
+    application.processEvents()
+
+    names: list[str] = list()
+    completion_entry: DaeCompletionEntry
+    for completion_entry in editor.get_completion_entries():
+        names.append(completion_entry.get_name())
+    assert names == list(("Vm", "Va"))
+    assert "print" not in names
+
+    assert editor._qt_completer.popup().isVisible()
+    tab_event: QtGui.QKeyEvent = QtGui.QKeyEvent(
+        QtCore.QEvent.Type.KeyPress,
+        QtCore.Qt.Key.Key_Tab,
+        QtCore.Qt.KeyboardModifier.NoModifier,
+        "\t",
+    )
+    QtWidgets.QApplication.sendEvent(editor, tab_event)
+    assert editor.toPlainText().endswith("Vm")
+    editor.deleteLater()
+    QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
+    application.processEvents()
+
+
+def test_dae_editor_opens_automatic_completion_after_two_characters() -> None:
+    """Verify identifier typing activates context completion without a shortcut.
+
+    :return: None.
+    """
+    application: QtWidgets.QApplication = get_qt_application()
+    _unused_application: QtWidgets.QApplication = application
+    voltage_reference: Var = Var("voltage_reference")
+    voltage_measurement: Var = Var("voltage_measurement")
+    namespace: dict[str, Var] = dict((
+        (voltage_reference.name, voltage_reference),
+        (voltage_measurement.name, voltage_measurement),
+    ))
+    editor: DaeCodeEditor = DaeCodeEditor(symbol_namespace=namespace)
+    editor.setPlainText("algebraic_eqs = [\n    0 = ")
+    text_cursor: QtGui.QTextCursor = editor.textCursor()
+    text_cursor.movePosition(QtGui.QTextCursor.MoveOperation.End)
+    editor.setTextCursor(text_cursor)
+
+    editor.keyPressEvent(
+        QtGui.QKeyEvent(
+            QtCore.QEvent.Type.KeyPress,
+            QtCore.Qt.Key.Key_V,
+            QtCore.Qt.KeyboardModifier.NoModifier,
+            "v",
+        )
+    )
+    assert editor.get_completion_entries() == list()
+    editor.keyPressEvent(
+        QtGui.QKeyEvent(
+            QtCore.QEvent.Type.KeyPress,
+            QtCore.Qt.Key.Key_O,
+            QtCore.Qt.KeyboardModifier.NoModifier,
+            "o",
+        )
+    )
+
+    names: list[str] = list()
+    completion_entry: DaeCompletionEntry
+    for completion_entry in editor.get_completion_entries():
+        names.append(completion_entry.get_name())
+    assert names == list(("voltage_reference", "voltage_measurement"))
+    editor.deleteLater()
+    QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
+    application.processEvents()
+
+
+def test_dae_editor_teardown_detaches_completer_event_targets() -> None:
+    """Remove popup filters before deferred Qt object destruction.
+
+    :return: None.
+    """
+    application: QtWidgets.QApplication = get_qt_application()
+    editor: DaeCodeEditor = DaeCodeEditor()
+    completer: QtWidgets.QCompleter | None = editor._qt_completer
+    assert completer is not None
+    popup: QtWidgets.QAbstractItemView = completer.popup()
+    popup_viewport: QtWidgets.QWidget = popup.viewport()
+
+    editor.prepare_to_delete()
+    editor.prepare_to_delete()
+
+    assert editor._qt_completer is None
+    assert completer.widget() is None
+    assert completer.model() is None
+    assert not editor._completion_shortcut.isEnabled()
+
+    # Events delivered before DeferredDelete must no longer pass through the
+    # Python editor that used to filter the completer popup and its viewport.
+    QtWidgets.QApplication.sendEvent(
+        popup,
+        QtCore.QEvent(QtCore.QEvent.Type.User),
+    )
+    QtWidgets.QApplication.sendEvent(
+        popup_viewport,
+        QtCore.QEvent(QtCore.QEvent.Type.User),
+    )
+    editor.deleteLater()
+    QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
+    application.processEvents()
+
+
 def test_editor_subclasses_survive_repeated_qt_lifecycles() -> None:
     """Guard against Shiboken corruption in the intermediate widget class.
 
@@ -140,6 +283,7 @@ def test_editor_subclasses_survive_repeated_qt_lifecycles() -> None:
         dae_editor: DaeCodeEditor = DaeCodeEditor()
         scripting_editor.setPlainText(str(editor_index))
         dae_editor.setPlainText(str(editor_index))
+        dae_editor.prepare_to_delete()
         scripting_editor.deleteLater()
         dae_editor.deleteLater()
         QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
