@@ -302,7 +302,9 @@ class CandidateGenerationDriver(DriverTemplate):
             cand.new_rate = float(new_rate)
             cand.relieved_violations = list(vlist)
             cand.score = float(sum(v.excess for v in vlist))
-            cand.capex = cand.new_rate ** 2
+            # Priced as replacing the branch with one built to the new rating (see
+            # CandidateGenerationOptions.line_cost_per_mva), not the incremental capacity added.
+            cand.capex = self.options.line_cost_per_mva * cand.new_rate
             candidates.append(cand)
 
         return candidates
@@ -392,7 +394,7 @@ class CandidateGenerationDriver(DriverTemplate):
             cand.name = f"{buses[a].name} - {buses[b].name}"
             cand.relieved_violations = relieved
             cand.score = float(score)
-            cand.capex = cand.rate ** 2
+            cand.capex = self.options.line_cost_per_mva * cand.rate
             candidates.append(cand)
 
         return candidates

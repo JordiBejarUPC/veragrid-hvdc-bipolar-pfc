@@ -35,6 +35,16 @@ DEFAULT_STATIC_GEN_COST_PER_MW: float = 1_000_000.0
 # to Enom rather than split into separate power/energy terms, matching NREL's own costing convention
 # now that Enom already encodes both Pmax and duration.
 DEFAULT_BATTERY_COST_PER_MWH: float = 247000.0
+# New line / upgrade: NOT sourced from a cost guide - unlike the three costs above, published
+# transmission-line cost data (including the MISO guide cited for the shunt reactor) is inherently
+# EUR/MVA-mile, not EUR/MVA alone, because line cost scales with corridor length. This flat
+# EUR/MVA figure is a planning-tool placeholder derived by dividing a typical 345kV AC line's
+# cost (~EUR1-2M/mile, ~1000-1800 MVA rating, i.e. roughly EUR1,000-1,500/MVA-mile) by a
+# representative short corridor length (~10 km), landing in the same order of magnitude as the
+# shunt-reactor EUR/MVAr figure above so no single candidate kind dominates CAPEX by construction.
+# Revisit with an explicit EUR/MVA-km term (distance already computed for corridor selection, see
+# ``CandidateGenerationDriver._nearest_buses``) if a distance-aware model is wanted later.
+DEFAULT_LINE_COST_PER_MVA: float = 13000.0
 
 
 class CandidateGenerationOptions:
@@ -55,7 +65,8 @@ class CandidateGenerationOptions:
                  max_injection_mw: float = DEFAULT_MAX_INJECTION_MW,
                  shunt_cost_per_mvar: float = DEFAULT_SHUNT_COST_PER_MVAR,
                  static_gen_cost_per_mw: float = DEFAULT_STATIC_GEN_COST_PER_MW,
-                 battery_cost_per_mwh: float = DEFAULT_BATTERY_COST_PER_MWH):
+                 battery_cost_per_mwh: float = DEFAULT_BATTERY_COST_PER_MWH,
+                 line_cost_per_mva: float = DEFAULT_LINE_COST_PER_MVA):
         """
         :param top_n_corridors: Number of nearby-substation corridors enumerated as new-line
                                 candidates for each flagged violation (in addition to the parallel
@@ -87,6 +98,11 @@ class CandidateGenerationOptions:
         :param battery_cost_per_mwh: CAPEX unit cost (EUR/MWh) for a battery candidate, applied to
                                      its sized ``Enom`` (which already encodes both ``Pmax`` and
                                      ``battery_duration_hours``).
+        :param line_cost_per_mva: CAPEX unit cost (EUR/MVA) for a new-line or upgrade candidate,
+                                  applied to the candidate's rating (``rate`` for a new line,
+                                  ``new_rate`` for an upgrade - the full post-upgrade rating, since
+                                  an upgrade is modelled as replacing the branch with one built to
+                                  the new rating, not adding incremental capacity).
         """
         self.top_n_corridors: int = int(top_n_corridors)
         self.base_overload_threshold: float = float(base_overload_threshold)
@@ -101,3 +117,4 @@ class CandidateGenerationOptions:
         self.shunt_cost_per_mvar: float = float(shunt_cost_per_mvar)
         self.static_gen_cost_per_mw: float = float(static_gen_cost_per_mw)
         self.battery_cost_per_mwh: float = float(battery_cost_per_mwh)
+        self.line_cost_per_mva: float = float(line_cost_per_mva)
