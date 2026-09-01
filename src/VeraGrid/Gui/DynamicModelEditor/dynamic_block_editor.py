@@ -14,6 +14,7 @@ from PySide6.QtCore import Qt, QPointF, Signal
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
 from VeraGridEngine.Devices.Substation.bus import Bus
+from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 from VeraGridEngine.Utils.Symbolic.rms_measurements_functions import (measurement_vars_dict,
@@ -3567,10 +3568,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         bus_vars = self.add_connection_vars(bus)
 
         # get p and q variables
-        if bus.is_dc:
-            P, _ = self.get_p_q_vars(bus)
-        else:
-            pq_vars = self.get_p_q_vars(bus)
+        pq_vars = self.get_p_q_vars(bus)
 
         # build measurement block
 
@@ -3586,10 +3584,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                                                        nominal_frequency)
         elif block_type == BlockType.MEASUREMENTS_CURRENT_FROM_PQ:
             block, vars_list = build_rms_current_meter_outputs_from_pq(self.var_factory, bus_vars[0], bus_vars[1],
-                                                                       P, Q)
+                                                                       pq_vars[0], pq_vars[1])
         elif block_type == BlockType.MEASUREMENTS_CURRENT_FROM_DC:
             block, vars_list = build_rms_current_meter_outputs_from_dc(self.var_factory, bus_vars[0],
-                                                                       P)
+                                                                       pq_vars[0])
         elif block_type == BlockType.MEASUREMENTS_VOLTAGE_ANGLE:
             block = Block()
             vars_list = bus_vars
@@ -5910,7 +5908,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         # get bus variables
 
-        if self.api_object.bus.is_dc:
+        if bus.is_dc:
             Vdc, _, _ = get_bus_rms_algebraic_vars(bus.rms_model)
             if Vdc is not None:
                 bus_vars.append(Vdc)
@@ -6289,6 +6287,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return:
         """
         # specs: List[ConnectionVarSpec]
+
+        if bus.rms_model.empty():
+            initialize_bus_rms(bus=bus, vf=self.var_factory)
+        else:
+            pass
 
         if self.mode == DynamicSimulationMode.RMS:
             bus_vars = self.add_connection_vars_rms(bus)

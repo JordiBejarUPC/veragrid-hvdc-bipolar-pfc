@@ -150,12 +150,12 @@ def build_rms_current_meter_outputs_from_pq(var_factory: VarFactory,
 
     ur = var_factory.add_var(name="ur", reference=VarPowerFlowReferenceType.UR)
     ui = var_factory.add_var(name="ui", reference=VarPowerFlowReferenceType.UI)
-    ir = var_factory.add_var(name="ui", reference=VarPowerFlowReferenceType.UI)
-    ii = var_factory.add_var(name="ui", reference=VarPowerFlowReferenceType.UI)
-    ir_b = var_factory.add_var(name="ui", reference=VarPowerFlowReferenceType.UI)
-    ii_b = var_factory.add_var(name="ui", reference=VarPowerFlowReferenceType.UI)
-    ir_c = var_factory.add_var(name="ui", reference=VarPowerFlowReferenceType.UI)
-    ii_c = var_factory.add_var(name="ui", reference=VarPowerFlowReferenceType.UI)
+    ir = var_factory.add_var(name="ir", reference=VarPowerFlowReferenceType.UI)
+    ii = var_factory.add_var(name="ii", reference=VarPowerFlowReferenceType.UI)
+    ir_b = var_factory.add_var(name="ir_b", reference=VarPowerFlowReferenceType.UI)
+    ii_b = var_factory.add_var(name="ii_b", reference=VarPowerFlowReferenceType.UI)
+    ir_c = var_factory.add_var(name="ir_c", reference=VarPowerFlowReferenceType.UI)
+    ii_c = var_factory.add_var(name="ii_c", reference=VarPowerFlowReferenceType.UI)
 
 
     variables = [ur, ui, ir, ii, ir_b, ii_b, ir_c, ii_c]
