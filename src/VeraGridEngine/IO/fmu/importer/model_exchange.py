@@ -34,7 +34,7 @@ from VeraGridEngine.IO.fmu.importer.bindings import (
 )
 from VeraGridEngine.IO.fmu.importer.device_config import load_fmu_me_device_config, restore_fmu_me_spec_from_record
 from VeraGridEngine.IO.fmu.importer.errors import FmuModeError
-from VeraGridEngine.IO.fmu.importer.experimental_cs import (
+from VeraGridEngine.IO.fmu.importer.co_simulation import (
     _build_template_block,
     _ensure_emt_external_mapping_keys,
 )
@@ -1449,7 +1449,7 @@ def build_fmu_me_device_spec(
             pass
     else:
         if metadata.fmi_version_family == FmiVersion.FMI_3_0:
-            resolved_mode = metadata.select_declared_interface(config.preferred_mode)
+            resolved_mode = config.resolve_execution_mode(metadata)
             float64_profile = resolve_fmi_three_worker_float64_profile(metadata)
             validate_fmi_three_model_exchange_worker_profile(
                 metadata=metadata,

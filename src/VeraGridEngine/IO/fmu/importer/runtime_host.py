@@ -24,6 +24,7 @@ from VeraGridEngine.IO.fmu.importer.staging import (
     revalidate_fmu_staging_area,
     stage_fmu_source,
 )
+from VeraGridEngine.enumerations import FmiVersion
 
 try:
     import fmpy
@@ -433,9 +434,19 @@ def open_fmu_runtime_host(config: FmuImportConfig) -> FmuRuntimeHost:
 
     :param config: Runtime configuration for the FMU host.
     :return: Open runtime host.
+    :raises FmuModeError: If the FMU is not an FMI 2 model.
     """
 
     metadata: FmuModelDescription = read_fmu_model_description(config.fmu_path)
+    # This in-process FMPy owner is intentionally limited to FMI 2. FMI 3 is
+    # executed only through the bounded worker session, so reject it before
+    # dependency checks, native validation, or private staging side effects.
+    if metadata.fmi_version_family == FmiVersion.FMI_2_0:
+        pass
+    else:
+        raise FmuModeError(
+            f"FmuRuntimeHost supports FMI 2 execution only, got FMI {metadata.fmi_version}"
+        )
     mode: FmuInterfaceMode = config.resolve_execution_mode(metadata)
     fmpy_module: Any = _require_fmpy_module()
     if metadata.inspection_receipt is None:

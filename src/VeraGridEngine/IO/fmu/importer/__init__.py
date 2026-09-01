@@ -31,6 +31,7 @@ from VeraGridEngine.IO.fmu.importer.model_description import (
     read_fmu_model_description,
 )
 from VeraGridEngine.IO.fmu.importer.runtime_host import FmuRuntimeHost, open_fmu_runtime_host
+from VeraGridEngine.IO.fmu.importer.runtime_worker_host import FmiThreeWorkerHostLimits
 from VeraGridEngine.IO.fmu.importer.device_config import (
     FmuCsDeviceConfigRecord,
     FmuMeDeviceConfigRecord,
@@ -39,7 +40,7 @@ from VeraGridEngine.IO.fmu.importer.device_config import (
     load_fmu_cs_device_config,
     load_fmu_me_device_config,
 )
-from VeraGridEngine.IO.fmu.importer.experimental_cs import (
+from VeraGridEngine.IO.fmu.importer.co_simulation import (
     FmuCsDeviceAdapter,
     FmuCsDeviceSpec,
     FmuCsDomain,
@@ -53,7 +54,7 @@ from VeraGridEngine.IO.fmu.importer.experimental_cs import (
     register_emt_fmu_cs_device,
     register_rms_fmu_cs_device,
 )
-from VeraGridEngine.IO.fmu.importer.experimental_me import (
+from VeraGridEngine.IO.fmu.importer.model_exchange import (
     FmuMeDeviceAdapter,
     FmuMeDeviceSpec,
     FmuMeDomain,
@@ -106,6 +107,7 @@ __all__ = [
     "read_fmu_model_description",
     "FmuRuntimeHost",
     "open_fmu_runtime_host",
+    "FmiThreeWorkerHostLimits",
     "FmuCsDeviceConfigRecord",
     "FmuMeDeviceConfigRecord",
     "dump_fmu_cs_device_config",

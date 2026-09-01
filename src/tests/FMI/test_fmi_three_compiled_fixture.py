@@ -16,13 +16,21 @@ from fmpy.model_description import ModelDescription
 from fmpy.template import create_fmu
 import pytest
 
+from VeraGridEngine.Devices.Dynamic.fmu_template import FmuTemplate
+from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from tests.FMI.fmi_three_compiled_fixture import (
     FmiThreeCompiledFixtureProfile,
     _create_fmi_three_scalar_model_description,
     _install_fmi_three_behavior,
 )
 from VeraGridEngine.IO.fmu.importer.bindings import FmuImportConfig
-from VeraGridEngine.IO.fmu.importer.errors import FmuModeError
+from VeraGridEngine.IO.fmu.importer import FmiThreeWorkerHostLimits
+from VeraGridEngine.IO.fmu.importer.device_config import (
+    FmuCsDeviceConfigRecord,
+    FmuMeDeviceConfigRecord,
+    load_fmu_cs_device_config,
+    load_fmu_me_device_config,
+)
 from VeraGridEngine.IO.fmu.importer.inspection import FmuInspectionResult, inspect_fmu
 from VeraGridEngine.IO.fmu.importer.model_description import (
     FmuModelDescription,
@@ -38,7 +46,13 @@ from VeraGridEngine.IO.fmu.importer.native_binary import (
 from VeraGridEngine.IO.fmu.importer.runtime_profile import (
     validate_fmi_three_co_simulation_worker_profile,
 )
-from VeraGridEngine.enumerations import FmuInterfaceMode
+from VeraGridEngine.IO.fmu.importer.template_api import configure_fmu_template
+from VeraGridEngine.enumerations import (
+    DeviceType,
+    FmuInterfaceMode,
+    FmuTemplateDomain,
+    FmuTemplateMode,
+)
 
 
 def _open_fmi_three_reference_runtime(
@@ -152,14 +166,104 @@ def test_compiled_fmi_three_fmu_passes_inspection_profile_and_preflight(
         in packaged_model_source
     )
 
-    # This inspection gate proves the artifact and preflight. The separate
-    # direct scalar smoke test does not authorize a product execution path;
-    # resolve_execution_mode remains blocked until an approved later increment.
+    # Interface selection is now shared by FMI 2 and FMI 3. Worker-profile
+    # validation remains a separate responsibility of the concrete consumer.
     import_config: FmuImportConfig = FmuImportConfig(
         fmu_path=compiled_fmi_three_scalar_co_simulation_fmu
     )
-    with pytest.raises(FmuModeError, match="worker execution is not connected yet"):
+    assert (
         import_config.resolve_execution_mode(metadata)
+        == FmuInterfaceMode.CO_SIMULATION
+    )
+
+
+@pytest.mark.parametrize(
+    ("domain", "mode"),
+    (
+        (FmuTemplateDomain.RMS, FmuTemplateMode.CO_SIMULATION),
+        (FmuTemplateDomain.RMS, FmuTemplateMode.MODEL_EXCHANGE),
+        (FmuTemplateDomain.EMT, FmuTemplateMode.CO_SIMULATION),
+        (FmuTemplateDomain.EMT, FmuTemplateMode.MODEL_EXCHANGE),
+    ),
+)
+def test_compiled_fmi_three_fmu_configures_supported_templates(
+    compiled_fmi_three_scalar_co_simulation_fmu: Path,
+    domain: FmuTemplateDomain,
+    mode: FmuTemplateMode,
+) -> None:
+    """Persist one explicit worker policy through every FMI 3 template path.
+
+    :param compiled_fmi_three_scalar_co_simulation_fmu: Dual-interface native
+        FMI 3 scalar fixture.
+    :param domain: VeraGrid simulation domain selected by the test case.
+    :param mode: FMI interface selected by the test case.
+    :return: None.
+    """
+
+    worker_limits: FmiThreeWorkerHostLimits = FmiThreeWorkerHostLimits(
+        maximum_frame_size=65536,
+        maximum_float64_values_per_request=32,
+        response_timeout_seconds=3.0,
+        graceful_join_timeout_seconds=1.0,
+        terminate_join_timeout_seconds=0.5,
+        kill_join_timeout_seconds=0.25,
+    )
+    template: FmuTemplate = FmuTemplate(name="")
+    var_factory: VarFactory = VarFactory(
+        name=f"FmiThree{domain.value}{mode.value}TemplateFactory"
+    )
+    configured_template: FmuTemplate = configure_fmu_template(
+        template=template,
+        var_factory=var_factory,
+        fmu_path=compiled_fmi_three_scalar_co_simulation_fmu,
+        device_tpe=DeviceType.LoadDevice,
+        domain=domain,
+        mode=mode,
+        worker_limits=worker_limits,
+    )
+    restored_limits: FmiThreeWorkerHostLimits | None
+    if mode == FmuTemplateMode.CO_SIMULATION:
+        cs_record: FmuCsDeviceConfigRecord | None = load_fmu_cs_device_config(
+            configured_template.serialized_config
+        )
+        if cs_record is not None:
+            restored_limits = cs_record.worker_limits
+        else:
+            raise AssertionError("FMI 3 Co-Simulation template record was not restored")
+    else:
+        me_record: FmuMeDeviceConfigRecord | None = load_fmu_me_device_config(
+            configured_template.serialized_config
+        )
+        if me_record is not None:
+            restored_limits = me_record.worker_limits
+        else:
+            raise AssertionError("FMI 3 Model Exchange template record was not restored")
+    if restored_limits is not None:
+        pass
+    else:
+        raise AssertionError("FMI 3 template record lost its explicit worker limits")
+    assert configured_template is template
+    assert restored_limits.maximum_frame_size == worker_limits.maximum_frame_size
+    assert (
+        restored_limits.maximum_float64_values_per_request
+        == worker_limits.maximum_float64_values_per_request
+    )
+    assert (
+        restored_limits.response_timeout_seconds
+        == worker_limits.response_timeout_seconds
+    )
+    assert (
+        restored_limits.graceful_join_timeout_seconds
+        == worker_limits.graceful_join_timeout_seconds
+    )
+    assert (
+        restored_limits.terminate_join_timeout_seconds
+        == worker_limits.terminate_join_timeout_seconds
+    )
+    assert (
+        restored_limits.kill_join_timeout_seconds
+        == worker_limits.kill_join_timeout_seconds
+    )
 
 
 def test_compiled_fmi_three_fmu_supports_deterministic_scalar_steps(

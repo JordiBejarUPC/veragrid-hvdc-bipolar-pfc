@@ -632,9 +632,7 @@ def build_fmu_cs_device_spec(
             pass
     else:
         if metadata.fmi_version_family == FmiVersion.FMI_3_0:
-            resolved_mode = metadata.select_declared_interface(
-                config.preferred_mode
-            )
+            resolved_mode = config.resolve_execution_mode(metadata)
             float64_profile = resolve_fmi_three_worker_float64_profile(metadata)
             validate_fmi_three_co_simulation_worker_profile(
                 metadata=metadata,
@@ -701,7 +699,7 @@ def build_fmu_cs_device_spec(
             configuration_uint64_values=configuration_uint64_values,
         )
     else:
-        raise ValueError(f"Experimental CS device blocks require a Co-Simulation FMU, got {resolved_mode.value}")
+        raise ValueError(f"Co-Simulation device blocks require a Co-Simulation FMU, got {resolved_mode.value}")
 
 
 def _build_output_binding_block_data(

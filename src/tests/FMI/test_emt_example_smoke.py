@@ -10,6 +10,7 @@ from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.IO.fmu.exporter.build import host_build_capable
 from VeraGridEngine.IO.fmu.exporter.compat import Block, Var
+from VeraGridEngine.IO.fmu.importer.bindings import FmuRefBinding
 from VeraGridEngine.IO.fmu.importer.examples.common import (
     _build_emt_demo_grid,
     _build_power_flow_options,
@@ -18,8 +19,8 @@ from VeraGridEngine.IO.fmu.importer.examples.common import (
     run_emt_cs_example,
     run_emt_me_example,
 )
-from VeraGridEngine.IO.fmu.importer.experimental_cs import FmuRefBinding, _build_template_block
-from VeraGridEngine.IO.fmu.importer.experimental_me import FmuMeIntegrationMethod
+from VeraGridEngine.IO.fmu.importer.co_simulation import _build_template_block
+from VeraGridEngine.IO.fmu.importer.model_exchange import FmuMeIntegrationMethod
 from VeraGridEngine.IO.fmu.importer.model_description import FmuInterfaceMode
 from VeraGridEngine.IO.fmu.importer.user_api import (
     FmuDeviceAttachmentRequest,

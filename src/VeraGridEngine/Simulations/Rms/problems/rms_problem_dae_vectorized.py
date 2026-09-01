@@ -35,14 +35,14 @@ from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Utils.Symbolic.jit_compiler import RMSCompiler, RMSCompilerVec
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import get_bus_rms_algebraic_vars
 from VeraGridEngine.Utils.procedural_logic import build_boundary_updater_from_block
-from VeraGridEngine.IO.fmu.importer.experimental_cs import (
+from VeraGridEngine.IO.fmu.importer.co_simulation import (
     advance_rms_fmu_cs_devices,
     align_rms_fmu_cs_device_output_parameters,
     close_rms_fmu_cs_devices,
     initialize_rms_fmu_cs_devices,
     register_rms_fmu_cs_device,
 )
-from VeraGridEngine.IO.fmu.importer.experimental_me import (
+from VeraGridEngine.IO.fmu.importer.model_exchange import (
     advance_rms_fmu_me_devices,
     close_rms_fmu_me_devices,
     get_next_rms_fmu_me_event_time,

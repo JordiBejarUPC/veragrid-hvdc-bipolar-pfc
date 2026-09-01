@@ -31,13 +31,13 @@ from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Utils.Symbolic.jit_compiler import RMSCompiler
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Simulations.driver_template import DummySignal
-from VeraGridEngine.IO.fmu.importer.experimental_cs import (
+from VeraGridEngine.IO.fmu.importer.co_simulation import (
     advance_rms_fmu_cs_devices,
     close_rms_fmu_cs_devices,
     initialize_rms_fmu_cs_devices,
     register_rms_fmu_cs_device,
 )
-from VeraGridEngine.IO.fmu.importer.experimental_me import (
+from VeraGridEngine.IO.fmu.importer.model_exchange import (
     advance_rms_fmu_me_devices,
     close_rms_fmu_me_devices,
     get_next_rms_fmu_me_event_time,

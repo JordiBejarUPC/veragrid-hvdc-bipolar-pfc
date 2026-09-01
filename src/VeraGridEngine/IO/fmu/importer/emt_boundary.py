@@ -10,8 +10,8 @@ from typing import Any
 import numpy as np
 
 from VeraGridEngine.enumerations import VarPowerFlowReferenceType
-from VeraGridEngine.IO.fmu.importer.experimental_cs import FmuCsDeviceAdapter
-from VeraGridEngine.IO.fmu.importer.experimental_me import EmtFmuMeDeviceAdapter
+from VeraGridEngine.IO.fmu.importer.co_simulation import FmuCsDeviceAdapter
+from VeraGridEngine.IO.fmu.importer.model_exchange import EmtFmuMeDeviceAdapter
 
 
 class CompositeEmtBoundaryUpdater:

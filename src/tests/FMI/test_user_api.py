@@ -17,6 +17,7 @@ from VeraGridEngine.IO.fmu.importer.bindings import (
     FmiThreeFloat64ConfigurationValue,
     FmiThreeUInt64ConfigurationValue,
     FmuImportConfig,
+    FmuRefBinding,
 )
 from VeraGridEngine.IO.fmu.importer.device_config import (
     FmuCsDeviceConfigRecord,
@@ -31,14 +32,13 @@ from VeraGridEngine.IO.fmu.importer.errors import FmuImportError, FmuModeError
 from VeraGridEngine.IO.fmu.importer.emt_boundary import (
     CompositeEmtBoundaryUpdater,
 )
-from VeraGridEngine.IO.fmu.importer.experimental_cs import (
+from VeraGridEngine.IO.fmu.importer.co_simulation import (
     FmuCsDeviceAdapter,
     FmuCsDeviceSpec,
     FmuCsDomain,
-    FmuRefBinding,
     build_fmu_cs_device_spec,
 )
-from VeraGridEngine.IO.fmu.importer.experimental_me import (
+from VeraGridEngine.IO.fmu.importer.model_exchange import (
     FmuMeDeviceAdapter,
     FmuMeDeviceSpec,
     FmuMeDomain,
@@ -1755,7 +1755,7 @@ def test_fmi_three_me_localization_worker_call_bound() -> None:
         / "IO"
         / "fmu"
         / "importer"
-        / "experimental_me.py"
+        / "model_exchange.py"
     )
     syntax_tree: ast.Module = ast.parse(source_path.read_text(encoding="utf-8"))
     adapter_class: ast.ClassDef | None = None

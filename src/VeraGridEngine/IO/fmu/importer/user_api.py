@@ -16,6 +16,7 @@ from VeraGridEngine.IO.fmu.importer.bindings import (
     FmiThreeFloat64ConfigurationValue,
     FmiThreeUInt64ConfigurationValue,
     FmuImportConfig,
+    FmuRefBinding,
     _validate_fmi_three_configuration_values,
 )
 from VeraGridEngine.IO.fmu.importer.device_api import (
@@ -24,8 +25,7 @@ from VeraGridEngine.IO.fmu.importer.device_api import (
     attach_rms_fmu_cs_device,
     attach_rms_fmu_me_device,
 )
-from VeraGridEngine.IO.fmu.importer.experimental_cs import FmuRefBinding
-from VeraGridEngine.IO.fmu.importer.experimental_me import FmuMeIntegrationMethod
+from VeraGridEngine.IO.fmu.importer.model_exchange import FmuMeIntegrationMethod
 from VeraGridEngine.IO.fmu.importer.model_description import FmuInterfaceMode
 from VeraGridEngine.IO.fmu.importer.runtime_worker_host import (
     FmiThreeWorkerHostLimits,

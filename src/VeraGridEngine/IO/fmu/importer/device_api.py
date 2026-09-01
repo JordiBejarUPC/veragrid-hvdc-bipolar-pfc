@@ -14,6 +14,7 @@ from VeraGridEngine.IO.fmu.importer.bindings import (
     FmiThreeFloat64ConfigurationValue,
     FmiThreeUInt64ConfigurationValue,
     FmuImportConfig,
+    FmuRefBinding,
 )
 from VeraGridEngine.IO.fmu.importer.device_config import (
     build_me_record_from_device_arguments,
@@ -21,8 +22,8 @@ from VeraGridEngine.IO.fmu.importer.device_config import (
     dump_fmu_cs_device_config,
     dump_fmu_me_device_config,
 )
-from VeraGridEngine.IO.fmu.importer.experimental_cs import FmuCsDomain, FmuRefBinding, build_emt_fmu_cs_injection_template, build_rms_fmu_cs_injection_template
-from VeraGridEngine.IO.fmu.importer.experimental_me import FmuMeDomain, FmuMeIntegrationMethod, build_emt_fmu_me_injection_template, build_rms_fmu_me_injection_template
+from VeraGridEngine.IO.fmu.importer.co_simulation import FmuCsDomain, build_emt_fmu_cs_injection_template, build_rms_fmu_cs_injection_template
+from VeraGridEngine.IO.fmu.importer.model_exchange import FmuMeDomain, FmuMeIntegrationMethod, build_emt_fmu_me_injection_template, build_rms_fmu_me_injection_template
 from VeraGridEngine.IO.fmu.importer.runtime_worker_host import (
     FmiThreeWorkerHostLimits,
 )

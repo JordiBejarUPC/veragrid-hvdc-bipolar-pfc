@@ -249,8 +249,15 @@ def test_fmi_three_constant_array_dimensions_preserve_order_and_start_values(
         == FmiThreeWorkerFloat64Profile.CONSTANT_ARRAY
     )
     config: FmuImportConfig = FmuImportConfig(fmu_path=fmu_path)
-    with pytest.raises(FmuModeError, match="arrays are outside"):
+    assert (
         config.resolve_execution_mode(metadata)
+        == FmuInterfaceMode.CO_SIMULATION
+    )
+    with pytest.raises(FmuModeError, match="arrays are outside"):
+        validate_fmi_three_co_simulation_worker_profile(
+            metadata=metadata,
+            preferred_mode=config.preferred_mode,
+        )
 
 
 def test_fmi_three_referenced_dimension_preserves_typed_uint64_owner(
@@ -1007,8 +1014,10 @@ def test_scalar_fmi3_fixture_preserves_worker_capabilities_and_gate(tmp_path: Pa
     assert capabilities.fixed_internal_step_size == pytest.approx(0.001)
 
     config: FmuImportConfig = FmuImportConfig(fmu_path=fmu_path)
-    with pytest.raises(FmuModeError, match="worker execution is not connected yet"):
+    assert (
         config.resolve_execution_mode(metadata)
+        == FmuInterfaceMode.CO_SIMULATION
+    )
 
 
 def test_fmi_three_metadata_preserves_supported_worker_capabilities(tmp_path: Path) -> None:
@@ -1058,8 +1067,10 @@ def test_fmi_three_metadata_preserves_supported_worker_capabilities(tmp_path: Pa
     assert capabilities.has_event_mode
 
     config: FmuImportConfig = FmuImportConfig(fmu_path=fmu_path)
-    with pytest.raises(FmuModeError, match="worker execution is not connected yet"):
+    assert (
         config.resolve_execution_mode(metadata)
+        == FmuInterfaceMode.CO_SIMULATION
+    )
 
 
 def test_fmi_three_rejects_intermediate_early_return_without_intermediate_update(
@@ -1110,8 +1121,15 @@ def test_fmi_three_worker_profile_rejects_required_external_execution_tool(
     metadata: FmuModelDescription = read_fmu_model_description(fmu_path)
     config: FmuImportConfig = FmuImportConfig(fmu_path=fmu_path)
 
-    with pytest.raises(FmuModeError, match="external execution tool"):
+    assert (
         config.resolve_execution_mode(metadata)
+        == FmuInterfaceMode.CO_SIMULATION
+    )
+    with pytest.raises(FmuModeError, match="external execution tool"):
+        validate_fmi_three_co_simulation_worker_profile(
+            metadata=metadata,
+            preferred_mode=config.preferred_mode,
+        )
 
 
 def test_fmi_three_worker_profile_rejects_float32(
@@ -1134,8 +1152,15 @@ def test_fmi_three_worker_profile_rejects_float32(
     )
     float32_metadata: FmuModelDescription = read_fmu_model_description(float32_path)
     float32_config: FmuImportConfig = FmuImportConfig(fmu_path=float32_path)
-    with pytest.raises(FmuModeError, match="supports Float64 variables"):
+    assert (
         float32_config.resolve_execution_mode(float32_metadata)
+        == FmuInterfaceMode.CO_SIMULATION
+    )
+    with pytest.raises(FmuModeError, match="supports Float64 variables"):
+        validate_fmi_three_co_simulation_worker_profile(
+            metadata=float32_metadata,
+            preferred_mode=float32_config.preferred_mode,
+        )
 
 
 def test_fmi_three_worker_profile_accepts_float64_structural_parameters(
@@ -1191,7 +1216,7 @@ def test_fmi_three_worker_profile_accepts_float64_structural_parameters(
 
 
 def test_fmi_three_worker_profile_rejects_model_exchange(tmp_path: Path) -> None:
-    """Verify the initial worker gate rejects FMI 3 Model Exchange.
+    """Verify the generic selector resolves declared FMI 3 Model Exchange.
 
     :param tmp_path: Isolated fixture directory provided by pytest.
     :return: None.
@@ -1207,8 +1232,10 @@ def test_fmi_three_worker_profile_rejects_model_exchange(tmp_path: Path) -> None
         preferred_mode=FmuInterfaceMode.MODEL_EXCHANGE,
     )
 
-    with pytest.raises(FmuModeError, match="supports only Co-Simulation"):
+    assert (
         config.resolve_execution_mode(metadata)
+        == FmuInterfaceMode.MODEL_EXCHANGE
+    )
 
 
 @pytest.mark.parametrize(
@@ -1618,8 +1645,15 @@ def test_fmi3_external_tool_requirement_cannot_bypass_execution_gate(
     )
     metadata: FmuModelDescription = read_fmu_model_description(external_tool_path)
     config: FmuImportConfig = FmuImportConfig(fmu_path=external_tool_path)
-    with pytest.raises(FmuModeError, match="external execution tool"):
+    assert (
         config.resolve_execution_mode(metadata)
+        == FmuInterfaceMode.CO_SIMULATION
+    )
+    with pytest.raises(FmuModeError, match="external execution tool"):
+        validate_fmi_three_co_simulation_worker_profile(
+            metadata=metadata,
+            preferred_mode=config.preferred_mode,
+        )
 
 
 def test_fmi3_validates_fixed_internal_step_size(tmp_path: Path) -> None:

@@ -39,8 +39,8 @@ from VeraGridEngine.enumerations import (
 from VeraGridEngine.IO.fmu.exporter.api import export_fmu
 from VeraGridEngine.IO.fmu.exporter.config import ExportConfig as CsExportConfig, detect_target_platform as detect_cs_target_platform
 from VeraGridEngine.IO.fmu.exporter.compat import Block, Const, Var
-from VeraGridEngine.IO.fmu.importer.experimental_cs import FmuRefBinding
-from VeraGridEngine.IO.fmu.importer.experimental_me import FmuMeIntegrationMethod
+from VeraGridEngine.IO.fmu.importer.bindings import FmuRefBinding
+from VeraGridEngine.IO.fmu.importer.model_exchange import FmuMeIntegrationMethod
 from VeraGridEngine.IO.fmu.importer.model_description import FmuInterfaceMode
 from VeraGridEngine.IO.fmu.importer.user_api import (
     FmuDeviceAttachmentRequest,

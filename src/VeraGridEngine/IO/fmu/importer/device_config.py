@@ -600,7 +600,7 @@ def load_fmu_cs_device_config(data: str | None) -> FmuCsDeviceConfigRecord | Non
                 _load_fmi_three_worker_limits(worker_limits_payload)
             )
             if config_version in (1, 2, 3):
-                from VeraGridEngine.IO.fmu.importer.experimental_cs import FmuCsDomain, FmuRefBinding
+                from VeraGridEngine.IO.fmu.importer.co_simulation import FmuCsDomain
 
                 input_bindings: list[Any] = list()
                 output_bindings: list[Any] = list()
@@ -789,7 +789,7 @@ def restore_fmu_cs_spec_from_record(record: FmuCsDeviceConfigRecord, block: Bloc
     :return: Runtime FMU device specification.
     """
 
-    from VeraGridEngine.IO.fmu.importer.experimental_cs import build_fmu_cs_device_spec
+    from VeraGridEngine.IO.fmu.importer.co_simulation import build_fmu_cs_device_spec
 
     event_params_by_name: dict[str, Any] = dict()
     event_parameter: Any
@@ -916,8 +916,7 @@ def load_fmu_me_device_config(data: str | None) -> FmuMeDeviceConfigRecord | Non
             )
 
             if config_version in (1, 2, 3, 4):
-                from VeraGridEngine.IO.fmu.importer.experimental_cs import FmuRefBinding
-                from VeraGridEngine.IO.fmu.importer.experimental_me import FmuMeDomain
+                from VeraGridEngine.IO.fmu.importer.model_exchange import FmuMeDomain
 
                 input_bindings: list[Any] = list()
                 output_bindings: list[Any] = list()
@@ -1111,7 +1110,7 @@ def restore_fmu_me_spec_from_record(record: FmuMeDeviceConfigRecord, block: Bloc
     :return: Runtime FMU ME device specification.
     """
 
-    from VeraGridEngine.IO.fmu.importer.experimental_me import FmuMeDomain, FmuMeIntegrationMethod, build_fmu_me_device_spec
+    from VeraGridEngine.IO.fmu.importer.model_exchange import FmuMeDomain, FmuMeIntegrationMethod, build_fmu_me_device_spec
 
     integration_method: FmuMeIntegrationMethod = FmuMeIntegrationMethod(
         record.integration_method

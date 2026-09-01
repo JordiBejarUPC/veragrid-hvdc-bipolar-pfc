@@ -15,7 +15,7 @@ dynamically imports source code.
 - `runtime_coordinator.py` is the sole owner of the FMI 3 Model Exchange
   accepted/candidate transaction, native checkpoint, Event Mode fixpoint, and
   time-event request.
-- `experimental_me.py` owns the device adapters, endpoint-domain detection,
+- `model_exchange.py` owns the device adapters, endpoint-domain detection,
   state-event localization, and cross-participant RMS orchestration.
 - `emt_boundary.py` connects the same adapter transaction to the
   solver-independent EMT boundary protocol.
