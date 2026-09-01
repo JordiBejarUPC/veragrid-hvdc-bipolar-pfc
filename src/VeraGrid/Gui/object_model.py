@@ -138,6 +138,8 @@ class DeviceSelectorDelegate(QtWidgets.QItemDelegate):
         :return: None.
         """
         del index
+        from VeraGrid.Gui.general_dialogues import DeviceSelectorPanel
+
         view: QtWidgets.QWidget | None = option.widget
         size: QtCore.QSize = QtCore.QSize(500, 400)
 
@@ -145,11 +147,54 @@ class DeviceSelectorDelegate(QtWidgets.QItemDelegate):
             editor.setGeometry(QtCore.QRect(option.rect.topLeft(), size))
         else:
             if isinstance(view, QtWidgets.QAbstractItemView):
-                top_left: QtCore.QPoint = view.viewport().mapToGlobal(option.rect.bottomLeft())
+                cell_bottom_left: QtCore.QPoint = view.viewport().mapToGlobal(option.rect.bottomLeft())
+                cell_top_left: QtCore.QPoint = view.viewport().mapToGlobal(option.rect.topLeft())
             else:
-                top_left = view.mapToGlobal(option.rect.bottomLeft())
+                cell_bottom_left = view.mapToGlobal(option.rect.bottomLeft())
+                cell_top_left = view.mapToGlobal(option.rect.topLeft())
 
-            editor.setGeometry(QtCore.QRect(top_left, size))
+            screen: QtGui.QScreen | None = QtGui.QGuiApplication.screenAt(cell_bottom_left)
+
+            if screen is None:
+                screen = QtGui.QGuiApplication.primaryScreen()
+            else:
+                pass
+
+            if screen is not None:
+                available_geometry: QtCore.QRect = screen.availableGeometry()
+                width: int = min(size.width(), available_geometry.width())
+                height: int = min(size.height(), available_geometry.height())
+                top_left: QtCore.QPoint = QtCore.QPoint(cell_bottom_left)
+                grip_at_top: bool = False
+
+                if top_left.y() + height > available_geometry.bottom():
+                    top_left.setY(cell_top_left.y() - height)
+                    grip_at_top = True
+                else:
+                    pass
+
+                if top_left.x() + width > available_geometry.right():
+                    top_left.setX(available_geometry.right() - width)
+                else:
+                    pass
+
+                if top_left.x() < available_geometry.left():
+                    top_left.setX(available_geometry.left())
+                else:
+                    pass
+
+                if top_left.y() < available_geometry.top():
+                    top_left.setY(available_geometry.top())
+                else:
+                    pass
+
+                editor.setGeometry(QtCore.QRect(top_left, QtCore.QSize(width, height)))
+                if isinstance(editor, DeviceSelectorPanel):
+                    editor.set_resize_grip_at_top(value=grip_at_top)
+                else:
+                    pass
+            else:
+                editor.setGeometry(QtCore.QRect(cell_bottom_left, size))
 
 
 class ObjectsModel(WrappableTableModel):

@@ -230,6 +230,93 @@ class MTreeExpandHook(QtCore.QObject):
         return super(MTreeExpandHook, self).eventFilter(self.tree, event)
 
 
+class DeviceSelectorResizeGrip(QtWidgets.QFrame):
+    """
+    Right-corner drag handle for the device selector popup.
+    """
+
+    def __init__(self, target: QtWidgets.QWidget, parent: QtWidgets.QWidget) -> None:
+        """
+        Constructor.
+
+        :param target: Widget resized by the grip.
+        :param parent: Parent widget.
+        """
+        QtWidgets.QFrame.__init__(self, parent=parent)
+
+        self.target: QtWidgets.QWidget = target
+        self.drag_position: QtCore.QPoint | None = None
+        self.start_size: QtCore.QSize = QtCore.QSize()
+        self.start_position: QtCore.QPoint = QtCore.QPoint()
+        self.resize_from_top: bool = False
+
+        # The grip is intentionally small and only acts as a resize handle.
+        self.setFixedSize(16, 16)
+        self.setCursor(QtCore.Qt.CursorShape.SizeFDiagCursor)
+
+    def set_resize_from_top(self, value: bool) -> None:
+        """
+        Select whether vertical resizing is anchored from the top edge.
+
+        :param value: True to resize upward from the top edge.
+        :return: None.
+        """
+        self.resize_from_top = value
+
+    def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
+        """
+        Start a resize drag.
+
+        :param event: Mouse press event.
+        :return: None.
+        """
+        if event.button() == QtCore.Qt.MouseButton.LeftButton:
+            # Store the initial pointer and size so the move delta can resize the popup.
+            self.drag_position = event.globalPosition().toPoint()
+            self.start_size = self.target.size()
+            self.start_position = self.target.pos()
+            event.accept()
+        else:
+            super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
+        """
+        Resize the target during a drag.
+
+        :param event: Mouse move event.
+        :return: None.
+        """
+        if self.drag_position is not None:
+            # Resizing directly avoids relying on native window grips for Qt popup editors.
+            delta: QtCore.QPoint = event.globalPosition().toPoint() - self.drag_position
+            minimum_size: QtCore.QSize = self.target.minimumSizeHint()
+            width: int = max(minimum_size.width(), self.start_size.width() + delta.x())
+            if self.resize_from_top:
+                height: int = max(minimum_size.height(), self.start_size.height() - delta.y())
+                y_position: int = self.start_position.y() + self.start_size.height() - height
+                self.target.move(self.start_position.x(), y_position)
+            else:
+                height = max(minimum_size.height(), self.start_size.height() + delta.y())
+
+            self.target.resize(width, height)
+            event.accept()
+        else:
+            super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event: QtGui.QMouseEvent) -> None:
+        """
+        Finish a resize drag.
+
+        :param event: Mouse release event.
+        :return: None.
+        """
+        if event.button() == QtCore.Qt.MouseButton.LeftButton:
+            self.drag_position = None
+            event.accept()
+        else:
+            super().mouseReleaseEvent(event)
+
+
 class LogsDialogue(CenteredDialog):
     """
     New profile dialogue window
@@ -358,6 +445,7 @@ class DeviceSelectorPanel(QtWidgets.QFrame):
         self.allow_none: bool = allow_none
         self.selected_device: ALL_DEV_TYPES | None = None
         self.has_selection: bool = False
+        self.resize_grip_at_top: bool = False
 
         # Build the visible search controls before the model is populated.
         self.main_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self)
@@ -380,6 +468,7 @@ class DeviceSelectorPanel(QtWidgets.QFrame):
             QtWidgets.QDialogButtonBox.StandardButton.Ok | QtWidgets.QDialogButtonBox.StandardButton.Cancel,
             parent=self,
         )
+        self.size_grip: DeviceSelectorResizeGrip = DeviceSelectorResizeGrip(target=self, parent=self)
 
         self.main_layout.addWidget(self.search_box)
         self.main_layout.addWidget(self.tree_view)
@@ -391,6 +480,44 @@ class DeviceSelectorPanel(QtWidgets.QFrame):
         self.button_box.rejected.connect(self.reject)
 
         self.fill_tree()
+        self.position_size_grip()
+
+    def set_resize_grip_at_top(self, value: bool) -> None:
+        """
+        Select the vertical edge used by the resize handle.
+
+        :param value: True to place the handle on the top edge.
+        :return: None.
+        """
+        self.resize_grip_at_top = value
+        self.size_grip.set_resize_from_top(value=value)
+        self.position_size_grip()
+
+    def position_size_grip(self) -> None:
+        """
+        Place the resize handle on the active right border corner of the popup.
+
+        :return: None.
+        """
+        x_position: int = max(0, self.width() - self.size_grip.width())
+
+        if self.resize_grip_at_top:
+            y_position: int = 0
+        else:
+            y_position = max(0, self.height() - self.size_grip.height())
+
+        self.size_grip.move(x_position, y_position)
+        self.size_grip.raise_()
+
+    def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
+        """
+        Keep the resize handle attached to the border while the popup changes size.
+
+        :param event: Resize event.
+        :return: None.
+        """
+        super().resizeEvent(event)
+        self.position_size_grip()
 
     def _finish_selection(self, selected_device: ALL_DEV_TYPES | None) -> None:
         """
@@ -550,6 +677,7 @@ class DeviceSelectorDialogue(CenteredDialog):
         CenteredDialog.__init__(self, parent=parent)
 
         self.setWindowTitle(self.tr("Device selection"))
+        self.setSizeGripEnabled(True)
         self.resize(500, 600)
 
         self.panel: DeviceSelectorPanel = DeviceSelectorPanel(
@@ -563,6 +691,58 @@ class DeviceSelectorDialogue(CenteredDialog):
 
         self.panel.selection_made.connect(self.accept)
         self.panel.selection_cancelled.connect(self.reject)
+
+    def showEvent(self, event: QtGui.QShowEvent) -> None:
+        """
+        Keep the selector visible on the current screen when it opens.
+
+        :param event: Show event.
+        :return: None.
+        """
+        CenteredDialog.showEvent(self, event)
+
+        screen: QtGui.QScreen | None = self.screen()
+
+        if screen is None:
+            screen = QApplication.primaryScreen()
+        else:
+            pass
+
+        if screen is not None:
+            available_geometry: QtCore.QRect = screen.availableGeometry()
+            frame_geometry: QtCore.QRect = self.frameGeometry()
+
+            if frame_geometry.width() > available_geometry.width() or frame_geometry.height() > available_geometry.height():
+                new_width: int = min(self.width(), available_geometry.width())
+                new_height: int = min(self.height(), available_geometry.height())
+                self.resize(new_width, new_height)
+                frame_geometry = self.frameGeometry()
+            else:
+                pass
+
+            if frame_geometry.left() < available_geometry.left():
+                frame_geometry.moveLeft(available_geometry.left())
+            else:
+                pass
+
+            if frame_geometry.right() > available_geometry.right():
+                frame_geometry.moveRight(available_geometry.right())
+            else:
+                pass
+
+            if frame_geometry.top() < available_geometry.top():
+                frame_geometry.moveTop(available_geometry.top())
+            else:
+                pass
+
+            if frame_geometry.bottom() > available_geometry.bottom():
+                frame_geometry.moveBottom(available_geometry.bottom())
+            else:
+                pass
+
+            self.move(frame_geometry.topLeft())
+        else:
+            pass
 
     @property
     def has_selection(self) -> bool:

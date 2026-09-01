@@ -347,6 +347,42 @@ class DataBaseTableMain(DiagramsMain):
         else:
             warning_msg(self.tr('There is no data displayed, please display one'), self.tr('Copy profile to clipboard'))
 
+    def paste_objects_data(self) -> None:
+        """
+        Paste clipboard values into the current displayed objects table.
+
+        :return: None.
+        """
+        mdl: ObjectModelFilterProxy | None = self.get_current_objects_model_view()
+
+        if mdl is not None:
+            selected_indexes: List[QtCore.QModelIndex] = self.ui.dataStructureTableView.selectedIndexes()
+
+            if len(selected_indexes) > 0:
+                rows: List[int] = sorted(set(index.row() for index in selected_indexes))
+                cols: List[int] = sorted(set(index.column() for index in selected_indexes))
+                row_idx: int = rows[0]
+                col_idx: int = cols[0]
+            else:
+                rows = list()
+                cols = list()
+                row_idx = 0
+                col_idx = 0
+
+            pasted_cells: int = mdl.paste_from_clipboard(
+                row_idx=row_idx,
+                col_idx=col_idx,
+                selected_rows=rows,
+                selected_cols=cols,
+            )
+
+            if pasted_cells > 0:
+                self.show_info_toast(self.tr('Pasted!'))
+            else:
+                self.show_warning_toast(self.tr('Nothing to paste'))
+        else:
+            warning_msg(self.tr('There is no data displayed, please display one'), self.tr('Paste data'))
+
     def get_db_object_selected_type(self) -> DeviceType | None:
         """
         Get the selected object type in the database tree view
@@ -2197,6 +2233,14 @@ class DataBaseTableMain(DiagramsMain):
         :param pos: Relative click position
         """
         if len(self.ui.dataStructuresTreeView.selectedIndexes()) > 0:
+            context_index: QtCore.QModelIndex = self.ui.dataStructureTableView.indexAt(pos)
+            selected_indexes: List[QtCore.QModelIndex] = self.ui.dataStructureTableView.selectedIndexes()
+
+            if context_index.isValid() and context_index not in selected_indexes:
+                self.ui.dataStructureTableView.setCurrentIndex(context_index)
+            else:
+                pass
+
             elm_type: DeviceType | None = self.get_db_object_selected_type()
 
             context_menu = QtWidgets.QMenu(parent=self.ui.diagramsListView)
@@ -2245,6 +2289,11 @@ class DataBaseTableMain(DiagramsMain):
                               text=self.tr("Copy table"),
                               icon_path=":/Icons/icons/copy.png",
                               function_ptr=self.copy_objects_data)
+
+            gf.add_menu_entry(menu=context_menu,
+                              text=self.tr("Paste"),
+                              icon_path=":/Icons/icons/paste.png",
+                              function_ptr=self.paste_objects_data)
 
             gf.add_menu_entry(menu=context_menu,
                               text=self.tr("Set value to column"),
