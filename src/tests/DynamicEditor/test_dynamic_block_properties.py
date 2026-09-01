@@ -59,6 +59,7 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_latex_renderer import (
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
+from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagramNode
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.enumerations import (
     BlockType,
@@ -155,23 +156,58 @@ def build_catalog_block_item_for_properties(
     return block_item
 
 
+def test_scene_block_name_is_edited_inline_and_persisted() -> None:
+    """Change Name must edit the scene label without opening a modal dialogue.
+
+    :return: None.
+    """
+    application: QtWidgets.QApplication = get_qt_application()
+    editor: DynamicBlockEditorGUI = build_catalog_block_properties_editor()
+    block_item: graph.GenericBlockItem = build_catalog_block_item_for_properties(
+        editor=editor,
+        template_key="pulse",
+    )
+    block: Block | None = block_item.subsys
+    assert block is not None
+
+    # The context-menu controller now starts editing on the existing graphics
+    # label. The old implementation would block here while executing a dialog.
+    editor.rename_block_item(block_item)
+    assert block_item.name_item.textInteractionFlags() & QtCore.Qt.TextInteractionFlag.TextEditable
+    block_item.name_item.setPlainText("renamed_pulse")
+    enter_event: QtGui.QKeyEvent = QtGui.QKeyEvent(
+        QtCore.QEvent.Type.KeyPress,
+        QtCore.Qt.Key.Key_Return,
+        QtCore.Qt.KeyboardModifier.NoModifier,
+    )
+    block_item.name_item.keyPressEvent(enter_event)
+    application.processEvents()
+
+    assert block.name == "renamed_pulse"
+    assert block_item.name == "renamed_pulse"
+    assert block_item.name_item.toPlainText() == "renamed_pulse"
+    diagram_node: BlockDiagramNode | None = editor.diagram.node_data.get(block.uid, None)
+    assert diagram_node is not None
+    assert diagram_node.name == "renamed_pulse"
+    assert block_item.name_item.textInteractionFlags() == QtCore.Qt.TextInteractionFlag.NoTextInteraction
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
 class AliasRenameReceiver(QtCore.QObject):
     """Apply a complete connected-variable rename for a properties test."""
 
-    __slots__ = ("_dialogue", "_new_name")
+    __slots__ = ("_dialogue",)
 
-    def __init__(self,
-                 dialogue: DynamicBlockPropertiesDialog,
-                 new_name: str) -> None:
-        """Store the dialogue and final name used by the synchronous request.
+    def __init__(self, dialogue: DynamicBlockPropertiesDialog) -> None:
+        """Store the dialogue whose aliases are updated by the request.
 
         :param dialogue: Properties dialogue containing the connected rows.
-        :param new_name: Final name propagated to the complete alias component.
         :return: None.
         """
         super().__init__()
         self._dialogue: DynamicBlockPropertiesDialog = dialogue
-        self._new_name: str = new_name
 
     @QtCore.Slot(object)
     def apply_rename(self, request: object) -> None:
@@ -183,6 +219,7 @@ class AliasRenameReceiver(QtCore.QObject):
         if isinstance(request, BlockVariableRenameRequest):
             selected_variable: Var = request.get_variable()
             selected_stable_uid: int = selected_variable.non_mutable_uid
+            requested_name: str = request.get_requested_name()
             row_index: int
             for row_index in range(self._dialogue._symbol_model.rowCount()):
                 draft_row: BlockSymbolDraftRow | None = self._dialogue._symbol_model.get_row(row_index)
@@ -194,10 +231,10 @@ class AliasRenameReceiver(QtCore.QObject):
                     draft_variable is not None
                     and draft_variable.non_mutable_uid == selected_stable_uid
                 ):
-                    draft_variable.set_name(self._new_name)
+                    draft_variable.set_name(requested_name)
                 else:
                     pass
-            request.set_result(success=True, new_name=self._new_name)
+            request.set_result(success=True, new_name=requested_name)
         else:
             pass
 
@@ -381,8 +418,7 @@ def test_scene_refresh_after_rename_keeps_property_name_cells_bound() -> None:
         var_factory=editor.var_factory,
     )
     dialogue.blockApplied.connect(editor.on_block_properties_applied)
-    rename_receiver: AliasRenameReceiver = AliasRenameReceiver(dialogue, "renamed_signal")
-    dialogue.variableRenameRequested.connect(rename_receiver.apply_rename)
+    dialogue.variableRenameRequested.connect(editor.on_variable_rename_requested)
 
     source_row: BlockSymbolDraftRow | None = dialogue._symbol_model.get_row(0)
     assert source_row is not None
@@ -392,8 +428,7 @@ def test_scene_refresh_after_rename_keeps_property_name_cells_bound() -> None:
         source_row.get_owner(),
     )
     assert source_index.isValid()
-    dialogue._property_tree.setCurrentIndex(source_index)
-    dialogue.rename_property_symbol()
+    assert dialogue._property_tree_model.setData(source_index, "renamed_signal")
     dialogue.apply_changes()
     application.processEvents()
 
@@ -710,7 +745,7 @@ def test_dialogue_rename_updates_each_connected_local_name_in_dae_code() -> None
         "CUSTOM",
         VarFactory(),
     )
-    rename_receiver: AliasRenameReceiver = AliasRenameReceiver(dialogue, "k1")
+    rename_receiver: AliasRenameReceiver = AliasRenameReceiver(dialogue)
     dialogue.variableRenameRequested.connect(rename_receiver.apply_rename)
 
     source_index: QtCore.QModelIndex = find_property_index(dialogue, "const_CONST_1")
@@ -719,8 +754,9 @@ def test_dialogue_rename_updates_each_connected_local_name_in_dae_code() -> None
     assert connected_index.isValid()
     source_persistent_index: QtCore.QPersistentModelIndex = QtCore.QPersistentModelIndex(source_index)
     connected_persistent_index: QtCore.QPersistentModelIndex = QtCore.QPersistentModelIndex(connected_index)
-    dialogue._property_tree.setCurrentIndex(source_index)
-    dialogue.rename_property_symbol()
+    editable_flag: QtCore.Qt.ItemFlag = QtCore.Qt.ItemFlag.ItemIsEditable
+    assert dialogue._property_tree_model.flags(source_index) & editable_flag
+    assert dialogue._property_tree_model.setData(source_index, "k1")
 
     assert source_variable.name == "k1"
     assert connected_variable.name == "k1"

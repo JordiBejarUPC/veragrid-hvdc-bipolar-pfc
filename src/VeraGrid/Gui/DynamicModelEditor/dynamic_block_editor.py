@@ -8919,36 +8919,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-    def open_block_rename_dialog(self,
-                                 current_name: str) -> tuple[bool, str]:
-        """
-        Open the modal dialog used to rename one block item.
-
-        :param current_name: Current block name shown to the user.
-        :return: Tuple ``(accepted, new_name)``.
-        """
-        dialog: QDialog = QDialog(self)
-        dialog.setWindowTitle(self.tr("Change Block Name"))
-        dialog.setModal(True)
-
-        layout: QVBoxLayout = QVBoxLayout(dialog)
-        name_edit: QLineEdit = QLineEdit(dialog)
-        name_edit.setText(current_name)
-        name_edit.selectAll()
-        layout.addWidget(name_edit)
-
-        button_box: QDialogButtonBox = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok |
-                                                        QDialogButtonBox.StandardButton.Cancel,
-                                                        dialog)
-        layout.addWidget(button_box)
-
-        button_box.accepted.connect(dialog.accept)
-        button_box.rejected.connect(dialog.reject)
-
-        accepted: bool = dialog.exec() == QDialog.DialogCode.Accepted
-        new_name: str = name_edit.text().strip()
-        return accepted, new_name
-
     def open_variable_rename_dialog(self,
                                     current_name: str) -> tuple[bool, str]:
         """
@@ -9537,49 +9507,54 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
     def rename_block_item(self,
                           item: graph.BlockItem | graph.GenericBlockItem) -> None:
-        """
-        Rename one visible block item through the editor-owned modal flow.
+        """Start editing one visible block name directly on its scene label.
 
         :param item: Scene block item selected from the context menu.
         :return: None.
         """
         block: Block | None = item.subsys
-        accepted: bool
-        new_name: str
-
         if block is None:
             return
         else:
-            pass
+            item.name_item.start_editing()
 
-        accepted, new_name = self.open_block_rename_dialog(block.name)
+    def apply_block_name_edit(self,
+                              item: graph.BlockItem | graph.GenericBlockItem,
+                              new_name: str) -> bool:
+        """Validate and apply one name typed into a scene block label.
 
-        if not accepted:
-            return
+        :param item: Scene block whose editable title produced the candidate.
+        :param new_name: Candidate symbolic block name.
+        :return: Whether the inline editor may keep the candidate text.
+        """
+        block: Block | None = item.subsys
+        candidate_name: str = new_name.strip()
+        if block is None:
+            return False
         else:
             pass
 
-        if len(new_name) == 0:
+        if len(candidate_name) == 0:
             self.toast_manager.show_warning_toast(
                 self.tr("Block name cannot be empty")
             )
-            return
-        elif not dialog_models.is_valid_symbol_name(new_name):
+            return False
+        elif not dialog_models.is_valid_symbol_name(candidate_name):
             self.toast_manager.show_warning_toast(
                 self.tr("Block name is invalid")
             )
-            return
-        elif self._namespace_has_conflicting_block_name(block, new_name):
+            return False
+        elif self._namespace_has_conflicting_block_name(block, candidate_name):
             self.toast_manager.show_warning_toast(
                 self.tr("Block name already exists")
             )
-            return
-        elif new_name == block.name:
-            return
+            return False
+        elif candidate_name == block.name:
+            return True
         else:
             pass
 
-        block.set_name(new_name)
+        block.set_name(candidate_name)
 
         # Persist the same label in the diagram node. Scene rebuilding uses the
         # block object, while validation and serialization also read node.name.
@@ -9596,12 +9571,13 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             pass
 
         if node is not None:
-            node.name = new_name
+            node.name = candidate_name
         else:
             pass
 
         self.refresh_editor_block_name_displays(block)
         self.mark_unapplied_changes()
+        return True
 
 
     def _apply_variable_rename(
@@ -9709,28 +9685,21 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
     @QtCore.Slot(object)
     def on_variable_rename_requested(self, request: BlockVariableRenameRequest) -> None:
-        """Run the established complete rename for a Block Properties request.
+        """Apply an inline Block Properties name edit to the complete alias component.
 
-        :param request: Synchronous request containing the selected variable.
+        :param request: Synchronous request containing the variable and candidate name.
         :return: None.
         """
         if not isinstance(request, BlockVariableRenameRequest):
             return
         else:
             variable: Var = request.get_variable()
-
-        accepted: bool
-        new_name: str
-        accepted, new_name = self.open_variable_rename_dialog(variable.name)
-        if accepted:
             renamed: bool = self._apply_variable_rename(
                 var=variable,
-                new_name=new_name,
+                new_name=request.get_requested_name(),
                 renamed_item=None,
             )
-            request.set_result(success=renamed, new_name=variable.name)
-        else:
-            request.set_result(success=False, new_name=variable.name)
+        request.set_result(success=renamed, new_name=variable.name)
 
 
     def rename_variable_item(

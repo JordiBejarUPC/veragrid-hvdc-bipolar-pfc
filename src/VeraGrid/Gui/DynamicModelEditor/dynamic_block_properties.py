@@ -432,17 +432,20 @@ class BlockVariableRenameRequest:
 
     __slots__ = (
         "_variable",
+        "_requested_name",
         "_success",
         "_new_name",
     )
 
-    def __init__(self, variable: Var) -> None:
+    def __init__(self, variable: Var, requested_name: str) -> None:
         """Create a pending rename request for one existing symbolic variable.
 
         :param variable: Existing variable selected in Block Properties.
+        :param requested_name: Candidate name entered directly in the property tree.
         :return: None.
         """
         self._variable: Var = variable
+        self._requested_name: str = requested_name
         self._success: bool = False
         self._new_name: str = variable.name
 
@@ -451,6 +454,13 @@ class BlockVariableRenameRequest:
         :return: Existing variable targeted by the rename.
         """
         return self._variable
+
+    def get_requested_name(self) -> str:
+        """Return the candidate entered in the inline Name editor.
+
+        :return: Candidate symbolic name requested by Block Properties.
+        """
+        return self._requested_name
 
     def set_result(self, success: bool, new_name: str) -> None:
         """Store the synchronous result produced by the owning editor.
@@ -4438,6 +4448,7 @@ class BlockPropertyTreeModel(QtGui.QStandardItemModel):
     aboutToRebuild = Signal()
     rebuilt = Signal()
     pendingNameChanged = Signal(str, str)
+    existingNameChangeRequested = Signal(object)
     __slots__ = ("_root_block", "_symbols", "_parameters", "_structure")
 
     def __init__(self, root: Block, symbols: BlockSymbolDraftModel,
@@ -4644,11 +4655,16 @@ class BlockPropertyTreeModel(QtGui.QStandardItemModel):
                 return Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
         else:
             row: BlockSymbolDraftRow | None = self.symbol_row(index)
-        if index.column() == 2 and row is not None and row.get_kind() == BlockSymbolKind.EVENT_PARAMETER:
+        if index.column() == 0 and row is not None:
+            # Both existing and pending symbols use the native inline item
+            # editor. Existing identities are still renamed by the owning
+            # Dynamic Editor through a synchronous request from setData().
+            return Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEditable
+        elif index.column() == 2 and row is not None and row.get_kind() == BlockSymbolKind.EVENT_PARAMETER:
             return Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEditable
         elif index.column() == 1:
-            # Role changes remain in the add-symbol form. Renaming existing
-            # symbols uses the editor-owned request rather than direct writes.
+            # Role changes remain in the add-symbol form; existing rows expose
+            # their role as read-only descriptive data.
             return Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
         else:
             columns: tuple[int, ...] = (1, 2, 4, 3)
@@ -4685,12 +4701,23 @@ class BlockPropertyTreeModel(QtGui.QStandardItemModel):
                 return False
         else:
             columns: tuple[int, ...] = (1, 2, 4, 3)
-            if index.column() == 0 and row is not None and row.is_new():
+            if (
+                index.column() == 0
+                and row is not None
+                and role == Qt.ItemDataRole.EditRole
+            ):
                 old_name: str = row.get_name()
                 new_name: str = str(value).strip()
                 if not new_name.isidentifier() or keyword.iskeyword(new_name):
                     return False
+                elif new_name == old_name:
+                    return True
                 else:
+                    pass
+                if row.is_new():
+                    # Pending rows do not yet have an Engine identity, so the
+                    # draft model can rename them locally after checking the
+                    # complete visible namespace.
                     other_index: int
                     for other_index in range(self._symbols.rowCount()):
                         other_row: BlockSymbolDraftRow | None = self._symbols.get_row(other_index)
@@ -4698,12 +4725,34 @@ class BlockPropertyTreeModel(QtGui.QStandardItemModel):
                             return False
                         else:
                             pass
-                accepted: bool = self._symbols.setData(source.siblingAtColumn(1), new_name, role)
-                if accepted and old_name != row.get_name():
-                    self.pendingNameChanged.emit(old_name, row.get_name())
+                    accepted: bool = self._symbols.setData(source.siblingAtColumn(1), new_name, role)
+                    if accepted:
+                        self.pendingNameChanged.emit(old_name, row.get_name())
+                    else:
+                        pass
+                    return accepted
                 else:
-                    pass
-                return accepted
+                    # Existing variables may belong to a connected alias
+                    # component. The central editor validates and propagates
+                    # that complete component before the cell accepts the edit.
+                    variable: Var | None = row.get_variable()
+                    if variable is None:
+                        return False
+                    else:
+                        request: BlockVariableRenameRequest = BlockVariableRenameRequest(
+                            variable=variable,
+                            requested_name=new_name,
+                        )
+                        self.existingNameChangeRequested.emit(request)
+                    if request.is_successful():
+                        self.dataChanged.emit(
+                            index,
+                            index,
+                            list((Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.EditRole,)),
+                        )
+                        return True
+                    else:
+                        return False
             elif index.column() == 2 and isinstance(value, ParamPowerFlowReferenceType):
                 return self._symbols.setData(source.siblingAtColumn(4), f"ParamPowerFlowReferenceType.{value.name}", role)
             elif index.column() == 2 and isinstance(value, VarPowerFlowReferenceType):
@@ -5391,30 +5440,18 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         else:
             pass
 
-    @QtCore.Slot(QtCore.QModelIndex)
-    def on_property_double_clicked(self, index: QtCore.QModelIndex) -> None:
-        """Route existing-name edits through the established complete rename.
-
-        :param index: Double-clicked tree cell.
-        :return: None.
-        """
-        if index.column() == 0:
-            self.rename_property_symbol()
-        else:
-            pass
-
     @QtCore.Slot()
     def rename_property_symbol(self) -> None:
-        """Rename an existing symbol or start inline editing of a new draft.
+        """Start inline editing of the selected symbol's Name cell.
 
         :return: None.
         """
         index: QtCore.QModelIndex = self._property_tree.currentIndex().siblingAtColumn(0)
         row: BlockSymbolDraftRow | None = self._property_tree_model.symbol_row(index)
-        if row is not None and row.is_new():
+        if row is not None:
             self._property_tree.edit(index)
         else:
-            self._rename_selected_symbol(self._property_tree)
+            pass
 
     @QtCore.Slot()
     def delete_property_symbol(self) -> None:
@@ -5602,6 +5639,10 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._property_tree.setAlternatingRowColors(True)
         self._property_tree.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
         self._property_tree.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
+        self._property_tree.setEditTriggers(
+            QtWidgets.QAbstractItemView.EditTrigger.DoubleClicked
+            | QtWidgets.QAbstractItemView.EditTrigger.EditKeyPressed
+        )
         self._property_tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self._property_tree.setItemDelegateForColumn(2, BlockPropertyValueDelegate(self._property_tree))
         configure_interactive_table_header(self._property_tree.header(), list((170, 100, 230, 60)))
@@ -5768,14 +5809,16 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._symbol_model.dataChanged.connect(self.on_symbol_draft_changed)
         self._runtime_logic_editor.changed.connect(self.on_runtime_logic_changed)
         self._property_tree.customContextMenuRequested.connect(self.show_symbol_context_menu)
-        self._property_tree.doubleClicked.connect(self.on_property_double_clicked)
         self._property_tree.clicked.connect(self.on_property_selected)
         self._property_search.textChanged.connect(self.filter_properties)
         self._property_tree_model.aboutToRebuild.connect(self.remember_property_tree)
         self._property_tree_model.rebuilt.connect(self.restore_property_tree)
         self._property_tree_model.pendingNameChanged.connect(self.on_pending_symbol_renamed)
+        self._property_tree_model.existingNameChangeRequested.connect(
+            self.on_existing_symbol_name_change_requested
+        )
         self._equations_button.toggled.connect(self.toggle_equation_panel)
-        rename_action: QtGui.QAction = QtGui.QAction(self.tr("Rename..."), self._property_tree)
+        rename_action: QtGui.QAction = QtGui.QAction(self.tr("Rename"), self._property_tree)
         rename_action.setShortcut(QtGui.QKeySequence(Qt.Key.Key_F2))
         rename_action.setShortcutContext(Qt.ShortcutContext.WidgetShortcut)
         rename_action.triggered.connect(self.rename_property_symbol)
@@ -6583,14 +6626,14 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             menu: QtWidgets.QMenu = QtWidgets.QMenu(table)
             source_row: BlockSymbolDraftRow | None = self._get_selected_symbol_row(table)
             rename_action: QtGui.QAction | None
-            if source_row is not None and not source_row.is_new():
-                rename_action = menu.addAction(self.tr("Rename..."))
+            if source_row is not None:
+                rename_action = menu.addAction(self.tr("Rename"))
             else:
                 rename_action = None
             delete_action: QtGui.QAction = menu.addAction(self.tr("Delete"))
             selected_action: QtGui.QAction | None = menu.exec(table.viewport().mapToGlobal(position))
             if rename_action is not None and selected_action is rename_action:
-                self._rename_selected_symbol(table)
+                self.rename_property_symbol()
             elif selected_action is delete_action:
                 self._delete_selected_symbol(table)
             else:
@@ -6620,21 +6663,21 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         else:
             return None
 
-    def _rename_selected_symbol(self, table: QtWidgets.QAbstractItemView) -> None:
-        """Request one complete editor-owned rename and refresh detached drafts.
+    @QtCore.Slot(object)
+    def on_existing_symbol_name_change_requested(self, request: object) -> None:
+        """Apply one inline existing-symbol rename through the central editor.
 
-        :param table: Variable or parameter table containing the selected row.
+        The property table owns only detached drafts. Existing variables can
+        also be connected to aliases in other internal blocks, so the central
+        Dynamic Editor remains the single owner of the complete rename.
+
+        :param request: Synchronous rename request created by the tree model.
         :return: None.
         """
-        selected_row: BlockSymbolDraftRow | None = self._get_selected_symbol_row(table)
-        if selected_row is None or selected_row.is_new():
+        if not isinstance(request, BlockVariableRenameRequest):
             return
         else:
-            selected_variable: Var | None = selected_row.get_variable()
-        if selected_variable is None:
-            return
-        else:
-            pass
+            selected_variable: Var = request.get_variable()
 
         # Capture every row independently before the editor propagates the
         # alias component. Connected variables can share one stable UID while
@@ -6642,7 +6685,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         # lose all but the last old name and leave stale identifiers in DAE
         # source owned by the other connected blocks.
         old_names_by_row: List[tuple[BlockSymbolDraftRow, str]] = list()
-        selected_old_name: str = selected_row.get_name()
+        selected_old_name: str = selected_variable.name
         row_index: int
         for row_index in range(self._symbol_model.rowCount()):
             draft_row: BlockSymbolDraftRow | None = self._symbol_model.get_row(row_index)
@@ -6655,7 +6698,6 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             else:
                 pass
 
-        request: BlockVariableRenameRequest = BlockVariableRenameRequest(selected_variable)
         self.variableRenameRequested.emit(request)
         if request.is_successful():
             rename_pairs: List[tuple[str, str]] = list()
