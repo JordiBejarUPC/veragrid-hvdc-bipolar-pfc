@@ -142,15 +142,12 @@ def _model_exchange_artifact() -> Path:
     :return: Absolute artifact path.
     """
 
-    source_root: Path = Path(__file__).resolve().parents[2]
+    tests_root: Path = Path(__file__).resolve().parents[1]
     return (
-        source_root
-        / "VeraGridEngine"
-        / "IO"
-        / "fmu"
-        / "importer"
-        / "reports"
-        / "examples"
+        tests_root
+        / "data"
+        / "fmi"
+        / "artifacts"
         / "ExampleRmsMeDevice.fmu"
     )
 

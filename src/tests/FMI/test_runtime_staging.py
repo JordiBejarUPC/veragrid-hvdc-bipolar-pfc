@@ -124,15 +124,12 @@ def _model_exchange_artifact() -> Path:
     :return: Absolute path to the versioned Windows FMU.
     """
 
-    source_root: Path = Path(__file__).resolve().parents[2]
+    tests_root: Path = Path(__file__).resolve().parents[1]
     artifact: Path = (
-        source_root
-        / "VeraGridEngine"
-        / "IO"
-        / "fmu"
-        / "importer"
-        / "reports"
-        / "examples"
+        tests_root
+        / "data"
+        / "fmi"
+        / "artifacts"
         / "ExampleRmsMeDevice.fmu"
     )
     return artifact
