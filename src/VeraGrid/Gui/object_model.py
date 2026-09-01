@@ -12,7 +12,8 @@ from typing import Any, Dict, List, Union
 from PySide6 import QtCore, QtWidgets, QtGui
 from typing import Callable
 from enum import EnumMeta
-from VeraGrid.Gui.gui_functions import (IntDelegate, ComboDelegate, TextDelegate, FloatDelegate, ColorPickerDelegate,
+from VeraGrid.Gui.gui_functions import (BoolCheckboxDelegate, IntDelegate, ComboDelegate, TextDelegate, FloatDelegate,
+                                        ColorPickerDelegate,
                                         ComplexDelegate, LineLocationsDelegate, DateTimeDelegate)
 from VeraGrid.Gui.Icons.icon_associations import device_type_icons
 from VeraGrid.Gui.wrappable_table_model import WrappableTableModel
@@ -334,7 +335,8 @@ class ObjectsModel(WrappableTableModel):
                 tpe = self.attribute_types[i]
 
                 if tpe is bool:
-                    F(i, None)
+                    delegate = BoolCheckboxDelegate(self.parent)
+                    F(i, delegate)
 
                 elif tpe is str:
                     delegate = TextDelegate(self.parent)
