@@ -345,9 +345,9 @@ def test_rms_editor_exposes_basic_block_catalog_under_basic() -> None:
 
 def test_proxy_drag_payload_materializes_catalog_template() -> None:
     editor = _build_editor(DynamicSimulationMode.EMT)
-    park_descriptor = get_basic_block_catalog_descriptor_by_key()["park_transform_dq"]
-    park_label = park_descriptor.display_label
-    source_index = _find_index_by_label(editor.library.library_model, park_label)
+    descriptor = get_basic_block_catalog_descriptor_by_key()["movingavg"]
+    descriptor_label = descriptor.display_label
+    source_index = _find_index_by_label(editor.library.library_model, descriptor_label)
 
     assert source_index.isValid()
 
@@ -359,11 +359,15 @@ def test_proxy_drag_payload_materializes_catalog_template() -> None:
 
     assert payload is not None
     assert isinstance(payload, BasicBlockTemplateDescriptor)
-    assert payload.template_key == "park_transform_dq"
+    assert payload.template_key == "movingavg"
 
+    children_before: int = len(editor.main_block.children)
     block_item = editor.create_library_payload_item(payload, 10.0, 20.0)
+
     assert block_item is not None
-    assert len(editor.main_block.children) == 1
+    assert len(editor.main_block.children) == children_before + 1
+    assert block_item.subsys is editor.main_block.children[-1]
+    assert block_item.subsys.name == "movingavg__77"
 
     editor.has_unapplied_changes = False
     editor.close()
@@ -460,7 +464,7 @@ def test_modal_parameter_edit_preserves_non_structural_block_identity() -> None:
 
 
 def test_parameter_modal_separates_runtime_modes_for_pulse_block() -> None:
-    """General options keeps events while Runtime logic owns retained modes."""
+    """General options keeps events while the hidden runtime model owns retained modes."""
     editor: DynamicBlockEditorGUI = _build_editor(DynamicSimulationMode.EMT)
     block_item: graph.GenericBlockItem = _build_catalog_block_item(editor, "pulse")
     assert block_item.subsys is not None
@@ -479,7 +483,12 @@ def test_parameter_modal_separates_runtime_modes_for_pulse_block() -> None:
     assert any(row_type.startswith("Dynamic parameter") for row_type in row_types)
     assert not any(row_type.startswith("Mode parameter") for row_type in row_types)
     assert dialogue._runtime_logic_editor._mode_model.rowCount() > 0
-    assert dialogue._tabs.tabText(2) == "Runtime logic"
+    tab_titles: list[str] = list()
+    tab_index: int
+    for tab_index in range(dialogue._tabs.count()):
+        tab_titles.append(dialogue._tabs.tabText(tab_index))
+    assert "Runtime logic" not in tab_titles
+    assert dialogue._runtime_logic_editor.isHidden()
     dialogue.close()
 
     editor.has_unapplied_changes = False
@@ -512,5 +521,3 @@ def test_ground_emt_block_is_available_from_library() -> None:
 
     editor.has_unapplied_changes = False
     editor.close()
-
-

@@ -21,10 +21,8 @@ from VeraGridEngine.Utils.Symbolic.rms_measurements_functions import (measuremen
                                                                       build_rms_voltage_meter_outputs_from_dc,
                                                                       build_rms_current_meter_outputs_from_pq,
                                                                       build_rms_current_meter_outputs_from_dc,
-                                                                      build_rms_park_voltage_outputs,
-                                                                      build_rms_park_current_outputs,
-                                                                      build_rms_power_meter_outputs_from_pq,
-                                                                      build_rms_pll_meter_outputs)
+
+                                                                      build_rms_power_meter_outputs_from_pq)
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowReferenceType, ParamPowerFlowReferenceType, \
     DynamicSimulationMode, DynEditorGraphicsModes
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_algebraic_vars
@@ -3470,7 +3468,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         if bus.is_dc:
             P, _ = self.get_p_q_vars(bus)
         else:
-            P, Q = self.get_p_q_vars(bus)
+            pq_vars = self.get_p_q_vars(bus)
 
         # build measurement block
 
@@ -3490,11 +3488,13 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         elif block_type == BlockType.MEASUREMENTS_CURRENT_FROM_DC:
             block, vars_list = build_rms_current_meter_outputs_from_dc(self.var_factory, bus_vars[0],
                                                                        P)
-        # elif block_type == BlockType.MEASUREMENTS_CURRENT_PARK:
-        #     block, vars_list = build_rms_park_voltage_outputs(self.var_factory, bus_vars[0],
-        #                                                                P)
-        #
-        # elif block_type == BlockType.MEASUREMENTS_PLL:
+        elif block_type == BlockType.MEASUREMENTS_VOLTAGE_ANGLE:
+            block = Block()
+            vars_list = bus_vars
+
+        elif block_type == BlockType.MEASUREMENTS_P_Q:
+            block = Block()
+            vars_list = pq_vars
 
         for var in vars_list:
             if var.ref in ref_inputs:
@@ -5691,36 +5691,46 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             pass
 
     def get_p_q_vars(self, bus: ALL_DEV_TYPES) -> Tuple[Var | None, Var | None]:
-        P = None
-        Q = None
+
+        pq_vars: List[Var] = list()
+
         if isinstance(self.api_object, BranchParent):
             if bus.is_dc:
                 if bus.idtag == self.api_object.bus_from:
                     P = self.main_block.external_mapping[VarPowerFlowReferenceType.Pf]
-                    return P, Q
+                    pq_vars.append(P)
+                    return pq_vars
                 else:
                     P = self.main_block.external_mapping[VarPowerFlowReferenceType.Pt]
-                    return P, Q
+                    pq_vars.append(P)
+                    return pq_vars
 
             else:
                 if bus.idtag == self.api_object.bus_from:
                     P = self.main_block.external_mapping[VarPowerFlowReferenceType.Pf]
                     Q = self.main_block.external_mapping[VarPowerFlowReferenceType.Qf]
-                    return P, Q
+                    pq_vars.append(P)
+                    pq_vars.append(Q)
+                    return pq_vars
 
                 else:
                     P = self.main_block.external_mapping[VarPowerFlowReferenceType.Pt]
                     Q = self.main_block.external_mapping[VarPowerFlowReferenceType.Qt]
-                    return P, Q
+                    pq_vars.append(P)
+                    pq_vars.append(Q)
+                    return pq_vars
         else:
             if bus.is_dc:
                 P = self.main_block.external_mapping[VarPowerFlowReferenceType.P]
-                return P, Q
+                pq_vars.append(P)
+                return pq_vars
 
             else:
                 P = self.main_block.external_mapping[VarPowerFlowReferenceType.P]
                 Q = self.main_block.external_mapping[VarPowerFlowReferenceType.Q]
-                return P, Q
+                pq_vars.append(P)
+                pq_vars.append(Q)
+                return pq_vars
 
 
 
