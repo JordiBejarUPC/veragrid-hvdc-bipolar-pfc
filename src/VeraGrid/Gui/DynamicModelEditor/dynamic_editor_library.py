@@ -239,10 +239,10 @@ class DynamicEditorLibrary:
         self.common_emt_fault_blocks: List[LibraryLeafSpec] = list((LibraryLeafSpec("Fault EMT", BlockType.FAULT_EMT),))
 
         # common rms
-        self.common_rms_device_blocks: List[LibraryLeafSpec] = list((LibraryLeafSpec("Pll transformer", BlockType.PLL_TRANSFORM_RMS),
+        self.common_rms_device_blocks: List[LibraryLeafSpec] = list((
+                                                                     # LibraryLeafSpec("Pll transformer", BlockType.PLL_TRANSFORM_RMS),
                                                                      LibraryLeafSpec("Pi current controller", BlockType.PI_CURRENT_CONTROLLER),
                                                                      LibraryLeafSpec("Pi power controller", BlockType.PI_POWER_CONTROLLER),
-                                                                     LibraryLeafSpec("VSC terminal power equations", BlockType.VSC_TERMINAL_POWER_RMS),
                                                                      ))
 
         # Keep the configurable controls separate from electrical devices.
@@ -262,6 +262,7 @@ class DynamicEditorLibrary:
                     "q-axis current PI controller", BlockType.VSC_VQ_HAT_RMS,
                     search_text="q-axis current PI controller inner loop voltage correction vq hat vq_hat y_vq_hat",
                 ),
+                LibraryLeafSpec("VSC terminal power equations", BlockType.VSC_TERMINAL_POWER_RMS),
             ))),
         ))
 
