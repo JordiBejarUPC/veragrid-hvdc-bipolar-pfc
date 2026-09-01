@@ -2607,7 +2607,10 @@ def test_property_layout_visual_capture(tmp_path: Path) -> None:
     splitter_top: QtCore.QPoint = dialogue._dae_splitter.mapTo(dialogue, QtCore.QPoint())
     assert configuration_top.y() + configuration.height() <= toggle_top.y()
     assert toggle_top.y() + dialogue._equations_button.height() <= splitter_top.y()
-    assert dialogue._equations_button.text() == "Equations"
+    assert dialogue._equations_button.text() == ""
+    assert dialogue._equations_button.accessibleName() == "DAE editor"
+    assert dialogue._equations_button.icon().isNull() is False
+    assert dialogue._equations_button.toolTip() != ""
     assert abs(toggle_top.x() + dialogue._equations_button.width()
                - splitter_top.x() - dialogue._dae_splitter.width()) <= 2
     assert not dialogue._add_symbol_group.isVisible()

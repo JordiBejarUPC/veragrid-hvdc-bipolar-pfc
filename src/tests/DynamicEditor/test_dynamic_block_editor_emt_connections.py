@@ -863,6 +863,8 @@ def _find_wrapper_item(editor: DynamicBlockEditorGUI,
             else:
                 pass
         elif isinstance(scene_item, graph.MeasurementsItem):
+            assert scene_item.subsys is not None
+            assert editor.get_scene_item_by_block_uid(scene_item.subsys.uid) is scene_item
             interface_ports: list[graph.PortItem]
             if is_input:
                 interface_ports = scene_item.outputs
@@ -909,7 +911,7 @@ def _find_semantic_wrapper_item(
         block_type: BlockType,
 ) -> graph.ProtectedConnectionBlockItem | graph.MeasurementsItem:
     """
-    Find one protected wrapper by its side-specific root semantic reference.
+    Find one root-interface item by its side-specific semantic reference.
 
     :param editor: Editor under test.
     :param reference: Required side-specific root reference.
@@ -956,6 +958,47 @@ def _find_item_port_by_reference(
             pass
 
     raise AssertionError(f"Port not found for {reference}")
+
+
+def _find_semantic_wrapper_port(
+        editor: DynamicBlockEditorGUI,
+        reference: VarPowerFlowReferenceType,
+        block_type: BlockType,
+) -> graph.PortItem:
+    """Find the graphical port owned by one side-specific interface wrapper.
+
+    Branch wrappers can carry a shared bus variable such as ``v_A`` while the
+    diagram identifies the selected terminal semantically as ``vf_A`` or
+    ``vt_A``. The semantic item lookup disambiguates the terminal first; a
+    single-port item can then return its physical port without comparing refs.
+
+    :param editor: Editor under test.
+    :param reference: Side-specific semantic interface reference.
+    :param block_type: Input or output wrapper direction.
+    :return: Matching graphical interface port.
+    """
+    wrapper_item: graph.ProtectedConnectionBlockItem | graph.MeasurementsItem = (
+        _find_semantic_wrapper_item(
+            editor=editor,
+            reference=reference,
+            block_type=block_type,
+        )
+    )
+    if block_type == BlockType.INPUT_CONN:
+        candidate_ports: list[graph.PortItem] = wrapper_item.outputs
+    elif block_type == BlockType.OUTPUT_CONN:
+        candidate_ports = wrapper_item.inputs
+    else:
+        candidate_ports = list()
+
+    if len(candidate_ports) == 1:
+        return candidate_ports[0]
+    else:
+        return _find_item_port_by_reference(
+            item=wrapper_item,
+            reference=reference,
+            is_input=block_type == BlockType.OUTPUT_CONN,
+        )
 
 
 def _add_gain_item(editor: DynamicBlockEditorGUI, x_pos: float, y_pos: float) -> object:
@@ -1250,16 +1293,44 @@ def _assert_scene_wrapper_counts(editor: DynamicBlockEditorGUI,
             else:
                 pass
         elif isinstance(item, graph.MeasurementsItem):
+            assert item.subsys is not None
+            assert editor.get_scene_item_by_block_uid(item.subsys.uid) is item
             output_port: graph.PortItem
             for output_port in item.outputs:
                 if output_port.base_var is not None and output_port.base_var.ref is not None:
-                    scene_input_refs.append(output_port.base_var.ref)
+                    matching_input_refs: list[VarPowerFlowReferenceType] = list()
+                    input_reference: VarPowerFlowReferenceType
+                    mapped_input_var: Var | None
+                    for input_reference in expected_input_refs:
+                        mapped_input_var = editor.main_block.external_mapping.get(input_reference, None)
+                        if (mapped_input_var is not None
+                                and mapped_input_var.non_mutable_uid == output_port.base_var.non_mutable_uid):
+                            matching_input_refs.append(input_reference)
+                        else:
+                            pass
+                    if len(matching_input_refs) == 1:
+                        scene_input_refs.append(matching_input_refs[0])
+                    else:
+                        scene_input_refs.append(output_port.base_var.ref)
                 else:
                     pass
             input_port: graph.PortItem
             for input_port in item.inputs:
                 if input_port.base_var is not None and input_port.base_var.ref is not None:
-                    scene_output_refs.append(input_port.base_var.ref)
+                    matching_output_refs: list[VarPowerFlowReferenceType] = list()
+                    output_reference: VarPowerFlowReferenceType
+                    mapped_output_var: Var | None
+                    for output_reference in expected_output_refs:
+                        mapped_output_var = editor.main_block.external_mapping.get(output_reference, None)
+                        if (mapped_output_var is not None
+                                and mapped_output_var.non_mutable_uid == input_port.base_var.non_mutable_uid):
+                            matching_output_refs.append(output_reference)
+                        else:
+                            pass
+                    if len(matching_output_refs) == 1:
+                        scene_output_refs.append(matching_output_refs[0])
+                    else:
+                        scene_output_refs.append(input_port.base_var.ref)
                 else:
                     pass
         else:
@@ -2099,6 +2170,13 @@ def test_shared_line_generator_round_trip_reconciles_same_saved_model(intermedia
         _connect_port_pair(generator_editor, thevenin_item.outputs[0], _find_wrapper_port(generator_editor, VarPowerFlowReferenceType.i_A, False))
         _connect_port_pair(generator_editor, thevenin_item.outputs[1], _find_wrapper_port(generator_editor, VarPowerFlowReferenceType.i_B, False))
         _connect_port_pair(generator_editor, thevenin_item.outputs[2], _find_wrapper_port(generator_editor, VarPowerFlowReferenceType.i_C, False))
+        initial_user_intent_refs: set[VarPowerFlowReferenceType] = set(
+            intent.get_root_reference()
+            for intent in generator_editor.main_block.connection_intents
+            if intent.get_origin() == DynamicConnectionIntentOrigin.USER
+            and not intent.is_suppressed()
+        )
+        assert initial_user_intent_refs == expected_final_inputs | expected_final_outputs
         generator_editor.apply_changes()
         assert generator_editor.has_unapplied_changes is False
         _dispose_editor(generator_editor)
@@ -2146,6 +2224,13 @@ def test_shared_line_generator_round_trip_reconciles_same_saved_model(intermedia
             assert any(isinstance(item, graph.GenericBlockItem) and item.subsys is not None and item.subsys.name.startswith("EMT_THEVENIN")
                        for item in intermediate_generator_editor.scene.items())
             assert intermediate_generator_editor.has_unapplied_changes is True
+            intermediate_user_intent_refs: set[VarPowerFlowReferenceType] = set(
+                intent.get_root_reference()
+                for intent in intermediate_generator_editor.main_block.connection_intents
+                if intent.get_origin() == DynamicConnectionIntentOrigin.USER
+                and not intent.is_suppressed()
+            )
+            assert intermediate_user_intent_refs == expected_final_inputs | expected_final_outputs
             if intermediate_apply:
                 intermediate_generator_editor.apply_changes()
                 assert intermediate_generator_editor.has_unapplied_changes is False
@@ -2217,6 +2302,16 @@ def test_shared_line_generator_round_trip_reconciles_same_saved_model(intermedia
                 VarPowerFlowReferenceType.i_C,
                 False,
             )
+            assert c_input_port.subsystem is not None
+            assert c_input_port.subsystem.subsys is not None
+            assert final_generator_editor.get_scene_item_by_block_uid(
+                c_input_port.subsystem.subsys.uid,
+            ) is c_input_port.subsystem
+            assert c_output_port.subsystem is not None
+            assert c_output_port.subsystem.subsys is not None
+            assert final_generator_editor.get_scene_item_by_block_uid(
+                c_output_port.subsystem.subsys.uid,
+            ) is c_output_port.subsystem
             assert c_input_port.connections is not None
             assert c_output_port.connections is not None
             assert len(c_input_port.connections) == 1
@@ -2524,9 +2619,25 @@ def _assert_branch_template_root_wires(editor: DynamicBlockEditorGUI,
     """
     visible_pairs: set[tuple[VarPowerFlowReferenceType, VarPowerFlowReferenceType]] = _collect_graphical_connection_refs(editor)
     expected_pair: tuple[VarPowerFlowReferenceType, VarPowerFlowReferenceType]
+    expected_source_ref: VarPowerFlowReferenceType
+    expected_target_ref: VarPowerFlowReferenceType
+    mapped_source_var: Var | None
+    visible_expected_pair: tuple[VarPowerFlowReferenceType, VarPowerFlowReferenceType]
+    root_input_refs: set[VarPowerFlowReferenceType] = set(
+        var.ref for var in editor.main_block.in_vars
+        if isinstance(var.ref, VarPowerFlowReferenceType)
+    )
 
     for expected_pair in expected_connection_pairs:
-        assert expected_pair in visible_pairs
+        expected_source_ref, expected_target_ref = expected_pair
+        mapped_source_var = editor.main_block.external_mapping.get(expected_source_ref, None)
+        if (expected_source_ref in root_input_refs
+                and mapped_source_var is not None
+                and isinstance(mapped_source_var.ref, VarPowerFlowReferenceType)):
+            visible_expected_pair = mapped_source_var.ref, expected_target_ref
+        else:
+            visible_expected_pair = expected_pair
+        assert visible_expected_pair in visible_pairs
 
 
 def _collect_scene_wrapper_refs(editor: DynamicBlockEditorGUI) -> tuple[list[VarPowerFlowReferenceType], list[VarPowerFlowReferenceType]]:
@@ -2552,6 +2663,8 @@ def _collect_scene_wrapper_refs(editor: DynamicBlockEditorGUI) -> tuple[list[Var
             else:
                 pass
         elif isinstance(item, graph.MeasurementsItem):
+            assert item.subsys is not None
+            assert editor.get_scene_item_by_block_uid(item.subsys.uid) is item
             output_port: graph.PortItem
             for output_port in item.outputs:
                 if output_port.base_var is not None and output_port.base_var.ref is not None:
@@ -2799,30 +2912,19 @@ def test_branch_ac_to_dc_transition_adds_side_current_and_preserves_available_ab
     assert pi_item is not None
 
     reference: VarPowerFlowReferenceType
-    wrapper_item: graph.ProtectedConnectionBlockItem | graph.MeasurementsItem
     try:
         for reference in preserved_voltage_refs:
-            wrapper_item = _find_semantic_wrapper_item(
-                editor=editor,
-                reference=reference,
-                block_type=BlockType.INPUT_CONN,
-            )
             _connect_port_pair(
                 editor=editor,
-                source_port=_find_item_port_by_reference(wrapper_item, reference, is_input=False),
+                source_port=_find_semantic_wrapper_port(editor, reference, BlockType.INPUT_CONN),
                 target_port=_find_item_port_by_reference(pi_item, reference, is_input=True),
             )
 
         for reference in preserved_current_refs:
-            wrapper_item = _find_semantic_wrapper_item(
-                editor=editor,
-                reference=reference,
-                block_type=BlockType.OUTPUT_CONN,
-            )
             _connect_port_pair(
                 editor=editor,
                 source_port=_find_item_port_by_reference(pi_item, reference, is_input=False),
-                target_port=_find_item_port_by_reference(wrapper_item, reference, is_input=True),
+                target_port=_find_semantic_wrapper_port(editor, reference, BlockType.OUTPUT_CONN),
             )
 
         editor.apply_changes()
@@ -2862,25 +2964,15 @@ def test_branch_ac_to_dc_transition_adds_side_current_and_preserves_available_ab
         assert wrapper_input_refs == expected_input_refs
         assert wrapper_output_refs == expected_output_refs
 
-        dc_input_wrapper: graph.ProtectedConnectionBlockItem | graph.MeasurementsItem = _find_semantic_wrapper_item(
-            editor=reopened_editor,
-            reference=expected_dc_input_ref,
-            block_type=BlockType.INPUT_CONN,
-        )
-        dc_output_wrapper: graph.ProtectedConnectionBlockItem | graph.MeasurementsItem = _find_semantic_wrapper_item(
-            editor=reopened_editor,
-            reference=expected_dc_output_ref,
-            block_type=BlockType.OUTPUT_CONN,
-        )
-        dc_input_port: graph.PortItem = _find_item_port_by_reference(
-            dc_input_wrapper,
+        dc_input_port: graph.PortItem = _find_semantic_wrapper_port(
+            reopened_editor,
             expected_dc_input_ref,
-            is_input=False,
+            BlockType.INPUT_CONN,
         )
-        dc_output_port: graph.PortItem = _find_item_port_by_reference(
-            dc_output_wrapper,
+        dc_output_port: graph.PortItem = _find_semantic_wrapper_port(
+            reopened_editor,
             expected_dc_output_ref,
-            is_input=True,
+            BlockType.OUTPUT_CONN,
         )
         assert dc_input_port.connections is None
         assert dc_output_port.connections is None
@@ -3211,22 +3303,18 @@ def test_manual_pi_branch_ab_wires_survive_abc_expansion_and_relayout() -> None:
         VarPowerFlowReferenceType.it_B,
     ])
     reference: VarPowerFlowReferenceType
-    wrapper_item: graph.ProtectedConnectionBlockItem | graph.MeasurementsItem
-
     for reference in input_refs:
-        wrapper_item = _find_semantic_wrapper_item(editor, reference, BlockType.INPUT_CONN)
         _connect_port_pair(
             editor=editor,
-            source_port=_find_item_port_by_reference(wrapper_item, reference, is_input=False),
+            source_port=_find_semantic_wrapper_port(editor, reference, BlockType.INPUT_CONN),
             target_port=_find_item_port_by_reference(pi_item, reference, is_input=True),
         )
 
     for reference in output_refs:
-        wrapper_item = _find_semantic_wrapper_item(editor, reference, BlockType.OUTPUT_CONN)
         _connect_port_pair(
             editor=editor,
             source_port=_find_item_port_by_reference(pi_item, reference, is_input=False),
-            target_port=_find_item_port_by_reference(wrapper_item, reference, is_input=True),
+            target_port=_find_semantic_wrapper_port(editor, reference, BlockType.OUTPUT_CONN),
         )
 
     assert len(line.emt_model.connection_intents) == 8
@@ -3278,17 +3366,15 @@ def test_manual_pi_branch_ab_wires_survive_abc_expansion_and_relayout() -> None:
         ])
 
         for reference in input_refs:
-            wrapper_item = _find_semantic_wrapper_item(reopened, reference, BlockType.INPUT_CONN)
             assert reopened._connection_exists_between_ports(
-                _find_item_port_by_reference(wrapper_item, reference, is_input=False),
+                _find_semantic_wrapper_port(reopened, reference, BlockType.INPUT_CONN),
                 _find_item_port_by_reference(reopened_pi_item, reference, is_input=True),
             )
 
         for reference in output_refs:
-            wrapper_item = _find_semantic_wrapper_item(reopened, reference, BlockType.OUTPUT_CONN)
             assert reopened._connection_exists_between_ports(
                 _find_item_port_by_reference(reopened_pi_item, reference, is_input=False),
-                _find_item_port_by_reference(wrapper_item, reference, is_input=True),
+                _find_semantic_wrapper_port(reopened, reference, BlockType.OUTPUT_CONN),
             )
 
         canonical_input_refs: list[VarPowerFlowReferenceType] = list([
@@ -3327,11 +3413,9 @@ def test_manual_pi_branch_ab_wires_survive_abc_expansion_and_relayout() -> None:
                        for index in range(len(output_y_positions) - 1))) == 1
 
         for reference in list([VarPowerFlowReferenceType.vf_C, VarPowerFlowReferenceType.vt_C]):
-            wrapper_item = _find_semantic_wrapper_item(reopened, reference, BlockType.INPUT_CONN)
-            assert _find_item_port_by_reference(wrapper_item, reference, is_input=False).connections is None
+            assert _find_semantic_wrapper_port(reopened, reference, BlockType.INPUT_CONN).connections is None
         for reference in list([VarPowerFlowReferenceType.if_C, VarPowerFlowReferenceType.it_C]):
-            wrapper_item = _find_semantic_wrapper_item(reopened, reference, BlockType.OUTPUT_CONN)
-            assert _find_item_port_by_reference(wrapper_item, reference, is_input=True).connections is None
+            assert _find_semantic_wrapper_port(reopened, reference, BlockType.OUTPUT_CONN).connections is None
 
         _show_editor_with_workspace_sized_viewport(editor=reopened)
         _assert_all_editor_blocks_are_inside_viewport(editor=reopened)

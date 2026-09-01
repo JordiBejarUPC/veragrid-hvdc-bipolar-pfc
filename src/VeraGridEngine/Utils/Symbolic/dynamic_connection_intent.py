@@ -172,6 +172,14 @@ class DynamicConnectionIntent:
         """
         return self._internal_variable_uid
 
+    def set_internal_variable_uid(self, internal_variable_uid: int) -> None:
+        """Replace an unavailable port identity with its semantic successor.
+
+        :param internal_variable_uid: Current non-mutable UID of the internal variable.
+        :return: None.
+        """
+        self._internal_variable_uid = internal_variable_uid
+
     def is_suppressed(self) -> bool:
         """
         Return whether the connection is intentionally disabled.

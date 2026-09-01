@@ -984,6 +984,107 @@ def is_root_interface_wrapper_block(block_model: Block | None,
                                                 block_type=block_type)
 
 
+def get_root_interface_container_type(block_model: Block | None,
+                                      diagram: BlockDiagram) -> BlockType | None:
+    """Return the interface direction of an individual or grouped boundary block.
+
+    Unlike a protected wrapper, a grouped measurement boundary may expose more
+    than one referenced variable through the same diagram node.
+
+    :param block_model: Candidate symbolic boundary block.
+    :param diagram: Diagram declaring the graphical node role.
+    :return: Input/output connection type, or ``None`` for a non-boundary block.
+    """
+    if block_model is None:
+        return None
+    else:
+        pass
+
+    diagram_node: BlockDiagramNode | None = diagram.node_data.get(block_model.uid, None)
+    candidate_node: BlockDiagramNode
+    if diagram_node is None:
+        for candidate_node in diagram.node_data.values():
+            if candidate_node.device_uid == block_model.uid:
+                diagram_node = candidate_node
+                break
+            else:
+                pass
+    else:
+        pass
+
+    if diagram_node is None or diagram_node.tpe not in BlockType.__members__:
+        return None
+    else:
+        block_type: BlockType = BlockType[diagram_node.tpe]
+
+    has_symbolic_content: bool = bool(
+        block_model.algebraic_vars
+        or block_model.state_vars
+        or block_model.diff_vars
+        or block_model.parameters
+        or block_model.state_eqs
+        or block_model.algebraic_eqs
+        or block_model.differential_eqs
+        or block_model.children
+    )
+    if has_symbolic_content:
+        return None
+    elif block_type == BlockType.INPUT_CONN:
+        interface_vars: List[Var] = block_model.out_vars
+        opposite_vars: List[Var] = block_model.in_vars
+    elif block_type == BlockType.OUTPUT_CONN:
+        interface_vars = block_model.in_vars
+        opposite_vars = block_model.out_vars
+    else:
+        return None
+
+    references_are_valid: bool = len(interface_vars) > 0 and len(opposite_vars) == 0
+    interface_var: Var
+    for interface_var in interface_vars:
+        if interface_var.ref is None:
+            references_are_valid = False
+        else:
+            pass
+
+    if references_are_valid:
+        return block_type
+    else:
+        return None
+
+
+def get_root_interface_container_port_reference(
+        block_model: Block | None,
+        diagram: BlockDiagram,
+        block_type: BlockType,
+        port_index: int,
+) -> VarPowerFlowReferenceType | None:
+    """Resolve one semantic root reference from an exact boundary port index.
+
+    :param block_model: Individual or grouped boundary block.
+    :param diagram: Diagram declaring the boundary direction.
+    :param block_type: Expected input/output connection type.
+    :param port_index: Index in the boundary-facing variable collection.
+    :return: Exact power-flow reference, or ``None`` for an invalid endpoint.
+    """
+    resolved_type: BlockType | None = get_root_interface_container_type(
+        block_model=block_model,
+        diagram=diagram,
+    )
+    if block_model is None or resolved_type != block_type:
+        return None
+    elif block_type == BlockType.INPUT_CONN:
+        interface_vars: List[Var] = block_model.out_vars
+    elif block_type == BlockType.OUTPUT_CONN:
+        interface_vars = block_model.in_vars
+    else:
+        return None
+
+    if 0 <= port_index < len(interface_vars):
+        return interface_vars[port_index].ref
+    else:
+        return None
+
+
 def _get_port_direction(is_output: bool) -> str:
     """
     Return the serialized port-direction label.
@@ -1265,13 +1366,13 @@ def get_reference_sort_key(reference: VarPowerFlowReferenceType) -> str:
     return reference.value
 
 
-def get_protected_connection_item_position_sort_key(
-        item: graph.ProtectedConnectionBlockItem,
+def get_root_interface_item_position_sort_key(
+        item: graph.ProtectedConnectionBlockItem | graph.MeasurementsItem,
 ) -> tuple[float, float, int]:
     """
-    Return one deterministic positional key for a protected connection item.
+    Return one deterministic positional key for a root-interface item.
 
-    :param item: Protected connection item to order.
+    :param item: Individual or grouped interface item to order.
     :return: Key ordered by vertical position, horizontal position and block UID.
     """
     if item.subsys is not None:
@@ -1281,18 +1382,18 @@ def get_protected_connection_item_position_sort_key(
 
 
 def get_centered_connection_stack_height(
-        items: List[graph.ProtectedConnectionBlockItem],
+        items: List[graph.ProtectedConnectionBlockItem | graph.MeasurementsItem],
         vertical_gap: float,
 ) -> float:
     """
     Return the total height of one vertically spaced connection-item stack.
 
-    :param items: Ordered protected connection items.
+    :param items: Ordered individual or grouped interface items.
     :param vertical_gap: Gap between adjacent items.
     :return: Total stack height.
     """
     total_height: float = 0.0
-    item: graph.ProtectedConnectionBlockItem
+    item: graph.ProtectedConnectionBlockItem | graph.MeasurementsItem
 
     for item in items:
         total_height += item.boundingRect().height()
@@ -1306,7 +1407,7 @@ def get_centered_connection_stack_height(
 
 
 def position_centered_connection_stack(
-        items: List[graph.ProtectedConnectionBlockItem],
+        items: List[graph.ProtectedConnectionBlockItem | graph.MeasurementsItem],
         x_position: float,
         center_y: float,
         vertical_gap: float,
@@ -1314,7 +1415,7 @@ def position_centered_connection_stack(
     """
     Position one ordered connection-item stack around a vertical center.
 
-    :param items: Ordered protected connection items.
+    :param items: Ordered individual or grouped interface items.
     :param x_position: Scene X coordinate for every item.
     :param center_y: Desired vertical center of the full stack.
     :param vertical_gap: Gap between adjacent items.
@@ -1324,7 +1425,7 @@ def position_centered_connection_stack(
         items=items,
         vertical_gap=vertical_gap,
     ) / 2.0
-    item: graph.ProtectedConnectionBlockItem
+    item: graph.ProtectedConnectionBlockItem | graph.MeasurementsItem
     local_rect: QtCore.QRectF
 
     for item in items:
@@ -3345,6 +3446,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             scene_item = self.get_scene_item_by_block_uid(child_block.uid)
             if isinstance(scene_item, (
                     graph.BlockItem,
+                    graph.MeasurementsItem,
                     graph.GenericBlockItem,
                     graph.RoundBaseArithmeticOpItem,
                     graph.RectBaseArithmeticOpItem,
@@ -4786,35 +4888,47 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         source_block = None if source_port.subsystem is None else source_port.subsystem.subsys
         target_block = None if target_port.subsystem is None else target_port.subsystem.subsys
 
-        if is_root_interface_wrapper_block(block_model=source_block,
-                                           diagram=self.diagram):
-            root_ref = self._get_semantic_root_interface_reference(
+        root_ref = get_root_interface_container_port_reference(
+            block_model=source_block,
+            diagram=self.diagram,
+            block_type=BlockType.INPUT_CONN,
+            port_index=source_port.index,
+        )
+        if root_ref is not None:
+            semantic_root_ref: VarPowerFlowReferenceType | None = self._get_semantic_root_interface_reference(
                 wrapper_block=source_block,
                 block_type=BlockType.INPUT_CONN,
             )
-            if root_ref is not None:
-                direction = DynamicConnectionIntentDirection.INPUT
-                if target_block is not None and 0 <= target_port.index < len(target_block.in_vars):
-                    internal_block_uid = target_block.uid
-                    internal_variable_uid = target_block.in_vars[target_port.index].non_mutable_uid
-                else:
-                    pass
+            if semantic_root_ref is not None:
+                root_ref = semantic_root_ref
+            else:
+                pass
+            direction = DynamicConnectionIntentDirection.INPUT
+            if target_block is not None and 0 <= target_port.index < len(target_block.in_vars):
+                internal_block_uid = target_block.uid
+                internal_variable_uid = target_block.in_vars[target_port.index].non_mutable_uid
             else:
                 pass
         else:
-            if is_root_interface_wrapper_block(block_model=target_block,
-                                               diagram=self.diagram):
-                root_ref = self._get_semantic_root_interface_reference(
+            root_ref = get_root_interface_container_port_reference(
+                block_model=target_block,
+                diagram=self.diagram,
+                block_type=BlockType.OUTPUT_CONN,
+                port_index=target_port.index,
+            )
+            if root_ref is not None:
+                semantic_root_ref = self._get_semantic_root_interface_reference(
                     wrapper_block=target_block,
                     block_type=BlockType.OUTPUT_CONN,
                 )
-                if root_ref is not None:
-                    direction = DynamicConnectionIntentDirection.OUTPUT
-                    if source_block is not None and 0 <= source_port.index < len(source_block.out_vars):
-                        internal_block_uid = source_block.uid
-                        internal_variable_uid = source_block.out_vars[source_port.index].non_mutable_uid
-                    else:
-                        pass
+                if semantic_root_ref is not None:
+                    root_ref = semantic_root_ref
+                else:
+                    pass
+                direction = DynamicConnectionIntentDirection.OUTPUT
+                if source_block is not None and 0 <= source_port.index < len(source_block.out_vars):
+                    internal_block_uid = source_block.uid
+                    internal_variable_uid = source_block.out_vars[source_port.index].non_mutable_uid
                 else:
                     pass
             else:
@@ -4876,8 +4990,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         new_entry: DynamicConnectionIntent
 
         for child_block in self.main_block.children:
-            if is_root_interface_wrapper_block(block_model=child_block,
-                                               diagram=self.diagram):
+            if get_root_interface_container_type(
+                    block_model=child_block,
+                    diagram=self.diagram,
+            ) is not None:
                 pass
             else:
                 for input_var in child_block.in_vars:
@@ -4948,15 +5064,20 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         direction: DynamicConnectionIntentDirection
         child_block: Block | None
         wrapper_block: Block | None
-        wrapper_item: graph.BlockItem | graph.GenericBlockItem | None
+        wrapper_item: graph.BlockItem | graph.MeasurementsItem | graph.GenericBlockItem | None
         internal_item: graph.BlockItem | graph.GenericBlockItem | None
         source_port: graph.PortItem | None
         target_port: graph.PortItem | None
         interface_reference: VarPowerFlowReferenceType | None
         candidate_block_type: BlockType
-        candidate_reference: VarPowerFlowReferenceType | None
         internal_port_index: int | None
+        wrapper_port_index: int | None
+        matching_endpoint_count: int
         child_candidate: Block
+        candidate_vars: List[Var]
+        candidate_port_index: int
+        candidate_var: Var
+        candidate_semantic_reference: VarPowerFlowReferenceType | None
 
         for entry in self.main_block.connection_intents:
             if entry.is_suppressed():
@@ -4968,6 +5089,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 source_port = None
                 target_port = None
                 wrapper_block = None
+                wrapper_port_index = None
 
                 if child_block is None:
                     pass
@@ -4976,10 +5098,19 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         child_block=child_block,
                         direction=direction,
                         internal_variable_uid=entry.get_internal_variable_uid(),
+                        fallback_reference=interface_reference,
                     )
                     if internal_port_index is None:
                         pass
                     else:
+                        if direction == DynamicConnectionIntentDirection.INPUT:
+                            current_internal_var: Var = child_block.in_vars[internal_port_index]
+                        else:
+                            current_internal_var = child_block.out_vars[internal_port_index]
+                        if current_internal_var.non_mutable_uid != entry.get_internal_variable_uid():
+                            entry.set_internal_variable_uid(current_internal_var.non_mutable_uid)
+                        else:
+                            pass
                         interface_reference = self._resolve_persisted_intent_interface_reference(
                             persisted_reference=interface_reference,
                             child_block=child_block,
@@ -4996,29 +5127,47 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         else:
                             candidate_block_type = BlockType.OUTPUT_CONN
 
+                        matching_endpoint_count = 0
                         for child_candidate in self.main_block.children:
-                            if is_root_interface_wrapper_block(block_model=child_candidate,
-                                                               diagram=self.diagram):
-                                candidate_reference = self._get_semantic_root_interface_reference(
+                            if get_root_interface_container_type(
+                                    block_model=child_candidate,
+                                    diagram=self.diagram,
+                            ) == candidate_block_type:
+                                if candidate_block_type == BlockType.INPUT_CONN:
+                                    candidate_vars = child_candidate.out_vars
+                                else:
+                                    candidate_vars = child_candidate.in_vars
+
+                                candidate_semantic_reference = self._get_semantic_root_interface_reference(
                                     wrapper_block=child_candidate,
                                     block_type=candidate_block_type,
                                 )
 
-                                if candidate_reference == interface_reference:
-                                    if (direction == DynamicConnectionIntentDirection.INPUT
-                                            and len(child_candidate.out_vars) == 1):
+                                for candidate_port_index, candidate_var in enumerate(candidate_vars):
+                                    if (
+                                            candidate_var.ref == interface_reference
+                                            or (
+                                                len(candidate_vars) == 1
+                                                and candidate_semantic_reference == interface_reference
+                                            )
+                                    ):
                                         wrapper_block = child_candidate
-                                    elif (direction == DynamicConnectionIntentDirection.OUTPUT
-                                          and len(child_candidate.in_vars) == 1):
-                                        wrapper_block = child_candidate
+                                        wrapper_port_index = candidate_port_index
+                                        matching_endpoint_count += 1
                                     else:
                                         pass
-                                else:
-                                    pass
                             else:
                                 pass
 
-                        if wrapper_block is None:
+                        # A duplicated semantic endpoint is unsafe to replay because
+                        # the persisted intent cannot choose between its candidates.
+                        if matching_endpoint_count != 1:
+                            wrapper_block = None
+                            wrapper_port_index = None
+                        else:
+                            pass
+
+                        if wrapper_block is None or wrapper_port_index is None:
                             pass
                         else:
                             wrapper_item = self.get_scene_item_by_block_uid(wrapper_block.uid)
@@ -5027,17 +5176,17 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                 pass
                             else:
                                 if direction == DynamicConnectionIntentDirection.INPUT:
-                                    if len(wrapper_item.outputs) > 0 and internal_port_index < len(
+                                    if wrapper_port_index < len(wrapper_item.outputs) and internal_port_index < len(
                                             internal_item.inputs):
-                                        source_port = wrapper_item.outputs[0]
+                                        source_port = wrapper_item.outputs[wrapper_port_index]
                                         target_port = internal_item.inputs[internal_port_index]
                                     else:
                                         pass
                                 else:
-                                    if len(wrapper_item.inputs) > 0 and internal_port_index < len(
+                                    if wrapper_port_index < len(wrapper_item.inputs) and internal_port_index < len(
                                             internal_item.outputs):
                                         source_port = internal_item.outputs[internal_port_index]
-                                        target_port = wrapper_item.inputs[0]
+                                        target_port = wrapper_item.inputs[wrapper_port_index]
                                     else:
                                         pass
 
@@ -5058,13 +5207,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     def _find_intent_internal_port_index(self,
                                          child_block: Block,
                                          direction: DynamicConnectionIntentDirection,
-                                         internal_variable_uid: int) -> int | None:
+                                         internal_variable_uid: int,
+                                         fallback_reference: VarPowerFlowReferenceType | None = None) -> int | None:
         """
         Find the current graphical port position from a stable variable UID.
 
         :param child_block: Internal block targeted by the intent.
         :param direction: Connection direction.
         :param internal_variable_uid: Non-mutable UID of the target variable.
+        :param fallback_reference: Semantic reference used after a generated port is recreated.
         :return: Current port index or ``None`` when the variable is unavailable.
         """
         variables: List[Var]
@@ -5082,7 +5233,22 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             else:
                 pass
 
-        return None
+        matching_reference_index: int | None = None
+        matching_reference_count: int = 0
+        if fallback_reference is not None:
+            for port_index, candidate_var in enumerate(variables):
+                if candidate_var.ref == fallback_reference:
+                    matching_reference_index = port_index
+                    matching_reference_count += 1
+                else:
+                    pass
+        else:
+            pass
+
+        if matching_reference_count == 1:
+            return matching_reference_index
+        else:
+            return None
 
     def _resolve_persisted_intent_interface_reference(
             self,
@@ -5126,6 +5292,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 child_block=child_block,
                 direction=direction,
                 internal_variable_uid=internal_variable_uid,
+                fallback_reference=persisted_reference,
             )
 
         if internal_port_index is None:
@@ -6155,9 +6322,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         :return: Updated interface bounds, or ``None`` when no wrappers exist.
         """
-        interface_items: list[graph.ProtectedConnectionBlockItem] = [
+        interface_items: list[graph.ProtectedConnectionBlockItem | graph.MeasurementsItem] = [
             item for item in self.scene.items()
-            if isinstance(item, graph.ProtectedConnectionBlockItem)
+            if isinstance(item, (graph.ProtectedConnectionBlockItem, graph.MeasurementsItem))
         ]
 
         if not interface_items:
@@ -6273,11 +6440,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         :return: ``True`` when protected connection items were repositioned.
         """
-        input_items: List[graph.ProtectedConnectionBlockItem] = list()
-        output_items: List[graph.ProtectedConnectionBlockItem] = list()
+        input_items: List[graph.ProtectedConnectionBlockItem | graph.MeasurementsItem] = list()
+        output_items: List[graph.ProtectedConnectionBlockItem | graph.MeasurementsItem] = list()
         content_items: List[QGraphicsItem] = list()
         scene_item: QGraphicsItem
-        protected_item: graph.ProtectedConnectionBlockItem
+        interface_item: graph.ProtectedConnectionBlockItem | graph.MeasurementsItem
         content_rect: QtCore.QRectF = QtCore.QRectF()
         item_rect: QtCore.QRectF
         input_stack_height: float
@@ -6292,12 +6459,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         output_x: float
 
         for scene_item in self.scene.items():
-            if isinstance(scene_item, graph.ProtectedConnectionBlockItem):
-                protected_item = scene_item
-                if len(protected_item.outputs) == 1 and len(protected_item.inputs) == 0:
-                    input_items.append(protected_item)
-                elif len(protected_item.inputs) == 1 and len(protected_item.outputs) == 0:
-                    output_items.append(protected_item)
+            if isinstance(scene_item, (graph.ProtectedConnectionBlockItem, graph.MeasurementsItem)):
+                interface_item = scene_item
+                if len(interface_item.outputs) > 0 and len(interface_item.inputs) == 0:
+                    input_items.append(interface_item)
+                elif len(interface_item.inputs) > 0 and len(interface_item.outputs) == 0:
+                    output_items.append(interface_item)
                 else:
                     pass
             elif isinstance(scene_item, (
@@ -6326,8 +6493,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             block_type=BlockType.OUTPUT_CONN,
         )
 
-        for protected_item in input_items:
-            max_input_width = max(max_input_width, protected_item.boundingRect().width())
+        for interface_item in input_items:
+            max_input_width = max(max_input_width, interface_item.boundingRect().width())
 
         input_stack_height = get_centered_connection_stack_height(items=input_items,
                                                                   vertical_gap=vertical_gap)
@@ -6401,9 +6568,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
     def _order_root_interface_items(
             self,
-            items: List[graph.ProtectedConnectionBlockItem],
+            items: List[graph.ProtectedConnectionBlockItem | graph.MeasurementsItem],
             block_type: BlockType,
-    ) -> List[graph.ProtectedConnectionBlockItem]:
+    ) -> List[graph.ProtectedConnectionBlockItem | graph.MeasurementsItem]:
         """
         Order root-interface items by their authoritative semantic references.
 
@@ -6411,17 +6578,20 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         a fresh editor. Items that cannot be resolved semantically retain their
         deterministic positional order at the end of the corresponding column.
 
-        :param items: Protected connection items to order.
+        :param items: Individual or grouped interface items to order.
         :param block_type: Root wrapper direction represented by the items.
         :return: Semantically ordered protected connection items.
         """
         expected_inputs_by_ref: dict[VarPowerFlowReferenceType, Var]
         expected_outputs_by_ref: dict[VarPowerFlowReferenceType, Var]
         ordered_refs: list[VarPowerFlowReferenceType]
-        items_by_ref: dict[VarPowerFlowReferenceType, graph.ProtectedConnectionBlockItem] = dict()
-        unresolved_items: List[graph.ProtectedConnectionBlockItem] = list()
-        ordered_items: List[graph.ProtectedConnectionBlockItem] = list()
-        item: graph.ProtectedConnectionBlockItem
+        items_by_ref: dict[
+            VarPowerFlowReferenceType,
+            graph.ProtectedConnectionBlockItem | graph.MeasurementsItem,
+        ] = dict()
+        unresolved_items: List[graph.ProtectedConnectionBlockItem | graph.MeasurementsItem] = list()
+        ordered_items: List[graph.ProtectedConnectionBlockItem | graph.MeasurementsItem] = list()
+        item: graph.ProtectedConnectionBlockItem | graph.MeasurementsItem
         reference: VarPowerFlowReferenceType | None
 
         expected_inputs_by_ref, expected_outputs_by_ref = self._build_expected_root_interface_for_current_mode()
@@ -6450,7 +6620,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             else:
                 pass
 
-        unresolved_items.sort(key=get_protected_connection_item_position_sort_key)
+        unresolved_items.sort(key=get_root_interface_item_position_sort_key)
         ordered_items.extend(unresolved_items)
         return ordered_items
 
@@ -6568,6 +6738,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         for scene_item in self.scene.items():
             if isinstance(scene_item, (
                     graph.BlockItem,
+                    graph.MeasurementsItem,
                     graph.GenericBlockItem,
                     graph.RoundBaseArithmeticOpItem,
                     graph.RectBaseArithmeticOpItem,
@@ -9764,9 +9935,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         item: QGraphicsItem
 
         for item in self.scene.items():
-            if isinstance(item, (graph.BlockItem, graph.GenericBlockItem, graph.RoundBaseArithmeticOpItem,
-                                 graph.RectBaseArithmeticOpItem, graph.UnOpItem,
-                                 graph.PairedItem)) and item.subsys is not None:
+            if isinstance(item, (graph.BlockItem, graph.MeasurementsItem, graph.GenericBlockItem,
+                                 graph.RoundBaseArithmeticOpItem, graph.RectBaseArithmeticOpItem,
+                                 graph.UnOpItem, graph.PairedItem)) and item.subsys is not None:
                 if item.subsys.uid == block_uid:
                     return item
                 else:
@@ -10564,20 +10735,22 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                                                               parent=self)
         dialog.exec()
 
-    def _iter_scene_block_items(self) -> list[graph.BlockItem | graph.GenericBlockItem]:
+    def _iter_scene_block_items(
+            self,
+    ) -> list[graph.BlockItem | graph.MeasurementsItem | graph.GenericBlockItem]:
         """
         Return the visible scene items that support validation highlighting.
 
         :return: Scene block items.
         """
-        scene_block_items: list[graph.BlockItem | graph.GenericBlockItem] = list()
+        scene_block_items: list[graph.BlockItem | graph.MeasurementsItem | graph.GenericBlockItem] = list()
         scene_item: QGraphicsItem
 
         # Validation highlighting must cover both full generic blocks and the
         # compact connection/interface blocks because the validation report can
         # point to either one when a port is left disconnected.
         for scene_item in self.scene.items():
-            if isinstance(scene_item, (graph.BlockItem, graph.GenericBlockItem)):
+            if isinstance(scene_item, (graph.BlockItem, graph.MeasurementsItem, graph.GenericBlockItem)):
                 scene_block_items.append(scene_item)
             else:
                 pass
@@ -10590,7 +10763,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         :return: None.
         """
-        scene_block_item: graph.BlockItem | graph.GenericBlockItem
+        scene_block_item: graph.BlockItem | graph.MeasurementsItem | graph.GenericBlockItem
         port_item: graph.PortItem
 
         # The overlay is transient GUI state. It must be fully reset before a
@@ -10607,14 +10780,14 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self._validation_issue_overlay_active = False
 
     def _find_scene_block_item_by_validation_label(self,
-                                                   block_label: str) -> graph.BlockItem | graph.GenericBlockItem | None:
+                                                   block_label: str) -> graph.BlockItem | graph.MeasurementsItem | graph.GenericBlockItem | None:
         """
         Resolve one validation block label to its visible scene block item.
 
         :param block_label: Validation block label.
         :return: Matching scene block item or ``None``.
         """
-        scene_block_item: graph.BlockItem | graph.GenericBlockItem
+        scene_block_item: graph.BlockItem | graph.MeasurementsItem | graph.GenericBlockItem
         formatted_label: str
 
         # Validation rows use the same stable block label formatter as the model
@@ -10650,7 +10823,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         return None
 
-    def _highlight_ports_by_name(self, scene_block_item: graph.BlockItem | graph.GenericBlockItem,
+    def _highlight_ports_by_name(self,
+                                 scene_block_item: graph.BlockItem | graph.MeasurementsItem | graph.GenericBlockItem,
                                  port_names: set[str]) -> bool:
         """
         Highlight the ports whose variable names match the validation report.
@@ -10748,7 +10922,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         return highlighted_any_port
 
     def _highlight_ports_by_ref(self,
-                                scene_block_item: graph.BlockItem | graph.GenericBlockItem,
+                                scene_block_item: graph.BlockItem | graph.MeasurementsItem | graph.GenericBlockItem,
                                 port_refs: set[VarPowerFlowReferenceType]) -> bool:
         """
         Highlight ports whose semantic references match the validation report.
@@ -10919,7 +11093,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         section: valid.ValidationSection
         row: valid.ValidationRow
-        scene_block_item: graph.BlockItem | graph.GenericBlockItem | None
+        scene_block_item: graph.BlockItem | graph.MeasurementsItem | graph.GenericBlockItem | None
         highlighted_any_port: bool
 
         # The overlay keeps port-level connectivity issues more specific than the
@@ -10967,7 +11141,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
         section: valid.ValidationSection
         row: valid.ValidationRow
-        scene_block_item: graph.BlockItem | graph.GenericBlockItem
+        scene_block_item: graph.BlockItem | graph.MeasurementsItem | graph.GenericBlockItem
         port_item: graph.PortItem
         port_var: Var | None
         port_ref: VarPowerFlowReferenceType | None
