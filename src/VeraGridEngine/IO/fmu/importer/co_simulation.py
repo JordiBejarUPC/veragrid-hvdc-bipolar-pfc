@@ -1116,7 +1116,7 @@ def align_rms_fmu_cs_device_output_parameters(problem: Any, x_snapshot: np.ndarr
         if problem._fmu_cs_initialized:
             adapter: FmuCsDeviceAdapter
             for adapter in problem._fmu_cs_adapters:
-                outputs: dict[VarPowerFlowReferenceType, float] = adapter.get_outputs(time_value, x_snapshot)
+                outputs: dict[VarPowerFlowReferenceType, float] = adapter.initialize_outputs(time_value, x_snapshot)
                 adapter.apply_outputs(problem._variable_parameters_values, outputs)
                 if problem._variable_parameters_values is None:
                     problem._last_variable_parameters_values = None

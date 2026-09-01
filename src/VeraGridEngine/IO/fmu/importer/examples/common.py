@@ -126,12 +126,16 @@ def _build_rms_me_source_block() -> Block:
     u: Var = Var("u")
     return Block(
         state_vars=[x],
-        state_eqs=[Const(1.0) + u],
+        # The example begins at the coupled load operating point. The voltage
+        # input therefore produces no artificial derivative at u=1 and x=0.
+        state_eqs=[u - Const(1.0) - x],
         algebraic_vars=[p_out, q_out],
-        algebraic_eqs=[p_out - x, q_out - Const(-0.01)],
+        # Active power retains a small state response while both outputs start
+        # from the same nonzero values used by the static demonstration load.
+        algebraic_eqs=[p_out - (Const(-0.1) - Const(0.02) * x), q_out - Const(-0.01)],
         diff_vars=[dx],
-        init_values={x: Const(0.0), p_out: Const(0.0), q_out: Const(-0.01)},
-        init_eqs={p_out: Const(0.0), q_out: Const(-0.01)},
+        init_values={x: Const(0.0), p_out: Const(-0.1), q_out: Const(-0.01)},
+        init_eqs={p_out: Const(-0.1), q_out: Const(-0.01)},
         in_vars=[u],
         out_vars=[p_out, q_out],
     )
@@ -402,136 +406,94 @@ def _build_rms_results_summary(driver: RmsSimulationDriver, load: Load) -> tuple
     if driver.results is None:
         raise RuntimeError("The RMS simulation did not produce results")
     else:
+        # A valid comparison report represents exactly one executed event
+        # group. Match declared activation to the result-availability mask so
+        # a preallocated placeholder group can never be selected by position.
+        declared_group_count: int = len(driver.grid.rms_events_groups)
+        active_group_mask: np.ndarray = np.zeros(declared_group_count, dtype=bool)
+        declared_group_index: int
+        for declared_group_index in range(declared_group_count):
+            event_group: RmsEventsGroup = driver.grid.rms_events_groups[declared_group_index]
+            active_group_mask[declared_group_index] = bool(event_group.active)
+        active_group_indices: np.ndarray = np.flatnonzero(active_group_mask)
+        available_group_indices: np.ndarray = np.flatnonzero(driver.results.has_event_group_results)
+        groups_match: bool = bool(
+            active_group_indices.size == 1
+            and available_group_indices.size == 1
+            and np.array_equal(active_group_indices, available_group_indices)
+        )
+        if groups_match:
+            group_index: int = int(active_group_indices[0])
+        else:
+            raise RuntimeError(
+                "The RMS example requires one identical active and available event group"
+            )
+
+        # Status belongs to the selected third-axis group and must be
+        # affirmative before any stored numerical row is treated as evidence.
+        well_initialized: bool = bool(driver.results.well_initialized[group_index])
+        converged: bool = bool(driver.results.converged[group_index])
+        if well_initialized and converged:
+            pass
+        else:
+            raise RuntimeError(
+                "The RMS example did not initialize and converge successfully"
+            )
+
+        # The preallocated time lattice is evidence only when the successful
+        # run reached the terminal time configured on the same driver.
+        final_time_seconds: float = float(driver.results.time_array[-1].value) * 1.0e-9
+        final_time_matches: bool = bool(
+            np.isclose(
+                final_time_seconds,
+                driver.options.simulation_time,
+                rtol=0.0,
+                atol=1.0e-12,
+            )
+        )
+        if final_time_matches:
+            pass
+        else:
+            raise RuntimeError("The RMS example did not reach its configured terminal time")
+
+        # External mappings own the result-variable identities. The selected
+        # event-group index is passed explicitly to avoid flattening another
+        # group's placeholder value into the comparison report.
         p_var: Var = load.rms_model.external_mapping[VarPowerFlowReferenceType.P]
         q_var: Var = load.rms_model.external_mapping[VarPowerFlowReferenceType.Q]
-        p_final = _try_get_result_value(driver.results.values, driver.results.uid2idx.get(p_var.uid, None))
-        q_final = _try_get_result_value(driver.results.values, driver.results.uid2idx.get(q_var.uid, None))
-        p_text: str
-        q_text: str
-        if p_final is None:
-            p_text = "not recorded"
-        else:
-            p_text = f"{p_final:.8f}"
-        if q_final is None:
-            q_text = "not recorded"
-        else:
-            q_text = f"{q_final:.8f}"
-        return (
-            f"final_time = {driver.results.time_array[-1]}",
-            f"P_final = {p_text}",
-            f"Q_final = {q_text}",
+        p_final: float | None = _try_get_result_value(
+            driver.results.values,
+            driver.results.uid2idx.get(p_var.uid, None),
+            group_index,
         )
-
-
-def _read_rms_fmu_output(problem: Any, device: Load, reference: VarPowerFlowReferenceType) -> float | None:
-    """
-    Read one FMU-backed RMS output directly from the registered runtime adapters.
-
-    The helper prefers adapter indices over symbolic-name reconstruction because the
-    runtime adapters already own the authoritative mapping from VeraGrid references
-    to the parameter vector updated during the simulation.
-
-    :param problem: Finished RMS problem instance.
-    :param device: Device hosting the imported FMU.
-    :param reference: VeraGrid output reference to recover.
-    :return: Runtime output value when available.
-    """
-
-    adapter = None
-    for adapter in problem._fmu_cs_adapters:
-        if adapter.device == device:
-            if reference in adapter.last_outputs:
-                return adapter.last_outputs[reference]
-            else:
-                if problem._last_variable_parameters_values is None:
-                    return None
-                else:
-                    if reference in adapter.output_param_indices:
-                        output_index: int = adapter.output_param_indices[reference]
-                        return float(problem._last_variable_parameters_values[output_index])
-                    else:
-                        return None
+        q_final: float | None = _try_get_result_value(
+            driver.results.values,
+            driver.results.uid2idx.get(q_var.uid, None),
+            group_index,
+        )
+        if p_final is not None and q_final is not None:
+            power_values: np.ndarray = np.array([p_final, q_final], dtype=float)
         else:
+            raise RuntimeError("The RMS example did not record both P and Q outputs")
+        powers_are_conclusive: bool = bool(
+            np.all(np.isfinite(power_values))
+            and np.all(np.abs(power_values) >= 1.0e-8)
+        )
+        if powers_are_conclusive:
             pass
-
-    for adapter in problem._fmu_me_adapters:
-        if adapter.device == device:
-            if reference in adapter.last_outputs:
-                return adapter.last_outputs[reference]
-            else:
-                if problem._last_variable_parameters_values is None:
-                    return None
-                else:
-                    if reference in adapter.output_param_indices:
-                        output_index = adapter.output_param_indices[reference]
-                        return float(problem._last_variable_parameters_values[output_index])
-                    else:
-                        return None
         else:
-            pass
+            raise RuntimeError(
+                "The RMS example P and Q outputs are non-finite or placeholders"
+            )
 
-    return None
-
-
-def _build_final_rms_snapshot(driver: RmsSimulationDriver) -> np.ndarray:
-    """
-    Build the final RMS state snapshot from the finished results matrix.
-
-    :param driver: Finished RMS simulation driver.
-    :return: Final RMS state/algebraic snapshot.
-    """
-
-    final_values: np.ndarray = np.asarray(driver.results.values[-1, :, 0], dtype=float)
-    return np.ravel(final_values)
-
-
-def _refresh_rms_fmu_outputs_from_final_snapshot(problem: Any,
-                                                 device: Load,
-                                                 final_snapshot: np.ndarray,
-                                                 final_time: float) -> None:
-    """
-    Re-evaluate FMU outputs from the final RMS network snapshot when the runtime cache is empty.
-
-    The fallback is used only by the example report helpers. It keeps the example
-    informative even when the solver lifecycle closes the FMU before the report is
-    assembled.
-
-    :param problem: Finished RMS problem instance.
-    :param device: Device hosting the imported FMU.
-    :param final_snapshot: Final RMS state/algebraic snapshot.
-    :param final_time: Final simulation time.
-    :return: None.
-    """
-
-    adapter = None
-    for adapter in problem._fmu_cs_adapters:
-        if adapter.device == device:
-            try:
-                if len(adapter.last_outputs) == 0:
-                    outputs = adapter.initialize_outputs(final_time, final_snapshot)
-                    adapter.last_outputs = dict(outputs)
-                else:
-                    pass
-            finally:
-                # The report owns the last use of the example adapter. Native
-                # resources must be released even when outputs were cached.
-                adapter.close()
-        else:
-            pass
-
-    for adapter in problem._fmu_me_adapters:
-        if adapter.device == device:
-            try:
-                if len(adapter.last_outputs) == 0:
-                    outputs = adapter.initialize_outputs(final_time, final_snapshot)
-                    adapter.last_outputs = dict(outputs)
-                else:
-                    pass
-            finally:
-                # Model Exchange uses the same report-owned final lifecycle.
-                adapter.close()
-        else:
-            pass
+        return (
+            f"event_group_count = {active_group_indices.size}",
+            f"well_initialized = {well_initialized}",
+            f"converged = {converged}",
+            f"final_time_seconds = {final_time_seconds:.12f}",
+            f"P_final = {p_final:.8f}",
+            f"Q_final = {q_final:.8f}",
+        )
 
 
 def _build_emt_results_summary(driver: EmtSimulationDriver, load: Load) -> tuple[str, ...]:
@@ -591,13 +553,13 @@ def _build_emt_results_summary(driver: EmtSimulationDriver, load: Load) -> tuple
         i_b_var: Var = load.emt_model.external_mapping[VarPowerFlowReferenceType.i_B]
         i_c_var: Var = load.emt_model.external_mapping[VarPowerFlowReferenceType.i_C]
         i_a_final: float | None = _try_get_result_value(
-            driver.results.values, driver.results.uid2idx.get(i_a_var.uid, None)
+            driver.results.values, driver.results.uid2idx.get(i_a_var.uid, None), group_index
         )
         i_b_final: float | None = _try_get_result_value(
-            driver.results.values, driver.results.uid2idx.get(i_b_var.uid, None)
+            driver.results.values, driver.results.uid2idx.get(i_b_var.uid, None), group_index
         )
         i_c_final: float | None = _try_get_result_value(
-            driver.results.values, driver.results.uid2idx.get(i_c_var.uid, None)
+            driver.results.values, driver.results.uid2idx.get(i_c_var.uid, None), group_index
         )
         if i_a_final is not None and i_b_final is not None and i_c_final is not None:
             currents: np.ndarray = np.array([i_a_final, i_b_final, i_c_final], dtype=float)
@@ -626,20 +588,31 @@ def _build_emt_results_summary(driver: EmtSimulationDriver, load: Load) -> tuple
         )
 
 
-def _try_get_result_value(values: np.ndarray, column_index: int | None) -> float | None:
+def _try_get_result_value(
+        values: np.ndarray,
+        column_index: int | None,
+        group_index: int,
+) -> float | None:
     """Try to recover one scalar value from a VeraGrid results matrix.
 
     :param values: Results matrix.
     :param column_index: Candidate variable column index.
+    :param group_index: Selected event-group index in the third storage axis.
     :return: Final scalar value when available.
     """
 
     if column_index is None:
         return None
     else:
-        flat_values: np.ndarray = np.ravel(values[-1, column_index])
-        if flat_values.size > 0:
-            return float(flat_values[0])
+        indices_are_valid: bool = bool(
+            values.ndim == 3
+            and column_index >= 0
+            and column_index < values.shape[1]
+            and group_index >= 0
+            and group_index < values.shape[2]
+        )
+        if indices_are_valid:
+            return float(values[-1, column_index, group_index])
         else:
             return None
 
@@ -699,24 +672,10 @@ def run_rms_cs_example(output_dir: Path) -> Path:
     )
     rms_driver.run()
 
-    if rms_driver.problem is None:
-        raise RuntimeError("The RMS example did not keep a reference to the simulation problem")
-    else:
-        final_snapshot: np.ndarray = _build_final_rms_snapshot(rms_driver)
-        final_time_seconds: float = float(rms_driver.results.time_array[-1].value) * 1e-9
-        _refresh_rms_fmu_outputs_from_final_snapshot(rms_driver.problem, load, final_snapshot, final_time_seconds)
-        p_value = _read_rms_fmu_output(rms_driver.problem, load, VarPowerFlowReferenceType.P)
-        q_value = _read_rms_fmu_output(rms_driver.problem, load, VarPowerFlowReferenceType.Q)
-        p_text: str = "not available" if p_value is None else f"{p_value:.8f}"
-        q_text: str = "not available" if q_value is None else f"{q_value:.8f}"
-
     lines: tuple[str, ...] = (
         f"fmu_path = {fmu_path}",
         f"mode = {request.mode.value}",
-        f"final_time = {rms_driver.results.time_array[-1]}",
-        f"P_final = {p_text}",
-        f"Q_final = {q_text}",
-    )
+    ) + _build_rms_results_summary(rms_driver, load)
     return write_example_report(report_path, lines)
 
 
@@ -773,24 +732,10 @@ def run_rms_me_example(output_dir: Path) -> Path:
     )
     rms_driver.run()
 
-    if rms_driver.problem is None:
-        raise RuntimeError("The RMS example did not keep a reference to the simulation problem")
-    else:
-        final_snapshot = _build_final_rms_snapshot(rms_driver)
-        final_time_seconds = float(rms_driver.results.time_array[-1].value) * 1e-9
-        _refresh_rms_fmu_outputs_from_final_snapshot(rms_driver.problem, load, final_snapshot, final_time_seconds)
-        p_value = _read_rms_fmu_output(rms_driver.problem, load, VarPowerFlowReferenceType.P)
-        q_value = _read_rms_fmu_output(rms_driver.problem, load, VarPowerFlowReferenceType.Q)
-        p_text = "not available" if p_value is None else f"{p_value:.8f}"
-        q_text = "not available" if q_value is None else f"{q_value:.8f}"
-
     lines: tuple[str, ...] = (
         f"fmu_path = {fmu_path}",
         f"mode = {request.mode.value}",
-        f"final_time = {rms_driver.results.time_array[-1]}",
-        f"P_final = {p_text}",
-        f"Q_final = {q_text}",
-    )
+    ) + _build_rms_results_summary(rms_driver, load)
     return write_example_report(report_path, lines)
 
 
