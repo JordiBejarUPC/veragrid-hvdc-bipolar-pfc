@@ -1792,6 +1792,22 @@ Sind Sie sicher?</translation>
         <source>VSC devices need one AC bus, one DC bus, and an optional DC bus.</source>
         <translation>VSC-Geräte benötigen einen AC-Bus, einen DC-Bus und einen optionalen DC-Bus.</translation>
     </message>
+    <message>
+        <source>Nothing to paste</source>
+        <translation>Nichts einzufügen</translation>
+    </message>
+    <message>
+        <source>Paste</source>
+        <translation>Einfügen</translation>
+    </message>
+    <message>
+        <source>Paste data</source>
+        <translation>Daten einfügen</translation>
+    </message>
+    <message>
+        <source>Pasted!</source>
+        <translation>Eingefügt!</translation>
+    </message>
 </context>
 <context>
     <name>DcLineDeviceEditor</name>

@@ -1800,6 +1800,22 @@ Are you sure?</source>
         <source>VSC devices need one AC bus, one DC bus, and an optional DC bus.</source>
         <translation>VSC 设备需要一个 AC 母线、一个 DC 母线和一个可选的 DC 母线。</translation>
     </message>
+    <message>
+        <source>Nothing to paste</source>
+        <translation>无需粘贴</translation>
+    </message>
+    <message>
+        <source>Paste</source>
+        <translation>粘贴</translation>
+    </message>
+    <message>
+        <source>Paste data</source>
+        <translation>粘贴数据</translation>
+    </message>
+    <message>
+        <source>Pasted!</source>
+        <translation>已粘贴！</translation>
+    </message>
 </context>
 <context>
     <name>DcLineDeviceEditor</name>

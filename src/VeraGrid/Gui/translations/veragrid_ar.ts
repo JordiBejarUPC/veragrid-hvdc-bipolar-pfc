@@ -1790,6 +1790,22 @@ Are you sure?</source>
         <source>VSC devices need one AC bus, one DC bus, and an optional DC bus.</source>
         <translation>تحتاج أجهزة VSC إلى ناقل تيار متردد (AC) واحد، وناقل تيار مستمر (DC) واحد، وناقل تيار مستمر (DC) اختياري.</translation>
     </message>
+    <message>
+        <source>Nothing to paste</source>
+        <translation>لا شيء للنسخ</translation>
+    </message>
+    <message>
+        <source>Paste</source>
+        <translation>لصق</translation>
+    </message>
+    <message>
+        <source>Paste data</source>
+        <translation>لصق البيانات</translation>
+    </message>
+    <message>
+        <source>Pasted!</source>
+        <translation>تم اللصق!</translation>
+    </message>
 </context>
 <context>
     <name>DcLineDeviceEditor</name>

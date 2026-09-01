@@ -1230,6 +1230,22 @@ Are you sure?</source>
         <source>VSC devices need one AC bus, one DC bus, and an optional DC bus.</source>
         <translation>VSC उपकरणों को एक AC बस, एक DC बस और एक वैकल्पिक DC बस की आवश्यकता होती है।</translation>
     </message>
+    <message>
+        <source>Nothing to paste</source>
+        <translation>पेस्ट करने के लिए कुछ नहीं</translation>
+    </message>
+    <message>
+        <source>Paste</source>
+        <translation>पेस्ट करें</translation>
+    </message>
+    <message>
+        <source>Paste data</source>
+        <translation>डेटा पेस्ट करें</translation>
+    </message>
+    <message>
+        <source>Pasted!</source>
+        <translation>पेस्ट किया!</translation>
+    </message>
 </context>
 <context>
     <name>DcLineDeviceEditor</name>

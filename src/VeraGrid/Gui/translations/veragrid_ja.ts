@@ -1790,6 +1790,22 @@ Are you sure?</source>
         <source>VSC devices need one AC bus, one DC bus, and an optional DC bus.</source>
         <translation>VSCデバイスには、ACバス1つ、DCバス1つ、およびオプションのDCバスが必要です。</translation>
     </message>
+    <message>
+        <source>Nothing to paste</source>
+        <translation>貼り付けるものなし</translation>
+    </message>
+    <message>
+        <source>Paste</source>
+        <translation>貼り付け</translation>
+    </message>
+    <message>
+        <source>Paste data</source>
+        <translation>データを貼り付け</translation>
+    </message>
+    <message>
+        <source>Pasted!</source>
+        <translation>貼り付けました！</translation>
+    </message>
 </context>
 <context>
     <name>DcLineDeviceEditor</name>

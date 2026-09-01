@@ -1790,6 +1790,22 @@ Weet u zeker?</translation>
         <source>VSC devices need one AC bus, one DC bus, and an optional DC bus.</source>
         <translation>VSC-apparaten hebben één AC-bus, één DC-bus en een optionele DC-bus nodig.</translation>
     </message>
+    <message>
+        <source>Nothing to paste</source>
+        <translation>Niets plakken</translation>
+    </message>
+    <message>
+        <source>Paste</source>
+        <translation>Plakken</translation>
+    </message>
+    <message>
+        <source>Paste data</source>
+        <translation>Gegevens plakken</translation>
+    </message>
+    <message>
+        <source>Pasted!</source>
+        <translation>Geplakt!</translation>
+    </message>
 </context>
 <context>
     <name>DcLineDeviceEditor</name>

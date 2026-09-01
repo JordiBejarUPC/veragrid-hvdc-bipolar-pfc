@@ -1792,6 +1792,22 @@ Combreu?</translation>
         <source>VSC devices need one AC bus, one DC bus, and an optional DC bus.</source>
         <translation>Els dispositius VSC necessiten un bus CA, un bus CC i un bus CC opcional.</translation>
     </message>
+    <message>
+        <source>Nothing to paste</source>
+        <translation>No hi ha res que enganxar</translation>
+    </message>
+    <message>
+        <source>Paste</source>
+        <translation>Pausar</translation>
+    </message>
+    <message>
+        <source>Paste data</source>
+        <translation>Enganxa dades</translation>
+    </message>
+    <message>
+        <source>Pasted!</source>
+        <translation>Enganxat!</translation>
+    </message>
 </context>
 <context>
     <name>DcLineDeviceEditor</name>

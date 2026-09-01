@@ -1790,6 +1790,22 @@ Are you sure?</translation>
         <source>VSC devices need one AC bus, one DC bus, and an optional DC bus.</source>
         <translation>Οι συσκευές VSC χρειάζονται έναν AC bus, έναν DC bus και έναν προαιρετικό DC bus.</translation>
     </message>
+    <message>
+        <source>Nothing to paste</source>
+        <translation>Χωρίς τίποτα να επικολλήσετε</translation>
+    </message>
+    <message>
+        <source>Paste</source>
+        <translation>Επικόλληση</translation>
+    </message>
+    <message>
+        <source>Paste data</source>
+        <translation>Επικόλληση δεδομένων</translation>
+    </message>
+    <message>
+        <source>Pasted!</source>
+        <translation>Επικολλήθηκε!</translation>
+    </message>
 </context>
 <context>
     <name>DcLineDeviceEditor</name>

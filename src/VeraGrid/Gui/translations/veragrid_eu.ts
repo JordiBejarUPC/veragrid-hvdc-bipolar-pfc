@@ -1792,6 +1792,22 @@ Are you sure?</translation>
         <source>VSC devices need one AC bus, one DC bus, and an optional DC bus.</source>
         <translation>VSC azingeru moduaz batezko AC bus batek, DC bus batek eta DC bus opzionalt bat behar ditu.</translation>
     </message>
+    <message>
+        <source>Nothing to paste</source>
+        <translation>Paste bat ez dago</translation>
+    </message>
+    <message>
+        <source>Paste</source>
+        <translation>Kopiatu</translation>
+    </message>
+    <message>
+        <source>Paste data</source>
+        <translation>Datuak kokatu</translation>
+    </message>
+    <message>
+        <source>Pasted!</source>
+        <translation>Kokatu da!</translation>
+    </message>
 </context>
 <context>
     <name>DcLineDeviceEditor</name>

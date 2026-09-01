@@ -1800,6 +1800,22 @@ Are you sure?</translation>
         <source>VSC devices need one AC bus, one DC bus, and an optional DC bus.</source>
         <translation>Los dispositivos VSC necesitan un bus de CA, un bus de CC y un bus de CC opcional.</translation>
     </message>
+    <message>
+        <source>Nothing to paste</source>
+        <translation>No hay nada que pegar</translation>
+    </message>
+    <message>
+        <source>Paste</source>
+        <translation>Pegar</translation>
+    </message>
+    <message>
+        <source>Paste data</source>
+        <translation>Pegar datos</translation>
+    </message>
+    <message>
+        <source>Pasted!</source>
+        <translation>¡Pegado!</translation>
+    </message>
 </context>
 <context>
     <name>DcLineDeviceEditor</name>

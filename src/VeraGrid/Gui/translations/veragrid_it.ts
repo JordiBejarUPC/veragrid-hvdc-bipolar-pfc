@@ -1790,6 +1790,22 @@ Sei sicuro?</translation>
         <source>VSC devices need one AC bus, one DC bus, and an optional DC bus.</source>
         <translation>I dispositivi VSC richiedono un bus CA, un bus CC e un bus CC opzionale.</translation>
     </message>
+    <message>
+        <source>Nothing to paste</source>
+        <translation>Niente da incollare</translation>
+    </message>
+    <message>
+        <source>Paste</source>
+        <translation>Incolla</translation>
+    </message>
+    <message>
+        <source>Paste data</source>
+        <translation>Incolla dati</translation>
+    </message>
+    <message>
+        <source>Pasted!</source>
+        <translation>Incollato!</translation>
+    </message>
 </context>
 <context>
     <name>DcLineDeviceEditor</name>

@@ -1792,6 +1792,22 @@ Tem a certeza?</translation>
         <source>VSC devices need one AC bus, one DC bus, and an optional DC bus.</source>
         <translation>Os dispositivos VSC necessitam de um barramento CA, um barramento CC e um barramento CC opcional.</translation>
     </message>
+    <message>
+        <source>Nothing to paste</source>
+        <translation>Nada para colar</translation>
+    </message>
+    <message>
+        <source>Paste</source>
+        <translation>Colar</translation>
+    </message>
+    <message>
+        <source>Paste data</source>
+        <translation>Colar dados</translation>
+    </message>
+    <message>
+        <source>Pasted!</source>
+        <translation>Colado!</translation>
+    </message>
 </context>
 <context>
     <name>DcLineDeviceEditor</name>

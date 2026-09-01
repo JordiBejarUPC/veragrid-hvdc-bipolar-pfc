@@ -1800,6 +1800,22 @@ Are you sure?</source>
         <source>VSC devices need one AC bus, one DC bus, and an optional DC bus.</source>
         <translation>VSC 장치는 AC 버스 1개, DC 버스 1개, 그리고 선택적 DC 버스가 필요합니다.</translation>
     </message>
+    <message>
+        <source>Nothing to paste</source>
+        <translation>붙여넣을 내용 없음</translation>
+    </message>
+    <message>
+        <source>Paste</source>
+        <translation>붙여넣기</translation>
+    </message>
+    <message>
+        <source>Paste data</source>
+        <translation>데이터 붙여넣기</translation>
+    </message>
+    <message>
+        <source>Pasted!</source>
+        <translation>붙여넣기 완료!</translation>
+    </message>
 </context>
 <context>
     <name>DcLineDeviceEditor</name>

@@ -1232,6 +1232,22 @@ Are you sure?</source>
         <source>VSC devices need one AC bus, one DC bus, and an optional DC bus.</source>
         <translation>VSC 設備需要一個 AC 母線、一個 DC 母線和一個可選的 DC 母線。</translation>
     </message>
+    <message>
+        <source>Nothing to paste</source>
+        <translation>無內容</translation>
+    </message>
+    <message>
+        <source>Paste</source>
+        <translation>貼上</translation>
+    </message>
+    <message>
+        <source>Paste data</source>
+        <translation>貼上數據</translation>
+    </message>
+    <message>
+        <source>Pasted!</source>
+        <translation>已貼上!</translation>
+    </message>
 </context>
 <context>
     <name>DcLineDeviceEditor</name>

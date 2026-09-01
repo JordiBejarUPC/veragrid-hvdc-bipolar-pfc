@@ -1266,6 +1266,22 @@ Czy na pewno?</translation>
         <source>VSC devices need one AC bus, one DC bus, and an optional DC bus.</source>
         <translation>Urządzenia VSC wymagają jednego zasilacza AC, jednego zasilacza DC i opcjonalnego zasilacza DC.</translation>
     </message>
+    <message>
+        <source>Nothing to paste</source>
+        <translation>Nie ma nic do wklejenia</translation>
+    </message>
+    <message>
+        <source>Paste</source>
+        <translation>Wklej</translation>
+    </message>
+    <message>
+        <source>Paste data</source>
+        <translation>Wklej dane</translation>
+    </message>
+    <message>
+        <source>Pasted!</source>
+        <translation>Wklejono!</translation>
+    </message>
 </context>
 <context>
     <name>DcLineDeviceEditor</name>
