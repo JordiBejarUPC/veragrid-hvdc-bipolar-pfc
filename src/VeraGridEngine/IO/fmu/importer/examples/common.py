@@ -569,23 +569,30 @@ def _refresh_rms_fmu_outputs_from_final_snapshot(problem: Any,
     adapter = None
     for adapter in problem._fmu_cs_adapters:
         if adapter.device == device:
-            if len(adapter.last_outputs) == 0:
-                outputs = adapter.initialize_outputs(final_time, final_snapshot)
-                adapter.last_outputs = dict(outputs)
+            try:
+                if len(adapter.last_outputs) == 0:
+                    outputs = adapter.initialize_outputs(final_time, final_snapshot)
+                    adapter.last_outputs = dict(outputs)
+                else:
+                    pass
+            finally:
+                # The report owns the last use of the example adapter. Native
+                # resources must be released even when outputs were cached.
                 adapter.close()
-            else:
-                pass
         else:
             pass
 
     for adapter in problem._fmu_me_adapters:
         if adapter.device == device:
-            if len(adapter.last_outputs) == 0:
-                outputs = adapter.initialize_outputs(final_time, final_snapshot)
-                adapter.last_outputs = dict(outputs)
+            try:
+                if len(adapter.last_outputs) == 0:
+                    outputs = adapter.initialize_outputs(final_time, final_snapshot)
+                    adapter.last_outputs = dict(outputs)
+                else:
+                    pass
+            finally:
+                # Model Exchange uses the same report-owned final lifecycle.
                 adapter.close()
-            else:
-                pass
         else:
             pass
 

@@ -35,6 +35,7 @@ class Ui_DynamicBlockPropertiesDialog(object):
 
         self.status_label = QLabel(DynamicBlockPropertiesDialog)
         self.status_label.setObjectName(u"status_label")
+        self.status_label.setVisible(False)
         self.status_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         self.status_label.setWordWrap(True)
 

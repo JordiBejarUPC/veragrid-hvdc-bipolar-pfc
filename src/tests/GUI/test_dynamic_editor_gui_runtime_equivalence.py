@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
-from PySide6 import QtWidgets
+from PySide6 import QtCore, QtWidgets
 
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_preparation import prepare_block_for_editing
@@ -37,7 +37,7 @@ from VeraGridEngine.Templates.Rms.genrow_rms_template import get_genrow_rms_temp
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.symbolic import symbolic_to_string
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, symbolic_to_string
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model, set_rms_model
@@ -1132,6 +1132,93 @@ def test_canvas_copy_paste_clones_blocks_without_parent_connections(
         qt_app.processEvents()
         assert all(child.uid != pasted_block.uid for child in root_block.children)
         assert pasted_block.uid not in editor.diagram.node_data
+        assert len(editor.diagram.con_data) == connection_count_before_copy
+    finally:
+        editor.prepare_to_delete()
+        editor.close()
+        editor.deleteLater()
+        qt_app.processEvents()
+
+
+def test_canvas_copy_paste_duplicates_signal_pair_output_without_arrows(
+        qt_app: QtWidgets.QApplication,
+) -> None:
+    """Paste a selected To tag into its existing pair without copying wires.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    circuit: MultiCircuit = MultiCircuit()
+    generator: Generator = Generator(name="Signal-pair clipboard owner")
+    root_block: Block = Block(name="signal_pair_clipboard_root")
+    editor: DynamicBlockEditorGUI = DynamicBlockEditorGUI(
+        var_factory=circuit.var_factory,
+        root_block=root_block,
+        current_block=root_block,
+        api_object=generator,
+        circuit=circuit,
+        mode=DynamicSimulationMode.RMS,
+        current_theme=DynEditorGraphicsModes.LIGHT,
+        templates_list=list(),
+        is_root_editor=False,
+        modal=False,
+        workspace_embedded=False,
+        block2blocktype=dict(),
+    )
+    editor.show()
+    qt_app.processEvents()
+
+    try:
+        signal_pair_items: tuple[graph.PairedItem, graph.PairedItem] | None = (
+            editor.create_signal_pair_item(x_pos=180.0, y_pos=160.0)
+        )
+        target_item: graph.GenericBlockItem | None = editor.create_generic_block_item(
+            block_type=BlockType.GENERIC,
+            x_pos=420.0,
+            y_pos=160.0,
+        )
+        assert signal_pair_items is not None
+        assert target_item is not None
+        signal_input_item: graph.PairedItem
+        signal_output_item: graph.PairedItem
+        signal_input_item, signal_output_item = signal_pair_items
+        input_block_uid: int = signal_input_item.subsys.uid
+        output_block_uid: int = signal_output_item.subsys.uid
+        canonical_var: Var | None = signal_input_item.get_signal_var()
+        source_position: QtCore.QPointF = QtCore.QPointF(signal_output_item.pos())
+        assert canonical_var is not None
+
+        editor.scene.connect_ports(signal_output_item.outputs[0], target_item.inputs[0])
+        connection_count_before_copy: int = len(editor.diagram.con_data)
+        assert connection_count_before_copy == 1
+
+        # The To tag is the duplicable half of a signal pair. It must be
+        # copyable without selecting its associated From tag.
+        editor.scene.clearSelection()
+        signal_output_item.setSelected(True)
+        editor.copy_selected_blocks()
+        editor.paste_copied_blocks()
+        qt_app.processEvents()
+
+        selected_pair_items: List[graph.PairedItem] = list()
+        selected_item: QtWidgets.QGraphicsItem
+        for selected_item in editor.scene.selectedItems():
+            if isinstance(selected_item, graph.PairedItem):
+                selected_pair_items.append(selected_item)
+            else:
+                pass
+        assert len(selected_pair_items) == 1
+        pasted_output_item: graph.PairedItem = selected_pair_items[0]
+        pasted_var: Var | None = pasted_output_item.get_signal_var()
+        rebuilt_input_item: object = editor.get_scene_item_by_block_uid(input_block_uid)
+
+        assert isinstance(rebuilt_input_item, graph.PairedItem)
+        assert pasted_output_item.subsys.uid != output_block_uid
+        assert pasted_var is canonical_var
+        assert pasted_output_item.paired_items is not None
+        assert rebuilt_input_item in pasted_output_item.paired_items
+        assert pasted_output_item.pos() == source_position + QtCore.QPointF(30.0, 30.0)
+        assert pasted_output_item.outputs[0].connections is None
         assert len(editor.diagram.con_data) == connection_count_before_copy
     finally:
         editor.prepare_to_delete()

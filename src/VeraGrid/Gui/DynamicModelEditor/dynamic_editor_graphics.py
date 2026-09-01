@@ -1515,6 +1515,115 @@ class ElbowItem(QGraphicsEllipseItem):
         super().contextMenuEvent(event)
 
 
+class EditableBlockNameItem(QGraphicsTextItem):
+    """Inline editor for the authoritative name of one symbolic block item."""
+
+    __slots__ = ("_owner", "_original_name", "_editing")
+
+    def __init__(self,
+                 owner: GenericBlockItem | BlockItem,
+                 name: str) -> None:
+        """Create a non-editable label that can enter an explicit edit mode.
+
+        :param owner: Graphics block whose symbolic model owns the name.
+        :param name: Initial visible block name.
+        :return: None.
+        """
+        super().__init__(name, owner)
+        self._owner: GenericBlockItem | BlockItem = owner
+        self._original_name: str = name
+        self._editing: bool = False
+        self.setTextInteractionFlags(Qt.TextInteractionFlag.NoTextInteraction)
+
+    def start_editing(self) -> None:
+        """Enable text editing in place and select the complete current name.
+
+        :return: None.
+        """
+        if self._editing:
+            pass
+        else:
+            self._original_name = self.toPlainText()
+            self._editing = True
+            self.setTextInteractionFlags(Qt.TextInteractionFlag.TextEditorInteraction)
+            self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsFocusable, True)
+            self.setFocus(Qt.FocusReason.OtherFocusReason)
+            cursor: QtGui.QTextCursor = self.textCursor()
+            cursor.select(QtGui.QTextCursor.SelectionType.Document)
+            self.setTextCursor(cursor)
+
+    def finish_editing(self, apply_changes: bool) -> None:
+        """Leave edit mode, applying a valid candidate or restoring the model name.
+
+        :param apply_changes: Whether the typed text should be validated and applied.
+        :return: None.
+        """
+        if not self._editing:
+            return
+        else:
+            self._editing = False
+            candidate_name: str = self.toPlainText().strip()
+
+        if apply_changes:
+            accepted: bool = self._owner.editor.apply_block_name_edit(
+                item=self._owner,
+                new_name=candidate_name,
+            )
+        else:
+            accepted = False
+
+        if accepted:
+            # Re-read the authoritative value so surrounding whitespace is
+            # normalized even when the candidate equals the existing name.
+            self._owner.refresh_block_name()
+        elif self._owner.subsys is not None:
+            # Validation failures and Escape both restore the authoritative
+            # model value, never an uncommitted graphics-only label.
+            self._owner.refresh_block_name()
+        else:
+            self.setPlainText(self._original_name)
+
+        self.setTextInteractionFlags(Qt.TextInteractionFlag.NoTextInteraction)
+        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsFocusable, False)
+        self.clearFocus()
+
+    def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
+        """Commit with Enter, cancel with Escape, or edit the current text.
+
+        :param event: Key event received while the label has editing focus.
+        :return: None.
+        """
+        if event.key() == Qt.Key.Key_Return or event.key() == Qt.Key.Key_Enter:
+            self.finish_editing(apply_changes=True)
+            event.accept()
+        elif event.key() == Qt.Key.Key_Escape:
+            self.finish_editing(apply_changes=False)
+            event.accept()
+        else:
+            super().keyPressEvent(event)
+
+    def focusOutEvent(self, event: QtGui.QFocusEvent) -> None:
+        """Commit the typed name when focus leaves the inline editor.
+
+        :param event: Focus event received from the graphics scene.
+        :return: None.
+        """
+        self.finish_editing(apply_changes=True)
+        super().focusOutEvent(event)
+
+    def mouseDoubleClickEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
+        """Start inline editing when the user double-clicks the name itself.
+
+        :param event: Mouse event received on the block-name label.
+        :return: None.
+        """
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.start_editing()
+            event.accept()
+        else:
+            super().mouseDoubleClickEvent(event)
+
+
 class GenericBlockItem(QGraphicsRectItem):
     """Resizable graphics item exposing every port of one symbolic block."""
 
@@ -1549,7 +1658,7 @@ class GenericBlockItem(QGraphicsRectItem):
         self.name: str = name
         self.api_object = api_object
         self.position_changed_callback = position_changed_callback
-        self.name_item = QGraphicsTextItem(self.name, self)
+        self.name_item: EditableBlockNameItem = EditableBlockNameItem(self, self.name)
 
         self.update_name_position()
 
@@ -2276,29 +2385,6 @@ class PairedItem(QGraphicsPolygonItem):
         """
         QApplication.restoreOverrideCursor()
 
-    def _duplicate_paired_output(self, _checked: bool = False) -> None:
-        """Create another output tag for this signal-pair identity.
-
-        :param _checked: Unused QAction checked state supplied by Qt.
-        :return: None.
-        """
-        duplicate_paired_item(self)
-
-    def contextMenuEvent(self, event: QtWidgets.QGraphicsSceneContextMenuEvent) -> None:
-        """Show the duplicate action for output-side signal tags.
-
-        :param event: Incoming graphics-scene context-menu event.
-        :return: None.
-        """
-        if not self.is_signal_in and self.paired_items is not None:
-            menu: QMenu = QMenu()
-            duplicate_action: QAction = QAction("Duplicate", menu)
-            duplicate_action.triggered.connect(self._duplicate_paired_output)
-            menu.addAction(duplicate_action)
-            menu.exec(event.screenPos())
-        else:
-            super().contextMenuEvent(event)
-
     def mousePressEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
         """Handle a graphics-scene mouse press for this item.
 
@@ -2401,7 +2487,7 @@ class BlockItem(QGraphicsRectItem):
         self.api_object = api_object
         self.mode = mode
         self.name: str = name
-        self.name_item = QGraphicsTextItem(self.name, self)
+        self.name_item: EditableBlockNameItem = EditableBlockNameItem(self, self.name)
         self.position_changed_callback = position_changed_callback
         self.resize_handle: ResizeHandle | None = None
         self.resizing_from_handle: bool = False
@@ -2471,7 +2557,9 @@ class BlockItem(QGraphicsRectItem):
         :return: None.
         """
         if self.subsys is not None:
-            self.name_item = QGraphicsTextItem(self.name, self)
+            # Keep the constructor-owned editable title. Replacing it here
+            # would leave the original child rendered and disable inline edit.
+            self.name_item.setPlainText(self.name)
 
             n_inputs: int = len(self.subsys.in_vars)
             n_outputs: int = len(self.subsys.out_vars)
@@ -4366,15 +4454,19 @@ class DiagramScene(QGraphicsScene):
                 menu = QMenu()
                 remove_action = QAction("Remove", menu)
                 menu.addAction(remove_action)
-                duplicate_action: QAction = QAction("Duplicate", menu)
-                menu.addAction(duplicate_action)
+                duplicate_action: QAction | None
+                if item.is_signal_in:
+                    duplicate_action = None
+                else:
+                    duplicate_action = QAction("Duplicate", menu)
+                    menu.addAction(duplicate_action)
                 color_action = QAction("Change Color", menu)
                 menu.addAction(color_action)
 
                 selected_action = menu.exec(event.screenPos())
                 if selected_action is remove_action:
                     self.remove_context_item()
-                elif selected_action is duplicate_action:
+                elif duplicate_action is not None and selected_action is duplicate_action:
                     duplicate_paired_item(item)
                 elif selected_action is color_action:
                     self.recolor_context_item()
