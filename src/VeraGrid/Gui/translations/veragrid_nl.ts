@@ -14,62 +14,58 @@
         <translation>Over</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="49"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="89"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;VeraGrid&lt;/span&gt; has been carefully crafted since 2015 to serve as a platform for research and consultancy. Visit &lt;a href=&quot;https://www.eroots.tech/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;eRoots&lt;/span&gt;&lt;/a&gt; for more details. The source of VeraGrid can be found &lt;a href=&quot;https://github.com/SanPen/VeraGrid&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;here.&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;VeraGrid&lt;/span&gt;is sinds 2015 zorgvuldig samengesteld om te dienen als platform voor onderzoek en advies. Bezoek&lt;a href=&quot;https://www.eroots.tech/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;eRoots&lt;/span&gt;&lt;/a&gt;voor meer informatie. De bron van VeraGrid kan worden gevonden&lt;a href=&quot;https://github.com/SanPen/VeraGrid&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;hier.&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="112"/>
         <source>version</source>
-        <translation>versie</translation>
+        <translation type="vanished">versie</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="128"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="133"/>
         <source>Copyright</source>
         <translation>Copyright</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="164"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="150"/>
         <source>Contributors</source>
         <translation>Bijdragers</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="170"/>
         <source>TextLabel</source>
-        <translation>TextLabel</translation>
+        <translation type="vanished">TextLabel</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="184"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="160"/>
         <source>Libraries</source>
         <translation>Bibliotheken</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="190"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="166"/>
         <source>Copy the table</source>
         <translation>Kopieer de tabel</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="210"/>
         <source>Update VeraGrid. If you are on windows don&apos;t do this.</source>
-        <translation>VeraGrid bijwerken. Als je Windows gebruikt, doe dit dan niet.</translation>
+        <translation type="vanished">VeraGrid bijwerken. Als je Windows gebruikt, doe dit dan niet.</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="254"/>
         <source>Optional libraries</source>
-        <translation>Optionele bibliotheken</translation>
+        <translation type="vanished">Optionele bibliotheken</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="264"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="197"/>
         <source>License</source>
         <translation>Licentie</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="270"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="203"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;This program comes with absolutelly no warranty. This is free software, and you are welcome to redistribute it under the conditions set by the license. VeraGrid is licensed under the &lt;a href=&quot;https://www.mozilla.org/en-US/MPL/2.0/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;Mozilla Public License V2&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;Dit programma wordt geleverd met absoluut geen garantie. Dit is gratis software en u bent van harte welkom deze opnieuw te distribueren onder de voorwaarden die in de licentie zijn vastgelegd. VeraGrid is gelicentieerd onder de&lt;a href=&quot;https://www.mozilla.org/en-US/MPL/2.0/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;Mozilla publieke licentie V2&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="291"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="224"/>
         <source>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;meta charset=&quot;utf-8&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
@@ -127,7 +123,7 @@ li.checked::markering { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;
     </message>
     <message>
         <source>Not installed</source>
-        <translation>Niet geïnstalleerd</translation>
+        <translation type="vanished">Niet geïnstalleerd</translation>
     </message>
     <message>
         <source>Package</source>
@@ -143,11 +139,75 @@ li.checked::markering { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;
     </message>
     <message>
         <source>licensed</source>
-        <translation>gelicentieerd</translation>
+        <translation type="vanished">gelicentieerd</translation>
     </message>
     <message>
         <source>supported version</source>
-        <translation>ondersteunde versie</translation>
+        <translation type="vanished">ondersteunde versie</translation>
+    </message>
+    <message>
+        <source>Action</source>
+        <translation>Actie</translation>
+    </message>
+    <message>
+        <source>Command output:</source>
+        <translation>Commando-output:</translation>
+    </message>
+    <message>
+        <source>Exit code: {code}</source>
+        <translation>Exit code: {code}</translation>
+    </message>
+    <message>
+        <source>False</source>
+        <translation>Onwaar</translation>
+    </message>
+    <message>
+        <source>Information</source>
+        <translation>Informatie</translation>
+    </message>
+    <message>
+        <source>Install</source>
+        <translation>Installeren</translation>
+    </message>
+    <message>
+        <source>Installed</source>
+        <translation>Geïnstalleerd</translation>
+    </message>
+    <message>
+        <source>Installed version</source>
+        <translation>Geïnstalleerde versie</translation>
+    </message>
+    <message>
+        <source>Licensed</source>
+        <translation>Gelicentieerd</translation>
+    </message>
+    <message>
+        <source>Newest version</source>
+        <translation>Nieuwste versie</translation>
+    </message>
+    <message>
+        <source>Supported version</source>
+        <translation>Ondersteunde versie</translation>
+    </message>
+    <message>
+        <source>Unknown</source>
+        <translation>Onbekend</translation>
+    </message>
+    <message>
+        <source>Update</source>
+        <translation>Bijwerken</translation>
+    </message>
+    <message>
+        <source>Warning</source>
+        <translation>Waarschuwing</translation>
+    </message>
+    <message>
+        <source>{name} update failed after {attempts} attempt(s).</source>
+        <translation>{name} bijwerken mislukt na {attempts} poging(en).</translation>
+    </message>
+    <message>
+        <source>{name} updated successfully after {attempts} attempt(s)</source>
+        <translation>{name} succesvol bijgewerkt na {attempts} poging(en)</translation>
     </message>
 </context>
 <context>
@@ -1716,7 +1776,39 @@ Weet u zeker?</translation>
     </message>
     <message>
         <source>VSC devices need one AC bus and two DC buses.</source>
-        <translation>VSC-apparaten hebben één AC-bus en twee DC-bussen nodig.</translation>
+        <translation type="vanished">VSC-apparaten hebben één AC-bus en twee DC-bussen nodig.</translation>
+    </message>
+    <message>
+        <source>There are no devices to target.</source>
+        <translation>Er zijn geen apparaten om te selecteren.</translation>
+    </message>
+    <message>
+        <source>There are no supported devices to target.</source>
+        <translation>Er zijn geen ondersteunde apparaten om te selecteren.</translation>
+    </message>
+    <message>
+        <source>VSC devices need one AC bus, one DC bus, and an optional DC bus.</source>
+        <translation>VSC-apparaten hebben één AC-bus, één DC-bus en een optionele DC-bus nodig.</translation>
+    </message>
+    <message>
+        <source>Nothing to paste</source>
+        <translation>Niets plakken</translation>
+    </message>
+    <message>
+        <source>Paste</source>
+        <translation type="vanished">Plakken</translation>
+    </message>
+    <message>
+        <source>Paste data</source>
+        <translation>Gegevens plakken</translation>
+    </message>
+    <message>
+        <source>Pasted!</source>
+        <translation>Geplakt!</translation>
+    </message>
+    <message>
+        <source>Paste column</source>
+        <translation>Plak kolom</translation>
     </message>
 </context>
 <context>
@@ -1789,6 +1881,17 @@ Weet u zeker?</translation>
         <source>Device selection</source>
         <translation>Apparaatselectie</translation>
     </message>
+    <message>
+        <source>None</source>
+        <translation type="vanished">Geen</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation type="vanished">Zoekopdracht</translation>
+    </message>
+</context>
+<context>
+    <name>DeviceSelectorPanel</name>
     <message>
         <source>None</source>
         <translation>Geen</translation>

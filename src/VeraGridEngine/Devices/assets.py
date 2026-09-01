@@ -8689,6 +8689,7 @@ class Assets:
                 DeviceType.ZoneDevice: self.zones,
                 DeviceType.SubstationDevice: self.substations,
                 DeviceType.VoltageLevelDevice: self.voltage_levels,
+                DeviceType.BusBarDevice: self.bus_bars,
                 DeviceType.CountryDevice: self.countries,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.Owner: self.owners,
@@ -8765,6 +8766,7 @@ class Assets:
                 DeviceType.Technology: self.technologies,
                 DeviceType.Owner: self.owners,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
+                DeviceType.MarketUnitDevice: self.market_units,
                 DeviceType.FacilityDevice: self.facilities,
                 DeviceType.BusDevice: self.buses,
                 DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
@@ -8797,11 +8799,20 @@ class Assets:
 
         elif elm_type == DeviceType.LineDevice:
             elm = dev.Line()
+            any_line_templates: List[ALL_DEV_TYPES] = list()
+            for line_template_list in (
+                    self.overhead_line_types,
+                    self.underground_cable_types,
+                    self.sequence_line_types):
+                for line_template in line_template_list:
+                    any_line_templates.append(line_template)
+
             dictionary_of_lists = {
                 DeviceType.Owner: self.owners,
                 DeviceType.BranchGroupDevice: self.branch_groups,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.BusDevice: self.buses,
+                DeviceType.AnyLineTemplateDevice: any_line_templates,
                 DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
                 DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
@@ -8845,8 +8856,8 @@ class Assets:
                 DeviceType.Owner: self.owners,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.BusDevice: self.buses,
-                # DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
-                # DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
 
         elif elm_type == DeviceType.TransformerNwDevice:
@@ -8870,11 +8881,18 @@ class Assets:
 
         elif elm_type == DeviceType.VscDevice:
             elm = dev.VSC()
+            bus_or_branch_devices: List[ALL_DEV_TYPES] = list()
+            for bus in self.buses:
+                bus_or_branch_devices.append(bus)
+            for branch in self.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
+                bus_or_branch_devices.append(branch)
+
             dictionary_of_lists = {
                 DeviceType.Owner: self.owners,
                 DeviceType.BranchGroupDevice: self.branch_groups,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.BusDevice: self.buses,
+                DeviceType.BusOrBranch: bus_or_branch_devices,
                 DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
                 DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
@@ -8903,11 +8921,20 @@ class Assets:
 
         elif elm_type == DeviceType.DCLineDevice:
             elm = dev.DcLine()
+            any_line_templates: List[ALL_DEV_TYPES] = list()
+            for line_template_list in (
+                    self.overhead_line_types,
+                    self.underground_cable_types,
+                    self.sequence_line_types):
+                for line_template in line_template_list:
+                    any_line_templates.append(line_template)
+
             dictionary_of_lists = {
                 DeviceType.Owner: self.owners,
                 DeviceType.BranchGroupDevice: self.branch_groups,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.BusDevice: self.buses,
+                DeviceType.AnyLineTemplateDevice: any_line_templates,
                 DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
                 DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
@@ -8916,6 +8943,7 @@ class Assets:
             elm = dev.Substation()
             dictionary_of_lists = {
                 DeviceType.Owner: self.owners,
+                DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.CountryDevice: self.get_countries(),
                 DeviceType.CommunityDevice: self.get_communities(),
                 DeviceType.RegionDevice: self.get_regions(),
@@ -8936,6 +8964,7 @@ class Assets:
             elm = dev.VoltageLevel()
             dictionary_of_lists = {
                 DeviceType.Owner: self.owners,
+                DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.SubstationDevice: self.get_substations(),
             }
 
@@ -8972,8 +9001,8 @@ class Assets:
             elm = dev.ShortCircuitEvent()
 
         elif elm_type == DeviceType.RemedialActionDevice:
-            elm = dev.Contingency()
-            dictionary_of_lists = {DeviceType.RemedialActionDevice: self.remedial_action_groups, }
+            elm = dev.RemedialAction()
+            dictionary_of_lists = {DeviceType.RemedialActionGroupDevice: self.remedial_action_groups, }
 
         elif elm_type == DeviceType.RemedialActionGroupDevice:
             elm = dev.RemedialActionGroup()
@@ -9007,6 +9036,7 @@ class Assets:
         elif elm_type == DeviceType.OverheadLineTypeDevice:
             elm = dev.OverheadLineType()
             dictionary_of_lists = {
+                DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(DeviceType.LineDevice),
                 DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(DeviceType.LineDevice),
             }
@@ -9014,6 +9044,7 @@ class Assets:
         elif elm_type == DeviceType.SequenceLineDevice:
             elm = dev.SequenceLineType()
             dictionary_of_lists = {
+                DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(DeviceType.LineDevice),
                 DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(DeviceType.LineDevice),
             }
@@ -9021,6 +9052,7 @@ class Assets:
         elif elm_type == DeviceType.UnderGroundLineDevice:
             elm = dev.UndergroundLineType()
             dictionary_of_lists = {
+                DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(DeviceType.LineDevice),
                 DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(DeviceType.LineDevice),
             }
@@ -9035,6 +9067,7 @@ class Assets:
         elif elm_type == DeviceType.TransformerTypeDevice:
             elm = dev.TransformerType()
             dictionary_of_lists = {
+                DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.RmsModelTemplateDevice: self.get_loaded_rms_models_by_device_type(
                     DeviceType.Transformer2WDevice),
                 DeviceType.EmtModelTemplateDevice: self.get_loaded_emt_models_by_device_type(
@@ -9043,7 +9076,10 @@ class Assets:
 
         elif elm_type == DeviceType.FluidNodeDevice:
             elm = dev.FluidNode()
-            dictionary_of_lists = {DeviceType.ModellingAuthority: self.modelling_authorities, }
+            dictionary_of_lists = {
+                DeviceType.ModellingAuthority: self.modelling_authorities,
+                DeviceType.BusDevice: self.buses,
+            }
 
         elif elm_type == DeviceType.FluidPathDevice:
             elm = dev.FluidPath()
@@ -9109,7 +9145,11 @@ class Assets:
 
         elif elm_type == DeviceType.ControlPc:
             elm = dev.ControlPc()
-            dictionary_of_lists = dict()
+            dictionary_of_lists = {
+                DeviceType.ModellingAuthority: self.modelling_authorities,
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
+            }
 
         elif elm_type == DeviceType.RmsEventDevice:
             elm = dev.RmsEvent()

@@ -14,62 +14,58 @@
         <translation>에 대한</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="49"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="89"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;VeraGrid&lt;/span&gt; has been carefully crafted since 2015 to serve as a platform for research and consultancy. Visit &lt;a href=&quot;https://www.eroots.tech/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;eRoots&lt;/span&gt;&lt;/a&gt; for more details. The source of VeraGrid can be found &lt;a href=&quot;https://github.com/SanPen/VeraGrid&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;here.&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;&lt;span style=&quot;font-weight:600;&quot;&gt;VeraGrid&lt;/span&gt;는 2015년부터 연구 및 컨설팅을 위한 플랫폼 역할을 하기 위해 세심하게 제작되었습니다. 자세한 내용을 보려면 &lt;a href=&quot;https://www.eroots.tech/&quot;&gt;&lt;span style=&quot; text-꾸밈: underline; color:#26a269;&quot;&gt;eRoots&lt;/span&gt;&lt;/a&gt;를 방문하세요. VeraGrid의 소스는 &lt;a href=&quot;https://github.com/SanPen/VeraGrid&quot;&gt;&lt;span style=&quot; text-designation: underline; color:#26a269;&quot;&gt;여기&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;에서 찾을 수 있습니다.</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="112"/>
         <source>version</source>
-        <translation>버전</translation>
+        <translation type="vanished">버전</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="128"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="133"/>
         <source>Copyright</source>
         <translation>저작권</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="164"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="150"/>
         <source>Contributors</source>
         <translation>기여자</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="170"/>
         <source>TextLabel</source>
-        <translation>텍스트 라벨</translation>
+        <translation type="vanished">텍스트 라벨</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="184"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="160"/>
         <source>Libraries</source>
         <translation>도서관</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="190"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="166"/>
         <source>Copy the table</source>
         <translation>테이블 복사</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="210"/>
         <source>Update VeraGrid. If you are on windows don&apos;t do this.</source>
-        <translation>VeraGrid를 업데이트하세요. 창문을 사용하고 있다면 이 작업을 수행하지 마세요.</translation>
+        <translation type="vanished">VeraGrid를 업데이트하세요. 창문을 사용하고 있다면 이 작업을 수행하지 마세요.</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="254"/>
         <source>Optional libraries</source>
-        <translation>선택적 라이브러리</translation>
+        <translation type="vanished">선택적 라이브러리</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="264"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="197"/>
         <source>License</source>
         <translation>특허</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="270"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="203"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;This program comes with absolutelly no warranty. This is free software, and you are welcome to redistribute it under the conditions set by the license. VeraGrid is licensed under the &lt;a href=&quot;https://www.mozilla.org/en-US/MPL/2.0/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;Mozilla Public License V2&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;이 프로그램은 어떠한 보증도 제공하지 않습니다. 이 소프트웨어는 무료 소프트웨어이므로 라이센스에 명시된 조건에 따라 재배포할 수 있습니다. VeraGrid는 &lt;a href=&quot;https://www.mozilla.org/en-US/MPL/2.0/&quot;&gt;&lt;span style=&quot; text-designation: underline; color:#26a269;&quot;&gt;Mozilla Public License V2&lt;/span&gt;&lt;/a&gt;에 따라 라이센스가 부여되었습니다.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="291"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="224"/>
         <source>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;meta charset=&quot;utf-8&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
@@ -129,7 +125,7 @@ li.checked::마커 { content: &quot;\2612&quot;; }
     </message>
     <message>
         <source>Not installed</source>
-        <translation>설치되지 않음</translation>
+        <translation type="vanished">설치되지 않음</translation>
     </message>
     <message>
         <source>Package</source>
@@ -145,11 +141,75 @@ li.checked::마커 { content: &quot;\2612&quot;; }
     </message>
     <message>
         <source>licensed</source>
-        <translation>라이선스</translation>
+        <translation type="vanished">라이선스</translation>
     </message>
     <message>
         <source>supported version</source>
-        <translation>지원되는 버전</translation>
+        <translation type="vanished">지원되는 버전</translation>
+    </message>
+    <message>
+        <source>Action</source>
+        <translation>작업</translation>
+    </message>
+    <message>
+        <source>Command output:</source>
+        <translation>명령어 출력:</translation>
+    </message>
+    <message>
+        <source>Exit code: {code}</source>
+        <translation>종료 코드: {code}</translation>
+    </message>
+    <message>
+        <source>False</source>
+        <translation>거짓</translation>
+    </message>
+    <message>
+        <source>Information</source>
+        <translation>정보</translation>
+    </message>
+    <message>
+        <source>Install</source>
+        <translation>설치</translation>
+    </message>
+    <message>
+        <source>Installed</source>
+        <translation>설치됨</translation>
+    </message>
+    <message>
+        <source>Installed version</source>
+        <translation>설치된 버전</translation>
+    </message>
+    <message>
+        <source>Licensed</source>
+        <translation>라이선스됨</translation>
+    </message>
+    <message>
+        <source>Newest version</source>
+        <translation>최신 버전</translation>
+    </message>
+    <message>
+        <source>Supported version</source>
+        <translation>지원 버전</translation>
+    </message>
+    <message>
+        <source>Unknown</source>
+        <translation>알 수 없음</translation>
+    </message>
+    <message>
+        <source>Update</source>
+        <translation>업데이트</translation>
+    </message>
+    <message>
+        <source>Warning</source>
+        <translation>경고</translation>
+    </message>
+    <message>
+        <source>{name} update failed after {attempts} attempt(s).</source>
+        <translation>{name} 업데이트가 {attempts}회 시도 후 실패했습니다.</translation>
+    </message>
+    <message>
+        <source>{name} updated successfully after {attempts} attempt(s)</source>
+        <translation>{name}이(가) {attempts}회 시도 후 성공적으로 업데이트되었습니다.</translation>
     </message>
 </context>
 <context>
@@ -1726,7 +1786,39 @@ Are you sure?</source>
     </message>
     <message>
         <source>VSC devices need one AC bus and two DC buses.</source>
-        <translation>VSC 장치는 AC 버스 1개와 DC 버스 2개가 필요합니다.</translation>
+        <translation type="vanished">VSC 장치는 AC 버스 1개와 DC 버스 2개가 필요합니다.</translation>
+    </message>
+    <message>
+        <source>There are no devices to target.</source>
+        <translation>대상 장치가 없습니다.</translation>
+    </message>
+    <message>
+        <source>There are no supported devices to target.</source>
+        <translation>지원되는 대상 장치가 없습니다.</translation>
+    </message>
+    <message>
+        <source>VSC devices need one AC bus, one DC bus, and an optional DC bus.</source>
+        <translation>VSC 장치는 AC 버스 1개, DC 버스 1개, 그리고 선택적 DC 버스가 필요합니다.</translation>
+    </message>
+    <message>
+        <source>Nothing to paste</source>
+        <translation>붙여넣을 내용 없음</translation>
+    </message>
+    <message>
+        <source>Paste</source>
+        <translation type="vanished">붙여넣기</translation>
+    </message>
+    <message>
+        <source>Paste data</source>
+        <translation>데이터 붙여넣기</translation>
+    </message>
+    <message>
+        <source>Pasted!</source>
+        <translation>붙여넣기 완료!</translation>
+    </message>
+    <message>
+        <source>Paste column</source>
+        <translation>열 붙여넣기</translation>
     </message>
 </context>
 <context>
@@ -1799,6 +1891,17 @@ Are you sure?</source>
         <source>Device selection</source>
         <translation>장치 선택</translation>
     </message>
+    <message>
+        <source>None</source>
+        <translation type="vanished">없음</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation type="vanished">찾다</translation>
+    </message>
+</context>
+<context>
+    <name>DeviceSelectorPanel</name>
     <message>
         <source>None</source>
         <translation>없음</translation>

@@ -12,7 +12,8 @@ from typing import Any, Dict, List, Union
 from PySide6 import QtCore, QtWidgets, QtGui
 from typing import Callable
 from enum import EnumMeta
-from VeraGrid.Gui.gui_functions import (IntDelegate, ComboDelegate, TextDelegate, FloatDelegate, ColorPickerDelegate,
+from VeraGrid.Gui.gui_functions import (BoolCheckboxDelegate, IntDelegate, ComboDelegate, TextDelegate, FloatDelegate,
+                                        ColorPickerDelegate,
                                         ComplexDelegate, LineLocationsDelegate, DateTimeDelegate)
 from VeraGrid.Gui.Icons.icon_associations import device_type_icons
 from VeraGrid.Gui.wrappable_table_model import WrappableTableModel
@@ -44,38 +45,157 @@ class DeviceSelectorDelegate(QtWidgets.QItemDelegate):
         self.devices_by_type: Dict[DeviceType, List[ALL_DEV_TYPES]] = devices_by_type
         self.allow_none: bool = allow_none
 
+    @QtCore.Slot(object)
+    def commit_selector_value(self, selected_device: object) -> None:
+        """
+        Commit the selector popup value to the table model.
+
+        :param selected_device: Selected device or None.
+        :return: None.
+        """
+        del selected_device
+        editor: QtCore.QObject | None = self.sender()
+
+        if isinstance(editor, QtWidgets.QWidget):
+            self.commitData.emit(editor)
+            self.closeEditor.emit(editor)
+        else:
+            pass
+
+    @QtCore.Slot()
+    def close_selector_value(self) -> None:
+        """
+        Close the selector popup without committing.
+
+        :return: None.
+        """
+        editor: QtCore.QObject | None = self.sender()
+
+        if isinstance(editor, QtWidgets.QWidget):
+            self.closeEditor.emit(editor)
+        else:
+            pass
+
     def createEditor(self,
                      parent: QtWidgets.QWidget,
                      option: QtWidgets.QStyleOptionViewItem,
-                     index: QtCore.QModelIndex) -> QtWidgets.QWidget | None:
+                     index: QtCore.QModelIndex) -> QtWidgets.QWidget:
         """
-        Open the selector dialogue for one editable device reference.
+        Create a searchable selector popup for one editable device reference.
 
         :param parent: Parent widget.
         :param option: Editor style option.
         :param index: Edited model index.
-        :return: None because the modal dialogue writes directly to the model.
+        :return: Searchable selector popup.
         """
-        # Local import avoids the module cycle with general_dialogues.
-        from VeraGrid.Gui.general_dialogues import DeviceSelectorDialogue
+        del option
+        del index
+        from VeraGrid.Gui.general_dialogues import DeviceSelectorPanel
 
-        dialogue: DeviceSelectorDialogue = DeviceSelectorDialogue(
+        editor: DeviceSelectorPanel = DeviceSelectorPanel(
             devices_by_type=self.devices_by_type,
             allow_none=self.allow_none,
             parent=parent,
         )
-        accepted: int = dialogue.exec()
+        editor.setWindowFlags(QtCore.Qt.WindowType.Popup)
+        editor.resize(500, 400)
+        editor.selection_made.connect(self.commit_selector_value)
+        editor.selection_cancelled.connect(self.close_selector_value)
+        return editor
 
-        if accepted == QtWidgets.QDialog.DialogCode.Accepted:
-            if dialogue.has_selection:
-                selected_device: ALL_DEV_TYPES | None = dialogue.get_selected_device()
-                index.model().setData(index, selected_device)
+    def setModelData(self,
+                     editor: QtWidgets.QWidget,
+                     model: QtCore.QAbstractItemModel,
+                     index: QtCore.QModelIndex) -> None:
+        """
+        Write the selected device from the selector popup to the model.
+
+        :param editor: Selector popup editor.
+        :param model: Edited model.
+        :param index: Edited cell index.
+        :return: None.
+        """
+        from VeraGrid.Gui.general_dialogues import DeviceSelectorPanel
+
+        if isinstance(editor, DeviceSelectorPanel):
+            if editor.has_selection:
+                selected_device: ALL_DEV_TYPES | None = editor.get_selected_device()
+                model.setData(index, selected_device)
             else:
                 pass
         else:
             pass
 
-        return None
+    def updateEditorGeometry(self,
+                             editor: QtWidgets.QWidget,
+                             option: QtWidgets.QStyleOptionViewItem,
+                             index: QtCore.QModelIndex) -> None:
+        """
+        Position the selector popup next to the edited cell.
+
+        :param editor: Selector popup editor.
+        :param option: Edited cell style option.
+        :param index: Edited model index.
+        :return: None.
+        """
+        del index
+        from VeraGrid.Gui.general_dialogues import DeviceSelectorPanel
+
+        view: QtWidgets.QWidget | None = option.widget
+        size: QtCore.QSize = QtCore.QSize(500, 400)
+
+        if view is None:
+            editor.setGeometry(QtCore.QRect(option.rect.topLeft(), size))
+        else:
+            if isinstance(view, QtWidgets.QAbstractItemView):
+                cell_bottom_left: QtCore.QPoint = view.viewport().mapToGlobal(option.rect.bottomLeft())
+                cell_top_left: QtCore.QPoint = view.viewport().mapToGlobal(option.rect.topLeft())
+            else:
+                cell_bottom_left = view.mapToGlobal(option.rect.bottomLeft())
+                cell_top_left = view.mapToGlobal(option.rect.topLeft())
+
+            screen: QtGui.QScreen | None = QtGui.QGuiApplication.screenAt(cell_bottom_left)
+
+            if screen is None:
+                screen = QtGui.QGuiApplication.primaryScreen()
+            else:
+                pass
+
+            if screen is not None:
+                available_geometry: QtCore.QRect = screen.availableGeometry()
+                width: int = min(size.width(), available_geometry.width())
+                height: int = min(size.height(), available_geometry.height())
+                top_left: QtCore.QPoint = QtCore.QPoint(cell_bottom_left)
+                grip_at_top: bool = False
+
+                if top_left.y() + height > available_geometry.bottom():
+                    top_left.setY(cell_top_left.y() - height)
+                    grip_at_top = True
+                else:
+                    pass
+
+                if top_left.x() + width > available_geometry.right():
+                    top_left.setX(available_geometry.right() - width)
+                else:
+                    pass
+
+                if top_left.x() < available_geometry.left():
+                    top_left.setX(available_geometry.left())
+                else:
+                    pass
+
+                if top_left.y() < available_geometry.top():
+                    top_left.setY(available_geometry.top())
+                else:
+                    pass
+
+                editor.setGeometry(QtCore.QRect(top_left, QtCore.QSize(width, height)))
+                if isinstance(editor, DeviceSelectorPanel):
+                    editor.set_resize_grip_at_top(value=grip_at_top)
+                else:
+                    pass
+            else:
+                editor.setGeometry(QtCore.QRect(cell_bottom_left, size))
 
 
 class ObjectsModel(WrappableTableModel):
@@ -215,7 +335,7 @@ class ObjectsModel(WrappableTableModel):
                 tpe = self.attribute_types[i]
 
                 if tpe is bool:
-                    delegate = ComboDelegate(self.parent, [True, False], ['True', 'False'])
+                    delegate = BoolCheckboxDelegate(self.parent)
                     F(i, delegate)
 
                 elif tpe is str:
@@ -344,7 +464,18 @@ class ObjectsModel(WrappableTableModel):
         ) and value is None
 
         if self.editable and (self.attributes[attr_idx] not in self.non_editable_attributes or is_empty_bus_reference):
-            return QtCore.Qt.ItemFlag.ItemIsEditable | QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsSelectable
+            flags: QtCore.Qt.ItemFlag = (
+                QtCore.Qt.ItemFlag.ItemIsEditable
+                | QtCore.Qt.ItemFlag.ItemIsEnabled
+                | QtCore.Qt.ItemFlag.ItemIsSelectable
+            )
+
+            if self.attribute_types[attr_idx] is bool:
+                flags = flags | QtCore.Qt.ItemFlag.ItemIsUserCheckable
+            else:
+                pass
+
+            return flags
         else:
             return QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsSelectable
 
@@ -473,7 +604,9 @@ class ObjectsModel(WrappableTableModel):
             if role == QtCore.Qt.ItemDataRole.DisplayRole:
                 value: Any = self.data_with_type(index)
 
-                if self.property_list[attr_idx].is_date:
+                if self.attribute_types[attr_idx] is bool:
+                    return ""
+                elif self.property_list[attr_idx].is_date:
                     return self._format_date_display(value)
                 else:
                     if value is None:
@@ -483,6 +616,15 @@ class ObjectsModel(WrappableTableModel):
 
             elif role == QtCore.Qt.ItemDataRole.EditRole:
                 return self.data_with_type(index)
+
+            elif role == QtCore.Qt.ItemDataRole.CheckStateRole:
+                if self.attribute_types[attr_idx] is bool:
+                    if bool(self.data_with_type(index)):
+                        return QtCore.Qt.CheckState.Checked
+                    else:
+                        return QtCore.Qt.CheckState.Unchecked
+                else:
+                    pass
 
             elif role == QtCore.Qt.ItemDataRole.BackgroundRole:
 
@@ -539,6 +681,11 @@ class ObjectsModel(WrappableTableModel):
 
         prop = self.property_list[attr_idx]
 
+        if role == QtCore.Qt.ItemDataRole.CheckStateRole and prop.tpe is bool:
+            value = value == QtCore.Qt.CheckState.Checked or value == int(QtCore.Qt.CheckState.Checked.value)
+        else:
+            pass
+
         # check taken values
         if self.attributes[attr_idx] in self.check_unique:
             taken = self.attr_taken(self.attributes[attr_idx], value)
@@ -560,6 +707,15 @@ class ObjectsModel(WrappableTableModel):
 
                     try:
                         self.objects[obj_idx].set_value(prop=prop, t_idx=self.time_index_, value=value2)
+                        self.dataChanged.emit(
+                            index,
+                            index,
+                            [
+                                QtCore.Qt.ItemDataRole.DisplayRole,
+                                QtCore.Qt.ItemDataRole.EditRole,
+                                QtCore.Qt.ItemDataRole.CheckStateRole,
+                            ],
+                        )
                     except ValueError as e:
                         self.report_error(str(e))
                 else:

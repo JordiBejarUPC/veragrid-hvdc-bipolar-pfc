@@ -14,62 +14,58 @@
         <translation>关于</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="49"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="89"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;VeraGrid&lt;/span&gt; has been carefully crafted since 2015 to serve as a platform for research and consultancy. Visit &lt;a href=&quot;https://www.eroots.tech/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;eRoots&lt;/span&gt;&lt;/a&gt; for more details. The source of VeraGrid can be found &lt;a href=&quot;https://github.com/SanPen/VeraGrid&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;here.&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;VeraGrid&lt;/span&gt; 自 2015 年以来精心打造，作为研究和咨询平台。参观 &lt;a href=&quot;https://www.eroots.tech/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;eRoots&lt;/span&gt;&lt;/a&gt; 了解更多详情。 VeraGrid的源码可以找到 &lt;a href=&quot;https://github.com/SanPen/VeraGrid&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;在这里。&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="112"/>
         <source>version</source>
-        <translation>版本</translation>
+        <translation type="vanished">版本</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="128"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="133"/>
         <source>Copyright</source>
         <translation>版权</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="164"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="150"/>
         <source>Contributors</source>
         <translation>贡献者</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="170"/>
         <source>TextLabel</source>
-        <translation>TextLabel</translation>
+        <translation type="vanished">TextLabel</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="184"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="160"/>
         <source>Libraries</source>
         <translation>图书馆</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="190"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="166"/>
         <source>Copy the table</source>
         <translation>复制表格</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="210"/>
         <source>Update VeraGrid. If you are on windows don&apos;t do this.</source>
-        <translation>更新VeraGrid。如果您使用的是 Windows，请不要执行此操作。</translation>
+        <translation type="vanished">更新VeraGrid。如果您使用的是 Windows，请不要执行此操作。</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="254"/>
         <source>Optional libraries</source>
-        <translation>可选库</translation>
+        <translation type="vanished">可选库</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="264"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="197"/>
         <source>License</source>
         <translation>许可证</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="270"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="203"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;This program comes with absolutelly no warranty. This is free software, and you are welcome to redistribute it under the conditions set by the license. VeraGrid is licensed under the &lt;a href=&quot;https://www.mozilla.org/en-US/MPL/2.0/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;Mozilla Public License V2&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;该程序绝对不提供任何保证。这是免费软件，欢迎您在许可证规定的条件下重新分发它。 VeraGrid 已获得许可 &lt;a href=&quot;https://www.mozilla.org/en-US/MPL/2.0/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;Mozilla 公共许可证 V2&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="291"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="224"/>
         <source>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;meta charset=&quot;utf-8&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
@@ -129,7 +125,7 @@ li.checked::标记 { content: &quot;\2612&quot;; }
     </message>
     <message>
         <source>Not installed</source>
-        <translation>未安装</translation>
+        <translation type="vanished">未安装</translation>
     </message>
     <message>
         <source>Package</source>
@@ -145,11 +141,75 @@ li.checked::标记 { content: &quot;\2612&quot;; }
     </message>
     <message>
         <source>licensed</source>
-        <translation>许可</translation>
+        <translation type="vanished">许可</translation>
     </message>
     <message>
         <source>supported version</source>
+        <translation type="vanished">支持版本</translation>
+    </message>
+    <message>
+        <source>Action</source>
+        <translation>操作</translation>
+    </message>
+    <message>
+        <source>Command output:</source>
+        <translation>命令输出：</translation>
+    </message>
+    <message>
+        <source>Exit code: {code}</source>
+        <translation>退出代码：{code}</translation>
+    </message>
+    <message>
+        <source>False</source>
+        <translation>否</translation>
+    </message>
+    <message>
+        <source>Information</source>
+        <translation>信息</translation>
+    </message>
+    <message>
+        <source>Install</source>
+        <translation>安装</translation>
+    </message>
+    <message>
+        <source>Installed</source>
+        <translation>已安装</translation>
+    </message>
+    <message>
+        <source>Installed version</source>
+        <translation>已安装版本</translation>
+    </message>
+    <message>
+        <source>Licensed</source>
+        <translation>已授权</translation>
+    </message>
+    <message>
+        <source>Newest version</source>
+        <translation>最新版本</translation>
+    </message>
+    <message>
+        <source>Supported version</source>
         <translation>支持版本</translation>
+    </message>
+    <message>
+        <source>Unknown</source>
+        <translation>未知</translation>
+    </message>
+    <message>
+        <source>Update</source>
+        <translation>更新</translation>
+    </message>
+    <message>
+        <source>Warning</source>
+        <translation>警告</translation>
+    </message>
+    <message>
+        <source>{name} update failed after {attempts} attempt(s).</source>
+        <translation>{name} 在 {attempts} 次尝试后更新失败。</translation>
+    </message>
+    <message>
+        <source>{name} updated successfully after {attempts} attempt(s)</source>
+        <translation>{name} 已在 {attempts} 次尝试后成功更新。</translation>
     </message>
 </context>
 <context>
@@ -1726,7 +1786,39 @@ Are you sure?</source>
     </message>
     <message>
         <source>VSC devices need one AC bus and two DC buses.</source>
-        <translation>VSC 设备需要一个 AC 总线和两个 DC 总线。</translation>
+        <translation type="vanished">VSC 设备需要一个 AC 总线和两个 DC 总线。</translation>
+    </message>
+    <message>
+        <source>There are no devices to target.</source>
+        <translation>没有设备可供选择。</translation>
+    </message>
+    <message>
+        <source>There are no supported devices to target.</source>
+        <translation>没有支持的设备可供选择。</translation>
+    </message>
+    <message>
+        <source>VSC devices need one AC bus, one DC bus, and an optional DC bus.</source>
+        <translation>VSC 设备需要一个 AC 母线、一个 DC 母线和一个可选的 DC 母线。</translation>
+    </message>
+    <message>
+        <source>Nothing to paste</source>
+        <translation>无需粘贴</translation>
+    </message>
+    <message>
+        <source>Paste</source>
+        <translation type="vanished">粘贴</translation>
+    </message>
+    <message>
+        <source>Paste data</source>
+        <translation>粘贴数据</translation>
+    </message>
+    <message>
+        <source>Pasted!</source>
+        <translation>已粘贴！</translation>
+    </message>
+    <message>
+        <source>Paste column</source>
+        <translation>粘贴列</translation>
     </message>
 </context>
 <context>
@@ -1799,6 +1891,17 @@ Are you sure?</source>
         <source>Device selection</source>
         <translation>设备选择</translation>
     </message>
+    <message>
+        <source>None</source>
+        <translation type="vanished">无</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation type="vanished">搜索</translation>
+    </message>
+</context>
+<context>
+    <name>DeviceSelectorPanel</name>
     <message>
         <source>None</source>
         <translation>无</translation>

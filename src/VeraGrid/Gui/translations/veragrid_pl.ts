@@ -14,62 +14,58 @@
         <translation>O programie</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="49"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="89"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;VeraGrid&lt;/span&gt; has been carefully crafted since 2015 to serve as a platform for research and consultancy. Visit &lt;a href=&quot;https://www.eroots.tech/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;eRoots&lt;/span&gt;&lt;/a&gt; for more details. The source of VeraGrid can be found &lt;a href=&quot;https://github.com/SanPen/VeraGrid&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;here.&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;VeraGrid&lt;/span&gt; został starannie stworzony od 2015 roku, aby służyć jako platforma do badań i konsultacji. Odwiedź &lt;a href=&quot;https://www.eroots.tech/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;eRoots&lt;/span&gt;&lt;/a&gt; po więcej szczegółów. Źródło VeraGrid można znaleźć &lt;a href=&quot;https://github.com/SanPen/VeraGrid&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;tutaj.&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="112"/>
         <source>version</source>
-        <translation>Wersja</translation>
+        <translation type="vanished">Wersja</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="128"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="133"/>
         <source>Copyright</source>
         <translation>Prawa autorskie</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="164"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="150"/>
         <source>Contributors</source>
         <translation>Wkładający</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="170"/>
         <source>TextLabel</source>
-        <translation>Etykieta tekstu</translation>
+        <translation type="vanished">Etykieta tekstu</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="184"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="160"/>
         <source>Libraries</source>
         <translation>Biblioteki</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="190"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="166"/>
         <source>Copy the table</source>
         <translation>Kopiuj tabelę</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="210"/>
         <source>Update VeraGrid. If you are on windows don&apos;t do this.</source>
-        <translation>Aktualizacja VeraGrid. Jeśli używasz systemu Windows, nie rób tego.</translation>
+        <translation type="vanished">Aktualizacja VeraGrid. Jeśli używasz systemu Windows, nie rób tego.</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="254"/>
         <source>Optional libraries</source>
-        <translation>Opcjonalne biblioteki</translation>
+        <translation type="vanished">Opcjonalne biblioteki</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="264"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="197"/>
         <source>License</source>
         <translation>Licencja</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="270"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="203"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;This program comes with absolutelly no warranty. This is free software, and you are welcome to redistribute it under the conditions set by the license. VeraGrid is licensed under the &lt;a href=&quot;https://www.mozilla.org/en-US/MPL/2.0/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;Mozilla Public License V2&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;Program ten jest dostarczany bez żadnej gwarancji. Jest to wolne oprogramowanie i możesz je redystrybuować na warunkach określonych przez licencję. VeraGrid jest licencjonowany na mocy &lt;a href=&quot;https://www.mozilla.org/en-US/MPL/2.0/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;Mozilla Public License V2&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="291"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="224"/>
         <source>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;meta charset=&quot;utf-8&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
@@ -175,7 +171,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
     </message>
     <message>
         <source>Not installed</source>
-        <translation>Nie zainstalowano</translation>
+        <translation type="vanished">Nie zainstalowano</translation>
     </message>
     <message>
         <source>Package</source>
@@ -191,11 +187,75 @@ li.checked::marker { content: &quot;\2612&quot;; }
     </message>
     <message>
         <source>licensed</source>
-        <translation>licencjonowany</translation>
+        <translation type="vanished">licencjonowany</translation>
     </message>
     <message>
         <source>supported version</source>
-        <translation>wspierana wersja</translation>
+        <translation type="vanished">wspierana wersja</translation>
+    </message>
+    <message>
+        <source>Action</source>
+        <translation>Akcja</translation>
+    </message>
+    <message>
+        <source>Command output:</source>
+        <translation>Wyjście polecenia:</translation>
+    </message>
+    <message>
+        <source>Exit code: {code}</source>
+        <translation>Kod wyjścia: {code}</translation>
+    </message>
+    <message>
+        <source>False</source>
+        <translation>Fałsz</translation>
+    </message>
+    <message>
+        <source>Information</source>
+        <translation>Informacje</translation>
+    </message>
+    <message>
+        <source>Install</source>
+        <translation>Instaluj</translation>
+    </message>
+    <message>
+        <source>Installed</source>
+        <translation>Zainstalowano</translation>
+    </message>
+    <message>
+        <source>Installed version</source>
+        <translation>Zainstalowana wersja</translation>
+    </message>
+    <message>
+        <source>Licensed</source>
+        <translation>Licencjonowany</translation>
+    </message>
+    <message>
+        <source>Newest version</source>
+        <translation>Najnowsza wersja</translation>
+    </message>
+    <message>
+        <source>Supported version</source>
+        <translation>Wspierana wersja</translation>
+    </message>
+    <message>
+        <source>Unknown</source>
+        <translation>Nieznany</translation>
+    </message>
+    <message>
+        <source>Update</source>
+        <translation>Aktualizuj</translation>
+    </message>
+    <message>
+        <source>Warning</source>
+        <translation>Ostrzeżenie</translation>
+    </message>
+    <message>
+        <source>{name} update failed after {attempts} attempt(s).</source>
+        <translation>Aktualizacja {name} nie powiodła się po {attempts} próbach.</translation>
+    </message>
+    <message>
+        <source>{name} updated successfully after {attempts} attempt(s)</source>
+        <translation>Aktualizacja {name} zakończyła się sukcesem po {attempts} próbach.</translation>
     </message>
 </context>
 <context>
@@ -1192,7 +1252,39 @@ Czy na pewno?</translation>
     </message>
     <message>
         <source>VSC devices need one AC bus and two DC buses.</source>
-        <translation>VSC devices need one AC bus and two DC buses.</translation>
+        <translation type="vanished">VSC devices need one AC bus and two DC buses.</translation>
+    </message>
+    <message>
+        <source>There are no devices to target.</source>
+        <translation>Nie ma urządzeń do wyznaczenia celu.</translation>
+    </message>
+    <message>
+        <source>There are no supported devices to target.</source>
+        <translation>Nie ma obsługiwanych urządzeń do wyznaczenia celu.</translation>
+    </message>
+    <message>
+        <source>VSC devices need one AC bus, one DC bus, and an optional DC bus.</source>
+        <translation>Urządzenia VSC wymagają jednego zasilacza AC, jednego zasilacza DC i opcjonalnego zasilacza DC.</translation>
+    </message>
+    <message>
+        <source>Nothing to paste</source>
+        <translation>Nie ma nic do wklejenia</translation>
+    </message>
+    <message>
+        <source>Paste</source>
+        <translation type="vanished">Wklej</translation>
+    </message>
+    <message>
+        <source>Paste data</source>
+        <translation>Wklej dane</translation>
+    </message>
+    <message>
+        <source>Pasted!</source>
+        <translation>Wklejono!</translation>
+    </message>
+    <message>
+        <source>Paste column</source>
+        <translation>Wklej kolumnę</translation>
     </message>
 </context>
 <context>
@@ -1265,6 +1357,17 @@ Czy na pewno?</translation>
         <source>Device selection</source>
         <translation>Wybór urządzenia</translation>
     </message>
+    <message>
+        <source>None</source>
+        <translation type="vanished">Żaden</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation type="vanished">Szukaj</translation>
+    </message>
+</context>
+<context>
+    <name>DeviceSelectorPanel</name>
     <message>
         <source>None</source>
         <translation>Żaden</translation>

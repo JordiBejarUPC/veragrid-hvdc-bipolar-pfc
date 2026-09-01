@@ -14,62 +14,58 @@
         <translation>عن</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="49"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="89"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;VeraGrid&lt;/span&gt; has been carefully crafted since 2015 to serve as a platform for research and consultancy. Visit &lt;a href=&quot;https://www.eroots.tech/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;eRoots&lt;/span&gt;&lt;/a&gt; for more details. The source of VeraGrid can be found &lt;a href=&quot;https://github.com/SanPen/VeraGrid&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;here.&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;VeraGrid&lt;/span&gt;تم تصميمه بعناية منذ عام 2015 ليكون بمثابة منصة للبحث والاستشارات. يزور&lt;a href=&quot;https://www.eroots.tech/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;eRoots&lt;/span&gt;&lt;/a&gt;لمزيد من التفاصيل. يمكن العثور على مصدر VeraGrid&lt;a href=&quot;https://github.com/SanPen/VeraGrid&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;هنا.&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="112"/>
         <source>version</source>
-        <translation>إصدار</translation>
+        <translation type="vanished">إصدار</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="128"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="133"/>
         <source>Copyright</source>
         <translation>حقوق الطبع والنشر</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="164"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="150"/>
         <source>Contributors</source>
         <translation>المساهمين</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="170"/>
         <source>TextLabel</source>
-        <translation>TextLabel</translation>
+        <translation type="vanished">TextLabel</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="184"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="160"/>
         <source>Libraries</source>
         <translation>المكتبات</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="190"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="166"/>
         <source>Copy the table</source>
         <translation>انسخ الجدول</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="210"/>
         <source>Update VeraGrid. If you are on windows don&apos;t do this.</source>
-        <translation>تحديث VeraGrid. إذا كنت على النوافذ فلا تفعل هذا.</translation>
+        <translation type="vanished">تحديث VeraGrid. إذا كنت على النوافذ فلا تفعل هذا.</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="254"/>
         <source>Optional libraries</source>
-        <translation>المكتبات الاختيارية</translation>
+        <translation type="vanished">المكتبات الاختيارية</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="264"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="197"/>
         <source>License</source>
         <translation>رخصة</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="270"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="203"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;This program comes with absolutelly no warranty. This is free software, and you are welcome to redistribute it under the conditions set by the license. VeraGrid is licensed under the &lt;a href=&quot;https://www.mozilla.org/en-US/MPL/2.0/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;Mozilla Public License V2&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;هذا البرنامج يأتي مع أي ضمان على الاطلاق. هذا برنامج مجاني، ويمكنك إعادة توزيعه وفقًا للشروط التي يحددها الترخيص. VeraGrid مرخص بموجب&lt;a href=&quot;https://www.mozilla.org/en-US/MPL/2.0/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;رخصة موزيلا العامة V2&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="291"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="224"/>
         <source>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;meta charset=&quot;utf-8&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
@@ -127,7 +123,7 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
     </message>
     <message>
         <source>Not installed</source>
-        <translation>غير مثبت</translation>
+        <translation type="vanished">غير مثبت</translation>
     </message>
     <message>
         <source>Package</source>
@@ -143,11 +139,75 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
     </message>
     <message>
         <source>licensed</source>
-        <translation>مرخص</translation>
+        <translation type="vanished">مرخص</translation>
     </message>
     <message>
         <source>supported version</source>
+        <translation type="vanished">الإصدار المدعوم</translation>
+    </message>
+    <message>
+        <source>Action</source>
+        <translation>الإجراء</translation>
+    </message>
+    <message>
+        <source>Command output:</source>
+        <translation>مخرج الأمر:</translation>
+    </message>
+    <message>
+        <source>Exit code: {code}</source>
+        <translation>رمز الخروج: {code}</translation>
+    </message>
+    <message>
+        <source>False</source>
+        <translation>خطأ</translation>
+    </message>
+    <message>
+        <source>Information</source>
+        <translation>معلومة</translation>
+    </message>
+    <message>
+        <source>Install</source>
+        <translation>تثبيت</translation>
+    </message>
+    <message>
+        <source>Installed</source>
+        <translation>مُثبَّت</translation>
+    </message>
+    <message>
+        <source>Installed version</source>
+        <translation>الإصدار المُثبَّت</translation>
+    </message>
+    <message>
+        <source>Licensed</source>
+        <translation>مرخَّص</translation>
+    </message>
+    <message>
+        <source>Newest version</source>
+        <translation>أحدث إصدار</translation>
+    </message>
+    <message>
+        <source>Supported version</source>
         <translation>الإصدار المدعوم</translation>
+    </message>
+    <message>
+        <source>Unknown</source>
+        <translation>غير معروف</translation>
+    </message>
+    <message>
+        <source>Update</source>
+        <translation>تحديث</translation>
+    </message>
+    <message>
+        <source>Warning</source>
+        <translation>تحذير</translation>
+    </message>
+    <message>
+        <source>{name} update failed after {attempts} attempt(s).</source>
+        <translation>فشل تحديث {name} بعد {attempts} محاولة.</translation>
+    </message>
+    <message>
+        <source>{name} updated successfully after {attempts} attempt(s)</source>
+        <translation>تم تحديث {name} بنجاح بعد {attempts} محاولة.</translation>
     </message>
 </context>
 <context>
@@ -1716,7 +1776,39 @@ Are you sure?</source>
     </message>
     <message>
         <source>VSC devices need one AC bus and two DC buses.</source>
-        <translation>تتطلب أجهزة VSC حافلة تيار متردد (AC) وحافلتين تيار مستمر (DC).</translation>
+        <translation type="vanished">تتطلب أجهزة VSC حافلة تيار متردد (AC) وحافلتين تيار مستمر (DC).</translation>
+    </message>
+    <message>
+        <source>There are no devices to target.</source>
+        <translation>لا توجد أجهزة مستهدفة.</translation>
+    </message>
+    <message>
+        <source>There are no supported devices to target.</source>
+        <translation>لا توجد أجهزة مدعومة يمكن استهدافها.</translation>
+    </message>
+    <message>
+        <source>VSC devices need one AC bus, one DC bus, and an optional DC bus.</source>
+        <translation>تحتاج أجهزة VSC إلى ناقل تيار متردد (AC) واحد، وناقل تيار مستمر (DC) واحد، وناقل تيار مستمر (DC) اختياري.</translation>
+    </message>
+    <message>
+        <source>Nothing to paste</source>
+        <translation>لا شيء للنسخ</translation>
+    </message>
+    <message>
+        <source>Paste</source>
+        <translation type="vanished">لصق</translation>
+    </message>
+    <message>
+        <source>Paste data</source>
+        <translation>لصق البيانات</translation>
+    </message>
+    <message>
+        <source>Pasted!</source>
+        <translation>تم اللصق!</translation>
+    </message>
+    <message>
+        <source>Paste column</source>
+        <translation>لصق العمود</translation>
     </message>
 </context>
 <context>
@@ -1789,6 +1881,17 @@ Are you sure?</source>
         <source>Device selection</source>
         <translation>اختيار الجهاز</translation>
     </message>
+    <message>
+        <source>None</source>
+        <translation type="vanished">لا شيء</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation type="vanished">يبحث</translation>
+    </message>
+</context>
+<context>
+    <name>DeviceSelectorPanel</name>
     <message>
         <source>None</source>
         <translation>لا شيء</translation>
