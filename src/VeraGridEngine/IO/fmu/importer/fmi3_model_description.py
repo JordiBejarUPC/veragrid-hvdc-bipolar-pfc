@@ -5,8 +5,10 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 import math
 from pathlib import Path
+import re
 from typing import cast
 import xml.etree.ElementTree as ET
 
@@ -240,6 +242,92 @@ def _read_optional_finite_float(
             )
 
 
+def _validate_optional_fmi3_generation_datetime(root: ET.Element, path: Path) -> None:
+    """Validate the optional FMI 3 model-generation timestamp.
+
+    The FMI 3 schema declares ``generationDateAndTime`` as ``xs:dateTime``.
+    VeraGrid accepts the bounded four-digit Gregorian producer surface needed
+    for interoperable metadata while rejecting ambiguous or unsupported XML
+    Schema lexical edges.
+
+    :param root: FMI 3 ``fmiModelDescription`` element.
+    :param path: FMU source path included in validation errors.
+    :return: None.
+    :raises FmuArchiveError: If the timestamp syntax, calendar, or timezone is
+        outside the represented subset.
+    """
+
+    generation_date_and_time: str | None = root.attrib.get(
+        "generationDateAndTime",
+        None,
+    )
+    if generation_date_and_time is None:
+        # The schema makes this provenance field optional, so absence preserves
+        # the existing metadata path without manufacturing a timestamp.
+        return
+    else:
+        date_time_pattern: str = (
+            r"(?P<year>[0-9]{4})-(?P<month>[0-9]{2})-(?P<day>[0-9]{2})"
+            r"T(?P<hour>[0-9]{2}):(?P<minute>[0-9]{2}):(?P<second>[0-9]{2})"
+            r"(?:\.(?P<fraction>[0-9]+))?"
+            r"(?P<timezone>Z|(?P<offset_sign>[+-])"
+            r"(?P<offset_hour>[0-9]{2}):(?P<offset_minute>[0-9]{2}))?"
+        )
+        date_time_match: re.Match[str] | None = re.fullmatch(
+            date_time_pattern,
+            generation_date_and_time,
+        )
+        validation_error_message: str = (
+            "FMI 3 fmiModelDescription attribute 'generationDateAndTime' "
+            f"in {path} is not a supported xs:dateTime value"
+        )
+        if date_time_match is None:
+            raise FmuArchiveError(validation_error_message)
+        else:
+            # The regular expression fixes field widths; datetime then owns
+            # Gregorian month, leap-year, day, and clock-range validation.
+            year: int = int(date_time_match.group("year"))
+            month: int = int(date_time_match.group("month"))
+            day: int = int(date_time_match.group("day"))
+            hour: int = int(date_time_match.group("hour"))
+            minute: int = int(date_time_match.group("minute"))
+            second: int = int(date_time_match.group("second"))
+            try:
+                datetime(year, month, day, hour, minute, second)
+            except ValueError:
+                raise FmuArchiveError(validation_error_message) from None
+            else:
+                pass
+
+            timezone_text: str | None = date_time_match.group("timezone")
+            if timezone_text is None:
+                # XML Schema permits a date-time whose timezone is absent.
+                pass
+            else:
+                if timezone_text == "Z":
+                    # Uppercase Z is the FMI-recommended UTC representation.
+                    pass
+                else:
+                    offset_hour_text: str | None = date_time_match.group("offset_hour")
+                    offset_minute_text: str | None = date_time_match.group("offset_minute")
+                    if offset_hour_text is None or offset_minute_text is None:
+                        raise FmuArchiveError(validation_error_message)
+                    else:
+                        # XML Schema bounds signed zones at fourteen hours and
+                        # permits no residual minutes at that outer boundary.
+                        offset_hour: int = int(offset_hour_text)
+                        offset_minute: int = int(offset_minute_text)
+                        offset_is_valid: bool = (
+                            offset_hour <= 14
+                            and offset_minute <= 59
+                            and (offset_hour < 14 or offset_minute == 0)
+                        )
+                        if offset_is_valid:
+                            pass
+                        else:
+                            raise FmuArchiveError(validation_error_message)
+
+
 def _validate_fmi3_root_structure(root: ET.Element, path: Path) -> None:
     """Validate root attributes, child order, and represented sections.
 
@@ -254,11 +342,12 @@ def _validate_fmi3_root_structure(root: ET.Element, path: Path) -> None:
         (
             "fmiVersion", "modelName", "instantiationToken", "description", "author",
             "version", "copyright", "license", "generationTool",
-            "variableNamingConvention",
+            "generationDateAndTime", "variableNamingConvention",
         ),
         "FMI 3 fmiModelDescription",
         path,
     )
+    _validate_optional_fmi3_generation_datetime(root, path)
     variable_naming_convention: str = root.attrib.get("variableNamingConvention", "flat")
     if variable_naming_convention == "flat":
         pass

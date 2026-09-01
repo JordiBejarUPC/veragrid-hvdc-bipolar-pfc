@@ -1441,6 +1441,44 @@ def test_deprecated_mode_selector_preserves_metadata_api_compatibility(tmp_path:
 
 
 @pytest.mark.parametrize(
+    "generation_date_and_time",
+    (
+        "2026-08-17T17:41:57Z",
+        "2025-06-12T19:14:15.927318+00:00",
+        "2026-03-04T18:13:43",
+        "2026-03-04T18:13:43.5-05:30",
+        "2026-03-04T18:13:43+14:00",
+        "2026-03-04T18:13:43-14:00",
+    ),
+)
+def test_fmi3_accepts_standard_generation_date_and_time(
+    tmp_path: Path,
+    generation_date_and_time: str,
+) -> None:
+    """Verify the contracted FMI 3 generation timestamp producer forms.
+
+    :param tmp_path: Isolated fixture directory provided by pytest.
+    :param generation_date_and_time: Standard date-time value under test.
+    :return: None.
+    """
+
+    valid_xml: str = _scalar_fmi3_worker_profile_fixture_xml().replace(
+        'generationTool="VeraGrid FMI composition container v0"',
+        'generationTool="VeraGrid FMI composition container v0" '
+        f'generationDateAndTime="{generation_date_and_time}"',
+        1,
+    )
+    fmu_path: Path = _write_extracted_fmi3_model_description(
+        tmp_path / "valid-generation-date-time",
+        valid_xml,
+    )
+
+    metadata: FmuModelDescription = read_fmu_model_description(fmu_path)
+
+    assert metadata.model_name == "VeraGridPhysicalCompositionContainerPFTimeLatticeV41"
+
+
+@pytest.mark.parametrize(
     ("valid_xml_fragment", "invalid_xml_fragment", "expected_error"),
     (
         ("<Float64 name=", "<Real name=", "outside the represented"),
@@ -1459,6 +1497,73 @@ def test_deprecated_mode_selector_preserves_metadata_api_compatibility(tmp_path:
         ('generationTool="VeraGrid FMI composition container v0"',
          'generationTool="VeraGrid FMI composition container v0" '
          'generationDateAndTime="not-a-date"', "attribute 'generationDateAndTime'"),
+        ('generationTool="VeraGrid FMI composition container v0"',
+         'generationTool="VeraGrid FMI composition container v0" '
+         'generationDateAndTime=""', "attribute 'generationDateAndTime'"),
+        ('generationTool="VeraGrid FMI composition container v0"',
+         'generationTool="VeraGrid FMI composition container v0" '
+         'generationDateAndTime="2025-01-01 12:00:00Z"',
+         "attribute 'generationDateAndTime'"),
+        ('generationTool="VeraGrid FMI composition container v0"',
+         'generationTool="VeraGrid FMI composition container v0" '
+         'generationDateAndTime="2025-02-30T12:00:00Z"',
+         "attribute 'generationDateAndTime'"),
+        ('generationTool="VeraGrid FMI composition container v0"',
+         'generationTool="VeraGrid FMI composition container v0" '
+         'generationDateAndTime="2026-03-04T18:13:43.Z"',
+         "attribute 'generationDateAndTime'"),
+        ('generationTool="VeraGrid FMI composition container v0"',
+         'generationTool="VeraGrid FMI composition container v0" '
+         'generationDateAndTime="2026-03-04T18:13:43+14:01"',
+         "attribute 'generationDateAndTime'"),
+        ('generationTool="VeraGrid FMI composition container v0"',
+         'generationTool="VeraGrid FMI composition container v0" '
+         'generationDateAndTime="2026-03-04T18:13:43-14:01"',
+         "attribute 'generationDateAndTime'"),
+        ('generationTool="VeraGrid FMI composition container v0"',
+         'generationTool="VeraGrid FMI composition container v0" '
+         'generationDateAndTime="2026-03-04T18:13:43+15:00"',
+         "attribute 'generationDateAndTime'"),
+        ('generationTool="VeraGrid FMI composition container v0"',
+         'generationTool="VeraGrid FMI composition container v0" '
+         'generationDateAndTime="2026-03-04T18:13:43+00:60"',
+         "attribute 'generationDateAndTime'"),
+        ('generationTool="VeraGrid FMI composition container v0"',
+         'generationTool="VeraGrid FMI composition container v0" '
+         'generationDateAndTime="2026-03-04T18:13:43+1400"',
+         "attribute 'generationDateAndTime'"),
+        ('generationTool="VeraGrid FMI composition container v0"',
+         'generationTool="VeraGrid FMI composition container v0" '
+         'generationDateAndTime="2026-03-04T18:13:43z"',
+         "attribute 'generationDateAndTime'"),
+        ('generationTool="VeraGrid FMI composition container v0"',
+         'generationTool="VeraGrid FMI composition container v0" '
+         'generationDateAndTime="2026-03-04t18:13:43Z"',
+         "attribute 'generationDateAndTime'"),
+        ('generationTool="VeraGrid FMI composition container v0"',
+         'generationTool="VeraGrid FMI composition container v0" '
+         'generationDateAndTime="-0001-03-04T18:13:43Z"',
+         "attribute 'generationDateAndTime'"),
+        ('generationTool="VeraGrid FMI composition container v0"',
+         'generationTool="VeraGrid FMI composition container v0" '
+         'generationDateAndTime="10000-03-04T18:13:43Z"',
+         "attribute 'generationDateAndTime'"),
+        ('generationTool="VeraGrid FMI composition container v0"',
+         'generationTool="VeraGrid FMI composition container v0" '
+         'generationDateAndTime="٢٠٢٦-٠٣-٠٤T١٨:١٣:٤٣Z"',
+         "attribute 'generationDateAndTime'"),
+        ('generationTool="VeraGrid FMI composition container v0"',
+         'generationTool="VeraGrid FMI composition container v0" '
+         'generationDateAndTime="0000-03-04T18:13:43Z"',
+         "attribute 'generationDateAndTime'"),
+        ('generationTool="VeraGrid FMI composition container v0"',
+         'generationTool="VeraGrid FMI composition container v0" '
+         'generationDateAndTime="2026-03-04T24:00:00Z"',
+         "attribute 'generationDateAndTime'"),
+        ('generationTool="VeraGrid FMI composition container v0"',
+         'generationTool="VeraGrid FMI composition container v0" '
+         'generationDateAndTime="2026-03-04T18:13:60Z"',
+         "attribute 'generationDateAndTime'"),
     ),
 )
 def test_fmi3_rejects_invalid_scalar_identity_and_lexical_values(
