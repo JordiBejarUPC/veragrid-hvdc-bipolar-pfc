@@ -3,6 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
+import math
 from typing import Tuple
 
 from VeraGridEngine.Simulations.options_template import OptionsTemplate
@@ -53,6 +54,8 @@ class EmtOptions(OptionsTemplate):
         GCProp(key="external_sparse_solver_directory", tpe=str),
         GCProp(key="external_sparse_solver_plugin_name", tpe=str),
         GCProp(key="allow_internal_sparse_fallback", tpe=bool),
+        GCProp(key="fmi_state_event_time_tolerance", tpe=float),
+        GCProp(key="fmi_state_event_max_iterations", tpe=int),
     )
 
     def __init__(self,
@@ -90,13 +93,17 @@ class EmtOptions(OptionsTemplate):
                  sparse_solver: SparseSolver = SparseSolver.SuperLU,
                  external_sparse_solver_directory: str = "",
                  external_sparse_solver_plugin_name: str = "",
-                 allow_internal_sparse_fallback: bool = True):
+                 allow_internal_sparse_fallback: bool = True,
+                 fmi_state_event_time_tolerance: float = 1e-9,
+                 fmi_state_event_max_iterations: int = 32):
         """
         EmtOptions
         :param time_step: time step of the simulations (s)
         :param simulation_time: simulation time (s)
         :param tolerance: Integration tolerance
         :param verbose: Verbosity level
+        :param fmi_state_event_time_tolerance: Absolute FMI ME event-time tolerance in seconds.
+        :param fmi_state_event_max_iterations: Maximum FMI ME event bisections.
         """
 
         OptionsTemplate.__init__(self, name='EmtSimulationOptions')
@@ -136,5 +143,28 @@ class EmtOptions(OptionsTemplate):
         self.external_sparse_solver_directory: str = external_sparse_solver_directory
         self.external_sparse_solver_plugin_name: str = external_sparse_solver_plugin_name
         self.allow_internal_sparse_fallback: bool = allow_internal_sparse_fallback
+        if (
+            math.isfinite(fmi_state_event_time_tolerance)
+            and fmi_state_event_time_tolerance > 0.0
+        ):
+            self.fmi_state_event_time_tolerance: float = (
+                fmi_state_event_time_tolerance
+            )
+        else:
+            raise ValueError(
+                "EMT FMI state-event time tolerance must be finite and positive"
+            )
+        if (
+            isinstance(fmi_state_event_max_iterations, int)
+            and not isinstance(fmi_state_event_max_iterations, bool)
+            and fmi_state_event_max_iterations > 0
+        ):
+            self.fmi_state_event_max_iterations: int = (
+                fmi_state_event_max_iterations
+            )
+        else:
+            raise ValueError(
+                "EMT FMI state-event maximum iterations must be a positive integer"
+            )
 
 

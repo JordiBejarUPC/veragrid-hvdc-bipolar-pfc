@@ -307,6 +307,7 @@ class BaseDiagramWidget(QSplitter):
         """
         self.left_panel_toolbox.setItemText(0, self._translate_library_label())
         self.left_panel_toolbox.setItemText(1, self._translate_properties_label())
+        self.library_model.retranslate()
 
     def set_video_export_active(self, value: bool) -> None:
         """

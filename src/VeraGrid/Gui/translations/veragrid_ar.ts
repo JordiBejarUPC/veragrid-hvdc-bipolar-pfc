@@ -1710,6 +1710,14 @@ Are you sure?</source>
         <source>The proprty {property_name} cannot be found :(</source>
         <translation>لا يمكن العثور على الخاصية {property_name} :(</translation>
     </message>
+    <message>
+        <source>There are no buses to connect this device.</source>
+        <translation>لا توجد حافلات لتوصيل هذا الجهاز.</translation>
+    </message>
+    <message>
+        <source>VSC devices need one AC bus and two DC buses.</source>
+        <translation>تتطلب أجهزة VSC حافلة تيار متردد (AC) وحافلتين تيار مستمر (DC).</translation>
+    </message>
 </context>
 <context>
     <name>DcLineDeviceEditor</name>
@@ -1773,6 +1781,21 @@ Are you sure?</source>
         <location filename="../DeviceEditors/DcLineEditor/dc_line_editor_gui.ui" line="98"/>
         <source>Accept</source>
         <translation>يقبل</translation>
+    </message>
+</context>
+<context>
+    <name>DeviceSelectorDialogue</name>
+    <message>
+        <source>Device selection</source>
+        <translation>اختيار الجهاز</translation>
+    </message>
+    <message>
+        <source>None</source>
+        <translation>لا شيء</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>يبحث</translation>
     </message>
 </context>
 <context>
@@ -5968,6 +5991,17 @@ Please correct the data and try again.</source>
     </message>
 </context>
 <context>
+    <name>MapLibraryModel</name>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>اسحب وأفلت {name} في المخطط</translation>
+    </message>
+    <message>
+        <source>Substation</source>
+        <translation>محطة فرعية</translation>
+    </message>
+</context>
+<context>
     <name>MapLineContainer</name>
     <message>
         <source>Do you want to update the time series active status accordingly?</source>
@@ -6073,6 +6107,17 @@ Please correct the data and try again.</source>
 Cancel it and close the window?</source>
         <translation>هناك إجراء استيراد قيد التشغيل.
 هل تريد إلغاؤه وإغلاق النافذة؟</translation>
+    </message>
+</context>
+<context>
+    <name>NewConnectedDeviceDialogue</name>
+    <message>
+        <source>Name</source>
+        <translation>اسم</translation>
+    </message>
+    <message>
+        <source>New device</source>
+        <translation>جهاز جديد</translation>
     </message>
 </context>
 <context>
@@ -6855,6 +6900,37 @@ This will remove the direct child scenarios after their changes are applied.</so
         <translation>هل تريد دمج {child_count} سيناريو فرعي في &apos;{scenario_name}&apos;؟
 
 سيؤدي هذا إلى إزالة السيناريوهات الفرعية المباشرة بعد تطبيق تغييراتها.</translation>
+    </message>
+</context>
+<context>
+    <name>SchematicLibraryModel</name>
+    <message>
+        <source>3W-Transformer</source>
+        <translation>محول 3W</translation>
+    </message>
+    <message>
+        <source>Bus</source>
+        <translation>قضيب</translation>
+    </message>
+    <message>
+        <source>Connectivity bus</source>
+        <translation>حافلة التوصيل</translation>
+    </message>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>اسحب وأفلت {name} في المخطط</translation>
+    </message>
+    <message>
+        <source>Fluid-node</source>
+        <translation>عقدة المائع</translation>
+    </message>
+    <message>
+        <source>NW-Transformer</source>
+        <translation>محول NW</translation>
+    </message>
+    <message>
+        <source>VSC</source>
+        <translation>VSC</translation>
     </message>
 </context>
 <context>
@@ -8051,6 +8127,271 @@ The results are needed to initialize this simulation.</source>
 Resolve the operating point before running this RMS simulation.</source>
         <translation>لم يتقارب تدفق الطاقة.
 يرجى حل نقطة التشغيل قبل تشغيل محاكاة RMS هذه.</translation>
+    </message>
+    <message>
+        <source>Adequacy studies need time data...</source>
+        <translation>تتطلب دراسات الكفاية بيانات زمنية...</translation>
+    </message>
+    <message>
+        <source>Another ATC time series is being executed now...</source>
+        <translation>يتم تنفيذ سلسلة زمنية أخرى لـ ATC الآن...</translation>
+    </message>
+    <message>
+        <source>Another EMT simulation is running already...</source>
+        <translation>يتم تشغيل محاكاة EMT أخرى بالفعل...</translation>
+    </message>
+    <message>
+        <source>Another LODF is being executed now...</source>
+        <translation>يتم تنفيذ LODF آخر الآن...</translation>
+    </message>
+    <message>
+        <source>Another Monte Carlo simulation is running...</source>
+        <translation>يتم تشغيل محاكاة مونت كارلو أخرى...</translation>
+    </message>
+    <message>
+        <source>Another OPF is being run...</source>
+        <translation>يتم تشغيل OPF آخر...</translation>
+    </message>
+    <message>
+        <source>Another OPF time series is running already...</source>
+        <translation>يتم تشغيل سلسلة زمنية OPF أخرى بالفعل...</translation>
+    </message>
+    <message>
+        <source>Another Optimal NCT time series is being run...</source>
+        <translation>يتم تشغيل سلسلة زمنية NCT مثالية أخرى...</translation>
+    </message>
+    <message>
+        <source>Another PTDF is being executed now...</source>
+        <translation>يتم تنفيذ PTDF آخر الآن...</translation>
+    </message>
+    <message>
+        <source>Another Small-Signal stability analysis EMT simulation is running already...</source>
+        <translation>يتم تشغيل محاكاة تحليل استقرار الإشارة الصغيرة EMT أخرى بالفعل...</translation>
+    </message>
+    <message>
+        <source>Another Small-Signal stability analysis simulation is running already...</source>
+        <translation>يتم تشغيل محاكاة تحليل استقرار الإشارة الصغيرة أخرى بالفعل...</translation>
+    </message>
+    <message>
+        <source>Another catalogue optimization is already running...</source>
+        <translation>يتم تشغيل تحسين كتالوج آخر بالفعل...</translation>
+    </message>
+    <message>
+        <source>Another clustering is being executed now...</source>
+        <translation>يتم تنفيذ تجميع آخر الآن...</translation>
+    </message>
+    <message>
+        <source>Another contingency analysis is being executed now...</source>
+        <translation>يتم تنفيذ تحليل حالة طارئة آخر الآن...</translation>
+    </message>
+    <message>
+        <source>Another inputs analysis is being run...</source>
+        <translation>يتم تشغيل تحليل مدخلات آخر...</translation>
+    </message>
+    <message>
+        <source>Another nodal capacity study is being run...</source>
+        <translation>يتم تشغيل دراسة سعة العقدة أخرى...</translation>
+    </message>
+    <message>
+        <source>Another reliability study is running already...</source>
+        <translation>يتم تشغيل دراسة موثوقية أخرى بالفعل...</translation>
+    </message>
+    <message>
+        <source>Another rms simulation is running already...</source>
+        <translation>يتم تشغيل محاكاة RMS أخرى بالفعل...</translation>
+    </message>
+    <message>
+        <source>Another simulation of the same type is running...</source>
+        <translation>يتم تشغيل محاكاة من نفس النوع أخرى...</translation>
+    </message>
+    <message>
+        <source>Another three-phase time series power flow is being executed now...</source>
+        <translation>يتم تنفيذ تدفق طاقة ثلاثي الأطوار لسلسلة زمنية آخر الآن...</translation>
+    </message>
+    <message>
+        <source>Another time series power flow is being executed now...</source>
+        <translation>يتم تنفيذ تدفق طاقة لسلسلة زمنية آخر الآن...</translation>
+    </message>
+    <message>
+        <source>Another voltage collapse simulation is running...</source>
+        <translation>يتم تشغيل محاكاة انهيار الجهد أخرى...</translation>
+    </message>
+    <message>
+        <source>Cannot colour because the PTDF results have zero time steps :/</source>
+        <translation>لا يمكن التلوين لأن نتائج PTDF تحتوي على أصفار من الخطوات الزمنية :/</translation>
+    </message>
+    <message>
+        <source>Check the selected start and finnish time series indices.</source>
+        <translation>تحقق من مؤشرات البداية والنهاية لسلسلة الزمن المحددة.</translation>
+    </message>
+    <message>
+        <source>Linear OPF investment studies need time data...</source>
+        <translation>تتطلب دراسات استثمار OPF الخطي بيانات زمنية...</translation>
+    </message>
+    <message>
+        <source>No from areas!</source>
+        <translation>لا مناطق من!</translation>
+    </message>
+    <message>
+        <source>No results for the three-phase time series simulation.</source>
+        <translation>لا توجد نتائج لمحاكاة السلسلة الزمنية ثلاثية الأطوار.</translation>
+    </message>
+    <message>
+        <source>No results for the time series simulation.</source>
+        <translation>لا توجد نتائج لمحاكاة السلسلة الزمنية.</translation>
+    </message>
+    <message>
+        <source>No to areas!</source>
+        <translation>لا مناطق إلى!</translation>
+    </message>
+    <message>
+        <source>Nothing to simulate...</source>
+        <translation>لا شيء للمحاكاة...</translation>
+    </message>
+    <message>
+        <source>Objective not supported yet :/</source>
+        <translation>الهدف غير مدعوم بعد :/</translation>
+    </message>
+    <message>
+        <source>Optimal power flow converged :)</source>
+        <translation>تقارب تدفق الطاقة الأمثل :)</translation>
+    </message>
+    <message>
+        <source>Optimal power flow not converged :/
+Check that all Branches have rating and 
+that the generator bounds are ok.
+You may also use the diagnostic tool (F8)</source>
+        <translation>لم يتقارب تدفق الطاقة الأمثل :/
+تحقق من أن جميع الفروع لها تصنيف وأن حدود المولد جيدة.
+يمكنك أيضًا استخدام أداة التشخيص (F8)</translation>
+    </message>
+    <message>
+        <source>Power flow 3ph converged :)</source>
+        <translation>تقارب تدفق الطاقة ثلاثي الأطوار :)</translation>
+    </message>
+    <message>
+        <source>Power flow 3ph not converged :/</source>
+        <translation>لم يتقارب تدفق الطاقة ثلاثي الأطوار :/</translation>
+    </message>
+    <message>
+        <source>Power flow converged :)</source>
+        <translation>تقارب تدفق الطاقة :)</translation>
+    </message>
+    <message>
+        <source>Power flow not converged :/</source>
+        <translation>لم يتقارب تدفق الطاقة :/</translation>
+    </message>
+    <message>
+        <source>Reliability studies need time data...</source>
+        <translation>تتطلب دراسات الموثوقية بيانات زمنية...</translation>
+    </message>
+    <message>
+        <source>Remote results received!</source>
+        <translation>تم استلام النتائج عن بُعد!</translation>
+    </message>
+    <message>
+        <source>Run a linear analysis to enable filter contingencies by sensitivity</source>
+        <translation>قم بتشغيل تحليل خطي لتمكين حالات الطوارئ للمرشحات حسب الحساسية</translation>
+    </message>
+    <message>
+        <source>Simulation converged for all active simulation groups :)</source>
+        <translation>تقاربت المحاكاة لجميع مجموعات المحاكاة النشطة :)</translation>
+    </message>
+    <message>
+        <source>Simulation well initialized for all active simulation groups :)</source>
+        <translation>تم تهيئة المحاكاة بشكل جيد لجميع مجموعات المحاكاة النشطة :)</translation>
+    </message>
+    <message>
+        <source>Small-Signal stability analysis EMT has finished correctly!</source>
+        <translation>انتهى تحليل استقرار الإشارة الصغيرة EMT بشكل صحيح!</translation>
+    </message>
+    <message>
+        <source>Small-signal stability analysis RMS has finished correctly!</source>
+        <translation>انتهى تحليل استقرار الإشارة الصغيرة RMS بشكل صحيح!</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no ATC results.</source>
+        <translation>حدث خطأ ما، لا توجد نتائج ATC.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no ATC time series results.</source>
+        <translation>حدث خطأ ما، لا توجد نتائج سلسلة زمنية ATC.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no PTDF Time series results.</source>
+        <translation>حدث خطأ ما، لا توجد نتائج سلسلة زمنية PTDF.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no PTDF results.</source>
+        <translation>حدث خطأ ما، لا توجد نتائج PTDF.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no contingency analysis results.</source>
+        <translation>حدث خطأ، لا توجد نتائج تحليل الطوارئ.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no contingency time series results.</source>
+        <translation>حدث خطأ، لا توجد نتائج السلاسل الزمنية للطوارئ.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no investments evaluation results.</source>
+        <translation>حدث خطأ، لا توجد نتائج تقييم الاستثمارات.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no voltage stability results.</source>
+        <translation>حدث خطأ، لا توجد نتائج استقرار الجهد.</translation>
+    </message>
+    <message>
+        <source>State estimation converged :)</source>
+        <translation>تقارب تقدير الحالة :)</translation>
+    </message>
+    <message>
+        <source>State estimation not converged :/</source>
+        <translation>لم يتقارب تقدير الحالة :/</translation>
+    </message>
+    <message>
+        <source>Stochastic power flow needs at least one time-series sample.</source>
+        <translation>يتطلب تدفق الطاقة العشوائي عينة سلسلة زمنية واحدة على الأقل.</translation>
+    </message>
+    <message>
+        <source>The grid doesn&apos;t have time series :/</source>
+        <translation>الشبكة لا تحتوي على سلاسل زمنية :/</translation>
+    </message>
+    <message>
+        <source>The voltage stability did not converge.
+Is this case already at the collapse limit?</source>
+        <translation>لم يتقارب استقرار الجهد.
+هل هذه الحالة بالفعل عند حد الانهيار؟</translation>
+    </message>
+    <message>
+        <source>There are no PTDF results :/</source>
+        <translation>لا توجد نتائج PTDF :/</translation>
+    </message>
+    <message>
+        <source>There are no active RMS event groups to report.</source>
+        <translation>لا توجد مجموعات أحداث RMS نشطة للإبلاغ عنها.</translation>
+    </message>
+    <message>
+        <source>There are no contingency groups declared...</source>
+        <translation>لم يتم الإعلان عن أي مجموعات طوارئ...</translation>
+    </message>
+    <message>
+        <source>There are no time series!</source>
+        <translation>لا توجد سلاسل زمنية!</translation>
+    </message>
+    <message>
+        <source>There are no time series.</source>
+        <translation>لا توجد سلاسل زمنية.</translation>
+    </message>
+    <message>
+        <source>There are no time series...</source>
+        <translation>لا توجد سلاسل زمنية...</translation>
+    </message>
+    <message>
+        <source>You cannot find {0} clusters for {1} time steps.
+Modify the number of clusters in the ML settings.</source>
+        <translation>لا يمكن العثور على {0} مجموعات لـ {1} خطوات زمنية.
+قم بتعديل عدد المجموعات في إعدادات التعلم الآلي.</translation>
     </message>
 </context>
 <context>
@@ -13917,7 +14258,7 @@ You need to load or create a grid!</source>
         <location filename="../Main/MainWindow.ui" line="11827"/>
         <location filename="../Main/MainWindow.ui" line="11830"/>
         <source>Stop &quot;stuff running right now&quot;</source>
-        <translation>إيقاف "العمليات الجارية حاليًا"</translation>
+        <translation>إيقاف &quot;العمليات الجارية حاليًا&quot;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11968"/>

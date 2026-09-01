@@ -687,6 +687,96 @@ def convert_sequence_line(seq: dev.SequenceLineType, new_id: str) -> TypLne:
     return typlne
 
 
+def convert_dc_cable_type(cable_type: dev.DcCableType,
+                          new_id: str,
+                          frequency_hz: float) -> TypLne:
+    """
+    Convert one physical VeraGrid DC cable type to PowerFactory quantities.
+
+    The DGS representation stores inductive and capacitive construction data
+    as reactance and susceptance at its declared reference frequency. VeraGrid
+    keeps the inverse representation in physical H/km and F/km.
+
+    :param cable_type: Physical DC cable catalogue asset.
+    :param new_id: Destination DGS identifier.
+    :param frequency_hz: Positive DGS reference frequency in Hz.
+    :return: PowerFactory DC line type.
+    """
+    typlne: TypLne = TypLne()
+    typlne.ID = new_id
+    typlne.loc_name = cable_type.name
+    typlne.uline = float(cable_type.Vnom)
+    typlne.sline = float(cable_type.Imax)
+    typlne.InomAir = float(cable_type.Imax)
+    typlne.aohl_ = "cab"
+    typlne.rline = float(cable_type.R)
+    typlne.systp = 1
+    typlne.nlnph = 1
+    typlne.frnom = float(frequency_hz)
+
+    has_valid_frequency: bool = (
+        math.isfinite(frequency_hz)
+        and frequency_hz > 0.0
+    )
+    if has_valid_frequency:
+        angular_frequency: float = 2.0 * math.pi * frequency_hz
+        typlne.xline = angular_frequency * float(cable_type.L)
+        typlne.cline = float(cable_type.C) * 1.0e6
+        typlne.bline = (
+            angular_frequency * float(cable_type.C) * 1.0e6
+        )
+    else:
+        typlne.xline = None
+        typlne.cline = None
+        typlne.bline = None
+    return typlne
+
+
+def build_resistive_dc_line_type(line: dev.DcLine,
+                                 new_id: str,
+                                 system_base_mva: float,
+                                 frequency_hz: float) -> TypLne:
+    """
+    Build a DGS type for a resistive DC line without inventing cable energy.
+
+    :param line: DC line without a registered physical cable template.
+    :param new_id: Destination DGS identifier.
+    :param system_base_mva: VeraGrid system power base in MVA.
+    :param frequency_hz: DGS reference frequency in Hz.
+    :return: DC line type containing resistance and blank L/C source fields.
+    """
+    typlne: TypLne = TypLne()
+    typlne.ID = new_id
+    typlne.loc_name = f"{line.name} resistive type"
+    line_voltage: float = line.get_max_bus_nominal_voltage()
+    line_length: float = float(line.length)
+    has_valid_base: bool = (
+        math.isfinite(system_base_mva)
+        and system_base_mva > 0.0
+        and math.isfinite(line_voltage)
+        and line_voltage > 0.0
+        and math.isfinite(line_length)
+        and line_length > 0.0
+    )
+    if has_valid_base:
+        impedance_base: float = line_voltage * line_voltage / system_base_mva
+        typlne.rline = float(line.R) * impedance_base / line_length
+        typlne.uline = line_voltage
+    else:
+        typlne.rline = None
+        typlne.uline = None
+    typlne.sline = None
+    typlne.InomAir = None
+    typlne.aohl_ = "cab"
+    typlne.xline = None
+    typlne.cline = None
+    typlne.bline = None
+    typlne.systp = 1
+    typlne.nlnph = 1
+    typlne.frnom = float(frequency_hz)
+    return typlne
+
+
 def convert_transformer_type(tr: dev.TransformerType, new_id: str) -> TypTr2:
     """
 
@@ -1314,6 +1404,20 @@ def circuit_to_dgs(
         dgs_grid.typlnes.append(typtr2)
         seq2typlne_dict[seq] = typtr2
 
+    # DC cable providers are emitted before the DcLine consumers that point to
+    # them, preserving the same dependency order as VeraGrid persistence.
+    dc_cable2typlne_dict: Dict[dev.DcCableType, TypLne] = dict()
+    dc_cable_type: dev.DcCableType
+    for dc_cable_type in grid.dc_cable_types:
+        dc_typlne: TypLne = convert_dc_cable_type(
+            cable_type=dc_cable_type,
+            new_id=dgs_grid.new_id(),
+            frequency_hz=float(grid.fBase),
+        )
+        dc_typlne.fold_id = net.ID
+        dgs_grid.typlnes.append(dc_typlne)
+        dc_cable2typlne_dict[dc_cable_type] = dc_typlne
+
     # transformer types (base types)
     for trt in grid.transformer_types:
         typtr2 = convert_transformer_type(tr=trt, new_id=dgs_grid.new_id())
@@ -1349,6 +1453,50 @@ def circuit_to_dgs(
         dgs_grid.add_element_cubicles(
             element_id=e.ID,
             dgs_buses=[bus2term_dict[line.bus_from], bus2term_dict[line.bus_to]]
+        )
+
+    # DC lines use only DC cable types. A line without a physical template is
+    # still exportable, but its L/C fields remain blank rather than persisting
+    # the runtime resistive reduction as measured cable data.
+    dc_line: dev.DcLine
+    for dc_line in grid.dc_lines:
+        dc_typlne = dc_cable2typlne_dict.get(dc_line.template, None)
+        if dc_typlne is None:
+            if dc_line.template is not None:
+                dc_typlne = convert_dc_cable_type(
+                    cable_type=dc_line.template,
+                    new_id=dgs_grid.new_id(),
+                    frequency_hz=float(grid.fBase),
+                )
+                dc_cable2typlne_dict[dc_line.template] = dc_typlne
+            else:
+                dc_typlne = build_resistive_dc_line_type(
+                    line=dc_line,
+                    new_id=dgs_grid.new_id(),
+                    system_base_mva=float(grid.Sbase),
+                    frequency_hz=float(grid.fBase),
+                )
+            dc_typlne.fold_id = net.ID
+            dgs_grid.typlnes.append(dc_typlne)
+        else:
+            pass
+
+        dc_element: ElmLne = ElmLne()
+        dc_element.ID = dgs_grid.new_id()
+        dc_element.loc_name = dc_line.name
+        dc_element.fold_id = net.ID
+        dc_element.typ_id = dc_typlne.ID
+        dc_element.dline = float(dc_line.length)
+        dc_element.fline = 1.0
+        dc_element.nlnum = 1
+        dc_element.outserv = 0 if dc_line.get_active_at(export_t_idx) else 1
+        dgs_grid.elmlnes.append(dc_element)
+        dgs_grid.add_element_cubicles(
+            element_id=dc_element.ID,
+            dgs_buses=[
+                bus2term_dict[dc_line.bus_from],
+                bus2term_dict[dc_line.bus_to],
+            ],
         )
 
     # 2W transformers

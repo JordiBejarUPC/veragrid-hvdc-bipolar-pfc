@@ -26,3 +26,4 @@ def test_rms_fmu_example_runs_end_to_end(tmp_path: Path) -> None:
     assert report_path.exists()
     assert "mode = CoSimulation" in report_text
     assert "final_time = " in report_text
+    assert tuple(tmp_path.glob("veragrid_fmu_stage_*")) == tuple()

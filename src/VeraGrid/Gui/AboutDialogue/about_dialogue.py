@@ -11,9 +11,10 @@ from PySide6 import QtCore, QtWidgets
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QClipboard
 from typing import List
+import packaging.version as pkg
 from VeraGrid.Gui.AboutDialogue.about_gui import Ui_AboutDialog
 from VeraGrid.__version__ import __VeraGrid_VERSION__
-from VeraGrid.update import check_version, get_upgrade_command
+from VeraGrid.update import find_latest_version, get_upgrade_command
 from VeraGridEngine.__version__ import __VeraGridEngine_VERSION__, copyright_msg, contributors_msg
 from VeraGridEngine.Compilers.Gslv.activation import (GSLV_AVAILABLE,
                                                       GSLV_RECOMMENDED_VERSION,
@@ -78,6 +79,43 @@ def make_item(text):
     return item
 
 
+class OptionalLibraryStatus:
+    """
+    Optional library status displayed in the About dialog.
+    """
+
+    __slots__ = ("name", "package_name", "installed", "installed_version", "latest_version", "supported_version",
+                 "licensed")
+
+    def __init__(self,
+                 name: str,
+                 package_name: str,
+                 installed: bool,
+                 installed_version: str,
+                 latest_version: str,
+                 supported_version: str,
+                 licensed: bool) -> None:
+        """
+        Build one optional library status row.
+
+        :param name: User-facing library name.
+        :param package_name: PyPI package name.
+        :param installed: Whether the package is installed.
+        :param installed_version: Installed package version.
+        :param latest_version: Latest PyPI version.
+        :param supported_version: VeraGrid recommended or bundled compatible version.
+        :param licensed: Whether the library is licensed or usable.
+        :return: None.
+        """
+        self.name: str = name
+        self.package_name: str = package_name
+        self.installed: bool = installed
+        self.installed_version: str = installed_version
+        self.latest_version: str = latest_version
+        self.supported_version: str = supported_version
+        self.licensed: bool = licensed
+
+
 def sanitize_tsv_field(text: str) -> str:
     """
 
@@ -92,6 +130,61 @@ def sanitize_tsv_field(text: str) -> str:
     text = text.replace("\n", " ")  # Unix newlines
     text = text.replace("\r", " ")  # Old mac newlines
     return text.strip()
+
+
+def get_installed_package_version(package_name: str) -> str:
+    """
+    Return one installed package version from Python package metadata.
+
+    :param package_name: Distribution package name.
+    :return: Installed version or an empty string when unavailable.
+    """
+    package_version: str = ""
+
+    try:
+        from importlib.metadata import version
+        package_version = version(package_name)
+    except Exception:
+        package_version = ""
+
+    return package_version
+
+
+def get_package_upgrade_command(package_name: str, latest_version: str) -> List[str]:
+    """
+    Build a pip upgrade command for one package.
+
+    :param package_name: Distribution package name.
+    :param latest_version: Version to install.
+    :return: Split command suitable for subprocess execution.
+    """
+    command: List[str] = [
+        sys.executable,
+        "-m",
+        "pip",
+        "install",
+        f"{package_name}=={latest_version}",
+        "--upgrade",
+        "--break-system-packages",
+    ]
+    return command
+
+
+def can_update_package(installed: bool, installed_version: str, latest_version: str) -> bool:
+    """
+    Determine whether one installed package can be updated from PyPI data.
+
+    :param installed: Whether the package is installed.
+    :param installed_version: Installed package version.
+    :param latest_version: Latest PyPI package version.
+    :return: True when the latest version is newer than the installed version.
+    """
+    if installed and len(installed_version) > 0 and len(latest_version) > 0:
+        can_update: bool = pkg.parse(latest_version) > pkg.parse(installed_version)
+    else:
+        can_update = False
+
+    return can_update
 
 
 def run_upgrade_command(command: List[str], max_attempts: int) -> tuple[int, str, int]:
@@ -168,47 +261,12 @@ class AboutDialogueGuiGUI(QtWidgets.QDialog):
 
         self.fill_optional_libs()
         self.fill_libs()
-
-        # check the version in pypi
-        version_code, latest_version = check_version()
-
-        self.upgrade_cmd: List[str] = ['']
-
-        if version_code == 1:
-            addendum = '\nThere is a newer version: ' + latest_version
-
-            self.upgrade_cmd = get_upgrade_command(latest_version)
-            command = ' '.join(self.upgrade_cmd)
-            self.ui.updateLabel.setText('\n\nTerminal command to update:\n\n' + command)
-            self.ui.updateButton.setVisible(True)
-
-        elif version_code == -1:
-            addendum = '\nThis version is newer than the version available in the repositories (' + latest_version + ')'
-            self.ui.updateLabel.setText(addendum)
-            self.ui.updateButton.setVisible(False)
-
-        elif version_code == 0:
-            addendum = '\nVeraGrid is up to date.'
-            self.ui.updateLabel.setText(addendum)
-            self.ui.updateButton.setVisible(False)
-
-        elif version_code == -2:
-            addendum = '\nIt was impossible to check for a newer version'
-            self.ui.updateLabel.setText(addendum)
-            self.ui.updateButton.setVisible(False)
-
-        else:
-            addendum = ''
-            self.ui.updateLabel.setText(addendum)
-            self.ui.updateButton.setVisible(False)
+        self.ui.updateLabel.setText(sys.executable)
 
         # self.ui.mainLabel.setText(about_msg)
-        self.ui.versionLabel.setText('VeraGrid version: ' + __VeraGrid_VERSION__ + ', ' + addendum)
         self.ui.copyrightLabel.setText(copyright_msg)
-        self.ui.contributorsLabel.setText(contributors_msg)
-
-        # click
-        self.ui.updateButton.clicked.connect(self.update)
+        self.ui.contributorsTextEdit.setPlainText(contributors_msg)
+        self.ui.contributorsTextEdit.setReadOnly(True)
 
         self.ui.copyLibsButton.clicked.connect(self.copy_libs)
 
@@ -230,43 +288,171 @@ class AboutDialogueGuiGUI(QtWidgets.QDialog):
 
         :return:
         """
-        self.ui.librariesTableWidget.setColumnCount(4)
-        self.ui.librariesTableWidget.setRowCount(3)
+        rows: List[OptionalLibraryStatus] = list()
+        veragrid_latest_version: str | None = find_latest_version(package_name="VeraGrid")
+        gslv_installed_version: str = get_installed_package_version(package_name="pygslv")
+        pgm_installed_version: str = get_installed_package_version(package_name="power-grid-model")
+
+        rows.append(OptionalLibraryStatus(
+            name="VeraGrid",
+            package_name="VeraGrid",
+            installed=True,
+            installed_version=__VeraGrid_VERSION__,
+            latest_version=veragrid_latest_version if veragrid_latest_version is not None else "",
+            supported_version=__VeraGridEngine_VERSION__,
+            licensed=True,
+        ))
+        rows.append(OptionalLibraryStatus(
+            name="GSLV",
+            package_name="pygslv",
+            installed=len(gslv_installed_version) > 0,
+            installed_version=gslv_installed_version if len(gslv_installed_version) > 0 else GSLV_VERSION,
+            latest_version=find_latest_version(package_name="pygslv") or "",
+            supported_version=GSLV_RECOMMENDED_VERSION,
+            licensed=GSLV_AVAILABLE,
+        ))
+        rows.append(OptionalLibraryStatus(
+            name="power-grid-model",
+            package_name="power-grid-model",
+            installed=len(pgm_installed_version) > 0 or PGM_AVAILABLE,
+            installed_version=pgm_installed_version if len(pgm_installed_version) > 0 else PGM_VERSION,
+            latest_version=find_latest_version(package_name="power-grid-model") or "",
+            supported_version=PGM_RECOMMENDED_VERSION,
+            licensed=PGM_AVAILABLE,
+        ))
+
+        self.ui.librariesTableWidget.setColumnCount(7)
+        self.ui.librariesTableWidget.setRowCount(len(rows))
         self.ui.librariesTableWidget.setHorizontalHeaderLabels([
             self.tr("Name"),
-            self.tr("version"),
-            self.tr("supported version"),
-            self.tr("licensed"),
+            self.tr("Installed"),
+            self.tr("Installed version"),
+            self.tr("Newest version"),
+            self.tr("Supported version"),
+            self.tr("Licensed"),
+            self.tr("Update"),
         ])
 
-        self.ui.librariesTableWidget.setItem(0, 0, QtWidgets.QTableWidgetItem("VeraGrid"))
-        self.ui.librariesTableWidget.setItem(0, 1, QtWidgets.QTableWidgetItem(__VeraGrid_VERSION__))
-        self.ui.librariesTableWidget.setItem(0, 2, QtWidgets.QTableWidgetItem(__VeraGridEngine_VERSION__))
-        self.ui.librariesTableWidget.setItem(0, 3, QtWidgets.QTableWidgetItem(self.tr("True")))
+        row_idx: int
+        library_status: OptionalLibraryStatus
+        installed_text: str
+        installed_version: str
+        latest_version: str
+        licensed_text: str
 
-        # GSLV
-        self.ui.librariesTableWidget.setItem(1, 0, QtWidgets.QTableWidgetItem("GSLV"))
-        self.ui.librariesTableWidget.setItem(1, 1, QtWidgets.QTableWidgetItem(GSLV_VERSION
-                                                                              if GSLV_AVAILABLE else
-                                                                              self.tr("Not installed")))
+        for row_idx, library_status in enumerate(rows):
+            installed_text = self.tr("True") if library_status.installed else self.tr("False")
 
-        self.ui.librariesTableWidget.setItem(1, 2, QtWidgets.QTableWidgetItem(GSLV_RECOMMENDED_VERSION))
-        self.ui.librariesTableWidget.setItem(1, 3, QtWidgets.QTableWidgetItem(str(GSLV_AVAILABLE)))
+            if library_status.installed:
+                installed_version = library_status.installed_version
+            else:
+                installed_version = self.tr("Not installed")
 
-        # PGM
-        self.ui.librariesTableWidget.setItem(2, 0, QtWidgets.QTableWidgetItem("power-grid-model"))
-        self.ui.librariesTableWidget.setItem(2, 1, QtWidgets.QTableWidgetItem(PGM_VERSION
-                                                                              if PGM_AVAILABLE else
-                                                                              self.tr("Not installed")))
-        self.ui.librariesTableWidget.setItem(2, 2, QtWidgets.QTableWidgetItem(PGM_RECOMMENDED_VERSION))
-        self.ui.librariesTableWidget.setItem(2, 3, QtWidgets.QTableWidgetItem(str(PGM_AVAILABLE)))
+            if len(library_status.latest_version) > 0:
+                latest_version = library_status.latest_version
+            else:
+                latest_version = self.tr("Unknown")
+
+            licensed_text = self.tr("True") if library_status.licensed else self.tr("False")
+
+            self.ui.librariesTableWidget.setItem(row_idx, 0, make_item(library_status.name))
+            self.ui.librariesTableWidget.setItem(row_idx, 1, make_item(installed_text))
+            self.ui.librariesTableWidget.setItem(row_idx, 2, make_item(installed_version))
+            self.ui.librariesTableWidget.setItem(row_idx, 3, make_item(latest_version))
+            self.ui.librariesTableWidget.setItem(row_idx, 4, make_item(library_status.supported_version))
+            self.ui.librariesTableWidget.setItem(row_idx, 5, make_item(licensed_text))
+            self.ui.librariesTableWidget.setCellWidget(
+                row_idx,
+                6,
+                self.create_optional_library_update_button(library_status=library_status),
+            )
+
+        self.ui.librariesTableWidget.resizeColumnsToContents()
+
+    def create_optional_library_update_button(self, library_status: OptionalLibraryStatus) -> QtWidgets.QPushButton:
+        """
+        Create the update button for one optional library row.
+
+        :param library_status: Optional library status.
+        :return: Configured update button.
+        """
+        button: QtWidgets.QPushButton = QtWidgets.QPushButton(self.tr("Update"))
+        button.setProperty("package_name", library_status.package_name)
+        button.setProperty("latest_version", library_status.latest_version)
+        button.setEnabled(can_update_package(
+            installed=library_status.installed,
+            installed_version=library_status.installed_version,
+            latest_version=library_status.latest_version,
+        ))
+        button.clicked.connect(self.update_optional_library)
+        return button
+
+    def update_optional_library(self, checked: bool = False) -> None:
+        """
+        Update the package associated with the clicked optional library row.
+
+        :param checked: Qt button checked state.
+        :return: None.
+        """
+        del checked
+
+        button: QtCore.QObject | None = self.sender()
+
+        if isinstance(button, QtWidgets.QPushButton):
+            package_name: str = str(button.property("package_name"))
+            latest_version: str = str(button.property("latest_version"))
+
+            if package_name == "VeraGrid":
+                command: List[str] = get_upgrade_command(latest_version=latest_version)
+            else:
+                command = get_package_upgrade_command(package_name=package_name, latest_version=latest_version)
+
+            return_code, command_output, attempts_used = run_upgrade_command(
+                command=command,
+                max_attempts=3,
+            )
+            output_excerpt: str = command_output[-4000:] if len(command_output) > 4000 else command_output
+
+            if return_code == 0:
+                self.msg(
+                    text=self.tr("{name} updated successfully after {attempts} attempt(s)").format(
+                        name=package_name,
+                        attempts=attempts_used,
+                    ),
+                    title=self.tr("Information"),
+                )
+                self.fill_optional_libs()
+            else:
+                self.msg(
+                    text=(
+                        self.tr("{name} update failed after {attempts} attempt(s).").format(
+                            name=package_name,
+                            attempts=attempts_used,
+                        )
+                        + "\n"
+                        + self.tr("Exit code: {code}").format(code=return_code)
+                        + "\n\n"
+                        + self.tr("Command output:")
+                        + "\n"
+                        + output_excerpt
+                    ),
+                    title=self.tr("Warning"),
+                )
+        else:
+            pass
 
     def fill_libs(self):
+        """
 
+        :return:
+        """
         self.ui.allLibsTableWidget.setColumnCount(5)
         self.ui.allLibsTableWidget.setHorizontalHeaderLabels([
-            self.tr("Package"), self.tr("Version"), self.tr("License"),
-            self.tr("Installation Path"), self.tr("Dependencies")
+            self.tr("Package"),
+            self.tr("Version"),
+            self.tr("License"),
+            self.tr("Installation Path"),
+            self.tr("Dependencies")
         ])
 
         pkgs = sorted(get_packages(), key=lambda x: x[0].lower())
@@ -281,7 +467,7 @@ class AboutDialogueGuiGUI(QtWidgets.QDialog):
 
         self.ui.allLibsTableWidget.resizeColumnsToContents()
 
-    def msg(self, text, title="Warning"):
+    def msg(self, text: str, title: str = "Warning"):
         """
         Message box
         :param text: Text to display
@@ -295,40 +481,6 @@ class AboutDialogueGuiGUI(QtWidgets.QDialog):
         # msg.setDetailedText("The details are as follows:")
         msg.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
         retval = msg.exec()
-
-    def update(self):
-        """
-        Upgrade VeraGrid
-        :return:
-        """
-        max_attempts: int = 3
-        return_code: int
-        command_output: str
-        attempts_used: int
-        message_text: str
-        output_excerpt: str
-
-        return_code, command_output, attempts_used = run_upgrade_command(
-            command=self.upgrade_cmd,
-            max_attempts=max_attempts
-        )
-
-        output_excerpt = command_output[-4000:] if len(command_output) > 4000 else command_output
-
-        if return_code != 0:
-            message_text = (
-                f"VeraGrid update failed after {attempts_used} attempt(s).\n"
-                f"Exit code: {return_code}\n\n"
-                f"Command output:\n{output_excerpt}"
-            )
-            self.msg(message_text)
-        else:
-            if attempts_used == 1:
-                message_text = 'VeraGrid updated successfully'
-            else:
-                message_text = f'VeraGrid updated successfully after {attempts_used} attempts'
-
-            self.msg(message_text)
 
     def copy_libs(self):
         """
@@ -374,7 +526,6 @@ class AboutDialogueGuiGUI(QtWidgets.QDialog):
             license_txt = file.read()
 
         self.ui.licenseTextEdit.setPlainText(license_txt)
-
 
 # if __name__ == "__main__":
 #     app = QtWidgets.QApplication(sys.argv)

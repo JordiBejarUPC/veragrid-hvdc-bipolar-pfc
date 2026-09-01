@@ -15,14 +15,46 @@ from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
-from VeraGridEngine.enumerations import DeviceType, ParamPowerFlowReferenceType, VarPowerFlowReferenceType
+from VeraGridEngine.enumerations import DeviceType, FmiVersion, ParamPowerFlowReferenceType, VarPowerFlowReferenceType
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var
 
-from VeraGridEngine.IO.fmu.importer.bindings import FmuImportConfig
+from VeraGridEngine.IO.fmu.importer.bindings import (
+    FmiThreeConfigurationSessionValues,
+    FmiThreeFloat64ConfigurationValue,
+    FmiThreeFloat64SessionValueSelector,
+    FmiThreeUInt64ConfigurationValue,
+    FmuImportConfig,
+    FmuRefBinding,
+    _build_fmi_three_configuration_session_values,
+    _reject_indexed_fmu_ref_bindings,
+    _validate_fmi_three_configuration_values,
+    resolve_fmi_three_float64_session_value_selectors,
+)
 from VeraGridEngine.IO.fmu.importer.device_config import load_fmu_cs_device_config, restore_fmu_cs_spec_from_record
-from VeraGridEngine.IO.fmu.importer.model_description import FmuInterfaceMode, FmuModelDescription, read_fmu_model_description
+from VeraGridEngine.IO.fmu.importer.errors import FmuImportError, FmuModeError
+from VeraGridEngine.IO.fmu.importer.model_description import (
+    FmuInterfaceMode,
+    FmuModelDescription,
+    FmuVariableDescription,
+    read_fmu_model_description,
+)
 from VeraGridEngine.IO.fmu.importer.runtime_host import FmuRuntimeHost, open_fmu_runtime_host
+from VeraGridEngine.IO.fmu.importer.runtime_profile import (
+    FmiThreeWorkerFloat64Profile,
+    resolve_fmi_three_worker_float64_profile,
+    validate_fmi_three_co_simulation_worker_profile,
+)
+from VeraGridEngine.IO.fmu.importer.runtime_protocol import (
+    FmiThreeWorkerDoStepResult,
+)
+from VeraGridEngine.IO.fmu.importer.runtime_session import (
+    FmiThreeFloat64Session,
+    open_fmi_three_float64_session,
+)
+from VeraGridEngine.IO.fmu.importer.runtime_worker_host import (
+    FmiThreeWorkerHostLimits,
+)
 
 
 class FmuCsDomain(str, Enum):
@@ -35,25 +67,6 @@ class FmuCsDomain(str, Enum):
     EMT = "emt"
 
 
-class FmuRefBinding:
-    """Bind one VeraGrid reference variable to one FMU variable name.
-
-    :param reference: VeraGrid external mapping reference.
-    :param fmu_variable_name: FMU scalar-variable name.
-    """
-
-    __slots__ = ("reference", "fmu_variable_name")
-
-    def __init__(self, reference: VarPowerFlowReferenceType, fmu_variable_name: str) -> None:
-        """Store the external-reference to FMU-variable binding.
-
-        :return: None.
-        """
-
-        self.reference: VarPowerFlowReferenceType = reference
-        self.fmu_variable_name: str = fmu_variable_name
-
-
 class FmuCsDeviceSpec:
     """Store the runtime data required to execute one FMU CS device.
 
@@ -64,6 +77,10 @@ class FmuCsDeviceSpec:
     :param output_bindings: FMU-to-VeraGrid bindings.
     :param output_defaults: Default output values before the FMU is stepped.
     :param output_param_uids: Event-parameter UIDs backing the FMU outputs.
+    :param worker_limits: Explicit FMI 3 worker supervision policy, when used.
+    :param float64_profile: Derived FMI 3 worker shape profile, when used.
+    :param configuration_float64_values: Structural Float64 declarations.
+    :param configuration_uint64_values: Structural UInt64 declarations.
     """
 
     __slots__ = (
@@ -74,6 +91,10 @@ class FmuCsDeviceSpec:
         "output_bindings",
         "output_defaults",
         "output_param_uids",
+        "worker_limits",
+        "float64_profile",
+        "configuration_float64_values",
+        "configuration_uint64_values",
     )
 
     def __init__(
@@ -85,9 +106,28 @@ class FmuCsDeviceSpec:
         output_bindings: tuple[FmuRefBinding, ...],
         output_defaults: dict[VarPowerFlowReferenceType, float],
         output_param_uids: dict[VarPowerFlowReferenceType, int],
+        worker_limits: FmiThreeWorkerHostLimits | None,
+        float64_profile: FmiThreeWorkerFloat64Profile | None,
+        configuration_float64_values: tuple[
+            FmiThreeFloat64ConfigurationValue, ...
+        ] = tuple(),
+        configuration_uint64_values: tuple[
+            FmiThreeUInt64ConfigurationValue, ...
+        ] = tuple(),
     ) -> None:
         """Store the runtime FMU device specification.
 
+        :param domain: VeraGrid domain using the FMU.
+        :param config: Runtime configuration for the FMU.
+        :param device_tpe: VeraGrid device type.
+        :param input_bindings: VeraGrid-to-FMU bindings.
+        :param output_bindings: FMU-to-VeraGrid bindings.
+        :param output_defaults: Default values before the first FMU sample.
+        :param output_param_uids: Runtime output-parameter identifiers.
+        :param worker_limits: Explicit FMI 3 worker supervision policy.
+        :param float64_profile: Derived FMI 3 worker shape profile.
+        :param configuration_float64_values: Structural Float64 declarations.
+        :param configuration_uint64_values: Structural UInt64 declarations.
         :return: None.
         """
 
@@ -98,6 +138,18 @@ class FmuCsDeviceSpec:
         self.output_bindings: tuple[FmuRefBinding, ...] = output_bindings
         self.output_defaults: dict[VarPowerFlowReferenceType, float] = output_defaults
         self.output_param_uids: dict[VarPowerFlowReferenceType, int] = output_param_uids
+        self.worker_limits: FmiThreeWorkerHostLimits | None = worker_limits
+        self.float64_profile: FmiThreeWorkerFloat64Profile | None = float64_profile
+        _validate_fmi_three_configuration_values(
+            configuration_float64_values=configuration_float64_values,
+            configuration_uint64_values=configuration_uint64_values,
+        )
+        self.configuration_float64_values: tuple[
+            FmiThreeFloat64ConfigurationValue, ...
+        ] = tuple(configuration_float64_values)
+        self.configuration_uint64_values: tuple[
+            FmiThreeUInt64ConfigurationValue, ...
+        ] = tuple(configuration_uint64_values)
 
 
 class FmuCsDeviceAdapter:
@@ -109,7 +161,17 @@ class FmuCsDeviceAdapter:
     :param output_param_indices: Runtime-parameter indices receiving FMU outputs.
     """
 
-    __slots__ = ("problem", "device", "spec", "output_param_indices", "runtime_host", "last_time", "initialized", "last_outputs")
+    __slots__ = (
+        "problem",
+        "device",
+        "spec",
+        "output_param_indices",
+        "runtime_host",
+        "fmi_three_session",
+        "last_time",
+        "initialized",
+        "last_outputs",
+    )
 
     def __init__(
         self,
@@ -128,6 +190,7 @@ class FmuCsDeviceAdapter:
         self.spec: FmuCsDeviceSpec = spec
         self.output_param_indices: dict[VarPowerFlowReferenceType, int] = output_param_indices
         self.runtime_host: FmuRuntimeHost | None = None
+        self.fmi_three_session: FmiThreeFloat64Session | None = None
         self.last_time: float = 0.0
         self.initialized: bool = False
         self.last_outputs: dict[VarPowerFlowReferenceType, float] = dict()
@@ -149,6 +212,62 @@ class FmuCsDeviceAdapter:
             input_values[binding.fmu_variable_name] = value
         return input_values
 
+    def _build_fmi_three_writable_values(
+        self,
+        x_snapshot: np.ndarray,
+    ) -> tuple[float, ...]:
+        """Build the ordered scalar values required by the isolated session.
+
+        :param x_snapshot: Current accepted VeraGrid state snapshot.
+        :return: Values ordered exactly like ``spec.input_bindings``.
+        """
+
+        writable_values: list[float] = [0.0] * len(self.spec.input_bindings)
+        binding_index: int
+        for binding_index in range(len(self.spec.input_bindings)):
+            binding: FmuRefBinding = self.spec.input_bindings[binding_index]
+            if self.spec.domain == FmuCsDomain.RMS:
+                writable_values[binding_index] = _get_rms_input_value(
+                    self.problem,
+                    self.device,
+                    binding.reference,
+                    x_snapshot,
+                )
+            else:
+                writable_values[binding_index] = _get_emt_input_value(
+                    self.problem,
+                    self.device,
+                    binding.reference,
+                    x_snapshot,
+                )
+        return tuple(writable_values)
+
+    def _map_fmi_three_readable_values(
+        self,
+        readable_values: tuple[float, ...],
+    ) -> dict[VarPowerFlowReferenceType, float]:
+        """Map ordered isolated readings onto VeraGrid output references.
+
+        :param readable_values: Values ordered like ``spec.output_bindings``.
+        :return: Scalar readings indexed by VeraGrid reference.
+        :raises RuntimeError: If the session violates the bound output shape.
+        """
+
+        if len(readable_values) == len(self.spec.output_bindings):
+            pass
+        else:
+            raise RuntimeError(
+                "FMI 3 Co-Simulation readings do not match the device bindings"
+            )
+        mapped_values: dict[VarPowerFlowReferenceType, float] = dict()
+        binding_index: int
+        for binding_index in range(len(self.spec.output_bindings)):
+            binding: FmuRefBinding = self.spec.output_bindings[binding_index]
+            mapped_values[binding.reference] = float(
+                readable_values[binding_index]
+            )
+        return mapped_values
+
     def _ensure_runtime(self, x_snapshot: np.ndarray, start_time: float) -> None:
         """Instantiate and initialize the FMU runtime the first time it is needed.
 
@@ -157,10 +276,116 @@ class FmuCsDeviceAdapter:
         :return: None.
         """
 
-        if self.runtime_host is None:
-            # The FMU runtime is created lazily so static projects do not pay startup cost.
-            self.runtime_host = open_fmu_runtime_host(self.spec.config)
-            self.runtime_host.initialize(start_time=start_time, start_values=self._build_input_values(x_snapshot))
+        if self.runtime_host is None and self.fmi_three_session is None:
+            if self.spec.float64_profile is None:
+                has_fmi_three_configuration: bool = (
+                    len(self.spec.configuration_float64_values) > 0
+                    or len(self.spec.configuration_uint64_values) > 0
+                )
+                if has_fmi_three_configuration:
+                    raise FmuModeError(
+                        "FMI 3 Configuration Mode declarations require FMI 3"
+                    )
+                else:
+                    pass
+                _reject_indexed_fmu_ref_bindings(
+                    input_bindings=self.spec.input_bindings,
+                    output_bindings=self.spec.output_bindings,
+                )
+                # FMI 2 retains its established in-process runtime until its
+                # isolation boundary is designed as an independent increment.
+                self.runtime_host = open_fmu_runtime_host(self.spec.config)
+                self.runtime_host.initialize(
+                    start_time=start_time,
+                    start_values=self._build_input_values(x_snapshot),
+                )
+            else:
+                # Writable arrays remain fail-closed because an incomplete set
+                # of device signals cannot provide the full native value vector.
+                _reject_indexed_fmu_ref_bindings(
+                    input_bindings=self.spec.input_bindings,
+                    output_bindings=tuple(),
+                )
+                if self.spec.worker_limits is not None:
+                    worker_limits: FmiThreeWorkerHostLimits = self.spec.worker_limits
+                else:
+                    raise RuntimeError("FMI 3 CS device spec lost its worker limits")
+
+                readable_variable_names: tuple[str, ...]
+                readable_value_selectors: tuple[
+                    FmiThreeFloat64SessionValueSelector, ...
+                ]
+                (
+                    readable_variable_names,
+                    readable_value_selectors,
+                ) = resolve_fmi_three_float64_session_value_selectors(
+                    self.spec.output_bindings
+                )
+                writable_variable_names: list[str] = [""] * len(
+                    self.spec.input_bindings
+                )
+                binding_index: int
+                for binding_index in range(len(self.spec.input_bindings)):
+                    writable_variable_names[binding_index] = (
+                        self.spec.input_bindings[binding_index].fmu_variable_name
+                    )
+
+                configuration_session_values: (
+                    FmiThreeConfigurationSessionValues
+                ) = _build_fmi_three_configuration_session_values(
+                    configuration_float64_values=(
+                        self.spec.configuration_float64_values
+                    ),
+                    configuration_uint64_values=(
+                        self.spec.configuration_uint64_values
+                    ),
+                )
+
+                session: FmiThreeFloat64Session = open_fmi_three_float64_session(
+                    config=self.spec.config,
+                    instance_name="veragrid-fmi-three-cs-device",
+                    readable_variable_names=readable_variable_names,
+                    writable_variable_names=tuple(writable_variable_names),
+                    limits=worker_limits,
+                    float64_profile=self.spec.float64_profile,
+                    configuration_variable_names=(
+                        configuration_session_values.float64_variable_names
+                    ),
+                    configuration_uint64_variable_names=(
+                        configuration_session_values.uint64_variable_names
+                    ),
+                    readable_value_selectors=readable_value_selectors,
+                )
+                try:
+                    # Structural dimensions must settle before flattened
+                    # Float64 structural arrays are validated and written.
+                    session.configure_uint64(
+                        configuration_uint64_values=(
+                            configuration_session_values.uint64_values
+                        )
+                    )
+                    session.configure(
+                        configuration_float64_values=(
+                            configuration_session_values.float64_values
+                        )
+                    )
+                    readable_values: tuple[float, ...] = (
+                        session.initialize_co_simulation_and_read(
+                            start_time=start_time,
+                            stop_time=None,
+                            relative_tolerance=self.spec.config.relative_tolerance,
+                            initial_writable_float64_values=(
+                                self._build_fmi_three_writable_values(x_snapshot)
+                            ),
+                        )
+                    )
+                except Exception:
+                    session.close()
+                    raise
+                self.fmi_three_session = session
+                self.last_outputs = self._map_fmi_three_readable_values(
+                    readable_values
+                )
             self.initialized = True
             self.last_time = start_time
         else:
@@ -172,9 +397,7 @@ class FmuCsDeviceAdapter:
         :return: Output values indexed by VeraGrid reference.
         """
 
-        if self.runtime_host is None:
-            return dict(self.spec.output_defaults)
-        else:
+        if self.runtime_host is not None:
             variable_names: list[str] = list()
             binding: FmuRefBinding
             for binding in self.spec.output_bindings:
@@ -185,6 +408,11 @@ class FmuCsDeviceAdapter:
             for binding in self.spec.output_bindings:
                 output_values[binding.reference] = float(runtime_values[binding.fmu_variable_name])
             return output_values
+        else:
+            if self.fmi_three_session is not None:
+                return dict(self.last_outputs)
+            else:
+                return dict(self.spec.output_defaults)
 
     def initialize_outputs(self, time_value: float, x_snapshot: np.ndarray) -> dict[VarPowerFlowReferenceType, float]:
         """Initialize the FMU and return its first output sample.
@@ -209,9 +437,7 @@ class FmuCsDeviceAdapter:
         """
 
         self._ensure_runtime(x_snapshot, current_time)
-        if self.runtime_host is None:
-            return dict(self.spec.output_defaults)
-        else:
+        if self.runtime_host is not None:
             # Inputs are refreshed from the accepted network state before stepping the FMU.
             self.runtime_host.set_real(self._build_input_values(x_snapshot))
             if current_time > self.last_time + 1e-15:
@@ -223,6 +449,35 @@ class FmuCsDeviceAdapter:
             outputs = self._read_outputs()
             self.last_outputs = dict(outputs)
             return outputs
+        else:
+            if self.fmi_three_session is not None:
+                step_result: FmiThreeWorkerDoStepResult
+                readable_values: tuple[float, ...]
+                step_result, readable_values = (
+                    self.fmi_three_session.advance_co_simulation(
+                        current_communication_point=current_time,
+                        communication_step_size=step_size,
+                        writable_float64_values=(
+                            self._build_fmi_three_writable_values(x_snapshot)
+                        ),
+                        no_set_fmu_state_prior_to_current_point=True,
+                    )
+                )
+                outputs: dict[VarPowerFlowReferenceType, float] = (
+                    self._map_fmi_three_readable_values(readable_values)
+                )
+                self.last_time = step_result.last_successful_time
+                self.last_outputs = dict(outputs)
+                # The worker already rejected Event Mode, early return, and a
+                # mismatched endpoint before returning this typed result.
+                if step_result.terminate_simulation:
+                    raise FmuImportError(
+                        "FMI 3 Co-Simulation requested simulation termination"
+                    )
+                else:
+                    return outputs
+            else:
+                return dict(self.spec.output_defaults)
 
     def apply_outputs(self, target: np.ndarray, outputs: dict[VarPowerFlowReferenceType, float]) -> None:
         """Write the FMU outputs into VeraGrid runtime-parameter storage.
@@ -251,6 +506,12 @@ class FmuCsDeviceAdapter:
             self.runtime_host = None
         else:
             pass
+        if self.fmi_three_session is not None:
+            self.fmi_three_session.close()
+            self.fmi_three_session = None
+        else:
+            pass
+        self.initialized = False
 
 
 class CompositeEmtBoundaryUpdater:
@@ -323,23 +584,91 @@ class CompositeEmtBoundaryUpdater:
             adapter.close()
 
 
-def _validate_cs_spec(config: FmuImportConfig, input_bindings: tuple[FmuRefBinding, ...], output_bindings: tuple[FmuRefBinding, ...]) -> None:
-    """Validate that an FMU is usable as a Co-Simulation device block.
+def build_fmu_cs_device_spec(
+    domain: FmuCsDomain,
+    config: FmuImportConfig,
+    device_tpe: DeviceType,
+    input_bindings: tuple[FmuRefBinding, ...],
+    output_bindings: tuple[FmuRefBinding, ...],
+    output_defaults: dict[VarPowerFlowReferenceType, float] | None = None,
+    output_param_uids: dict[VarPowerFlowReferenceType, int] | None = None,
+    worker_limits: FmiThreeWorkerHostLimits | None = None,
+    configuration_float64_values: tuple[
+        FmiThreeFloat64ConfigurationValue, ...
+    ] = tuple(),
+    configuration_uint64_values: tuple[
+        FmiThreeUInt64ConfigurationValue, ...
+    ] = tuple(),
+) -> FmuCsDeviceSpec:
+    """Build the validated runtime specification for one CS device.
 
+    :param domain: VeraGrid domain that consumes the FMU.
     :param config: FMU runtime configuration.
+    :param device_tpe: VeraGrid device type receiving the adapter.
     :param input_bindings: VeraGrid-to-FMU bindings.
     :param output_bindings: FMU-to-VeraGrid bindings.
-    :return: None.
+    :param output_defaults: Defaults used before the first FMU sample.
+    :param output_param_uids: Runtime output-parameter identifiers.
+    :param worker_limits: Explicit FMI 3 worker supervision policy, when used.
+    :param configuration_float64_values: Structural Float64 declarations.
+    :param configuration_uint64_values: Structural UInt64 declarations.
+    :return: Validated runtime specification with its derived worker profile.
     """
 
     metadata: FmuModelDescription = read_fmu_model_description(config.fmu_path)
-    resolved_mode: FmuInterfaceMode = metadata.resolve_mode(config.preferred_mode)
+    float64_profile: FmiThreeWorkerFloat64Profile | None
+    if metadata.fmi_version_family == FmiVersion.FMI_2_0:
+        resolved_mode: FmuInterfaceMode = config.resolve_execution_mode(metadata)
+        float64_profile = None
+        has_fmi_three_configuration: bool = (
+            len(configuration_float64_values) > 0
+            or len(configuration_uint64_values) > 0
+        )
+        if has_fmi_three_configuration:
+            raise FmuModeError(
+                "FMI 3 Configuration Mode declarations require FMI 3"
+            )
+        else:
+            pass
+    else:
+        if metadata.fmi_version_family == FmiVersion.FMI_3_0:
+            resolved_mode = metadata.select_declared_interface(
+                config.preferred_mode
+            )
+            float64_profile = resolve_fmi_three_worker_float64_profile(metadata)
+            validate_fmi_three_co_simulation_worker_profile(
+                metadata=metadata,
+                preferred_mode=resolved_mode,
+                float64_profile=float64_profile,
+            )
+            if worker_limits is not None:
+                pass
+            else:
+                raise ValueError(
+                    "FMI 3 Co-Simulation devices require explicit worker limits"
+                )
+        else:
+            raise ValueError(
+                f"FMI {metadata.fmi_version} execution is not supported yet"
+            )
     if resolved_mode == FmuInterfaceMode.CO_SIMULATION:
         available_variables: set[str] = set(metadata.get_variable_names())
         binding: FmuRefBinding
         for binding in input_bindings:
             if binding.fmu_variable_name in available_variables:
-                pass
+                if float64_profile is not None:
+                    input_variable: FmuVariableDescription = metadata.get_variable(
+                        binding.fmu_variable_name
+                    )
+                    if len(input_variable.dimensions) == 0:
+                        pass
+                    else:
+                        raise FmuModeError(
+                            "FMI 3 CS device array inputs require a complete "
+                            "value provider"
+                        )
+                else:
+                    pass
             else:
                 raise KeyError(f"FMU variable {binding.fmu_variable_name!r} was not found in {config.fmu_path}")
         for binding in output_bindings:
@@ -347,6 +676,30 @@ def _validate_cs_spec(config: FmuImportConfig, input_bindings: tuple[FmuRefBindi
                 pass
             else:
                 raise KeyError(f"FMU variable {binding.fmu_variable_name!r} was not found in {config.fmu_path}")
+
+        resolved_output_defaults: dict[VarPowerFlowReferenceType, float]
+        if output_defaults is None:
+            resolved_output_defaults = dict()
+        else:
+            resolved_output_defaults = dict(output_defaults)
+        resolved_output_param_uids: dict[VarPowerFlowReferenceType, int]
+        if output_param_uids is None:
+            resolved_output_param_uids = dict()
+        else:
+            resolved_output_param_uids = dict(output_param_uids)
+        return FmuCsDeviceSpec(
+            domain=domain,
+            config=config,
+            device_tpe=device_tpe,
+            input_bindings=input_bindings,
+            output_bindings=output_bindings,
+            output_defaults=resolved_output_defaults,
+            output_param_uids=resolved_output_param_uids,
+            worker_limits=worker_limits,
+            float64_profile=float64_profile,
+            configuration_float64_values=configuration_float64_values,
+            configuration_uint64_values=configuration_uint64_values,
+        )
     else:
         raise ValueError(f"Experimental CS device blocks require a Co-Simulation FMU, got {resolved_mode.value}")
 
@@ -436,6 +789,7 @@ def build_rms_fmu_cs_injection_template(
     name: str,
     device_tpe: DeviceType = DeviceType.LoadDevice,
     output_defaults: dict[VarPowerFlowReferenceType, float] | None = None,
+    worker_limits: FmiThreeWorkerHostLimits | None = None,
 ) -> RmsModelTemplate:
     """Build the symbolic RMS shell for one imported FMU CS device.
 
@@ -446,10 +800,19 @@ def build_rms_fmu_cs_injection_template(
     :param name: Template name.
     :param device_tpe: VeraGrid device type.
     :param output_defaults: Default output values.
+    :param worker_limits: Explicit FMI 3 worker supervision policy, when used.
     :return: RMS template wrapping the FMU shell block.
     """
 
-    _validate_cs_spec(config, input_bindings, output_bindings)
+    build_fmu_cs_device_spec(
+        domain=FmuCsDomain.RMS,
+        config=config,
+        device_tpe=device_tpe,
+        input_bindings=input_bindings,
+        output_bindings=output_bindings,
+        output_defaults=output_defaults,
+        worker_limits=worker_limits,
+    )
     template: RmsModelTemplate = RmsModelTemplate(name=name)
     template.tpe = device_tpe
     template.block = _build_template_block(vfactory, name, output_bindings, output_defaults)
@@ -464,6 +827,7 @@ def build_emt_fmu_cs_injection_template(
     name: str,
     device_tpe: DeviceType = DeviceType.LoadDevice,
     output_defaults: dict[VarPowerFlowReferenceType, float] | None = None,
+    worker_limits: FmiThreeWorkerHostLimits | None = None,
 ) -> EmtModelTemplate:
     """Build the symbolic EMT shell for one imported FMU CS device.
 
@@ -474,10 +838,19 @@ def build_emt_fmu_cs_injection_template(
     :param name: Template name.
     :param device_tpe: VeraGrid device type.
     :param output_defaults: Default output values.
+    :param worker_limits: Explicit FMI 3 worker supervision policy, when used.
     :return: EMT template wrapping the FMU shell block.
     """
 
-    _validate_cs_spec(config, input_bindings, output_bindings)
+    build_fmu_cs_device_spec(
+        domain=FmuCsDomain.EMT,
+        config=config,
+        device_tpe=device_tpe,
+        input_bindings=input_bindings,
+        output_bindings=output_bindings,
+        output_defaults=output_defaults,
+        worker_limits=worker_limits,
+    )
     template: EmtModelTemplate = EmtModelTemplate(name=name)
     template.tpe = device_tpe
     template.block = _build_template_block(vfactory, name, output_bindings, output_defaults)

@@ -1710,6 +1710,14 @@ Are you sure?</source>
         <translation>選択されなかったすべてのバスとその接続要素が削除されます。これは元に戻すことができず、何をしているか分からない場合、危険です。
 よろしいですか？</translation>
     </message>
+    <message>
+        <source>There are no buses to connect this device.</source>
+        <translation>このデバイスを接続するバスがありません。</translation>
+    </message>
+    <message>
+        <source>VSC devices need one AC bus and two DC buses.</source>
+        <translation>VSCデバイスにはACバスが1つ、DCバスが2つ必要です。</translation>
+    </message>
 </context>
 <context>
     <name>DcLineDeviceEditor</name>
@@ -1773,6 +1781,21 @@ Are you sure?</source>
         <location filename="../DeviceEditors/DcLineEditor/dc_line_editor_gui.ui" line="98"/>
         <source>Accept</source>
         <translation>受け入れる</translation>
+    </message>
+</context>
+<context>
+    <name>DeviceSelectorDialogue</name>
+    <message>
+        <source>Device selection</source>
+        <translation>デバイスの選択</translation>
+    </message>
+    <message>
+        <source>None</source>
+        <translation>なし</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>検索</translation>
     </message>
 </context>
 <context>
@@ -5968,6 +5991,17 @@ Do you want to continue without a template?</source>
     </message>
 </context>
 <context>
+    <name>MapLibraryModel</name>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>回路図に {name} をドラッグ＆ドロップ</translation>
+    </message>
+    <message>
+        <source>Substation</source>
+        <translation>変電所</translation>
+    </message>
+</context>
+<context>
     <name>MapLineContainer</name>
     <message>
         <source>Do you want to update the time series active status accordingly?</source>
@@ -6073,6 +6107,17 @@ Do you want to continue without a template?</source>
 Cancel it and close the window?</source>
         <translation>インポート処理が実行中です。
 キャンセルしてウィンドウを閉じますか？</translation>
+    </message>
+</context>
+<context>
+    <name>NewConnectedDeviceDialogue</name>
+    <message>
+        <source>Name</source>
+        <translation>名前</translation>
+    </message>
+    <message>
+        <source>New device</source>
+        <translation>新しいデバイス</translation>
     </message>
 </context>
 <context>
@@ -6855,6 +6900,37 @@ This will remove the direct child scenarios after their changes are applied.</so
     <message>
         <source>Set Current Scenario</source>
         <translation>現在のシナリオとして設定</translation>
+    </message>
+</context>
+<context>
+    <name>SchematicLibraryModel</name>
+    <message>
+        <source>3W-Transformer</source>
+        <translation>3Wトランスフォーマー</translation>
+    </message>
+    <message>
+        <source>Bus</source>
+        <translation>母線</translation>
+    </message>
+    <message>
+        <source>Connectivity bus</source>
+        <translation>接続バス</translation>
+    </message>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>回路図に {name} をドラッグ＆ドロップ</translation>
+    </message>
+    <message>
+        <source>Fluid-node</source>
+        <translation>流体ノード</translation>
+    </message>
+    <message>
+        <source>NW-Transformer</source>
+        <translation>NWトランスフォーマー</translation>
+    </message>
+    <message>
+        <source>VSC</source>
+        <translation>VSC</translation>
     </message>
 </context>
 <context>
@@ -8049,6 +8125,272 @@ The results are needed to initialize this simulation.</source>
 Resolve the operating point before running this RMS simulation.</source>
         <translation>潮流が収束しませんでした。
 このRMSシミュレーションを実行する前に、運転点を解決してください。</translation>
+    </message>
+    <message>
+        <source>Adequacy studies need time data...</source>
+        <translation>適切性研究には時間データが必要です...</translation>
+    </message>
+    <message>
+        <source>Another ATC time series is being executed now...</source>
+        <translation>別のATC時系列が実行中です...</translation>
+    </message>
+    <message>
+        <source>Another EMT simulation is running already...</source>
+        <translation>別のEMTシミュレーションがすでに実行中です...</translation>
+    </message>
+    <message>
+        <source>Another LODF is being executed now...</source>
+        <translation>別のLODFが実行中です...</translation>
+    </message>
+    <message>
+        <source>Another Monte Carlo simulation is running...</source>
+        <translation>別のモンテカルロシミュレーションが実行中です...</translation>
+    </message>
+    <message>
+        <source>Another OPF is being run...</source>
+        <translation>別のOPFが実行中です...</translation>
+    </message>
+    <message>
+        <source>Another OPF time series is running already...</source>
+        <translation>別のOPF時系列がすでに実行中です...</translation>
+    </message>
+    <message>
+        <source>Another Optimal NCT time series is being run...</source>
+        <translation>別の最適なNCT時系列が実行中です...</translation>
+    </message>
+    <message>
+        <source>Another PTDF is being executed now...</source>
+        <translation>別のPTDFが実行中です...</translation>
+    </message>
+    <message>
+        <source>Another Small-Signal stability analysis EMT simulation is running already...</source>
+        <translation>別の小信号安定度解析EMTシミュレーションがすでに実行中です...</translation>
+    </message>
+    <message>
+        <source>Another Small-Signal stability analysis simulation is running already...</source>
+        <translation>別の小信号安定度解析シミュレーションがすでに実行中です...</translation>
+    </message>
+    <message>
+        <source>Another catalogue optimization is already running...</source>
+        <translation>別のカタログ最適化がすでに実行中です...</translation>
+    </message>
+    <message>
+        <source>Another clustering is being executed now...</source>
+        <translation>別のクラスタリングが実行中です...</translation>
+    </message>
+    <message>
+        <source>Another contingency analysis is being executed now...</source>
+        <translation>別の偶発事象解析が実行中です...</translation>
+    </message>
+    <message>
+        <source>Another inputs analysis is being run...</source>
+        <translation>別の入力解析が実行中です...</translation>
+    </message>
+    <message>
+        <source>Another nodal capacity study is being run...</source>
+        <translation>別のノード容量研究が実行中です...</translation>
+    </message>
+    <message>
+        <source>Another reliability study is running already...</source>
+        <translation>別の信頼性研究がすでに実行中です...</translation>
+    </message>
+    <message>
+        <source>Another rms simulation is running already...</source>
+        <translation>別のRMSシミュレーションがすでに実行中です...</translation>
+    </message>
+    <message>
+        <source>Another simulation of the same type is running...</source>
+        <translation>同種の別のシミュレーションが実行中です...</translation>
+    </message>
+    <message>
+        <source>Another three-phase time series power flow is being executed now...</source>
+        <translation>別の三相時系列潮流計算が実行中です...</translation>
+    </message>
+    <message>
+        <source>Another time series power flow is being executed now...</source>
+        <translation>別の時系列潮流計算が実行中です...</translation>
+    </message>
+    <message>
+        <source>Another voltage collapse simulation is running...</source>
+        <translation>別の電圧崩壊シミュレーションが実行中です...</translation>
+    </message>
+    <message>
+        <source>Cannot colour because the PTDF results have zero time steps :/</source>
+        <translation>PTDFの結果に時間ステップがゼロのため色付けできません :/</translation>
+    </message>
+    <message>
+        <source>Check the selected start and finnish time series indices.</source>
+        <translation>選択された開始および終了の時系列インデックスを確認してください。</translation>
+    </message>
+    <message>
+        <source>Linear OPF investment studies need time data...</source>
+        <translation>線形OPF投資研究には時間データが必要です...</translation>
+    </message>
+    <message>
+        <source>No from areas!</source>
+        <translation>送電エリアがありません！</translation>
+    </message>
+    <message>
+        <source>No results for the three-phase time series simulation.</source>
+        <translation>三相時系列シミュレーションの結果がありません。</translation>
+    </message>
+    <message>
+        <source>No results for the time series simulation.</source>
+        <translation>時系列シミュレーションの結果がありません。</translation>
+    </message>
+    <message>
+        <source>No to areas!</source>
+        <translation>受電エリアがありません！</translation>
+    </message>
+    <message>
+        <source>Nothing to simulate...</source>
+        <translation>シミュレーションするものがありません...</translation>
+    </message>
+    <message>
+        <source>Objective not supported yet :/</source>
+        <translation>目標がまだサポートされていません :/</translation>
+    </message>
+    <message>
+        <source>Optimal power flow converged :)</source>
+        <translation>最適潮流が収束しました :)</translation>
+    </message>
+    <message>
+        <source>Optimal power flow not converged :/
+Check that all Branches have rating and 
+that the generator bounds are ok.
+You may also use the diagnostic tool (F8)</source>
+        <translation>最適潮流が収束しませんでした :/
+すべての分岐に定格があり、
+発電機の境界が適切であることを確認してください。
+診断ツール（F8）を使用することもできます。</translation>
+    </message>
+    <message>
+        <source>Power flow 3ph converged :)</source>
+        <translation>3相潮流が収束しました :)</translation>
+    </message>
+    <message>
+        <source>Power flow 3ph not converged :/</source>
+        <translation>3相潮流が収束しませんでした :/</translation>
+    </message>
+    <message>
+        <source>Power flow converged :)</source>
+        <translation>潮流が収束しました :)</translation>
+    </message>
+    <message>
+        <source>Power flow not converged :/</source>
+        <translation>潮流が収束しませんでした :/</translation>
+    </message>
+    <message>
+        <source>Reliability studies need time data...</source>
+        <translation>信頼性研究には時間データが必要です...</translation>
+    </message>
+    <message>
+        <source>Remote results received!</source>
+        <translation>リモートの結果を受信しました！</translation>
+    </message>
+    <message>
+        <source>Run a linear analysis to enable filter contingencies by sensitivity</source>
+        <translation>感度分析によりフィルター偶発事象を有効にするために線形解析を実行してください。</translation>
+    </message>
+    <message>
+        <source>Simulation converged for all active simulation groups :)</source>
+        <translation>すべてのアクティブなシミュレーショングループでシミュレーションが収束しました :)</translation>
+    </message>
+    <message>
+        <source>Simulation well initialized for all active simulation groups :)</source>
+        <translation>すべてのアクティブなシミュレーショングループでシミュレーションが正常に初期化されました :)</translation>
+    </message>
+    <message>
+        <source>Small-Signal stability analysis EMT has finished correctly!</source>
+        <translation>小信号安定度解析EMTが正常に完了しました！</translation>
+    </message>
+    <message>
+        <source>Small-signal stability analysis RMS has finished correctly!</source>
+        <translation>小信号安定度解析RMSが正常に完了しました！</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no ATC results.</source>
+        <translation>何か問題が発生しました。ATCの結果がありません。</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no ATC time series results.</source>
+        <translation>何か問題が発生しました。ATCの時系列結果がありません。</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no PTDF Time series results.</source>
+        <translation>何か問題が発生しました。PTDFの時系列結果がありません。</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no PTDF results.</source>
+        <translation>何か問題が発生しました。PTDFの結果がありません。</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no contingency analysis results.</source>
+        <translation>何らかのエラーが発生しました。コンティンジェンシー解析の結果がありません。</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no contingency time series results.</source>
+        <translation>何らかのエラーが発生しました。コンティンジェンシー時系列の結果がありません。</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no investments evaluation results.</source>
+        <translation>何らかのエラーが発生しました。投資評価の結果がありません。</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no voltage stability results.</source>
+        <translation>何らかのエラーが発生しました。電圧安定性の結果がありません。</translation>
+    </message>
+    <message>
+        <source>State estimation converged :)</source>
+        <translation>状態推定が収束しました :)</translation>
+    </message>
+    <message>
+        <source>State estimation not converged :/</source>
+        <translation>状態推定が収束しませんでした :/</translation>
+    </message>
+    <message>
+        <source>Stochastic power flow needs at least one time-series sample.</source>
+        <translation>確率的潮流計算には、少なくとも1つの時系列サンプルが必要です。</translation>
+    </message>
+    <message>
+        <source>The grid doesn&apos;t have time series :/</source>
+        <translation>グリッドに時系列データがありません :/</translation>
+    </message>
+    <message>
+        <source>The voltage stability did not converge.
+Is this case already at the collapse limit?</source>
+        <translation>電圧安定性が収束しませんでした。
+このケースはすでに崩壊限界に達していますか？</translation>
+    </message>
+    <message>
+        <source>There are no PTDF results :/</source>
+        <translation>PTDFの結果がありません :/</translation>
+    </message>
+    <message>
+        <source>There are no active RMS event groups to report.</source>
+        <translation>報告するアクティブなRMSイベントグループがありません。</translation>
+    </message>
+    <message>
+        <source>There are no contingency groups declared...</source>
+        <translation>宣言されたコンティンジェンシーグループがありません...</translation>
+    </message>
+    <message>
+        <source>There are no time series!</source>
+        <translation>時系列データがありません！</translation>
+    </message>
+    <message>
+        <source>There are no time series.</source>
+        <translation>時系列データがありません。</translation>
+    </message>
+    <message>
+        <source>There are no time series...</source>
+        <translation>時系列データがありません...</translation>
+    </message>
+    <message>
+        <source>You cannot find {0} clusters for {1} time steps.
+Modify the number of clusters in the ML settings.</source>
+        <translation>{1}のタイムステップに対して{0}のクラスターを見つけることができません。
+ML設定でクラスター数を変更してください。</translation>
     </message>
 </context>
 <context>
@@ -13915,7 +14257,7 @@ You need to load or create a grid!</source>
         <location filename="../Main/MainWindow.ui" line="11827"/>
         <location filename="../Main/MainWindow.ui" line="11830"/>
         <source>Stop &quot;stuff running right now&quot;</source>
-        <translation>"現在実行中の処理"を停止</translation>
+        <translation>&quot;現在実行中の処理&quot;を停止</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11968"/>

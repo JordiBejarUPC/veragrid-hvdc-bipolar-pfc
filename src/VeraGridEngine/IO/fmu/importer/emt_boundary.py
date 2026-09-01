@@ -9,6 +9,7 @@ from typing import Any
 
 import numpy as np
 
+from VeraGridEngine.enumerations import VarPowerFlowReferenceType
 from VeraGridEngine.IO.fmu.importer.experimental_cs import FmuCsDeviceAdapter
 from VeraGridEngine.IO.fmu.importer.experimental_me import EmtFmuMeDeviceAdapter
 
@@ -98,23 +99,109 @@ class CompositeEmtBoundaryUpdater:
                 outputs = adapter.initialize_outputs(time_value, x_snapshot)
             adapter.apply_outputs(full_params, outputs)
 
-    def update(self, time_value: float, x_snapshot: np.ndarray, full_params: np.ndarray) -> None:
+    def update(
+        self,
+        time_value: float,
+        x_snapshot: np.ndarray,
+        full_params: np.ndarray,
+    ) -> float | None:
         """Execute the native EMT boundary update and then advance imported FMUs.
 
         :param time_value: Current simulation time.
         :param x_snapshot: Current accepted state snapshot.
         :param full_params: Runtime-parameter vector.
-        :return: None.
+        :return: Localized ME retry time before CS advances, or ``None``.
         """
 
         self.problem.emt_boundary_update(time_value, x_snapshot, full_params)
         if self.initialized:
-            self._advance_cs_adapters(time_value, x_snapshot, full_params)
             self._advance_me_adapters(time_value, x_snapshot, full_params)
+            retry_time: float | None = self._prepare_me_state_event_retry(
+                full_params
+            )
+            if retry_time is None:
+                self._advance_cs_adapters(time_value, x_snapshot, full_params)
+            else:
+                pass
         else:
             self._initialize_cs_adapters(time_value, x_snapshot, full_params)
             self._initialize_me_adapters(time_value, x_snapshot, full_params)
             self.initialized = True
+            retry_time = None
+        return retry_time
+
+    def _prepare_me_state_event_retry(
+        self,
+        params: np.ndarray,
+    ) -> float | None:
+        """Localize the global first ME event before any CS device advances.
+
+        :param params: Runtime-parameter vector receiving restored ME outputs.
+        :return: Global shortened target time, or ``None``.
+        """
+
+        adapter_count: int = len(self.me_adapters)
+        localized_times: list[float | None] = [None] * adapter_count
+        earliest_event_time: float | None = None
+        adapter_index: int
+        for adapter_index in range(adapter_count):
+            adapter: EmtFmuMeDeviceAdapter = self.me_adapters[adapter_index]
+            localized_time: float | None = (
+                adapter.runtime_adapter.get_pending_state_event_time(
+                    time_tolerance=(
+                        self.problem.options.fmi_state_event_time_tolerance
+                    ),
+                    maximum_iterations=(
+                        self.problem.options.fmi_state_event_max_iterations
+                    ),
+                )
+            )
+            localized_times[adapter_index] = localized_time
+            if (
+                localized_time is not None
+                and (
+                    earliest_event_time is None
+                    or localized_time < earliest_event_time
+                )
+            ):
+                earliest_event_time = localized_time
+            else:
+                pass
+
+        if earliest_event_time is not None:
+            # Roll every ME device back to the common accepted system point.
+            for adapter_index in range(adapter_count):
+                adapter = self.me_adapters[adapter_index]
+                adapter_event_time: float | None = localized_times[adapter_index]
+                source_is_simultaneous: bool = (
+                    adapter_event_time is not None
+                    and (adapter_event_time - earliest_event_time)
+                    <= self.problem.options.fmi_state_event_time_tolerance
+                )
+                if source_is_simultaneous:
+                    retry_event_time: float | None = earliest_event_time
+                else:
+                    retry_event_time = None
+                restored_values: tuple[float, ...] = (
+                    adapter.runtime_adapter.prepare_state_event_retry(
+                        event_time=retry_event_time
+                    )
+                )
+                restored_outputs: dict[VarPowerFlowReferenceType, float] = (
+                    adapter.runtime_adapter._map_bound_output_values(
+                        restored_values
+                    )
+                )
+                if adapter.pending_previous_time is not None:
+                    adapter.last_time = adapter.pending_previous_time
+                else:
+                    pass
+                adapter.pending_previous_time = None
+                adapter.last_outputs = dict(restored_outputs)
+                adapter.apply_outputs(params, restored_outputs)
+        else:
+            pass
+        return earliest_event_time
 
     def get_next_forced_event_time(self, t_prev: float, t_target: float) -> float | None:
         """Forward the next forced event query to the native EMT problem.
@@ -124,7 +211,49 @@ class CompositeEmtBoundaryUpdater:
         :return: Next forced event time if any.
         """
 
-        return self.problem.get_next_forced_event_time(t_prev=t_prev, t_target=t_target)
+        next_event_time: float | None = self.problem.get_next_forced_event_time(
+            t_prev=t_prev,
+            t_target=t_target,
+        )
+        adapter: EmtFmuMeDeviceAdapter
+        for adapter in self.me_adapters:
+            adapter_event_time: float | None = (
+                adapter.runtime_adapter.get_next_event_time()
+            )
+            if (
+                adapter_event_time is not None
+                and t_prev < adapter_event_time <= t_target
+            ):
+                if (
+                    next_event_time is None
+                    or adapter_event_time < next_event_time
+                ):
+                    next_event_time = adapter_event_time
+                else:
+                    pass
+            else:
+                pass
+        return next_event_time
+
+    def resolve_step(
+        self,
+        accepted: bool,
+        params: np.ndarray,
+    ) -> float | None:
+        """Accept or reject every prepared ME candidate after EMT Newton.
+
+        :param accepted: Whether the EMT numerical step converged.
+        :param params: Runtime-parameter vector receiving resolved outputs.
+        :return: Always ``None`` because localization precedes Co-Simulation.
+        """
+
+        adapter: EmtFmuMeDeviceAdapter
+        for adapter in self.me_adapters:
+            outputs: dict[VarPowerFlowReferenceType, float] = (
+                adapter.resolve_step(accepted=accepted)
+            )
+            adapter.apply_outputs(params, outputs)
+        return None
 
     def close(self) -> None:
         """Release all FMU runtimes owned by the boundary updater.

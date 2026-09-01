@@ -40,7 +40,8 @@ from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import GridMapWidget, gener
 from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget, make_diagram_from_buses
 from VeraGrid.Gui.GridReduce.grid_reduce import GridReduceDialogue
 from VeraGrid.Gui.SubstationDesigner.substation_designer import SubstationDesigner
-from VeraGrid.Gui.general_dialogues import LogsDialogue, CustomQuestionDialogue, CheckListDialogue
+from VeraGrid.Gui.general_dialogues import (LogsDialogue, CustomQuestionDialogue, CheckListDialogue,
+                                            NewConnectedDeviceDialogue)
 from VeraGrid.Gui.DeviceEditors.TransformerEditor.transformer_device_editor import TransformerDeviceEditorDialog
 from VeraGrid.Gui.DeviceEditors.Transformer3wEditor.transformer3w_device_editor import Transformer3WDeviceEditorDialog
 from VeraGrid.Gui.DeviceEditors.ControllableShuntEditor.controllable_shunt_device_editor import (
@@ -870,7 +871,405 @@ class DataBaseTableMain(DiagramsMain):
 
         if model is not None and elm_type is not None:
 
-            if elm_type == DeviceType.SubstationDevice:
+            if elm_type == DeviceType.LoadDevice:
+                buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
+                if len(buses) > 0:
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
+                        name=f'{elm_type.value} {len(self.circuit.loads) + 1}',
+                        bus_count=1,
+                        buses=buses,
+                        parent=self,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
+                        if selected_buses[0] is not None:
+                            obj: dev.Load = dev.Load(name=dlg.get_name())
+                            obj.bus = selected_buses[0]
+                            self.circuit.add_element(obj=obj)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no buses to connect this device."))
+
+            elif elm_type == DeviceType.StaticGeneratorDevice:
+                buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
+                if len(buses) > 0:
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
+                        name=f'{elm_type.value} {len(self.circuit.static_generators) + 1}',
+                        bus_count=1,
+                        buses=buses,
+                        parent=self,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
+                        if selected_buses[0] is not None:
+                            obj: dev.StaticGenerator = dev.StaticGenerator(name=dlg.get_name())
+                            obj.bus = selected_buses[0]
+                            self.circuit.add_element(obj=obj)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no buses to connect this device."))
+
+            elif elm_type == DeviceType.GeneratorDevice:
+                buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
+                if len(buses) > 0:
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
+                        name=f'{elm_type.value} {len(self.circuit.generators) + 1}',
+                        bus_count=1,
+                        buses=buses,
+                        parent=self,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
+                        if selected_buses[0] is not None:
+                            obj: dev.Generator = dev.Generator(name=dlg.get_name())
+                            obj.bus = selected_buses[0]
+                            self.circuit.add_element(obj=obj)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no buses to connect this device."))
+
+            elif elm_type == DeviceType.BatteryDevice:
+                buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
+                if len(buses) > 0:
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
+                        name=f'{elm_type.value} {len(self.circuit.batteries) + 1}',
+                        bus_count=1,
+                        buses=buses,
+                        parent=self,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
+                        if selected_buses[0] is not None:
+                            obj: dev.Battery = dev.Battery(name=dlg.get_name())
+                            obj.bus = selected_buses[0]
+                            self.circuit.add_element(obj=obj)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no buses to connect this device."))
+
+            elif elm_type == DeviceType.ShuntDevice:
+                buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
+                if len(buses) > 0:
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
+                        name=f'{elm_type.value} {len(self.circuit.shunts) + 1}',
+                        bus_count=1,
+                        buses=buses,
+                        parent=self,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
+                        if selected_buses[0] is not None:
+                            obj: dev.Shunt = dev.Shunt(name=dlg.get_name())
+                            obj.bus = selected_buses[0]
+                            self.circuit.add_element(obj=obj)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no buses to connect this device."))
+
+            elif elm_type == DeviceType.ExternalGridDevice:
+                buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
+                if len(buses) > 0:
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
+                        name=f'{elm_type.value} {len(self.circuit.external_grids) + 1}',
+                        bus_count=1,
+                        buses=buses,
+                        parent=self,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
+                        if selected_buses[0] is not None:
+                            obj: dev.ExternalGrid = dev.ExternalGrid(name=dlg.get_name())
+                            obj.bus = selected_buses[0]
+                            self.circuit.add_element(obj=obj)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no buses to connect this device."))
+
+            elif elm_type == DeviceType.CurrentInjectionDevice:
+                buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
+                if len(buses) > 0:
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
+                        name=f'{elm_type.value} {len(self.circuit.current_injections) + 1}',
+                        bus_count=1,
+                        buses=buses,
+                        parent=self,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
+                        if selected_buses[0] is not None:
+                            obj: dev.CurrentInjection = dev.CurrentInjection(name=dlg.get_name())
+                            obj.bus = selected_buses[0]
+                            self.circuit.add_element(obj=obj)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no buses to connect this device."))
+
+            elif elm_type == DeviceType.ControllableShuntDevice:
+                buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
+                if len(buses) > 0:
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
+                        name=f'{elm_type.value} {len(self.circuit.controllable_shunts) + 1}',
+                        bus_count=1,
+                        buses=buses,
+                        parent=self,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
+                        if selected_buses[0] is not None:
+                            obj: dev.ControllableShunt = dev.ControllableShunt(name=dlg.get_name())
+                            obj.bus = selected_buses[0]
+                            self.circuit.add_element(obj=obj)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no buses to connect this device."))
+
+            elif elm_type == DeviceType.LineDevice:
+                buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
+                if len(buses) > 0:
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
+                        name=f'{elm_type.value} {len(self.circuit.lines) + 1}',
+                        bus_count=2,
+                        buses=buses,
+                        parent=self,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
+                        if selected_buses[0] is not None and selected_buses[1] is not None:
+                            obj: dev.Line = dev.Line(name=dlg.get_name(),
+                                                     bus_from=selected_buses[0],
+                                                     bus_to=selected_buses[1])
+                            self.circuit.add_element(obj=obj)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no buses to connect this device."))
+
+            elif elm_type == DeviceType.DCLineDevice:
+                buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
+                if len(buses) > 0:
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
+                        name=f'{elm_type.value} {len(self.circuit.dc_lines) + 1}',
+                        bus_count=2,
+                        buses=buses,
+                        parent=self,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
+                        if selected_buses[0] is not None and selected_buses[1] is not None:
+                            obj: dev.DcLine = dev.DcLine(name=dlg.get_name(),
+                                                         bus_from=selected_buses[0],
+                                                         bus_to=selected_buses[1])
+                            self.circuit.add_element(obj=obj)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no buses to connect this device."))
+
+            elif elm_type == DeviceType.Transformer2WDevice:
+                buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
+                if len(buses) > 0:
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
+                        name=f'{elm_type.value} {len(self.circuit.transformers2w) + 1}',
+                        bus_count=2,
+                        buses=buses,
+                        parent=self,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
+                        if selected_buses[0] is not None and selected_buses[1] is not None:
+                            obj: dev.Transformer2W = dev.Transformer2W(name=dlg.get_name(),
+                                                                       bus_from=selected_buses[0],
+                                                                       bus_to=selected_buses[1])
+                            self.circuit.add_element(obj=obj)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no buses to connect this device."))
+
+            elif elm_type == DeviceType.Transformer3WDevice:
+                buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
+                if len(buses) > 0:
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
+                        name=f'{elm_type.value} {len(self.circuit.transformers3w) + 1}',
+                        bus_count=3,
+                        buses=buses,
+                        parent=self,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
+                        if selected_buses[0] is not None and selected_buses[1] is not None and selected_buses[2] is not None:
+                            obj: dev.Transformer3W = dev.Transformer3W(name=dlg.get_name(),
+                                                                       bus1=selected_buses[0],
+                                                                       bus2=selected_buses[1],
+                                                                       bus3=selected_buses[2])
+                            self.circuit.add_element(obj=obj)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no buses to connect this device."))
+
+            elif elm_type == DeviceType.TransformerNwDevice:
+                buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
+                if len(buses) > 0:
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
+                        name=f'{elm_type.value} {len(self.circuit.transformers_nw) + 1}',
+                        bus_count=3,
+                        buses=buses,
+                        parent=self,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
+                        if selected_buses[0] is not None and selected_buses[1] is not None and selected_buses[2] is not None:
+                            obj: dev.TransformerNW = dev.TransformerNW(name=dlg.get_name(),
+                                                                       winding_count=len(selected_buses),
+                                                                       buses=selected_buses)
+                            self.circuit.add_element(obj=obj)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no buses to connect this device."))
+
+            elif elm_type == DeviceType.HVDCLineDevice:
+                buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
+                if len(buses) > 0:
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
+                        name=f'{elm_type.value} {len(self.circuit.hvdc_lines) + 1}',
+                        bus_count=2,
+                        buses=buses,
+                        parent=self,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
+                        if selected_buses[0] is not None and selected_buses[1] is not None:
+                            obj: dev.HvdcLine = dev.HvdcLine(name=dlg.get_name(),
+                                                             bus_from=selected_buses[0],
+                                                             bus_to=selected_buses[1])
+                            self.circuit.add_element(obj=obj)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no buses to connect this device."))
+
+            elif elm_type == DeviceType.VscDevice:
+                buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
+                if len(buses) > 0:
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
+                        name=f'{elm_type.value} {len(self.circuit.vsc_devices) + 1}',
+                        bus_count=3,
+                        buses=buses,
+                        parent=self,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
+                        if selected_buses[0] is not None and selected_buses[1] is not None and selected_buses[2] is not None:
+                            bus_from: ALL_DEV_TYPES = selected_buses[0]
+                            bus_to: ALL_DEV_TYPES = selected_buses[1]
+                            bus_dc_n: ALL_DEV_TYPES = selected_buses[2]
+
+                            if isinstance(bus_from, dev.Bus) and isinstance(bus_to, dev.Bus) and isinstance(bus_dc_n, dev.Bus):
+                                has_ac_dc_pair: bool = bus_from.is_dc != bus_to.is_dc
+                                has_dc_negative_bus: bool = bus_dc_n.is_dc
+
+                                if has_ac_dc_pair and has_dc_negative_bus:
+                                    obj: dev.VSC = dev.VSC(name=dlg.get_name(),
+                                                           bus_from=bus_from,
+                                                           bus_to=bus_to,
+                                                           bus_dc_n=bus_dc_n)
+                                    self.circuit.add_element(obj=obj)
+                                else:
+                                    self.show_warning_toast(self.tr("VSC devices need one AC bus and two DC buses."))
+                            else:
+                                pass
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no buses to connect this device."))
+
+            elif elm_type == DeviceType.UpfcDevice:
+                buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
+                if len(buses) > 0:
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
+                        name=f'{elm_type.value} {len(self.circuit.upfc_devices) + 1}',
+                        bus_count=2,
+                        buses=buses,
+                        parent=self,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
+                        if selected_buses[0] is not None and selected_buses[1] is not None:
+                            obj: dev.UPFC = dev.UPFC(name=dlg.get_name(),
+                                                     bus_from=selected_buses[0],
+                                                     bus_to=selected_buses[1])
+                            self.circuit.add_element(obj=obj)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no buses to connect this device."))
+
+            elif elm_type == DeviceType.SeriesReactanceDevice:
+                buses: List[ALL_DEV_TYPES] = self.circuit.get_buses()
+                if len(buses) > 0:
+                    dlg: NewConnectedDeviceDialogue = NewConnectedDeviceDialogue(
+                        name=f'{elm_type.value} {len(self.circuit.series_reactances) + 1}',
+                        bus_count=2,
+                        buses=buses,
+                        parent=self,
+                    )
+                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
+                        if selected_buses[0] is not None and selected_buses[1] is not None:
+                            obj: dev.SeriesReactance = dev.SeriesReactance(name=dlg.get_name(),
+                                                                           bus_from=selected_buses[0],
+                                                                           bus_to=selected_buses[1])
+                            self.circuit.add_element(obj=obj)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    self.show_warning_toast(self.tr("There are no buses to connect this device."))
+
+            elif elm_type == DeviceType.SubstationDevice:
                 self.circuit.add_substation(dev.Substation(name=f'SE {self.circuit.get_substation_number() + 1}'))
                 self.update_from_to_list_views()
 
@@ -951,6 +1350,12 @@ class DataBaseTableMain(DiagramsMain):
                 name = f'Cable {len(self.circuit.underground_cable_types) + 1}'
                 obj = dev.UndergroundLineType(name=name)
                 self.circuit.add_underground_line(obj)
+
+            elif elm_type == DeviceType.DcCableTypeDevice:
+
+                name = f'DC cable {len(self.circuit.dc_cable_types) + 1}'
+                obj = dev.DcCableType(name=name)
+                self.circuit.add_dc_cable_type(obj)
 
             elif elm_type == DeviceType.SequenceLineDevice:
 

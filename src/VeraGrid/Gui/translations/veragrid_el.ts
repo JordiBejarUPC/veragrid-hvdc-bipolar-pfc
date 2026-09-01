@@ -1710,6 +1710,14 @@ Are you sure?</translation>
         <source>The proprty {property_name} cannot be found :(</source>
         <translation>Το ιδιόκτητο {property_name} δεν μπορεί να βρεθεί :(</translation>
     </message>
+    <message>
+        <source>There are no buses to connect this device.</source>
+        <translation>There are no buses to connect this device.</translation>
+    </message>
+    <message>
+        <source>VSC devices need one AC bus and two DC buses.</source>
+        <translation>VSC devices need one AC bus and two DC buses.</translation>
+    </message>
 </context>
 <context>
     <name>DcLineDeviceEditor</name>
@@ -1773,6 +1781,21 @@ Are you sure?</translation>
         <location filename="../DeviceEditors/DcLineEditor/dc_line_editor_gui.ui" line="98"/>
         <source>Accept</source>
         <translation>Αποδέχομαι</translation>
+    </message>
+</context>
+<context>
+    <name>DeviceSelectorDialogue</name>
+    <message>
+        <source>Device selection</source>
+        <translation>Επιλογή συσκευής</translation>
+    </message>
+    <message>
+        <source>None</source>
+        <translation>Κανένα</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>Ερευνα</translation>
     </message>
 </context>
 <context>
@@ -5968,6 +5991,17 @@ Please correct the data and try again.</source>
     </message>
 </context>
 <context>
+    <name>MapLibraryModel</name>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>Σύρετε και αφήστε το {name} στο διάγραμμα</translation>
+    </message>
+    <message>
+        <source>Substation</source>
+        <translation>Μικρός σταθμός</translation>
+    </message>
+</context>
+<context>
     <name>MapLineContainer</name>
     <message>
         <source>Do you want to update the time series active status accordingly?</source>
@@ -6073,6 +6107,17 @@ Please correct the data and try again.</source>
 Cancel it and close the window?</source>
         <translation>There is an import procedure running.
 Cancel it and close the window?</translation>
+    </message>
+</context>
+<context>
+    <name>NewConnectedDeviceDialogue</name>
+    <message>
+        <source>Name</source>
+        <translation>Ονομα</translation>
+    </message>
+    <message>
+        <source>New device</source>
+        <translation>Νέα συσκευή</translation>
     </message>
 </context>
 <context>
@@ -6855,6 +6900,37 @@ This will remove the direct child scenarios after their changes are applied.</so
         <translation>Θέλετε να συγχωνεύσετε {child_count} παιδικά σενάρια στο &apos;{scenario_name}&apos;?
 
 Αυτό θα αφαιρέσει τα άμεσα παιδικά σενάρια αφού εφαρμοστούν οι αλλαγές τους.</translation>
+    </message>
+</context>
+<context>
+    <name>SchematicLibraryModel</name>
+    <message>
+        <source>3W-Transformer</source>
+        <translation>Τρανσფორმაτορας 3W</translation>
+    </message>
+    <message>
+        <source>Bus</source>
+        <translation>Ζυγός</translation>
+    </message>
+    <message>
+        <source>Connectivity bus</source>
+        <translation>Κεφαλίδα συνδεσιμότητας</translation>
+    </message>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>Σύρετε και αφήστε το {name} στο διάγραμμα</translation>
+    </message>
+    <message>
+        <source>Fluid-node</source>
+        <translation>Νόδος fluid</translation>
+    </message>
+    <message>
+        <source>NW-Transformer</source>
+        <translation>Τρανσფორმაτορας NW</translation>
+    </message>
+    <message>
+        <source>VSC</source>
+        <translation>VSC</translation>
     </message>
 </context>
 <context>
@@ -8051,6 +8127,272 @@ The results are needed to initialize this simulation.</source>
 Resolve the operating point before running this RMS simulation.</source>
         <translation>Η ροή ισχύος δεν συγκλίνει.
 Επίλυση το λειτουργικό σημείο πριν εκτέλεση αυτής της προσομοίωσης RMS.</translation>
+    </message>
+    <message>
+        <source>Adequacy studies need time data...</source>
+        <translation>Adequacy studies need time data...</translation>
+    </message>
+    <message>
+        <source>Another ATC time series is being executed now...</source>
+        <translation>Another ATC time series is being executed now...</translation>
+    </message>
+    <message>
+        <source>Another EMT simulation is running already...</source>
+        <translation>Another EMT simulation is running already...</translation>
+    </message>
+    <message>
+        <source>Another LODF is being executed now...</source>
+        <translation>Another LODF is being executed now...</translation>
+    </message>
+    <message>
+        <source>Another Monte Carlo simulation is running...</source>
+        <translation>Another Monte Carlo simulation is running...</translation>
+    </message>
+    <message>
+        <source>Another OPF is being run...</source>
+        <translation>Another OPF is being run...</translation>
+    </message>
+    <message>
+        <source>Another OPF time series is running already...</source>
+        <translation>Another OPF time series is running already...</translation>
+    </message>
+    <message>
+        <source>Another Optimal NCT time series is being run...</source>
+        <translation>Another Optimal NCT time series is being run...</translation>
+    </message>
+    <message>
+        <source>Another PTDF is being executed now...</source>
+        <translation>Another PTDF is being executed now...</translation>
+    </message>
+    <message>
+        <source>Another Small-Signal stability analysis EMT simulation is running already...</source>
+        <translation>Another Small-Signal stability analysis EMT simulation is running already...</translation>
+    </message>
+    <message>
+        <source>Another Small-Signal stability analysis simulation is running already...</source>
+        <translation>Another Small-Signal stability analysis simulation is running already...</translation>
+    </message>
+    <message>
+        <source>Another catalogue optimization is already running...</source>
+        <translation>Another catalogue optimization is already running...</translation>
+    </message>
+    <message>
+        <source>Another clustering is being executed now...</source>
+        <translation>Another clustering is being executed now...</translation>
+    </message>
+    <message>
+        <source>Another contingency analysis is being executed now...</source>
+        <translation>Another contingency analysis is being executed now...</translation>
+    </message>
+    <message>
+        <source>Another inputs analysis is being run...</source>
+        <translation>Another inputs analysis is being run...</translation>
+    </message>
+    <message>
+        <source>Another nodal capacity study is being run...</source>
+        <translation>Another nodal capacity study is being run...</translation>
+    </message>
+    <message>
+        <source>Another reliability study is running already...</source>
+        <translation>Another reliability study is running already...</translation>
+    </message>
+    <message>
+        <source>Another rms simulation is running already...</source>
+        <translation>Another rms simulation is running already...</translation>
+    </message>
+    <message>
+        <source>Another simulation of the same type is running...</source>
+        <translation>Another simulation of the same type is running...</translation>
+    </message>
+    <message>
+        <source>Another three-phase time series power flow is being executed now...</source>
+        <translation>Another three-phase time series power flow is being executed now...</translation>
+    </message>
+    <message>
+        <source>Another time series power flow is being executed now...</source>
+        <translation>Another time series power flow is being executed now...</translation>
+    </message>
+    <message>
+        <source>Another voltage collapse simulation is running...</source>
+        <translation>Another voltage collapse simulation is running...</translation>
+    </message>
+    <message>
+        <source>Cannot colour because the PTDF results have zero time steps :/</source>
+        <translation>Cannot colour because the PTDF results have zero time steps :/</translation>
+    </message>
+    <message>
+        <source>Check the selected start and finnish time series indices.</source>
+        <translation>Check the selected start and finnish time series indices.</translation>
+    </message>
+    <message>
+        <source>Linear OPF investment studies need time data...</source>
+        <translation>Linear OPF investment studies need time data...</translation>
+    </message>
+    <message>
+        <source>No from areas!</source>
+        <translation>No from areas!</translation>
+    </message>
+    <message>
+        <source>No results for the three-phase time series simulation.</source>
+        <translation>No results for the three-phase time series simulation.</translation>
+    </message>
+    <message>
+        <source>No results for the time series simulation.</source>
+        <translation>No results for the time series simulation.</translation>
+    </message>
+    <message>
+        <source>No to areas!</source>
+        <translation>No to areas!</translation>
+    </message>
+    <message>
+        <source>Nothing to simulate...</source>
+        <translation>Nothing to simulate...</translation>
+    </message>
+    <message>
+        <source>Objective not supported yet :/</source>
+        <translation>Objective not supported yet :/</translation>
+    </message>
+    <message>
+        <source>Optimal power flow converged :)</source>
+        <translation>Optimal power flow converged :)</translation>
+    </message>
+    <message>
+        <source>Optimal power flow not converged :/
+Check that all Branches have rating and 
+that the generator bounds are ok.
+You may also use the diagnostic tool (F8)</source>
+        <translation>Optimal power flow not converged :/
+Check that all Branches have rating and 
+that the generator bounds are ok.
+You may also use the diagnostic tool (F8)</translation>
+    </message>
+    <message>
+        <source>Power flow 3ph converged :)</source>
+        <translation>Power flow 3ph converged :)</translation>
+    </message>
+    <message>
+        <source>Power flow 3ph not converged :/</source>
+        <translation>Power flow 3ph not converged :/</translation>
+    </message>
+    <message>
+        <source>Power flow converged :)</source>
+        <translation>Power flow converged :)</translation>
+    </message>
+    <message>
+        <source>Power flow not converged :/</source>
+        <translation>Power flow not converged :/</translation>
+    </message>
+    <message>
+        <source>Reliability studies need time data...</source>
+        <translation>Reliability studies need time data...</translation>
+    </message>
+    <message>
+        <source>Remote results received!</source>
+        <translation>Remote results received!</translation>
+    </message>
+    <message>
+        <source>Run a linear analysis to enable filter contingencies by sensitivity</source>
+        <translation>Run a linear analysis to enable filter contingencies by sensitivity</translation>
+    </message>
+    <message>
+        <source>Simulation converged for all active simulation groups :)</source>
+        <translation>Simulation converged for all active simulation groups :)</translation>
+    </message>
+    <message>
+        <source>Simulation well initialized for all active simulation groups :)</source>
+        <translation>Simulation well initialized for all active simulation groups :)</translation>
+    </message>
+    <message>
+        <source>Small-Signal stability analysis EMT has finished correctly!</source>
+        <translation>Small-Signal stability analysis EMT has finished correctly!</translation>
+    </message>
+    <message>
+        <source>Small-signal stability analysis RMS has finished correctly!</source>
+        <translation>Small-signal stability analysis RMS has finished correctly!</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no ATC results.</source>
+        <translation>Something went wrong, There are no ATC results.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no ATC time series results.</source>
+        <translation>Something went wrong, There are no ATC time series results.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no PTDF Time series results.</source>
+        <translation>Something went wrong, There are no PTDF Time series results.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no PTDF results.</source>
+        <translation>Something went wrong, There are no PTDF results.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no contingency analysis results.</source>
+        <translation>Προέκυψε κάποιο σφάλμα, Δεν υπάρχουν αποτελέσματα ανάλυσης περιστατικών.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no contingency time series results.</source>
+        <translation>Προέκυψε κάποιο σφάλμα, Δεν υπάρχουν αποτελέσματα χρονοσειρών περιστατικών.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no investments evaluation results.</source>
+        <translation>Προέκυψε κάποιο σφάλμα, Δεν υπάρχουν αποτελέσματα αξιολόγησης επενδύσεων.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no voltage stability results.</source>
+        <translation>Προέκυψε κάποιο σφάλμα, Δεν υπάρχουν αποτελέσματα σταθερότητας τάσης.</translation>
+    </message>
+    <message>
+        <source>State estimation converged :)</source>
+        <translation>Η εκτίμηση κατάστασης συγκλίνει :)</translation>
+    </message>
+    <message>
+        <source>State estimation not converged :/</source>
+        <translation>Η εκτίμηση κατάστασης δεν συγκλίνει :/</translation>
+    </message>
+    <message>
+        <source>Stochastic power flow needs at least one time-series sample.</source>
+        <translation>Η στατιστική ροή ισχύος απαιτεί τουλάχιστον ένα δείγμα χρονοσειράς.</translation>
+    </message>
+    <message>
+        <source>The grid doesn&apos;t have time series :/</source>
+        <translation>Το δίκτυο δεν έχει χρονοσειρές :/</translation>
+    </message>
+    <message>
+        <source>The voltage stability did not converge.
+Is this case already at the collapse limit?</source>
+        <translation>Η σταθερότητα τάσης δεν συγκλίνει.
+Βρίσκεται αυτή η περίπτωση ήδη στο όριο κατάρρευσης;</translation>
+    </message>
+    <message>
+        <source>There are no PTDF results :/</source>
+        <translation>Δεν υπάρχουν αποτελέσματα PTDF :/</translation>
+    </message>
+    <message>
+        <source>There are no active RMS event groups to report.</source>
+        <translation>Δεν υπάρχουν ενεργές ομάδες γεγονότων RMS για αναφορά.</translation>
+    </message>
+    <message>
+        <source>There are no contingency groups declared...</source>
+        <translation>Δεν έχουν ανακηρυνιστεί ομάδες περιστατικών...</translation>
+    </message>
+    <message>
+        <source>There are no time series!</source>
+        <translation>Δεν υπάρχουν χρονοσειρές!</translation>
+    </message>
+    <message>
+        <source>There are no time series.</source>
+        <translation>Δεν υπάρχουν χρονοσειρές.</translation>
+    </message>
+    <message>
+        <source>There are no time series...</source>
+        <translation>Δεν υπάρχουν χρονοσειρές...</translation>
+    </message>
+    <message>
+        <source>You cannot find {0} clusters for {1} time steps.
+Modify the number of clusters in the ML settings.</source>
+        <translation>Δεν μπορείτε να βρείτε {0} ομάδες για {1} βήματα χρόνου.
+Επεξεργαστείτε τον αριθμό των ομάδων στις ρυθμίσεις ML.</translation>
     </message>
 </context>
 <context>
@@ -13917,7 +14259,7 @@ You need to load or create a grid!</source>
         <location filename="../Main/MainWindow.ui" line="11827"/>
         <location filename="../Main/MainWindow.ui" line="11830"/>
         <source>Stop &quot;stuff running right now&quot;</source>
-        <translation>Σταμάτησε τα "δυναμικά που τρέχουν τώρα"</translation>
+        <translation>Σταμάτησε τα &quot;δυναμικά που τρέχουν τώρα&quot;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11968"/>

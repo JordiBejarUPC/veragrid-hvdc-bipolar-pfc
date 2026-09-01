@@ -650,6 +650,39 @@ class FmiVersion(str, Enum):
     FMI_3_0 = "3.0"
 
 
+class FmuInterfaceMode(str, Enum):
+    """Execution interfaces currently represented by the FMU importer."""
+
+    CO_SIMULATION = "CoSimulation"
+    MODEL_EXCHANGE = "ModelExchange"
+
+
+class FmuVariableType(str, Enum):
+    """Primitive variable types recognized in FMI model descriptions."""
+
+    REAL = "Real"
+    INTEGER = "Integer"
+    BOOLEAN = "Boolean"
+    STRING = "String"
+    ENUMERATION = "Enumeration"
+    FLOAT32 = "Float32"
+    FLOAT64 = "Float64"
+    UINT64 = "UInt64"
+    UNKNOWN = "Unknown"
+
+
+class FmiThreeVariableCausality(str, Enum):
+    """Variable causalities defined by the FMI 3 model-description schema."""
+
+    STRUCTURAL_PARAMETER = "structuralParameter"
+    PARAMETER = "parameter"
+    CALCULATED_PARAMETER = "calculatedParameter"
+    INPUT = "input"
+    OUTPUT = "output"
+    LOCAL = "local"
+    INDEPENDENT = "independent"
+
+
 class FmuSourceKind(str, Enum):
     """Kinds of FMU source accepted at the import boundary."""
 
@@ -1730,12 +1763,13 @@ class PrpCat(Enum):
     ActionType
     """
     All = 'All'
+    MT = 'Metadata'
+    TP = 'Topology'
     PF = 'Power flow'
     PF3 = 'Power flow (unbalanced)'
     SC = "Short Circuit"
     OPF = 'Optimal Power flow'
     CON = "Contingencies"
-    TP = 'Topology'
     REL = 'Reliability'
     NTC = 'Net Transfer Capacity'
     INV = "Investments"

@@ -16,7 +16,8 @@ from matplotlib import pyplot as plt
 
 from PySide6.QtWidgets import QGraphicsItem, QMessageBox, QDialog, QVBoxLayout, QLabel, QPushButton
 from collections.abc import Callable
-from PySide6.QtCore import (Qt, QMimeData, QIODevice, QByteArray, QDataStream, QModelIndex, QRunnable, QThreadPool)
+from PySide6.QtCore import (Qt, QMimeData, QIODevice, QByteArray, QDataStream, QModelIndex, QRunnable, QThreadPool,
+                            QCoreApplication)
 from PySide6.QtGui import (QIcon, QPixmap, QImage, QStandardItemModel, QStandardItem, QColor, QDropEvent,
                            QWheelEvent, QPainter)
 
@@ -99,22 +100,57 @@ class MapLibraryModel(QStandardItemModel):
 
         self.setColumnCount(1)
 
-        self.substation_name = "Substation"
+        self.add(name=QCoreApplication.translate("MapLibraryModel", "Substation"),
+                 device_type=DeviceType.SubstationDevice,
+                 icon_name="substation")
 
-        self.add(name=self.substation_name, icon_name="substation")
-
-    def add(self, name: str, icon_name: str):
+    def add(self, name: str, device_type: DeviceType, icon_name: str) -> None:
         """
         Add element to the library
         :param name: Name of the element
+        :param device_type: Device type to identify the element independently of the translated label.
         :param icon_name: Icon name, the path is taken care of
         :return:
         """
         _icon = QIcon()
         _icon.addPixmap(QPixmap(f":/Icons/icons/{icon_name}.png"))
         _item = QStandardItem(_icon, name)
-        _item.setToolTip(f"Drag & drop {name} into the schematic")
+        _item.setData(device_type, Qt.ItemDataRole.UserRole)
+        _item.setToolTip(QCoreApplication.translate(
+            "MapLibraryModel",
+            "Drag & drop {name} into the schematic",
+        ).format(name=name))
         self.appendRow(_item)
+
+    def retranslate(self) -> None:
+        """
+        Refresh translated item labels without changing the drag/drop device type data.
+
+        :return: None.
+        """
+        row: int
+        item: QStandardItem | None
+        device_type: DeviceType
+        name: str
+
+        for row in range(self.rowCount()):
+            item = self.item(row, 0)
+
+            if item is not None:
+                device_type = item.data(Qt.ItemDataRole.UserRole)
+
+                if device_type == DeviceType.SubstationDevice:
+                    name = QCoreApplication.translate("MapLibraryModel", "Substation")
+                else:
+                    name = item.text()
+
+                item.setText(name)
+                item.setToolTip(QCoreApplication.translate(
+                    "MapLibraryModel",
+                    "Drag & drop {name} into the schematic",
+                ).format(name=name))
+            else:
+                pass
 
     @staticmethod
     def to_bytes_array(val: str) -> QByteArray:
@@ -133,7 +169,7 @@ class MapLibraryModel(QStandardItemModel):
 
         :return:
         """
-        return self.to_bytes_array(self.substation_name)
+        return self.to_bytes_array(DeviceType.SubstationDevice.name)
 
     def mimeTypes(self) -> List[str]:
         """
@@ -151,13 +187,18 @@ class MapLibraryModel(QStandardItemModel):
         mime_data = QMimeData()
         for idx in idxs:
             if idx.isValid():
-                txt = self.data(idx, Qt.ItemDataRole.DisplayRole)
+                device_type = self.data(idx, Qt.ItemDataRole.UserRole)
 
-                data = QByteArray()
-                stream = QDataStream(data, QIODevice.OpenModeFlag.WriteOnly)
-                stream.writeQString(txt)
+                if isinstance(device_type, DeviceType):
+                    data = QByteArray()
+                    stream = QDataStream(data, QIODevice.OpenModeFlag.WriteOnly)
+                    stream.writeQString(device_type.name)
 
-                mime_data.setData('component/name', data)
+                    mime_data.setData('component/name', data)
+                else:
+                    pass
+            else:
+                pass
         return mime_data
 
     def flags(self, index: QModelIndex) -> Qt.ItemFlag:
