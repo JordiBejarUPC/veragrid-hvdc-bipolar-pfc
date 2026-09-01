@@ -18,7 +18,7 @@ from VeraGridEngine.enumerations import (
 from VeraGridEngine.Devices import MultiCircuit
 from VeraGridEngine.Simulations.driver_template import DummySignal
 from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, piecewise, get_expression_vars, hard_sat)
-from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicParamsVector, SymbolicDerivative, SymbolicJacobian
+from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicJacobian
 from VeraGridEngine.Utils.Symbolic.block import (
     Block,
     RmsTerminalPowerContribution,
@@ -938,10 +938,10 @@ class RmsProblemDaeFullVec(RmsProblemTemplate):
         self._rhs_algeb_fn_by_types: Dict[int, Callable[[Vec, Vec, Vec, Vec], Vec]] = dict()
         self._rhs_algeb_energy_balance_fn: Callable[[Vec, Vec, Vec, Vec], Vec] | None = None
 
-        self._j11_fn_by_types: Dict[int,Callable[[Vec, Vec, Vec, Vec, float], sp.csc_matrix]] = dict()
-        self._j12_fn_by_types: Dict[int,Callable[[Vec, Vec, Vec, Vec, float], sp.csc_matrix]] = dict()
-        self._j21_fn_by_types: Dict[int,Callable[[Vec, Vec, Vec, Vec, float], sp.csc_matrix]] = dict()
-        self._j22_fn_by_types: Dict[int,Callable[[Vec, Vec, Vec, Vec, float], sp.csc_matrix]] = dict()
+        self._j11_fn_by_types: Dict[int, Callable[[Vec, Vec, Vec, Vec, float], np.ndarray] | None] = dict()
+        self._j12_fn_by_types: Dict[int, Callable[[Vec, Vec, Vec, Vec, float], np.ndarray] | None] = dict()
+        self._j21_fn_by_types: Dict[int, Callable[[Vec, Vec, Vec, Vec, float], np.ndarray] | None] = dict()
+        self._j22_fn_by_types: Dict[int, Callable[[Vec, Vec, Vec, Vec, float], np.ndarray] | None] = dict()
 
         # precomputed J22 global row/col indices for triplet assembly
         self._j22_global_rows: Dict[int, np.ndarray] = dict()
@@ -951,15 +951,9 @@ class RmsProblemDaeFullVec(RmsProblemTemplate):
         self._jbalance_state_fn: Callable[[Vec, Vec, Vec, Vec, float], sp.csc_matrix] | None = None
         self._jbalance_state_template: sp.csc_matrix | None = None
         self._jbalance_template: sp.csc_matrix | None = None
-        # function pointers
-        self._derivative_fn: SymbolicDerivative | None = None
-        self._event_params_fn: SymbolicParamsVector | None = None
-        self._rhs_algeb_fn: Callable[[Vec, Vec, Vec, Vec], Vec] | None = None
-        self._rhs_state_fn: Callable[[Vec, Vec, Vec, Vec], Vec] | None = None
-        self._j11_fn: Callable[[Vec, Vec, Vec, Vec, float], sp.csc_matrix] | None = None
-        self._j12_fn: Callable[[Vec, Vec, Vec, Vec, float], sp.csc_matrix] | None = None
-        self._j21_fn: Callable[[Vec, Vec, Vec, Vec, float], sp.csc_matrix] | None = None
-        self._j22_fn: Callable[[Vec, Vec, Vec, Vec, float], sp.csc_matrix] | None = None
+        # The JIT compilers return allocation wrappers with these public call signatures.
+        self._derivative_fn: Callable[[Vec, Vec, Vec, float], Vec] | None = None
+        self._event_params_fn: Callable[[Vec, float], Vec] | None = None
 
         self._variable_parameters_values: Optional[Vec] = None
         self._last_variable_parameters_values: Optional[Vec] = None
@@ -969,6 +963,7 @@ class RmsProblemDaeFullVec(RmsProblemTemplate):
         self._fmu_cs_initialized: bool = False
         self._fmu_me_adapters: List[object] = list()
         self._fmu_me_initialized: bool = False
+        self._prof_timings: Dict[str, float] = dict()
 
         # --------------------------------------------------------------------------------------------------------------
         # Initialize the RMS problem
@@ -2167,36 +2162,6 @@ class RmsProblemDaeFullVec(RmsProblemTemplate):
             self._jbalance_fn = rms_compiler_all_models.compile_sparse_jacobian(
                 self._balance_equations, self._algebraic_vars, "j_balance"
             )
-
-        # self._rhs_algeb_fn = rms_compiler_all_models.compile_rhs(self._algebraic_eqs, "rhs_algeb")
-        # timings["RHS algebraic"] = _toc(t0)
-        #
-        #
-        # if len(self._state_eqs) != 0:
-        #     t0 = _tic()
-        #     self._rhs_state_fn = rms_compiler_all_models.compile_rhs(self._state_eqs, "rhs_state")
-        #     timings["RHS state"] = _toc(t0)
-        #
-        #     t0 = _tic()
-        #     self._j11_fn = rms_compiler_all_models.compile_sparse_jacobian(self._state_eqs, self._state_vars, "j11")
-        #     timings["J11 (dF/dx)"] = _toc(t0)
-        #
-        #     t0 = _tic()
-        #     self._j12_fn = rms_compiler_all_models.compile_sparse_jacobian(self._state_eqs, self._algebraic_vars, "j12")
-        #     timings["J12 (dF/dy)"] = _toc(t0)
-        #
-        #     t0 = _tic()
-        #     self._j21_fn = rms_compiler_all_models.compile_sparse_jacobian(self._algebraic_eqs, self._state_vars, "j21")
-        #     timings["J21 (dG/dx)"] = _toc(t0)
-        #
-        #     t0 = _tic()
-        #     self._j22_fn = rms_compiler_all_models.compile_sparse_jacobian(self._algebraic_eqs, self._algebraic_vars, "j22")
-        #     timings["J22 (dG/dy)"] = _toc(t0)
-        #
-        # else:
-        #     t0 = _tic()
-        #     self._j22_fn = rms_compiler_all_models.compile_sparse_jacobian(self._algebraic_eqs, self._algebraic_vars, "j22")
-        #     timings["J22 only (no states)"] = _toc(t0)
 
         if self.options.verbose > 0:
             print(f"Model compiled with {self._n_vars} variables")
@@ -3637,6 +3602,18 @@ class RmsProblemDaeFullVec(RmsProblemTemplate):
     def glob_time(self):
         return self._glob_time
 
+    @property
+    def event_params_values(self) -> Vec:
+        """Return the mutable runtime event-parameter vector.
+
+        :return: Runtime parameter values owned by this RMS problem.
+        :raises ValueError: If runtime parameters have not been initialized.
+        """
+        if self._variable_parameters_values is None:
+            raise ValueError("Runtime event parameters are not initialized")
+        else:
+            return self._variable_parameters_values
+
     def get_parameters_values(self) -> List[Const]:
         return self._parameters_values
 
@@ -3977,8 +3954,6 @@ class RmsProblemDaeFullVec(RmsProblemTemplate):
             cp_gather = self._cp_gather_idx.get(model_type)
             if cp_gather is not None:
                 self._input_matrices_by_model[model_type][3] = self._constant_params[cp_gather]
-        if not hasattr(self, '_prof_timings'):
-            self._prof_timings = {}
         self._prof_timings['total_gather_time'] = self._prof_timings.get('total_gather_time', 0.0) + time.time() - _t0
 
 
@@ -4002,8 +3977,6 @@ class RmsProblemDaeFullVec(RmsProblemTemplate):
                 scatter_idx = self._rhs_state_scatter_idx.get(model_type)
                 if scatter_idx is not None:
                     complete_rhs_state[scatter_idx] = rhs_state
-                if not hasattr(self, '_prof_timings'):
-                    self._prof_timings = {}
                 self._prof_timings['rhs_state_filler_total'] = self._prof_timings.get('rhs_state_filler_total', 0.0) + _t1 - _t0
                 self._prof_timings['rhs_state_scatter_total'] = self._prof_timings.get('rhs_state_scatter_total', 0.0) + time.time() - _t1
 
@@ -4039,8 +4012,6 @@ class RmsProblemDaeFullVec(RmsProblemTemplate):
                 complete_rhs_algeb[scatter_idx] = rhs_algeb[source_rows, :]
             else:
                 pass
-            if not hasattr(self, '_prof_timings'):
-                self._prof_timings = {}
             self._prof_timings['rhs_algeb_filler_total'] = self._prof_timings.get('rhs_algeb_filler_total', 0.0) + _t1 - _t0
             self._prof_timings['rhs_algeb_scatter_total'] = self._prof_timings.get('rhs_algeb_scatter_total', 0.0) + time.time() - _t1
 
@@ -4099,9 +4070,6 @@ class RmsProblemDaeFullVec(RmsProblemTemplate):
             return csc_template
 
         csc_template.data[:] = 0.0
-
-        if not hasattr(self, '_prof_timings'):
-            self._prof_timings = {}
 
         _t0 = time.time()
         fn_dict = getattr(self, fn_key)
@@ -4173,62 +4141,34 @@ class RmsProblemDaeFullVec(RmsProblemTemplate):
 
         return j22
 
-    def rhs_state(self, x: Vec, dx: Vec) -> Vec:
-
-        if self._rhs_state_fn is None:
-            raise ValueError("_rhs_state_fn is None")
-
-        return self._rhs_state_fn(x, dx,
-                                  self._variable_parameters_values,
-                                  self._constant_params)
-
     def rhs_algebraic(self, x: Vec, dx: Vec) -> Vec:
-        if self._rhs_algeb_fn is None:
-            raise ValueError("_rhs_algeb_fn is None")
+        """Evaluate the algebraic residual through the full-vectorized owner.
 
-        return self._rhs_algeb_fn(x, dx,
-                                  self._variable_parameters_values,
-                                  self._constant_params)
+        The shared initial projector supplies a new candidate on every Newton
+        and line-search evaluation, so the per-model inputs must be gathered
+        from that exact candidate before evaluating the established residual.
 
-    def get_j11(self, x: Vec, dx: Vec, h: float):
+        :param x: Current state and algebraic variable values.
+        :param dx: Current differential-variable values.
+        :return: Algebraic residual for the supplied candidate.
+        """
+        # Refresh every per-model input from the current projection candidate.
+        self.update_input_matrices_by_model(x=x, dx=dx)
+        # Reuse the supported full-vectorized assembly without duplicating equations.
+        return self.rhs_algebraic_vec(x=x, dx=dx)
 
-        if self._j11_fn is None:
-            raise ValueError("_j11_fn is None")
+    def get_j22(self, x: Vec, dx: Vec, h: float) -> sp.csc_matrix:
+        """Evaluate the algebraic Jacobian through the full-vectorized owner.
 
-        return self._j11_fn(x, dx,
-                            self._variable_parameters_values,
-                            self._constant_params,
-                            h)
-
-    def get_j12(self, x: Vec, dx: Vec, h: float):
-
-        if self._j12_fn is None:
-            raise ValueError("_j12_fn is None")
-
-        return self._j12_fn(x, dx,
-                            self._variable_parameters_values,
-                            self._constant_params,
-                            h)
-
-    def get_j21(self, x: Vec, dx: Vec, h: float):
-
-        if self._j21_fn is None:
-            raise ValueError("_j21_fn is None")
-
-        return self._j21_fn(x, dx,
-                            self._variable_parameters_values,
-                            self._constant_params,
-                            h)
-
-    def get_j22(self, x: Vec, dx: Vec, h: float):
-
-        if self._j22_fn is None:
-            raise ValueError("_j22_fn is None")
-
-        return self._j22_fn(x, dx,
-                            self._variable_parameters_values,
-                            self._constant_params,
-                            h)
+        :param x: Current state and algebraic variable values.
+        :param dx: Current differential-variable values.
+        :param h: Numerical step supplied by the shared projection interface.
+        :return: Algebraic Jacobian in compressed sparse column format.
+        """
+        # Gather the same candidate used by the residual before assembling J22.
+        self.update_input_matrices_by_model(x=x, dx=dx)
+        # Preserve the existing full-vectorized and network-balance assembly.
+        return self.get_j22_vec(x=x, dx=dx, h=h)
 
     def get_dt(self):
         return self._dt
