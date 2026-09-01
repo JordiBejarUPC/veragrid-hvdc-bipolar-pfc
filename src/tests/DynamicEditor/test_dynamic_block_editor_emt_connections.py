@@ -17,7 +17,6 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_block_properties import (
     BlockSymbolKind,
     BlockSymbolDraftRow,
     DynamicBlockPropertiesDialog,
-    DynamicBlockPropertiesDockWidget,
 )
 import VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor as dynamic_block_editor
 import VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics as graph
@@ -365,79 +364,6 @@ def _dispose_editor(editor: DynamicBlockEditorGUI) -> None:
     """
     editor.prepare_to_delete()
     editor.close()
-
-
-def test_block_properties_right_dock_stacks_vertically_with_library() -> None:
-    """A right-side drop must place properties above or below the Library."""
-    application: QtWidgets.QApplication = _get_app()
-    editor: DynamicBlockEditorGUI = _build_editor(Load(name="Dock load"))
-    try:
-        editor.resize(1500, 900)
-        editor.show()
-        application.processEvents()
-        editor.request_open_block_properties(Block(name="Dockable block"))
-        application.processEvents()
-
-        properties_dock: DynamicBlockPropertiesDockWidget | None = (
-            editor.get_block_properties_dock_widget()
-        )
-        library_dock: QtWidgets.QDockWidget | None = editor.get_library_dock_widget()
-        assert isinstance(properties_dock, DynamicBlockPropertiesDockWidget)
-        assert isinstance(library_dock, QtWidgets.QDockWidget)
-        assert properties_dock.isFloating()
-        floating_flags: QtCore.Qt.WindowType = properties_dock.windowFlags()
-        assert (
-            floating_flags & QtCore.Qt.WindowType.WindowType_Mask
-        ) == QtCore.Qt.WindowType.Window
-        assert floating_flags & QtCore.Qt.WindowType.WindowCloseButtonHint
-        assert not floating_flags & QtCore.Qt.WindowType.WindowMinimizeButtonHint
-        assert not floating_flags & QtCore.Qt.WindowType.WindowMaximizeButtonHint
-        allowed_areas: QtCore.Qt.DockWidgetArea = properties_dock.allowedAreas()
-        assert allowed_areas & QtCore.Qt.DockWidgetArea.LeftDockWidgetArea
-        assert allowed_areas & QtCore.Qt.DockWidgetArea.RightDockWidgetArea
-        assert allowed_areas & QtCore.Qt.DockWidgetArea.BottomDockWidgetArea
-        assert not allowed_areas & QtCore.Qt.DockWidgetArea.TopDockWidgetArea
-        assert editor.dockWidgetArea(library_dock) == QtCore.Qt.DockWidgetArea.RightDockWidgetArea
-        assert library_dock.features() == QtWidgets.QDockWidget.DockWidgetFeature.NoDockWidgetFeatures
-        properties_dock.setFloating(False)
-        editor.addDockWidget(QtCore.Qt.DockWidgetArea.RightDockWidgetArea, properties_dock)
-        editor.splitDockWidget(
-            library_dock,
-            properties_dock,
-            QtCore.Qt.Orientation.Vertical,
-        )
-        application.processEvents()
-        editor.normalize_block_properties_right_dock()
-        application.processEvents()
-
-        properties_geometry: QtCore.QRect = properties_dock.geometry()
-        library_geometry: QtCore.QRect = library_dock.geometry()
-        assert editor.dockWidgetArea(properties_dock) == QtCore.Qt.DockWidgetArea.RightDockWidgetArea
-        assert (
-            properties_geometry.bottom() <= library_geometry.top()
-            or library_geometry.bottom() <= properties_geometry.top()
-        )
-
-        # Qt must also retain the inverse legal ordering when the user drops
-        # Block properties in the upper part of the right docking target.
-        editor.splitDockWidget(
-            properties_dock,
-            library_dock,
-            QtCore.Qt.Orientation.Vertical,
-        )
-        application.processEvents()
-        editor.normalize_block_properties_right_dock()
-        application.processEvents()
-        properties_geometry = properties_dock.geometry()
-        library_geometry = library_dock.geometry()
-        assert properties_geometry.bottom() <= library_geometry.top()
-
-        properties_dock.get_properties_widget().request_close()
-        application.processEvents()
-        assert editor.get_block_properties_dock_widget() is None
-    finally:
-        _dispose_editor(editor)
-        application.processEvents()
 
 
 def _build_phase_bus_block(name: str,

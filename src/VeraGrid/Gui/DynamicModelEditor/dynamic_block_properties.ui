@@ -6,12 +6,12 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1280</width>
-    <height>820</height>
+    <width>1200</width>
+    <height>700</height>
    </rect>
   </property>
   <property name="windowTitle">
-    <string>Dynamic block properties</string>
+    <string>Block properties</string>
   </property>
   <layout class="QVBoxLayout" name="main_layout">
    <property name="leftMargin">
@@ -35,6 +35,9 @@
    </item>
    <item>
     <widget class="QLabel" name="status_label">
+     <property name="visible">
+      <bool>false</bool>
+     </property>
      <property name="text">
       <string/>
      </property>
