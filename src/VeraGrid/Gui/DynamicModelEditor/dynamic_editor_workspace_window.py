@@ -13,24 +13,13 @@ from VeraGrid.Gui.DynamicModelEditor.detachable_editor_tabs_widget import Detach
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_tab import DynamicEditorTab
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace import Ui_DynamicEditorWorkspaceWindow
-from VeraGrid.Gui.Icons.icon_associations import device_type_icons
-from VeraGrid.Gui.gui_functions import add_menu_entry
+from VeraGrid.Gui.Widgets.dynamic_device_tree import DynamicDeviceTreeWidget
 from VeraGrid.Session.dynamic_editor_entries import DynamicEditorEntry
 from VeraGrid.Session.dynamic_editor_entries import build_dynamic_editor_entry
-from VeraGrid.Session.dynamic_editor_entries import iter_dynamic_editor_entries
 from VeraGrid.Session.dynamic_editor_workspace_session import DynamicEditorWorkspaceSession
 from VeraGridEngine.enumerations import DynamicSimulationMode
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
-
-
-def build_entry_sort_key(entry: DynamicEditorEntry) -> tuple[str, str]:
-    """Return the deterministic sorting key used for device-tree entries.
-
-    :param entry: Entry to sort.
-    :return: Lowercase type and name tuple.
-    """
-    return entry.type_label.lower(), entry.display_name.lower()
 
 
 class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
@@ -42,8 +31,7 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         "__session",
         "_accepts_new_pages",
         "_current_circuit",
-        "_tree_model",
-        "_tree_proxy",
+        "device_tree_widget",
         "ui",
         "editor_tabs",
     )
@@ -64,13 +52,22 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         self.__session: DynamicEditorWorkspaceSession = session
         self._accepts_new_pages: bool = True
         self._current_circuit: MultiCircuit | None = None
-        self._tree_model: QtGui.QStandardItemModel = QtGui.QStandardItemModel(self)
-        self._tree_proxy: QtCore.QSortFilterProxyModel = QtCore.QSortFilterProxyModel(self)
-        self._tree_proxy.setRecursiveFilteringEnabled(True)
-        self._tree_proxy.setFilterCaseSensitivity(QtCore.Qt.CaseSensitivity.CaseInsensitive)
-        self._tree_proxy.setSourceModel(self._tree_model)
         self.ui: Ui_DynamicEditorWorkspaceWindow = Ui_DynamicEditorWorkspaceWindow()
         self.ui.setupUi(self)
+
+        # Replace the workspace-owned search/tree pair with the shared dynamic
+        # device widget used by every dynamic editing workflow.
+        self.ui.verticalLayout_2.removeWidget(self.ui.frame_2)
+        self.ui.frame_2.setParent(None)
+        self.ui.verticalLayout_2.removeWidget(self.ui.treeView)
+        self.ui.treeView.setParent(None)
+        self.device_tree_widget: DynamicDeviceTreeWidget = DynamicDeviceTreeWidget(
+            events_context=False,
+            parent=self.ui.treeFrame,
+        )
+        self.ui.verticalLayout_2.addWidget(self.device_tree_widget)
+        self.ui.searchInTreeLineEdit = self.device_tree_widget.search_line_edit
+        self.ui.treeView = self.device_tree_widget.tree_view
 
         self.ui.splitter.setStretchFactor(0, 1)
         self.ui.splitter.setStretchFactor(1, 10)
@@ -95,13 +92,7 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         self.ui.actionZoom_out.triggered.connect(self.zoom_out_view)
         self.ui.action_delete_all.triggered.connect(self.delete_all_blocks_with_confirmation)
         self.ui.actionValidate.triggered.connect(self.show_model_consistency_validation)
-        self.ui.treeView.setModel(self._tree_proxy)
-        self.ui.treeView.setHeaderHidden(True)
-        self.ui.treeView.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
-        self.ui.treeView.doubleClicked.connect(self._on_tree_double_clicked)
-        self.ui.treeView.customContextMenuRequested.connect(self._show_tree_context_menu)
-        self.ui.searchInTreeLineEdit.setClearButtonEnabled(True)
-        self.ui.searchInTreeLineEdit.textChanged.connect(self._apply_tree_filter)
+        self.device_tree_widget.entryModeRequested.connect(self._open_device_tree_entry)
 
     def changeEvent(self, event: QtCore.QEvent) -> None:
         """
@@ -344,7 +335,7 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         else:
             pass
         self._current_circuit = circuit
-        self._rebuild_tree()
+        self.device_tree_widget.set_circuit(circuit)
 
     def _rebuild_tree(self) -> None:
         """
@@ -352,54 +343,7 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
 
         :return: None.
         """
-        self._tree_model.clear()
-        root = self._tree_model.invisibleRootItem()
-        if self._current_circuit is None:
-            return
-        else:
-            pass
-
-        groups: dict[str, QtGui.QStandardItem] = dict()
-        entries: list[DynamicEditorEntry] = sorted(
-            iter_dynamic_editor_entries(self._current_circuit),
-            key=build_entry_sort_key,
-        )
-
-        entry: DynamicEditorEntry
-        for entry in entries:
-            group_item = groups.get(entry.type_label, None)
-            if group_item is None:
-                group_item = QtGui.QStandardItem(entry.type_label)
-                group_item.setEditable(False)
-                self._set_device_tree_item_icon(group_item, entry.type_label)
-                groups[entry.type_label] = group_item
-                root.appendRow(group_item)
-            else:
-                pass
-
-            item = QtGui.QStandardItem(entry.display_name)
-            item.setEditable(False)
-            item.setData(entry, QtCore.Qt.ItemDataRole.UserRole)
-            item.setToolTip(entry.display_name)
-            self._set_device_tree_item_icon(item, entry.type_label)
-            group_item.appendRow(item)
-
-        self._apply_tree_filter(self.ui.searchInTreeLineEdit.text())
-
-    def _set_device_tree_item_icon(self, item: QtGui.QStandardItem, icon_key: str) -> None:
-        """
-        Set the tree icon for one device item when an icon association exists.
-
-        :param item: Tree item that may receive an icon.
-        :param icon_key: Key used to look up the icon resource path.
-        :return: None.
-        """
-        icon_path = device_type_icons.get(icon_key, None)
-        if icon_path is None:
-            return
-        else:
-            pass
-        item.setIcon(QtGui.QIcon(QtGui.QPixmap(icon_path)))
+        self.device_tree_widget.rebuild()
 
     def _apply_tree_filter(self, text: str) -> None:
         """
@@ -408,63 +352,7 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         :param text: Search text entered by the user.
         :return: None.
         """
-        needle = text.strip()
-        if needle == "":
-            self._tree_proxy.setFilterRegularExpression(QtCore.QRegularExpression())
-        else:
-            regex = QtCore.QRegularExpression(
-                QtCore.QRegularExpression.escape(needle),
-                QtCore.QRegularExpression.PatternOption.CaseInsensitiveOption,
-            )
-            self._tree_proxy.setFilterRegularExpression(regex)
-        self._expand_tree_matches()
-        self._select_first_tree_match()
-
-    def _expand_tree_matches(self) -> None:
-        """
-        Expand the device tree so current matches remain visible.
-
-        :return: None.
-        """
-        self.ui.treeView.expandAll()
-
-    def _select_first_tree_match(self) -> None:
-        """
-        Select the first visible device entry after filtering.
-
-        :return: None.
-        """
-        index = self._first_visible_tree_entry_index()
-        if index.isValid():
-            self.ui.treeView.setCurrentIndex(index)
-            self.ui.treeView.scrollTo(index)
-        else:
-            pass
-
-    def _first_visible_tree_entry_index(
-            self,
-            parent: QtCore.QModelIndex = QtCore.QModelIndex(),
-    ) -> QtCore.QModelIndex:
-        """
-        Return the first visible device-entry index under one tree node.
-
-        :param parent: Parent index to search below.
-        :return: First visible matching device index, if any.
-        """
-        row_count = self._tree_proxy.rowCount(parent)
-        row: int
-        for row in range(row_count):
-            index = self._tree_proxy.index(row, 0, parent)
-            if self._entry_from_tree_index(index) is not None:
-                return index
-            else:
-                pass
-            child_index = self._first_visible_tree_entry_index(index)
-            if child_index.isValid():
-                return child_index
-            else:
-                pass
-        return QtCore.QModelIndex()
+        self.device_tree_widget.apply_filter(text)
 
     def _entry_from_tree_index(self, index: QtCore.QModelIndex) -> DynamicEditorEntry | None:
         """
@@ -473,17 +361,7 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         :param index: Visible proxy-model index.
         :return: Backing entry or ``None``.
         """
-        source_index = self._tree_proxy.mapToSource(index)
-        if not source_index.isValid():
-            return None
-        else:
-            pass
-        data = self._tree_model.data(source_index, QtCore.Qt.ItemDataRole.UserRole)
-        if isinstance(data, DynamicEditorEntry):
-            return data
-        else:
-            pass
-        return None
+        return self.device_tree_widget.entry_from_index(index)
 
     def _get_tree_entry_modes(self, index: QtCore.QModelIndex) -> tuple[DynamicSimulationMode, ...]:
         """
@@ -514,6 +392,19 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
             pass
         return self.open_entry(entry, preferred_mode=mode, target_workspace=self)
 
+    @QtCore.Slot(object, object)
+    def _open_device_tree_entry(self, entry: object, mode: object) -> None:
+        """Open a model editor requested by the shared device-tree widget.
+
+        :param entry: Dynamic device entry emitted by the tree.
+        :param mode: RMS or EMT mode emitted by the tree.
+        :return: None.
+        """
+        if isinstance(entry, DynamicEditorEntry) and isinstance(mode, DynamicSimulationMode):
+            self.open_entry(entry, preferred_mode=mode, target_workspace=self)
+        else:
+            pass
+
     def _on_tree_double_clicked(self, index: QtCore.QModelIndex) -> None:
         """
         Open the double-clicked tree entry in RMS mode.
@@ -522,91 +413,6 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         :return: None.
         """
         self._open_tree_entry(index, DynamicSimulationMode.RMS)
-
-    def _show_tree_context_menu(self, position: QtCore.QPoint) -> None:
-        """
-        Show the RMS/EMT context menu for the tree entry under the cursor.
-
-        :param position: Tree viewport position where the menu was requested.
-        :return: None.
-        """
-        index = self.ui.treeView.indexAt(position)
-        entry = self._entry_from_tree_index(index)
-        if entry is None:
-            return
-        else:
-            pass
-
-        menu = QtWidgets.QMenu(self.ui.treeView)
-        if DynamicSimulationMode.RMS in entry.available_modes:
-            action = add_menu_entry(
-                menu=menu,
-                text=self.tr("Open RMS editor"),
-                function_ptr=self._open_tree_rms_from_menu,
-            )
-            action.setData(QtCore.QPersistentModelIndex(index))
-        else:
-            pass
-        if DynamicSimulationMode.EMT in entry.available_modes:
-            action = add_menu_entry(
-                menu=menu,
-                text=self.tr("Open EMT editor"),
-                function_ptr=self._open_tree_emt_from_menu,
-            )
-            action.setData(QtCore.QPersistentModelIndex(index))
-        else:
-            pass
-
-        if menu.isEmpty():
-            return
-        else:
-            pass
-
-        menu.exec(self.ui.treeView.viewport().mapToGlobal(position))
-
-    def _open_tree_rms_from_menu(self, _checked: bool = False) -> None:
-        """
-        Open the tree entry referenced by the sender action in RMS mode.
-
-        :param _checked: QAction checked flag.
-        :return: None.
-        """
-        index = self._tree_menu_index_from_sender()
-        if index is not None:
-            self._open_tree_entry(index, DynamicSimulationMode.RMS)
-        else:
-            pass
-
-    def _open_tree_emt_from_menu(self, _checked: bool = False) -> None:
-        """
-        Open the tree entry referenced by the sender action in EMT mode.
-
-        :param _checked: QAction checked flag.
-        :return: None.
-        """
-        index = self._tree_menu_index_from_sender()
-        if index is not None:
-            self._open_tree_entry(index, DynamicSimulationMode.EMT)
-        else:
-            pass
-
-    def _tree_menu_index_from_sender(self) -> QtCore.QModelIndex | None:
-        """
-        Return the tree index stored on the sender context-menu action.
-
-        :return: Stored tree index or ``None``.
-        """
-        action = self.sender()
-        if not isinstance(action, QtGui.QAction):
-            return None
-        else:
-            pass
-        data = action.data()
-        if isinstance(data, QtCore.QPersistentModelIndex) and data.isValid():
-            return QtCore.QModelIndex(data)
-        else:
-            pass
-        return None
 
     def _on_tab_drag_started(self, index: int) -> None:
         """

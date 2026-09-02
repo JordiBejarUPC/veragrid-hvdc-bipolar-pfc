@@ -5,69 +5,77 @@
 
 from PySide6 import QtCore, QtWidgets
 
+# Importing the compiled resource module registers every ``:/Icons`` path even
+# when this dialog is created independently from the main VeraGrid window.
+from VeraGrid.Gui.Icons import icons_rc
 
-class Ui_DynamicEventDialogue(object):
-    """
-    UI builder for the dynamic-events editor dialog.
-    """
+
+class Ui_DynamicEventDialogue:
+    """Build the general, tabbed dynamic-events dialog shell."""
 
     def setupUi(self, dialog: QtWidgets.QDialog) -> None:
-        """
-        Create the static widget tree for the dialog.
+        """Create the widgets owned by the dynamic-events dialog.
 
-        :param dialog: Target dialog instance.
+        :param dialog: Dialog that owns the generated widget tree.
         :return: None.
         """
-        dialog.setObjectName("DynamicEventEditor")
-        dialog.resize(720, 520)
-        self.mainLayout = QtWidgets.QVBoxLayout(dialog)
-        self.mainLayout.setObjectName("mainLayout")
+        dialog.setObjectName("DynamicEventDialogue")
+        dialog.resize(1050, 650)
+        dialog.setMinimumSize(QtCore.QSize(760, 480))
+        self.mainLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(dialog)
+        self.mainLayout.setContentsMargins(6, 6, 6, 6)
+        self.mainLayout.setSpacing(4)
 
-        self.targetDeviceLabel = QtWidgets.QLabel(dialog)
-        self.targetDeviceLabel.setObjectName("targetDeviceLabel")
-        self.mainLayout.addWidget(self.targetDeviceLabel)
+        # The tree toggle and device/mode tabs intentionally share one bar,
+        # mirroring the dynamic-model editor navigation structure.
+        self.navigationLayout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout()
+        self.navigationLayout.setContentsMargins(0, 0, 0, 0)
+        self.treeButton: QtWidgets.QToolButton = QtWidgets.QToolButton(dialog)
+        self.treeButton.setObjectName("treeButton")
+        self.treeButton.setCheckable(True)
+        self.treeButton.setAutoRaise(True)
+        self.navigationLayout.addWidget(self.treeButton)
+        self.tabBar: QtWidgets.QTabBar = QtWidgets.QTabBar(dialog)
+        self.tabBar.setObjectName("tabBar")
+        self.tabBar.setTabsClosable(True)
+        self.tabBar.setMovable(False)
+        self.tabBar.setExpanding(False)
+        self.navigationLayout.addWidget(self.tabBar, 1)
+        self.mainLayout.addLayout(self.navigationLayout)
 
-        self.eventsTableWidget = QtWidgets.QTableWidget(dialog)
-        self.eventsTableWidget.setObjectName("eventsTableWidget")
-        self.eventsTableWidget.setRowCount(0)
-        self.eventsTableWidget.setColumnCount(0)
-        self.eventsTableWidget.verticalHeader().setVisible(False)
-        self.eventsTableWidget.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.NoSelection)
-        self.mainLayout.addWidget(self.eventsTableWidget)
+        self.splitter: QtWidgets.QSplitter = QtWidgets.QSplitter(dialog)
+        self.splitter.setObjectName("splitter")
+        self.splitter.setOrientation(QtCore.Qt.Orientation.Horizontal)
+        self.treeFrame: QtWidgets.QFrame = QtWidgets.QFrame(self.splitter)
+        self.treeFrame.setObjectName("treeFrame")
+        self.treeFrame.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
+        self.treeFrameLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self.treeFrame)
+        self.treeFrameLayout.setContentsMargins(0, 0, 0, 0)
+        self.pagesStack: QtWidgets.QStackedWidget = QtWidgets.QStackedWidget(self.splitter)
+        self.pagesStack.setObjectName("pagesStack")
+        self.emptyPage: QtWidgets.QWidget = QtWidgets.QWidget(self.pagesStack)
+        self.emptyPageLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self.emptyPage)
+        self.emptyPageLayout.addStretch(1)
+        self.emptyLabel: QtWidgets.QLabel = QtWidgets.QLabel(self.emptyPage)
+        self.emptyLabel.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        self.emptyLabel.setWordWrap(True)
+        self.emptyPageLayout.addWidget(self.emptyLabel)
+        self.emptyPageLayout.addStretch(1)
+        self.pagesStack.addWidget(self.emptyPage)
+        self.splitter.setStretchFactor(0, 2)
+        self.splitter.setStretchFactor(1, 8)
+        self.mainLayout.addWidget(self.splitter, 1)
 
-        self.groupsLayout = QtWidgets.QHBoxLayout()
-        self.groupsLayout.setObjectName("groupsLayout")
-        spacer_item = QtWidgets.QSpacerItem(
-            40,
-            20,
-            QtWidgets.QSizePolicy.Policy.Expanding,
-            QtWidgets.QSizePolicy.Policy.Minimum,
-        )
-        self.groupsLayout.addItem(spacer_item)
-
-        self.newGroupButton = QtWidgets.QPushButton(dialog)
+        # Keep the persisted-group workflow visually separate from the final
+        # transaction controls, as in the previous event editor.
+        self.groupsLayout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout()
+        self.groupsLayout.addStretch(1)
+        self.newGroupButton: QtWidgets.QPushButton = QtWidgets.QPushButton(dialog)
         self.newGroupButton.setObjectName("newGroupButton")
         self.groupsLayout.addWidget(self.newGroupButton)
         self.mainLayout.addLayout(self.groupsLayout)
 
-        self.tableButtonsLayout = QtWidgets.QHBoxLayout()
-        self.tableButtonsLayout.setObjectName("tableButtonsLayout")
-
-        self.addRowButton = QtWidgets.QPushButton(dialog)
-        self.addRowButton.setObjectName("addRowButton")
-        self.tableButtonsLayout.addWidget(self.addRowButton)
-
-        self.removeRowButton = QtWidgets.QPushButton(dialog)
-        self.removeRowButton.setObjectName("removeRowButton")
-        self.tableButtonsLayout.addWidget(self.removeRowButton)
-
-        self.mainLayout.addLayout(self.tableButtonsLayout)
-
-        self.switchSequenceButton = QtWidgets.QPushButton(dialog)
-        self.switchSequenceButton.setObjectName("switchSequenceButton")
-        self.mainLayout.addWidget(self.switchSequenceButton)
-
-        self.dialogButtonBox = QtWidgets.QDialogButtonBox(dialog)
+        self.dialogButtonBox: QtWidgets.QDialogButtonBox = QtWidgets.QDialogButtonBox(dialog)
         self.dialogButtonBox.setObjectName("dialogButtonBox")
         self.dialogButtonBox.setStandardButtons(
             QtWidgets.QDialogButtonBox.StandardButton.Ok
@@ -79,15 +87,22 @@ class Ui_DynamicEventDialogue(object):
         QtCore.QMetaObject.connectSlotsByName(dialog)
 
     def retranslateUi(self, dialog: QtWidgets.QDialog) -> None:
-        """
-        Apply translated texts to the dialog widgets.
+        """Apply translated strings to the dialog shell.
 
-        :param dialog: Target dialog instance.
+        :param dialog: Dialog whose visible strings are refreshed.
         :return: None.
         """
-        dialog.setWindowTitle(QtCore.QCoreApplication.translate("DynamicEventEditor", "Dynamic Event Editor"))
-        self.targetDeviceLabel.setText(QtCore.QCoreApplication.translate("DynamicEventEditor", "<b>Target device:</b>"))
-        self.newGroupButton.setText(QtCore.QCoreApplication.translate("DynamicEventEditor", "➕ New Event Group"))
-        self.addRowButton.setText(QtCore.QCoreApplication.translate("DynamicEventEditor", "➕ Add New Event"))
-        self.removeRowButton.setText(QtCore.QCoreApplication.translate("DynamicEventEditor", "❌ Remove Selected Rows"))
-        self.switchSequenceButton.setText(QtCore.QCoreApplication.translate("DynamicEventEditor", "Switch Sequence Wizard"))
+        dialog.setWindowTitle(QtCore.QCoreApplication.translate("DynamicEventDialogue", "Dynamic events"))
+        self.treeButton.setText(QtCore.QCoreApplication.translate("DynamicEventDialogue", "Devices"))
+        self.treeButton.setToolTip(
+            QtCore.QCoreApplication.translate("DynamicEventDialogue", "Show or hide the device tree")
+        )
+        self.emptyLabel.setText(
+            QtCore.QCoreApplication.translate(
+                "DynamicEventDialogue",
+                "Choose RMS events or EMT events for a device from the device tree.",
+            )
+        )
+        self.newGroupButton.setText(
+            QtCore.QCoreApplication.translate("DynamicEventDialogue", "➕ New Event Group")
+        )

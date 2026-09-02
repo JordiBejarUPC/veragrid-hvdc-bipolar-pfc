@@ -17,6 +17,7 @@ from pandas.plotting import register_matplotlib_converters
 import VeraGridEngine.Devices.Diagrams.palettes as palettes
 from VeraGridEngine import ContingencyOperationTypes, MapDiagram
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
+from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 from VeraGridEngine.IO.file_system import tiles_path
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
@@ -26,7 +27,7 @@ from VeraGridEngine.Simulations.PowerFlow3ph.power_flow_ts_results_3ph import Po
 from VeraGridEngine.Simulations.StateEstimation.state_estimation_results import StateEstimationResults
 from VeraGridEngine.Utils.progress_bar import print_progress_bar
 from VeraGridEngine.basic_structures import Logger
-from VeraGridEngine.enumerations import (SimulationTypes, Colormaps, DeviceType, DynamicEventTransitionType,
+from VeraGridEngine.enumerations import (SimulationTypes, Colormaps, DeviceType,
                                          MethodShortCircuit, SchematicAutoRouteStyle, DynamicSimulationMode)
 from VeraGridEngine.Devices.Diagrams.schematic_diagram import SchematicDiagram
 
@@ -49,10 +50,6 @@ from VeraGrid.Gui.Main.object_select_window import ObjectSelectWindow, ListSelec
 from VeraGrid.Gui.Diagrams.MapWidget.Tiles.TileProviders.cartodb import CartoDbTiles
 from VeraGrid.Gui.object_proxy_model import ObjectModelFilterProxy
 from VeraGrid.Gui.DynamicEventsDialog.dynamic_events_editor import DynamicEventEditor
-from VeraGrid.Gui.DynamicEventsDialog.dynamic_events_editor_support import (
-    DynamicEventsGroupsDialog,
-    collect_block_runtime_event_parameters,
-)
 from VeraGrid.Gui.Diagrams.MapWidget.Substation.substation_graphic_item import SubstationGraphicItem
 from VeraGrid.Gui.ShortCircuitEditor.short_circuit_selector import ShortCircuitSelector
 from VeraGrid.Gui.general_dialogues import (CheckListDialogue, StartEndSelectionDialogue,
@@ -3305,149 +3302,47 @@ class DiagramsMain(CompiledArraysMain):
                 info_msg(self.tr("Select some elements in the schematic first"), self.tr("Add selected to investment"))
 
     def add_rms_event_to_selected(self) -> None:
+        """Open the general dynamic-events workspace preferring RMS events.
+
+        :return: None.
         """
-        Add RMS event to a selected device
-        """
-        mode = DynamicSimulationMode.RMS
-        if self.circuit.valid_for_simulation():
-
-            # get the selected device to apply event to
-            target_devices = self.get_selected_devices()
-
-            if len(target_devices) == 1:
-
-                target_device = target_devices[0]
-                # launch rms event editor dialogue
-
-                events_groups = self.circuit.rms_events_groups
-                if len(events_groups) == 0:
-
-                    QtWidgets.QMessageBox.information(
-                        self,
-                        self.tr("No RMS Events Group"),
-                        self.tr("No RMS Events Group found, please create one before adding an event.")
-                    )
-
-                    dialog = DynamicEventsGroupsDialog(mode=mode,
-                                                       parent=self)
-                    if dialog.exec():
-                        name = dialog.get_name()
-                        # build group
-                        if name:
-                            self.circuit.add_rms_events_group(dev.RmsEventsGroup(idtag=None,
-                                                                                 name=name))
-
-
-                else:
-                    pass
-                # after creating a new events group or not, open eitherway the Events dialogue
-                rms_event_parameters, mode_parameter_uids = collect_block_runtime_event_parameters(target_device.rms_model)
-                rms_events_dialog = DynamicEventEditor(circuit=self.circuit,
-                                                       parameters_list=rms_event_parameters,
-                                                       target_device_name=target_device.type_name + ": " + target_device.name,
-                                                       mode=mode,
-                                                       mode_parameter_uids=mode_parameter_uids)
-
-                if rms_events_dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
-
-                    events_data = rms_events_dialog.get_data()
-                    events_list = list()
-                    for i, event in enumerate(events_data["parameters"]):
-                        transition_type = events_data["transition_types"][i]
-                        end_time = events_data["end_times"][i]
-
-                        if transition_type == DynamicEventTransitionType.Ramp and end_time is None:
-                            end_time = float(events_data["target_times"][i])
-                        else:
-                            pass
-
-                        events_list.append(dev.RmsEvent(device=target_device,
-                                                         parameter=events_data["parameters"][i],
-                                                         time=float(events_data["target_times"][i]),
-                                                         end_time=None if end_time is None else float(end_time),
-                                                         value=float(events_data["values"][i]),
-                                                         group=events_data["groups"][i],
-                                                         transition_type=transition_type))
-
-                    for event in events_list:
-                        self.circuit.add_rms_event(event)
-
-            else:
-                print("Selected devices: ", target_devices)
-                self.show_warning_toast(f"Select one and only one device to add event to")
+        self._open_dynamic_events_editor(DynamicSimulationMode.RMS)
 
     def add_emt_event_to_selected(self) -> None:
+        """Open the general dynamic-events workspace preferring EMT events.
+
+        :return: None.
         """
-        Add EMT event to a selected device
+        self._open_dynamic_events_editor(DynamicSimulationMode.EMT)
+
+    def _open_dynamic_events_editor(self, mode: DynamicSimulationMode) -> None:
+        """Open the shared dynamic-events workspace from a legacy mode action.
+
+        Exactly one selected device opens directly in the requested mode with
+        the device tree collapsed. Zero or multiple selections open the same
+        modal with the tree visible, allowing an explicit device choice.
+
+        :param mode: RMS or EMT family preferred by the triggering action.
+        :return: None.
         """
-        mode = DynamicSimulationMode.EMT
-        if self.circuit.valid_for_simulation():
+        if not self.circuit.valid_for_simulation():
+            return
+        else:
+            selected_devices: List[ALL_DEV_TYPES] = self.get_selected_devices()
+        if len(selected_devices) == 1 and isinstance(selected_devices[0], EditableDevice):
+            initial_device: EditableDevice | None = selected_devices[0]
+        else:
+            initial_device = None
 
-            # get the selected device to apply event to
-            target_devices = self.get_selected_devices()
-
-            if len(target_devices) == 1:
-
-                target_device = target_devices[0]
-                # launch emt event editor dialogue
-
-                events_groups = self.circuit.emt_events_groups
-                if len(events_groups) == 0:
-
-                    QtWidgets.QMessageBox.information(
-                        self,
-                        self.tr("No EMT Events Group"),
-                        self.tr("No EMT Events Group found, please create one before adding an event.")
-                    )
-
-                    dialog = DynamicEventsGroupsDialog(parent=self,
-                                                       mode=mode)
-                    if dialog.exec():
-                        name = dialog.get_name()
-                        # build group
-                        if name:
-                            self.circuit.add_emt_events_group(dev.EmtEventsGroup(idtag=None,
-                                                                                 name=name))
-
-
-                else:
-                    pass
-
-                # after creating a new events group or not, open eitherway the Events dialogue
-                emt_event_parameters, mode_parameter_uids = collect_block_runtime_event_parameters(target_device.emt_model)
-                emt_events_dialog = DynamicEventEditor(circuit=self.circuit,
-                                                       parameters_list=emt_event_parameters,
-                                                       target_device_name=target_device.type_name + ": " + target_device.name,
-                                                       mode=mode,
-                                                       mode_parameter_uids=mode_parameter_uids)
-
-                if emt_events_dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
-
-                    events_data = emt_events_dialog.get_data()
-                    events_list = list()
-                    for i, event in enumerate(events_data["parameters"]):
-                        transition_type = events_data["transition_types"][i]
-                        end_time = events_data["end_times"][i]
-
-                        if transition_type == DynamicEventTransitionType.Ramp and end_time is None:
-                            end_time = float(events_data["target_times"][i])
-                        else:
-                            pass
-
-                        events_list.append(dev.EmtEvent(device=target_device,
-                                                        parameter=events_data["parameters"][i],
-                                                        time=float(events_data["target_times"][i]),
-                                                        end_time=None if end_time is None else float(end_time),
-                                                        value=float(events_data["values"][i]),
-                                                        group=events_data["groups"][i],
-                                                        force_step_alignment=bool(events_data["force_step_alignment"][i]),
-                                                        transition_type=transition_type))
-
-                    for event in events_list:
-                        self.circuit.add_emt_event(event)
-
-            else:
-                self.show_warning_toast(f"Select one and only one device to add event to")
+        # The dialog owns a reusable transaction. Save checkpoints the current
+        # edits, while Close discards changes made after the latest checkpoint.
+        events_dialog: DynamicEventEditor = DynamicEventEditor(
+            circuit=self.circuit,
+            preferred_mode=mode,
+            initial_device=initial_device,
+            parent=self,
+        )
+        events_dialog.exec()
 
     def add_short_circuit_events(self):
         """
