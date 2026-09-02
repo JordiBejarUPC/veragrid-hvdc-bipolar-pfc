@@ -142,6 +142,15 @@ class DynamicEventEditor(QtWidgets.QDialog):
             save_button.setIcon(QtGui.QIcon(":/Icons/icons/accept.png"))
             save_button.setToolTip(self.tr("Save"))
             save_button.setAccessibleName(self.tr("Save"))
+            # Dynamic Editor's Apply changes control is an icon-only
+            # QPushButton at its natural style size. Freeze this button to the
+            # same intrinsic size so QDialogButtonBox cannot stretch it to the
+            # width of the neighbouring Close button.
+            save_button.setSizePolicy(
+                QtWidgets.QSizePolicy.Policy.Fixed,
+                QtWidgets.QSizePolicy.Policy.Fixed,
+            )
+            save_button.setFixedSize(save_button.sizeHint())
         else:
             pass
         if close_button is not None:

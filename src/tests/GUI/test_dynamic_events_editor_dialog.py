@@ -233,6 +233,146 @@ def test_page_filters_events_by_device_but_displays_every_group() -> None:
     dialog.close()
 
 
+def test_dragging_event_to_another_group_moves_draft_and_save_persists_it() -> None:
+    """Dropping an event on a group must move it transactionally and preserve its identity.
+
+    :return: None.
+    """
+    get_qt_application()
+    circuit, load, parameter, source_group = build_dynamic_target(DynamicSimulationMode.RMS)
+    assert isinstance(source_group, RmsEventsGroup)
+    target_group: RmsEventsGroup = RmsEventsGroup(name="RMS target group", active=False)
+    circuit.add_rms_events_group(target_group)
+    original_event: vge.RmsEvent = vge.RmsEvent(
+        device=load,
+        parameter=parameter,
+        time=1.0,
+        value=2.0,
+        group=source_group,
+    )
+    circuit.add_rms_event(original_event)
+    dialog: DynamicEventEditor = DynamicEventEditor(
+        circuit=circuit,
+        preferred_mode=DynamicSimulationMode.RMS,
+        initial_device=load,
+    )
+    page: DynamicEventsPage = dialog.pages[0]
+    group_drafts: list[DynamicEventGroupDraft] = dialog.session.get_groups(DynamicSimulationMode.RMS)
+    source_group_draft: DynamicEventGroupDraft = group_drafts[0]
+    target_group_draft: DynamicEventGroupDraft = group_drafts[1]
+    event_draft: DynamicEventDraft = dialog.session.get_events_for_device(
+        load,
+        DynamicSimulationMode.RMS,
+    )[0]
+    event_index: QtCore.QModelIndex = page.tree_model.index_for_backing_object(event_draft)
+    target_parameter_index: QtCore.QModelIndex = page.tree_model.index_for_backing_object(target_group_draft)
+    target_index: QtCore.QModelIndex = target_parameter_index.siblingAtColumn(
+        page.tree_model.COLUMN_VALUE
+    )
+    event_mime_data: QtCore.QMimeData = page.tree_model.mimeData(list((event_index,)))
+
+    event_flags: QtCore.Qt.ItemFlag = page.tree_model.flags(event_index)
+    target_flags: QtCore.Qt.ItemFlag = page.tree_model.flags(target_index)
+    accepted: bool = page.tree_model.dropMimeData(
+        data=event_mime_data,
+        action=QtCore.Qt.DropAction.CopyAction,
+        row=-1,
+        column=-1,
+        parent=target_index,
+    )
+    moved_index: QtCore.QModelIndex = page.tree_model.index_for_backing_object(event_draft)
+
+    assert bool(event_flags & QtCore.Qt.ItemFlag.ItemIsDragEnabled)
+    assert bool(target_flags & QtCore.Qt.ItemFlag.ItemIsDropEnabled)
+    assert accepted
+    assert event_draft.group is target_group_draft
+    assert page.tree_model.rowCount(page.tree_model.index_for_backing_object(source_group_draft)) == 0
+    assert page.tree_model.rowCount(moved_index.parent()) == 1
+    assert page.tree_model.backing_object(page.tree_view.currentIndex()) is event_draft
+    assert page.tree_view.isExpanded(moved_index.parent())
+    assert original_event.group is source_group
+
+    dialog.accept_changes()
+
+    assert circuit.rms_events[0] is original_event
+    assert original_event.group is target_group
+    dialog.close()
+
+
+def test_event_drop_rejects_invalid_targets_and_close_discards_valid_move() -> None:
+    """Only another same-mode group may receive a drop and Close must roll it back.
+
+    :return: None.
+    """
+    get_qt_application()
+    circuit, load, parameter, source_group = build_dynamic_target(DynamicSimulationMode.EMT)
+    assert isinstance(source_group, EmtEventsGroup)
+    target_group: EmtEventsGroup = EmtEventsGroup(name="EMT target group")
+    circuit.add_emt_events_group(target_group)
+    foreign_group: RmsEventsGroup = RmsEventsGroup(name="RMS foreign group")
+    circuit.add_rms_events_group(foreign_group)
+    original_event: vge.EmtEvent = vge.EmtEvent(
+        device=load,
+        parameter=parameter,
+        time=1.0,
+        value=2.0,
+        group=source_group,
+    )
+    circuit.add_emt_event(original_event)
+    dialog: DynamicEventEditor = DynamicEventEditor(
+        circuit=circuit,
+        preferred_mode=DynamicSimulationMode.EMT,
+        initial_device=load,
+    )
+    page: DynamicEventsPage = dialog.pages[0]
+    event_draft: DynamicEventDraft = dialog.session.get_events_for_device(
+        load,
+        DynamicSimulationMode.EMT,
+    )[0]
+    emt_group_drafts: list[DynamicEventGroupDraft] = dialog.session.get_groups(DynamicSimulationMode.EMT)
+    rms_group_draft: DynamicEventGroupDraft = dialog.session.get_groups(DynamicSimulationMode.RMS)[0]
+    source_group_draft: DynamicEventGroupDraft = emt_group_drafts[0]
+    target_group_draft: DynamicEventGroupDraft = emt_group_drafts[1]
+    event_index: QtCore.QModelIndex = page.tree_model.index_for_backing_object(event_draft)
+    source_index: QtCore.QModelIndex = page.tree_model.index_for_backing_object(source_group_draft)
+    target_index: QtCore.QModelIndex = page.tree_model.index_for_backing_object(target_group_draft)
+    event_mime_data: QtCore.QMimeData = page.tree_model.mimeData(list((event_index,)))
+
+    same_group_accepted: bool = page.tree_model.canDropMimeData(
+        data=event_mime_data,
+        action=QtCore.Qt.DropAction.CopyAction,
+        row=-1,
+        column=-1,
+        parent=source_index,
+    )
+    event_row_accepted: bool = page.tree_model.canDropMimeData(
+        data=event_mime_data,
+        action=QtCore.Qt.DropAction.CopyAction,
+        row=-1,
+        column=-1,
+        parent=event_index,
+    )
+    different_mode_accepted: bool = dialog.session.move_event_to_group(event_draft, rms_group_draft)
+    valid_move_accepted: bool = page.tree_model.dropMimeData(
+        data=event_mime_data,
+        action=QtCore.Qt.DropAction.CopyAction,
+        row=-1,
+        column=-1,
+        parent=target_index,
+    )
+
+    assert not same_group_accepted
+    assert not event_row_accepted
+    assert not different_mode_accepted
+    assert valid_move_accepted
+    assert event_draft.group is target_group_draft
+    assert original_event.group is source_group
+
+    dialog.reject()
+
+    assert original_event.group is source_group
+
+
 def test_group_active_and_rename_are_transactional() -> None:
     """Group activity must toggle repeatedly and remain transactional.
 
@@ -417,6 +557,8 @@ def test_save_button_and_event_controls_use_new_workspace_contract() -> None:
     assert save_button.text() == ""
     assert save_button.toolTip() == "Save"
     assert not save_button.icon().isNull()
+    assert save_button.sizePolicy().horizontalPolicy() == QtWidgets.QSizePolicy.Policy.Fixed
+    assert save_button.sizePolicy().verticalPolicy() == QtWidgets.QSizePolicy.Policy.Fixed
     assert close_button is not None
     assert close_button.text() == "Close"
     assert isinstance(page.add_event_button, QtWidgets.QPushButton)

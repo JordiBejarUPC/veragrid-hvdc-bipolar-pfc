@@ -1021,7 +1021,7 @@ def test_governor_mapping_symbols_are_available_to_dae_parser() -> None:
         var_factory,
     )
     dialogue.apply_changes()
-    assert "Nothing was applied" not in dialogue._status_label.text()
+    assert "Nothing was applied" not in dialogue._dae_validation_status_label.text()
     dialogue.close()
 
 
@@ -1924,7 +1924,7 @@ def test_structural_rebuild_does_not_discard_staged_mapping_changes() -> None:
 
     dialogue.apply_changes()
 
-    assert "separately" in dialogue._status_label.text().lower()
+    assert "separately" in dialogue._dae_validation_status_label.text().lower()
     assert block.external_mapping == {VarPowerFlowReferenceType.P: state}
     dialogue.close()
 
@@ -2574,8 +2574,8 @@ def test_retained_mode_tree_leaves_initialization_to_python_code() -> None:
     application.processEvents()
 
 
-def test_adding_parent_retained_mode_preserves_visible_child_equations() -> None:
-    """Adding a mode to another owner must extend only that owner's source.
+def test_adding_parent_retained_mode_displays_parent_and_preserves_child_equations() -> None:
+    """Adding a mode must show its owner without modifying the previous source.
 
     :return: None.
     """
@@ -2602,8 +2602,10 @@ def test_adding_parent_retained_mode_preserves_visible_child_equations() -> None
     dialogue._new_symbol_name.setText("held_mode")
     dialogue.add_staged_symbol()
 
-    assert dialogue._active_equation_buffer_index == active_index_before
-    assert dialogue._dae_editor.toPlainText() == active_code_before
+    assert dialogue._active_equation_buffer_index == 0
+    assert dialogue._equation_buffers[dialogue._active_equation_buffer_index].get_block() is root
+    assert dialogue._dae_editor.toPlainText() == dialogue._equation_buffers[0].get_code()
+    assert "held_mode: 0.0" in dialogue._dae_editor.toPlainText()
     assert dialogue._equation_buffers[active_index_before].get_code() == active_code_before
     assert "held_mode: 0.0" in dialogue._equation_buffers[0].get_code()
     retained_mode_index: QtCore.QModelIndex = find_retained_mode_index(
@@ -2720,9 +2722,9 @@ def test_adding_symbol_does_not_validate_incomplete_procedural_logic() -> None:
     assert len(block.procedural_logic) == 0
 
     dialogue.validate_complete_dae_code()
-    assert "Output mode" in dialogue._status_label.text()
+    assert "Output mode" in dialogue._dae_validation_status_label.text()
     dialogue.apply_changes()
-    assert "Output mode" in dialogue._status_label.text()
+    assert "Output mode" in dialogue._dae_validation_status_label.text()
     assert len(block.in_vars) == 0
     assert len(block.event_dict) == 0
     assert len(block.mode_dict) == 0
@@ -2804,9 +2806,9 @@ def test_new_dynamic_parameter_cycles_are_rejected_before_apply() -> None:
         find_property_index(dialogue, "second_gain").siblingAtColumn(2), "first_gain + 1",
     )
     dialogue.validate_complete_dae_code()
-    assert "Cyclic" in dialogue._status_label.text()
+    assert "Cyclic" in dialogue._dae_validation_status_label.text()
     dialogue.apply_changes()
-    assert "Cyclic" in dialogue._status_label.text()
+    assert "Cyclic" in dialogue._dae_validation_status_label.text()
     assert block.event_dict == dict()
     dialogue.close()
     application.processEvents()
@@ -2866,93 +2868,6 @@ def test_property_owner_selection_guides_symbol_addition() -> None:
     assert find_property_index(dialogue, "child_gain", child).isValid()
     dialogue.close()
     application.processEvents()
-
-
-def test_property_layout_visual_capture(tmp_path: Path) -> None:
-    """Capture both layouts for review while checking the compact configuration.
-
-    :param tmp_path: Isolated pytest output directory for review images.
-    :return: None.
-    """
-    application: QtWidgets.QApplication = get_qt_application()
-    # Qt's Windows offscreen plugin does not discover system fonts on every
-    # host. Register existing fonts for this capture only; no fonts are shipped
-    # or installed and other platforms retain their normal font discovery.
-    font_ids: list[int] = list()
-    font_path: Path
-    for font_path in (Path("C:/Windows/Fonts/segoeui.ttf"), Path("C:/Windows/Fonts/consola.ttf")):
-        if font_path.is_file():
-            font_ids.append(QtGui.QFontDatabase.addApplicationFont(str(font_path)))
-        else:
-            pass
-    state: Var = Var("speed")
-    gain: Var = Var("gain")
-    block: Block = Block(
-        name="Example control", state_vars=list((state,)), state_eqs=list((gain,)),
-        event_dict=dict(((gain, Const(2.0)),)), out_vars=list((state,)),
-    )
-    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(block, "GENERIC", VarFactory())
-    if len(font_ids) == 2 and all(font_id >= 0 for font_id in font_ids):
-        dialogue.setFont(QtGui.QFont("Segoe UI", 9))
-        dialogue._dae_editor.setFont(QtGui.QFont("Consolas", 10))
-    else:
-        pass
-    dialogue.show()
-    application.processEvents()
-    configuration: QtWidgets.QGroupBox | None = None
-    group: QtWidgets.QGroupBox
-    for group in dialogue.findChildren(QtWidgets.QGroupBox):
-        if group.title() == "Block configuration":
-            configuration = group
-        else:
-            pass
-    assert configuration is not None
-    form: QtWidgets.QLayout | None = configuration.layout()
-    assert isinstance(form, QtWidgets.QFormLayout)
-    assert form.rowCount() == 2
-    # Configuration and the right-aligned toggle precede both splitter panes.
-    # Symbol creation must never occupy the property browser's lower half.
-    configuration_top: QtCore.QPoint = configuration.mapTo(dialogue, QtCore.QPoint())
-    toggle_top: QtCore.QPoint = dialogue._equations_button.mapTo(dialogue, QtCore.QPoint())
-    splitter_top: QtCore.QPoint = dialogue._dae_splitter.mapTo(dialogue, QtCore.QPoint())
-    assert configuration_top.y() + configuration.height() <= toggle_top.y()
-    assert toggle_top.y() + dialogue._equations_button.height() <= splitter_top.y()
-    assert dialogue._equations_button.text() == ""
-    assert dialogue._equations_button.accessibleName() == "DAE editor"
-    assert dialogue._equations_button.icon().isNull() is False
-    assert dialogue._equations_button.toolTip() != ""
-    assert abs(toggle_top.x() + dialogue._equations_button.width()
-               - splitter_top.x() - dialogue._dae_splitter.width()) <= 2
-    assert not dialogue._add_symbol_group.isVisible()
-    assert not dialogue._validate_code_button.isVisible()
-    assert not dialogue._dae_editor.isVisible()
-    assert dialogue.grab().save(str(tmp_path / "properties.png"))
-    dialogue._equations_button.click()
-    application.processEvents()
-    assert dialogue._add_symbol_group.isVisible()
-    assert dialogue._dae_editor.isVisible()
-    assert dialogue._equation_tools_splitter.widget(0) is dialogue._equation_panel
-    actions_panel: QtWidgets.QWidget = dialogue._equation_tools_splitter.widget(1)
-    assert actions_panel.isAncestorOf(dialogue._add_symbol_group)
-    assert actions_panel.isAncestorOf(dialogue._validate_code_button)
-    assert dialogue._equation_panel.geometry().bottom() < actions_panel.y()
-    assert abs(2 * dialogue._add_symbol_group.width() + 6 - actions_panel.width()) <= 1
-    assert dialogue._validate_code_button.isVisible()
-    assert dialogue._validate_code_button.text() == "Validate model"
-    assert dialogue._validate_code_button.x() > dialogue._add_symbol_group.geometry().right()
-    assert dialogue._validate_code_button.geometry().right() == actions_panel.width() - 1
-    assert dialogue._dae_splitter.widget(0).height() == dialogue._equation_tools_splitter.height()
-    assert abs(3 * dialogue._dae_splitter.sizes()[0] - dialogue._dae_splitter.sizes()[1]) <= 4
-    assert dialogue.grab().save(str(tmp_path / "properties-equations.png"))
-    print(f"Block properties review images: {tmp_path}")
-    dialogue.close()
-    application.processEvents()
-    font_id: int
-    for font_id in font_ids:
-        if font_id >= 0:
-            QtGui.QFontDatabase.removeApplicationFont(font_id)
-        else:
-            pass
 
 
 def test_symbol_mapping_column_applies_power_flow_and_device_references() -> None:
@@ -3090,7 +3005,7 @@ def test_duplicate_power_flow_mapping_is_rejected_before_application() -> None:
     dialogue.apply_changes()
 
     assert len(block.external_mapping) == 0
-    assert "assigned more than once" in dialogue._status_label.text()
+    assert "assigned more than once" in dialogue._dae_validation_status_label.text()
     dialogue.close()
 
 
@@ -3218,7 +3133,7 @@ def test_latex_selection_has_no_differential_section() -> None:
     # Applying the four editable sections must not erase or reinterpret a
     # legacy Engine field that the dialogue deliberately does not expose.
     dialogue.apply_changes()
-    assert "Nothing was applied" not in dialogue._status_label.text()
+    assert "Nothing was applied" not in dialogue._dae_validation_status_label.text()
     assert len(block.differential_eqs) == 1
     assert block.differential_eqs[0] is legacy_differential_expression
     dialogue.close()

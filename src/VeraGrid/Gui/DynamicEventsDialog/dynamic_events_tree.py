@@ -60,6 +60,8 @@ class InvalidDynamicEventsNode:
 class DynamicEventsTreeModel(QtGui.QStandardItemModel):
     """Hierarchical editable view of groups and events for one device and mode."""
 
+    event_moved = QtCore.Signal(object)
+
     __slots__ = (
         "session",
         "device",
@@ -75,6 +77,7 @@ class DynamicEventsTreeModel(QtGui.QStandardItemModel):
     COLUMN_TRANSITION: int = 3
     COLUMN_END_TIME: int = 4
     COLUMN_ALIGN_STEP: int = 5
+    EVENT_DRAFT_MIME_TYPE: str = "application/x-veragrid-dynamic-event-draft"
 
     def __init__(self,
                  session: DynamicEventsDraftSession,
@@ -349,11 +352,16 @@ class DynamicEventsTreeModel(QtGui.QStandardItemModel):
             QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsSelectable
         )
         if isinstance(backing, DynamicEventGroupDraft):
+            base_flags |= QtCore.Qt.ItemFlag.ItemIsDropEnabled
             if index.column() == self.COLUMN_PARAMETER:
                 return base_flags | QtCore.Qt.ItemFlag.ItemIsEditable | QtCore.Qt.ItemFlag.ItemIsUserCheckable
             else:
                 return base_flags
         elif isinstance(backing, DynamicEventDraft):
+            if backing.group is not None and not backing.group.is_removed:
+                base_flags |= QtCore.Qt.ItemFlag.ItemIsDragEnabled
+            else:
+                pass
             editable: bool = self._parameter_is_available(backing.parameter) and backing.group is not None
             if not editable:
                 return base_flags
@@ -371,6 +379,186 @@ class DynamicEventsTreeModel(QtGui.QStandardItemModel):
                 return base_flags | QtCore.Qt.ItemFlag.ItemIsEditable
         else:
             return base_flags
+
+    def mimeTypes(self) -> list[str]:
+        """Return the private MIME format used for event-row drags.
+
+        :return: Supported internal event-draft MIME type.
+        """
+        return list((self.EVENT_DRAFT_MIME_TYPE,))
+
+    def supportedDragActions(self) -> QtCore.Qt.DropAction:
+        """Expose the safe transport action used by event drags.
+
+        The model performs the semantic move through the draft session. Using
+        Qt's copy transport prevents the item view from independently removing
+        a source row after the session has already rebuilt the projection.
+
+        :return: Copy transport action.
+        """
+        return QtCore.Qt.DropAction.CopyAction
+
+    def supportedDropActions(self) -> QtCore.Qt.DropAction:
+        """Expose the safe transport action accepted by group rows.
+
+        :return: Copy transport action.
+        """
+        return QtCore.Qt.DropAction.CopyAction
+
+    def mimeData(self, indexes: list[QtCore.QModelIndex]) -> QtCore.QMimeData:
+        """Encode the single event draft represented by a selected row.
+
+        The payload contains process-local identities for both the shared
+        session and event draft. The receiver resolves those identities back
+        through its own session instead of trusting serialized event fields.
+
+        :param indexes: Selected indexes supplied by the tree view.
+        :return: MIME data containing a valid payload only for one event row.
+        """
+        mime_data: QtCore.QMimeData = QtCore.QMimeData()
+        dragged_event: DynamicEventDraft | None = None
+        index: QtCore.QModelIndex
+        for index in indexes:
+            backing: object | None = self.backing_object(index)
+            if isinstance(backing, DynamicEventDraft) and backing.group is not None:
+                if dragged_event is None or dragged_event is backing:
+                    dragged_event = backing
+                else:
+                    # Although the view currently has single-row selection,
+                    # reject ambiguous payloads if that policy ever changes.
+                    return mime_data
+            else:
+                pass
+
+        if dragged_event is not None and not dragged_event.is_removed:
+            payload_text: str = f"{id(self.session)}:{id(dragged_event)}"
+            payload_bytes: QtCore.QByteArray = QtCore.QByteArray(payload_text.encode("ascii"))
+            mime_data.setData(self.EVENT_DRAFT_MIME_TYPE, payload_bytes)
+        else:
+            pass
+        return mime_data
+
+    def _event_from_mime_data(self, data: QtCore.QMimeData) -> DynamicEventDraft | None:
+        """Resolve an internal drag payload to a live event draft.
+
+        :param data: MIME data received by a candidate drop target.
+        :return: Matching live event draft from this session, or ``None``.
+        """
+        if not data.hasFormat(self.EVENT_DRAFT_MIME_TYPE):
+            return None
+        else:
+            payload_text: str = bytes(data.data(self.EVENT_DRAFT_MIME_TYPE)).decode(
+                "ascii",
+                errors="replace",
+            ).strip()
+        payload_parts: list[str] = payload_text.split(":")
+        if len(payload_parts) != 2 or not payload_parts[0].isdigit() or not payload_parts[1].isdigit():
+            return None
+        else:
+            payload_session_identity: int = int(payload_parts[0])
+            payload_event_identity: int = int(payload_parts[1])
+        if payload_session_identity != id(self.session):
+            return None
+        else:
+            pass
+
+        candidate_event: DynamicEventDraft
+        for candidate_event in self.session.event_drafts:
+            event_is_usable: bool = (
+                id(candidate_event) == payload_event_identity
+                and not candidate_event.is_removed
+                and candidate_event.mode == self.mode
+                and candidate_event.device is self.device
+                and candidate_event.group is not None
+                and not candidate_event.group.is_removed
+            )
+            if event_is_usable:
+                return candidate_event
+            else:
+                pass
+        return None
+
+    def _drop_target_group(
+            self,
+            row: int,
+            column: int,
+            parent: QtCore.QModelIndex,
+    ) -> DynamicEventGroupDraft | None:
+        """Resolve a drop made directly on one compatible group row.
+
+        :param row: Proposed insertion row supplied by Qt.
+        :param column: Proposed insertion column supplied by Qt.
+        :param parent: Index underneath the drop indicator.
+        :return: Compatible destination group, or ``None`` for other targets.
+        """
+        if row >= 0 or column >= 0:
+            return None
+        else:
+            backing: object | None = self.backing_object(parent)
+        if (
+            isinstance(backing, DynamicEventGroupDraft)
+            and not backing.is_removed
+            and backing.mode == self.mode
+        ):
+            return backing
+        else:
+            return None
+
+    def canDropMimeData(self,
+                        data: QtCore.QMimeData,
+                        action: QtCore.Qt.DropAction,
+                        row: int,
+                        column: int,
+                        parent: QtCore.QModelIndex) -> bool:
+        """Return whether an event can be moved onto the indicated group row.
+
+        :param data: Event drag payload.
+        :param action: Transport action proposed by Qt.
+        :param row: Proposed insertion row.
+        :param column: Proposed insertion column.
+        :param parent: Candidate group index.
+        :return: Whether the drop represents a valid group reassignment.
+        """
+        if action == QtCore.Qt.DropAction.IgnoreAction:
+            return True
+        elif action != QtCore.Qt.DropAction.CopyAction:
+            return False
+        else:
+            dragged_event: DynamicEventDraft | None = self._event_from_mime_data(data)
+            target_group: DynamicEventGroupDraft | None = self._drop_target_group(row, column, parent)
+        return dragged_event is not None and target_group is not None and dragged_event.group is not target_group
+
+    def dropMimeData(self,
+                     data: QtCore.QMimeData,
+                     action: QtCore.Qt.DropAction,
+                     row: int,
+                     column: int,
+                     parent: QtCore.QModelIndex) -> bool:
+        """Move one dragged event to the group represented by the drop row.
+
+        :param data: Event drag payload.
+        :param action: Transport action proposed by Qt.
+        :param row: Proposed insertion row.
+        :param column: Proposed insertion column.
+        :param parent: Destination group index.
+        :return: Whether the transaction accepted and applied the move.
+        """
+        if action == QtCore.Qt.DropAction.IgnoreAction:
+            return True
+        elif not self.canDropMimeData(data, action, row, column, parent):
+            return False
+        else:
+            dragged_event: DynamicEventDraft | None = self._event_from_mime_data(data)
+            target_group: DynamicEventGroupDraft | None = self._drop_target_group(row, column, parent)
+        if dragged_event is not None and target_group is not None:
+            moved: bool = self.session.move_event_to_group(dragged_event, target_group)
+            if moved:
+                self.event_moved.emit(dragged_event)
+            else:
+                pass
+            return moved
+        else:
+            return False
 
     def setData(self,
                 index: QtCore.QModelIndex,
@@ -786,6 +974,15 @@ class DynamicEventsPage(QtWidgets.QWidget):
         self.tree_view.setUniformRowHeights(True)
         self.tree_view.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
         self.tree_view.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
+        # The tree is a projection of the transaction, so drops are routed to
+        # the model instead of letting QTreeView rearrange QStandardItems.
+        self.tree_view.setDragEnabled(True)
+        self.tree_view.setAcceptDrops(True)
+        self.tree_view.viewport().setAcceptDrops(True)
+        self.tree_view.setDragDropMode(QtWidgets.QAbstractItemView.DragDropMode.DragDrop)
+        self.tree_view.setDropIndicatorShown(True)
+        self.tree_view.setDefaultDropAction(QtCore.Qt.DropAction.CopyAction)
+        self.tree_view.setDragDropOverwriteMode(False)
         self.tree_view.setEditTriggers(
             QtWidgets.QAbstractItemView.EditTrigger.DoubleClicked
             | QtWidgets.QAbstractItemView.EditTrigger.EditKeyPressed
@@ -815,6 +1012,7 @@ class DynamicEventsPage(QtWidgets.QWidget):
         self.switch_sequence_button.clicked.connect(self.open_switch_sequence)
         self.tree_view.customContextMenuRequested.connect(self.show_context_menu)
         self.tree_model.modelReset.connect(self.tree_view.expandAll)
+        self.tree_model.event_moved.connect(self._show_moved_event)
         selection_model: QtCore.QItemSelectionModel | None = self.tree_view.selectionModel()
         if selection_model is not None:
             selection_model.selectionChanged.connect(self.update_actions)
@@ -822,6 +1020,21 @@ class DynamicEventsPage(QtWidgets.QWidget):
             pass
         self.tree_view.expandAll()
         self.update_actions()
+
+    @QtCore.Slot(object)
+    def _show_moved_event(self, backing_object: object) -> None:
+        """Reveal an event after a successful drag-and-drop reassignment.
+
+        The session rebuild completes synchronously before the model emits
+        ``event_moved``, so the fresh destination index is already available.
+
+        :param backing_object: Event draft emitted by the tree model.
+        :return: None.
+        """
+        if isinstance(backing_object, DynamicEventDraft):
+            self._reveal_event(backing_object, start_editing=False)
+        else:
+            pass
 
     def has_runtime_parameters(self) -> bool:
         """Return whether the current dynamic model can receive a new event.

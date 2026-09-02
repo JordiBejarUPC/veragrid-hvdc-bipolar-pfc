@@ -431,6 +431,60 @@ class DynamicEventsDraftSession(QtCore.QObject):
         event.is_removed = True
         self.changed.emit()
 
+    def move_event_to_group(self,
+                            event: DynamicEventDraft,
+                            target_group: DynamicEventGroupDraft) -> bool:
+        """Move one event to another group inside the shared transaction.
+
+        The event object is preserved and only its group reference changes.
+        Consequently, closing the editor still discards the move, while Save
+        updates the group reference of the same persisted RMS or EMT event.
+
+        :param event: Event draft requested by the drag operation.
+        :param target_group: Non-removed group that should receive the event.
+        :return: Whether the event was moved to a different compatible group.
+        """
+        event_belongs_to_session: bool = False
+        candidate_event: DynamicEventDraft
+        for candidate_event in self.event_drafts:
+            if candidate_event is event:
+                event_belongs_to_session = True
+            else:
+                pass
+
+        group_belongs_to_session: bool = False
+        source_group_belongs_to_session: bool = False
+        candidate_group: DynamicEventGroupDraft
+        for candidate_group in self.group_drafts:
+            if candidate_group is target_group:
+                group_belongs_to_session = True
+            else:
+                pass
+            if candidate_group is event.group and not candidate_group.is_removed:
+                source_group_belongs_to_session = True
+            else:
+                pass
+
+        if (
+            not event_belongs_to_session
+            or not group_belongs_to_session
+            or not source_group_belongs_to_session
+        ):
+            return False
+        elif event.is_removed or target_group.is_removed:
+            return False
+        elif event.mode != target_group.mode:
+            return False
+        elif event.group is target_group:
+            return False
+        else:
+            # The tree models are projections of this relationship. Broadcasting
+            # the structural change removes the row from its old branch and
+            # recreates it under the destination branch on every open page.
+            event.group = target_group
+            self.changed.emit()
+            return True
+
     def remove_group(self, group: DynamicEventGroupDraft) -> None:
         """Mark one group and every contained event as removed.
 

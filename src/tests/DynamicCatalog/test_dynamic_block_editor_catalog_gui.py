@@ -464,7 +464,10 @@ def test_modal_parameter_edit_preserves_non_structural_block_identity() -> None:
 
 
 def test_parameter_modal_separates_runtime_modes_for_pulse_block() -> None:
-    """General options keeps events while the hidden runtime model owns retained modes."""
+    """General options separates events from Python-authored retained modes.
+
+    :return: None.
+    """
     editor: DynamicBlockEditorGUI = _build_editor(DynamicSimulationMode.EMT)
     block_item: graph.GenericBlockItem = _build_catalog_block_item(editor, "pulse")
     assert block_item.subsys is not None
@@ -482,13 +485,28 @@ def test_parameter_modal_separates_runtime_modes_for_pulse_block() -> None:
 
     assert any(row_type.startswith("Dynamic parameter") for row_type in row_types)
     assert not any(row_type.startswith("Mode parameter") for row_type in row_types)
-    assert dialogue._runtime_logic_editor._mode_model.rowCount() > 0
+    assert dialogue._retained_mode_model.rowCount() > 0
+    python_source: str = dialogue._equation_buffers[0].get_code()
+    assert "retained_modes = {" in python_source
+    assert "procedural_logic = [" in python_source
+    mode_row_index: int
+    for mode_row_index in range(dialogue._retained_mode_model.rowCount()):
+        mode_name_index: QtCore.QModelIndex = dialogue._retained_mode_model.index(
+            mode_row_index,
+            0,
+        )
+        mode_name: str = str(
+            dialogue._retained_mode_model.data(
+                mode_name_index,
+                QtCore.Qt.ItemDataRole.DisplayRole,
+            )
+        )
+        assert f"{mode_name}:" in python_source
     tab_titles: list[str] = list()
     tab_index: int
     for tab_index in range(dialogue._tabs.count()):
         tab_titles.append(dialogue._tabs.tabText(tab_index))
     assert "Runtime logic" not in tab_titles
-    assert dialogue._runtime_logic_editor.isHidden()
     dialogue.close()
 
     editor.has_unapplied_changes = False
