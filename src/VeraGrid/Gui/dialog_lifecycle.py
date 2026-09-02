@@ -9,6 +9,21 @@ import shiboken6
 from PySide6 import QtCore, QtWidgets
 
 
+def is_dialog_available(dialog: QtWidgets.QWidget | None) -> bool:
+    """
+    Return whether a stored Qt widget pointer still wraps a live C++ widget.
+
+    :param dialog: Stored Qt widget pointer.
+    :return: ``True`` when the pointer can be reused.
+    """
+    if dialog is None:
+        result: bool = False
+    else:
+        result = shiboken6.isValid(dialog)
+
+    return result
+
+
 def delete_dialog_safely(dialog: object) -> None:
     """
     Schedule one Qt dialog/widget for deletion and flush deferred delete events.

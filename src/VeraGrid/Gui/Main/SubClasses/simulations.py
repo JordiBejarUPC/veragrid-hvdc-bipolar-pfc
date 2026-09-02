@@ -21,7 +21,7 @@ from VeraGrid.Gui.Main.SubClasses.Model.time_events import TimeEventsMain
 from VeraGrid.Gui.SigmaAnalysis.sigma_analysis_dialogue import SigmaAnalysisGUI
 from VeraGrid.Gui.ProceduralGrid.procedural_grid import ProceduralGridWindow
 from VeraGrid.Gui.ProceduralGrid.map_warning import MapWarningDialog
-from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely
+from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, is_dialog_available
 from VeraGrid.Session.session import GcThread
 from VeraGrid.Session.server_driver import RemoteJobDriver
 from VeraGrid.Gui.DynamicEventsDialog.dynamic_events_editor_support import create_dynamic_events_group_with_dialog
@@ -3391,6 +3391,12 @@ class SimulationsMain(TimeEventsMain):
 
             if not sigma_driver.results.converged:
                 self.show_error_toast("Sigma coefficients did not converge :(")
+
+            old_dialog: SigmaAnalysisGUI | None = self.sigma_dialogue
+            if is_dialog_available(dialog=old_dialog):
+                delete_dialog_safely(dialog=old_dialog)
+            else:
+                pass
 
             self.sigma_dialogue = SigmaAnalysisGUI(parent=self,
                                                    results=sigma_driver.results,

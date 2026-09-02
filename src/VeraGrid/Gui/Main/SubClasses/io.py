@@ -28,7 +28,7 @@ from VeraGrid.Gui.FileDialogues.MatpowerDialogue.matpower_export import Matpower
 from VeraGrid.Gui.FileDialogues.UcteDialogue.ucte_export import UcteExportDialogue
 from VeraGrid.Gui.Main.SubClasses.Model.scenarios import ScenariosMain
 from VeraGrid.Gui.FileDialogues.ServerFileDialog import ServerFileDialogue
-from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, exec_dialog_safely
+from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, exec_dialog_safely, is_dialog_available
 from VeraGrid.Gui.FileDialogues.CGMESDialogue.cgmes_export import CgmesExportDialogue
 from VeraGrid.Gui.FileDialogues.PsseDialogue.psse_export import PsseExportDialogue
 from VeraGrid.Gui.FileDialogues.PsseDialogue.psse_import import PsseImportDialogue
@@ -1727,8 +1727,19 @@ class IoMain(ScenariosMain):
 
         :return: None.
         """
-        self.psse_export_dialogue = PsseExportDialogue(app=self)
-        self.psse_export_dialogue.show()
+        dialog: PsseExportDialogue | None = self.psse_export_dialogue
+        if is_dialog_available(dialog=dialog):
+            pass
+        else:
+            dialog = PsseExportDialogue(app=self)
+            self.psse_export_dialogue = dialog
+
+        if dialog is not None:
+            dialog.show()
+            dialog.raise_()
+            dialog.activateWindow()
+        else:
+            pass
 
     def export_power_factory(self) -> None:
         """
@@ -1736,8 +1747,19 @@ class IoMain(ScenariosMain):
 
         :return: None.
         """
-        self.dgs_export_dialogue = DgsExportDialogue(app=self)
-        self.dgs_export_dialogue.show()
+        dialog: DgsExportDialogue | None = self.dgs_export_dialogue
+        if is_dialog_available(dialog=dialog):
+            pass
+        else:
+            dialog = DgsExportDialogue(app=self)
+            self.dgs_export_dialogue = dialog
+
+        if dialog is not None:
+            dialog.show()
+            dialog.raise_()
+            dialog.activateWindow()
+        else:
+            pass
 
     def export_matpower(self) -> None:
         """
@@ -1745,8 +1767,19 @@ class IoMain(ScenariosMain):
 
         :return: None.
         """
-        self.matpower_export_dialogue = MatpowerExportDialogue(app=self)
-        self.matpower_export_dialogue.show()
+        dialog: MatpowerExportDialogue | None = self.matpower_export_dialogue
+        if is_dialog_available(dialog=dialog):
+            pass
+        else:
+            dialog = MatpowerExportDialogue(app=self)
+            self.matpower_export_dialogue = dialog
+
+        if dialog is not None:
+            dialog.show()
+            dialog.raise_()
+            dialog.activateWindow()
+        else:
+            pass
 
     def export_ucte(self) -> None:
         """
@@ -1754,8 +1787,19 @@ class IoMain(ScenariosMain):
 
         :return: None.
         """
-        self.ucte_export_dialogue = UcteExportDialogue(app=self)
-        self.ucte_export_dialogue.show()
+        dialog: UcteExportDialogue | None = self.ucte_export_dialogue
+        if is_dialog_available(dialog=dialog):
+            pass
+        else:
+            dialog = UcteExportDialogue(app=self)
+            self.ucte_export_dialogue = dialog
+
+        if dialog is not None:
+            dialog.show()
+            dialog.raise_()
+            dialog.activateWindow()
+        else:
+            pass
 
     def export_cim(self) -> None:
         """
@@ -1796,8 +1840,19 @@ class IoMain(ScenariosMain):
 
         :return: None.
         """
-        self.cgmes_dialogue = CgmesExportDialogue(app=self)
-        self.cgmes_dialogue.show()
+        dialog: CgmesExportDialogue | None = self.cgmes_dialogue
+        if is_dialog_available(dialog=dialog):
+            pass
+        else:
+            dialog = CgmesExportDialogue(app=self)
+            self.cgmes_dialogue = dialog
+
+        if dialog is not None:
+            dialog.show()
+            dialog.raise_()
+            dialog.activateWindow()
+        else:
+            pass
 
     def export_power_grid_models(self) -> None:
         """

@@ -504,27 +504,39 @@ class GridMapWidget(BaseDiagramWidget):
                 pass
         return selected_line_locations
 
-    def add_to_scene(self, graphic_object: ALL_MAP_GRAPHICS = None) -> None:
+    def add_to_scene(self, graphic_object: ALL_MAP_GRAPHICS | None = None) -> None:
         """
         Add item to the diagram and the diagram scene
         :param graphic_object: Graphic object associated
         """
+        if graphic_object is None:
+            return
+        else:
+            self.diagram_scene.addItem(graphic_object)
 
-        self.diagram_scene.addItem(graphic_object)
-
-    def _remove_from_scene(self, graphic_object: ALL_MAP_GRAPHICS | GenericDiagramWidget) -> None:
+    def _remove_from_scene(self, graphic_object: ALL_MAP_GRAPHICS | GenericDiagramWidget | None) -> None:
         """
         Remove item from the diagram scene
         :param graphic_object: Graphic object associated
         """
-        if isinstance(graphic_object, GenericDiagramWidget):
-            if graphic_object.api_object is not None:
-                self.graphics_manager.delete_device(graphic_object.api_object)
+        if graphic_object is None:
+            return
+        else:
+            if isinstance(graphic_object, GenericDiagramWidget):
+                if graphic_object.api_object is not None:
+                    self.graphics_manager.delete_device(graphic_object.api_object)
+                else:
+                    pass
             else:
                 pass
-        else:
-            pass
-        self.diagram_scene.removeItem(graphic_object)
+
+            if isinstance(graphic_object, QGraphicsItem):
+                if graphic_object.scene() is not None:
+                    self.diagram_scene.removeItem(graphic_object)
+                else:
+                    pass
+            else:
+                pass
 
     def clear(self) -> None:
         """
@@ -1217,10 +1229,20 @@ class GridMapWidget(BaseDiagramWidget):
                 if elm.substation is not None:
                     # get the substation graphic object
                     substation_graphics = self.graphics_manager.query(elm=elm.substation)
+                    if substation_graphics is None:
+                        substation_graphics = self.add_api_substation(api_object=elm.substation,
+                                                                      lon=elm.substation.longitude,
+                                                                      lat=elm.substation.latitude)
+                    else:
+                        pass
 
                     # draw the voltage level
                     self.add_api_voltage_level(substation_graphics=substation_graphics,
                                                api_object=elm)
+                else:
+                    logger.add_warning("Voltage level has no substation",
+                                       device=elm.name,
+                                       device_class=elm.device_type.value)
 
             elif isinstance(elm, Bus):
 
@@ -1228,10 +1250,16 @@ class GridMapWidget(BaseDiagramWidget):
                     # get the substation graphic object
                     substation_graphics = self.graphics_manager.query(elm=elm.substation)
 
-                    # draw the voltage level
-                    self.add_api_substation(api_object=elm.substation,
-                                            lon=substation_graphics.lon,
-                                            lat=substation_graphics.lat)
+                    if substation_graphics is None:
+                        self.add_api_substation(api_object=elm.substation,
+                                                lon=elm.substation.longitude,
+                                                lat=elm.substation.latitude)
+                    else:
+                        pass
+                else:
+                    logger.add_warning("Bus has no substation",
+                                       device=elm.name,
+                                       device_class=elm.device_type.value)
 
             elif isinstance(elm, Line):
                 line_container = self.add_api_line(elm)
@@ -1472,6 +1500,7 @@ class GridMapWidget(BaseDiagramWidget):
         """
         # Initialize boundaries
         min_lat = min_lon = max_lat = max_lon = None
+        text = search_text.lower()
 
         n = 0
         for key, points_group in self.diagram.data.items():
@@ -1479,15 +1508,15 @@ class GridMapWidget(BaseDiagramWidget):
                 if location.api_object is not None:
 
                     # Check if searchText is in the name, code, or idtag of the api_object
-                    if (search_text in location.api_object.name.lower() or
-                            search_text in location.api_object.code.lower() or
-                            search_text in str(location.api_object.idtag).lower()):
+                    if (text in location.api_object.name.lower() or
+                            text in location.api_object.code.lower() or
+                            text in str(location.api_object.idtag).lower()):
 
-                        # Calculate boundaries (x: latitude, y: longitude)
+                        # Map locations are points, so the search bounds use the stored coordinate directly.
                         left = location.latitude
-                        right = location.latitude + location.w
+                        right = location.latitude
                         top = location.longitude
-                        bottom = location.longitude + location.h
+                        bottom = location.longitude
 
                         if min_lat is None or left < min_lat:
                             min_lat = left
@@ -1513,7 +1542,9 @@ class GridMapWidget(BaseDiagramWidget):
                                                  max_lon=max_lon)
 
             self.map.apply_zoom_level(level=level)
-            # self.map.go_to_position(latitude=lat, longitude=lon)
+            self.map.go_to_position(latitude=lat, longitude=lon)
+        else:
+            pass
 
     def colour_results(self,
                        Sbus: CxVec,

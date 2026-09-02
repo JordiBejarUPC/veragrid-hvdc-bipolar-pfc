@@ -2,14 +2,17 @@ from __future__ import annotations
 
 import ast
 import copy
+import gc
+import multiprocessing
+import queue
 import tempfile
+import traceback
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Set
 
 import numpy as np
 import pandas as pd
-import pytest
 import shiboken6
 from PySide6 import QtCore
 from PySide6 import QtWidgets
@@ -67,6 +70,7 @@ from VeraGrid.Gui.GridGenerator.grid_generator_dialogue import GridGeneratorGUI
 from VeraGrid.Gui.GridMerge.grid_diff import GridDiffDialogue
 from VeraGrid.Gui.GridMerge.grid_merge import GridMergeDialogue
 from VeraGrid.Gui.GridReduce.grid_reduce import GridReduceDialogue
+from VeraGrid.Gui.Main.VeraGridMain import VeraGridMainGUI
 from VeraGrid.Gui.Main.object_select_window import ListSelectWindow
 from VeraGrid.Gui.Main.object_select_window import ObjectSelectWindow
 from VeraGrid.Gui.ProceduralGrid.map_warning import MapWarningDialog
@@ -80,6 +84,7 @@ from VeraGrid.Gui.SubstationDesigner.voltage_level_conversion import VoltageLeve
 from VeraGrid.Gui.SyncDialogue.sync_dialogue import SyncDialogueWindow
 from VeraGrid.Gui.SystemScaler.system_scaler import SystemScaler
 from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely
+from VeraGrid.Gui.dialog_lifecycle import is_dialog_available
 from VeraGrid.Gui.general_dialogues import ArrayEditor
 from VeraGrid.Gui.general_dialogues import CgmesOptionsSelector
 from VeraGrid.Gui.general_dialogues import CheckListDialogue
@@ -887,35 +892,153 @@ def build_dialog_for_smoke(target: DialogSmokeTarget, context: DialogSmokeContex
     return dialog
 
 
-def close_dialog_for_smoke(dialog: QtWidgets.QWidget, app: QtWidgets.QApplication) -> None:
+def close_dialog_for_smoke(dialog: QtWidgets.QWidget,
+                           app: QtWidgets.QApplication,
+                           close_extra_widgets: bool = True) -> None:
     """
     Close one smoke dialog using its real lifecycle.
 
     :param dialog: Dialog or window to close.
     :param app: Shared Qt application.
+    :param close_extra_widgets: Close helper top-level widgets created by the dialog.
     :return: None.
     """
-    if isinstance(dialog, AiChatDialogue):
-        dialog.prepare_for_shutdown()
-        dialog.shutdown_turn_thread()
-        dialog.close()
-    elif isinstance(dialog, QtWidgets.QDialog):
-        dialog.reject()
-    else:
-        dialog.close()
+    if is_dialog_available(dialog=dialog):
+        if isinstance(dialog, AiChatDialogue):
+            dialog.prepare_for_shutdown()
+            dialog.shutdown_turn_thread()
+            dialog.close()
+        elif isinstance(dialog, QtWidgets.QDialog):
+            dialog.reject()
+        else:
+            dialog.close()
 
-    delete_dialog_safely(dialog=dialog)
+        delete_dialog_safely(dialog=dialog)
+    else:
+        pass
+
+    if close_extra_widgets:
+        close_extra_top_level_widgets(app=app, primary_dialog=dialog)
+        collect_qt_deletes(app=app)
+    else:
+        app.processEvents()
+
+
+def close_extra_top_level_widgets(app: QtWidgets.QApplication, primary_dialog: QtWidgets.QWidget | None) -> None:
+    """
+    Close top-level helper widgets created by smoke-dialog constructors.
+
+    :param app: Shared Qt application.
+    :param primary_dialog: Dialog already closed by the caller.
+    :return: None.
+    """
+    widgets: List[QtWidgets.QWidget] = list(app.topLevelWidgets())
+    widget: QtWidgets.QWidget
+    for widget in widgets:
+        if widget is primary_dialog:
+            pass
+        elif is_dialog_available(dialog=widget):
+            if isinstance(widget, AiChatDialogue):
+                widget.prepare_for_shutdown()
+                widget.shutdown_turn_thread()
+                widget.close()
+            elif isinstance(widget, QtWidgets.QDialog):
+                widget.reject()
+            else:
+                widget.close()
+            delete_dialog_safely(dialog=widget)
+        else:
+            pass
+
+
+def collect_qt_deletes(app: QtWidgets.QApplication) -> None:
+    """
+    Flush Qt deferred deletes and Python cycles left by smoke constructors.
+
+    :param app: Shared Qt application.
+    :return: None.
+    """
+    app.processEvents()
+    QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
+    app.processEvents()
+    gc.collect(0)
+    gc.collect(1)
+    gc.collect(2)
+    QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
     app.processEvents()
 
 
-def get_dialog_smoke_id(target: DialogSmokeTarget) -> str:
+def run_dialog_smoke_suite_in_child(message_queue: Any) -> None:
     """
-    Build a stable pytest id.
+    Run the full dialog smoke inventory in a disposable child process.
 
-    :param target: Dialog target.
-    :return: Target class name.
+    :param message_queue: Parent-visible queue receiving failure details.
+    :return: None.
     """
-    return target.value
+    app: QtWidgets.QApplication | None = QtWidgets.QApplication.instance()
+    if app is None:
+        app = QtWidgets.QApplication(list(("dialog-smoke",)))
+    else:
+        pass
+
+    target: DialogSmokeTarget
+    for target in DialogSmokeTarget:
+        context: DialogSmokeContext = DialogSmokeContext(app=app)
+        dialog: QtWidgets.QWidget = build_dialog_for_smoke(target=target, context=context)
+
+        try:
+            dialog.show()
+            app.processEvents()
+            assert shiboken6.isValid(dialog)
+        except Exception:
+            message_queue.put(f"{target.value}\n{traceback.format_exc()}")
+            raise
+        finally:
+            close_dialog_for_smoke(dialog=dialog, app=app)
+
+        active_modal_widget: QtWidgets.QWidget | None = app.activeModalWidget()
+        if active_modal_widget is None:
+            pass
+        else:
+            message_queue.put(f"{target.value}\nleft active modal widget: {active_modal_widget}")
+            raise AssertionError(f"{target.value} left active modal widget")
+
+
+def run_dialog_smoke_suite_subprocess(timeout_s: float) -> None:
+    """
+    Run dialog smoke coverage outside the parent pytest Qt process.
+
+    :param timeout_s: Maximum child-process runtime in seconds.
+    :return: None.
+    """
+    process_context: multiprocessing.context.BaseContext = multiprocessing.get_context("spawn")
+    message_queue: Any = process_context.Queue()
+    process: multiprocessing.Process = process_context.Process(
+        target=run_dialog_smoke_suite_in_child,
+        args=(message_queue,),
+    )
+
+    process.start()
+    process.join(timeout_s)
+
+    if process.is_alive():
+        process.terminate()
+        process.join(10.0)
+        raise AssertionError(f"Dialog smoke subprocess timed out after {timeout_s} seconds")
+    else:
+        pass
+
+    message: str = ""
+    try:
+        queued_message: object = message_queue.get_nowait()
+        if isinstance(queued_message, str):
+            message = queued_message
+        else:
+            message = repr(queued_message)
+    except queue.Empty:
+        pass
+
+    assert process.exitcode == 0, message
 
 
 def get_smoked_dialog_class_names() -> Set[str]:
@@ -973,33 +1096,13 @@ def discover_qt_dialog_class_names() -> Set[str]:
     return class_names
 
 
-@pytest.mark.parametrize("target", list(DialogSmokeTarget), ids=get_dialog_smoke_id)
-def test_dialog_opens_and_closes_without_blowing_up(
-    qt_app: QtWidgets.QApplication,
-    target: DialogSmokeTarget,
-) -> None:
+def test_dialog_opens_and_closes_without_blowing_up() -> None:
     """
-    Smoke open and close each stable GUI dialog.
+    Smoke open and close each stable GUI dialog in an isolated process.
 
-    :param qt_app: Shared Qt application fixture.
-    :param target: Dialog target.
     :return: None.
     """
-    app: QtWidgets.QApplication = qt_app
-    context: DialogSmokeContext = DialogSmokeContext(app=app)
-    dialog: QtWidgets.QWidget = build_dialog_for_smoke(target=target, context=context)
-
-    try:
-        dialog.show()
-        app.processEvents()
-        assert shiboken6.isValid(dialog)
-    finally:
-        close_dialog_for_smoke(dialog=dialog, app=app)
-
-    active_modal_widget: QtWidgets.QWidget | None = app.activeModalWidget()
-    assert active_modal_widget is None
-    QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.DeferredDelete)
-    app.processEvents()
+    run_dialog_smoke_suite_subprocess(timeout_s=120.0)
 
 
 def test_dialog_smoke_inventory_is_explicit() -> None:
@@ -1013,3 +1116,84 @@ def test_dialog_smoke_inventory_is_explicit() -> None:
     missing_names: Set[str] = discover_qt_dialog_class_names() - known_names
 
     assert sorted(missing_names) == list()
+
+
+def test_modeless_export_dialogues_reuse_live_windows(qt_app: QtWidgets.QApplication) -> None:
+    """
+    Check that repeated export actions do not orphan live modeless dialogs.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    app: QtWidgets.QApplication = qt_app
+    gui: VeraGridMainGUI = VeraGridMainGUI()
+
+    try:
+        gui.export_psse()
+        app.processEvents()
+        psse_dialog: PsseExportDialogue | None = gui.psse_export_dialogue
+        assert is_dialog_available(dialog=psse_dialog)
+        gui.export_psse()
+        app.processEvents()
+        assert gui.psse_export_dialogue is psse_dialog
+
+        gui.export_power_factory()
+        app.processEvents()
+        dgs_dialog: DgsExportDialogue | None = gui.dgs_export_dialogue
+        assert is_dialog_available(dialog=dgs_dialog)
+        gui.export_power_factory()
+        app.processEvents()
+        assert gui.dgs_export_dialogue is dgs_dialog
+
+        gui.export_matpower()
+        app.processEvents()
+        matpower_dialog: MatpowerExportDialogue | None = gui.matpower_export_dialogue
+        assert is_dialog_available(dialog=matpower_dialog)
+        gui.export_matpower()
+        app.processEvents()
+        assert gui.matpower_export_dialogue is matpower_dialog
+
+        gui.export_ucte()
+        app.processEvents()
+        ucte_dialog: UcteExportDialogue | None = gui.ucte_export_dialogue
+        assert is_dialog_available(dialog=ucte_dialog)
+        gui.export_ucte()
+        app.processEvents()
+        assert gui.ucte_export_dialogue is ucte_dialog
+
+        gui.export_cgmes()
+        app.processEvents()
+        cgmes_dialog: CgmesExportDialogue | None = gui.cgmes_dialogue
+        assert is_dialog_available(dialog=cgmes_dialog)
+        gui.export_cgmes()
+        app.processEvents()
+        assert gui.cgmes_dialogue is cgmes_dialog
+    finally:
+        if is_dialog_available(dialog=gui.psse_export_dialogue):
+            close_dialog_for_smoke(dialog=gui.psse_export_dialogue, app=app, close_extra_widgets=False)
+        else:
+            pass
+        if is_dialog_available(dialog=gui.dgs_export_dialogue):
+            close_dialog_for_smoke(dialog=gui.dgs_export_dialogue, app=app, close_extra_widgets=False)
+        else:
+            pass
+        if is_dialog_available(dialog=gui.matpower_export_dialogue):
+            close_dialog_for_smoke(dialog=gui.matpower_export_dialogue, app=app, close_extra_widgets=False)
+        else:
+            pass
+        if is_dialog_available(dialog=gui.ucte_export_dialogue):
+            close_dialog_for_smoke(dialog=gui.ucte_export_dialogue, app=app, close_extra_widgets=False)
+        else:
+            pass
+        if is_dialog_available(dialog=gui.cgmes_dialogue):
+            close_dialog_for_smoke(dialog=gui.cgmes_dialogue, app=app, close_extra_widgets=False)
+        else:
+            pass
+        if is_dialog_available(dialog=gui):
+            gui.hide()
+            gui.stop_all_threads()
+            delete_dialog_safely(dialog=gui)
+        else:
+            pass
+        close_extra_top_level_widgets(app=app, primary_dialog=gui)
+        collect_qt_deletes(app=app)

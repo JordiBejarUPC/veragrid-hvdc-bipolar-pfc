@@ -51,7 +51,7 @@ from VeraGrid.Gui.python_script_editor import ScriptingPythonEditor
 from VeraGrid.Gui.toast_widget import ToastManager
 from VeraGrid.Gui.AiAgent.ai_chat_dialogue import AiChatDialogue, AiBackendState
 from VeraGrid.Gui.AiAgent.ai_backend import ProviderType
-from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely
+from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, is_dialog_available
 from VeraGrid.Gui.i18n import (
     ActionShortcutState,
     ApplicationTranslator,
@@ -734,8 +734,19 @@ class BaseMainGui(QMainWindow):
         :return:
         """
 
-        self.about_msg_window = AboutDialogueGuiGUI(self)
-        self.about_msg_window.setVisible(True)
+        dialog: AboutDialogueGuiGUI | None = self.about_msg_window
+        if is_dialog_available(dialog=dialog):
+            pass
+        else:
+            dialog = AboutDialogueGuiGUI(self)
+            self.about_msg_window = dialog
+
+        if dialog is not None:
+            dialog.setVisible(True)
+            dialog.raise_()
+            dialog.activateWindow()
+        else:
+            pass
 
     @staticmethod
     def ai_config_file_path() -> str:
@@ -1183,6 +1194,12 @@ class BaseMainGui(QMainWindow):
         """
         Display the grid analysis GUI
         """
+
+        old_dialog: GridAnalysisGUI | None = self.analysis_dialogue
+        if is_dialog_available(dialog=old_dialog):
+            delete_dialog_safely(dialog=old_dialog)
+        else:
+            pass
 
         self.analysis_dialogue = GridAnalysisGUI(circuit=self.circuit,
                                                  power_flow_options=self.get_selected_power_flow_options(),

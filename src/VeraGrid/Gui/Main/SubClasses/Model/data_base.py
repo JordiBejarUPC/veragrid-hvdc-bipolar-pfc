@@ -34,7 +34,7 @@ from VeraGrid.Gui.DeviceEditors.LoadDesigner.load_device_editor import LoadDevic
 from VeraGrid.Gui.DeviceEditors.GeneratorEditor.generator_editor import GeneratorEditorDialog
 from VeraGrid.Gui.DeviceEditors.VscEditor.vsc_device_editor import VscDeviceEditorDialog
 from VeraGrid.Gui.DeviceEditors.TowerBuilder.LineBuilderDialogue import TowerBuilderGUI
-from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, exec_dialog_safely
+from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, exec_dialog_safely, is_dialog_available
 from VeraGrid.Gui.FmuTemplateEditor.fmu_template_editor import FmuTemplateEditorDialog
 from VeraGrid.Gui.SystemScaler.system_scaler import SystemScaler
 from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import GridMapWidget, generate_map_diagram
@@ -470,6 +470,12 @@ class DataBaseTableMain(DiagramsMain):
         source_column: int = header.logicalIndexAt(position)
 
         if model is not None and source_column > -1:
+            old_dialog: ObjectColumnFilterDialog | None = self.object_column_filter_dialog
+            if is_dialog_available(dialog=old_dialog):
+                delete_dialog_safely(dialog=old_dialog)
+            else:
+                pass
+
             self.object_column_filter_dialog = ObjectColumnFilterDialog(
                 proxy_model=model,
                 source_column=source_column,
