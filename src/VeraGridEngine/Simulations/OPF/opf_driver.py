@@ -191,7 +191,7 @@ class OptimalPowerFlowDriver(TimeSeriesDriverTemplate):
 
             self.results.fluid_node_p2x_flow = opf_vars.fluid_node_vars.p2x_flow[0, :]
             self.results.fluid_node_current_level = opf_vars.fluid_node_vars.current_level[0, :]
-            self.results.fluid_node_water_value = opf_vars.fluid_node_vars.water_value[0, :]
+            self.results.fluid_node_fluid_value = opf_vars.fluid_node_vars.fluid_value[0, :]
             self.results.fluid_node_spillage = opf_vars.fluid_node_vars.spillage[0, :]
             self.results.fluid_node_flow_in = opf_vars.fluid_node_vars.flow_in[0, :]
             self.results.fluid_node_flow_out = opf_vars.fluid_node_vars.flow_out[0, :]

@@ -499,7 +499,7 @@ class FluidNodeVars:
         self.flow_in = np.zeros((nt, n_elm), dtype=object)  # m3/s
         self.flow_out = np.zeros((nt, n_elm), dtype=object)  # m3/s
         self.water_balance = np.zeros((nt, n_elm), dtype=object)
-        self.water_value = np.zeros((nt, n_elm), dtype=float)
+        self.fluid_value = np.zeros((nt, n_elm), dtype=float)
 
     def get_values(self, model: LpModel) -> "FluidNodeVars":
         """
@@ -519,9 +519,17 @@ class FluidNodeVars:
                 data.flow_out[t, i] = model.get_value(self.flow_out[t, i])
                 water_balance: object = self.water_balance[t, i]
                 if isinstance(water_balance, (int, float)):
-                    data.water_value[t, i] = 0.0
+                    data.fluid_value[t, i] = 0.0
                 else:
-                    data.water_value[t, i] = model.get_dual_value(water_balance)
+                    water_balance_dual: float = model.get_dual_value(water_balance)
+                    # IMPORTANT FLUID VALUE SIGN CONVENTION:
+                    # The LP dual belongs to the equality written as
+                    # level[t] = previous_level + inflows - spillage - outflows.
+                    # That raw row dual has the opposite sign of the intuitive
+                    # marginal value of one extra stored m3 of fluid.  The public
+                    # result therefore reports -dual so positive values mean that
+                    # stored fluid reduces the OPF objective cost.
+                    data.fluid_value[t, i] = -water_balance_dual
 
         # format the arrays appropriately
         data.p2x_flow = data.p2x_flow.astype(float, copy=False)
@@ -529,7 +537,7 @@ class FluidNodeVars:
         data.spillage = data.spillage.astype(float, copy=False)
         data.flow_in = data.flow_in.astype(float, copy=False)
         data.flow_out = data.flow_out.astype(float, copy=False)
-        data.water_value = data.water_value.astype(float, copy=False)
+        data.fluid_value = data.fluid_value.astype(float, copy=False)
 
         # from the data object itself
         # data.min_level = self.min_level

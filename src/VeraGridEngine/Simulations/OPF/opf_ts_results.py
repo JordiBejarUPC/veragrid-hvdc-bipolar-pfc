@@ -64,7 +64,7 @@ class OptimalPowerFlowTimeSeriesResults(ResultsTemplate):
         ResultsProperty(name='vsc_Pf', tpe=Mat, old_names=list(), expandable=True),
         ResultsProperty(name='vsc_loading', tpe=Mat, old_names=list(), expandable=True),
         ResultsProperty(name='fluid_node_current_level', tpe=Mat, old_names=list(), expandable=True),
-        ResultsProperty(name='fluid_node_water_value', tpe=Mat, old_names=list(), expandable=True),
+        ResultsProperty(name='fluid_node_fluid_value', tpe=Mat, old_names=list(), expandable=True),
         ResultsProperty(name='fluid_node_flow_in', tpe=Mat, old_names=list(), expandable=True),
         ResultsProperty(name='fluid_node_flow_out', tpe=Mat, old_names=list(), expandable=True),
         ResultsProperty(name='fluid_node_p2x_flow', tpe=Mat, old_names=list(), expandable=True),
@@ -145,7 +145,7 @@ class OptimalPowerFlowTimeSeriesResults(ResultsTemplate):
         "battery_energy",
         "battery_invested",
         "fluid_node_current_level",
-        "fluid_node_water_value",
+        "fluid_node_fluid_value",
         "fluid_node_flow_in",
         "fluid_node_flow_out",
         "fluid_node_p2x_flow",
@@ -240,7 +240,7 @@ class OptimalPowerFlowTimeSeriesResults(ResultsTemplate):
                                                                               ResultTypes.HvdcLoading],
 
                                                     ResultTypes.FluidNodeResults: [ResultTypes.FluidCurrentLevel,
-                                                                                   ResultTypes.FluidWaterValue,
+                                                                                   ResultTypes.FluidValue,
                                                                                    ResultTypes.FluidFlowIn,
                                                                                    ResultTypes.FluidFlowOut,
                                                                                    ResultTypes.FluidP2XFlow,
@@ -343,7 +343,7 @@ class OptimalPowerFlowTimeSeriesResults(ResultsTemplate):
         self.battery_invested = np.zeros((nt, nbat), dtype=bool)
 
         self.fluid_node_current_level = np.zeros((nt, n_fluid_node), dtype=float)
-        self.fluid_node_water_value = np.zeros((nt, n_fluid_node), dtype=float)
+        self.fluid_node_fluid_value = np.zeros((nt, n_fluid_node), dtype=float)
         self.fluid_node_flow_in = np.zeros((nt, n_fluid_node), dtype=float)
         self.fluid_node_flow_out = np.zeros((nt, n_fluid_node), dtype=float)
         self.fluid_node_p2x_flow = np.zeros((nt, n_fluid_node), dtype=float)
@@ -572,9 +572,9 @@ class OptimalPowerFlowTimeSeriesResults(ResultsTemplate):
                                 xlabel='',
                                 units='(hm3)')
 
-        elif result_type == ResultTypes.FluidWaterValue:
+        elif result_type == ResultTypes.FluidValue:
 
-            return ResultsTable(data=self.fluid_node_water_value,
+            return ResultsTable(data=self.fluid_node_fluid_value,
                                 index=pd.to_datetime(self.time_array),
                                 idx_device_type=DeviceType.TimeDevice,
                                 columns=self.fluid_node_names,

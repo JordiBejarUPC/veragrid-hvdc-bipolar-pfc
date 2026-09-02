@@ -170,7 +170,7 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
         self.results.vsc_loading = opf_vars.vsc_vars.loading
 
         self.results.fluid_node_current_level = opf_vars.fluid_node_vars.current_level
-        self.results.fluid_node_water_value = opf_vars.fluid_node_vars.water_value
+        self.results.fluid_node_fluid_value = opf_vars.fluid_node_vars.fluid_value
         self.results.fluid_node_flow_in = opf_vars.fluid_node_vars.flow_in
         self.results.fluid_node_flow_out = opf_vars.fluid_node_vars.flow_out
         self.results.fluid_node_p2x_flow = opf_vars.fluid_node_vars.p2x_flow
@@ -261,7 +261,7 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
         self.results.vsc_loading[time_indices, :] = opf_vars.vsc_vars.loading
 
         self.results.fluid_node_current_level[time_indices, :] = opf_vars.fluid_node_vars.current_level
-        self.results.fluid_node_water_value[time_indices, :] = opf_vars.fluid_node_vars.water_value
+        self.results.fluid_node_fluid_value[time_indices, :] = opf_vars.fluid_node_vars.fluid_value
         self.results.fluid_node_flow_in[time_indices, :] = opf_vars.fluid_node_vars.flow_in
         self.results.fluid_node_flow_out[time_indices, :] = opf_vars.fluid_node_vars.flow_out
         self.results.fluid_node_p2x_flow[time_indices, :] = opf_vars.fluid_node_vars.p2x_flow
