@@ -1763,12 +1763,13 @@ class PrpCat(Enum):
     ActionType
     """
     All = 'All'
+    MT = 'Metadata'
+    TP = 'Topology'
     PF = 'Power flow'
     PF3 = 'Power flow (unbalanced)'
     SC = "Short Circuit"
     OPF = 'Optimal Power flow'
     CON = "Contingencies"
-    TP = 'Topology'
     REL = 'Reliability'
     NTC = 'Net Transfer Capacity'
     INV = "Investments"
@@ -5037,6 +5038,8 @@ class BlockType(Enum):
     BATTERY_EMT = "BATTERY_EMT"
     COMPLETE_PSEUDO_VSC_EMT = "COMPLETE_PSEUDO_VSC_EMT"
 
+    MEASUREMENTS_VOLTAGE_ANGLE = "MEASUREMENTS_VOLTAGE_ANGLE"
+    MEASUREMENTS_P_Q = "MEASUREMENTS_P_Q"
     MEASUREMENTS_VOLTAGE_FROM_POLAR = "MEASUREMENTS_VOLTAGE_FROM_POLAR"
     MEASUREMENTS_VOLTAGE_FROM_DC = "MEASUREMENTS_VOLTAGE_FROM_DC"
     MEASUREMENTS_CURRENT_FROM_PQ = "MEASUREMENTS_CURRENT_FROM_PQ"

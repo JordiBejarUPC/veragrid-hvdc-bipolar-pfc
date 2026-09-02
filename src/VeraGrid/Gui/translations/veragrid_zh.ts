@@ -14,62 +14,58 @@
         <translation>关于</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="49"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="89"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;VeraGrid&lt;/span&gt; has been carefully crafted since 2015 to serve as a platform for research and consultancy. Visit &lt;a href=&quot;https://www.eroots.tech/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;eRoots&lt;/span&gt;&lt;/a&gt; for more details. The source of VeraGrid can be found &lt;a href=&quot;https://github.com/SanPen/VeraGrid&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;here.&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;VeraGrid&lt;/span&gt; 自 2015 年以来精心打造，作为研究和咨询平台。参观 &lt;a href=&quot;https://www.eroots.tech/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;eRoots&lt;/span&gt;&lt;/a&gt; 了解更多详情。 VeraGrid的源码可以找到 &lt;a href=&quot;https://github.com/SanPen/VeraGrid&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;在这里。&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="112"/>
         <source>version</source>
-        <translation>版本</translation>
+        <translation type="vanished">版本</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="128"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="133"/>
         <source>Copyright</source>
         <translation>版权</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="164"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="150"/>
         <source>Contributors</source>
         <translation>贡献者</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="170"/>
         <source>TextLabel</source>
-        <translation>TextLabel</translation>
+        <translation type="vanished">TextLabel</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="184"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="160"/>
         <source>Libraries</source>
         <translation>图书馆</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="190"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="166"/>
         <source>Copy the table</source>
         <translation>复制表格</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="210"/>
         <source>Update VeraGrid. If you are on windows don&apos;t do this.</source>
-        <translation>更新VeraGrid。如果您使用的是 Windows，请不要执行此操作。</translation>
+        <translation type="vanished">更新VeraGrid。如果您使用的是 Windows，请不要执行此操作。</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="254"/>
         <source>Optional libraries</source>
-        <translation>可选库</translation>
+        <translation type="vanished">可选库</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="264"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="197"/>
         <source>License</source>
         <translation>许可证</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="270"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="203"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;This program comes with absolutelly no warranty. This is free software, and you are welcome to redistribute it under the conditions set by the license. VeraGrid is licensed under the &lt;a href=&quot;https://www.mozilla.org/en-US/MPL/2.0/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;Mozilla Public License V2&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;该程序绝对不提供任何保证。这是免费软件，欢迎您在许可证规定的条件下重新分发它。 VeraGrid 已获得许可 &lt;a href=&quot;https://www.mozilla.org/en-US/MPL/2.0/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;Mozilla 公共许可证 V2&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="291"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="224"/>
         <source>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;meta charset=&quot;utf-8&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
@@ -129,7 +125,7 @@ li.checked::标记 { content: &quot;\2612&quot;; }
     </message>
     <message>
         <source>Not installed</source>
-        <translation>未安装</translation>
+        <translation type="vanished">未安装</translation>
     </message>
     <message>
         <source>Package</source>
@@ -145,11 +141,75 @@ li.checked::标记 { content: &quot;\2612&quot;; }
     </message>
     <message>
         <source>licensed</source>
-        <translation>许可</translation>
+        <translation type="vanished">许可</translation>
     </message>
     <message>
         <source>supported version</source>
+        <translation type="vanished">支持版本</translation>
+    </message>
+    <message>
+        <source>Action</source>
+        <translation>操作</translation>
+    </message>
+    <message>
+        <source>Command output:</source>
+        <translation>命令输出：</translation>
+    </message>
+    <message>
+        <source>Exit code: {code}</source>
+        <translation>退出代码：{code}</translation>
+    </message>
+    <message>
+        <source>False</source>
+        <translation>否</translation>
+    </message>
+    <message>
+        <source>Information</source>
+        <translation>信息</translation>
+    </message>
+    <message>
+        <source>Install</source>
+        <translation>安装</translation>
+    </message>
+    <message>
+        <source>Installed</source>
+        <translation>已安装</translation>
+    </message>
+    <message>
+        <source>Installed version</source>
+        <translation>已安装版本</translation>
+    </message>
+    <message>
+        <source>Licensed</source>
+        <translation>已授权</translation>
+    </message>
+    <message>
+        <source>Newest version</source>
+        <translation>最新版本</translation>
+    </message>
+    <message>
+        <source>Supported version</source>
         <translation>支持版本</translation>
+    </message>
+    <message>
+        <source>Unknown</source>
+        <translation>未知</translation>
+    </message>
+    <message>
+        <source>Update</source>
+        <translation>更新</translation>
+    </message>
+    <message>
+        <source>Warning</source>
+        <translation>警告</translation>
+    </message>
+    <message>
+        <source>{name} update failed after {attempts} attempt(s).</source>
+        <translation>{name} 在 {attempts} 次尝试后更新失败。</translation>
+    </message>
+    <message>
+        <source>{name} updated successfully after {attempts} attempt(s)</source>
+        <translation>{name} 已在 {attempts} 次尝试后成功更新。</translation>
     </message>
 </context>
 <context>
@@ -1720,6 +1780,46 @@ Are you sure?</source>
         <translation>这将删除所有未选中的母线及其连接的元素。此操作不可撤销，如果您不知道自己在做什么，则非常危险。
 您确定吗？</translation>
     </message>
+    <message>
+        <source>There are no buses to connect this device.</source>
+        <translation>没有总线可连接此设备。</translation>
+    </message>
+    <message>
+        <source>VSC devices need one AC bus and two DC buses.</source>
+        <translation type="vanished">VSC 设备需要一个 AC 总线和两个 DC 总线。</translation>
+    </message>
+    <message>
+        <source>There are no devices to target.</source>
+        <translation>没有设备可供选择。</translation>
+    </message>
+    <message>
+        <source>There are no supported devices to target.</source>
+        <translation>没有支持的设备可供选择。</translation>
+    </message>
+    <message>
+        <source>VSC devices need one AC bus, one DC bus, and an optional DC bus.</source>
+        <translation>VSC 设备需要一个 AC 母线、一个 DC 母线和一个可选的 DC 母线。</translation>
+    </message>
+    <message>
+        <source>Nothing to paste</source>
+        <translation>无需粘贴</translation>
+    </message>
+    <message>
+        <source>Paste</source>
+        <translation type="vanished">粘贴</translation>
+    </message>
+    <message>
+        <source>Paste data</source>
+        <translation>粘贴数据</translation>
+    </message>
+    <message>
+        <source>Pasted!</source>
+        <translation>已粘贴！</translation>
+    </message>
+    <message>
+        <source>Paste column</source>
+        <translation>粘贴列</translation>
+    </message>
 </context>
 <context>
     <name>DcLineDeviceEditor</name>
@@ -1783,6 +1883,32 @@ Are you sure?</source>
         <location filename="../DeviceEditors/DcLineEditor/dc_line_editor_gui.ui" line="98"/>
         <source>Accept</source>
         <translation>接受</translation>
+    </message>
+</context>
+<context>
+    <name>DeviceSelectorDialogue</name>
+    <message>
+        <source>Device selection</source>
+        <translation>设备选择</translation>
+    </message>
+    <message>
+        <source>None</source>
+        <translation type="vanished">无</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation type="vanished">搜索</translation>
+    </message>
+</context>
+<context>
+    <name>DeviceSelectorPanel</name>
+    <message>
+        <source>None</source>
+        <translation>无</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>搜索</translation>
     </message>
 </context>
 <context>
@@ -5978,6 +6104,17 @@ Do you want to continue without a template?</source>
     </message>
 </context>
 <context>
+    <name>MapLibraryModel</name>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>将 {name} 拖放到原理图</translation>
+    </message>
+    <message>
+        <source>Substation</source>
+        <translation>变电站</translation>
+    </message>
+</context>
+<context>
     <name>MapLineContainer</name>
     <message>
         <source>Do you want to update the time series active status accordingly?</source>
@@ -6083,6 +6220,17 @@ Do you want to continue without a template?</source>
 Cancel it and close the window?</source>
         <translation>正在运行导入程序。
 是否取消并关闭窗口？</translation>
+    </message>
+</context>
+<context>
+    <name>NewConnectedDeviceDialogue</name>
+    <message>
+        <source>Name</source>
+        <translation>名称</translation>
+    </message>
+    <message>
+        <source>New device</source>
+        <translation>新设备</translation>
     </message>
 </context>
 <context>
@@ -6865,6 +7013,37 @@ This will remove the direct child scenarios after their changes are applied.</so
     <message>
         <source>Set Current Scenario</source>
         <translation>设置当前场景</translation>
+    </message>
+</context>
+<context>
+    <name>SchematicLibraryModel</name>
+    <message>
+        <source>3W-Transformer</source>
+        <translation>3W-变压器</translation>
+    </message>
+    <message>
+        <source>Bus</source>
+        <translation>母线</translation>
+    </message>
+    <message>
+        <source>Connectivity bus</source>
+        <translation>连接总线</translation>
+    </message>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>将 {name} 拖放到原理图</translation>
+    </message>
+    <message>
+        <source>Fluid-node</source>
+        <translation>流体节点</translation>
+    </message>
+    <message>
+        <source>NW-Transformer</source>
+        <translation>NW-变压器</translation>
+    </message>
+    <message>
+        <source>VSC</source>
+        <translation>VSC</translation>
     </message>
 </context>
 <context>
@@ -8078,6 +8257,272 @@ The results are needed to initialize this simulation.</source>
 Resolve the operating point before running this RMS simulation.</source>
         <translation>潮流未收敛。
 在运行此 RMS 仿真之前，请解决运行点。</translation>
+    </message>
+    <message>
+        <source>Adequacy studies need time data...</source>
+        <translation>充足性研究需要时间数据...</translation>
+    </message>
+    <message>
+        <source>Another ATC time series is being executed now...</source>
+        <translation>另一个 ATC 时间序列正在执行中...</translation>
+    </message>
+    <message>
+        <source>Another EMT simulation is running already...</source>
+        <translation>另一个 EMT 仿真正在运行中...</translation>
+    </message>
+    <message>
+        <source>Another LODF is being executed now...</source>
+        <translation>另一个 LODF 正在执行中...</translation>
+    </message>
+    <message>
+        <source>Another Monte Carlo simulation is running...</source>
+        <translation>另一个蒙特卡罗仿真正在运行...</translation>
+    </message>
+    <message>
+        <source>Another OPF is being run...</source>
+        <translation>另一个 OPF 正在运行...</translation>
+    </message>
+    <message>
+        <source>Another OPF time series is running already...</source>
+        <translation>另一个 OPF 时间序列正在运行中...</translation>
+    </message>
+    <message>
+        <source>Another Optimal NCT time series is being run...</source>
+        <translation>另一个最佳 NCT 时间序列正在运行...</translation>
+    </message>
+    <message>
+        <source>Another PTDF is being executed now...</source>
+        <translation>另一个 PTDF 正在执行中...</translation>
+    </message>
+    <message>
+        <source>Another Small-Signal stability analysis EMT simulation is running already...</source>
+        <translation>另一个小信号稳定性分析 EMT 仿真正在运行中...</translation>
+    </message>
+    <message>
+        <source>Another Small-Signal stability analysis simulation is running already...</source>
+        <translation>另一个小信号稳定性分析仿真正在运行中...</translation>
+    </message>
+    <message>
+        <source>Another catalogue optimization is already running...</source>
+        <translation>另一个目录优化正在运行中...</translation>
+    </message>
+    <message>
+        <source>Another clustering is being executed now...</source>
+        <translation>另一个聚类分析正在执行中...</translation>
+    </message>
+    <message>
+        <source>Another contingency analysis is being executed now...</source>
+        <translation>另一个工况分析正在执行中...</translation>
+    </message>
+    <message>
+        <source>Another inputs analysis is being run...</source>
+        <translation>另一个输入分析正在运行...</translation>
+    </message>
+    <message>
+        <source>Another nodal capacity study is being run...</source>
+        <translation>另一个节点容量研究正在运行...</translation>
+    </message>
+    <message>
+        <source>Another reliability study is running already...</source>
+        <translation>另一个可靠性研究正在运行中...</translation>
+    </message>
+    <message>
+        <source>Another rms simulation is running already...</source>
+        <translation>另一个 rms 仿真正在运行中...</translation>
+    </message>
+    <message>
+        <source>Another simulation of the same type is running...</source>
+        <translation>另一个相同类型的仿真正在运行...</translation>
+    </message>
+    <message>
+        <source>Another three-phase time series power flow is being executed now...</source>
+        <translation>另一个三相时间序列潮流计算正在执行中...</translation>
+    </message>
+    <message>
+        <source>Another time series power flow is being executed now...</source>
+        <translation>另一个时间序列潮流计算正在执行中...</translation>
+    </message>
+    <message>
+        <source>Another voltage collapse simulation is running...</source>
+        <translation>另一个电压崩溃仿真正在运行...</translation>
+    </message>
+    <message>
+        <source>Cannot colour because the PTDF results have zero time steps :/</source>
+        <translation>无法着色，因为 PTDF 结果的时间步长为零 :/</translation>
+    </message>
+    <message>
+        <source>Check the selected start and finnish time series indices.</source>
+        <translation>检查选定的起始和结束时间序列索引。</translation>
+    </message>
+    <message>
+        <source>Linear OPF investment studies need time data...</source>
+        <translation>线性 OPF 投资研究需要时间数据...</translation>
+    </message>
+    <message>
+        <source>No from areas!</source>
+        <translation>没有源区域！</translation>
+    </message>
+    <message>
+        <source>No results for the three-phase time series simulation.</source>
+        <translation>三相时间序列仿真没有结果。</translation>
+    </message>
+    <message>
+        <source>No results for the time series simulation.</source>
+        <translation>时间序列仿真没有结果。</translation>
+    </message>
+    <message>
+        <source>No to areas!</source>
+        <translation>没有汇区域！</translation>
+    </message>
+    <message>
+        <source>Nothing to simulate...</source>
+        <translation>没有内容可仿真...</translation>
+    </message>
+    <message>
+        <source>Objective not supported yet :/</source>
+        <translation>目标尚未支持 :/</translation>
+    </message>
+    <message>
+        <source>Optimal power flow converged :)</source>
+        <translation>最优潮流收敛 :)</translation>
+    </message>
+    <message>
+        <source>Optimal power flow not converged :/
+Check that all Branches have rating and 
+that the generator bounds are ok.
+You may also use the diagnostic tool (F8)</source>
+        <translation>最优潮流未收敛 :/
+请检查所有支路是否有额定值，
+以及发电机限值是否正常。
+您也可以使用诊断工具 (F8)</translation>
+    </message>
+    <message>
+        <source>Power flow 3ph converged :)</source>
+        <translation>三相潮流收敛 :)</translation>
+    </message>
+    <message>
+        <source>Power flow 3ph not converged :/</source>
+        <translation>三相潮流未收敛 :/</translation>
+    </message>
+    <message>
+        <source>Power flow converged :)</source>
+        <translation>潮流收敛 :)</translation>
+    </message>
+    <message>
+        <source>Power flow not converged :/</source>
+        <translation>潮流未收敛 :/</translation>
+    </message>
+    <message>
+        <source>Reliability studies need time data...</source>
+        <translation>可靠性研究需要时间数据...</translation>
+    </message>
+    <message>
+        <source>Remote results received!</source>
+        <translation>接收到远程结果！</translation>
+    </message>
+    <message>
+        <source>Run a linear analysis to enable filter contingencies by sensitivity</source>
+        <translation>运行线性分析以通过敏感性分析启用滤波器工况</translation>
+    </message>
+    <message>
+        <source>Simulation converged for all active simulation groups :)</source>
+        <translation>所有活动仿真组均收敛 :)</translation>
+    </message>
+    <message>
+        <source>Simulation well initialized for all active simulation groups :)</source>
+        <translation>所有活动仿真组均初始化成功 :)</translation>
+    </message>
+    <message>
+        <source>Small-Signal stability analysis EMT has finished correctly!</source>
+        <translation>小信号稳定性分析 EMT 已正确完成！</translation>
+    </message>
+    <message>
+        <source>Small-signal stability analysis RMS has finished correctly!</source>
+        <translation>小信号稳定性分析 RMS 已正确完成！</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no ATC results.</source>
+        <translation>发生错误，没有 ATC 结果。</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no ATC time series results.</source>
+        <translation>发生错误，没有 ATC 时间序列结果。</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no PTDF Time series results.</source>
+        <translation>发生错误，没有 PTDF 时间序列结果。</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no PTDF results.</source>
+        <translation>发生错误，没有 PTDF 结果。</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no contingency analysis results.</source>
+        <translation>发生错误，没有暂态分析结果。</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no contingency time series results.</source>
+        <translation>发生错误，没有暂态时间序列结果。</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no investments evaluation results.</source>
+        <translation>发生错误，没有投资评估结果。</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no voltage stability results.</source>
+        <translation>发生错误，没有电压稳定结果。</translation>
+    </message>
+    <message>
+        <source>State estimation converged :)</source>
+        <translation>状态估计收敛 :)</translation>
+    </message>
+    <message>
+        <source>State estimation not converged :/</source>
+        <translation>状态估计未收敛 :/</translation>
+    </message>
+    <message>
+        <source>Stochastic power flow needs at least one time-series sample.</source>
+        <translation>随机潮流需要至少一个时间序列样本。</translation>
+    </message>
+    <message>
+        <source>The grid doesn&apos;t have time series :/</source>
+        <translation>电网没有时间序列 :/</translation>
+    </message>
+    <message>
+        <source>The voltage stability did not converge.
+Is this case already at the collapse limit?</source>
+        <translation>电压稳定未收敛。
+此情况是否已达到崩溃极限？</translation>
+    </message>
+    <message>
+        <source>There are no PTDF results :/</source>
+        <translation>没有 PTDF 结果 :/</translation>
+    </message>
+    <message>
+        <source>There are no active RMS event groups to report.</source>
+        <translation>没有可报告的活动 RMS 事件组。</translation>
+    </message>
+    <message>
+        <source>There are no contingency groups declared...</source>
+        <translation>未声明任何暂态组...</translation>
+    </message>
+    <message>
+        <source>There are no time series!</source>
+        <translation>没有时间序列！</translation>
+    </message>
+    <message>
+        <source>There are no time series.</source>
+        <translation>没有时间序列。</translation>
+    </message>
+    <message>
+        <source>There are no time series...</source>
+        <translation>没有时间序列...</translation>
+    </message>
+    <message>
+        <source>You cannot find {0} clusters for {1} time steps.
+Modify the number of clusters in the ML settings.</source>
+        <translation>无法为 {1} 个时间步找到 {0} 个聚类。
+请修改 ML 设置中的聚类数量。</translation>
     </message>
 </context>
 <context>
@@ -13944,7 +14389,7 @@ You need to load or create a grid!</source>
         <location filename="../Main/MainWindow.ui" line="11827"/>
         <location filename="../Main/MainWindow.ui" line="11830"/>
         <source>Stop &quot;stuff running right now&quot;</source>
-        <translation>停止 "当前正在运行的内容"</translation>
+        <translation>停止 &quot;当前正在运行的内容&quot;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11968"/>

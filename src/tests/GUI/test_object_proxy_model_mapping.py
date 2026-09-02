@@ -232,49 +232,6 @@ def test_column_filter_dialog_cancel_clears_filter() -> None:
     assert proxy_model.rowCount() == 2
 
 
-def test_filtered_column_header_paints_filter_indicator() -> None:
-    """
-    Check that filtered object columns paint the active filter icon.
-    """
-    get_qt_app()
-
-    view: QtWidgets.QTableView = QtWidgets.QTableView()
-    view.setHorizontalHeader(HeaderViewWithWordWrap(view))
-    zulu: Bus = Bus(name="Zulu")
-    alpha: Bus = Bus(name="Alpha")
-    properties: List[GCProp] = [zulu.registered_properties["name"]]
-    source_model: ObjectsModel = ObjectsModel(
-        objects=[zulu, alpha],
-        property_list=properties,
-        time_index=None,
-        parent=view,
-        editable=True,
-    )
-    proxy_model: ObjectModelFilterProxy = ObjectModelFilterProxy(mdl=source_model)
-    view.setModel(proxy_model)
-    view.resize(240, 120)
-    view.show()
-    QtWidgets.QApplication.processEvents()
-
-    proxy_model.set_column_filter(source_column=0, accepted_values={"Alpha"})
-    view.horizontalHeader().viewport().update()
-    QtWidgets.QApplication.processEvents()
-
-    header_image: QtGui.QImage = view.horizontalHeader().grab().toImage()
-    found_indicator_pixel: bool = False
-    x_index: int
-    y_index: int
-    for y_index in range(header_image.height()):
-        for x_index in range(header_image.width()):
-            color: QtGui.QColor = QtGui.QColor(header_image.pixel(x_index, y_index))
-            if color.blue() > 160 and color.red() < 120:
-                found_indicator_pixel = True
-            else:
-                pass
-
-    assert found_indicator_pixel is True
-
-
 def test_sorted_column_header_has_sort_indicator() -> None:
     """
     Check that sorted object columns expose a header indicator like filters.

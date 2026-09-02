@@ -14,62 +14,58 @@
         <translation>Acerca de</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="49"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="89"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;VeraGrid&lt;/span&gt; has been carefully crafted since 2015 to serve as a platform for research and consultancy. Visit &lt;a href=&quot;https://www.eroots.tech/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;eRoots&lt;/span&gt;&lt;/a&gt; for more details. The source of VeraGrid can be found &lt;a href=&quot;https://github.com/SanPen/VeraGrid&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;here.&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;VeraGrid&lt;/span&gt; se ha desarrollado cuidadosamente desde 2015 para servir como plataforma de investigación y consultoría. Visite &lt;a href=&quot;https://www.eroots.tech/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;eRoots&lt;/span&gt;&lt;/a&gt; para más detalles. El código fuente de VeraGrid puede encontrarse &lt;a href=&quot;https://github.com/SanPen/VeraGrid&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;aquí.&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="112"/>
         <source>version</source>
-        <translation>versión</translation>
+        <translation type="vanished">versión</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="128"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="133"/>
         <source>Copyright</source>
         <translation>Copyright</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="164"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="150"/>
         <source>Contributors</source>
         <translation>Colaboradores</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="170"/>
         <source>TextLabel</source>
-        <translation>Etiqueta de texto</translation>
+        <translation type="vanished">Etiqueta de texto</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="184"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="160"/>
         <source>Libraries</source>
         <translation>Librerías</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="190"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="166"/>
         <source>Copy the table</source>
         <translation>Copiar la tabla</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="210"/>
         <source>Update VeraGrid. If you are on windows don&apos;t do this.</source>
-        <translation>Actualizar VeraGrid. Si está en Windows no haga esto.</translation>
+        <translation type="vanished">Actualizar VeraGrid. Si está en Windows no haga esto.</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="254"/>
         <source>Optional libraries</source>
-        <translation>Librerías opcionales</translation>
+        <translation type="vanished">Librerías opcionales</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="264"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="197"/>
         <source>License</source>
         <translation>Licencia</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="270"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="203"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;This program comes with absolutelly no warranty. This is free software, and you are welcome to redistribute it under the conditions set by the license. VeraGrid is licensed under the &lt;a href=&quot;https://www.mozilla.org/en-US/MPL/2.0/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;Mozilla Public License V2&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;Este programa se suministra sin ninguna garantía. Es software libre y puede redistribuirlo bajo las condiciones establecidas por la licencia. VeraGrid está licenciado bajo la &lt;a href=&quot;https://www.mozilla.org/en-US/MPL/2.0/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;Mozilla Public License V2&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="291"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="224"/>
         <source>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;meta charset=&quot;utf-8&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
@@ -129,7 +125,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
     </message>
     <message>
         <source>Not installed</source>
-        <translation>No instalado</translation>
+        <translation type="vanished">No instalado</translation>
     </message>
     <message>
         <source>Package</source>
@@ -145,11 +141,75 @@ li.checked::marker { content: &quot;\2612&quot;; }
     </message>
     <message>
         <source>licensed</source>
-        <translation>Licenciado</translation>
+        <translation type="vanished">Licenciado</translation>
     </message>
     <message>
         <source>supported version</source>
+        <translation type="vanished">Versión compatible</translation>
+    </message>
+    <message>
+        <source>Action</source>
+        <translation>Acción</translation>
+    </message>
+    <message>
+        <source>Command output:</source>
+        <translation>Salida del comando:</translation>
+    </message>
+    <message>
+        <source>Exit code: {code}</source>
+        <translation>Código de salida: {code}</translation>
+    </message>
+    <message>
+        <source>False</source>
+        <translation>Falso</translation>
+    </message>
+    <message>
+        <source>Information</source>
+        <translation>Información</translation>
+    </message>
+    <message>
+        <source>Install</source>
+        <translation>Instalar</translation>
+    </message>
+    <message>
+        <source>Installed</source>
+        <translation>Instalado</translation>
+    </message>
+    <message>
+        <source>Installed version</source>
+        <translation>Versión instalada</translation>
+    </message>
+    <message>
+        <source>Licensed</source>
+        <translation>Con licencia</translation>
+    </message>
+    <message>
+        <source>Newest version</source>
+        <translation>Última versión</translation>
+    </message>
+    <message>
+        <source>Supported version</source>
         <translation>Versión compatible</translation>
+    </message>
+    <message>
+        <source>Unknown</source>
+        <translation>Desconocido</translation>
+    </message>
+    <message>
+        <source>Update</source>
+        <translation>Actualizar</translation>
+    </message>
+    <message>
+        <source>Warning</source>
+        <translation>Advertencia</translation>
+    </message>
+    <message>
+        <source>{name} update failed after {attempts} attempt(s).</source>
+        <translation>La actualización de {name} falló después de {attempts} intento(s).</translation>
+    </message>
+    <message>
+        <source>{name} updated successfully after {attempts} attempt(s)</source>
+        <translation>{name} actualizado con éxito después de {attempts} intento(s)</translation>
     </message>
 </context>
 <context>
@@ -1720,6 +1780,46 @@ Are you sure?</translation>
         <source>The proprty {property_name} cannot be found :(</source>
         <translation>La propiedad {property_name} no se puede encontrar :(</translation>
     </message>
+    <message>
+        <source>There are no buses to connect this device.</source>
+        <translation>No hay buses para conectar este dispositivo.</translation>
+    </message>
+    <message>
+        <source>VSC devices need one AC bus and two DC buses.</source>
+        <translation type="vanished">Los dispositivos VSC necesitan un bus CA y dos buses CC.</translation>
+    </message>
+    <message>
+        <source>There are no devices to target.</source>
+        <translation>No hay dispositivos para seleccionar.</translation>
+    </message>
+    <message>
+        <source>There are no supported devices to target.</source>
+        <translation>No hay dispositivos compatibles para seleccionar.</translation>
+    </message>
+    <message>
+        <source>VSC devices need one AC bus, one DC bus, and an optional DC bus.</source>
+        <translation>Los dispositivos VSC necesitan un bus de CA, un bus de CC y un bus de CC opcional.</translation>
+    </message>
+    <message>
+        <source>Nothing to paste</source>
+        <translation>No hay nada que pegar</translation>
+    </message>
+    <message>
+        <source>Paste</source>
+        <translation type="vanished">Pegar</translation>
+    </message>
+    <message>
+        <source>Paste data</source>
+        <translation>Pegar datos</translation>
+    </message>
+    <message>
+        <source>Pasted!</source>
+        <translation>¡Pegado!</translation>
+    </message>
+    <message>
+        <source>Paste column</source>
+        <translation>Pegar columna</translation>
+    </message>
 </context>
 <context>
     <name>DcLineDeviceEditor</name>
@@ -1783,6 +1883,32 @@ Are you sure?</translation>
         <location filename="../DeviceEditors/DcLineEditor/dc_line_editor_gui.ui" line="98"/>
         <source>Accept</source>
         <translation>Aceptar</translation>
+    </message>
+</context>
+<context>
+    <name>DeviceSelectorDialogue</name>
+    <message>
+        <source>Device selection</source>
+        <translation>Selección de dispositivo</translation>
+    </message>
+    <message>
+        <source>None</source>
+        <translation type="vanished">Ninguno</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation type="vanished">Buscar</translation>
+    </message>
+</context>
+<context>
+    <name>DeviceSelectorPanel</name>
+    <message>
+        <source>None</source>
+        <translation>Ninguno</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>Buscar</translation>
     </message>
 </context>
 <context>
@@ -5978,6 +6104,17 @@ Por favor, corrija los datos e inténtelo de nuevo.</translation>
     </message>
 </context>
 <context>
+    <name>MapLibraryModel</name>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>Arrastrar y soltar {name} en el esquemático</translation>
+    </message>
+    <message>
+        <source>Substation</source>
+        <translation>Subestación</translation>
+    </message>
+</context>
+<context>
     <name>MapLineContainer</name>
     <message>
         <source>Do you want to update the time series active status accordingly?</source>
@@ -6083,6 +6220,17 @@ Por favor, corrija los datos e inténtelo de nuevo.</translation>
 Cancel it and close the window?</source>
         <translation>Hay un procedimiento de importación en ejecución.
 ¿Cancelar y cerrar la ventana?</translation>
+    </message>
+</context>
+<context>
+    <name>NewConnectedDeviceDialogue</name>
+    <message>
+        <source>Name</source>
+        <translation>Nombre</translation>
+    </message>
+    <message>
+        <source>New device</source>
+        <translation>Dispositivo nuevo</translation>
     </message>
 </context>
 <context>
@@ -6865,6 +7013,37 @@ This will remove the direct child scenarios after their changes are applied.</so
         <translation>¿Desea fusionar {child_count} escenario(s) hijo en &apos;{scenario_name}&apos;?
 
 Esto eliminará los escenarios hijos directos después de aplicar sus cambios.</translation>
+    </message>
+</context>
+<context>
+    <name>SchematicLibraryModel</name>
+    <message>
+        <source>3W-Transformer</source>
+        <translation>Transformador 3W</translation>
+    </message>
+    <message>
+        <source>Bus</source>
+        <translation>Bus</translation>
+    </message>
+    <message>
+        <source>Connectivity bus</source>
+        <translation>Bus de conectividad</translation>
+    </message>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>Arrastrar y soltar {name} en el esquemático</translation>
+    </message>
+    <message>
+        <source>Fluid-node</source>
+        <translation>Nodo de fluido</translation>
+    </message>
+    <message>
+        <source>NW-Transformer</source>
+        <translation>Transformador NW</translation>
+    </message>
+    <message>
+        <source>VSC</source>
+        <translation>VSC</translation>
     </message>
 </context>
 <context>
@@ -8080,6 +8259,272 @@ Se necesitan estos resultados para inicializar esta simulación.</translation>
 Resolve the operating point before running this RMS simulation.</source>
         <translation>El flujo de potencia no convergió.
 Resuelva el punto operativo antes de ejecutar esta simulación RMS.</translation>
+    </message>
+    <message>
+        <source>Adequacy studies need time data...</source>
+        <translation>Los estudios de adecuación necesitan datos temporales...</translation>
+    </message>
+    <message>
+        <source>Another ATC time series is being executed now...</source>
+        <translation>Se está ejecutando otra serie temporal ATC...</translation>
+    </message>
+    <message>
+        <source>Another EMT simulation is running already...</source>
+        <translation>Ya se está ejecutando otra simulación EMT...</translation>
+    </message>
+    <message>
+        <source>Another LODF is being executed now...</source>
+        <translation>Se está ejecutando otra LODF...</translation>
+    </message>
+    <message>
+        <source>Another Monte Carlo simulation is running...</source>
+        <translation>Se está ejecutando otra simulación Monte Carlo...</translation>
+    </message>
+    <message>
+        <source>Another OPF is being run...</source>
+        <translation>Se está ejecutando otro OPF...</translation>
+    </message>
+    <message>
+        <source>Another OPF time series is running already...</source>
+        <translation>Ya se está ejecutando otra serie temporal OPF...</translation>
+    </message>
+    <message>
+        <source>Another Optimal NCT time series is being run...</source>
+        <translation>Se está ejecutando otra serie temporal NCT Óptimo...</translation>
+    </message>
+    <message>
+        <source>Another PTDF is being executed now...</source>
+        <translation>Se está ejecutando otro PTDF...</translation>
+    </message>
+    <message>
+        <source>Another Small-Signal stability analysis EMT simulation is running already...</source>
+        <translation>Ya se está ejecutando otra simulación EMT de análisis de estabilidad de pequeña señal...</translation>
+    </message>
+    <message>
+        <source>Another Small-Signal stability analysis simulation is running already...</source>
+        <translation>Ya se está ejecutando otra simulación de análisis de estabilidad de pequeña señal...</translation>
+    </message>
+    <message>
+        <source>Another catalogue optimization is already running...</source>
+        <translation>Ya se está ejecutando otra optimización de catálogo...</translation>
+    </message>
+    <message>
+        <source>Another clustering is being executed now...</source>
+        <translation>Se está ejecutando otro agrupamiento...</translation>
+    </message>
+    <message>
+        <source>Another contingency analysis is being executed now...</source>
+        <translation>Se está ejecutando otro análisis de contingencia...</translation>
+    </message>
+    <message>
+        <source>Another inputs analysis is being run...</source>
+        <translation>Se está ejecutando otro análisis de entradas...</translation>
+    </message>
+    <message>
+        <source>Another nodal capacity study is being run...</source>
+        <translation>Se está ejecutando otro estudio de capacidad nodal...</translation>
+    </message>
+    <message>
+        <source>Another reliability study is running already...</source>
+        <translation>Ya se está ejecutando otro estudio de fiabilidad...</translation>
+    </message>
+    <message>
+        <source>Another rms simulation is running already...</source>
+        <translation>Ya se está ejecutando otra simulación rms...</translation>
+    </message>
+    <message>
+        <source>Another simulation of the same type is running...</source>
+        <translation>Se está ejecutando otra simulación del mismo tipo...</translation>
+    </message>
+    <message>
+        <source>Another three-phase time series power flow is being executed now...</source>
+        <translation>Se está ejecutando otro flujo de potencia trifásico en serie temporal...</translation>
+    </message>
+    <message>
+        <source>Another time series power flow is being executed now...</source>
+        <translation>Se está ejecutando otro flujo de potencia en serie temporal...</translation>
+    </message>
+    <message>
+        <source>Another voltage collapse simulation is running...</source>
+        <translation>Se está ejecutando otra simulación de colapso de tensión...</translation>
+    </message>
+    <message>
+        <source>Cannot colour because the PTDF results have zero time steps :/</source>
+        <translation>No se puede colorear porque los resultados PTDF tienen cero pasos de tiempo :/</translation>
+    </message>
+    <message>
+        <source>Check the selected start and finnish time series indices.</source>
+        <translation>Compruebe los índices de inicio y fin de la serie temporal seleccionada.</translation>
+    </message>
+    <message>
+        <source>Linear OPF investment studies need time data...</source>
+        <translation>Los estudios de inversión OPF lineal necesitan datos temporales...</translation>
+    </message>
+    <message>
+        <source>No from areas!</source>
+        <translation>¡Sin áreas de origen!</translation>
+    </message>
+    <message>
+        <source>No results for the three-phase time series simulation.</source>
+        <translation>No hay resultados para la simulación trifásica en serie temporal.</translation>
+    </message>
+    <message>
+        <source>No results for the time series simulation.</source>
+        <translation>No hay resultados para la simulación en serie temporal.</translation>
+    </message>
+    <message>
+        <source>No to areas!</source>
+        <translation>¡Sin áreas de destino!</translation>
+    </message>
+    <message>
+        <source>Nothing to simulate...</source>
+        <translation>Nada que simular...</translation>
+    </message>
+    <message>
+        <source>Objective not supported yet :/</source>
+        <translation>Objetivo aún no soportado :/</translation>
+    </message>
+    <message>
+        <source>Optimal power flow converged :)</source>
+        <translation>Flujo de potencia óptimo convergido :)</translation>
+    </message>
+    <message>
+        <source>Optimal power flow not converged :/
+Check that all Branches have rating and 
+that the generator bounds are ok.
+You may also use the diagnostic tool (F8)</source>
+        <translation>Flujo de potencia óptimo no convergido :/
+Compruebe que todas las Ramas tengan clasificación y 
+que los límites del generador estén bien.
+También puede usar la herramienta de diagnóstico (F8)</translation>
+    </message>
+    <message>
+        <source>Power flow 3ph converged :)</source>
+        <translation>Flujo de potencia 3f convergido :)</translation>
+    </message>
+    <message>
+        <source>Power flow 3ph not converged :/</source>
+        <translation>Flujo de potencia 3f no convergido :/</translation>
+    </message>
+    <message>
+        <source>Power flow converged :)</source>
+        <translation>Flujo de potencia convergido :)</translation>
+    </message>
+    <message>
+        <source>Power flow not converged :/</source>
+        <translation>Flujo de potencia no convergido :/</translation>
+    </message>
+    <message>
+        <source>Reliability studies need time data...</source>
+        <translation>Los estudios de fiabilidad necesitan datos temporales...</translation>
+    </message>
+    <message>
+        <source>Remote results received!</source>
+        <translation>¡Resultados remotos recibidos!</translation>
+    </message>
+    <message>
+        <source>Run a linear analysis to enable filter contingencies by sensitivity</source>
+        <translation>Ejecute un análisis lineal para habilitar contingencias de filtro por sensibilidad</translation>
+    </message>
+    <message>
+        <source>Simulation converged for all active simulation groups :)</source>
+        <translation>Simulación convergida para todos los grupos de simulación activos :)</translation>
+    </message>
+    <message>
+        <source>Simulation well initialized for all active simulation groups :)</source>
+        <translation>Simulación bien inicializada para todos los grupos de simulación activos :)</translation>
+    </message>
+    <message>
+        <source>Small-Signal stability analysis EMT has finished correctly!</source>
+        <translation>¡El análisis de estabilidad de pequeña señal EMT ha finalizado correctamente!</translation>
+    </message>
+    <message>
+        <source>Small-signal stability analysis RMS has finished correctly!</source>
+        <translation>¡El análisis de estabilidad de pequeña señal RMS ha finalizado correctamente!</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no ATC results.</source>
+        <translation>Algo salió mal, no hay resultados ATC.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no ATC time series results.</source>
+        <translation>Algo salió mal, no hay resultados de serie temporal ATC.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no PTDF Time series results.</source>
+        <translation>Algo salió mal, no hay resultados de serie temporal PTDF.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no PTDF results.</source>
+        <translation>Algo salió mal, no hay resultados PTDF.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no contingency analysis results.</source>
+        <translation>Algo salió mal, no hay resultados de análisis de contingencia.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no contingency time series results.</source>
+        <translation>Algo salió mal, no hay resultados de series temporales de contingencia.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no investments evaluation results.</source>
+        <translation>Algo salió mal, no hay resultados de evaluación de inversiones.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no voltage stability results.</source>
+        <translation>Algo salió mal, no hay resultados de estabilidad de tensión.</translation>
+    </message>
+    <message>
+        <source>State estimation converged :)</source>
+        <translation>La estimación de estado ha convergido :)</translation>
+    </message>
+    <message>
+        <source>State estimation not converged :/</source>
+        <translation>La estimación de estado no ha convergido :/</translation>
+    </message>
+    <message>
+        <source>Stochastic power flow needs at least one time-series sample.</source>
+        <translation>El flujo de potencia estocástico necesita al menos una muestra de serie temporal.</translation>
+    </message>
+    <message>
+        <source>The grid doesn&apos;t have time series :/</source>
+        <translation>La red no tiene series temporales :/</translation>
+    </message>
+    <message>
+        <source>The voltage stability did not converge.
+Is this case already at the collapse limit?</source>
+        <translation>La estabilidad de tensión no ha convergido.
+¿Está este caso ya en el límite de colapso?</translation>
+    </message>
+    <message>
+        <source>There are no PTDF results :/</source>
+        <translation>No hay resultados de PTDF :/</translation>
+    </message>
+    <message>
+        <source>There are no active RMS event groups to report.</source>
+        <translation>No hay grupos de eventos RMS activos que reportar.</translation>
+    </message>
+    <message>
+        <source>There are no contingency groups declared...</source>
+        <translation>No se han declarado grupos de contingencia...</translation>
+    </message>
+    <message>
+        <source>There are no time series!</source>
+        <translation>¡No hay series temporales!</translation>
+    </message>
+    <message>
+        <source>There are no time series.</source>
+        <translation>No hay series temporales.</translation>
+    </message>
+    <message>
+        <source>There are no time series...</source>
+        <translation>No hay series temporales...</translation>
+    </message>
+    <message>
+        <source>You cannot find {0} clusters for {1} time steps.
+Modify the number of clusters in the ML settings.</source>
+        <translation>No se pueden encontrar {0} clústeres para {1} pasos de tiempo.
+Modifique el número de clústeres en la configuración de ML.</translation>
     </message>
 </context>
 <context>
@@ -9428,7 +9873,7 @@ You need to load or create a grid!</source>
     </message>
     <message>
         <source>Fluid node</source>
-        <translation>Nodo fluido</translation>
+        <translation>Nodo de fluido</translation>
     </message>
     <message>
         <source>Fluid nodes</source>
@@ -11044,7 +11489,7 @@ You need to load or create a grid!</source>
     </message>
     <message>
         <source>Control PC</source>
-        <translation>Controlar PC</translation>
+        <translation>PC de control</translation>
     </message>
     <message>
         <source>Net transfer capacity slack</source>
@@ -13946,7 +14391,7 @@ You need to load or create a grid!</source>
         <location filename="../Main/MainWindow.ui" line="11827"/>
         <location filename="../Main/MainWindow.ui" line="11830"/>
         <source>Stop &quot;stuff running right now&quot;</source>
-        <translation>Detener "lo que se está ejecutando ahora mismo"</translation>
+        <translation>Detener &quot;lo que se está ejecutando ahora mismo&quot;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11968"/>

@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple
+from typing import List, Tuple
 
 import pytest
 from PySide6 import QtWidgets
@@ -78,6 +78,19 @@ class FakeSelectionGui:
         :return: Selected buses.
         """
         return list(self._selected_buses)
+
+    def _open_dynamic_events_editor(self, mode: DynamicSimulationMode) -> None:
+        """Delegate to the current shared dynamic-events workspace handler.
+
+        The production RMS and EMT actions now share this helper. Keeping the
+        same boundary in the test double ensures the public actions are tested
+        against the current controller structure instead of the removed
+        per-mode dialog implementation.
+
+        :param mode: RMS or EMT mode requested by the public action.
+        :return: Nothing.
+        """
+        diagrams_module.DiagramsMain._open_dynamic_events_editor(self, mode)
 
     def show_info_toast(self, message: str, duration: int = 2000) -> None:
         """
@@ -204,78 +217,62 @@ class AcceptedDynamicEventDialogue:
     Deterministic replacement for RMS/EMT event editor dialogs.
     """
 
-    __slots__ = ("_data",)
+    __slots__ = (
+        "circuit",
+        "mode",
+        "initial_device",
+    )
 
     def __init__(self,
                  circuit: vge.MultiCircuit,
-                 parameters_list: List[Var],
-                 target_device_name: str,
-                 mode: DynamicSimulationMode,
-                 mode_parameter_uids: set[int] | None = None) -> None:
+                 preferred_mode: DynamicSimulationMode,
+                 initial_device: vge.Load | None = None,
+                 parent: object | None = None) -> None:
         """
-        Build an accepted dynamic-event dialog with one event row.
+        Build an accepted transactional workspace replacement.
 
         :param circuit: Circuit containing the event groups.
-        :param parameters_list: Parameters offered by the selected device model.
-        :param target_device_name: User-facing target device name.
-        :param mode: Dynamic simulation mode.
-        :param mode_parameter_uids: Optional EMT mode-parameter uid set.
+        :param preferred_mode: Dynamic simulation mode requested by the action.
+        :param initial_device: Device selected when the dialog was opened.
+        :param parent: Ignored GUI owner.
         :return: Nothing.
         """
-        del mode_parameter_uids
-        assert target_device_name != ""
-        assert len(parameters_list) == 1
-
-        groups: List[object] = list()
-        if mode == DynamicSimulationMode.RMS:
-            groups.append(circuit.rms_events_groups[0])
-        else:
-            groups.append(circuit.emt_events_groups[0])
-
-        parameters: List[Var] = list()
-        parameters.append(parameters_list[0])
-        target_times: List[float] = list()
-        target_times.append(1.25)
-        values: List[float] = list()
-        values.append(3.5)
-
-        self._data: Dict[str, List[object]] = dict()
-        self._data["parameters"] = parameters
-        self._data["target_times"] = target_times
-        self._data["values"] = values
-        self._data["groups"] = groups
-        if mode == DynamicSimulationMode.EMT or mode == DynamicSimulationMode.RMS:
-            transition_types: List[DynamicEventTransitionType] = list()
-            transition_types.append(DynamicEventTransitionType.Step)
-            end_times: List[object | None] = list()
-            end_times.append(None)
-            self._data["transition_types"] = transition_types
-            self._data["end_times"] = end_times
-
-            if mode == DynamicSimulationMode.EMT:
-                force_step_alignment: List[bool] = list()
-                force_step_alignment.append(False)
-                self._data["force_step_alignment"] = force_step_alignment
-            else:
-                pass
-        else:
-            pass
+        del parent
+        self.circuit: vge.MultiCircuit = circuit
+        self.mode: DynamicSimulationMode = preferred_mode
+        self.initial_device: vge.Load | None = initial_device
 
     def exec(self) -> QtWidgets.QDialog.DialogCode:
         """
-        Simulate accepting the event editor.
+        Simulate saving one event from the transactional workspace.
 
         :return: Accepted dialog code.
         """
+        assert self.initial_device is not None
+        if self.mode == DynamicSimulationMode.RMS:
+            parameter: Var = list(self.initial_device.rms_model.event_dict.keys())[0]
+            rms_event: vge.RmsEvent = vge.RmsEvent(
+                device=self.initial_device,
+                parameter=parameter,
+                time=1.25,
+                value=3.5,
+                group=self.circuit.rms_events_groups[0],
+                transition_type=DynamicEventTransitionType.Step,
+            )
+            self.circuit.add_rms_event(rms_event)
+        else:
+            parameter = list(self.initial_device.emt_model.event_dict.keys())[0]
+            emt_event: vge.EmtEvent = vge.EmtEvent(
+                device=self.initial_device,
+                parameter=parameter,
+                time=1.25,
+                value=3.5,
+                group=self.circuit.emt_events_groups[0],
+                force_step_alignment=False,
+                transition_type=DynamicEventTransitionType.Step,
+            )
+            self.circuit.add_emt_event(emt_event)
         return QtWidgets.QDialog.DialogCode.Accepted
-
-    def get_data(self) -> Dict[str, List[object]]:
-        """
-        Get the configured event payload.
-
-        :return: Event payload.
-        """
-        return self._data
 
 
 def build_grid_with_selected_devices() -> Tuple[vge.MultiCircuit, vge.Bus, vge.Bus, vge.Line, vge.Load]:
@@ -541,11 +538,15 @@ def test_bus_context_short_circuit_does_not_overwrite_graphic_width(qt_app: obje
     assert circuit.short_circuit_events[0].fault_type == FaultType.LG
 
 
-def test_add_rms_event_to_selected_creates_event_from_dialogue(qt_app: object) -> None:
+def test_add_rms_event_to_selected_creates_event_from_dialogue(
+        qt_app: object,
+        monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """
     Check that one selected device can receive an RMS event from the event editor.
 
-        :param qt_app: Shared Qt application fixture.
+    :param qt_app: Shared Qt application fixture.
+    :param monkeypatch: Fixture used to isolate the dialog replacement.
     :return: Nothing.
     """
     del qt_app
@@ -562,7 +563,7 @@ def test_add_rms_event_to_selected_creates_event_from_dialogue(qt_app: object) -
     gui: FakeSelectionGui = FakeSelectionGui(circuit=grid,
                                              selected_devices=selected_devices,
                                              selected_buses=selected_buses)
-    diagrams_module.DynamicEventEditor = AcceptedDynamicEventDialogue
+    monkeypatch.setattr(diagrams_module, "DynamicEventEditor", AcceptedDynamicEventDialogue)
 
     diagrams_module.DiagramsMain.add_rms_event_to_selected(gui)
 
@@ -576,11 +577,15 @@ def test_add_rms_event_to_selected_creates_event_from_dialogue(qt_app: object) -
     assert grid.rms_events[0].end_time == grid.rms_events[0].time +1e-20
 
 
-def test_add_emt_event_to_selected_creates_event_from_dialogue(qt_app: object) -> None:
+def test_add_emt_event_to_selected_creates_event_from_dialogue(
+        qt_app: object,
+        monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """
     Check that one selected device can receive an EMT event from the event editor.
 
-        :param qt_app: Shared Qt application fixture.
+    :param qt_app: Shared Qt application fixture.
+    :param monkeypatch: Fixture used to isolate the dialog replacement.
     :return: Nothing.
     """
     del qt_app
@@ -597,7 +602,7 @@ def test_add_emt_event_to_selected_creates_event_from_dialogue(qt_app: object) -
     gui: FakeSelectionGui = FakeSelectionGui(circuit=grid,
                                              selected_devices=selected_devices,
                                              selected_buses=selected_buses)
-    diagrams_module.DynamicEventEditor = AcceptedDynamicEventDialogue
+    monkeypatch.setattr(diagrams_module, "DynamicEventEditor", AcceptedDynamicEventDialogue)
 
     diagrams_module.DiagramsMain.add_emt_event_to_selected(gui)
 

@@ -14,62 +14,58 @@
         <translation>عن</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="49"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="89"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;VeraGrid&lt;/span&gt; has been carefully crafted since 2015 to serve as a platform for research and consultancy. Visit &lt;a href=&quot;https://www.eroots.tech/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;eRoots&lt;/span&gt;&lt;/a&gt; for more details. The source of VeraGrid can be found &lt;a href=&quot;https://github.com/SanPen/VeraGrid&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;here.&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;VeraGrid&lt;/span&gt;تم تصميمه بعناية منذ عام 2015 ليكون بمثابة منصة للبحث والاستشارات. يزور&lt;a href=&quot;https://www.eroots.tech/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;eRoots&lt;/span&gt;&lt;/a&gt;لمزيد من التفاصيل. يمكن العثور على مصدر VeraGrid&lt;a href=&quot;https://github.com/SanPen/VeraGrid&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;هنا.&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="112"/>
         <source>version</source>
-        <translation>إصدار</translation>
+        <translation type="vanished">إصدار</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="128"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="133"/>
         <source>Copyright</source>
         <translation>حقوق الطبع والنشر</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="164"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="150"/>
         <source>Contributors</source>
         <translation>المساهمين</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="170"/>
         <source>TextLabel</source>
-        <translation>TextLabel</translation>
+        <translation type="vanished">TextLabel</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="184"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="160"/>
         <source>Libraries</source>
         <translation>المكتبات</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="190"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="166"/>
         <source>Copy the table</source>
         <translation>انسخ الجدول</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="210"/>
         <source>Update VeraGrid. If you are on windows don&apos;t do this.</source>
-        <translation>تحديث VeraGrid. إذا كنت على النوافذ فلا تفعل هذا.</translation>
+        <translation type="vanished">تحديث VeraGrid. إذا كنت على النوافذ فلا تفعل هذا.</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="254"/>
         <source>Optional libraries</source>
-        <translation>المكتبات الاختيارية</translation>
+        <translation type="vanished">المكتبات الاختيارية</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="264"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="197"/>
         <source>License</source>
         <translation>رخصة</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="270"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="203"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;This program comes with absolutelly no warranty. This is free software, and you are welcome to redistribute it under the conditions set by the license. VeraGrid is licensed under the &lt;a href=&quot;https://www.mozilla.org/en-US/MPL/2.0/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;Mozilla Public License V2&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;هذا البرنامج يأتي مع أي ضمان على الاطلاق. هذا برنامج مجاني، ويمكنك إعادة توزيعه وفقًا للشروط التي يحددها الترخيص. VeraGrid مرخص بموجب&lt;a href=&quot;https://www.mozilla.org/en-US/MPL/2.0/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#26a269;&quot;&gt;رخصة موزيلا العامة V2&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../AboutDialogue/about_gui.ui" line="291"/>
+        <location filename="../AboutDialogue/about_gui.ui" line="224"/>
         <source>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;meta charset=&quot;utf-8&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
@@ -127,7 +123,7 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
     </message>
     <message>
         <source>Not installed</source>
-        <translation>غير مثبت</translation>
+        <translation type="vanished">غير مثبت</translation>
     </message>
     <message>
         <source>Package</source>
@@ -143,11 +139,75 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
     </message>
     <message>
         <source>licensed</source>
-        <translation>مرخص</translation>
+        <translation type="vanished">مرخص</translation>
     </message>
     <message>
         <source>supported version</source>
+        <translation type="vanished">الإصدار المدعوم</translation>
+    </message>
+    <message>
+        <source>Action</source>
+        <translation>الإجراء</translation>
+    </message>
+    <message>
+        <source>Command output:</source>
+        <translation>مخرج الأمر:</translation>
+    </message>
+    <message>
+        <source>Exit code: {code}</source>
+        <translation>رمز الخروج: {code}</translation>
+    </message>
+    <message>
+        <source>False</source>
+        <translation>خطأ</translation>
+    </message>
+    <message>
+        <source>Information</source>
+        <translation>معلومة</translation>
+    </message>
+    <message>
+        <source>Install</source>
+        <translation>تثبيت</translation>
+    </message>
+    <message>
+        <source>Installed</source>
+        <translation>مُثبَّت</translation>
+    </message>
+    <message>
+        <source>Installed version</source>
+        <translation>الإصدار المُثبَّت</translation>
+    </message>
+    <message>
+        <source>Licensed</source>
+        <translation>مرخَّص</translation>
+    </message>
+    <message>
+        <source>Newest version</source>
+        <translation>أحدث إصدار</translation>
+    </message>
+    <message>
+        <source>Supported version</source>
         <translation>الإصدار المدعوم</translation>
+    </message>
+    <message>
+        <source>Unknown</source>
+        <translation>غير معروف</translation>
+    </message>
+    <message>
+        <source>Update</source>
+        <translation>تحديث</translation>
+    </message>
+    <message>
+        <source>Warning</source>
+        <translation>تحذير</translation>
+    </message>
+    <message>
+        <source>{name} update failed after {attempts} attempt(s).</source>
+        <translation>فشل تحديث {name} بعد {attempts} محاولة.</translation>
+    </message>
+    <message>
+        <source>{name} updated successfully after {attempts} attempt(s)</source>
+        <translation>تم تحديث {name} بنجاح بعد {attempts} محاولة.</translation>
     </message>
 </context>
 <context>
@@ -1710,6 +1770,46 @@ Are you sure?</source>
         <source>The proprty {property_name} cannot be found :(</source>
         <translation>لا يمكن العثور على الخاصية {property_name} :(</translation>
     </message>
+    <message>
+        <source>There are no buses to connect this device.</source>
+        <translation>لا توجد حافلات لتوصيل هذا الجهاز.</translation>
+    </message>
+    <message>
+        <source>VSC devices need one AC bus and two DC buses.</source>
+        <translation type="vanished">تتطلب أجهزة VSC حافلة تيار متردد (AC) وحافلتين تيار مستمر (DC).</translation>
+    </message>
+    <message>
+        <source>There are no devices to target.</source>
+        <translation>لا توجد أجهزة مستهدفة.</translation>
+    </message>
+    <message>
+        <source>There are no supported devices to target.</source>
+        <translation>لا توجد أجهزة مدعومة يمكن استهدافها.</translation>
+    </message>
+    <message>
+        <source>VSC devices need one AC bus, one DC bus, and an optional DC bus.</source>
+        <translation>تحتاج أجهزة VSC إلى ناقل تيار متردد (AC) واحد، وناقل تيار مستمر (DC) واحد، وناقل تيار مستمر (DC) اختياري.</translation>
+    </message>
+    <message>
+        <source>Nothing to paste</source>
+        <translation>لا شيء للنسخ</translation>
+    </message>
+    <message>
+        <source>Paste</source>
+        <translation type="vanished">لصق</translation>
+    </message>
+    <message>
+        <source>Paste data</source>
+        <translation>لصق البيانات</translation>
+    </message>
+    <message>
+        <source>Pasted!</source>
+        <translation>تم اللصق!</translation>
+    </message>
+    <message>
+        <source>Paste column</source>
+        <translation>لصق العمود</translation>
+    </message>
 </context>
 <context>
     <name>DcLineDeviceEditor</name>
@@ -1773,6 +1873,32 @@ Are you sure?</source>
         <location filename="../DeviceEditors/DcLineEditor/dc_line_editor_gui.ui" line="98"/>
         <source>Accept</source>
         <translation>يقبل</translation>
+    </message>
+</context>
+<context>
+    <name>DeviceSelectorDialogue</name>
+    <message>
+        <source>Device selection</source>
+        <translation>اختيار الجهاز</translation>
+    </message>
+    <message>
+        <source>None</source>
+        <translation type="vanished">لا شيء</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation type="vanished">يبحث</translation>
+    </message>
+</context>
+<context>
+    <name>DeviceSelectorPanel</name>
+    <message>
+        <source>None</source>
+        <translation>لا شيء</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>يبحث</translation>
     </message>
 </context>
 <context>
@@ -5968,6 +6094,17 @@ Please correct the data and try again.</source>
     </message>
 </context>
 <context>
+    <name>MapLibraryModel</name>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>اسحب وأفلت {name} في المخطط</translation>
+    </message>
+    <message>
+        <source>Substation</source>
+        <translation>محطة فرعية</translation>
+    </message>
+</context>
+<context>
     <name>MapLineContainer</name>
     <message>
         <source>Do you want to update the time series active status accordingly?</source>
@@ -6073,6 +6210,17 @@ Please correct the data and try again.</source>
 Cancel it and close the window?</source>
         <translation>هناك إجراء استيراد قيد التشغيل.
 هل تريد إلغاؤه وإغلاق النافذة؟</translation>
+    </message>
+</context>
+<context>
+    <name>NewConnectedDeviceDialogue</name>
+    <message>
+        <source>Name</source>
+        <translation>اسم</translation>
+    </message>
+    <message>
+        <source>New device</source>
+        <translation>جهاز جديد</translation>
     </message>
 </context>
 <context>
@@ -6855,6 +7003,37 @@ This will remove the direct child scenarios after their changes are applied.</so
         <translation>هل تريد دمج {child_count} سيناريو فرعي في &apos;{scenario_name}&apos;؟
 
 سيؤدي هذا إلى إزالة السيناريوهات الفرعية المباشرة بعد تطبيق تغييراتها.</translation>
+    </message>
+</context>
+<context>
+    <name>SchematicLibraryModel</name>
+    <message>
+        <source>3W-Transformer</source>
+        <translation>محول 3W</translation>
+    </message>
+    <message>
+        <source>Bus</source>
+        <translation>قضيب</translation>
+    </message>
+    <message>
+        <source>Connectivity bus</source>
+        <translation>حافلة التوصيل</translation>
+    </message>
+    <message>
+        <source>Drag &amp; drop {name} into the schematic</source>
+        <translation>اسحب وأفلت {name} في المخطط</translation>
+    </message>
+    <message>
+        <source>Fluid-node</source>
+        <translation>عقدة المائع</translation>
+    </message>
+    <message>
+        <source>NW-Transformer</source>
+        <translation>محول NW</translation>
+    </message>
+    <message>
+        <source>VSC</source>
+        <translation>VSC</translation>
     </message>
 </context>
 <context>
@@ -8051,6 +8230,271 @@ The results are needed to initialize this simulation.</source>
 Resolve the operating point before running this RMS simulation.</source>
         <translation>لم يتقارب تدفق الطاقة.
 يرجى حل نقطة التشغيل قبل تشغيل محاكاة RMS هذه.</translation>
+    </message>
+    <message>
+        <source>Adequacy studies need time data...</source>
+        <translation>تتطلب دراسات الكفاية بيانات زمنية...</translation>
+    </message>
+    <message>
+        <source>Another ATC time series is being executed now...</source>
+        <translation>يتم تنفيذ سلسلة زمنية أخرى لـ ATC الآن...</translation>
+    </message>
+    <message>
+        <source>Another EMT simulation is running already...</source>
+        <translation>يتم تشغيل محاكاة EMT أخرى بالفعل...</translation>
+    </message>
+    <message>
+        <source>Another LODF is being executed now...</source>
+        <translation>يتم تنفيذ LODF آخر الآن...</translation>
+    </message>
+    <message>
+        <source>Another Monte Carlo simulation is running...</source>
+        <translation>يتم تشغيل محاكاة مونت كارلو أخرى...</translation>
+    </message>
+    <message>
+        <source>Another OPF is being run...</source>
+        <translation>يتم تشغيل OPF آخر...</translation>
+    </message>
+    <message>
+        <source>Another OPF time series is running already...</source>
+        <translation>يتم تشغيل سلسلة زمنية OPF أخرى بالفعل...</translation>
+    </message>
+    <message>
+        <source>Another Optimal NCT time series is being run...</source>
+        <translation>يتم تشغيل سلسلة زمنية NCT مثالية أخرى...</translation>
+    </message>
+    <message>
+        <source>Another PTDF is being executed now...</source>
+        <translation>يتم تنفيذ PTDF آخر الآن...</translation>
+    </message>
+    <message>
+        <source>Another Small-Signal stability analysis EMT simulation is running already...</source>
+        <translation>يتم تشغيل محاكاة تحليل استقرار الإشارة الصغيرة EMT أخرى بالفعل...</translation>
+    </message>
+    <message>
+        <source>Another Small-Signal stability analysis simulation is running already...</source>
+        <translation>يتم تشغيل محاكاة تحليل استقرار الإشارة الصغيرة أخرى بالفعل...</translation>
+    </message>
+    <message>
+        <source>Another catalogue optimization is already running...</source>
+        <translation>يتم تشغيل تحسين كتالوج آخر بالفعل...</translation>
+    </message>
+    <message>
+        <source>Another clustering is being executed now...</source>
+        <translation>يتم تنفيذ تجميع آخر الآن...</translation>
+    </message>
+    <message>
+        <source>Another contingency analysis is being executed now...</source>
+        <translation>يتم تنفيذ تحليل حالة طارئة آخر الآن...</translation>
+    </message>
+    <message>
+        <source>Another inputs analysis is being run...</source>
+        <translation>يتم تشغيل تحليل مدخلات آخر...</translation>
+    </message>
+    <message>
+        <source>Another nodal capacity study is being run...</source>
+        <translation>يتم تشغيل دراسة سعة العقدة أخرى...</translation>
+    </message>
+    <message>
+        <source>Another reliability study is running already...</source>
+        <translation>يتم تشغيل دراسة موثوقية أخرى بالفعل...</translation>
+    </message>
+    <message>
+        <source>Another rms simulation is running already...</source>
+        <translation>يتم تشغيل محاكاة RMS أخرى بالفعل...</translation>
+    </message>
+    <message>
+        <source>Another simulation of the same type is running...</source>
+        <translation>يتم تشغيل محاكاة من نفس النوع أخرى...</translation>
+    </message>
+    <message>
+        <source>Another three-phase time series power flow is being executed now...</source>
+        <translation>يتم تنفيذ تدفق طاقة ثلاثي الأطوار لسلسلة زمنية آخر الآن...</translation>
+    </message>
+    <message>
+        <source>Another time series power flow is being executed now...</source>
+        <translation>يتم تنفيذ تدفق طاقة لسلسلة زمنية آخر الآن...</translation>
+    </message>
+    <message>
+        <source>Another voltage collapse simulation is running...</source>
+        <translation>يتم تشغيل محاكاة انهيار الجهد أخرى...</translation>
+    </message>
+    <message>
+        <source>Cannot colour because the PTDF results have zero time steps :/</source>
+        <translation>لا يمكن التلوين لأن نتائج PTDF تحتوي على أصفار من الخطوات الزمنية :/</translation>
+    </message>
+    <message>
+        <source>Check the selected start and finnish time series indices.</source>
+        <translation>تحقق من مؤشرات البداية والنهاية لسلسلة الزمن المحددة.</translation>
+    </message>
+    <message>
+        <source>Linear OPF investment studies need time data...</source>
+        <translation>تتطلب دراسات استثمار OPF الخطي بيانات زمنية...</translation>
+    </message>
+    <message>
+        <source>No from areas!</source>
+        <translation>لا مناطق من!</translation>
+    </message>
+    <message>
+        <source>No results for the three-phase time series simulation.</source>
+        <translation>لا توجد نتائج لمحاكاة السلسلة الزمنية ثلاثية الأطوار.</translation>
+    </message>
+    <message>
+        <source>No results for the time series simulation.</source>
+        <translation>لا توجد نتائج لمحاكاة السلسلة الزمنية.</translation>
+    </message>
+    <message>
+        <source>No to areas!</source>
+        <translation>لا مناطق إلى!</translation>
+    </message>
+    <message>
+        <source>Nothing to simulate...</source>
+        <translation>لا شيء للمحاكاة...</translation>
+    </message>
+    <message>
+        <source>Objective not supported yet :/</source>
+        <translation>الهدف غير مدعوم بعد :/</translation>
+    </message>
+    <message>
+        <source>Optimal power flow converged :)</source>
+        <translation>تقارب تدفق الطاقة الأمثل :)</translation>
+    </message>
+    <message>
+        <source>Optimal power flow not converged :/
+Check that all Branches have rating and 
+that the generator bounds are ok.
+You may also use the diagnostic tool (F8)</source>
+        <translation>لم يتقارب تدفق الطاقة الأمثل :/
+تحقق من أن جميع الفروع لها تصنيف وأن حدود المولد جيدة.
+يمكنك أيضًا استخدام أداة التشخيص (F8)</translation>
+    </message>
+    <message>
+        <source>Power flow 3ph converged :)</source>
+        <translation>تقارب تدفق الطاقة ثلاثي الأطوار :)</translation>
+    </message>
+    <message>
+        <source>Power flow 3ph not converged :/</source>
+        <translation>لم يتقارب تدفق الطاقة ثلاثي الأطوار :/</translation>
+    </message>
+    <message>
+        <source>Power flow converged :)</source>
+        <translation>تقارب تدفق الطاقة :)</translation>
+    </message>
+    <message>
+        <source>Power flow not converged :/</source>
+        <translation>لم يتقارب تدفق الطاقة :/</translation>
+    </message>
+    <message>
+        <source>Reliability studies need time data...</source>
+        <translation>تتطلب دراسات الموثوقية بيانات زمنية...</translation>
+    </message>
+    <message>
+        <source>Remote results received!</source>
+        <translation>تم استلام النتائج عن بُعد!</translation>
+    </message>
+    <message>
+        <source>Run a linear analysis to enable filter contingencies by sensitivity</source>
+        <translation>قم بتشغيل تحليل خطي لتمكين حالات الطوارئ للمرشحات حسب الحساسية</translation>
+    </message>
+    <message>
+        <source>Simulation converged for all active simulation groups :)</source>
+        <translation>تقاربت المحاكاة لجميع مجموعات المحاكاة النشطة :)</translation>
+    </message>
+    <message>
+        <source>Simulation well initialized for all active simulation groups :)</source>
+        <translation>تم تهيئة المحاكاة بشكل جيد لجميع مجموعات المحاكاة النشطة :)</translation>
+    </message>
+    <message>
+        <source>Small-Signal stability analysis EMT has finished correctly!</source>
+        <translation>انتهى تحليل استقرار الإشارة الصغيرة EMT بشكل صحيح!</translation>
+    </message>
+    <message>
+        <source>Small-signal stability analysis RMS has finished correctly!</source>
+        <translation>انتهى تحليل استقرار الإشارة الصغيرة RMS بشكل صحيح!</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no ATC results.</source>
+        <translation>حدث خطأ ما، لا توجد نتائج ATC.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no ATC time series results.</source>
+        <translation>حدث خطأ ما، لا توجد نتائج سلسلة زمنية ATC.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no PTDF Time series results.</source>
+        <translation>حدث خطأ ما، لا توجد نتائج سلسلة زمنية PTDF.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no PTDF results.</source>
+        <translation>حدث خطأ ما، لا توجد نتائج PTDF.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no contingency analysis results.</source>
+        <translation>حدث خطأ، لا توجد نتائج تحليل الطوارئ.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no contingency time series results.</source>
+        <translation>حدث خطأ، لا توجد نتائج السلاسل الزمنية للطوارئ.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no investments evaluation results.</source>
+        <translation>حدث خطأ، لا توجد نتائج تقييم الاستثمارات.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, There are no voltage stability results.</source>
+        <translation>حدث خطأ، لا توجد نتائج استقرار الجهد.</translation>
+    </message>
+    <message>
+        <source>State estimation converged :)</source>
+        <translation>تقارب تقدير الحالة :)</translation>
+    </message>
+    <message>
+        <source>State estimation not converged :/</source>
+        <translation>لم يتقارب تقدير الحالة :/</translation>
+    </message>
+    <message>
+        <source>Stochastic power flow needs at least one time-series sample.</source>
+        <translation>يتطلب تدفق الطاقة العشوائي عينة سلسلة زمنية واحدة على الأقل.</translation>
+    </message>
+    <message>
+        <source>The grid doesn&apos;t have time series :/</source>
+        <translation>الشبكة لا تحتوي على سلاسل زمنية :/</translation>
+    </message>
+    <message>
+        <source>The voltage stability did not converge.
+Is this case already at the collapse limit?</source>
+        <translation>لم يتقارب استقرار الجهد.
+هل هذه الحالة بالفعل عند حد الانهيار؟</translation>
+    </message>
+    <message>
+        <source>There are no PTDF results :/</source>
+        <translation>لا توجد نتائج PTDF :/</translation>
+    </message>
+    <message>
+        <source>There are no active RMS event groups to report.</source>
+        <translation>لا توجد مجموعات أحداث RMS نشطة للإبلاغ عنها.</translation>
+    </message>
+    <message>
+        <source>There are no contingency groups declared...</source>
+        <translation>لم يتم الإعلان عن أي مجموعات طوارئ...</translation>
+    </message>
+    <message>
+        <source>There are no time series!</source>
+        <translation>لا توجد سلاسل زمنية!</translation>
+    </message>
+    <message>
+        <source>There are no time series.</source>
+        <translation>لا توجد سلاسل زمنية.</translation>
+    </message>
+    <message>
+        <source>There are no time series...</source>
+        <translation>لا توجد سلاسل زمنية...</translation>
+    </message>
+    <message>
+        <source>You cannot find {0} clusters for {1} time steps.
+Modify the number of clusters in the ML settings.</source>
+        <translation>لا يمكن العثور على {0} مجموعات لـ {1} خطوات زمنية.
+قم بتعديل عدد المجموعات في إعدادات التعلم الآلي.</translation>
     </message>
 </context>
 <context>
@@ -13917,7 +14361,7 @@ You need to load or create a grid!</source>
         <location filename="../Main/MainWindow.ui" line="11827"/>
         <location filename="../Main/MainWindow.ui" line="11830"/>
         <source>Stop &quot;stuff running right now&quot;</source>
-        <translation>إيقاف "العمليات الجارية حاليًا"</translation>
+        <translation>إيقاف &quot;العمليات الجارية حاليًا&quot;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11968"/>

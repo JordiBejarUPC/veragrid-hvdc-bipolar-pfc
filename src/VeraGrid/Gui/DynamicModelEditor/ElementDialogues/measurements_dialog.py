@@ -103,6 +103,7 @@ class MeasurementsDialog(QtWidgets.QDialog):
     __slots__ = (
         "_buses",
         "_measurement_vars_dict",
+        "_active_measurement_vars_dict",
         "_bus_combo",
         "_measurement_tree",
         "_input_list",
@@ -115,12 +116,12 @@ class MeasurementsDialog(QtWidgets.QDialog):
 
     def __init__(self,
                  buses: List[Bus],
-                 measurement_vars_dict: Dict[BlockType, List[VarPowerFlowReferenceType]],
+                 measurement_vars_dict: Dict[str, Dict[BlockType, List[VarPowerFlowReferenceType]]],
                  parent: QtWidgets.QWidget | None = None) -> None:
         """Build the measurement configuration dialog.
 
         :param buses: Buses available to the measurement block.
-        :param measurement_vars_dict: Measurement types and their selectable references.
+        :param measurement_vars_dict: Measurement types and references grouped by bus domain.
         :param parent: Optional owning widget.
         :return: None.
         """
@@ -129,11 +130,23 @@ class MeasurementsDialog(QtWidgets.QDialog):
         self.resize(900, 560)
 
         self._buses: List[Bus] = list(buses)
-        self._measurement_vars_dict: Dict[BlockType, List[VarPowerFlowReferenceType]] = dict()
+        self._measurement_vars_dict: Dict[
+            str,
+            Dict[BlockType, List[VarPowerFlowReferenceType]],
+        ] = dict()
+        bus_domain: str
+        domain_measurements: Dict[BlockType, List[VarPowerFlowReferenceType]]
         block_type: BlockType
         references: List[VarPowerFlowReferenceType]
-        for block_type, references in measurement_vars_dict.items():
-            self._measurement_vars_dict[block_type] = list(references)
+        for bus_domain, domain_measurements in measurement_vars_dict.items():
+            copied_domain_measurements: Dict[BlockType, List[VarPowerFlowReferenceType]] = dict()
+            for block_type, references in domain_measurements.items():
+                copied_domain_measurements[block_type] = list(references)
+            self._measurement_vars_dict[bus_domain] = copied_domain_measurements
+        self._active_measurement_vars_dict: Dict[
+            BlockType,
+            List[VarPowerFlowReferenceType],
+        ] = dict()
 
         self._bus_combo: QtWidgets.QComboBox = QtWidgets.QComboBox(self)
         self._measurement_tree: QtWidgets.QTreeWidget = QtWidgets.QTreeWidget(self)
@@ -146,9 +159,9 @@ class MeasurementsDialog(QtWidgets.QDialog):
 
         self._build_ui()
         self._populate_buses()
-        self._populate_measurement_tree()
         self._connect_signals()
         self._refresh_direction_lists()
+        self._set_measurement_configuration_enabled(False)
 
     def _build_ui(self) -> None:
         """Build the bus selector, measurement tree, direction lists, and buttons.
@@ -159,7 +172,7 @@ class MeasurementsDialog(QtWidgets.QDialog):
         bus_layout: QtWidgets.QFormLayout = QtWidgets.QFormLayout()
         # Keep the selector compact while leaving enough room for " BUS 0" and
         # the platform-specific drop-down indicator.
-        self._bus_combo.setFixedWidth(80)
+        self._bus_combo.setFixedWidth(140)
         self._bus_combo.setSizePolicy(
             QtWidgets.QSizePolicy.Policy.Fixed,
             QtWidgets.QSizePolicy.Policy.Fixed,
@@ -218,9 +231,22 @@ class MeasurementsDialog(QtWidgets.QDialog):
 
         :return: None.
         """
+        # A data-less first entry forces an explicit user choice before the
+        # bus-dependent measurement configuration can be created.
+        self._bus_combo.addItem("Select bus...", None)
         bus: Bus
         for bus in self._buses:
             self._bus_combo.addItem(bus.name, bus)
+
+    def _set_measurement_configuration_enabled(self, enabled: bool) -> None:
+        """Enable or shade all controls that depend on the selected bus.
+
+        :param enabled: Whether a concrete bus has been selected.
+        :return: None.
+        """
+        self._measurement_tree.setEnabled(enabled)
+        self._input_list.setEnabled(enabled)
+        self._output_list.setEnabled(enabled)
 
     def _populate_measurement_tree(self) -> None:
         """Populate collapsed measurement keys and their checkable references.
@@ -229,7 +255,7 @@ class MeasurementsDialog(QtWidgets.QDialog):
         """
         block_type: BlockType
         references: List[VarPowerFlowReferenceType]
-        for block_type, references in self._measurement_vars_dict.items():
+        for block_type, references in self._active_measurement_vars_dict.items():
             parent_item: QtWidgets.QTreeWidgetItem = QtWidgets.QTreeWidgetItem(
                 self._measurement_tree,
                 list((block_type.name,)),
@@ -266,6 +292,49 @@ class MeasurementsDialog(QtWidgets.QDialog):
         self._measurement_tree.itemClicked.connect(self.on_tree_item_clicked)
         self._input_list.moveRequested.connect(self.move_reference)
         self._output_list.moveRequested.connect(self.move_reference)
+        self._bus_combo.currentIndexChanged.connect(self.on_bus_changed)
+
+    @QtCore.Slot(int)
+    def on_bus_changed(self, index: int) -> None:
+        """Rebuild the available measurement types for the selected bus domain.
+
+        :param index: Current bus-combo index.
+        :return: None.
+        """
+        selected_bus: object = self._bus_combo.itemData(index)
+
+        # Changing the physical bus invalidates every selection made for the
+        # previous domain, even when both buses happen to share that domain.
+        self._updating_tree = True
+        self._measurement_tree.clear()
+        self._selected_block_type = None
+        self._input_references = list()
+        self._output_references = list()
+        self._active_measurement_vars_dict = dict()
+
+        if isinstance(selected_bus, Bus):
+            bus_domain: str
+            if selected_bus.is_dc:
+                bus_domain = "dc_bus"
+            else:
+                bus_domain = "a_c_bus"
+            domain_measurements: Dict[BlockType, List[VarPowerFlowReferenceType]] | None = (
+                self._measurement_vars_dict.get(bus_domain, None)
+            )
+            if domain_measurements is not None:
+                block_type: BlockType
+                references: List[VarPowerFlowReferenceType]
+                for block_type, references in domain_measurements.items():
+                    self._active_measurement_vars_dict[block_type] = list(references)
+                self._populate_measurement_tree()
+            else:
+                pass
+            self._set_measurement_configuration_enabled(True)
+        else:
+            self._set_measurement_configuration_enabled(False)
+
+        self._updating_tree = False
+        self._refresh_direction_lists()
 
     @QtCore.Slot(QtWidgets.QTreeWidgetItem, int)
     def on_tree_item_changed(self,
@@ -316,7 +385,7 @@ class MeasurementsDialog(QtWidgets.QDialog):
             self._selected_block_type = block_type_data
             self._input_references = list()
             selected_references: List[VarPowerFlowReferenceType] | None = (
-                self._measurement_vars_dict.get(block_type_data, None)
+                self._active_measurement_vars_dict.get(block_type_data, None)
             )
             if selected_references is not None:
                 self._output_references = list(selected_references)
