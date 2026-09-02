@@ -42,6 +42,7 @@ class FmiThreeCompiledFixtureProfile(Enum):
     CONSTANT_ARRAY = 2
     CONFIGURABLE_ARRAY = 3
     SCALAR_OBSERVABLE_STATE_LEAK = 4
+    PARAMETERIZED_CONFIGURABLE_ARRAY = 5
 
 
 def _create_fmi_three_scalar_model_description() -> ModelDescription:
@@ -229,9 +230,13 @@ def _create_fmi_three_constant_array_model_description() -> ModelDescription:
     return fmi_three_description
 
 
-def _create_fmi_three_configurable_array_model_description() -> ModelDescription:
+def _create_fmi_three_configurable_array_model_description(
+    include_parameters: bool,
+) -> ModelDescription:
     """Create dual-interface metadata for one structurally sized array pair.
 
+    :param include_parameters: Whether to declare observable fixed and tunable
+        scalar parameters in the dual-interface fixture.
     :return: Configurable-array FMI 3 model description for native testing.
     """
 
@@ -270,30 +275,61 @@ def _create_fmi_three_configurable_array_model_description() -> ModelDescription
         start="3",
         description="Active array cardinality bounded by the native fixture.",
     )
-    fmi_three_description: ModelDescription = ModelDescription()
-    fmi_three_description.fmiVersion = "3.0"
-    fmi_three_description.modelName = "VeraGridFmiThreeConfigurableArrayTest"
-    fmi_three_description.description = (
-        "Repository-generated FMI 3 configurable-array dual-interface fixture."
-    )
-    fmi_three_description.generationTool = "VeraGrid FMI test harness with FMPy"
-    fmi_three_description.instantiationToken = (
-        "b96e6dbf-aaad-47ef-ae46-a544356be651"
-    )
-    fmi_three_description.coSimulation = CoSimulation(
-        modelIdentifier="VeraGridFmiThreeConfigurableArrayTest",
-    )
-    fmi_three_description.modelExchange = ModelExchange(
-        modelIdentifier="VeraGridFmiThreeConfigurableArrayTest",
-    )
-    fmi_three_description.modelVariables = list(
-        (
+    if include_parameters:
+        fixed_gain_variable: ModelVariable = ModelVariable(
+            name="fixed_gain",
+            valueReference=4,
+            type="Float64",
+            causality="parameter",
+            variability="fixed",
+            initial="exact",
+            start="2.0",
+            description="Fixed scalar gain written during Initialization Mode.",
+        )
+        tunable_bias_variable: ModelVariable = ModelVariable(
+            name="tunable_bias",
+            valueReference=5,
+            type="Float64",
+            causality="parameter",
+            variability="tunable",
+            initial="exact",
+            start="0.5",
+            description="Tunable scalar bias written during Initialization Mode.",
+        )
+        model_variables: tuple[ModelVariable, ...] = (
+            time_variable,
+            input_variable,
+            output_variable,
+            structural_size_variable,
+            fixed_gain_variable,
+            tunable_bias_variable,
+        )
+        model_name: str = "VeraGridFmiThreeParameterizedConfigurableArrayTest"
+        instantiation_token: str = "55c5ac74-0a8c-4ca6-a87e-e02791366ae7"
+    else:
+        model_variables = (
             time_variable,
             input_variable,
             output_variable,
             structural_size_variable,
         )
+        model_name = "VeraGridFmiThreeConfigurableArrayTest"
+        instantiation_token = "b96e6dbf-aaad-47ef-ae46-a544356be651"
+    fmi_three_description: ModelDescription = ModelDescription()
+    fmi_three_description.fmiVersion = "3.0"
+    fmi_three_description.modelName = model_name
+    fmi_three_description.description = (
+        "Repository-generated FMI 3 configurable-array dual-interface fixture."
     )
+    fmi_three_description.generationTool = "VeraGrid FMI test harness with FMPy"
+    fmi_three_description.instantiationToken = instantiation_token
+    fmi_three_description.coSimulation = CoSimulation(
+        modelIdentifier=model_name,
+    )
+    fmi_three_description.modelExchange = ModelExchange(
+        modelIdentifier=model_name,
+    )
+    fmi_three_description.modelVariables = list(model_variables)
     fmi_three_description.outputs = list((Unknown(variable=output_variable),))
     fmi_three_description.initialUnknowns = list(
         (Unknown(variable=output_variable),)
@@ -989,11 +1025,25 @@ fmi3Status fmi3GetNumberOfContinuousStates(fmi3Instance instance,
     if fixture_profile == FmiThreeCompiledFixtureProfile.CONSTANT_ARRAY:
         pass
     else:
-        if fixture_profile == FmiThreeCompiledFixtureProfile.CONFIGURABLE_ARRAY:
+        if fixture_profile in (
+            FmiThreeCompiledFixtureProfile.CONFIGURABLE_ARRAY,
+            FmiThreeCompiledFixtureProfile.PARAMETERIZED_CONFIGURABLE_ARRAY,
+        ):
             model_exchange_lifecycle = model_exchange_lifecycle.replace(
                 "ARRAY_VALUE_COUNT",
                 "model->structural_size",
             )
+            if (
+                fixture_profile
+                == FmiThreeCompiledFixtureProfile.PARAMETERIZED_CONFIGURABLE_ARRAY
+            ):
+                model_exchange_lifecycle = model_exchange_lifecycle.replace(
+                    "model->array_input[arrayIndex] + time",
+                    "model->fixed_gain * model->array_input[arrayIndex] "
+                    "+ model->tunable_bias + time",
+                )
+            else:
+                pass
         else:
             raise ValueError("Model Exchange array support requires an array fixture")
     return _replace_verified_fmi_three_source_block(
@@ -1527,7 +1577,10 @@ static void reset(Model* instance) {
             block_name="constant-array storage",
         )
     else:
-        if fixture_profile == FmiThreeCompiledFixtureProfile.CONFIGURABLE_ARRAY:
+        if fixture_profile in (
+            FmiThreeCompiledFixtureProfile.CONFIGURABLE_ARRAY,
+            FmiThreeCompiledFixtureProfile.PARAMETERIZED_CONFIGURABLE_ARRAY,
+        ):
             storage_replacement = """#define MAX_ARRAY_VALUE_COUNT 6
 
 typedef struct {
@@ -1555,15 +1608,42 @@ static void reset(Model* instance) {
 }
 
 """
+            if (
+                fixture_profile
+                == FmiThreeCompiledFixtureProfile.PARAMETERIZED_CONFIGURABLE_ARRAY
+            ):
+                storage_replacement = storage_replacement.replace(
+                    "    fmi3UInt64 structural_size;",
+                    "    fmi3UInt64 structural_size;\n"
+                    "    fmi3Float64 fixed_gain;\n"
+                    "    fmi3Float64 tunable_bias;",
+                ).replace(
+                    "    instance->structural_size = 3;",
+                    "    instance->structural_size = 3;\n"
+                    "    instance->fixed_gain = 2.0;\n"
+                    "    instance->tunable_bias = 0.5;",
+                )
+                storage_block_name: str = "parameterized configurable-array storage"
+            else:
+                storage_block_name = "configurable-array storage"
+            if (
+                fixture_profile
+                == FmiThreeCompiledFixtureProfile.PARAMETERIZED_CONFIGURABLE_ARRAY
+            ):
+                storage_expected_sha256: str = (
+                    "AA38ADC63625EF5A30B07FA8F43963E0713C6FC931853651F35DFCFDCDDCC9C7"
+                )
+            else:
+                storage_expected_sha256 = (
+                    "3B85EE779BA19D3D3E382CCD9E65270F072842C4D05DB714720D963BF4D1A69F"
+                )
             normalized_source = _replace_verified_fmi_three_source_block(
                 source_text=normalized_source,
                 start_marker="typedef struct {",
                 end_marker="#define BEGIN_FUNCTION()",
-                expected_sha256=(
-                    "3B85EE779BA19D3D3E382CCD9E65270F072842C4D05DB714720D963BF4D1A69F"
-                ),
+                expected_sha256=storage_expected_sha256,
                 replacement=storage_replacement,
-                block_name="configurable-array storage",
+                block_name=storage_block_name,
             )
         else:
             if fixture_profile in (
@@ -1687,6 +1767,7 @@ fmi3Status fmi3FreeFMUState(fmi3Instance instance, fmi3FMUState* FMUState) {
         FmiThreeCompiledFixtureProfile.SCALAR,
         FmiThreeCompiledFixtureProfile.SCALAR_OBSERVABLE_STATE_LEAK,
         FmiThreeCompiledFixtureProfile.CONFIGURABLE_ARRAY,
+        FmiThreeCompiledFixtureProfile.PARAMETERIZED_CONFIGURABLE_ARRAY,
     ):
         configuration_replacement: str = """fmi3Status fmi3EnterConfigurationMode(fmi3Instance instance) {
     BEGIN_FUNCTION();
@@ -1740,7 +1821,10 @@ fmi3Status fmi3ExitConfigurationMode(fmi3Instance instance) {
 }
 
 """
-        if fixture_profile == FmiThreeCompiledFixtureProfile.CONFIGURABLE_ARRAY:
+        if fixture_profile in (
+            FmiThreeCompiledFixtureProfile.CONFIGURABLE_ARRAY,
+            FmiThreeCompiledFixtureProfile.PARAMETERIZED_CONFIGURABLE_ARRAY,
+        ):
             set_uint64_replacement = set_uint64_replacement.replace(
                 "case vr_structural_size:\n"
                 "            model->structural_size = values[valueIndex];",
@@ -1770,6 +1854,7 @@ fmi3Status fmi3ExitConfigurationMode(fmi3Instance instance) {
     if fixture_profile in (
         FmiThreeCompiledFixtureProfile.CONSTANT_ARRAY,
         FmiThreeCompiledFixtureProfile.CONFIGURABLE_ARRAY,
+        FmiThreeCompiledFixtureProfile.PARAMETERIZED_CONFIGURABLE_ARRAY,
     ):
         get_float64_replacement: str = """fmi3Status fmi3GetFloat64(fmi3Instance instance,
     const fmi3ValueReference valueReferences[],
@@ -1825,7 +1910,10 @@ fmi3Status fmi3ExitConfigurationMode(fmi3Instance instance) {
 }
 
 """
-        if fixture_profile == FmiThreeCompiledFixtureProfile.CONFIGURABLE_ARRAY:
+        if fixture_profile in (
+            FmiThreeCompiledFixtureProfile.CONFIGURABLE_ARRAY,
+            FmiThreeCompiledFixtureProfile.PARAMETERIZED_CONFIGURABLE_ARRAY,
+        ):
             get_float64_replacement = get_float64_replacement.replace(
                 "ARRAY_VALUE_COUNT",
                 "model->structural_size",
@@ -1833,10 +1921,44 @@ fmi3Status fmi3ExitConfigurationMode(fmi3Instance instance) {
                 "if (!valueReferences || !values)",
                 "if (!valueReferences || (nValues > 0 && !values))",
             )
-            get_float64_block_name: str = "configurable-array getFloat64"
+            if (
+                fixture_profile
+                == FmiThreeCompiledFixtureProfile.PARAMETERIZED_CONFIGURABLE_ARRAY
+            ):
+                get_float64_replacement = get_float64_replacement.replace(
+                    "        case vr_array_input:",
+                    "        case vr_fixed_gain:\n"
+                    "            if (valueIndex >= nValues) {\n"
+                    "                ERROR(\"Float64 GET fixed-parameter capacity is insufficient.\");\n"
+                    "            }\n"
+                    "            values[valueIndex] = model->fixed_gain;\n"
+                    "            valueIndex++;\n"
+                    "            break;\n"
+                    "        case vr_tunable_bias:\n"
+                    "            if (valueIndex >= nValues) {\n"
+                    "                ERROR(\"Float64 GET tunable-parameter capacity is insufficient.\");\n"
+                    "            }\n"
+                    "            values[valueIndex] = model->tunable_bias;\n"
+                    "            valueIndex++;\n"
+                    "            break;\n"
+                    "        case vr_array_input:",
+                    1,
+                )
+                get_float64_block_name = "parameterized configurable-array getFloat64"
+            else:
+                get_float64_block_name = "configurable-array getFloat64"
             get_float64_expected_sha256: str = (
                 "BB08B2B1AD5893FBD91CF3B998D791BFFA544419A7B9EB657EE281EDA2CEA55F"
             )
+            if (
+                fixture_profile
+                == FmiThreeCompiledFixtureProfile.PARAMETERIZED_CONFIGURABLE_ARRAY
+            ):
+                get_float64_expected_sha256 = (
+                    "7584ADA3C7D94B8E0EF741D16FD59C9463D2421789790031F336B4F2E941E43F"
+                )
+            else:
+                pass
         else:
             get_float64_block_name = "constant-array getFloat64"
             get_float64_expected_sha256 = (
@@ -1892,7 +2014,10 @@ fmi3Status fmi3ExitConfigurationMode(fmi3Instance instance) {
 }
 
 """
-        if fixture_profile == FmiThreeCompiledFixtureProfile.CONFIGURABLE_ARRAY:
+        if fixture_profile in (
+            FmiThreeCompiledFixtureProfile.CONFIGURABLE_ARRAY,
+            FmiThreeCompiledFixtureProfile.PARAMETERIZED_CONFIGURABLE_ARRAY,
+        ):
             set_float64_replacement = set_float64_replacement.replace(
                 "ARRAY_VALUE_COUNT",
                 "model->structural_size",
@@ -1900,10 +2025,51 @@ fmi3Status fmi3ExitConfigurationMode(fmi3Instance instance) {
                 "if (!valueReferences || !values)",
                 "if (!valueReferences || (nValues > 0 && !values))",
             )
-            set_float64_block_name: str = "configurable-array setFloat64"
+            if (
+                fixture_profile
+                == FmiThreeCompiledFixtureProfile.PARAMETERIZED_CONFIGURABLE_ARRAY
+            ):
+                set_float64_replacement = set_float64_replacement.replace(
+                    "        case vr_array_input:",
+                    "        case vr_fixed_gain:\n"
+                    "            if (valueIndex >= nValues || !isfinite(values[valueIndex])) {\n"
+                    "                ERROR(\"Float64 SET fixed parameter must be finite.\");\n"
+                    "            }\n"
+                    "            model->fixed_gain = values[valueIndex];\n"
+                    "            valueIndex++;\n"
+                    "            break;\n"
+                    "        case vr_tunable_bias:\n"
+                    "            if (valueIndex >= nValues || !isfinite(values[valueIndex])) {\n"
+                    "                ERROR(\"Float64 SET tunable parameter must be finite.\");\n"
+                    "            }\n"
+                    "            model->tunable_bias = values[valueIndex];\n"
+                    "            valueIndex++;\n"
+                    "            break;\n"
+                    "        case vr_array_input:",
+                    1,
+                )
+                set_float64_replacement = set_float64_replacement.replace(
+                    "                model->array_input[arrayIndex] = value;",
+                    "                model->array_input[arrayIndex] = value;\n"
+                    "                model->array_output[arrayIndex] = "
+                    "model->fixed_gain * value + model->tunable_bias + model->time;",
+                    1,
+                )
+                set_float64_block_name = "parameterized configurable-array setFloat64"
+            else:
+                set_float64_block_name = "configurable-array setFloat64"
             set_float64_expected_sha256: str = (
                 "82B011F22144E5933FBBCA404630DF7E6242CCA4A93CE8480993A214576C082D"
             )
+            if (
+                fixture_profile
+                == FmiThreeCompiledFixtureProfile.PARAMETERIZED_CONFIGURABLE_ARRAY
+            ):
+                set_float64_expected_sha256 = (
+                    "0127F35351D5F480F5C5F2E38ECCFAB29CC0F00CC599C4B2FCAB35F0CC71DBEF"
+                )
+            else:
+                pass
         else:
             set_float64_block_name = "constant-array setFloat64"
             set_float64_expected_sha256 = (
@@ -1925,6 +2091,7 @@ fmi3Status fmi3ExitConfigurationMode(fmi3Instance instance) {
     if fixture_profile in (
         FmiThreeCompiledFixtureProfile.CONSTANT_ARRAY,
         FmiThreeCompiledFixtureProfile.CONFIGURABLE_ARRAY,
+        FmiThreeCompiledFixtureProfile.PARAMETERIZED_CONFIGURABLE_ARRAY,
     ):
         do_step_replacement: str = """fmi3Status fmi3DoStep(fmi3Instance instance,
     fmi3Float64 currentCommunicationPoint,
@@ -1972,7 +2139,10 @@ fmi3Status fmi3ExitConfigurationMode(fmi3Instance instance) {
 }
 
 """
-        if fixture_profile == FmiThreeCompiledFixtureProfile.CONFIGURABLE_ARRAY:
+        if fixture_profile in (
+            FmiThreeCompiledFixtureProfile.CONFIGURABLE_ARRAY,
+            FmiThreeCompiledFixtureProfile.PARAMETERIZED_CONFIGURABLE_ARRAY,
+        ):
             do_step_replacement = do_step_replacement.replace(
                 "ARRAY_VALUE_COUNT",
                 "model->structural_size",
@@ -1981,6 +2151,17 @@ fmi3Status fmi3ExitConfigurationMode(fmi3Instance instance) {
                 "*terminateSimulation = model->structural_size > 0 && "
                 "model->array_input[0] == 9.0 ? fmi3True : fmi3False;",
             )
+            if (
+                fixture_profile
+                == FmiThreeCompiledFixtureProfile.PARAMETERIZED_CONFIGURABLE_ARRAY
+            ):
+                do_step_replacement = do_step_replacement.replace(
+                    "model->array_input[arrayIndex] + completedTime",
+                    "model->fixed_gain * model->array_input[arrayIndex] "
+                    "+ model->tunable_bias + completedTime",
+                )
+            else:
+                pass
         else:
             pass
     else:
@@ -2099,9 +2280,17 @@ def build_fmi_three_co_simulation_fmu(
                 _create_fmi_three_constant_array_model_description()
             )
         else:
-            if fixture_profile == FmiThreeCompiledFixtureProfile.CONFIGURABLE_ARRAY:
+            if fixture_profile in (
+                FmiThreeCompiledFixtureProfile.CONFIGURABLE_ARRAY,
+                FmiThreeCompiledFixtureProfile.PARAMETERIZED_CONFIGURABLE_ARRAY,
+            ):
                 fmi_three_description = (
-                    _create_fmi_three_configurable_array_model_description()
+                    _create_fmi_three_configurable_array_model_description(
+                        include_parameters=(
+                            fixture_profile
+                            == FmiThreeCompiledFixtureProfile.PARAMETERIZED_CONFIGURABLE_ARRAY
+                        )
+                    )
                 )
             else:
                 raise ValueError("Unsupported compiled FMI 3 fixture profile")
@@ -2125,7 +2314,10 @@ def build_fmi_three_co_simulation_fmu(
         ):
             _install_fmi_three_scalar_metadata(staging_directory)
         else:
-            if fixture_profile == FmiThreeCompiledFixtureProfile.CONFIGURABLE_ARRAY:
+            if fixture_profile in (
+                FmiThreeCompiledFixtureProfile.CONFIGURABLE_ARRAY,
+                FmiThreeCompiledFixtureProfile.PARAMETERIZED_CONFIGURABLE_ARRAY,
+            ):
                 _install_fmi_three_configurable_array_metadata(staging_directory)
             else:
                 raise ValueError("Unsupported compiled FMI 3 fixture profile")

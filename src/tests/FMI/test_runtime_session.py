@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import struct
 from unittest.mock import Mock
 
 import pytest
@@ -26,6 +27,8 @@ from VeraGridEngine.IO.fmu.importer.runtime_protocol import (
     FmiThreeWorkerCompletedIntegratorStepResult,
     FmiThreeWorkerDiscreteStatesResult,
     FmiThreeWorkerDoStepResult,
+    FmiThreeWorkerRequestKind,
+    validate_fmi_three_worker_float64_frame_capacity,
 )
 from VeraGridEngine.IO.fmu.importer.runtime_profile import (
     FmiThreeWorkerFloat64Profile,
@@ -39,6 +42,13 @@ from VeraGridEngine.IO.fmu.importer.runtime_session import (
 )
 from VeraGridEngine.IO.fmu.importer.runtime_worker_host import (
     FmiThreeWorkerHostLimits,
+)
+from VeraGridEngine.IO.fmu.importer.model_description import (
+    read_fmu_model_description,
+)
+from VeraGridEngine.IO.fmu.importer.model_description_metadata import (
+    FmuModelDescription,
+    FmuVariableDescription,
 )
 from VeraGridEngine.enumerations import (
     FmuInterfaceMode,
@@ -63,6 +73,218 @@ def _create_scalar_session_limits() -> FmiThreeWorkerHostLimits:
         terminate_join_timeout_seconds=5.0,
         kill_join_timeout_seconds=5.0,
     )
+
+
+def test_compiled_fmi_three_parameterized_configurable_array_fmu_exposes_observable_parameters(
+    compiled_fmi_three_parameterized_configurable_array_fmu: Path,
+) -> None:
+    """Expose fixed and tunable scalar parameters beside the configured array.
+
+    :param compiled_fmi_three_parameterized_configurable_array_fmu: Native
+        dual-interface fixture with scalar parameters.
+    :return: None.
+    """
+
+    metadata: FmuModelDescription = read_fmu_model_description(
+        compiled_fmi_three_parameterized_configurable_array_fmu
+    )
+    fixed_gain: FmuVariableDescription = metadata.get_variable("fixed_gain")
+    tunable_bias: FmuVariableDescription = metadata.get_variable("tunable_bias")
+    assert fixed_gain.causality == "parameter"
+    assert fixed_gain.variability == "fixed"
+    assert fixed_gain.initial == "exact"
+    assert fixed_gain.start == "2.0"
+    assert tunable_bias.causality == "parameter"
+    assert tunable_bias.variability == "tunable"
+    assert tunable_bias.initial == "exact"
+    assert tunable_bias.start == "0.5"
+
+
+def test_fmi_three_session_initializes_parameters_for_cs_and_me(
+    compiled_fmi_three_parameterized_configurable_array_fmu: Path,
+    tmp_path: Path,
+) -> None:
+    """Write parameters during initialization and observe them in CS and ME.
+
+    :param compiled_fmi_three_parameterized_configurable_array_fmu: Native
+        dual-interface fixture with scalar parameters.
+    :param tmp_path: Isolated staging parent provided by pytest.
+    :return: None.
+    """
+
+    initialization_names: tuple[str, ...] = (
+        "fixed_gain",
+        "tunable_bias",
+        "array_input",
+    )
+    cs_staging_parent: Path = tmp_path / "parameterized-cs-session"
+    cs_session: FmiThreeFloat64Session = open_fmi_three_float64_session(
+        config=FmuImportConfig(
+            fmu_path=compiled_fmi_three_parameterized_configurable_array_fmu,
+            extraction_root=cs_staging_parent,
+        ),
+        instance_name="veragrid-fmi-three-parameterized-cs-session",
+        readable_variable_names=("array_output", "time"),
+        writable_variable_names=("array_input",),
+        initialization_variable_names=initialization_names,
+        configuration_uint64_variable_names=("structural_size",),
+        limits=_create_scalar_session_limits(),
+        float64_profile=FmiThreeWorkerFloat64Profile.CONFIGURABLE_ARRAY,
+    )
+    try:
+        cs_session.configure_uint64(configuration_uint64_values=(3,))
+        cs_initial_values: tuple[float, ...] = (
+            cs_session.initialize_co_simulation_and_read(
+                start_time=0.0,
+                stop_time=1.0,
+                relative_tolerance=1.0e-6,
+                initial_writable_float64_values=(3.0, 1.0, 1.0, 2.0, 3.0),
+            )
+        )
+        assert cs_initial_values == pytest.approx((4.0, 7.0, 10.0, 0.0))
+        cs_step_result: FmiThreeWorkerDoStepResult
+        cs_readable_values: tuple[float, ...]
+        cs_step_result, cs_readable_values = cs_session.advance_co_simulation(
+            current_communication_point=0.0,
+            communication_step_size=0.25,
+            writable_float64_values=(2.0, 4.0, 6.0),
+            no_set_fmu_state_prior_to_current_point=True,
+        )
+        assert cs_step_result.last_successful_time == pytest.approx(0.25)
+        assert cs_readable_values == pytest.approx((7.25, 13.25, 19.25, 0.25))
+    finally:
+        cs_session.close()
+
+    me_staging_parent: Path = tmp_path / "parameterized-me-session"
+    me_session: FmiThreeFloat64Session = open_fmi_three_float64_session(
+        config=FmuImportConfig(
+            fmu_path=compiled_fmi_three_parameterized_configurable_array_fmu,
+            preferred_mode=FmuInterfaceMode.MODEL_EXCHANGE,
+            extraction_root=me_staging_parent,
+        ),
+        instance_name="veragrid-fmi-three-parameterized-me-session",
+        readable_variable_names=("array_output", "time"),
+        writable_variable_names=("array_input",),
+        initialization_variable_names=initialization_names,
+        configuration_uint64_variable_names=("structural_size",),
+        limits=_create_scalar_session_limits(),
+        float64_profile=FmiThreeWorkerFloat64Profile.CONFIGURABLE_ARRAY,
+    )
+    try:
+        me_session.configure_uint64(configuration_uint64_values=(3,))
+        me_state_values: tuple[float, ...]
+        me_initial_values: tuple[float, ...]
+        me_state_values, me_initial_values = (
+            me_session.initialize_model_exchange_and_read(
+                start_time=0.0,
+                stop_time=1.0,
+                relative_tolerance=1.0e-6,
+                initial_writable_float64_values=(4.0, -1.0, 1.0, 2.0, 3.0),
+            )
+        )
+        assert me_state_values == tuple()
+        assert me_initial_values == pytest.approx((3.0, 7.0, 11.0, 0.0))
+        me_derivatives: tuple[float, ...]
+        me_readable_values: tuple[float, ...]
+        me_derivatives, me_readable_values = me_session.evaluate_model_exchange(
+            time_value=0.5,
+            continuous_state_values=tuple(),
+            writable_float64_values=(2.0, 3.0, 4.0),
+        )
+        assert me_derivatives == tuple()
+        assert me_readable_values == pytest.approx((7.5, 11.5, 15.5, 0.5))
+    finally:
+        me_session.close()
+    assert tuple(cs_staging_parent.glob("veragrid_fmu_stage_*")) == tuple()
+    assert tuple(me_staging_parent.glob("veragrid_fmu_stage_*")) == tuple()
+
+
+def test_fmi_three_initialization_layout_recomputes_configurable_cardinality_atomically(
+    compiled_fmi_three_parameterized_configurable_array_fmu: Path,
+    tmp_path: Path,
+) -> None:
+    """Reject an oversized prospective initialization layout without mutation.
+
+    :param compiled_fmi_three_parameterized_configurable_array_fmu: Native
+        parameterized configurable-array fixture.
+    :param tmp_path: Isolated staging parent provided by pytest.
+    :return: None.
+    """
+
+    staging_parent: Path = tmp_path / "atomic-initialization-layout"
+    bounded_limits: FmiThreeWorkerHostLimits = FmiThreeWorkerHostLimits(
+        maximum_frame_size=262144,
+        maximum_float64_values_per_request=6,
+        response_timeout_seconds=60.0,
+        graceful_join_timeout_seconds=10.0,
+        terminate_join_timeout_seconds=5.0,
+        kill_join_timeout_seconds=5.0,
+    )
+    session: FmiThreeFloat64Session = open_fmi_three_float64_session(
+        config=FmuImportConfig(
+            fmu_path=compiled_fmi_three_parameterized_configurable_array_fmu,
+            extraction_root=staging_parent,
+        ),
+        instance_name="veragrid-fmi-three-atomic-parameter-layout",
+        readable_variable_names=("array_output",),
+        writable_variable_names=("array_input",),
+        initialization_variable_names=(
+            "fixed_gain",
+            "tunable_bias",
+            "array_input",
+        ),
+        configuration_uint64_variable_names=("structural_size",),
+        limits=bounded_limits,
+        float64_profile=FmiThreeWorkerFloat64Profile.CONFIGURABLE_ARRAY,
+    )
+    try:
+        with pytest.raises(FmuBindingError, match="serialized value bound"):
+            session.configure_uint64(configuration_uint64_values=(7,))
+        session.configure_uint64(configuration_uint64_values=(2,))
+        initialized_values: tuple[float, ...] = (
+            session.initialize_co_simulation_and_read(
+                start_time=0.0,
+                stop_time=1.0,
+                relative_tolerance=1.0e-6,
+                initial_writable_float64_values=(2.0, 0.5, 1.0, 2.0),
+            )
+        )
+        assert initialized_values == pytest.approx((2.5, 4.5))
+    finally:
+        session.close()
+    assert tuple(staging_parent.glob("veragrid_fmu_stage_*")) == tuple()
+
+
+def test_fmi_three_initialization_frame_capacity_rejects_limit_plus_one_without_start() -> None:
+    """Accept the exact INITIALIZE frame and reject a one-byte-smaller bound.
+
+    :return: None.
+    """
+
+    value_reference_count: int = 3
+    serialized_value_count: int = 5
+    exact_frame_size: int = (
+        struct.calcsize("!4sBBBQI")
+        + struct.calcsize("!Bddd")
+        + 8
+        + value_reference_count * 4
+        + serialized_value_count * 8
+    )
+    validate_fmi_three_worker_float64_frame_capacity(
+        request_kind=FmiThreeWorkerRequestKind.INITIALIZE,
+        value_reference_count=value_reference_count,
+        serialized_value_count=serialized_value_count,
+        maximum_frame_size=exact_frame_size,
+        maximum_value_count=64,
+    )
+    with pytest.raises(ValueError, match="exceeds the frame bound"):
+        validate_fmi_three_worker_float64_frame_capacity(
+            request_kind=FmiThreeWorkerRequestKind.INITIALIZE,
+            value_reference_count=value_reference_count,
+            serialized_value_count=serialized_value_count,
+            maximum_frame_size=exact_frame_size - 1,
+            maximum_value_count=64,
+        )
 
 
 def _open_float64_session(

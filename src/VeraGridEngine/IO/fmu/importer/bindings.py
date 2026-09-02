@@ -18,6 +18,7 @@ from VeraGridEngine.IO.fmu.importer.model_description_metadata import (
 from VeraGridEngine.IO.fmu.importer.runtime_profile import (
     FmiThreeWorkerFloat64Profile,
     is_fmi_three_configuration_mode_writable,
+    is_fmi_three_initialization_mode_writable,
     is_fmi_three_input_or_tunable_parameter,
     validate_fmi_three_co_simulation_worker_profile,
     validate_fmi_three_model_exchange_worker_profile,
@@ -61,6 +62,142 @@ class FmuVariableBinding:
         self.direction: FmuBindingDirection = direction
         self.scale: float = float(scale)
         self.offset: float = float(offset)
+
+
+class FmuFloat64ParameterValue:
+    """Store one finite scalar floating-point FMU parameter value.
+
+    This runtime declaration contains no persistence identity beyond the FMU
+    variable name. Persistent numeric ownership remains in ``Block.parameters``.
+
+    :param variable_name: Non-empty FMU parameter variable name.
+    :param value: Finite scalar parameter value.
+    """
+
+    __slots__ = ("variable_name", "value")
+
+    def __init__(self, variable_name: str, value: float) -> None:
+        """Validate and store one scalar FMU parameter value.
+
+        :param variable_name: Non-empty FMU parameter variable name.
+        :param value: Finite real value; booleans are not numeric source data.
+        :return: None.
+        """
+
+        if isinstance(variable_name, str) and len(variable_name.strip()) > 0:
+            self.variable_name: str = variable_name
+        else:
+            raise ValueError("FMU parameter variable name is empty")
+        value_is_numeric: bool = (
+            isinstance(value, (int, float)) and not isinstance(value, bool)
+        )
+        if value_is_numeric:
+            normalized_value: float = float(value)
+            if math.isfinite(normalized_value):
+                self.value: float = normalized_value
+            else:
+                raise ValueError("FMU parameter value must be finite")
+        else:
+            raise ValueError("FMU parameter value must be a real scalar")
+
+
+def _validate_fmu_float64_parameter_values(
+    parameter_values: tuple[FmuFloat64ParameterValue, ...],
+    metadata: FmuModelDescription | None = None,
+    reserved_variable_names: tuple[str, ...] = tuple(),
+) -> None:
+    """Validate a complete parameter declaration before consumer mutation.
+
+    When metadata is supplied, the function also proves that every declaration
+    targets a scalar FMI 2 Real or FMI 3 Float64 normal parameter with exact
+    initialization access. Structural, calculated, array and non-floating
+    declarations therefore fail before reaching a runtime boundary.
+
+    :param parameter_values: Ordered scalar parameter declarations.
+    :param metadata: Optional authoritative FMU model description.
+    :param reserved_variable_names: Input or structural names unavailable to
+        normal parameters in the same request.
+    :return: None.
+    :raises ValueError: If names or values are invalid, repeated or reserved.
+    :raises FmuBindingError: If metadata does not expose an eligible parameter.
+    """
+
+    observed_names: set[str] = set()
+    reserved_names: set[str] = set(reserved_variable_names)
+    parameter_value: FmuFloat64ParameterValue
+    for parameter_value in parameter_values:
+        if isinstance(parameter_value, FmuFloat64ParameterValue):
+            pass
+        else:
+            raise ValueError("FMU parameter declaration has an invalid owner")
+        validated_value: FmuFloat64ParameterValue = FmuFloat64ParameterValue(
+            variable_name=parameter_value.variable_name,
+            value=parameter_value.value,
+        )
+        if validated_value.variable_name in observed_names:
+            raise ValueError("Duplicate FMU parameter variable name")
+        else:
+            observed_names.add(validated_value.variable_name)
+        if validated_value.variable_name in reserved_names:
+            raise ValueError(
+                "FMU parameter collides with an input or structural declaration"
+            )
+        else:
+            pass
+        if metadata is None:
+            pass
+        else:
+            try:
+                variable: FmuVariableDescription = metadata.get_variable(
+                    validated_value.variable_name
+                )
+            except KeyError as exc:
+                raise FmuBindingError(
+                    f"FMU parameter {validated_value.variable_name!r} was not found"
+                ) from exc
+            if variable.causality == "parameter":
+                pass
+            else:
+                raise FmuBindingError(
+                    f"FMU variable {variable.name!r} is not a normal parameter"
+                )
+            if len(variable.dimensions) == 0:
+                pass
+            else:
+                raise FmuBindingError(
+                    f"FMU parameter {variable.name!r} must be scalar"
+                )
+            if metadata.fmi_version_family == FmiVersion.FMI_2_0:
+                fmi_two_parameter_is_eligible: bool = (
+                    variable.variable_type == FmuVariableType.REAL
+                    and variable.variability in (None, "fixed", "tunable")
+                    and variable.initial in (None, "exact")
+                )
+                if fmi_two_parameter_is_eligible:
+                    pass
+                else:
+                    raise FmuBindingError(
+                        f"FMI 2 parameter {variable.name!r} is not an exact "
+                        "scalar Real fixed/tunable parameter"
+                    )
+            else:
+                if metadata.fmi_version_family == FmiVersion.FMI_3_0:
+                    fmi_three_parameter_is_eligible: bool = (
+                        variable.variable_type == FmuVariableType.FLOAT64
+                        and variable.variability in ("fixed", "tunable")
+                        and is_fmi_three_initialization_mode_writable(variable)
+                    )
+                    if fmi_three_parameter_is_eligible:
+                        pass
+                    else:
+                        raise FmuBindingError(
+                            f"FMI 3 parameter {variable.name!r} is not an exact "
+                            "scalar Float64 fixed/tunable parameter"
+                        )
+                else:
+                    raise FmuModeError(
+                        "FMU parameter initialization supports FMI 2 and FMI 3"
+                    )
 
 
 class FmuRefBinding:
@@ -820,6 +957,7 @@ class _FmiThreeFloat64BindingAccess(Enum):
     READABLE = 1
     STEP_WRITABLE = 2
     CONFIGURATION_WRITABLE = 3
+    INITIALIZATION_WRITABLE = 4
 
 
 class FmuImportConfig:
@@ -1275,10 +1413,19 @@ def _build_fmi_three_float64_binding_layout(
                         "structural parameter writable in Configuration Mode"
                     )
             else:
-                if access == _FmiThreeFloat64BindingAccess.READABLE:
-                    pass
+                if access == _FmiThreeFloat64BindingAccess.INITIALIZATION_WRITABLE:
+                    if is_fmi_three_initialization_mode_writable(variable):
+                        pass
+                    else:
+                        raise FmuBindingError(
+                            f"FMI 3 binding variable {variable_name!r} is not "
+                            "writable in Initialization Mode"
+                        )
                 else:
-                    raise ValueError("Unsupported FMI 3 Float64 binding access")
+                    if access == _FmiThreeFloat64BindingAccess.READABLE:
+                        pass
+                    else:
+                        raise ValueError("Unsupported FMI 3 Float64 binding access")
         variable_cardinality_plan: FmiThreeFloat64VariableCardinalityPlan = (
             resolve_fmi_three_float64_variable_cardinality_plan(
                 variable=variable,
@@ -1425,6 +1572,40 @@ def resolve_fmi_three_configuration_float64_binding_layout(
         metadata=metadata,
         variable_names=configuration_variable_names,
         access=_FmiThreeFloat64BindingAccess.CONFIGURATION_WRITABLE,
+        maximum_serialized_value_count=maximum_serialized_value_count,
+    )
+
+
+def resolve_fmi_three_initialization_float64_binding_layout(
+    metadata: FmuModelDescription,
+    initialization_variable_names: tuple[str, ...],
+    maximum_serialized_value_count: int,
+    float64_profile: FmiThreeWorkerFloat64Profile,
+    interface_mode: FmuInterfaceMode = FmuInterfaceMode.CO_SIMULATION,
+) -> FmiThreeFloat64BindingLayout:
+    """Resolve values written exclusively while Initialization Mode is active.
+
+    This layout is intentionally independent from the later step-write layout:
+    fixed parameters belong here, while only inputs and tunable parameters may
+    remain writable after initialization.
+
+    :param metadata: Authoritative FMI 3 model description.
+    :param initialization_variable_names: Ordered parameters followed by inputs.
+    :param maximum_serialized_value_count: Maximum concatenated Float64 count.
+    :param float64_profile: Authenticated scalar or array worker profile.
+    :param interface_mode: FMI interface owning Initialization Mode.
+    :return: Minimal ordered initialization layout.
+    """
+
+    _validate_fmi_three_binding_worker_profile(
+        metadata=metadata,
+        interface_mode=interface_mode,
+        float64_profile=float64_profile,
+    )
+    return _build_fmi_three_float64_binding_layout(
+        metadata=metadata,
+        variable_names=initialization_variable_names,
+        access=_FmiThreeFloat64BindingAccess.INITIALIZATION_WRITABLE,
         maximum_serialized_value_count=maximum_serialized_value_count,
     )
 

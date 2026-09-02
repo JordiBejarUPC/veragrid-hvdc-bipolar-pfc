@@ -17,10 +17,15 @@ from VeraGridEngine.IO.fmu.importer.bindings import (
     resolve_fmi_three_configured_float64_binding_layout,
     resolve_fmi_three_configuration_float64_binding_layout,
     resolve_fmi_three_configuration_uint64_binding_references,
+    resolve_fmi_three_initialization_float64_binding_layout,
     resolve_fmi_three_constant_float64_binding_layouts,
     resolve_fmi_three_scalar_binding_references,
 )
-from VeraGridEngine.IO.fmu.importer.errors import FmuArchiveError, FmuModeError
+from VeraGridEngine.IO.fmu.importer.errors import (
+    FmuArchiveError,
+    FmuBindingError,
+    FmuModeError,
+)
 from VeraGridEngine.IO.fmu.importer.model_description import (
     FmuModelDescription,
     read_fmu_model_description,
@@ -59,6 +64,7 @@ class FmiThreeFloat64Session:
 
     :param worker_host: Prepared worker host that owns process and staging state.
     :param configuration_layout: Ordered structural values applied before initialization.
+    :param initialization_layout: Ordered parameters and inputs applied only during initialization.
     :param readable_layout: Ordered values sampled after stable transitions.
     :param readable_value_selectors: Optional device selections from the full
         readable vector.
@@ -68,6 +74,7 @@ class FmiThreeFloat64Session:
     __slots__ = (
         "_worker_host",
         "_configuration_layout",
+        "_initialization_layout",
         "_configuration_uint64_value_references",
         "_readable_layout",
         "_readable_value_selectors",
@@ -79,6 +86,7 @@ class FmiThreeFloat64Session:
         self,
         worker_host: FmiThreeWorkerHost,
         configuration_layout: FmiThreeFloat64BindingLayout,
+        initialization_layout: FmiThreeFloat64BindingLayout,
         configuration_uint64_value_references: tuple[int, ...],
         readable_layout: FmiThreeFloat64BindingLayout,
         readable_value_selectors: tuple[
@@ -91,6 +99,7 @@ class FmiThreeFloat64Session:
 
         :param worker_host: Worker host that owns process and staging state.
         :param configuration_layout: Ordered Configuration Mode write layout.
+        :param initialization_layout: Ordered Initialization Mode write layout.
         :param configuration_uint64_value_references: Ordered structural UInt64
             references applied before initialization.
         :param readable_layout: Ordered scalar or array read layout.
@@ -104,6 +113,9 @@ class FmiThreeFloat64Session:
         self._worker_host: FmiThreeWorkerHost = worker_host
         self._configuration_layout: FmiThreeFloat64BindingLayout = (
             configuration_layout
+        )
+        self._initialization_layout: FmiThreeFloat64BindingLayout = (
+            initialization_layout
         )
         self._configuration_uint64_value_references: tuple[int, ...] = tuple(
             configuration_uint64_value_references
@@ -265,6 +277,18 @@ class FmiThreeFloat64Session:
                     ),
                 )
             )
+            configured_initialization_layout: FmiThreeFloat64BindingLayout = (
+                resolve_fmi_three_configured_float64_binding_layout(
+                    layout=self._initialization_layout,
+                    configuration_uint64_value_references=(
+                        self._configuration_uint64_value_references
+                    ),
+                    configuration_uint64_values=configuration_uint64_values,
+                    maximum_serialized_value_count=(
+                        self._maximum_serialized_value_count
+                    ),
+                )
+            )
             configured_writable_layout: FmiThreeFloat64BindingLayout = (
                 resolve_fmi_three_configured_float64_binding_layout(
                     layout=self._writable_layout,
@@ -285,6 +309,7 @@ class FmiThreeFloat64Session:
             # Publish the prospective layouts only after the child confirms that
             # native exit from Configuration Mode completed successfully.
             self._configuration_layout = configured_configuration_layout
+            self._initialization_layout = configured_initialization_layout
             self._readable_layout = configured_readable_layout
             self._writable_layout = configured_writable_layout
         else:
@@ -343,16 +368,50 @@ class FmiThreeFloat64Session:
         :return: None.
         """
 
-        validated_values: tuple[float, ...] = self._validate_bound_writable_values(
+        validated_values: tuple[float, ...] = self._validate_initialization_values(
             initial_writable_float64_values
         )
         self._worker_host.initialize(
             start_time=start_time,
             stop_time=stop_time,
             relative_tolerance=relative_tolerance,
-            initial_float64_value_references=self._writable_layout.value_references,
+            initial_float64_value_references=self._initialization_layout.value_references,
             initial_float64_values=validated_values,
         )
+
+    def _validate_initialization_values(
+        self,
+        initial_float64_values: tuple[float, ...],
+    ) -> tuple[float, ...]:
+        """Validate the complete Initialization Mode vector before native work.
+
+        :param initial_float64_values: Parameters followed by initial inputs,
+            aligned with the dedicated initialization layout.
+        :return: Finite values approved by the shared protocol validator.
+        """
+
+        if (
+            len(initial_float64_values)
+            == self._initialization_layout.serialized_value_count
+        ):
+            pass
+        else:
+            raise ValueError(
+                "FMI 3 session initialization values do not match the bound layout"
+            )
+        if len(self._initialization_layout.value_references) > 0:
+            validated_request: FmiThreeWorkerSetFloat64Request = (
+                FmiThreeWorkerSetFloat64Request(
+                    value_references=(
+                        self._initialization_layout.value_references
+                    ),
+                    values=initial_float64_values,
+                    maximum_value_count=self._maximum_serialized_value_count,
+                )
+            )
+            return validated_request.values
+        else:
+            return tuple()
 
     def initialize_co_simulation_and_read(
         self,
@@ -702,6 +761,7 @@ def open_fmi_three_float64_session(
     writable_variable_names: tuple[str, ...],
     limits: FmiThreeWorkerHostLimits,
     float64_profile: FmiThreeWorkerFloat64Profile,
+    initialization_variable_names: tuple[str, ...] | None = None,
     configuration_variable_names: tuple[str, ...] = tuple(),
     configuration_uint64_variable_names: tuple[str, ...] = tuple(),
     early_return_allowed: bool = False,
@@ -722,6 +782,8 @@ def open_fmi_three_float64_session(
     :param limits: Explicit finite worker supervision policy.
     :param float64_profile: Scalar, constant-array, or configurable-array
         profile.
+    :param initialization_variable_names: Ordered parameters followed by inputs;
+        ``None`` preserves the historical input-only initialization behavior.
     :param configuration_variable_names: Ordered structural Float64 names to
         assign through Configuration Mode before initialization.
     :param configuration_uint64_variable_names: Ordered structural UInt64 names
@@ -782,6 +844,27 @@ def open_fmi_three_float64_session(
         resolve_fmi_three_configuration_uint64_binding_references(
             metadata=metadata,
             configuration_variable_names=configuration_uint64_variable_names,
+            float64_profile=float64_profile,
+            interface_mode=interface_mode,
+        )
+    )
+    if initialization_variable_names is None:
+        resolved_initialization_variable_names: tuple[str, ...] = (
+            writable_variable_names
+        )
+    else:
+        resolved_initialization_variable_names = tuple(
+            initialization_variable_names
+        )
+    initialization_layout: FmiThreeFloat64BindingLayout = (
+        resolve_fmi_three_initialization_float64_binding_layout(
+            metadata=metadata,
+            initialization_variable_names=(
+                resolved_initialization_variable_names
+            ),
+            maximum_serialized_value_count=(
+                limits.maximum_float64_values_per_request
+            ),
             float64_profile=float64_profile,
             interface_mode=interface_mode,
         )
@@ -869,8 +952,8 @@ def open_fmi_three_float64_session(
                 raise ValueError("Unsupported FMI 3 worker Float64 profile")
     validate_fmi_three_worker_float64_frame_capacity(
         request_kind=FmiThreeWorkerRequestKind.INITIALIZE,
-        value_reference_count=len(writable_layout.value_references),
-        serialized_value_count=writable_layout.serialized_value_count,
+        value_reference_count=len(initialization_layout.value_references),
+        serialized_value_count=initialization_layout.serialized_value_count,
         maximum_frame_size=limits.maximum_frame_size,
         maximum_value_count=limits.maximum_float64_values_per_request,
     )
@@ -936,6 +1019,7 @@ def open_fmi_three_float64_session(
         FmiThreeFloat64Session(
             worker_host=worker_host,
             configuration_layout=configuration_layout,
+            initialization_layout=initialization_layout,
             configuration_uint64_value_references=(
                 configuration_uint64_value_references
             ),

@@ -31,11 +31,13 @@ from VeraGridEngine.IO.fmu.importer.bindings import (
     FmiThreeFloat64ConfigurationValue,
     FmiThreeFloat64SessionValueSelector,
     FmiThreeUInt64ConfigurationValue,
+    FmuFloat64ParameterValue,
     FmuImportConfig,
     FmuRefBinding,
     _build_fmi_three_configuration_session_values,
     _reject_indexed_fmu_ref_bindings,
     _validate_fmi_three_configuration_values,
+    _validate_fmu_float64_parameter_values,
     resolve_fmi_three_float64_session_value_selectors,
 )
 from VeraGridEngine.IO.fmu.importer.device_config import load_fmu_me_device_config, restore_fmu_me_spec_from_record
@@ -195,6 +197,7 @@ class FmuMeDeviceSpec:
         "output_param_uids",
         "configuration_float64_values",
         "configuration_uint64_values",
+        "parameter_values",
     )
 
     def __init__(
@@ -219,6 +222,7 @@ class FmuMeDeviceSpec:
         configuration_uint64_values: tuple[
             FmiThreeUInt64ConfigurationValue, ...
         ] = tuple(),
+        parameter_values: tuple[FmuFloat64ParameterValue, ...] = tuple(),
     ) -> None:
         """Store the runtime FMU ME specification.
 
@@ -238,6 +242,7 @@ class FmuMeDeviceSpec:
         :param output_param_uids: Runtime output-parameter identifiers.
         :param configuration_float64_values: Structural Float64 declarations.
         :param configuration_uint64_values: Structural UInt64 declarations.
+        :param parameter_values: Ephemeral values resolved from Block.parameters.
         :return: None.
         """
 
@@ -274,6 +279,10 @@ class FmuMeDeviceSpec:
         self.configuration_uint64_values: tuple[
             FmiThreeUInt64ConfigurationValue, ...
         ] = tuple(configuration_uint64_values)
+        _validate_fmu_float64_parameter_values(parameter_values=parameter_values)
+        self.parameter_values: tuple[FmuFloat64ParameterValue, ...] = tuple(
+            parameter_values
+        )
 
 
 class FmuMeDeviceAdapter:
@@ -619,12 +628,35 @@ class FmuMeDeviceAdapter:
             active_budget = evaluation_budget
 
         start_values_payload: dict[str, float] = dict()
+        parameter_names: set[str] = set()
+        parameter_value: FmuFloat64ParameterValue
+        for parameter_value in self.spec.parameter_values:
+            start_values_payload[parameter_value.variable_name] = (
+                parameter_value.value
+            )
+            parameter_names.add(parameter_value.variable_name)
         if start_values is not None:
-            start_values_payload.update(start_values)
+            start_value_name: str
+            start_value: float
+            for start_value_name, start_value in start_values.items():
+                if start_value_name in parameter_names:
+                    raise ValueError(
+                        "FMU ME start value cannot override a Block parameter"
+                    )
+                else:
+                    start_values_payload[start_value_name] = start_value
         else:
             pass
         if input_values is not None:
-            start_values_payload.update(input_values)
+            input_value_name: str
+            input_value: float
+            for input_value_name, input_value in input_values.items():
+                if input_value_name in parameter_names:
+                    raise ValueError(
+                        "FMU ME input value cannot override a Block parameter"
+                    )
+                else:
+                    start_values_payload[input_value_name] = input_value
         else:
             pass
 
@@ -665,10 +697,16 @@ class FmuMeDeviceAdapter:
                 dtype=float,
             )
             initial_input_values: dict[str, float] = dict()
-            if input_values is not None:
-                initial_input_values.update(input_values)
-            else:
-                pass
+            initial_input_name: str
+            for initial_input_name in self.spec.input_variable_names:
+                initial_input_value: float | None = start_values_payload.get(
+                    initial_input_name,
+                    None,
+                )
+                if initial_input_value is not None:
+                    initial_input_values[initial_input_name] = initial_input_value
+                else:
+                    pass
             initial_derivatives: np.ndarray
             initial_readable_values: tuple[float, ...] | None
             initial_derivatives, initial_readable_values = (
@@ -732,14 +770,50 @@ class FmuMeDeviceAdapter:
                     self.spec.configuration_uint64_values
                 ),
             )
-            initial_writable_values: tuple[float, ...] = (
-                self._build_ordered_writable_values(start_values_payload)
+            initialization_variable_names: list[str] = [""] * (
+                len(self.spec.parameter_values)
+                + len(self.spec.input_variable_names)
             )
+            initial_values: list[float] = [0.0] * len(
+                initialization_variable_names
+            )
+            parameter_index: int
+            for parameter_index in range(len(self.spec.parameter_values)):
+                parameter_value = self.spec.parameter_values[parameter_index]
+                initialization_variable_names[parameter_index] = (
+                    parameter_value.variable_name
+                )
+                initial_values[parameter_index] = parameter_value.value
+            initial_input_values = dict()
+            initial_input_name: str
+            for initial_input_name, initial_input_value in start_values_payload.items():
+                if initial_input_name in parameter_names:
+                    pass
+                else:
+                    initial_input_values[initial_input_name] = initial_input_value
+            ordered_input_values: tuple[float, ...] = (
+                self._build_ordered_writable_values(initial_input_values)
+            )
+            input_index: int
+            for input_index in range(len(self.spec.input_variable_names)):
+                initialization_index: int = (
+                    len(self.spec.parameter_values) + input_index
+                )
+                initialization_variable_names[initialization_index] = (
+                    self.spec.input_variable_names[input_index]
+                )
+                initial_values[initialization_index] = ordered_input_values[
+                    input_index
+                ]
+            initial_writable_values: tuple[float, ...] = tuple(initial_values)
             session: FmiThreeFloat64Session = open_fmi_three_float64_session(
                 config=self.spec.config,
                 instance_name="veragrid-fmi-three-me-device",
                 readable_variable_names=readable_variable_names,
                 writable_variable_names=self.spec.input_variable_names,
+                initialization_variable_names=tuple(
+                    initialization_variable_names
+                ),
                 limits=worker_limits,
                 float64_profile=self.spec.float64_profile,
                 configuration_variable_names=(
@@ -2345,6 +2419,7 @@ def build_fmu_me_device_spec(
     configuration_uint64_values: tuple[
         FmiThreeUInt64ConfigurationValue, ...
     ] = tuple(),
+    parameter_values: tuple[FmuFloat64ParameterValue, ...] = tuple(),
 ) -> FmuMeDeviceSpec:
     """Build the validated runtime specification for one FMU ME device.
 
@@ -2361,6 +2436,7 @@ def build_fmu_me_device_spec(
     :param output_param_uids: Optional runtime output-parameter identifiers.
     :param configuration_float64_values: Structural Float64 declarations.
     :param configuration_uint64_values: Structural UInt64 declarations.
+    :param parameter_values: Ephemeral values resolved from Block.parameters.
     :return: Runtime FMU ME device specification.
     """
 
@@ -2447,6 +2523,33 @@ def build_fmu_me_device_spec(
                 f"FMI {metadata.fmi_version} execution is not supported yet"
             )
     if resolved_mode == FmuInterfaceMode.MODEL_EXCHANGE:
+        reserved_parameter_names: list[str] = [""] * (
+            len(input_variable_names)
+            + len(configuration_float64_values)
+            + len(configuration_uint64_values)
+        )
+        reserved_name_index: int = 0
+        reserved_input_name: str
+        for reserved_input_name in input_variable_names:
+            reserved_parameter_names[reserved_name_index] = reserved_input_name
+            reserved_name_index += 1
+        float64_configuration: FmiThreeFloat64ConfigurationValue
+        for float64_configuration in configuration_float64_values:
+            reserved_parameter_names[reserved_name_index] = (
+                float64_configuration.variable_name
+            )
+            reserved_name_index += 1
+        uint64_configuration: FmiThreeUInt64ConfigurationValue
+        for uint64_configuration in configuration_uint64_values:
+            reserved_parameter_names[reserved_name_index] = (
+                uint64_configuration.variable_name
+            )
+            reserved_name_index += 1
+        _validate_fmu_float64_parameter_values(
+            parameter_values=parameter_values,
+            metadata=metadata,
+            reserved_variable_names=tuple(reserved_parameter_names),
+        )
         available_variables: set[str] = set(metadata.get_variable_names())
         input_variable_name: str
         for input_variable_name in input_variable_names:
@@ -2523,6 +2626,7 @@ def build_fmu_me_device_spec(
             output_param_uids=resolved_output_param_uids,
             configuration_float64_values=configuration_float64_values,
             configuration_uint64_values=configuration_uint64_values,
+            parameter_values=parameter_values,
         )
     else:
         raise ValueError(f"FMU ME device specs require a Model Exchange FMU, got {resolved_mode.value}")
