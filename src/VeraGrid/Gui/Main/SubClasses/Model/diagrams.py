@@ -385,6 +385,13 @@ class DiagramsMain(CompiledArraysMain):
 
         :return: Nothing.
         """
+        diagram_widget: SchematicWidget | GridMapWidget
+        for diagram_widget in self.diagram_widgets_list:
+            if isinstance(diagram_widget, GridMapWidget):
+                diagram_widget.map.tile_src.shutdown()
+            else:
+                pass
+
         tile_source: CartoDbTiles
         for tile_source in self.tile_sources:
             tile_source.shutdown()

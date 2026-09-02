@@ -104,7 +104,7 @@ class TileWorker(QThread):
             try:
 
                 # Create a Request object with the desired headers
-                response = urlopen(Request(tile_url, headers={'User-Agent': 'VeraGrid 5'}))
+                response = urlopen(Request(tile_url, headers={'User-Agent': 'VeraGrid 5'}), timeout=5.0)
 
                 content_type = response.info().get_content_type()
 

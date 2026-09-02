@@ -207,7 +207,7 @@ class Tiles(BaseTiles):
             test_url = self.servers[0] + self.url_path.format(Z=0, X=0, Y=0)
             try:
                 r = request.Request(test_url, headers={'User-Agent': 'VeraGrid 5'})
-                request.urlopen(r).read()
+                request.urlopen(r, timeout=5.0).read()
 
             except HTTPError as e:
                 # if it's fatal, log it and die, otherwise try a proxy
@@ -402,7 +402,7 @@ class Tiles(BaseTiles):
             worker.stop()
 
         for worker in self.workers:
-            worker.wait(2000)
+            worker.wait(6000)
 
     def get_server_tile(self, level: int, x: float, y: float) -> None:
         """
