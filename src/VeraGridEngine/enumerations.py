@@ -2962,6 +2962,7 @@ class ResultTypes(Enum):
 
     # Hydro OPF
     FluidCurrentLevel = 'Reservoir fluid level'
+    FluidWaterValue = 'Water value'
     FluidFlowIn = 'Flow entering the node'
     FluidFlowOut = 'Flow exiting the node'
     FluidP2XFlow = 'Flow from the P2X'
