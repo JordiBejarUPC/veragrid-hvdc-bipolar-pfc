@@ -10,6 +10,7 @@ from typing import Dict, Union, TYPE_CHECKING
 from VeraGridEngine.basic_structures import Logger
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.Devices.Substation.bus import Bus
+from VeraGridEngine.Devices.Fluid.fluid_injection_template import FluidInjectionTemplate
 from VeraGridEngine.Devices.Aggregation.area import Area
 from VeraGridEngine.enumerations import (BusMode, BranchImpedanceMode, ExternalGridMode, DeviceType,
                                          TapModuleControl, TapPhaseControl, HvdcControlType, ConverterControlType,
@@ -2290,27 +2291,114 @@ def get_fluid_node_data(data: FluidNodeData,
     return plant_dict
 
 
+def resize_fluid_injection_data(data: FluidTurbineData, nelm: int) -> None:
+    """
+    Resize fluid injection data arrays to the valid compiled entries.
+
+    :param data: Fluid injection data structure.
+    :param nelm: Number of valid compiled entries.
+    :return: None.
+    """
+    if data.nelm == nelm:
+        pass
+    else:
+        data.names = data.names[:nelm].copy()
+        data.idtag = data.idtag[:nelm].copy()
+        data.efficiency = data.efficiency[:nelm].copy()
+        data.max_flow_rate = data.max_flow_rate[:nelm].copy()
+        data.plant_idx = data.plant_idx[:nelm].copy()
+        data.generator_idx = data.generator_idx[:nelm].copy()
+        data.nelm = nelm
+
+
+def get_valid_fluid_injection_indices(elm: FluidInjectionTemplate,
+                                      plant_dict: Dict[str, int],
+                                      gen_dict: Dict[str, int],
+                                      logger: Logger) -> tuple[int | None, int | None]:
+    """
+    Resolve the plant and generator indices for one fluid injection.
+
+    :param elm: Fluid injection device.
+    :param plant_dict: Fluid node index by idtag.
+    :param gen_dict: Generator index by idtag.
+    :param logger: Logger receiving invalid-link errors.
+    :return: Plant and generator indices, or ``None`` for invalid links.
+    """
+    plant_idx: int | None = None
+    gen_idx: int | None = None
+
+    if elm.plant is None:
+        logger.add_error(msg="Fluid injection has no plant",
+                         device=elm.name,
+                         device_class=str(elm.device_type.value),
+                         device_property="plant")
+    else:
+        plant_idx = plant_dict.get(elm.plant.idtag, None)
+        if plant_idx is None:
+            logger.add_error(msg="Fluid injection plant is not in the compiled fluid nodes",
+                             device=elm.name,
+                             device_class=str(elm.device_type.value),
+                             device_property="plant",
+                             object_value=elm.plant.name)
+        else:
+            pass
+
+    if elm.generator is None:
+        logger.add_error(msg="Fluid injection has no generator",
+                         device=elm.name,
+                         device_class=str(elm.device_type.value),
+                         device_property="generator")
+    else:
+        gen_idx = gen_dict.get(elm.generator.idtag, None)
+        if gen_idx is None:
+            logger.add_error(msg="Fluid injection generator is not in the compiled generators",
+                             device=elm.name,
+                             device_class=str(elm.device_type.value),
+                             device_property="generator",
+                             object_value=elm.generator.name)
+        else:
+            pass
+
+    return plant_idx, gen_idx
+
+
 def get_fluid_turbine_data(data: FluidTurbineData,
                            circuit: MultiCircuit,
                            plant_dict: Dict[str, int],
-                           gen_dict: Dict[str, int]) -> FluidTurbineData:
+                           gen_dict: Dict[str, int],
+                           logger: Logger = Logger()) -> FluidTurbineData:
     """
 
     :param data:
     :param circuit:
     :param plant_dict:
     :param gen_dict:
+    :param logger:
     :return:
     """
-    for k, elm in enumerate(circuit.get_fluid_turbines()):
-        data.plant_idx[k] = plant_dict[elm.plant.idtag]
-        data.generator_idx[k] = gen_dict[elm.generator.idtag]
+    k: int = 0
 
-        data.names[k] = elm.name
-        data.idtag[k] = elm.idtag
+    for elm in circuit.get_fluid_turbines():
+        plant_idx, gen_idx = get_valid_fluid_injection_indices(elm=elm,
+                                                               plant_dict=plant_dict,
+                                                               gen_dict=gen_dict,
+                                                               logger=logger)
 
-        data.efficiency[k] = elm.efficiency
-        data.max_flow_rate[k] = elm.max_flow_rate
+        if plant_idx is not None and gen_idx is not None:
+            data.plant_idx[k] = plant_idx
+            data.generator_idx[k] = gen_idx
+
+            data.names[k] = elm.name
+            data.idtag[k] = elm.idtag
+
+            data.efficiency[k] = elm.efficiency
+            data.max_flow_rate[k] = elm.max_flow_rate
+
+            k += 1
+        else:
+            pass
+
+    resize_fluid_injection_data(data=data, nelm=k)
 
     return data
 
@@ -2318,25 +2406,41 @@ def get_fluid_turbine_data(data: FluidTurbineData,
 def get_fluid_pump_data(data: FluidPumpData,
                         circuit: MultiCircuit,
                         plant_dict: Dict[str, int],
-                        gen_dict: Dict[str, int]) -> FluidPumpData:
+                        gen_dict: Dict[str, int],
+                        logger: Logger = Logger()) -> FluidPumpData:
     """
 
     :param data:
     :param circuit:
     :param plant_dict:
     :param gen_dict:
+    :param logger:
     :return:
     """
 
-    for k, elm in enumerate(circuit.get_fluid_pumps()):
-        data.plant_idx[k] = plant_dict[elm.plant.idtag]
-        data.generator_idx[k] = gen_dict[elm.generator.idtag]
+    k: int = 0
 
-        data.names[k] = elm.name
-        data.idtag[k] = elm.idtag
+    for elm in circuit.get_fluid_pumps():
+        plant_idx, gen_idx = get_valid_fluid_injection_indices(elm=elm,
+                                                               plant_dict=plant_dict,
+                                                               gen_dict=gen_dict,
+                                                               logger=logger)
 
-        data.efficiency[k] = elm.efficiency
-        data.max_flow_rate[k] = elm.max_flow_rate
+        if plant_idx is not None and gen_idx is not None:
+            data.plant_idx[k] = plant_idx
+            data.generator_idx[k] = gen_idx
+
+            data.names[k] = elm.name
+            data.idtag[k] = elm.idtag
+
+            data.efficiency[k] = elm.efficiency
+            data.max_flow_rate[k] = elm.max_flow_rate
+
+            k += 1
+        else:
+            pass
+
+    resize_fluid_injection_data(data=data, nelm=k)
 
     return data
 
@@ -2344,25 +2448,41 @@ def get_fluid_pump_data(data: FluidPumpData,
 def get_fluid_p2x_data(data: FluidP2XData,
                        circuit: MultiCircuit,
                        plant_dict: Dict[str, int],
-                       gen_dict: Dict[str, int]) -> FluidP2XData:
+                       gen_dict: Dict[str, int],
+                       logger: Logger = Logger()) -> FluidP2XData:
     """
 
     :param data:
     :param circuit:
     :param plant_dict:
     :param gen_dict:
+    :param logger:
     :return:
     """
 
-    for k, elm in enumerate(circuit.get_fluid_p2xs()):
-        data.plant_idx[k] = plant_dict[elm.plant.idtag]
-        data.generator_idx[k] = gen_dict[elm.generator.idtag]
+    k: int = 0
 
-        data.names[k] = elm.name
-        data.idtag[k] = elm.idtag
+    for elm in circuit.get_fluid_p2xs():
+        plant_idx, gen_idx = get_valid_fluid_injection_indices(elm=elm,
+                                                               plant_dict=plant_dict,
+                                                               gen_dict=gen_dict,
+                                                               logger=logger)
 
-        data.efficiency[k] = elm.efficiency
-        data.max_flow_rate[k] = elm.max_flow_rate
+        if plant_idx is not None and gen_idx is not None:
+            data.plant_idx[k] = plant_idx
+            data.generator_idx[k] = gen_idx
+
+            data.names[k] = elm.name
+            data.idtag[k] = elm.idtag
+
+            data.efficiency[k] = elm.efficiency
+            data.max_flow_rate[k] = elm.max_flow_rate
+
+            k += 1
+        else:
+            pass
+
+    resize_fluid_injection_data(data=data, nelm=k)
 
     return data
 
@@ -2591,21 +2711,27 @@ def compile_numerical_circuit_at(circuit: MultiCircuit,
             circuit=circuit,
             plant_dict=plant_dict,
             gen_dict=gen_dict,
+            logger=logger,
         )
+        nc.nfluidturbine = nc.fluid_turbine_data.nelm
 
         get_fluid_pump_data(
             data=nc.fluid_pump_data,
             circuit=circuit,
             plant_dict=plant_dict,
-            gen_dict=gen_dict
+            gen_dict=gen_dict,
+            logger=logger,
         )
+        nc.nfluidpump = nc.fluid_pump_data.nelm
 
         get_fluid_p2x_data(
             data=nc.fluid_p2x_data,
             circuit=circuit,
             plant_dict=plant_dict,
             gen_dict=gen_dict,
+            logger=logger,
         )
+        nc.nfluidp2x = nc.fluid_p2x_data.nelm
 
         get_fluid_path_data(
             data=nc.fluid_path_data,
