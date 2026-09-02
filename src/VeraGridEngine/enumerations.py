@@ -5079,8 +5079,10 @@ class BlockSymbolKind(Enum):
 class BlockSymbolCategory(Enum):
     """Visible symbol group used to filter dynamic-block symbol tables."""
 
+    GENERAL = "General structure"
     VARIABLES = "Variables"
     PARAMETERS = "Parameters"
+    RETAINED_MODES = "Retained modes"
 
 
 class DynamicEditorMimeType(Enum):

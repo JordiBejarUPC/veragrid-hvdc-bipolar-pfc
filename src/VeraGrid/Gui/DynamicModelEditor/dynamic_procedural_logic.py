@@ -3,17 +3,14 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-"""Transactional editor models for retained modes and procedural runtime logic."""
+"""Parse, validate, serialize, and apply procedural Python model code."""
 
 from __future__ import annotations
 
+import ast
 import keyword
-from pathlib import Path
 import re
 from typing import Dict, List, Mapping, Sequence
-
-from PySide6 import QtCore, QtGui, QtWidgets
-from PySide6.QtCore import Qt, Signal
 
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.enumerations import ProceduralFieldType, ProceduralLogicType
@@ -29,6 +26,8 @@ from VeraGridEngine.Utils.Symbolic.symbolic import (
 )
 from VeraGridEngine.Utils.procedural_logic import (
     AnalogFlipFlopLogic,
+    ConditionalDiagnosticLogic,
+    DelayedSwitchEventLogic,
     DelayedThresholdLatchLogic,
     FixedSampleLogic,
     FlipFlopLogic,
@@ -44,6 +43,9 @@ from VeraGridEngine.Utils.procedural_logic import (
     ThreePhaseCarrierSampledModulationLogic,
     TimeDelayLogic,
     ValveStateLogic,
+)
+from VeraGrid.Gui.DynamicModelEditor.dae_code_linter import (
+    normalize_algebraic_equality_syntax,
 )
 
 
@@ -120,9 +122,9 @@ def normalize_runtime_expression_source(source: str,
 
 
 class ProceduralFieldDraft:
-    """One typed editable field belonging to a procedural entry draft."""
+    """One typed field parsed from or serialized to Python model code."""
 
-    __slots__ = ("_key", "_label", "_tpe", "_value", "_description", "_error")
+    __slots__ = ("_key", "_label", "_tpe", "_value", "_description")
 
     def __init__(self,
                  key: str,
@@ -144,7 +146,6 @@ class ProceduralFieldDraft:
         self._tpe: ProceduralFieldType = tpe
         self._value: str = value
         self._description: str = description
-        self._error: str = ""
 
     def get_key(self) -> str:
         """
@@ -185,26 +186,10 @@ class ProceduralFieldDraft:
         """
         return self._description
 
-    def set_error(self, error: str) -> None:
-        """
-        Set the current validation error or clear it with an empty string.
-
-        :param error: Value supplied for ``error``.
-        :return: None.
-        """
-        self._error = error
-
-    def get_error(self) -> str:
-        """
-        :return: The current validation error.
-        """
-        return self._error
-
-
 class RuntimeModeDraft:
     """Detached retained runtime mode with an initial symbolic expression."""
 
-    __slots__ = ("_owner", "_variable", "_name", "_initial_expression", "_removed", "_error")
+    __slots__ = ("_owner", "_variable", "_name", "_initial_expression", "_removed")
 
     def __init__(self,
                  owner: Block,
@@ -224,7 +209,6 @@ class RuntimeModeDraft:
         self._name: str = name
         self._initial_expression: str = initial_expression
         self._removed: bool = False
-        self._error: str = ""
 
     def get_owner(self) -> Block:
         """
@@ -265,15 +249,6 @@ class RuntimeModeDraft:
         """
         return self._initial_expression
 
-    def set_initial_expression(self, expression: str) -> None:
-        """
-        Set the staged initial expression source.
-
-        :param expression: Value supplied for ``expression``.
-        :return: None.
-        """
-        self._initial_expression = expression.strip()
-
     def is_new(self) -> bool:
         """
         Return whether Apply must create a real variable.
@@ -299,28 +274,10 @@ class RuntimeModeDraft:
         """
         self._removed = removed
 
-    def set_error(self, error: str) -> None:
-        """
-        Set the current validation error.
-
-        :param error: Value supplied for ``error``.
-        :return: None.
-        """
-        self._error = error
-
-    def get_error(self) -> str:
-        """
-        Return the current validation error.
-
-        :return: The current validation error.
-        """
-        return self._error
-
-
 class ProceduralLogicDraft:
-    """Detached typed representation of one ordered procedural logic entry."""
+    """Typed representation parsed from one procedural Python call."""
 
-    __slots__ = ("_owner", "_logic_tpe", "_name", "_fields", "_original", "_error")
+    __slots__ = ("_owner", "_logic_tpe", "_name", "_fields", "_original")
 
     def __init__(self,
                  owner: Block,
@@ -342,7 +299,6 @@ class ProceduralLogicDraft:
         self._name: str = name
         self._fields: List[ProceduralFieldDraft] = list(fields)
         self._original: ProceduralLogicBase | None = original
-        self._error: str = ""
 
     def get_owner(self) -> Block:
         """
@@ -362,15 +318,6 @@ class ProceduralLogicDraft:
         """
         return self._name
 
-    def set_name(self, name: str) -> None:
-        """
-        Set the staged entry name.
-
-        :param name: Value supplied for ``name``.
-        :return: None.
-        """
-        self._name = name.strip()
-
     def get_fields(self) -> List[ProceduralFieldDraft]:
         """
         :return: The ordered editable fields.
@@ -378,10 +325,10 @@ class ProceduralLogicDraft:
         return list(self._fields)
 
     def get_field(self, key: str) -> ProceduralFieldDraft | None:
-        """Return one field by stable key.
+        """Return one parsed field by its stable serialization key.
 
         :param key: Requested field key.
-        :return: Matching field or ``None``.
+        :return: Matching field or ``None`` when the call omitted it.
         """
         result: ProceduralFieldDraft | None = None
         field: ProceduralFieldDraft
@@ -399,42 +346,6 @@ class ProceduralLogicDraft:
         :return: The original runtime entry.
         """
         return self._original
-
-    def set_error(self, error: str) -> None:
-        """
-        Set the entry-level validation error.
-
-        :param error: Value supplied for ``error``.
-        :return: None.
-        """
-        self._error = error
-
-    def get_error(self) -> str:
-        """
-        Return the entry-level validation error.
-
-        :return: The entry-level validation error.
-        """
-        return self._error
-
-    def get_output_summary(self) -> str:
-        """
-        Return the first output, mode, or target reference for the entry list.
-
-        :return: The first output, mode, or target reference for the entry list.
-        """
-        result: str = ""
-        field: ProceduralFieldDraft
-        for field in self._fields:
-            if result == "" and field.get_tpe() in (
-                ProceduralFieldType.MODE_REFERENCE,
-                ProceduralFieldType.TARGET_REFERENCE,
-            ):
-                result = field.get_value()
-            else:
-                pass
-        return result
-
 
 class RuntimeLogicValidationResult:
     """Validation messages for a complete retained-mode/procedural draft."""
@@ -514,62 +425,6 @@ def procedural_expression_to_text(expression: Expr | Comparison | float | int | 
     return result
 
 
-def expression_mentions_symbol(expression: Expr | Comparison,
-                               symbol_name: str) -> bool:
-    """Return whether an expression reads a symbol by its complete name.
-
-    Text matching is used because the current engine variable walker does not
-    traverse ``Comparison`` nodes. Word boundaries prevent a mode such as
-    ``trip`` from being confused with ``trip_delay``.
-
-    :param expression: DAE, initialization or guard expression.
-    :param symbol_name: Exact symbolic name being searched.
-    :return: Whether the expression contains the requested symbol.
-    """
-    pattern: re.Pattern[str] = re.compile(rf"\b{re.escape(symbol_name)}\b")
-    source: str = procedural_expression_to_text(expression)
-    return pattern.search(source) is not None
-
-
-def block_reads_symbol(block: Block, symbol_name: str) -> bool:
-    """Return whether one block reads a symbol in any executable equation.
-
-    :param block: Candidate direct equation owner.
-    :param symbol_name: Exact retained-mode name.
-    :return: Whether the symbol is read by the block.
-    """
-    reads_symbol: bool = False
-    expression_groups: tuple[Sequence[Expr | Comparison], ...] = (
-        block.state_eqs,
-        block.algebraic_eqs,
-        block.differential_eqs,
-        block.inequalities,
-    )
-    expression_group: Sequence[Expr | Comparison]
-    expression: Expr | Comparison
-    for expression_group in expression_groups:
-        for expression in expression_group:
-            if expression_mentions_symbol(expression, symbol_name):
-                reads_symbol = True
-            else:
-                pass
-
-    expression_mappings: tuple[Mapping[Var, Expr | Comparison], ...] = (
-        block.init_eqs,
-        block.diff_init_eqs,
-        block.discrete_eqs,
-        block.boolean_guards,
-    )
-    expression_mapping: Mapping[Var, Expr | Comparison]
-    for expression_mapping in expression_mappings:
-        for expression in expression_mapping.values():
-            if expression_mentions_symbol(expression, symbol_name):
-                reads_symbol = True
-            else:
-                pass
-    return reads_symbol
-
-
 def make_procedural_field(key: str,
                           label: str,
                           tpe: ProceduralFieldType,
@@ -601,7 +456,78 @@ def get_procedural_fields(entry: ProceduralLogicBase) -> List[ProceduralFieldDra
     runtime_tpe: ProceduralFieldType = ProceduralFieldType.RUNTIME_REFERENCE
     target_tpe: ProceduralFieldType = ProceduralFieldType.TARGET_REFERENCE
 
-    if isinstance(entry, FixedSampleLogic):
+    if isinstance(entry, ConditionalDiagnosticLogic):
+        fields.extend(list((
+            make_procedural_field(
+                "condition_expr",
+                "Condition",
+                expression_tpe,
+                procedural_expression_to_text(entry.condition_expr),
+                "Condition that activates the diagnostic.",
+            ),
+            make_procedural_field(
+                "message",
+                "Message",
+                ProceduralFieldType.REQUIRED_TEXT,
+                entry.message,
+                "Exact diagnostic text retained by the model.",
+            ),
+            make_procedural_field(
+                "initialization_only",
+                "Initialization only",
+                ProceduralFieldType.BOOLEAN,
+                str(entry.initialization_only),
+                "Whether the diagnostic is restricted to initialization.",
+            ),
+        )))
+    elif isinstance(entry, DelayedSwitchEventLogic):
+        fields.extend(list((
+            make_procedural_field(
+                "output_var_name", "Output mode", mode_tpe,
+                entry.output_var_name, "Retained switch-position mode.",
+            ),
+            make_procedural_field(
+                "guard_expr", "Guard", expression_tpe,
+                procedural_expression_to_text(entry.guard_expr),
+                "Expression enabling trigger detection.",
+            ),
+            make_procedural_field(
+                "trigger_expr", "Trigger", expression_tpe,
+                procedural_expression_to_text(entry.trigger_expr),
+                "Expression whose rising edge schedules the event.",
+            ),
+            make_procedural_field(
+                "delay_expr", "Delay", expression_tpe,
+                procedural_expression_to_text(entry.delay_expr),
+                "Non-negative delay evaluated when the trigger rises.",
+            ),
+            make_procedural_field(
+                "target_device_idtag", "Target device identifier",
+                ProceduralFieldType.REQUIRED_TEXT, entry.target_device_idtag,
+                "Exact physical equipment identifier.",
+            ),
+            make_procedural_field(
+                "target_switch_idtag", "Target switch identifier",
+                ProceduralFieldType.REQUIRED_TEXT, entry.target_switch_idtag,
+                "Exact switch identifier.",
+            ),
+            make_procedural_field(
+                "target_terminal_index", "Target terminal",
+                ProceduralFieldType.INTEGER, str(entry.target_terminal_index),
+                "Physical equipment terminal containing the switch.",
+            ),
+            make_procedural_field(
+                "initial_closed", "Initially closed",
+                ProceduralFieldType.BOOLEAN, str(entry.initial_closed),
+                "Initial switch position.",
+            ),
+            make_procedural_field(
+                "command_closed", "Command closed",
+                ProceduralFieldType.BOOLEAN, str(entry.command_closed),
+                "Switch position applied when the event fires.",
+            ),
+        )))
+    elif isinstance(entry, FixedSampleLogic):
         fields.append(make_procedural_field("output_var_name", "Output mode", mode_tpe,
                                             entry.output_var_name, "Boolean value retained after initialization."))
         fields.append(make_procedural_field("condition_expr", "Condition", expression_tpe,
@@ -737,7 +663,67 @@ def get_default_procedural_fields(logic_tpe: ProceduralLogicType) -> List[Proced
     runtime: ProceduralFieldType = ProceduralFieldType.RUNTIME_REFERENCE
     target: ProceduralFieldType = ProceduralFieldType.TARGET_REFERENCE
     fields: List[ProceduralFieldDraft] = list()
-    if logic_tpe == ProceduralLogicType.FixedSample:
+    if logic_tpe == ProceduralLogicType.ConditionalDiagnostic:
+        fields = list((
+            make_procedural_field(
+                "condition_expr", "Condition", expr, "0.0",
+                "Condition that activates the diagnostic.",
+            ),
+            make_procedural_field(
+                "message", "Message", ProceduralFieldType.REQUIRED_TEXT, "",
+                "Exact diagnostic text retained by the model.",
+            ),
+            make_procedural_field(
+                "initialization_only", "Initialization only",
+                ProceduralFieldType.BOOLEAN, "False",
+                "Whether the diagnostic is restricted to initialization.",
+            ),
+        ))
+    elif logic_tpe == ProceduralLogicType.DelayedSwitchEvent:
+        fields = list((
+            make_procedural_field(
+                "output_var_name", "Output mode", mode, "",
+                "Retained switch-position mode.",
+            ),
+            make_procedural_field(
+                "guard_expr", "Guard", expr, "1.0",
+                "Expression enabling trigger detection.",
+            ),
+            make_procedural_field(
+                "trigger_expr", "Trigger", expr, "0.0",
+                "Expression whose rising edge schedules the event.",
+            ),
+            make_procedural_field(
+                "delay_expr", "Delay", expr, "0.0",
+                "Non-negative delay evaluated when the trigger rises.",
+            ),
+            make_procedural_field(
+                "target_device_idtag", "Target device identifier",
+                ProceduralFieldType.REQUIRED_TEXT, "",
+                "Exact physical equipment identifier.",
+            ),
+            make_procedural_field(
+                "target_switch_idtag", "Target switch identifier",
+                ProceduralFieldType.REQUIRED_TEXT, "",
+                "Exact switch identifier.",
+            ),
+            make_procedural_field(
+                "target_terminal_index", "Target terminal",
+                ProceduralFieldType.INTEGER, "0",
+                "Physical equipment terminal containing the switch.",
+            ),
+            make_procedural_field(
+                "initial_closed", "Initially closed",
+                ProceduralFieldType.BOOLEAN, "False",
+                "Initial switch position.",
+            ),
+            make_procedural_field(
+                "command_closed", "Command closed",
+                ProceduralFieldType.BOOLEAN, "False",
+                "Switch position applied when the event fires.",
+            ),
+        ))
+    elif logic_tpe == ProceduralLogicType.FixedSample:
         fields = list((make_procedural_field("output_var_name", "Output mode", mode, "", "Retained boolean output."), make_procedural_field("condition_expr", "Condition", expr, "0.0", "Condition sampled once."),))
     elif logic_tpe == ProceduralLogicType.SampledValue:
         fields = list((make_procedural_field("output_var_name", "Output mode", mode, "", "Retained sampled output."), make_procedural_field("source_expr", "Source expression", expr, "0.0", "Expression sampled each step."),))
@@ -802,14 +788,876 @@ def get_default_procedural_fields(logic_tpe: ProceduralLogicType) -> List[Proced
     return fields
 
 
-def get_logic_type_from_entry(entry: ProceduralLogicBase) -> ProceduralLogicType:
-    """Return the canonical enum exposed by one existing logic object.
+def get_procedural_code_field_pairs(
+        logic_tpe: ProceduralLogicType,
+) -> List[tuple[str, str]]:
+    """Return readable code keywords paired with stable Engine field keys.
 
-    :param entry: Existing entry.
-    :return: Canonical logic type.
+    The editor language deliberately exposes behavioral names such as
+    ``condition`` and ``output`` while the persistent Engine classes retain
+    their existing attribute names. Keeping the translation in one function
+    prevents the serializer and parser from drifting independently.
+
+    :param logic_tpe: Procedural entry type represented in Python code.
+    :return: Ordered ``(code keyword, field key)`` pairs.
     """
-    logic_tpe: ProceduralLogicType = entry.logic_tpe
-    return logic_tpe
+    if logic_tpe == ProceduralLogicType.ConditionalDiagnostic:
+        pairs: List[tuple[str, str]] = list((
+            ("condition", "condition_expr"),
+            ("message", "message"),
+            ("initialization_only", "initialization_only"),
+        ))
+    elif logic_tpe == ProceduralLogicType.DelayedSwitchEvent:
+        pairs = list((
+            ("output", "output_var_name"),
+            ("guard", "guard_expr"),
+            ("trigger", "trigger_expr"),
+            ("delay", "delay_expr"),
+            ("target_device_id", "target_device_idtag"),
+            ("target_switch_id", "target_switch_idtag"),
+            ("target_terminal", "target_terminal_index"),
+            ("initial_closed", "initial_closed"),
+            ("command_closed", "command_closed"),
+        ))
+    elif logic_tpe == ProceduralLogicType.FixedSample:
+        pairs = list((("output", "output_var_name"), ("condition", "condition_expr")))
+    elif logic_tpe == ProceduralLogicType.SampledValue:
+        pairs = list((("output", "output_var_name"), ("source", "source_expr")))
+    elif logic_tpe == ProceduralLogicType.HardSaturation:
+        pairs = list((
+            ("output", "output_var_name"),
+            ("input", "u_expr"),
+            ("minimum", "u_min_expr"),
+            ("maximum", "u_max_expr"),
+        ))
+    elif logic_tpe == ProceduralLogicType.TimeDelay:
+        pairs = list((
+            ("output", "output_var_name"),
+            ("source", "source_expr"),
+            ("delay", "delay_expr"),
+        ))
+    elif logic_tpe == ProceduralLogicType.MovingAverage:
+        pairs = list((
+            ("output", "output_var_name"),
+            ("source", "source_expr"),
+            ("delay", "delay_expr"),
+            ("window", "window_expr"),
+        ))
+    elif logic_tpe == ProceduralLogicType.GradientLimiter:
+        pairs = list((
+            ("output", "output_var_name"),
+            ("source", "source_expr"),
+            ("lower_rate", "lower_rate_expr"),
+            ("upper_rate", "upper_rate_expr"),
+        ))
+    elif logic_tpe == ProceduralLogicType.FlipFlop:
+        pairs = list((
+            ("output", "output_var_name"),
+            ("set_condition", "set_expr"),
+            ("reset_condition", "reset_expr"),
+        ))
+    elif logic_tpe == ProceduralLogicType.AnalogFlipFlop:
+        pairs = list((
+            ("output", "output_var_name"),
+            ("input", "input_expr"),
+            ("set_condition", "set_expr"),
+            ("reset_condition", "reset_expr"),
+        ))
+    elif logic_tpe == ProceduralLogicType.PickupDropoff:
+        pairs = list((
+            ("output", "output_var_name"),
+            ("condition", "bool_expr"),
+            ("pickup_delay", "pickup_delay_expr"),
+            ("dropoff_delay", "drop_delay_expr"),
+        ))
+    elif logic_tpe == ProceduralLogicType.ResetOnRisingEdge:
+        pairs = list((
+            ("target", "target_var_name"),
+            ("condition", "reset_expr"),
+            ("value", "value_expr"),
+        ))
+    elif logic_tpe == ProceduralLogicType.DelayedThresholdLatch:
+        pairs = list((
+            ("monitored", "monitored_var_name"),
+            ("output", "mode_var_name"),
+            ("threshold", "threshold"),
+            ("delay", "delay"),
+            ("reset_delay", "reset_delay"),
+        ))
+    elif logic_tpe == ProceduralLogicType.StartupHandover:
+        pairs = list((
+            ("output", "mode_var_name"),
+            ("enable_time", "enable_time_var_name"),
+        ))
+    elif logic_tpe == ProceduralLogicType.ValveState:
+        pairs = list((
+            ("output", "mode_var_name"),
+            ("valve_type", "valve_type_var_name"),
+            ("gate", "gate_var_name"),
+            ("antiparallel", "antiparallel_var_name"),
+            ("voltage_epsilon", "voltage_eps_var_name"),
+            ("current_epsilon", "current_eps_var_name"),
+            ("valve_voltage", "valve_voltage_var_name"),
+            ("valve_current", "valve_current_var_name"),
+        ))
+    elif logic_tpe == ProceduralLogicType.ThreePhaseCarrierPwm:
+        pairs = list((
+            ("modulation_a", "mod_a_var_name"),
+            ("modulation_b", "mod_b_var_name"),
+            ("modulation_c", "mod_c_var_name"),
+            ("gate_a", "gate_a_mode_var_name"),
+            ("gate_b", "gate_b_mode_var_name"),
+            ("gate_c", "gate_c_mode_var_name"),
+            ("switching_frequency", "omega_sw_var_name"),
+            ("carrier_phase", "carrier_phase_var_name"),
+        ))
+    elif logic_tpe == ProceduralLogicType.ThreePhaseCarrierSampledModulation:
+        pairs = list((
+            ("modulation_a", "mod_a_var_name"),
+            ("modulation_b", "mod_b_var_name"),
+            ("modulation_c", "mod_c_var_name"),
+            ("sample_a", "sample_a_mode_var_name"),
+            ("sample_b", "sample_b_mode_var_name"),
+            ("sample_c", "sample_c_mode_var_name"),
+            ("switching_frequency", "omega_sw_var_name"),
+            ("carrier_phase", "carrier_phase_var_name"),
+        ))
+    else:
+        raise ValueError(f"Unsupported procedural logic type '{logic_tpe.value}'")
+    return pairs
+
+
+def get_procedural_logic_type_from_code_name(code_name: str) -> ProceduralLogicType:
+    """Resolve one whitelisted procedural function name.
+
+    :param code_name: Function identifier written in ``procedural_logic``.
+    :return: Matching concrete procedural type.
+    :raises ValueError: If the function is unknown or represents the abstract base type.
+    """
+    result: ProceduralLogicType | None = None
+    logic_tpe: ProceduralLogicType
+    for logic_tpe in ProceduralLogicType:
+        if logic_tpe != ProceduralLogicType.Base and logic_tpe.value == code_name:
+            result = logic_tpe
+        else:
+            pass
+    if result is None:
+        raise ValueError(f"Unsupported procedural logic function '{code_name}'")
+    else:
+        return result
+
+
+def get_procedural_field_by_key(
+        fields: Sequence[ProceduralFieldDraft],
+        field_key: str,
+) -> ProceduralFieldDraft:
+    """Return one required field from an ordered procedural specification.
+
+    :param fields: Available typed fields.
+    :param field_key: Stable field key to locate.
+    :return: Matching field.
+    :raises ValueError: If the specification and field mapping disagree.
+    """
+    result: ProceduralFieldDraft | None = None
+    field: ProceduralFieldDraft
+    for field in fields:
+        if field.get_key() == field_key:
+            result = field
+        else:
+            pass
+    if result is None:
+        raise ValueError(f"Unknown procedural field '{field_key}'")
+    else:
+        return result
+
+
+def serialize_procedural_code_field(field: ProceduralFieldDraft) -> str:
+    """Serialize one typed field as safe Python-like source.
+
+    :param field: Field whose staged value is serialized.
+    :return: Source accepted by the procedural parser.
+    """
+    field_tpe: ProceduralFieldType = field.get_tpe()
+    value: str = field.get_value()
+    if field_tpe == ProceduralFieldType.EXPRESSION:
+        result: str = value
+    elif field_tpe in (
+            ProceduralFieldType.MODE_REFERENCE,
+            ProceduralFieldType.VARIABLE_REFERENCE,
+            ProceduralFieldType.RUNTIME_REFERENCE,
+            ProceduralFieldType.TARGET_REFERENCE):
+        # Most references are ordinary identifiers and remain concise. Legacy
+        # catalogue models can retain descriptive Engine names containing
+        # spaces or punctuation, which must be quoted to keep the generated
+        # model source syntactically valid and lossless.
+        if value.isidentifier() and not keyword.iskeyword(value):
+            result = value
+        else:
+            result = repr(value)
+    elif field_tpe in (
+            ProceduralFieldType.FLOAT,
+            ProceduralFieldType.INTEGER,
+            ProceduralFieldType.BOOLEAN):
+        result = value
+    elif field_tpe == ProceduralFieldType.OPTIONAL_FLOAT:
+        result = "None" if len(value) == 0 else value
+    elif field_tpe in (ProceduralFieldType.TEXT, ProceduralFieldType.REQUIRED_TEXT):
+        result = repr(value)
+    else:
+        raise ValueError(f"Unsupported procedural field type '{field_tpe.value}'")
+    return result
+
+
+def get_procedural_logic_summary(logic_tpe: ProceduralLogicType) -> str:
+    """Return concise user-facing behavior help for one procedural type.
+
+    :param logic_tpe: Concrete procedural type.
+    :return: One-sentence behavioral summary.
+    """
+    if logic_tpe == ProceduralLogicType.ConditionalDiagnostic:
+        result: str = "Preserve a conditional source-model diagnostic."
+    elif logic_tpe == ProceduralLogicType.DelayedSwitchEvent:
+        result = "Schedule one delayed switch command on a guarded rising edge."
+    elif logic_tpe == ProceduralLogicType.FixedSample:
+        result = "Sample a condition once during initialization and retain it."
+    elif logic_tpe == ProceduralLogicType.SampledValue:
+        result = "Sample an expression after each accepted solver step."
+    elif logic_tpe == ProceduralLogicType.HardSaturation:
+        result = "Clamp an expression between dynamic minimum and maximum bounds."
+    elif logic_tpe == ProceduralLogicType.TimeDelay:
+        result = "Return an accepted-step source value after a configurable delay."
+    elif logic_tpe == ProceduralLogicType.MovingAverage:
+        result = "Average accepted source history over a delayed time window."
+    elif logic_tpe == ProceduralLogicType.GradientLimiter:
+        result = "Limit the accepted-step rate of change of a source expression."
+    elif logic_tpe == ProceduralLogicType.FlipFlop:
+        result = "Retain a Boolean latch controlled by set and reset conditions."
+    elif logic_tpe == ProceduralLogicType.AnalogFlipFlop:
+        result = "Capture and retain an analog value under set and reset conditions."
+    elif logic_tpe == ProceduralLogicType.PickupDropoff:
+        result = "Apply independent pickup and dropoff delays to a relay condition."
+    elif logic_tpe == ProceduralLogicType.ResetOnRisingEdge:
+        result = "Assign a value to a mutable target when a condition rises."
+    elif logic_tpe == ProceduralLogicType.DelayedThresholdLatch:
+        result = "Latch a threshold crossing after a fixed delay."
+    elif logic_tpe == ProceduralLogicType.StartupHandover:
+        result = "Switch a retained startup mode at a configured enable time."
+    elif logic_tpe == ProceduralLogicType.ValveState:
+        result = "Update a retained valve conduction state from gate and electrical signals."
+    elif logic_tpe == ProceduralLogicType.ThreePhaseCarrierPwm:
+        result = "Generate three retained PWM gate states from carrier comparisons."
+    elif logic_tpe == ProceduralLogicType.ThreePhaseCarrierSampledModulation:
+        result = "Sample three modulation references at carrier boundaries."
+    else:
+        raise ValueError(f"Unsupported procedural logic type '{logic_tpe.value}'")
+    return result
+
+
+def get_procedural_logic_signature(logic_tpe: ProceduralLogicType) -> str:
+    """Build the readable keyword-only signature shown by completion.
+
+    :param logic_tpe: Concrete procedural type.
+    :return: Function-like signature using the editor's public keywords.
+    """
+    argument_labels: List[str] = list()
+    code_keyword: str
+    _field_key: str
+    for code_keyword, _field_key in get_procedural_code_field_pairs(logic_tpe):
+        argument_labels.append(f"{code_keyword}=...")
+    argument_labels.append("name=''")
+    return f"{logic_tpe.value}({', '.join(argument_labels)})"
+
+
+def get_procedural_logic_help(logic_tpe: ProceduralLogicType) -> str:
+    """Build multiline signature and argument help for popup and hover use.
+
+    :param logic_tpe: Concrete procedural type.
+    :return: Plain-text documentation suitable for a Qt tooltip.
+    """
+    fields: List[ProceduralFieldDraft] = get_default_procedural_fields(logic_tpe)
+    lines: List[str] = list((
+        get_procedural_logic_signature(logic_tpe),
+        "",
+        get_procedural_logic_summary(logic_tpe),
+        "",
+        "Named arguments:",
+    ))
+    code_keyword: str
+    field_key: str
+    for code_keyword, field_key in get_procedural_code_field_pairs(logic_tpe):
+        field: ProceduralFieldDraft = get_procedural_field_by_key(fields, field_key)
+        lines.append(f"  {code_keyword}: {field.get_description()}")
+    lines.append("  name: Optional descriptive label for validation and diagnostics.")
+    lines.append("")
+    lines.append(
+        "List order is preserved; each type runs at its Engine-defined update phase."
+    )
+    return "\n".join(lines)
+
+
+def get_procedural_logic_help_by_code_name(code_name: str) -> str | None:
+    """Return tooltip help when a token is a concrete procedural function.
+
+    :param code_name: Identifier under the editor cursor.
+    :return: Complete help text or ``None`` for a non-procedural identifier.
+    """
+    result: str | None = None
+    logic_tpe: ProceduralLogicType
+    for logic_tpe in ProceduralLogicType:
+        if logic_tpe != ProceduralLogicType.Base and logic_tpe.value == code_name:
+            result = get_procedural_logic_help(logic_tpe)
+        else:
+            pass
+    return result
+
+
+def get_procedural_code_field_type(
+        logic_tpe: ProceduralLogicType,
+        code_keyword: str,
+) -> ProceduralFieldType | None:
+    """Return the semantic field type represented by one public keyword.
+
+    :param logic_tpe: Active procedural call type.
+    :param code_keyword: Named argument currently being edited.
+    :return: Field type or ``None`` for ``name`` and unknown arguments.
+    """
+    result: ProceduralFieldType | None = None
+    fields: List[ProceduralFieldDraft] = get_default_procedural_fields(logic_tpe)
+    mapped_keyword: str
+    field_key: str
+    for mapped_keyword, field_key in get_procedural_code_field_pairs(logic_tpe):
+        if mapped_keyword == code_keyword:
+            field: ProceduralFieldDraft = get_procedural_field_by_key(fields, field_key)
+            result = field.get_tpe()
+        else:
+            pass
+    return result
+
+
+def get_procedural_template_field_source(
+        field: ProceduralFieldDraft,
+) -> tuple[str, str | None]:
+    """Return readable starter source and its replaceable placeholder token.
+
+    :param field: Typed default field represented by the template.
+    :return: Source fragment and first-edit placeholder, when applicable.
+    """
+    field_tpe: ProceduralFieldType = field.get_tpe()
+    if field_tpe in (
+            ProceduralFieldType.MODE_REFERENCE,
+            ProceduralFieldType.VARIABLE_REFERENCE,
+            ProceduralFieldType.RUNTIME_REFERENCE,
+            ProceduralFieldType.TARGET_REFERENCE,
+    ):
+        # A reference cannot be inferred safely from the available symbols.
+        # ``None`` keeps the template valid Python without inventing a model
+        # identity, and is selected immediately so completion can replace it.
+        source: str = "None"
+        placeholder = source
+    elif field_tpe == ProceduralFieldType.REQUIRED_TEXT:
+        if field.get_key() == "message":
+            placeholder = "diagnostic message"
+        elif field.get_key() == "target_device_idtag":
+            placeholder = "device_id"
+        elif field.get_key() == "target_switch_idtag":
+            placeholder = "switch_id"
+        else:
+            placeholder = "required text"
+        source = repr(placeholder)
+    else:
+        source = serialize_procedural_code_field(field)
+        placeholder = None
+    return source, placeholder
+
+
+def build_procedural_logic_call_lines(
+        logic_tpe: ProceduralLogicType,
+) -> tuple[List[str], str | None]:
+    """Build one complete reusable procedural-call template.
+
+    Returned lines are relative to the call indentation: the first and closing
+    lines have no leading spaces, while named arguments use four spaces. Both
+    toolbar insertion and code completion add the surrounding list indentation.
+
+    :param logic_tpe: Concrete type selected by the user.
+    :return: Relative source lines and the first token that should be selected.
+    """
+    fields: List[ProceduralFieldDraft] = get_default_procedural_fields(logic_tpe)
+    lines: List[str] = list((f"{logic_tpe.value}(",))
+    first_placeholder: str | None = None
+    code_keyword: str
+    field_key: str
+    for code_keyword, field_key in get_procedural_code_field_pairs(logic_tpe):
+        field: ProceduralFieldDraft = get_procedural_field_by_key(fields, field_key)
+        field_source: str
+        placeholder: str | None
+        field_source, placeholder = get_procedural_template_field_source(field)
+        lines.append(f"    {code_keyword}={field_source},")
+        if first_placeholder is None and placeholder is not None:
+            first_placeholder = placeholder
+        else:
+            pass
+    entry_name: str = logic_tpe.value.replace("_", " ")
+    lines.append(f"    name={entry_name!r},")
+    lines.append("),")
+    return lines, first_placeholder
+
+
+def build_runtime_logic_code(block: Block) -> List[str]:
+    """Serialize retained modes and ordered procedural entries for one block.
+
+    :param block: Direct owner represented by one Python-code buffer.
+    :return: Readable source lines for the two runtime sections.
+    """
+    lines: List[str] = list((
+        "retained_modes = {",
+        "    # Map each retained mode to its symbolic initialization expression.",
+        "    # Example: latched_value: 0.0,",
+    ))
+    mode_variable: Var
+    initial_expression: Expr
+    for mode_variable, initial_expression in block.mode_dict.items():
+        lines.append(
+            f"    {mode_variable.name}: {procedural_expression_to_text(initial_expression)},"
+        )
+    lines.append("}")
+    lines.append("")
+    lines.append("procedural_logic = [")
+    lines.append("    # List order is preserved; each type runs at its Engine-defined update phase.")
+    lines.append("    # Use Add procedural logic above to insert a complete editable call.")
+    entry: ProceduralLogicBase
+    for entry in block.procedural_logic:
+        logic_tpe: ProceduralLogicType = entry.logic_tpe
+        fields: List[ProceduralFieldDraft] = get_procedural_fields(entry)
+        lines.append(f"    {logic_tpe.value}(")
+        code_keyword: str
+        field_key: str
+        for code_keyword, field_key in get_procedural_code_field_pairs(logic_tpe):
+            field: ProceduralFieldDraft = get_procedural_field_by_key(fields, field_key)
+            lines.append(
+                f"        {code_keyword}={serialize_procedural_code_field(field)},"
+            )
+        lines.append(f"        name={entry.name!r},")
+        lines.append("    ),")
+    lines.append("]")
+    return lines
+
+
+def parse_model_code_module(code: str) -> tuple[str, ast.Module]:
+    """Parse a complete model-code buffer after normalizing DAE equalities.
+
+    :param code: Complete Python-like block source.
+    :return: Normalized source and its AST module.
+    :raises ValueError: If the source is not syntactically valid.
+    """
+    normalized_code: str = normalize_algebraic_equality_syntax(code)
+    try:
+        module: ast.Module = ast.parse(normalized_code, mode="exec")
+    except SyntaxError as error:
+        raise ValueError(str(error)) from error
+    return normalized_code, module
+
+
+def get_model_code_assignment(module: ast.Module, section_name: str) -> ast.Assign:
+    """Return one unique top-level assignment from a model-code module.
+
+    :param module: Parsed complete model-code module.
+    :param section_name: Required assignment name.
+    :return: Matching assignment.
+    :raises ValueError: If the section is missing or duplicated.
+    """
+    result: ast.Assign | None = None
+    statement: ast.stmt
+    for statement in module.body:
+        if (
+                isinstance(statement, ast.Assign)
+                and len(statement.targets) == 1
+                and isinstance(statement.targets[0], ast.Name)
+                and statement.targets[0].id == section_name
+        ):
+            if result is None:
+                result = statement
+            else:
+                raise ValueError(f"Section '{section_name}' is assigned more than once")
+        else:
+            pass
+    if result is None:
+        raise ValueError(f"Missing required model section '{section_name}'")
+    else:
+        return result
+
+
+def find_model_code_assignment(module: ast.Module, section_name: str) -> ast.Assign | None:
+    """Find one optional unique top-level model assignment.
+
+    :param module: Parsed complete model-code module.
+    :param section_name: Optional assignment name.
+    :return: Matching assignment or ``None`` when legacy source omits it.
+    :raises ValueError: If the section is duplicated.
+    """
+    result: ast.Assign | None = None
+    statement: ast.stmt
+    for statement in module.body:
+        matches: bool = (
+            isinstance(statement, ast.Assign)
+            and len(statement.targets) == 1
+            and isinstance(statement.targets[0], ast.Name)
+            and statement.targets[0].id == section_name
+        )
+        if matches and isinstance(statement, ast.Assign):
+            if result is None:
+                result = statement
+            else:
+                raise ValueError(f"Section '{section_name}' is assigned more than once")
+        else:
+            pass
+    return result
+
+
+def get_ast_source_segment(source: str, node: ast.AST) -> str:
+    """Return the exact normalized source represented by one AST node.
+
+    :param source: Normalized complete source.
+    :param node: AST node whose text is requested.
+    :return: Non-empty source segment.
+    :raises ValueError: If Python cannot recover the node text.
+    """
+    segment: str | None = ast.get_source_segment(source, node)
+    if segment is None or len(segment.strip()) == 0:
+        raise ValueError("Unable to read procedural source expression")
+    else:
+        return segment.strip()
+
+
+def find_existing_mode_by_name(owner: Block, mode_name: str) -> Var | None:
+    """Find one retained mode owned directly by a block.
+
+    :param owner: Direct block owner.
+    :param mode_name: Mode name written in source.
+    :return: Existing mode variable or ``None`` for a new declaration.
+    """
+    result: Var | None = None
+    mode_variable: Var
+    for mode_variable in owner.mode_dict:
+        if mode_variable.name == mode_name:
+            result = mode_variable
+        else:
+            pass
+    return result
+
+
+def parse_retained_mode_drafts(code: str, owner: Block) -> List[RuntimeModeDraft]:
+    """Parse retained-mode declarations without evaluating initialization expressions.
+
+    Existing identities are first matched by name. A single unmatched old and
+    new declaration is treated as an in-place rename so its UID is retained.
+    More than one simultaneous ambiguous replacement is rejected rather than
+    silently exchanging identities.
+
+    :param code: Complete source for ``owner``.
+    :param owner: Direct owner of the parsed modes.
+    :return: Ordered retained-mode drafts.
+    """
+    normalized_code: str
+    module: ast.Module
+    normalized_code, module = parse_model_code_module(code)
+    assignment_optional: ast.Assign | None = find_model_code_assignment(
+        module,
+        "retained_modes",
+    )
+    if assignment_optional is None:
+        legacy_drafts: List[RuntimeModeDraft] = list()
+        legacy_variable: Var
+        legacy_initial: Expr
+        for legacy_variable, legacy_initial in owner.mode_dict.items():
+            legacy_drafts.append(RuntimeModeDraft(
+                owner=owner,
+                variable=legacy_variable,
+                name=legacy_variable.name,
+                initial_expression=procedural_expression_to_text(legacy_initial),
+            ))
+        return legacy_drafts
+    else:
+        assignment: ast.Assign = assignment_optional
+    if not isinstance(assignment.value, ast.Dict):
+        raise ValueError("Section 'retained_modes' must be a dictionary")
+    else:
+        pass
+
+    declared_names: List[str] = list()
+    declared_initials: List[str] = list()
+    entry_index: int
+    for entry_index in range(len(assignment.value.keys)):
+        key_node: ast.expr | None = assignment.value.keys[entry_index]
+        value_node: ast.expr = assignment.value.values[entry_index]
+        if not isinstance(key_node, ast.Name):
+            raise ValueError("Keys in 'retained_modes' must be mode names")
+        elif key_node.id in declared_names:
+            raise ValueError(f"Retained mode '{key_node.id}' is declared more than once")
+        else:
+            declared_names.append(key_node.id)
+            declared_initials.append(get_ast_source_segment(normalized_code, value_node))
+
+    drafts: List[RuntimeModeDraft] = list()
+    unmatched_declaration_indexes: List[int] = list()
+    matched_existing_uids: set[int] = set()
+    declaration_index: int
+    for declaration_index in range(len(declared_names)):
+        declared_name: str = declared_names[declaration_index]
+        existing_variable: Var | None = find_existing_mode_by_name(owner, declared_name)
+        if existing_variable is not None:
+            matched_existing_uids.add(existing_variable.uid)
+            drafts.append(RuntimeModeDraft(
+                owner=owner,
+                variable=existing_variable,
+                name=declared_name,
+                initial_expression=declared_initials[declaration_index],
+            ))
+        else:
+            unmatched_declaration_indexes.append(declaration_index)
+
+    unmatched_existing: List[Var] = list()
+    existing_variable: Var
+    for existing_variable in owner.mode_dict:
+        if existing_variable.uid not in matched_existing_uids:
+            unmatched_existing.append(existing_variable)
+        else:
+            pass
+
+    if len(unmatched_declaration_indexes) == 1 and len(unmatched_existing) == 1:
+        renamed_index: int = unmatched_declaration_indexes[0]
+        drafts.append(RuntimeModeDraft(
+            owner=owner,
+            variable=unmatched_existing[0],
+            name=declared_names[renamed_index],
+            initial_expression=declared_initials[renamed_index],
+        ))
+    elif len(unmatched_declaration_indexes) > 0 and len(unmatched_existing) > 0:
+        raise ValueError(
+            f"Block '{owner.name}' has ambiguous retained-mode additions, deletions, or renames; "
+            "apply one rename separately"
+        )
+    else:
+        for declaration_index in unmatched_declaration_indexes:
+            drafts.append(RuntimeModeDraft(
+                owner=owner,
+                variable=None,
+                name=declared_names[declaration_index],
+                initial_expression=declared_initials[declaration_index],
+            ))
+
+    # Restore the exact source order after matching existing identities.
+    ordered_drafts: List[RuntimeModeDraft] = list()
+    for declared_name in declared_names:
+        matching_draft: RuntimeModeDraft | None = None
+        draft: RuntimeModeDraft
+        for draft in drafts:
+            if draft.get_name() == declared_name:
+                matching_draft = draft
+            else:
+                pass
+        if matching_draft is None:
+            raise ValueError(f"Unable to bind retained mode '{declared_name}'")
+        else:
+            ordered_drafts.append(matching_draft)
+    return ordered_drafts
+
+
+def parse_procedural_field_source(
+        source: str,
+        node: ast.expr,
+        field: ProceduralFieldDraft,
+) -> str:
+    """Convert one whitelisted call argument into its typed draft text.
+
+    :param source: Normalized complete model source.
+    :param node: Keyword value AST node.
+    :param field: Typed destination field.
+    :return: Text consumed by the existing runtime validator.
+    """
+    field_tpe: ProceduralFieldType = field.get_tpe()
+    if field_tpe in (
+            ProceduralFieldType.MODE_REFERENCE,
+            ProceduralFieldType.VARIABLE_REFERENCE,
+            ProceduralFieldType.RUNTIME_REFERENCE,
+            ProceduralFieldType.TARGET_REFERENCE,
+    ):
+        if isinstance(node, ast.Name):
+            result: str = node.id
+        elif isinstance(node, ast.Constant) and isinstance(node.value, str):
+            result = node.value
+        else:
+            raise ValueError(
+                f"'{field.get_label()}' must be a symbol name or quoted Engine name"
+            )
+    elif field_tpe == ProceduralFieldType.EXPRESSION:
+        result = get_ast_source_segment(source, node)
+    elif field_tpe in (ProceduralFieldType.FLOAT, ProceduralFieldType.INTEGER):
+        result = get_ast_source_segment(source, node)
+    elif field_tpe == ProceduralFieldType.OPTIONAL_FLOAT:
+        if isinstance(node, ast.Constant) and node.value is None:
+            result = ""
+        else:
+            result = get_ast_source_segment(source, node)
+    elif field_tpe in (ProceduralFieldType.TEXT, ProceduralFieldType.REQUIRED_TEXT):
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            result = node.value
+        else:
+            raise ValueError(f"'{field.get_label()}' must be quoted text")
+    elif field_tpe == ProceduralFieldType.BOOLEAN:
+        if isinstance(node, ast.Constant) and isinstance(node.value, bool):
+            result = str(node.value)
+        else:
+            raise ValueError(f"'{field.get_label()}' must be True or False")
+    else:
+        raise ValueError(f"Unsupported procedural field type '{field_tpe.value}'")
+    return result
+
+
+def parse_procedural_logic_drafts(code: str, owner: Block) -> List[ProceduralLogicDraft]:
+    """Parse one ordered, whitelisted ``procedural_logic`` list.
+
+    :param code: Complete source for ``owner``.
+    :param owner: Direct owner of the parsed entries.
+    :return: Ordered typed entry drafts.
+    """
+    normalized_code: str
+    module: ast.Module
+    normalized_code, module = parse_model_code_module(code)
+    assignment_optional: ast.Assign | None = find_model_code_assignment(
+        module,
+        "procedural_logic",
+    )
+    if assignment_optional is None:
+        legacy_entries: List[ProceduralLogicDraft] = list()
+        legacy_entry: ProceduralLogicBase
+        for legacy_entry in owner.procedural_logic:
+            legacy_entries.append(ProceduralLogicDraft(
+                owner=owner,
+                logic_tpe=legacy_entry.logic_tpe,
+                name=legacy_entry.name,
+                fields=get_procedural_fields(legacy_entry),
+                original=legacy_entry,
+            ))
+        return legacy_entries
+    else:
+        assignment: ast.Assign = assignment_optional
+    if not isinstance(assignment.value, ast.List):
+        raise ValueError("Section 'procedural_logic' must be a list")
+    else:
+        pass
+
+    result: List[ProceduralLogicDraft] = list()
+    entry_index: int
+    element: ast.expr
+    for entry_index, element in enumerate(assignment.value.elts):
+        if not isinstance(element, ast.Call) or not isinstance(element.func, ast.Name):
+            raise ValueError("Entries in 'procedural_logic' must be named function calls")
+        elif len(element.args) > 0:
+            raise ValueError("Procedural logic calls accept keyword arguments only")
+        else:
+            logic_tpe: ProceduralLogicType = get_procedural_logic_type_from_code_name(
+                element.func.id
+            )
+
+        fields: List[ProceduralFieldDraft] = get_default_procedural_fields(logic_tpe)
+        code_pairs: List[tuple[str, str]] = get_procedural_code_field_pairs(logic_tpe)
+        entry_name: str = ""
+        provided_keywords: set[str] = set()
+        keyword: ast.keyword
+        for keyword in element.keywords:
+            if keyword.arg is None:
+                raise ValueError("Procedural logic does not accept unpacked keyword arguments")
+            elif keyword.arg in provided_keywords:
+                raise ValueError(
+                    f"Argument '{keyword.arg}' is repeated in '{logic_tpe.value}'"
+                )
+            else:
+                provided_keywords.add(keyword.arg)
+
+            if keyword.arg == "name":
+                if isinstance(keyword.value, ast.Constant) and isinstance(keyword.value.value, str):
+                    entry_name = keyword.value.value
+                else:
+                    raise ValueError("Procedural entry 'name' must be quoted text")
+            else:
+                matching_field_key: str | None = None
+                code_keyword: str
+                field_key: str
+                for code_keyword, field_key in code_pairs:
+                    if code_keyword == keyword.arg:
+                        matching_field_key = field_key
+                    else:
+                        pass
+                if matching_field_key is None:
+                    raise ValueError(
+                        f"Unknown argument '{keyword.arg}' for '{logic_tpe.value}'"
+                    )
+                else:
+                    field: ProceduralFieldDraft = get_procedural_field_by_key(
+                        fields,
+                        matching_field_key,
+                    )
+                    field.set_value(parse_procedural_field_source(
+                        normalized_code,
+                        keyword.value,
+                        field,
+                    ))
+
+        code_keyword: str
+        field_key: str
+        for code_keyword, field_key in code_pairs:
+            if code_keyword not in provided_keywords:
+                raise ValueError(
+                    f"Missing argument '{code_keyword}' for '{logic_tpe.value}'"
+                )
+            else:
+                pass
+
+        original: ProceduralLogicBase | None = None
+        if entry_index < len(owner.procedural_logic):
+            candidate_original: object = owner.procedural_logic[entry_index]
+            if (
+                    isinstance(candidate_original, ProceduralLogicBase)
+                    and candidate_original.logic_tpe == logic_tpe
+            ):
+                original = candidate_original
+            else:
+                pass
+        else:
+            pass
+        result.append(ProceduralLogicDraft(
+            owner=owner,
+            logic_tpe=logic_tpe,
+            name=entry_name,
+            fields=fields,
+            original=original,
+        ))
+    return result
+
+
+def build_runtime_code_signature(code: str) -> str:
+    """Return a formatting-independent signature of both runtime sections.
+
+    :param code: Complete block model source.
+    :return: AST signature used to avoid rebuilding unchanged runtime objects.
+    """
+    _normalized_code: str
+    module: ast.Module
+    _normalized_code, module = parse_model_code_module(code)
+    mode_assignment: ast.Assign | None = find_model_code_assignment(module, "retained_modes")
+    logic_assignment: ast.Assign | None = find_model_code_assignment(module, "procedural_logic")
+    mode_signature: str = "<missing retained_modes>"
+    logic_signature: str = "<missing procedural_logic>"
+    if mode_assignment is not None:
+        mode_signature = ast.dump(mode_assignment, include_attributes=False)
+    else:
+        pass
+    if logic_assignment is not None:
+        logic_signature = ast.dump(logic_assignment, include_attributes=False)
+    else:
+        pass
+    return mode_signature + logic_signature
 
 
 def get_procedural_expression_variables(entry: ProceduralLogicBase) -> List[Var]:
@@ -824,7 +1672,15 @@ def get_procedural_expression_variables(entry: ProceduralLogicBase) -> List[Var]
     :return: Variables referenced by its symbolic expression fields.
     """
     expressions: List[Expr | Comparison | float | int] = list()
-    if isinstance(entry, FixedSampleLogic):
+    if isinstance(entry, ConditionalDiagnosticLogic):
+        expressions.append(entry.condition_expr)
+    elif isinstance(entry, DelayedSwitchEventLogic):
+        expressions.extend(list((
+            entry.guard_expr,
+            entry.trigger_expr,
+            entry.delay_expr,
+        )))
+    elif isinstance(entry, FixedSampleLogic):
         expressions.append(entry.condition_expr)
     elif isinstance(entry, SampledValueLogic):
         expressions.append(entry.source_expr)
@@ -951,6 +1807,42 @@ def get_optional_float(draft: ProceduralLogicDraft, key: str) -> float | None:
     return result
 
 
+def get_required_integer(draft: ProceduralLogicDraft, key: str) -> int:
+    """Parse one required integer field without accepting Boolean values.
+
+    :param draft: Typed procedural entry draft.
+    :param key: Stable integer field key.
+    :return: Parsed integer value.
+    """
+    source: str = get_required_field_value(draft, key)
+    try:
+        value: object = ast.literal_eval(source)
+    except (SyntaxError, ValueError) as error:
+        raise ValueError(f"Procedural field '{key}' must be an integer") from error
+    if isinstance(value, int) and not isinstance(value, bool):
+        result: int = value
+    else:
+        raise ValueError(f"Procedural field '{key}' must be an integer")
+    return result
+
+
+def get_required_boolean(draft: ProceduralLogicDraft, key: str) -> bool:
+    """Parse one required Python Boolean literal.
+
+    :param draft: Typed procedural entry draft.
+    :param key: Stable Boolean field key.
+    :return: Parsed Boolean value.
+    """
+    source: str = get_required_field_value(draft, key)
+    if source == "True":
+        result: bool = True
+    elif source == "False":
+        result = False
+    else:
+        raise ValueError(f"Procedural field '{key}' must be True or False")
+    return result
+
+
 def build_runtime_logic_entry(draft: ProceduralLogicDraft,
                               namespace: Mapping[str, Expr]) -> ProceduralLogicBase:
     """Construct one runtime entry from a fully validated draft.
@@ -961,13 +1853,40 @@ def build_runtime_logic_entry(draft: ProceduralLogicDraft,
     """
     tpe: ProceduralLogicType = draft.get_logic_tpe()
     name: str = draft.get_name()
-    if tpe == ProceduralLogicType.FixedSample:
-        result: ProceduralLogicBase = FixedSampleLogic(
+    if tpe == ProceduralLogicType.ConditionalDiagnostic:
+        result: ProceduralLogicBase = ConditionalDiagnosticLogic(
+            condition_expr=get_required_expression(draft, "condition_expr", namespace),
+            message=get_required_field_value(draft, "message"),
+            initialization_only=get_required_boolean(draft, "initialization_only"),
+            name=name,
+        )
+    elif tpe == ProceduralLogicType.DelayedSwitchEvent:
+        result = DelayedSwitchEventLogic(
+            output_var_name=get_required_field_value(draft, "output_var_name"),
+            guard_expr=get_required_expression(draft, "guard_expr", namespace),
+            trigger_expr=get_required_expression(draft, "trigger_expr", namespace),
+            delay_expr=get_required_expression(draft, "delay_expr", namespace),
+            target_device_idtag=get_required_field_value(draft, "target_device_idtag"),
+            target_switch_idtag=get_required_field_value(draft, "target_switch_idtag"),
+            target_terminal_index=get_required_integer(draft, "target_terminal_index"),
+            initial_closed=get_required_boolean(draft, "initial_closed"),
+            command_closed=get_required_boolean(draft, "command_closed"),
+            name=name,
+        )
+    elif tpe == ProceduralLogicType.FixedSample:
+        result = FixedSampleLogic(
             get_required_field_value(draft, "output_var_name"),
             get_required_expression(draft, "condition_expr", namespace), name)
     elif tpe == ProceduralLogicType.SampledValue:
-        result = SampledValueLogic(get_required_field_value(draft, "output_var_name"),
-                                   get_required_expression(draft, "source_expr", namespace), name)
+        sampled_output_name: str = get_required_field_value(draft, "output_var_name")
+        sampled_output: Expr | None = namespace.get(sampled_output_name, None)
+        sampled_output_uid: int | None = sampled_output.uid if isinstance(sampled_output, Var) else None
+        result = SampledValueLogic(
+            sampled_output_name,
+            get_required_expression(draft, "source_expr", namespace),
+            name,
+            sampled_output_uid,
+        )
     elif tpe == ProceduralLogicType.HardSaturation:
         result = HardSaturationLogic(get_required_field_value(draft, "output_var_name"),
                                      get_required_expression(draft, "u_expr", namespace),
@@ -997,10 +1916,17 @@ def build_runtime_logic_entry(draft: ProceduralLogicDraft,
                                      get_required_expression(draft, "set_expr", namespace),
                                      get_required_expression(draft, "reset_expr", namespace), name)
     elif tpe == ProceduralLogicType.PickupDropoff:
-        result = PickupDropoffLogic(get_required_field_value(draft, "output_var_name"),
-                                    get_required_expression(draft, "bool_expr", namespace),
-                                    get_required_expression(draft, "pickup_delay_expr", namespace),
-                                    get_required_expression(draft, "drop_delay_expr", namespace), name)
+        relay_output_name: str = get_required_field_value(draft, "output_var_name")
+        relay_output: Expr | None = namespace.get(relay_output_name, None)
+        relay_output_uid: int | None = relay_output.uid if isinstance(relay_output, Var) else None
+        result = PickupDropoffLogic(
+            relay_output_name,
+            get_required_expression(draft, "bool_expr", namespace),
+            get_required_expression(draft, "pickup_delay_expr", namespace),
+            get_required_expression(draft, "drop_delay_expr", namespace),
+            name,
+            relay_output_uid,
+        )
     elif tpe == ProceduralLogicType.ResetOnRisingEdge:
         result = ResetOnRisingEdgeLogic(get_required_field_value(draft, "target_var_name"),
                                         get_required_expression(draft, "reset_expr", namespace),
@@ -1053,7 +1979,7 @@ def build_runtime_logic_entry(draft: ProceduralLogicDraft,
 class RuntimeLogicDraftCollection:
     """Transactional collection of recursive modes and ordered logic entries."""
 
-    __slots__ = ("_root", "_modes", "_entries", "_changed")
+    __slots__ = ("_root", "_modes", "_entries")
 
     def __init__(self, root: Block) -> None:
         """Capture recursive runtime logic without mutating the source tree.
@@ -1064,7 +1990,6 @@ class RuntimeLogicDraftCollection:
         self._root: Block = root
         self._modes: List[RuntimeModeDraft] = list()
         self._entries: List[ProceduralLogicDraft] = list()
-        self._changed: bool = False
         owner: Block
         for owner in root.get_all_blocks():
             mode_variable: Var
@@ -1080,17 +2005,25 @@ class RuntimeLogicDraftCollection:
             for entry in owner.procedural_logic:
                 self._entries.append(ProceduralLogicDraft(
                     owner,
-                    get_logic_type_from_entry(entry),
+                    entry.logic_tpe,
                     entry.name,
                     get_procedural_fields(entry),
                     entry,
                 ))
 
-    def get_root(self) -> Block:
+    def replace_code_drafts(
+            self,
+            modes: Sequence[RuntimeModeDraft],
+            entries: Sequence[ProceduralLogicDraft],
+    ) -> None:
+        """Replace the detached collection with drafts parsed from Python code.
+
+        :param modes: Complete retained-mode declarations from every owner.
+        :param entries: Complete ordered procedural entries from every owner.
+        :return: None.
         """
-        :return: The dialogue root block.
-        """
-        return self._root
+        self._modes = list(modes)
+        self._entries = list(entries)
 
     def get_modes(self) -> List[RuntimeModeDraft]:
         """
@@ -1117,12 +2050,6 @@ class RuntimeLogicDraftCollection:
         """
         return list(self._entries)
 
-    def has_changes(self) -> bool:
-        """
-        :return: Whether the user staged a runtime-logic edit.
-        """
-        return self._changed
-
     def has_new_modes(self) -> bool:
         """
         :return: Whether Apply must create at least one retained mode.
@@ -1136,14 +2063,6 @@ class RuntimeLogicDraftCollection:
                 pass
         return result
 
-    def mark_changed(self) -> None:
-        """
-        Mark the draft collection as edited.
-
-        :return: None.
-        """
-        self._changed = True
-
     def add_mode(self, owner: Block, name: str, initial_expression: str) -> RuntimeModeDraft:
         """Stage one new retained mode.
 
@@ -1154,63 +2073,7 @@ class RuntimeLogicDraftCollection:
         """
         mode: RuntimeModeDraft = RuntimeModeDraft(owner, None, name, initial_expression)
         self._modes.append(mode)
-        self._changed = True
         return mode
-
-    def add_entry(self, owner: Block, logic_tpe: ProceduralLogicType, name: str) -> ProceduralLogicDraft:
-        """Stage one new procedural entry at the end of its owner ordering.
-
-        :param owner: Direct owner block.
-        :param logic_tpe: Selected procedural type.
-        :param name: Entry name.
-        :return: Added entry draft.
-        """
-        entry: ProceduralLogicDraft = ProceduralLogicDraft(
-            owner,
-            logic_tpe,
-            name,
-            get_default_procedural_fields(logic_tpe),
-            None,
-        )
-        self._entries.append(entry)
-        self._changed = True
-        return entry
-
-    def remove_entry(self, row: int) -> bool:
-        """Remove one staged or existing procedural entry.
-
-        :param row: Entry row.
-        :return: Whether a row was removed.
-        """
-        if 0 <= row < len(self._entries):
-            del self._entries[row]
-            self._changed = True
-            result: bool = True
-        else:
-            result = False
-        return result
-
-    def move_entry(self, row: int, delta: int) -> int:
-        """Move an entry within entries owned by the same block.
-
-        :param row: Current global draft row.
-        :param delta: ``-1`` or ``+1`` requested movement.
-        :return: New row, or the unchanged row when movement is invalid.
-        """
-        result: int = row
-        destination: int = row + delta
-        if 0 <= row < len(self._entries) and 0 <= destination < len(self._entries):
-            owner: Block = self._entries[row].get_owner()
-            if self._entries[destination].get_owner() is owner:
-                entry: ProceduralLogicDraft = self._entries.pop(row)
-                self._entries.insert(destination, entry)
-                self._changed = True
-                result = destination
-            else:
-                pass
-        else:
-            pass
-        return result
 
     def get_mode_writer_names(self, mode_name: str) -> List[str]:
         """Return ordered logic entry names writing one retained mode.
@@ -1229,96 +2092,21 @@ class RuntimeLogicDraftCollection:
                     pass
         return writers
 
-    def get_mode_reader_names(self, mode_name: str) -> List[str]:
-        """Return procedural, initialization and DAE readers of one mode.
-
-        :param mode_name: Mode symbol name.
-        :return: Reader entry names.
-        """
-        readers: List[str] = list()
-        pattern: re.Pattern[str] = re.compile(rf"\b{re.escape(mode_name)}\b")
-        entry: ProceduralLogicDraft
-        field: ProceduralFieldDraft
-        for entry in self._entries:
-            found: bool = False
-            for field in entry.get_fields():
-                reads_mode: bool = (
-                    field.get_tpe() == ProceduralFieldType.EXPRESSION
-                    and pattern.search(field.get_value()) is not None
-                )
-                explicit_reference: bool = (
-                    field.get_tpe() in (
-                        ProceduralFieldType.RUNTIME_REFERENCE,
-                        ProceduralFieldType.VARIABLE_REFERENCE,
-                        ProceduralFieldType.TARGET_REFERENCE,
-                    )
-                    and field.get_value() == mode_name
-                )
-                if reads_mode or explicit_reference:
-                    found = True
-                else:
-                    pass
-            if found:
-                readers.append(entry.get_name())
-            else:
-                pass
-
-        # A mode can initialize another retained mode even when no procedural
-        # entry reads it directly. This dependency must also block deletion.
-        mode: RuntimeModeDraft
-        for mode in self.get_active_modes():
-            initialization_reads_mode: bool = (
-                mode.get_name() != mode_name
-                and pattern.search(mode.get_initial_expression()) is not None
-            )
-            if initialization_reads_mode:
-                label: str = f"Mode initialization: {mode.get_owner().name} / {mode.get_name()}"
-                if label not in readers:
-                    readers.append(label)
-                else:
-                    pass
-            else:
-                pass
-
-        # Existing equation trees are checked immediately. Draft DAE source is
-        # validated again by the parent dialogue before Apply, covering edits
-        # made after this dependency list was built.
-        owner: Block
-        for owner in self._root.get_all_blocks():
-            if block_reads_symbol(owner, mode_name):
-                label = f"DAE: {owner.name}"
-                if label not in readers:
-                    readers.append(label)
-                else:
-                    pass
-            else:
-                pass
-        return readers
-
     def remove_mode(self, row: int) -> tuple[bool, str]:
-        """Stage safe mode deletion only when no procedural field references it.
+        """Stage one retained-mode declaration for deletion.
+
+        Python model code is the authoritative editor. References are left in
+        place so the user can update them in any order; Validate and Apply reject
+        unknown references before the Engine is mutated.
 
         :param row: Mode row.
-        :return: Success flag and blocking explanation.
+        :return: Success flag and an empty message.
         """
         if not 0 <= row < len(self._modes):
             return False, "Select one retained mode."
         else:
             mode: RuntimeModeDraft = self._modes[row]
-            writers: List[str] = self.get_mode_writer_names(mode.get_name())
-            readers: List[str] = self.get_mode_reader_names(mode.get_name())
-        if len(writers) > 0 or len(readers) > 0:
-            references: List[str] = list(writers)
-            reader: str
-            for reader in readers:
-                if reader not in references:
-                    references.append(reader)
-                else:
-                    pass
-            return False, f"Mode '{mode.get_name()}' is used by: {', '.join(references)}"
-        else:
             mode.set_removed(True)
-            self._changed = True
             return True, ""
 
     def build_validation_namespace(self, base_namespace: Mapping[str, Expr]) -> Dict[str, Expr]:
@@ -1330,12 +2118,17 @@ class RuntimeLogicDraftCollection:
         namespace: Dict[str, Expr] = dict(base_namespace)
         mode: RuntimeModeDraft
         for mode in self._modes:
+            existing_variable: Var | None = mode.get_variable()
+            if existing_variable is not None and existing_variable.name != mode.get_name():
+                namespace.pop(existing_variable.name, None)
+            else:
+                pass
             if mode.is_removed():
                 namespace.pop(mode.get_name(), None)
             elif mode.is_new():
                 namespace[mode.get_name()] = Var(mode.get_name())
-            elif mode.get_variable() is not None:
-                namespace[mode.get_name()] = mode.get_variable()
+            elif existing_variable is not None:
+                namespace[mode.get_name()] = existing_variable
             else:
                 pass
         return namespace
@@ -1351,30 +2144,28 @@ class RuntimeLogicDraftCollection:
         mode_names: set[str] = set()
         mode: RuntimeModeDraft
         for mode in self._modes:
-            mode.set_error("")
             if not mode.is_removed():
-                invalid_new_name: bool = (
-                    mode.is_new()
-                    and (
-                        len(mode.get_name()) == 0
-                        or not mode.get_name().isidentifier()
-                        or keyword.iskeyword(mode.get_name())
-                    )
+                invalid_name: bool = (
+                    len(mode.get_name()) == 0
+                    or not mode.get_name().isidentifier()
+                    or keyword.iskeyword(mode.get_name())
                 )
-                if invalid_new_name:
+                if invalid_name:
                     message: str = f"Mode '{mode.get_name()}' needs a valid Python symbol name."
-                    mode.set_error(message)
                     result.add_error(message)
                 elif mode.get_name() in mode_names:
                     message = f"Retained mode '{mode.get_name()}' is declared more than once."
-                    mode.set_error(message)
                     result.add_error(message)
-                elif mode.is_new() and mode.get_name() in base_namespace:
-                    message = (
-                        f"Retained mode '{mode.get_name()}' conflicts with an existing DAE or parameter symbol."
-                    )
-                    mode.set_error(message)
-                    result.add_error(message)
+                elif mode.get_name() in base_namespace:
+                    conflicting_symbol: Expr = base_namespace[mode.get_name()]
+                    existing_mode_variable: Var | None = mode.get_variable()
+                    if existing_mode_variable is not None and conflicting_symbol is existing_mode_variable:
+                        mode_names.add(mode.get_name())
+                    else:
+                        message = (
+                            f"Retained mode '{mode.get_name()}' conflicts with an existing DAE or parameter symbol."
+                        )
+                        result.add_error(message)
                 else:
                     mode_names.add(mode.get_name())
                 try:
@@ -1386,7 +2177,6 @@ class RuntimeLogicDraftCollection:
                         pass
                 except (KeyError, TypeError, ValueError) as error:
                     message = f"Mode '{mode.get_name()}' initialization: {error}"
-                    mode.set_error(message)
                     result.add_error(message)
             else:
                 pass
@@ -1396,12 +2186,10 @@ class RuntimeLogicDraftCollection:
         entry_index: int
         entry: ProceduralLogicDraft
         for entry_index, entry in enumerate(self._entries):
-            entry.set_error("")
             entry_key: tuple[int, str] = (entry.get_owner().uid, entry.get_name())
             if len(entry.get_name()) == 0:
                 if entry.get_original() is None:
                     message = f"Procedural entry #{entry_index + 1} needs a name."
-                    entry.set_error(message)
                     result.add_error(message)
                 else:
                     result.add_warning(
@@ -1410,7 +2198,6 @@ class RuntimeLogicDraftCollection:
             elif entry_key in entry_names:
                 message = f"Procedural entry name '{entry.get_name()}' is duplicated in '{entry.get_owner().name}'."
                 if entry.get_original() is None:
-                    entry.set_error(message)
                     result.add_error(message)
                 else:
                     # Entry names are labels rather than runtime lookup keys.
@@ -1422,7 +2209,6 @@ class RuntimeLogicDraftCollection:
 
             field: ProceduralFieldDraft
             for field in entry.get_fields():
-                field.set_error("")
                 field_tpe: ProceduralFieldType = field.get_tpe()
                 field_value: str = field.get_value()
                 try:
@@ -1444,6 +2230,27 @@ class RuntimeLogicDraftCollection:
                                 pass
                         else:
                             pass
+                    elif field_tpe == ProceduralFieldType.REQUIRED_TEXT:
+                        if len(field_value) == 0:
+                            raise ValueError("text cannot be empty")
+                        else:
+                            pass
+                    elif field_tpe == ProceduralFieldType.TEXT:
+                        pass
+                    elif field_tpe == ProceduralFieldType.INTEGER:
+                        try:
+                            integer_value: object = ast.literal_eval(field_value)
+                        except (SyntaxError, ValueError) as error:
+                            raise ValueError("value must be an integer") from error
+                        if isinstance(integer_value, int) and not isinstance(integer_value, bool):
+                            pass
+                        else:
+                            raise ValueError("value must be an integer")
+                    elif field_tpe == ProceduralFieldType.BOOLEAN:
+                        if field_value in ("True", "False"):
+                            pass
+                        else:
+                            raise ValueError("value must be True or False")
                     elif field_tpe == ProceduralFieldType.MODE_REFERENCE:
                         if field_value not in mode_names:
                             raise ValueError(f"'{field_value}' is not a retained mode")
@@ -1466,7 +2273,6 @@ class RuntimeLogicDraftCollection:
                         pass
                 except (KeyError, TypeError, ValueError) as error:
                     message = f"{entry.get_name()} / {field.get_label()}: {error}"
-                    field.set_error(message)
                     result.add_error(message)
 
         for mode in self.get_active_modes():
@@ -1523,14 +2329,26 @@ class RuntimeLogicDraftCollection:
         mode: RuntimeModeDraft
         for mode in self._modes:
             variable: Var | None = mode.get_variable()
+            previous_name: str | None = variable.name if variable is not None else None
             if mode.is_removed():
                 if variable is not None:
                     mode.get_owner().mode_dict.pop(variable, None)
+                    namespace.pop(variable.name, None)
                 else:
                     pass
             else:
                 if variable is None:
                     variable = var_factory.add_var(mode.get_name())
+                elif variable.name != mode.get_name():
+                    variable.set_name(mode.get_name())
+                else:
+                    pass
+                if previous_name is not None and previous_name != mode.get_name():
+                    # The validation namespace deliberately removed the old
+                    # spelling. Mirror that behavior in the authoritative
+                    # post-Apply namespace so stale source cannot keep using a
+                    # renamed mode through a second dictionary key.
+                    namespace.pop(previous_name, None)
                 else:
                     pass
                 namespace[mode.get_name()] = variable
@@ -1564,1177 +2382,32 @@ class RuntimeLogicDraftCollection:
                 else:
                     pass
             owner.procedural_logic = owner_entries
-        self._changed = False
         return namespace
 
 
-class ProceduralEntryTableModel(QtCore.QAbstractTableModel):
-    """Ordered overview model for procedural entry drafts."""
-
-    __slots__ = ("_drafts",)
-
-    def __init__(self,
-                 drafts: RuntimeLogicDraftCollection,
-                 parent: QtCore.QObject | None = None) -> None:
-        """
-        Create a table over one shared draft collection.
-
-        :param drafts: Value supplied for ``drafts``.
-        :param parent: Owning Qt widget.
-        :return: None.
-        """
-        super().__init__(parent)
-        self._drafts: RuntimeLogicDraftCollection = drafts
-
-    def rowCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
-        """
-        Return procedural entry count.
-
-        :param parent: Owning Qt widget.
-        :return: Procedural entry count.
-        """
-        return 0 if parent.isValid() else len(self._drafts.get_entries())
-
-    def columnCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
-        """
-        Return overview column count.
-
-        :param parent: Owning Qt widget.
-        :return: Overview column count.
-        """
-        return 0 if parent.isValid() else 6
-
-    def data(self, index: QtCore.QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> object:
-        """
-        Return one overview cell.
-
-        :param index: Value supplied for ``index``.
-        :param role: Value supplied for ``role``.
-        :return: One overview cell.
-        """
-        if not index.isValid() or index.row() >= self.rowCount():
-            return None
-        else:
-            entry: ProceduralLogicDraft = self._drafts.get_entries()[index.row()]
-        if role in (Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.EditRole):
-            if index.column() == 0:
-                return index.row() + 1
-            elif index.column() == 1:
-                return entry.get_owner().name
-            elif index.column() == 2:
-                return entry.get_name()
-            elif index.column() == 3:
-                return entry.get_logic_tpe().value
-            elif index.column() == 4:
-                return entry.get_output_summary()
-            else:
-                return "OK" if len(entry.get_error()) == 0 else "Error"
-        elif role == Qt.ItemDataRole.ForegroundRole and len(entry.get_error()) > 0:
-            return QtGui.QBrush(QtGui.QColor("#b42318"))
-        elif role == Qt.ItemDataRole.ToolTipRole and len(entry.get_error()) > 0:
-            return entry.get_error()
-        else:
-            return None
-
-    def setData(self,
-                index: QtCore.QModelIndex,
-                value: object,
-                role: int = Qt.ItemDataRole.EditRole) -> bool:
-        """
-        Edit only an entry name from the overview.
-
-        :param index: Value supplied for ``index``.
-        :param value: Value supplied for ``value``.
-        :param role: Value supplied for ``role``.
-        :return: True when the edited value was accepted; otherwise False.
-        """
-        if index.isValid() and index.column() == 2 and role == Qt.ItemDataRole.EditRole:
-            entry: ProceduralLogicDraft = self._drafts.get_entries()[index.row()]
-            entry.set_name(str(value))
-            self._drafts.mark_changed()
-            self.dataChanged.emit(index, index, list((role,)))
-            return True
-        else:
-            return False
-
-    def flags(self, index: QtCore.QModelIndex) -> Qt.ItemFlag:
-        """
-        Expose entry-name editing and row selection.
-
-        :param index: Value supplied for ``index``.
-        :return: Item flags enabling entry-name editing and row selection.
-        """
-        if not index.isValid():
-            return Qt.ItemFlag.NoItemFlags
-        else:
-            flags: Qt.ItemFlag = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
-        if index.column() == 2:
-            flags |= Qt.ItemFlag.ItemIsEditable
-        else:
-            pass
-        return flags
-
-    def headerData(self,
-                   section: int,
-                   orientation: Qt.Orientation,
-                   role: int = Qt.ItemDataRole.DisplayRole) -> object:
-        """
-        Return overview headers.
-
-        :param section: Value supplied for ``section``.
-        :param orientation: Value supplied for ``orientation``.
-        :param role: Value supplied for ``role``.
-        :return: Overview headers.
-        """
-        headers: tuple[str, ...] = ("Order", "Owner", "Name", "Type", "Output / target", "Status")
-        if orientation == Qt.Orientation.Horizontal and role == Qt.ItemDataRole.DisplayRole:
-            return headers[section] if 0 <= section < len(headers) else None
-        else:
-            return None
-
-    def reload(self) -> None:
-        """
-        Reset the overview after structural draft changes.
-
-        :return: None.
-        """
-        self.beginResetModel()
-        self.endResetModel()
-
-
-class RuntimeModeTableModel(QtCore.QAbstractTableModel):
-    """Editable retained-mode overview and dependency model."""
-
-    __slots__ = ("_drafts",)
-
-    def __init__(self,
-                 drafts: RuntimeLogicDraftCollection,
-                 parent: QtCore.QObject | None = None) -> None:
-        """
-        Create a mode table over the shared collection.
-
-        :param drafts: Value supplied for ``drafts``.
-        :param parent: Owning Qt widget.
-        :return: None.
-        """
-        super().__init__(parent)
-        self._drafts: RuntimeLogicDraftCollection = drafts
-
-    def rowCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
-        """
-        Return retained mode count including staged deletions.
-
-        :param parent: Owning Qt widget.
-        :return: Retained mode count including staged deletions.
-        """
-        return 0 if parent.isValid() else len(self._drafts.get_modes())
-
-    def columnCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
-        """
-        Return mode overview column count.
-
-        :param parent: Owning Qt widget.
-        :return: Mode overview column count.
-        """
-        return 0 if parent.isValid() else 6
-
-    def data(self, index: QtCore.QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> object:
-        """
-        Return mode identity, initialization, dependencies, and status.
-
-        :param index: Value supplied for ``index``.
-        :param role: Value supplied for ``role``.
-        :return: Mode identity, initialization, dependencies, and status.
-        """
-        if not index.isValid() or index.row() >= self.rowCount():
-            return None
-        else:
-            mode: RuntimeModeDraft = self._drafts.get_modes()[index.row()]
-        if role in (Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.EditRole):
-            if index.column() == 0:
-                return mode.get_owner().name
-            elif index.column() == 1:
-                return mode.get_name()
-            elif index.column() == 2:
-                return mode.get_initial_expression()
-            elif index.column() == 3:
-                writers: List[str] = self._drafts.get_mode_writer_names(mode.get_name())
-                return ", ".join(writers) if len(writers) > 0 else "External / retained"
-            elif index.column() == 4:
-                return ", ".join(self._drafts.get_mode_reader_names(mode.get_name()))
-            else:
-                if mode.is_removed():
-                    return "Removed"
-                elif len(mode.get_error()) > 0:
-                    return "Error"
-                else:
-                    return "OK"
-        elif role == Qt.ItemDataRole.ForegroundRole and (mode.is_removed() or len(mode.get_error()) > 0):
-            return QtGui.QBrush(QtGui.QColor("#b42318"))
-        elif role == Qt.ItemDataRole.ToolTipRole and len(mode.get_error()) > 0:
-            return mode.get_error()
-        else:
-            return None
-
-    def setData(self,
-                index: QtCore.QModelIndex,
-                value: object,
-                role: int = Qt.ItemDataRole.EditRole) -> bool:
-        """
-        Edit new mode names and all initial expressions.
-
-        :param index: Value supplied for ``index``.
-        :param value: Value supplied for ``value``.
-        :param role: Value supplied for ``role``.
-        :return: True when the edited value was accepted; otherwise False.
-        """
-        if not index.isValid() or role != Qt.ItemDataRole.EditRole:
-            return False
-        else:
-            mode: RuntimeModeDraft = self._drafts.get_modes()[index.row()]
-        if index.column() == 1 and mode.is_new():
-            mode.set_name(str(value))
-            changed: bool = True
-        elif index.column() == 2:
-            mode.set_initial_expression(str(value))
-            changed = True
-        else:
-            changed = False
-        if changed:
-            self._drafts.mark_changed()
-            self.dataChanged.emit(index, index, list((role,)))
-        else:
-            pass
-        return changed
-
-    def flags(self, index: QtCore.QModelIndex) -> Qt.ItemFlag:
-        """
-        Expose only safe retained-mode edits.
-
-        :param index: Value supplied for ``index``.
-        :return: Item flags enabling only safe retained-mode edits.
-        """
-        if not index.isValid():
-            return Qt.ItemFlag.NoItemFlags
-        else:
-            mode: RuntimeModeDraft = self._drafts.get_modes()[index.row()]
-            flags: Qt.ItemFlag = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
-        if index.column() == 2 or (index.column() == 1 and mode.is_new()):
-            flags |= Qt.ItemFlag.ItemIsEditable
-        else:
-            pass
-        return flags
-
-    def headerData(self,
-                   section: int,
-                   orientation: Qt.Orientation,
-                   role: int = Qt.ItemDataRole.DisplayRole) -> object:
-        """
-        Return retained-mode headers.
-
-        :param section: Value supplied for ``section``.
-        :param orientation: Value supplied for ``orientation``.
-        :param role: Value supplied for ``role``.
-        :return: Retained-mode headers.
-        """
-        headers: tuple[str, ...] = ("Owner", "Name", "Initial expression", "Writer", "Read by", "Status")
-        if orientation == Qt.Orientation.Horizontal and role == Qt.ItemDataRole.DisplayRole:
-            return headers[section] if 0 <= section < len(headers) else None
-        else:
-            return None
-
-    def reload(self) -> None:
-        """
-        Reset the mode overview after structural draft changes.
-
-        :return: None.
-        """
-        self.beginResetModel()
-        self.endResetModel()
-
-
-class ProceduralFieldTableModel(QtCore.QAbstractTableModel):
-    """Typed field table for the currently selected procedural entry."""
-
-    __slots__ = ("_drafts", "_entry")
-
-    def __init__(self,
-                 drafts: RuntimeLogicDraftCollection,
-                 parent: QtCore.QObject | None = None) -> None:
-        """
-        Create an initially empty field model.
-
-        :param drafts: Value supplied for ``drafts``.
-        :param parent: Owning Qt widget.
-        :return: None.
-        """
-        super().__init__(parent)
-        self._drafts: RuntimeLogicDraftCollection = drafts
-        self._entry: ProceduralLogicDraft | None = None
-
-    def set_entry(self, entry: ProceduralLogicDraft | None) -> None:
-        """
-        Replace the selected procedural entry.
-
-        :param entry: Value supplied for ``entry``.
-        :return: None.
-        """
-        self.beginResetModel()
-        self._entry = entry
-        self.endResetModel()
-
-    def get_field(self, row: int) -> ProceduralFieldDraft | None:
-        """
-        Return one selected-entry field by row.
-
-        :param row: Value supplied for ``row``.
-        :return: One selected-entry field by row.
-        """
-        if self._entry is not None:
-            fields: List[ProceduralFieldDraft] = self._entry.get_fields()
-            result: ProceduralFieldDraft | None = fields[row] if 0 <= row < len(fields) else None
-        else:
-            result = None
-        return result
-
-    def rowCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
-        """
-        Return selected entry field count.
-
-        :param parent: Owning Qt widget.
-        :return: Selected entry field count.
-        """
-        if parent.isValid() or self._entry is None:
-            return 0
-        else:
-            return len(self._entry.get_fields())
-
-    def columnCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
-        """
-        Return label, type, and value columns.
-
-        :param parent: Owning Qt widget.
-        :return: Label, type, and value columns.
-        """
-        return 0 if parent.isValid() else 3
-
-    def data(self, index: QtCore.QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> object:
-        """
-        Return one typed field cell and validation presentation.
-
-        :param index: Value supplied for ``index``.
-        :param role: Value supplied for ``role``.
-        :return: One typed field cell and validation presentation.
-        """
-        field: ProceduralFieldDraft | None = self.get_field(index.row())
-        if not index.isValid() or field is None:
-            return None
-        elif role in (Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.EditRole):
-            if index.column() == 0:
-                return field.get_label()
-            elif index.column() == 1:
-                return field.get_tpe().value
-            else:
-                return field.get_value()
-        elif role == Qt.ItemDataRole.ToolTipRole:
-            if len(field.get_error()) > 0:
-                return field.get_error()
-            else:
-                return field.get_description()
-        elif role in (Qt.ItemDataRole.ForegroundRole, Qt.ItemDataRole.BackgroundRole) and len(field.get_error()) > 0:
-            if role == Qt.ItemDataRole.ForegroundRole:
-                return QtGui.QBrush(QtGui.QColor("#b42318"))
-            else:
-                return QtGui.QBrush(QtGui.QColor("#fee2e2"))
-        else:
-            return None
-
-    def setData(self,
-                index: QtCore.QModelIndex,
-                value: object,
-                role: int = Qt.ItemDataRole.EditRole) -> bool:
-        """
-        Stage one selected-entry field edit.
-
-        :param index: Value supplied for ``index``.
-        :param value: Value supplied for ``value``.
-        :param role: Value supplied for ``role``.
-        :return: True when the edited value was accepted; otherwise False.
-        """
-        field: ProceduralFieldDraft | None = self.get_field(index.row())
-        if field is not None and index.column() == 2 and role == Qt.ItemDataRole.EditRole:
-            field.set_value(str(value))
-            self._drafts.mark_changed()
-            self.dataChanged.emit(index, index, list((role,)))
-            return True
-        else:
-            return False
-
-    def flags(self, index: QtCore.QModelIndex) -> Qt.ItemFlag:
-        """
-        Expose only value cells as editable.
-
-        :param index: Value supplied for ``index``.
-        :return: Item flags exposing only value cells as editable.
-        """
-        if not index.isValid():
-            return Qt.ItemFlag.NoItemFlags
-        else:
-            flags: Qt.ItemFlag = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
-        if index.column() == 2:
-            flags |= Qt.ItemFlag.ItemIsEditable
-        else:
-            pass
-        return flags
-
-    def headerData(self,
-                   section: int,
-                   orientation: Qt.Orientation,
-                   role: int = Qt.ItemDataRole.DisplayRole) -> object:
-        """
-        Return typed field headers.
-
-        :param section: Value supplied for ``section``.
-        :param orientation: Value supplied for ``orientation``.
-        :param role: Value supplied for ``role``.
-        :return: Typed field headers.
-        """
-        headers: tuple[str, ...] = ("Field", "Kind", "Value")
-        if orientation == Qt.Orientation.Horizontal and role == Qt.ItemDataRole.DisplayRole:
-            return headers[section] if 0 <= section < len(headers) else None
-        else:
-            return None
-
-    def reload(self) -> None:
-        """
-        Refresh validation colors and values.
-
-        :return: None.
-        """
-        self.beginResetModel()
-        self.endResetModel()
-
-
-class ProceduralFieldDelegate(QtWidgets.QStyledItemDelegate):
-    """Typed editor delegate for procedural field values."""
-
-    __slots__ = ("_drafts",)
-
-    def __init__(self,
-                 drafts: RuntimeLogicDraftCollection,
-                 parent: QtWidgets.QWidget | None = None) -> None:
-        """
-        Create a delegate sharing one draft collection.
-
-        :param drafts: Value supplied for ``drafts``.
-        :param parent: Owning Qt widget.
-        :return: None.
-        """
-        super().__init__(parent)
-        self._drafts: RuntimeLogicDraftCollection = drafts
-
-    def createEditor(self,
-                     parent: QtWidgets.QWidget,
-                     option: QtWidgets.QStyleOptionViewItem,
-                     index: QtCore.QModelIndex) -> QtWidgets.QWidget:
-        """
-        Create a line editor or constrained reference combo.
-
-        :param parent: Owning Qt widget.
-        :param option: Value supplied for ``option``.
-        :param index: Value supplied for ``index``.
-        :return: Line editor or constrained reference combo for the selected field.
-        """
-        _unused_option: QtWidgets.QStyleOptionViewItem = option
-        model: QtCore.QAbstractItemModel | None = index.model()
-        field: ProceduralFieldDraft | None = None
-        if isinstance(model, ProceduralFieldTableModel):
-            field = model.get_field(index.row())
-        else:
-            pass
-        if field is not None and field.get_tpe() in (
-            ProceduralFieldType.MODE_REFERENCE,
-            ProceduralFieldType.VARIABLE_REFERENCE,
-            ProceduralFieldType.RUNTIME_REFERENCE,
-            ProceduralFieldType.TARGET_REFERENCE,
-        ):
-            combo: QtWidgets.QComboBox = QtWidgets.QComboBox(parent)
-            option_item: tuple[str, str]
-            for option_item in self._get_reference_options(field.get_tpe()):
-                combo.addItem(option_item[0], option_item[1])
-            return combo
-        else:
-            editor: QtWidgets.QLineEdit = QtWidgets.QLineEdit(parent)
-            return editor
-
-    def _get_reference_options(self, field_tpe: ProceduralFieldType) -> List[tuple[str, str]]:
-        """
-        Return qualified labels and canonical names for one reference role.
-
-        :param field_tpe: Value supplied for ``field_tpe``.
-        :return: Qualified labels and canonical names for one reference role.
-        """
-        options: List[tuple[str, str]] = list()
-        if field_tpe == ProceduralFieldType.MODE_REFERENCE:
-            mode: RuntimeModeDraft
-            for mode in self._drafts.get_active_modes():
-                options.append((f"{mode.get_owner().name} / {mode.get_name()}", mode.get_name()))
-        else:
-            owner: Block
-            for owner in self._drafts.get_root().get_all_blocks():
-                variables: List[Var] = list()
-                if field_tpe == ProceduralFieldType.VARIABLE_REFERENCE:
-                    groups: tuple[Sequence[Var], ...] = (
-                        owner.in_vars, owner.state_vars, owner.algebraic_vars, owner.diff_vars, owner.out_vars)
-                elif field_tpe == ProceduralFieldType.RUNTIME_REFERENCE:
-                    groups = (tuple(owner.event_dict.keys()), tuple(owner.mode_dict.keys()))
-                else:
-                    groups = (
-                        owner.state_vars,
-                        owner.algebraic_vars,
-                        tuple(owner.event_dict.keys()),
-                        tuple(owner.mode_dict.keys()),
-                    )
-                group: Sequence[Var]
-                variable: Var
-                for group in groups:
-                    for variable in group:
-                        if variable not in variables:
-                            variables.append(variable)
-                        else:
-                            pass
-                for variable in variables:
-                    options.append((f"{owner.name} / {variable.name}", variable.name))
-        options.sort(key=get_reference_option_sort_key)
-        return options
-
-    def setEditorData(self, editor: QtWidgets.QWidget, index: QtCore.QModelIndex) -> None:
-        """
-        Load the staged field value into its typed editor.
-
-        :param editor: Value supplied for ``editor``.
-        :param index: Value supplied for ``index``.
-        :return: None.
-        """
-        current_value: str = str(index.data(Qt.ItemDataRole.EditRole))
-        if isinstance(editor, QtWidgets.QComboBox):
-            item_index: int = editor.findData(current_value)
-            editor.setCurrentIndex(item_index)
-        elif isinstance(editor, QtWidgets.QLineEdit):
-            editor.setText(current_value)
-        else:
-            pass
-
-    def setModelData(self,
-                     editor: QtWidgets.QWidget,
-                     model: QtCore.QAbstractItemModel,
-                     index: QtCore.QModelIndex) -> None:
-        """
-        Commit the typed editor value to the field model.
-
-        :param editor: Value supplied for ``editor``.
-        :param model: Value supplied for ``model``.
-        :param index: Value supplied for ``index``.
-        :return: None.
-        """
-        if isinstance(editor, QtWidgets.QComboBox):
-            selected_data: object = editor.currentData()
-            model.setData(index, "" if selected_data is None else str(selected_data))
-        elif isinstance(editor, QtWidgets.QLineEdit):
-            model.setData(index, editor.text())
-        else:
-            pass
-
-
-def get_reference_option_sort_key(option: tuple[str, str]) -> str:
+def build_runtime_logic_drafts_from_code(
+        root: Block,
+        owner_code: Sequence[tuple[Block, str]],
+) -> RuntimeLogicDraftCollection:
+    """Build one recursive runtime draft collection from model-code buffers.
+
+    Mode declarations are collected for every owner before procedural entries
+    are validated by the caller. This keeps the code-owner combo consistent
+    with the Engine's recursive block hierarchy and execution order.
+
+    :param root: Root block shown by Block Properties.
+    :param owner_code: Ordered direct owners and their complete source buffers.
+    :return: Detached recursive runtime draft collection.
     """
-    Return a stable case-insensitive reference-option sort key.
-
-    :param option: Value supplied for ``option``.
-    :return: A stable case-insensitive reference-option sort key.
-    """
-    return option[0].lower()
-
-
-def configure_runtime_table_header(header: QtWidgets.QHeaderView,
-                                   initial_widths: Sequence[int]) -> None:
-    """Allow manual resizing of every runtime-logic table column.
-
-    :param header: Horizontal header being configured.
-    :param initial_widths: Readable initial width for each available column.
-    :return: None.
-    """
-    header.setStretchLastSection(False)
-    column_index: int
-    for column_index in range(header.count()):
-        header.setSectionResizeMode(
-            column_index,
-            QtWidgets.QHeaderView.ResizeMode.Interactive,
-        )
-        if column_index < len(initial_widths):
-            header.resizeSection(column_index, initial_widths[column_index])
-        else:
-            pass
-
-
-class RuntimeLogicEditorWidget(QtWidgets.QWidget):
-    """Complete retained-mode and procedural-logic editor tab."""
-
-    __slots__ = (
-        "_drafts",
-        "_namespace",
-        "_entry_model",
-        "_mode_model",
-        "_field_model",
-        "_entry_table",
-        "_mode_table",
-        "_field_table",
-        "_owner_combo",
-        "_type_combo",
-        "_new_entry_name",
-        "_new_mode_owner",
-        "_new_mode_name",
-        "_new_mode_initial",
-        "_entry_name",
-        "_documentation",
-        "_status",
-        "_selected_entry_row",
-    )
-
-    changed = Signal()
-
-    def __init__(self,
-                 root: Block,
-                 namespace: Mapping[str, Expr],
-                 parent: QtWidgets.QWidget | None = None) -> None:
-        """Build the runtime logic page over detached drafts.
-
-        :param root: Dialogue root block.
-        :param namespace: Current symbolic namespace.
-        :param parent: Parent widget.
-        :return: None.
-        """
-        super().__init__(parent)
-        self._drafts: RuntimeLogicDraftCollection = RuntimeLogicDraftCollection(root)
-        self._namespace: Dict[str, Expr] = dict(namespace)
-        self._entry_model: ProceduralEntryTableModel = ProceduralEntryTableModel(self._drafts, self)
-        self._mode_model: RuntimeModeTableModel = RuntimeModeTableModel(self._drafts, self)
-        self._field_model: ProceduralFieldTableModel = ProceduralFieldTableModel(self._drafts, self)
-        self._entry_table: QtWidgets.QTableView = QtWidgets.QTableView(self)
-        self._mode_table: QtWidgets.QTableView = QtWidgets.QTableView(self)
-        self._field_table: QtWidgets.QTableView = QtWidgets.QTableView(self)
-        self._owner_combo: QtWidgets.QComboBox = QtWidgets.QComboBox(self)
-        self._type_combo: QtWidgets.QComboBox = QtWidgets.QComboBox(self)
-        self._new_entry_name: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
-        self._new_mode_owner: QtWidgets.QComboBox = QtWidgets.QComboBox(self)
-        self._new_mode_name: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
-        self._new_mode_initial: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
-        self._entry_name: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
-        self._documentation: QtWidgets.QTextBrowser = QtWidgets.QTextBrowser(self)
-        self._status: QtWidgets.QLabel = QtWidgets.QLabel(self)
-        self._selected_entry_row: int = -1
-        self._build_ui(root)
-        self._connect_signals()
-        if self._entry_model.rowCount() > 0:
-            self._entry_table.selectRow(0)
-            self.on_entry_selection_changed()
-        else:
-            self.update_documentation_from_type()
-
-    def _build_ui(self, root: Block) -> None:
-        """
-        Build entry, mode, field, and documentation views.
-
-        :param root: Value supplied for ``root``.
-        :return: None.
-        """
-        layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self)
-        splitter: QtWidgets.QSplitter = QtWidgets.QSplitter(Qt.Orientation.Horizontal, self)
-        left_tabs: QtWidgets.QTabWidget = QtWidgets.QTabWidget(splitter)
-        left_tabs.addTab(self._build_entries_page(root), self.tr("Procedural entries"))
-        left_tabs.addTab(self._build_modes_page(root), self.tr("Retained modes"))
-        splitter.addWidget(left_tabs)
-
-        right_tabs: QtWidgets.QTabWidget = QtWidgets.QTabWidget(splitter)
-        right_tabs.addTab(self._build_configuration_page(), self.tr("Configuration"))
-        right_tabs.addTab(self._build_documentation_page(), self.tr("Documentation"))
-        splitter.addWidget(right_tabs)
-        splitter.setSizes(list((680, 520,)))
-        splitter.setCollapsible(0, False)
-        splitter.setCollapsible(1, False)
-        layout.addWidget(splitter, 1)
-        self._status.setWordWrap(True)
-        layout.addWidget(self._status)
-
-    def _build_entries_page(self, root: Block) -> QtWidgets.QWidget:
-        """
-        Build ordered entry list and add/move/delete controls.
-
-        :param root: Value supplied for ``root``.
-        :return: Page containing the ordered entry list and its editing controls.
-        """
-        page: QtWidgets.QWidget = QtWidgets.QWidget(self)
-        layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(page)
-        add_layout: QtWidgets.QGridLayout = QtWidgets.QGridLayout()
-        owner: Block
-        for owner in root.get_all_blocks():
-            self._owner_combo.addItem(owner.name, owner)
-        logic_tpe: ProceduralLogicType
-        for logic_tpe in ProceduralLogicType:
-            if logic_tpe != ProceduralLogicType.Base:
-                self._type_combo.addItem(logic_tpe.value, logic_tpe)
-            else:
-                pass
-        self._new_entry_name.setPlaceholderText(self.tr("Entry name"))
-        add_button: QtWidgets.QPushButton = QtWidgets.QPushButton(self.tr("Add entry"), page)
-        add_button.setObjectName("add_runtime_logic_entry")
-        add_layout.addWidget(QtWidgets.QLabel(self.tr("Owner"), page), 0, 0)
-        add_layout.addWidget(self._owner_combo, 0, 1)
-        add_layout.addWidget(QtWidgets.QLabel(self.tr("Type"), page), 1, 0)
-        add_layout.addWidget(self._type_combo, 1, 1)
-        add_layout.addWidget(self._new_entry_name, 2, 0, 1, 2)
-        add_layout.addWidget(add_button, 3, 0, 1, 2)
-        layout.addLayout(add_layout)
-
-        self._entry_table.setModel(self._entry_model)
-        self._entry_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
-        self._entry_table.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
-        header: QtWidgets.QHeaderView = self._entry_table.horizontalHeader()
-        configure_runtime_table_header(
-            header,
-            list((170, 190, 170, 100, 100, 100,)),
-        )
-        layout.addWidget(self._entry_table, 1)
-
-        action_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout()
-        up_button: QtWidgets.QPushButton = QtWidgets.QPushButton(self.tr("Move up"), page)
-        down_button: QtWidgets.QPushButton = QtWidgets.QPushButton(self.tr("Move down"), page)
-        delete_button: QtWidgets.QPushButton = QtWidgets.QPushButton(self.tr("Delete"), page)
-        validate_button: QtWidgets.QPushButton = QtWidgets.QPushButton(self.tr("Validate runtime logic"), page)
-        up_button.setObjectName("move_runtime_logic_up")
-        down_button.setObjectName("move_runtime_logic_down")
-        delete_button.setObjectName("delete_runtime_logic_entry")
-        validate_button.setObjectName("validate_runtime_logic")
-        action_layout.addWidget(up_button)
-        action_layout.addWidget(down_button)
-        action_layout.addWidget(delete_button)
-        action_layout.addStretch(1)
-        action_layout.addWidget(validate_button)
-        layout.addLayout(action_layout)
-        return page
-
-    def _build_modes_page(self, root: Block) -> QtWidgets.QWidget:
-        """
-        Build retained-mode table and safe creation/deletion controls.
-
-        :param root: Value supplied for ``root``.
-        :return: Page containing the retained-mode table and its editing controls.
-        """
-        page: QtWidgets.QWidget = QtWidgets.QWidget(self)
-        layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(page)
-        add_layout: QtWidgets.QGridLayout = QtWidgets.QGridLayout()
-        owner: Block
-        for owner in root.get_all_blocks():
-            self._new_mode_owner.addItem(owner.name, owner)
-        self._new_mode_name.setPlaceholderText(self.tr("Mode symbol name"))
-        self._new_mode_initial.setPlaceholderText(self.tr("Initial value or expression"))
-        self._new_mode_initial.setText("0.0")
-        add_mode_button: QtWidgets.QPushButton = QtWidgets.QPushButton(self.tr("Add retained mode"), page)
-        add_mode_button.setObjectName("add_runtime_mode")
-        add_layout.addWidget(QtWidgets.QLabel(self.tr("Owner"), page), 0, 0)
-        add_layout.addWidget(self._new_mode_owner, 0, 1)
-        add_layout.addWidget(self._new_mode_name, 1, 0, 1, 2)
-        add_layout.addWidget(self._new_mode_initial, 2, 0, 1, 2)
-        add_layout.addWidget(add_mode_button, 3, 0, 1, 2)
-        layout.addLayout(add_layout)
-        self._mode_table.setModel(self._mode_model)
-        self._mode_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
-        self._mode_table.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
-        mode_header: QtWidgets.QHeaderView = self._mode_table.horizontalHeader()
-        configure_runtime_table_header(
-            mode_header,
-            list((170, 190, 170, 170, 210, 120,)),
-        )
-        layout.addWidget(self._mode_table, 1)
-        delete_mode_button: QtWidgets.QPushButton = QtWidgets.QPushButton(self.tr("Delete retained mode"), page)
-        delete_mode_button.setObjectName("delete_runtime_mode")
-        layout.addWidget(delete_mode_button)
-        return page
-
-    def _build_configuration_page(self) -> QtWidgets.QWidget:
-        """
-        Build selected-entry name and typed field table.
-
-        :return: Page containing the selected-entry name and typed field table.
-        """
-        page: QtWidgets.QWidget = QtWidgets.QWidget(self)
-        layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(page)
-        form: QtWidgets.QFormLayout = QtWidgets.QFormLayout()
-        form.addRow(self.tr("Entry name"), self._entry_name)
-        layout.addLayout(form)
-        self._field_table.setModel(self._field_model)
-        self._field_table.setItemDelegateForColumn(2, ProceduralFieldDelegate(self._drafts, self._field_table))
-        field_header: QtWidgets.QHeaderView = self._field_table.horizontalHeader()
-        configure_runtime_table_header(field_header, list((190, 150, 420,)))
-        layout.addWidget(self._field_table, 1)
-        return page
-
-    def _build_documentation_page(self) -> QtWidgets.QWidget:
-        """
-        Build contextual Markdown documentation viewer.
-
-        :return: Page containing the contextual Markdown documentation viewer.
-        """
-        page: QtWidgets.QWidget = QtWidgets.QWidget(self)
-        layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(page)
-        self._documentation.setOpenExternalLinks(True)
-        layout.addWidget(self._documentation)
-        return page
-
-    def _connect_signals(self) -> None:
-        """
-        Connect every runtime-logic action to an explicit slot.
-
-        :return: None.
-        """
-        add_entry: QtWidgets.QPushButton | None = self.findChild(QtWidgets.QPushButton, "add_runtime_logic_entry")
-        move_up: QtWidgets.QPushButton | None = self.findChild(QtWidgets.QPushButton, "move_runtime_logic_up")
-        move_down: QtWidgets.QPushButton | None = self.findChild(QtWidgets.QPushButton, "move_runtime_logic_down")
-        delete_entry: QtWidgets.QPushButton | None = self.findChild(QtWidgets.QPushButton, "delete_runtime_logic_entry")
-        validate_button: QtWidgets.QPushButton | None = self.findChild(QtWidgets.QPushButton, "validate_runtime_logic")
-        add_mode: QtWidgets.QPushButton | None = self.findChild(QtWidgets.QPushButton, "add_runtime_mode")
-        delete_mode: QtWidgets.QPushButton | None = self.findChild(QtWidgets.QPushButton, "delete_runtime_mode")
-        if add_entry is not None:
-            add_entry.clicked.connect(self.add_entry)
-        else:
-            pass
-        if move_up is not None:
-            move_up.clicked.connect(self.move_entry_up)
-        else:
-            pass
-        if move_down is not None:
-            move_down.clicked.connect(self.move_entry_down)
-        else:
-            pass
-        if delete_entry is not None:
-            delete_entry.clicked.connect(self.delete_entry)
-        else:
-            pass
-        if validate_button is not None:
-            validate_button.clicked.connect(self.validate_runtime_logic)
-        else:
-            pass
-        if add_mode is not None:
-            add_mode.clicked.connect(self.add_mode)
-        else:
-            pass
-        if delete_mode is not None:
-            delete_mode.clicked.connect(self.delete_mode)
-        else:
-            pass
-        self._entry_table.selectionModel().selectionChanged.connect(self.on_entry_selection_changed)
-        self._entry_name.editingFinished.connect(self.on_entry_name_edited)
-        self._type_combo.currentIndexChanged.connect(self.update_documentation_from_type)
-        self._field_model.dataChanged.connect(self.on_draft_changed)
-        self._entry_model.dataChanged.connect(self.on_draft_changed)
-        self._mode_model.dataChanged.connect(self.on_draft_changed)
-
-    @QtCore.Slot()
-    def add_entry(self) -> None:
-        """
-        Stage one entry using the selected owner and type.
-
-        :return: None.
-        """
-        owner_data: object = self._owner_combo.currentData()
-        type_data: object = self._type_combo.currentData()
-        name: str = self._new_entry_name.text().strip()
-        if not isinstance(owner_data, Block) or not isinstance(type_data, ProceduralLogicType):
-            self._show_error(self.tr("Select a valid owner and procedural type."))
-        elif len(name) == 0:
-            self._show_error(self.tr("Enter a procedural entry name."))
-        else:
-            self._drafts.add_entry(owner_data, type_data, name)
-            self._entry_model.reload()
-            row: int = self._entry_model.rowCount() - 1
-            self._entry_table.selectRow(row)
-            self._new_entry_name.clear()
-            self.changed.emit()
-
-    @QtCore.Slot()
-    def add_mode(self) -> None:
-        """
-        Stage one retained mode and its initial expression.
-
-        :return: None.
-        """
-        owner_data: object = self._new_mode_owner.currentData()
-        name: str = self._new_mode_name.text().strip()
-        initial_expression: str = self._new_mode_initial.text().strip()
-        if not isinstance(owner_data, Block):
-            self._show_error(self.tr("Select a valid owner block."))
-        elif len(name) == 0 or not name.isidentifier():
-            self._show_error(self.tr("Enter a valid retained-mode symbol name."))
-        elif len(initial_expression) == 0:
-            self._show_error(self.tr("Enter an initial value or expression."))
-        else:
-            self._drafts.add_mode(owner_data, name, initial_expression)
-            self._mode_model.reload()
-            self._field_model.reload()
-            self._new_mode_name.clear()
-            self._new_mode_initial.setText("0.0")
-            self.changed.emit()
-
-    def _get_selected_entry_row(self) -> int:
-        """
-        Return the selected entry row or ``-1``.
-
-        :return: The selected entry row or ``-1``.
-        """
-        selected: List[QtCore.QModelIndex] = self._entry_table.selectionModel().selectedRows()
-        if len(selected) == 1:
-            result: int = selected[0].row()
-        else:
-            result = -1
-        return result
-
-    @QtCore.Slot()
-    def delete_entry(self) -> None:
-        """
-        Remove the selected procedural entry draft.
-
-        :return: None.
-        """
-        row: int = self._get_selected_entry_row()
-        if self._drafts.remove_entry(row):
-            self._entry_model.reload()
-            self._mode_model.reload()
-            self._field_model.set_entry(None)
-            self._selected_entry_row = -1
-            self.changed.emit()
-        else:
-            self._show_error(self.tr("Select one procedural entry to delete."))
-
-    @QtCore.Slot()
-    def move_entry_up(self) -> None:
-        """
-        Move the selected entry one owner-local position earlier.
-
-        :return: None.
-        """
-        self._move_selected_entry(-1)
-
-    @QtCore.Slot()
-    def move_entry_down(self) -> None:
-        """
-        Move the selected entry one owner-local position later.
-
-        :return: None.
-        """
-        self._move_selected_entry(1)
-
-    def _move_selected_entry(self, delta: int) -> None:
-        """Move the selected entry and restore selection.
-
-        :param delta: Requested movement direction.
-        :return: None.
-        """
-        row: int = self._get_selected_entry_row()
-        new_row: int = self._drafts.move_entry(row, delta)
-        self._entry_model.reload()
-        if new_row >= 0:
-            self._entry_table.selectRow(new_row)
-        else:
-            pass
-        if new_row != row:
-            self.changed.emit()
-        else:
-            pass
-
-    @QtCore.Slot()
-    def delete_mode(self) -> None:
-        """
-        Stage deletion of an unreferenced retained mode.
-
-        :return: None.
-        """
-        selected: List[QtCore.QModelIndex] = self._mode_table.selectionModel().selectedRows()
-        row: int = selected[0].row() if len(selected) == 1 else -1
-        removed: bool
-        message: str
-        removed, message = self._drafts.remove_mode(row)
-        if removed:
-            self._mode_model.reload()
-            self._field_model.reload()
-            self.changed.emit()
-        else:
-            self._show_error(message)
-
-    @QtCore.Slot()
-    def on_entry_selection_changed(self) -> None:
-        """
-        Load fields and documentation for the selected entry.
-
-        :return: None.
-        """
-        row: int = self._get_selected_entry_row()
-        entries: List[ProceduralLogicDraft] = self._drafts.get_entries()
-        if 0 <= row < len(entries):
-            entry: ProceduralLogicDraft = entries[row]
-            self._selected_entry_row = row
-            self._entry_name.setText(entry.get_name())
-            self._entry_name.setEnabled(True)
-            self._field_model.set_entry(entry)
-            self._load_documentation(entry.get_logic_tpe())
-        else:
-            self._selected_entry_row = -1
-            self._entry_name.clear()
-            self._entry_name.setEnabled(False)
-            self._field_model.set_entry(None)
-
-    @QtCore.Slot()
-    def on_entry_name_edited(self) -> None:
-        """
-        Stage the selected entry name edit.
-
-        :return: None.
-        """
-        entries: List[ProceduralLogicDraft] = self._drafts.get_entries()
-        if 0 <= self._selected_entry_row < len(entries):
-            entries[self._selected_entry_row].set_name(self._entry_name.text())
-            self._drafts.mark_changed()
-            self._entry_model.reload()
-            self._entry_table.selectRow(self._selected_entry_row)
-            self.changed.emit()
-        else:
-            pass
-
-    @QtCore.Slot()
-    def on_draft_changed(self) -> None:
-        """
-        Refresh dependency summaries after one field edit.
-
-        :return: None.
-        """
-        self._entry_model.reload()
-        self._mode_model.reload()
-        self.changed.emit()
-
-    @QtCore.Slot()
-    def update_documentation_from_type(self) -> None:
-        """
-        Show documentation for the type selected in the Add controls.
-
-        :return: None.
-        """
-        selected_tpe: object = self._type_combo.currentData()
-        if isinstance(selected_tpe, ProceduralLogicType):
-            self._load_documentation(selected_tpe)
-        else:
-            self._documentation.clear()
-
-    def _load_documentation(self, logic_tpe: ProceduralLogicType) -> None:
-        """Load one procedural Markdown page.
-
-        :param logic_tpe: Type whose documentation is requested.
-        :return: None.
-        """
-        repository_root: Path = Path(__file__).resolve().parents[4]
-        documentation_path: Path = (
-            repository_root / "doc" / "md_source" / "dyn_templates" /
-            "procedural_logic" / f"{logic_tpe.value}.md"
-        )
-        if documentation_path.is_file():
-            markdown: str = documentation_path.read_text(encoding="utf-8")
-            self._documentation.setMarkdown(markdown)
-            self._documentation.document().setBaseUrl(
-                QtCore.QUrl.fromLocalFile(str(documentation_path.parent) + "/")
-            )
-        else:
-            self._documentation.setMarkdown(
-                f"# {logic_tpe.value}\n\nNo procedural-logic documentation file was found."
-            )
-
-    @QtCore.Slot()
-    def validate_runtime_logic(self) -> None:
-        """
-        Validate all retained modes and procedural entries and show every issue.
-
-        :return: None.
-        """
-        result: RuntimeLogicValidationResult = self.validate(self._namespace)
-        if result.is_valid():
-            warnings: List[str] = result.get_warnings()
-            self._status.setStyleSheet("color: #16825d;")
-            if len(warnings) > 0:
-                self._status.setText(self.tr("Valid runtime logic. Warnings: ") + " | ".join(warnings))
-            else:
-                self._status.setText(self.tr("Runtime logic is valid."))
-        else:
-            self._status.setStyleSheet("color: #b42318;")
-            self._status.setText(" | ".join(result.get_errors()))
-
-    def validate(self, namespace: Mapping[str, Expr]) -> RuntimeLogicValidationResult:
-        """Validate drafts and refresh field/table error presentation.
-
-        :param namespace: Current joint DAE namespace.
-        :return: Complete validation result.
-        """
-        self._namespace = dict(namespace)
-        result: RuntimeLogicValidationResult = self._drafts.validate(namespace)
-        self._entry_model.reload()
-        self._mode_model.reload()
-        self._field_model.reload()
-        return result
-
-    def build_validation_namespace(self, namespace: Mapping[str, Expr]) -> Dict[str, Expr]:
-        """
-        :param namespace: Value supplied for ``namespace``.
-        :return: A namespace including staged retained modes.
-        """
-        return self._drafts.build_validation_namespace(namespace)
-
-    def has_changes(self) -> bool:
-        """
-        :return: Whether runtime-logic edits are staged.
-        """
-        return self._drafts.has_changes()
-
-    def has_new_modes(self) -> bool:
-        """
-        :return: Whether new authoritative mode Vars are required.
-        """
-        return self._drafts.has_new_modes()
-
-    def apply_to_blocks(self,
-                        var_factory: VarFactory,
-                        namespace: Mapping[str, Expr]) -> Dict[str, Expr]:
-        """
-        Apply validated modes and logic entries and return final namespace.
-
-        :param var_factory: Factory that owns symbolic variables.
-        :param namespace: Value supplied for ``namespace``.
-        :return: Final namespace.
-        """
-        return self._drafts.apply_to_blocks(var_factory, namespace)
-
-    def prepare_to_delete(self) -> None:
-        """Detach view models and clear documentation before Qt destruction.
-
-        :return: None.
-        """
-        self._entry_table.setModel(None)
-        self._mode_table.setModel(None)
-        self._field_table.setModel(None)
-        self._documentation.clear()
-        self._entry_name.clear()
-
-    def _show_error(self, message: str) -> None:
-        """
-        Show one local runtime-logic error.
-
-        :param message: Value supplied for ``message``.
-        :return: None.
-        """
-        self._status.setStyleSheet("color: #b42318;")
-        self._status.setText(message)
+    modes: List[RuntimeModeDraft] = list()
+    entries: List[ProceduralLogicDraft] = list()
+    owner: Block
+    code: str
+    for owner, code in owner_code:
+        modes.extend(parse_retained_mode_drafts(code, owner))
+    for owner, code in owner_code:
+        entries.extend(parse_procedural_logic_drafts(code, owner))
+
+    collection: RuntimeLogicDraftCollection = RuntimeLogicDraftCollection(root)
+    collection.replace_code_drafts(modes=modes, entries=entries)
+    return collection

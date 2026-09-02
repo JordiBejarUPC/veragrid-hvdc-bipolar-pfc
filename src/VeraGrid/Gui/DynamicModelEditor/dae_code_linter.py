@@ -14,6 +14,7 @@ from VeraGridEngine.Utils.Symbolic.symbolic import (
     get_symbolic_parser_function_arity,
     get_symbolic_parser_function_names,
 )
+from VeraGridEngine.enumerations import ProceduralLogicType
 
 
 class DaeCodeDiagnostic:
@@ -375,8 +376,16 @@ def build_dae_code_diagnostics(code: str,
         return result
 
     callable_names: set[str] = set(get_symbolic_parser_function_names())
+    procedural_callable_names: set[str] = set()
+    procedural_tpe: ProceduralLogicType
+    for procedural_tpe in ProceduralLogicType:
+        if procedural_tpe != ProceduralLogicType.Base:
+            procedural_callable_names.add(procedural_tpe.value)
+        else:
+            pass
     allowed_names: set[str] = set(namespace.keys())
     allowed_names.update(callable_names)
+    allowed_names.update(procedural_callable_names)
     allowed_names.update(set((
         "state_vars",
         "algebraic_vars",
@@ -385,6 +394,8 @@ def build_dae_code_diagnostics(code: str,
         "algebraic_eqs",
         "init_eqs",
         "diff_init_eqs",
+        "retained_modes",
+        "procedural_logic",
     )))
     handled_name_positions: set[tuple[int, int]] = set()
     ast_node: ast.AST
@@ -398,13 +409,18 @@ def build_dae_code_diagnostics(code: str,
             else:
                 function_name = ""
                 function_arity = None
+            procedural_function: bool = function_name in procedural_callable_names
             known_function: bool = function_name in callable_names
             valid_function_call: bool = (
                 known_function
                 and function_arity == len(ast_node.args)
                 and len(ast_node.keywords) == 0
             )
-            if valid_function_call:
+            if procedural_function:
+                # Typed procedural signatures are validated by the model-code
+                # parser, which can report missing and unknown keyword names.
+                pass
+            elif valid_function_call:
                 pass
             elif known_function and function_arity is not None:
                 argument_word: str = "argument" if function_arity == 1 else "arguments"

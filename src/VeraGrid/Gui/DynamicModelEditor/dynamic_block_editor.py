@@ -2186,6 +2186,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 parent=self,
                 structural_block_type=structural_block_type,
                 structural_builder=structural_builder,
+                dark_theme=self.current_theme == DynEditorGraphicsModes.DARK,
             )
             dialogue.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose, True)
             dialogue.blockApplied.connect(self.on_block_properties_applied)
@@ -11603,6 +11604,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
         self.current_theme = DynEditorGraphicsModes.DARK
         self.set_colors_palet()
+        properties_dialogue: DynamicBlockPropertiesDialog | None = self._block_properties_dialogue
+        if properties_dialogue is not None:
+            properties_dialogue.set_dark_mode()
+        else:
+            pass
         for item in self.scene.items():
             if isinstance(item, (graph.GenericBlockItem, graph.PairedItem, graph.ConnectionItem, graph.RectBaseArithmeticOpItem,
                                  graph.RoundBaseArithmeticOpItem, graph.PortItem, graph.ElbowItem, graph.ResizeHandle, graph.BlockItem)):
@@ -11618,6 +11624,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
         self.current_theme = DynEditorGraphicsModes.LIGHT
         self.set_colors_palet()
+        properties_dialogue: DynamicBlockPropertiesDialog | None = self._block_properties_dialogue
+        if properties_dialogue is not None:
+            properties_dialogue.set_light_mode()
+        else:
+            pass
         for item in self.scene.items():
             if isinstance(item, (graph.GenericBlockItem, graph.PairedItem, graph.ConnectionItem, graph.RectBaseArithmeticOpItem,
                                  graph.RoundBaseArithmeticOpItem, graph.PortItem, graph.ElbowItem, graph.ResizeHandle, graph.BlockItem)):

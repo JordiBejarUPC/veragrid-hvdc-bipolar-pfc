@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from io import StringIO
+import re
 import tokenize
 from typing import Dict, List, Mapping, Sequence
 
@@ -11,6 +12,14 @@ from VeraGridEngine.Utils.Symbolic.symbolic import (
     Expr,
     get_symbolic_parser_function_arity,
     get_symbolic_parser_function_names,
+)
+from VeraGridEngine.enumerations import ProceduralFieldType, ProceduralLogicType
+from VeraGrid.Gui.DynamicModelEditor.dynamic_procedural_logic import (
+    build_procedural_logic_call_lines,
+    get_procedural_code_field_type,
+    get_procedural_logic_help,
+    get_procedural_logic_summary,
+    get_procedural_logic_signature,
 )
 
 
@@ -23,6 +32,8 @@ class DaeCompletionEntry:
         "_insertion_text",
         "_description",
         "_cursor_backtrack",
+        "_selection_length",
+        "_tooltip",
     )
 
     def __init__(self,
@@ -30,7 +41,9 @@ class DaeCompletionEntry:
                  display_text: str,
                  insertion_text: str,
                  description: str,
-                 cursor_backtrack: int = 0) -> None:
+                 cursor_backtrack: int = 0,
+                 selection_length: int = 0,
+                 tooltip: str = "") -> None:
         """Store one completion without retaining mutable editor state.
 
         :param name: Identifier matched against the source prefix.
@@ -38,6 +51,8 @@ class DaeCompletionEntry:
         :param insertion_text: Source fragment inserted after selection.
         :param description: Short explanation rendered beside the label.
         :param cursor_backtrack: Characters moved left after insertion.
+        :param selection_length: Characters selected immediately before the final cursor.
+        :param tooltip: Extended contextual documentation.
         :return: None.
         """
         self._name: str = name
@@ -45,6 +60,8 @@ class DaeCompletionEntry:
         self._insertion_text: str = insertion_text
         self._description: str = description
         self._cursor_backtrack: int = max(0, cursor_backtrack)
+        self._selection_length: int = max(0, selection_length)
+        self._tooltip: str = tooltip if len(tooltip) > 0 else description
 
     def get_name(self) -> str:
         """Return the identifier used for prefix matching.
@@ -81,6 +98,20 @@ class DaeCompletionEntry:
         """
         return self._cursor_backtrack
 
+    def get_selection_length(self) -> int:
+        """Return how many characters are selected before the final cursor.
+
+        :return: Non-negative selection length.
+        """
+        return self._selection_length
+
+    def get_tooltip(self) -> str:
+        """Return extended popup or hover documentation.
+
+        :return: Tooltip text, falling back to the short description.
+        """
+        return self._tooltip
+
 
 class DaeLanguageContext:
     """Immutable completion view of one equation owner's staged symbols."""
@@ -92,6 +123,9 @@ class DaeLanguageContext:
         "_state_names",
         "_algebraic_names",
         "_differential_names",
+        "_mode_names",
+        "_runtime_parameter_names",
+        "_variable_names",
     )
 
     def __init__(self,
@@ -100,7 +134,10 @@ class DaeLanguageContext:
                  initializable_names: Sequence[str],
                  state_names: Sequence[str],
                  algebraic_names: Sequence[str],
-                 differential_names: Sequence[str]) -> None:
+                 differential_names: Sequence[str],
+                 mode_names: Sequence[str] | None = None,
+                 runtime_parameter_names: Sequence[str] | None = None,
+                 variable_names: Sequence[str] | None = None) -> None:
         """Capture the exact symbols valid for one editable DAE buffer.
 
         :param namespace: Symbolic identities accepted by the safe parser.
@@ -109,6 +146,9 @@ class DaeLanguageContext:
         :param state_names: State variables owned by the active block.
         :param algebraic_names: Algebraic variables owned by the active block.
         :param differential_names: Differential variables owned by the active block.
+        :param mode_names: Retained modes writable by procedural entries.
+        :param runtime_parameter_names: Dynamic parameters available to runtime logic.
+        :param variable_names: DAE variables available to typed procedural references.
         :return: None.
         """
         self._namespace: Dict[str, Expr] = dict(namespace)
@@ -117,6 +157,13 @@ class DaeLanguageContext:
         self._state_names: List[str] = list(state_names)
         self._algebraic_names: List[str] = list(algebraic_names)
         self._differential_names: List[str] = list(differential_names)
+        self._mode_names: List[str] = list() if mode_names is None else list(mode_names)
+        self._runtime_parameter_names: List[str] = (
+            list() if runtime_parameter_names is None else list(runtime_parameter_names)
+        )
+        self._variable_names: List[str] = (
+            list(namespace.keys()) if variable_names is None else list(variable_names)
+        )
 
     def get_namespace(self) -> Dict[str, Expr]:
         """Return the safe parser namespace represented by this context.
@@ -160,6 +207,27 @@ class DaeLanguageContext:
         """
         return list(self._differential_names)
 
+    def get_mode_names(self) -> List[str]:
+        """Return retained modes accepted as procedural outputs.
+
+        :return: Ordered retained-mode names.
+        """
+        return list(self._mode_names)
+
+    def get_runtime_parameter_names(self) -> List[str]:
+        """Return dynamic parameter names accepted by runtime references.
+
+        :return: Ordered dynamic-parameter names.
+        """
+        return list(self._runtime_parameter_names)
+
+    def get_variable_names(self) -> List[str]:
+        """Return DAE variable names accepted by typed variable references.
+
+        :return: Ordered variable names.
+        """
+        return list(self._variable_names)
+
 
 def build_generic_dae_language_context(
         namespace: Mapping[str, Expr]) -> DaeLanguageContext:
@@ -190,6 +258,9 @@ def build_generic_dae_language_context(
         state_names=list(),
         algebraic_names=list(),
         differential_names=list(),
+        mode_names=list(namespace.keys()),
+        runtime_parameter_names=list(namespace.keys()),
+        variable_names=list(namespace.keys()),
     )
 
 
@@ -202,6 +273,9 @@ class DaeCompletionPosition:
         "_expects_mapping_key",
         "_mapping_key_names",
         "_suppressed",
+        "_line_indentation",
+        "_procedural_logic_tpe",
+        "_procedural_argument",
     )
 
     def __init__(self,
@@ -209,7 +283,10 @@ class DaeCompletionPosition:
                  section_name: str | None,
                  expects_mapping_key: bool,
                  mapping_key_names: Sequence[str],
-                 suppressed: bool) -> None:
+                 suppressed: bool,
+                 line_indentation: str,
+                 procedural_logic_tpe: ProceduralLogicType | None,
+                 procedural_argument: str | None) -> None:
         """Capture the minimum context required to filter suggestions.
 
         :param prefix: Identifier fragment directly before the cursor.
@@ -217,6 +294,9 @@ class DaeCompletionPosition:
         :param expects_mapping_key: Whether a dictionary key is being written.
         :param mapping_key_names: Keys already present in the active dictionary.
         :param suppressed: Whether completion is inside a comment or string.
+        :param line_indentation: Leading whitespace of the cursor line.
+        :param procedural_logic_tpe: Procedural call surrounding the cursor.
+        :param procedural_argument: Named procedural argument currently being edited.
         :return: None.
         """
         self._prefix: str = prefix
@@ -224,6 +304,9 @@ class DaeCompletionPosition:
         self._expects_mapping_key: bool = expects_mapping_key
         self._mapping_key_names: List[str] = list(mapping_key_names)
         self._suppressed: bool = suppressed
+        self._line_indentation: str = line_indentation
+        self._procedural_logic_tpe: ProceduralLogicType | None = procedural_logic_tpe
+        self._procedural_argument: str | None = procedural_argument
 
     def get_prefix(self) -> str:
         """Return the identifier fragment directly before the cursor.
@@ -260,6 +343,27 @@ class DaeCompletionPosition:
         """
         return self._suppressed
 
+    def get_line_indentation(self) -> str:
+        """Return leading whitespace for indentation-aware snippets.
+
+        :return: Current line indentation.
+        """
+        return self._line_indentation
+
+    def get_procedural_logic_tpe(self) -> ProceduralLogicType | None:
+        """Return the procedural call containing the cursor.
+
+        :return: Concrete type or ``None`` outside a procedural call.
+        """
+        return self._procedural_logic_tpe
+
+    def get_procedural_argument(self) -> str | None:
+        """Return the named procedural argument being edited.
+
+        :return: Public keyword or ``None`` outside an argument value.
+        """
+        return self._procedural_argument
+
 
 def get_dae_section_names() -> tuple[str, ...]:
     """Return the complete set of assignments accepted by the DAE parser.
@@ -274,6 +378,8 @@ def get_dae_section_names() -> tuple[str, ...]:
         "algebraic_eqs",
         "init_eqs",
         "diff_init_eqs",
+        "retained_modes",
+        "procedural_logic",
     )
 
 
@@ -341,6 +447,56 @@ def build_symbolic_function_entries() -> List[DaeCompletionEntry]:
                 cursor_backtrack=cursor_backtrack,
             )
         )
+    return result
+
+
+def build_procedural_function_entries(
+        line_indentation: str,
+) -> List[DaeCompletionEntry]:
+    """Build completion entries for every concrete procedural logic type.
+
+    :param line_indentation: Leading whitespace already present before the function name.
+    :return: Ordered procedural call completions.
+    """
+    result: List[DaeCompletionEntry] = list()
+    logic_tpe: ProceduralLogicType
+    for logic_tpe in ProceduralLogicType:
+        if logic_tpe != ProceduralLogicType.Base:
+            relative_lines: List[str]
+            first_placeholder: str | None
+            relative_lines, first_placeholder = build_procedural_logic_call_lines(
+                logic_tpe
+            )
+            insertion_parts: List[str] = list((relative_lines[0],))
+            relative_line: str
+            for relative_line in relative_lines[1:]:
+                insertion_parts.append(f"\n{line_indentation}{relative_line}")
+            insertion_text: str = "".join(insertion_parts)
+            if first_placeholder is not None:
+                placeholder_start: int = insertion_text.find(first_placeholder)
+            else:
+                placeholder_start = -1
+            if placeholder_start >= 0 and first_placeholder is not None:
+                cursor_backtrack: int = (
+                    len(insertion_text)
+                    - placeholder_start
+                    - len(first_placeholder)
+                )
+                selection_length: int = len(first_placeholder)
+            else:
+                cursor_backtrack = 0
+                selection_length = 0
+            result.append(DaeCompletionEntry(
+                name=logic_tpe.value,
+                display_text=get_procedural_logic_signature(logic_tpe),
+                insertion_text=insertion_text,
+                description=get_procedural_logic_summary(logic_tpe),
+                cursor_backtrack=cursor_backtrack,
+                selection_length=selection_length,
+                tooltip=get_procedural_logic_help(logic_tpe),
+            ))
+        else:
+            pass
     return result
 
 
@@ -532,6 +688,85 @@ def get_dae_mapping_key_names(source: str, section_name: str) -> List[str]:
     return result
 
 
+def get_procedural_call_context(
+        source_tokens: Sequence[tokenize.TokenInfo],
+        line_prefix: str,
+) -> tuple[ProceduralLogicType | None, str | None]:
+    """Find an unclosed procedural call and its active named argument.
+
+    The token walk remains useful while the complete model source is invalid or
+    unfinished, which is the normal state between keystrokes.
+
+    :param source_tokens: Tokens emitted before the current cursor.
+    :param line_prefix: Visible text from the current line start to the cursor.
+    :return: Active procedural type and argument keyword, when detectable.
+    """
+    active_tpe: ProceduralLogicType | None = None
+    active_depth: int = -1
+    bracket_depth: int = 0
+    pending_name: str | None = None
+    insignificant_types: set[int] = set((
+        tokenize.NL,
+        tokenize.NEWLINE,
+        tokenize.INDENT,
+        tokenize.DEDENT,
+        tokenize.COMMENT,
+    ))
+    source_token: tokenize.TokenInfo
+    for source_token in source_tokens:
+        token_text: str = source_token.string
+        if source_token.type == tokenize.NAME:
+            pending_name = token_text
+        elif source_token.type == tokenize.OP and token_text == "(":
+            bracket_depth += 1
+            matched_tpe: ProceduralLogicType | None = None
+            logic_tpe: ProceduralLogicType
+            for logic_tpe in ProceduralLogicType:
+                if (
+                        logic_tpe != ProceduralLogicType.Base
+                        and logic_tpe.value == pending_name
+                ):
+                    matched_tpe = logic_tpe
+                else:
+                    pass
+            if matched_tpe is not None:
+                active_tpe = matched_tpe
+                active_depth = bracket_depth
+            else:
+                pass
+            pending_name = None
+        elif source_token.type == tokenize.OP and token_text in ("[", "{"):
+            bracket_depth += 1
+            pending_name = None
+        elif source_token.type == tokenize.OP and token_text in (")", "]", "}"):
+            closes_active_call: bool = (
+                active_tpe is not None
+                and token_text == ")"
+                and bracket_depth == active_depth
+            )
+            bracket_depth = max(0, bracket_depth - 1)
+            if closes_active_call:
+                active_tpe = None
+                active_depth = -1
+            else:
+                pass
+            pending_name = None
+        elif source_token.type in insignificant_types:
+            pass
+        else:
+            pending_name = None
+
+    argument_match: re.Match[str] | None = re.search(
+        r"\b([A-Za-z_]\w*)\s*=\s*[^,]*$",
+        line_prefix,
+    )
+    if active_tpe is not None and argument_match is not None:
+        active_argument: str | None = argument_match.group(1)
+    else:
+        active_argument = None
+    return active_tpe, active_argument
+
+
 def analyze_dae_completion_position(source: str,
                                     cursor_position: int) -> DaeCompletionPosition:
     """Determine the active DAE section and dictionary side at the cursor.
@@ -546,12 +781,28 @@ def analyze_dae_completion_position(source: str,
     """
     bounded_position: int = min(max(0, cursor_position), len(source))
     prefix: str = extract_dae_identifier_prefix(source, bounded_position)
+    line_start: int = source.rfind("\n", 0, bounded_position) + 1
+    line_prefix: str = source[line_start:bounded_position]
+    indentation_match: re.Match[str] | None = re.match(r"[ \t]*", line_prefix)
+    if indentation_match is None:
+        line_indentation: str = ""
+    else:
+        line_indentation = indentation_match.group(0)
     suppressed: bool = (
         cursor_is_in_dae_non_code_text(source, bounded_position)
         or cursor_is_in_dae_number(source, bounded_position)
     )
     if suppressed:
-        return DaeCompletionPosition(prefix, None, False, list(), True)
+        return DaeCompletionPosition(
+            prefix=prefix,
+            section_name=None,
+            expects_mapping_key=False,
+            mapping_key_names=list(),
+            suppressed=True,
+            line_indentation=line_indentation,
+            procedural_logic_tpe=None,
+            procedural_argument=None,
+        )
     else:
         pass
 
@@ -565,6 +816,13 @@ def analyze_dae_completion_position(source: str,
         # Incomplete expressions are the normal state while typing. Tokens
         # emitted before the unfinished tail still describe the active section.
         pass
+
+    procedural_logic_tpe: ProceduralLogicType | None
+    procedural_argument: str | None
+    procedural_logic_tpe, procedural_argument = get_procedural_call_context(
+        source_tokens=source_tokens,
+        line_prefix=line_prefix,
+    )
 
     section_names: tuple[str, ...] = get_dae_section_names()
     bracket_depth: int = 0
@@ -642,6 +900,9 @@ def analyze_dae_completion_position(source: str,
         expects_mapping_key=expects_mapping_key,
         mapping_key_names=mapping_key_names,
         suppressed=False,
+        line_indentation=line_indentation,
+        procedural_logic_tpe=procedural_logic_tpe,
+        procedural_argument=procedural_argument,
     )
 
 
@@ -750,6 +1011,56 @@ def build_dae_completion_entries(context: DaeLanguageContext,
             True,
             position.get_mapping_key_names(),
         )
+    elif section_name == "procedural_logic":
+        procedural_logic_tpe: ProceduralLogicType | None = (
+            position.get_procedural_logic_tpe()
+        )
+        procedural_argument: str | None = position.get_procedural_argument()
+        if procedural_logic_tpe is None:
+            candidates = build_procedural_function_entries(
+                position.get_line_indentation()
+            )
+        elif procedural_argument is None:
+            candidates = list()
+        else:
+            field_tpe: ProceduralFieldType | None = get_procedural_code_field_type(
+                procedural_logic_tpe,
+                procedural_argument,
+            )
+            if field_tpe == ProceduralFieldType.MODE_REFERENCE:
+                candidates = build_entries_for_names(
+                    context.get_mode_names(), symbol_entries, False, list()
+                )
+            elif field_tpe == ProceduralFieldType.VARIABLE_REFERENCE:
+                candidates = build_entries_for_names(
+                    context.get_variable_names(), symbol_entries, False, list()
+                )
+            elif field_tpe == ProceduralFieldType.RUNTIME_REFERENCE:
+                candidates = build_entries_for_names(
+                    context.get_runtime_parameter_names(), symbol_entries, False, list()
+                )
+            elif field_tpe == ProceduralFieldType.TARGET_REFERENCE:
+                candidates = list(symbol_entries)
+            elif field_tpe == ProceduralFieldType.EXPRESSION:
+                candidates = list(symbol_entries)
+                candidates.extend(build_symbolic_function_entries())
+            elif field_tpe == ProceduralFieldType.BOOLEAN:
+                candidates = list((
+                    DaeCompletionEntry(
+                        name="True",
+                        display_text="True",
+                        insertion_text="True",
+                        description="Boolean true value",
+                    ),
+                    DaeCompletionEntry(
+                        name="False",
+                        display_text="False",
+                        insertion_text="False",
+                        description="Boolean false value",
+                    ),
+                ))
+            else:
+                candidates = list()
     else:
         candidates = symbol_entries
         candidates.extend(build_symbolic_function_entries())

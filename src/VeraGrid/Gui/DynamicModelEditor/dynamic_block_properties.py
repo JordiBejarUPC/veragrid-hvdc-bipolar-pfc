@@ -44,6 +44,7 @@ from VeraGridEngine.enumerations import (
     BlockSymbolKind,
     EquationExportSection,
     ParamPowerFlowReferenceType,
+    ProceduralLogicType,
     ShuntConnectionType,
     VarPowerFlowReferenceType,
     WindingType,
@@ -59,9 +60,17 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_equation_pdf import (
     write_equation_pdf,
 )
 from VeraGrid.Gui.DynamicModelEditor.dynamic_procedural_logic import (
-    RuntimeLogicEditorWidget,
+    RuntimeLogicDraftCollection,
     RuntimeLogicValidationResult,
+    RuntimeModeDraft,
+    build_procedural_logic_call_lines,
+    build_runtime_code_signature,
+    build_runtime_logic_code,
+    build_runtime_logic_drafts_from_code,
+    get_model_code_assignment,
     get_procedural_expression_variables,
+    get_procedural_logic_help_by_code_name,
+    parse_model_code_module,
 )
 from VeraGridEngine.Utils.procedural_logic import ProceduralLogicBase
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
@@ -80,6 +89,7 @@ from VeraGridEngine.Utils.Symbolic.symbolic import (
     string_to_symbolic,
     symbolic_to_string,
 )
+
 
 class BlockEquationDraft:
     """Validated, detached set of equations waiting to be applied to a block."""
@@ -843,6 +853,8 @@ class BlockSymbolDraftRow:
         "_value_text",
         "_external_reference",
         "_static_reference",
+        "_original_external_reference",
+        "_original_static_reference",
         "_derivative_base_row",
     )
 
@@ -887,6 +899,11 @@ class BlockSymbolDraftRow:
         else:
             self._external_reference = None
             self._static_reference = None
+        # Mapping edits are transactional. Preserve their opening values so a
+        # structural rebuild cannot silently discard an independently staged
+        # interface change.
+        self._original_external_reference: VarPowerFlowReferenceType | None = self._external_reference
+        self._original_static_reference: ParamPowerFlowReferenceType | None = self._static_reference
 
     def get_owner(self) -> Block:
         """
@@ -1045,7 +1062,12 @@ class BlockSymbolDraftRow:
         """
         :return: Whether this row can be initialized from power-flow data.
         """
-        return not self.kind_supports_value()
+        return self._kind not in (
+            BlockSymbolKind.PARAMETER,
+            BlockSymbolKind.EVENT_PARAMETER,
+            BlockSymbolKind.MODE_PARAMETER,
+            BlockSymbolKind.INPUT,
+        )
 
     def kind_supports_export(self) -> bool:
         """
@@ -1055,13 +1077,28 @@ class BlockSymbolDraftRow:
         # identity in the outgoing interface is ambiguous in both the table and
         # the graphics connection model, so only block-owned variables can be
         # exported.
-        return not self.kind_supports_value() and self._kind != BlockSymbolKind.INPUT
+        return self._kind not in (
+            BlockSymbolKind.PARAMETER,
+            BlockSymbolKind.EVENT_PARAMETER,
+            BlockSymbolKind.MODE_PARAMETER,
+            BlockSymbolKind.INPUT,
+        )
 
     def kind_supports_value(self) -> bool:
         """
         :return: Whether this role stores a numeric constant.
         """
-        return self._kind in set((BlockSymbolKind.PARAMETER, BlockSymbolKind.EVENT_PARAMETER, BlockSymbolKind.MODE_PARAMETER,))
+        return self._kind in (BlockSymbolKind.PARAMETER, BlockSymbolKind.EVENT_PARAMETER)
+
+    def has_mapping_changes(self) -> bool:
+        """Return whether either staged mapping differs from its opening value.
+
+        :return: Whether the user changed a variable or static-parameter mapping.
+        """
+        return (
+            self._external_reference != self._original_external_reference
+            or self._static_reference != self._original_static_reference
+        )
 
     def parse_value(self) -> float:
         """
@@ -1148,8 +1185,6 @@ def get_symbol_value_text(block: Block, variable: Var, kind: BlockSymbolKind) ->
         expression = block.parameters.get(variable, None)
     elif kind == BlockSymbolKind.EVENT_PARAMETER:
         expression = block.event_dict.get(variable, None)
-    elif kind == BlockSymbolKind.MODE_PARAMETER:
-        expression = block.mode_dict.get(variable, None)
     else:
         pass
     if isinstance(expression, Const):
@@ -1177,7 +1212,6 @@ def get_ordered_block_symbols(block: Block) -> List[Var]:
         block.diff_vars,
         tuple(block.parameters.keys()),
         tuple(block.event_dict.keys()),
-        tuple(block.mode_dict.keys()),
         block.out_vars,
     )
     group: Sequence[Var]
@@ -1272,34 +1306,40 @@ class BlockSymbolDraftModel(QtCore.QAbstractTableModel):
             variable: Var
             for variable in get_ordered_block_symbols(owner):
                 kind: BlockSymbolKind = get_symbol_kind(owner, variable)
-                value_text: str = get_symbol_value_text(owner, variable, kind)
-                external_reference: VarPowerFlowReferenceType | None = get_variable_external_reference(
-                    owner,
-                    variable,
-                )
-                static_reference: ParamPowerFlowReferenceType | None = get_variable_static_reference(
-                    owner,
-                    variable,
-                )
-                # Composite blocks may expose a child's static parameter only
-                # through api_obj_mapping. It is still a parameter, not an
-                # output-only variable, and must keep its static mapping editor.
-                if static_reference is not None and kind == BlockSymbolKind.OUTPUT_ONLY:
-                    kind = BlockSymbolKind.PARAMETER
-                else:
+                if kind == BlockSymbolKind.MODE_PARAMETER:
+                    # RuntimeLogicDraftCollection is the sole retained-mode
+                    # transaction owner. Keeping a hidden second symbol row
+                    # would apply the same Engine identity through two models.
                     pass
-                self._rows.append(
-                    BlockSymbolDraftRow(
+                else:
+                    value_text: str = get_symbol_value_text(owner, variable, kind)
+                    external_reference: VarPowerFlowReferenceType | None = get_variable_external_reference(
                         owner,
                         variable,
-                        variable.name,
-                        kind,
-                        variable in owner.out_vars,
-                        value_text,
-                        external_reference,
-                        static_reference,
                     )
-                )
+                    static_reference: ParamPowerFlowReferenceType | None = get_variable_static_reference(
+                        owner,
+                        variable,
+                    )
+                    # Composite blocks may expose a child's static parameter only
+                    # through api_obj_mapping. It is still a parameter, not an
+                    # output-only variable, and must keep its static mapping editor.
+                    if static_reference is not None and kind == BlockSymbolKind.OUTPUT_ONLY:
+                        kind = BlockSymbolKind.PARAMETER
+                    else:
+                        pass
+                    self._rows.append(
+                        BlockSymbolDraftRow(
+                            owner,
+                            variable,
+                            variable.name,
+                            kind,
+                            variable in owner.out_vars,
+                            value_text,
+                            external_reference,
+                            static_reference,
+                        )
+                    )
 
     def reload(self, block: Block) -> None:
         """Replace staged rows with identities currently owned by the block.
@@ -1430,7 +1470,11 @@ class BlockSymbolDraftModel(QtCore.QAbstractTableModel):
                 return True
             else:
                 return False
-        elif role == Qt.ItemDataRole.EditRole and index.column() == 4:
+        elif (
+                role == Qt.ItemDataRole.EditRole
+                and index.column() == 4
+                and (row.supports_external_reference() or row.supports_static_reference())
+        ):
             return self._set_mapping_text(index, row, str(value))
         else:
             return False
@@ -1587,21 +1631,6 @@ class BlockSymbolDraftModel(QtCore.QAbstractTableModel):
             pass
         self.endInsertRows()
 
-    def remove_new_symbol(self, row_index: int) -> bool:
-        """
-        Remove a staged addition while protecting existing symbolic identities.
-
-        :param row_index: Value supplied for ``row_index``.
-        :return: True when the staged symbol was removed; otherwise False.
-        """
-        if 0 <= row_index < len(self._rows) and self._rows[row_index].is_new():
-            self.beginRemoveRows(QtCore.QModelIndex(), row_index, row_index)
-            del self._rows[row_index]
-            self.endRemoveRows()
-            return True
-        else:
-            return False
-
     def remove_symbol(self, row_index: int) -> bool:
         """Stage deletion of one symbol and any derivative owned by a state.
 
@@ -1698,6 +1727,40 @@ class BlockSymbolDraftModel(QtCore.QAbstractTableModel):
         # parse them only once every temporary identity is in the namespace.
         self.get_new_event_expressions(namespace)
         self._validate_unique_mappings()
+        return namespace
+
+    def build_editing_namespace(self, base_namespace: Mapping[str, Expr]) -> Dict[str, Expr]:
+        """Build a permissive namespace for editing an incomplete model draft.
+
+        This namespace exists only to keep completion and highlighting current
+        while the user assembles related declarations and code. It deliberately
+        does not parse values, enforce uniqueness, or validate mappings; those
+        semantic checks belong to Validate model and Apply changes.
+
+        :param base_namespace: Symbols currently owned by the Engine block tree.
+        :return: Namespace with removed symbols excluded and valid staged names included.
+        """
+        namespace: Dict[str, Expr] = dict(base_namespace)
+        removed_row: BlockSymbolDraftRow
+        for removed_row in self._removed_rows:
+            namespace.pop(removed_row.get_name(), None)
+
+        # Invalid intermediate cell contents are omitted from editor assistance
+        # instead of blocking an unrelated staging action. Strict validation
+        # reports those names before the draft can be applied to the Engine.
+        row: BlockSymbolDraftRow
+        for row in self._rows:
+            name: str = row.get_name()
+            usable_name: bool = (
+                row.is_new()
+                and len(name) > 0
+                and name.isidentifier()
+                and not keyword.iskeyword(name)
+            )
+            if usable_name:
+                namespace[name] = Var(name)
+            else:
+                pass
         return namespace
 
     def get_new_event_expressions(self, namespace: Mapping[str, Expr]) -> List[tuple[Block, Var, Expr]]:
@@ -1922,6 +1985,50 @@ class BlockSymbolDraftModel(QtCore.QAbstractTableModel):
                 pass
         return result
 
+    def has_mapping_changes(self) -> bool:
+        """Return whether an existing or new row changed its typed mapping.
+
+        New symbols are already reported by :meth:`has_symbol_changes`; keeping
+        this query separate makes structural-rebuild conflict checks explicit.
+
+        :return: Whether at least one row has a staged mapping change.
+        """
+        result: bool = False
+        row: BlockSymbolDraftRow
+        for row in self._rows:
+            if row.has_mapping_changes():
+                result = True
+            else:
+                pass
+        return result
+
+    def get_initializable_names(self, owner: Block) -> List[str]:
+        """Return variables permitted to own ordinary initialization equations.
+
+        State and algebraic variables are always block-owned initialization
+        targets. A legacy output-only identity is also valid when it is a real
+        outgoing port; mapping-only synthetic rows remain excluded.
+
+        :param owner: Direct block whose staged initialization keys are requested.
+        :return: Ordered names accepted as keys of ``init_eqs``.
+        """
+        result: List[str] = list()
+        row: BlockSymbolDraftRow
+        for row in self._rows:
+            initializable: bool = row.get_kind() in (
+                BlockSymbolKind.STATE,
+                BlockSymbolKind.ALGEBRAIC,
+            )
+            output_only: bool = (
+                row.get_kind() == BlockSymbolKind.OUTPUT_ONLY
+                and row.is_exported()
+            )
+            if row.get_owner() is owner and (initializable or output_only):
+                result.append(row.get_name())
+            else:
+                pass
+        return result
+
     def refresh_existing_names(self) -> None:
         """Refresh detached row labels after an editor-owned variable rename.
 
@@ -2109,13 +2216,10 @@ def reclassify_block_symbol(block: Block,
     previous_constant: Const | None = None
     parameter_expression: Expr | None = block.parameters.get(variable, None)
     event_expression: Expr | None = block.event_dict.get(variable, None)
-    mode_expression: Expr | None = block.mode_dict.get(variable, None)
     if isinstance(parameter_expression, Const):
         previous_constant = parameter_expression
     elif isinstance(event_expression, Const):
         previous_constant = event_expression
-    elif isinstance(mode_expression, Const):
-        previous_constant = mode_expression
     else:
         pass
     sequence_groups: tuple[List[Var], ...] = (block.in_vars, block.algebraic_vars, block.state_vars, block.diff_vars)
@@ -2133,11 +2237,6 @@ def reclassify_block_symbol(block: Block,
         del block.event_dict[variable]
     else:
         pass
-    if variable in block.mode_dict:
-        del block.mode_dict[variable]
-    else:
-        pass
-
     if kind == BlockSymbolKind.INPUT:
         block.in_vars.append(variable)
     elif kind == BlockSymbolKind.ALGEBRAIC:
@@ -2152,10 +2251,6 @@ def reclassify_block_symbol(block: Block,
         )
     elif kind == BlockSymbolKind.EVENT_PARAMETER:
         block.event_dict[variable] = build_reclassified_constant(
-            previous_constant, numeric_value, variable.name, var_factory
-        )
-    elif kind == BlockSymbolKind.MODE_PARAMETER:
-        block.mode_dict[variable] = build_reclassified_constant(
             previous_constant, numeric_value, variable.name, var_factory
         )
     elif kind == BlockSymbolKind.OUTPUT_ONLY:
@@ -2188,8 +2283,9 @@ class BlockParameterDraftModel(QtCore.QAbstractTableModel):
     """Stage dynamic-parameter expressions from ``event_dict`` until Apply.
 
     Fixed ``block.parameters`` remain part of the symbolic compiler contract
-    and are managed through the DAE model's Parameters page. General options is
-    exclusively the value editor for runtime-changeable dynamic parameters.
+    and are edited through the Parameters branch in General options. Dynamic
+    parameter expressions use this backing model so the tree remains detached
+    from the Engine until Apply.
     """
 
     __slots__ = ("_rows",)
@@ -2222,8 +2318,8 @@ class BlockParameterDraftModel(QtCore.QAbstractTableModel):
                 values=child_block.event_dict,
             )
             # Retained modes may have symbolic initialization expressions and
-            # execution dependencies. They are edited in Runtime logic, where
-            # their writers and readers can be validated as one transaction.
+            # execution dependencies. Python code owns them together with the
+            # ordered procedural calls that read or write those modes.
 
     def reload(self, block: Block) -> None:
         """Refresh rows after staged parameter symbols become real constants.
@@ -2603,9 +2699,9 @@ def configure_interactive_table_header(header: QtWidgets.QHeaderView,
 
 
 class BlockCodeBuffer:
-    """Detached equation source for one concrete block in a recursive tree."""
+    """Detached complete model source for one block in a recursive tree."""
 
-    __slots__ = ("_block", "_code", "_original_code")
+    __slots__ = ("_block", "_code", "_original_code", "_original_runtime_signature")
 
     def __init__(self, block: Block) -> None:
         """
@@ -2617,6 +2713,7 @@ class BlockCodeBuffer:
         self._block: Block = block
         self._code: str = build_equation_code(block)
         self._original_code: str = self._code
+        self._original_runtime_signature: str = build_runtime_code_signature(self._code)
 
     def get_block(self) -> Block:
         """
@@ -2651,6 +2748,13 @@ class BlockCodeBuffer:
         """
         return self._code != self._original_code
 
+    def has_runtime_changes(self) -> bool:
+        """Return whether retained modes or procedural calls changed semantically.
+
+        :return: Whether either runtime section differs from the accepted baseline.
+        """
+        return build_runtime_code_signature(self._code) != self._original_runtime_signature
+
     def accept_source(self, code: str) -> None:
         """Keep accepted source text as the baseline for subsequent edits.
 
@@ -2659,6 +2763,7 @@ class BlockCodeBuffer:
         """
         self._code = code
         self._original_code = code
+        self._original_runtime_signature = build_runtime_code_signature(code)
 
 
 class DaeCodeHighlighter(QtGui.QSyntaxHighlighter):
@@ -2674,31 +2779,78 @@ class DaeCodeHighlighter(QtGui.QSyntaxHighlighter):
         "_symbol_names",
     )
 
-    def __init__(self, document: QtGui.QTextDocument, symbol_names: Sequence[str]) -> None:
+    def __init__(
+            self,
+            document: QtGui.QTextDocument,
+            symbol_names: Sequence[str],
+            dark_theme: bool = False,
+    ) -> None:
         """
         Create highlighting formats for DAE sections and known symbols.
 
         :param document: Value supplied for ``document``.
         :param symbol_names: Value supplied for ``symbol_names``.
+        :param dark_theme: Whether to initialise formats for a dark background.
         :return: None.
         """
         super().__init__(document)
         self._keyword_format: QtGui.QTextCharFormat = QtGui.QTextCharFormat()
-        self._keyword_format.setForeground(QtGui.QColor("#7c3aed"))
-        self._keyword_format.setFontWeight(QtGui.QFont.Weight.Bold)
         self._number_format: QtGui.QTextCharFormat = QtGui.QTextCharFormat()
-        self._number_format.setForeground(QtGui.QColor("#0369a1"))
         self._string_format: QtGui.QTextCharFormat = QtGui.QTextCharFormat()
-        self._string_format.setForeground(QtGui.QColor("#15803d"))
         self._comment_format: QtGui.QTextCharFormat = QtGui.QTextCharFormat()
-        self._comment_format.setForeground(QtGui.QColor("#64748b"))
-        self._comment_format.setFontItalic(True)
         self._symbol_format: QtGui.QTextCharFormat = QtGui.QTextCharFormat()
-        self._symbol_format.setForeground(QtGui.QColor("#b45309"))
         self._function_format: QtGui.QTextCharFormat = QtGui.QTextCharFormat()
-        self._function_format.setForeground(QtGui.QColor("#0369a1"))
-        self._function_format.setFontWeight(QtGui.QFont.Weight.Bold)
         self._symbol_names: tuple[str, ...] = tuple(symbol_names)
+        self.apply_theme(dark_theme=dark_theme)
+
+    def apply_theme(self, dark_theme: bool) -> None:
+        """Apply token colours with sufficient contrast for one editor theme.
+
+        :param dark_theme: Whether the text document uses a dark background.
+        :return: None.
+        """
+        # DAE categories keep the same visual roles in both themes. Only their
+        # luminance changes, so users do not need to relearn the source colours
+        # when switching the application appearance.
+        if dark_theme:
+            keyword_color: QtGui.QColor = QtGui.QColor("#C792EA")
+            number_color: QtGui.QColor = QtGui.QColor("#C3E88D")
+            string_color: QtGui.QColor = QtGui.QColor("#F07178")
+            comment_color: QtGui.QColor = QtGui.QColor("#94A3B8")
+            symbol_color: QtGui.QColor = QtGui.QColor("#FFCB6B")
+            function_color: QtGui.QColor = QtGui.QColor("#82AAFF")
+        else:
+            keyword_color = QtGui.QColor("#7C3AED")
+            number_color = QtGui.QColor("#0369A1")
+            string_color = QtGui.QColor("#15803D")
+            comment_color = QtGui.QColor("#64748B")
+            symbol_color = QtGui.QColor("#B45309")
+            function_color = QtGui.QColor("#0369A1")
+
+        self._keyword_format.setForeground(keyword_color)
+        self._keyword_format.setFontWeight(QtGui.QFont.Weight.Bold)
+        self._number_format.setForeground(number_color)
+        self._string_format.setForeground(string_color)
+        self._comment_format.setForeground(comment_color)
+        self._comment_format.setFontItalic(True)
+        self._symbol_format.setForeground(symbol_color)
+        self._function_format.setForeground(function_color)
+        self._function_format.setFontWeight(QtGui.QFont.Weight.Bold)
+        self.rehighlight()
+
+    def set_dark_mode(self) -> None:
+        """Apply syntax colours intended for a dark source editor.
+
+        :return: None.
+        """
+        self.apply_theme(dark_theme=True)
+
+    def set_light_mode(self) -> None:
+        """Apply syntax colours intended for a light source editor.
+
+        :return: None.
+        """
+        self.apply_theme(dark_theme=False)
 
     def set_symbol_names(self, symbol_names: Sequence[str]) -> None:
         """
@@ -2738,6 +2890,16 @@ class DaeCodeHighlighter(QtGui.QSyntaxHighlighter):
                 rf"\b{re.escape(function_name)}\b(?=\s*\()",
                 self._function_format,
             )
+        logic_tpe: ProceduralLogicType
+        for logic_tpe in ProceduralLogicType:
+            if logic_tpe != ProceduralLogicType.Base:
+                self._apply_pattern(
+                    text,
+                    rf"\b{re.escape(logic_tpe.value)}\b(?=\s*\()",
+                    self._function_format,
+                )
+            else:
+                pass
 
         comment_index: int = text.find("#")
         if comment_index >= 0:
@@ -2769,6 +2931,7 @@ class DaeCodeEditor(BasePythonCodeEditor):
         "_active_search_index",
         "_symbol_namespace",
         "_language_context",
+        "_highlighter",
         "_qt_completer",
         "_completion_model",
         "_completion_shortcut",
@@ -2781,16 +2944,37 @@ class DaeCodeEditor(BasePythonCodeEditor):
             self,
             parent: QtWidgets.QWidget | None = None,
             symbol_namespace: Mapping[str, Expr] | None = None,
+            dark_theme: bool | None = None,
     ) -> None:
         """Create the DAE-specific parser state and visual overlays.
 
         :param parent: Optional owning Qt widget.
         :param symbol_namespace: Symbols accepted by the safe DAE parser.
+        :param dark_theme: Explicit initial theme, or ``None`` to inherit it from Qt.
         :return: None.
         """
         self._qt_completer: QtWidgets.QCompleter | None = None
         self._prepared_to_delete: bool = False
-        super().__init__(parent)
+        if dark_theme is None:
+            # Standalone uses inherit Qt's active palette. Block properties
+            # supplies an explicit value from DynamicBlockEditorGUI, while this
+            # fallback keeps reusable or test-created DAE editors theme-neutral.
+            editor_palette: QtGui.QPalette
+            if parent is not None:
+                editor_palette = parent.palette()
+            else:
+                application: QtCore.QCoreApplication | None = QtWidgets.QApplication.instance()
+                if isinstance(application, QtWidgets.QApplication):
+                    editor_palette = application.palette()
+                else:
+                    editor_palette = QtGui.QPalette()
+            window_color: QtGui.QColor = editor_palette.color(
+                QtGui.QPalette.ColorRole.Window
+            )
+            resolved_dark_theme: bool = window_color.lightness() < 128
+        else:
+            resolved_dark_theme = dark_theme
+        super().__init__(parent, dark_theme=resolved_dark_theme)
         self._diagnostics: List[DaeCodeDiagnostic] = list()
         self._search_ranges: List[tuple[int, int]] = list()
         self._active_search_index: int = -1
@@ -2800,6 +2984,14 @@ class DaeCodeEditor(BasePythonCodeEditor):
             self._symbol_namespace = dict(symbol_namespace)
         self._language_context: DaeLanguageContext = build_generic_dae_language_context(
             self._symbol_namespace
+        )
+        # The syntax highlighter belongs to the source editor whose document it
+        # formats. Keeping both palettes here guarantees that surface and token
+        # colours always change together.
+        self._highlighter: DaeCodeHighlighter = DaeCodeHighlighter(
+            self.document(),
+            tuple(self._symbol_namespace.keys()),
+            dark_theme=resolved_dark_theme,
         )
 
         # QCompleter only presents entries generated by the restricted DAE
@@ -2825,6 +3017,7 @@ class DaeCodeEditor(BasePythonCodeEditor):
         # reaches this class. Installing the editor's filter last guarantees
         # that accepting a completion is independent of mouse interaction.
         self.installEventFilter(self)
+        self.viewport().installEventFilter(self)
         self._qt_completer.popup().installEventFilter(self)
         self._qt_completer.popup().viewport().installEventFilter(self)
         self._completion_shortcut: QtGui.QShortcut = QtGui.QShortcut(
@@ -2851,6 +3044,7 @@ class DaeCodeEditor(BasePythonCodeEditor):
             pass
 
         self._prepared_to_delete = True
+        self._highlighter.setDocument(None)
         completer: QtWidgets.QCompleter | None = self._qt_completer
         if completer is not None:
             popup: QtWidgets.QAbstractItemView = completer.popup()
@@ -2860,6 +3054,7 @@ class DaeCodeEditor(BasePythonCodeEditor):
             # The popup may otherwise receive a queued Qt event after this
             # editor's native object has already been released.
             self.removeEventFilter(self)
+            self.viewport().removeEventFilter(self)
             popup.removeEventFilter(self)
             popup_viewport.removeEventFilter(self)
             popup.hide()
@@ -2899,7 +3094,24 @@ class DaeCodeEditor(BasePythonCodeEditor):
         """
         self._language_context = language_context
         self._symbol_namespace = language_context.get_namespace()
+        self._highlighter.set_symbol_names(tuple(self._symbol_namespace.keys()))
         self._hide_completion_popup()
+
+    def set_dark_mode(self) -> None:
+        """Apply dark surface and DAE syntax palettes as one operation.
+
+        :return: None.
+        """
+        BasePythonCodeEditor.set_dark_mode(self)
+        self._highlighter.set_dark_mode()
+
+    def set_light_mode(self) -> None:
+        """Apply light surface and DAE syntax palettes as one operation.
+
+        :return: None.
+        """
+        BasePythonCodeEditor.set_light_mode(self)
+        self._highlighter.set_light_mode()
 
     def get_language_context(self) -> DaeLanguageContext:
         """Return the immutable completion context currently in use.
@@ -2990,6 +3202,28 @@ class DaeCodeEditor(BasePythonCodeEditor):
         :param event: Event offered to the installed filter.
         :return: ``True`` only when the popup consumes an acceptance key.
         """
+        procedural_help_requested: bool = (
+            watched is self.viewport()
+            and event.type() == QtCore.QEvent.Type.ToolTip
+            and isinstance(event, QtGui.QHelpEvent)
+        )
+        if procedural_help_requested and isinstance(event, QtGui.QHelpEvent):
+            help_cursor: QtGui.QTextCursor = self.cursorForPosition(event.pos())
+            help_cursor.select(QtGui.QTextCursor.SelectionType.WordUnderCursor)
+            code_name: str = help_cursor.selectedText()
+            help_text: str | None = get_procedural_logic_help_by_code_name(code_name)
+            if help_text is not None:
+                QtWidgets.QToolTip.showText(
+                    event.globalPos(),
+                    help_text,
+                    self.viewport(),
+                )
+                return True
+            else:
+                pass
+        else:
+            pass
+
         completer: QtWidgets.QCompleter | None = self._qt_completer
         if completer is None:
             return BasePythonCodeEditor.eventFilter(self, watched, event)
@@ -3067,9 +3301,27 @@ class DaeCodeEditor(BasePythonCodeEditor):
         :return: None.
         """
         source: str = self.toPlainText()
-        cursor_position: int = self.textCursor().position()
+        source_cursor: QtGui.QTextCursor = self.textCursor()
+        if source_cursor.hasSelection():
+            # Completion replaces an explicitly selected placeholder. Analyze
+            # the surrounding source as if that selection were already gone,
+            # otherwise a selected ``None`` would incorrectly become the
+            # filtering prefix and hide every valid model symbol.
+            selection_start: int = min(
+                source_cursor.anchor(),
+                source_cursor.position(),
+            )
+            selection_end: int = max(
+                source_cursor.anchor(),
+                source_cursor.position(),
+            )
+            completion_source: str = source[:selection_start] + source[selection_end:]
+            cursor_position: int = selection_start
+        else:
+            completion_source = source
+            cursor_position = source_cursor.position()
         position: DaeCompletionPosition = analyze_dae_completion_position(
-            source,
+            completion_source,
             cursor_position,
         )
         prefix: str = position.get_prefix()
@@ -3104,7 +3356,7 @@ class DaeCodeEditor(BasePythonCodeEditor):
             label: str = f"{entry.get_display_text()}    {entry.get_description()}"
             item: QtGui.QStandardItem = QtGui.QStandardItem(label)
             item.setEditable(False)
-            item.setToolTip(entry.get_description())
+            item.setToolTip(entry.get_tooltip())
             item.setData(entry_index, QtCore.Qt.ItemDataRole.UserRole)
             self._completion_model.appendRow(item)
         self._qt_completer.setCompletionPrefix(prefix)
@@ -3157,11 +3409,16 @@ class DaeCodeEditor(BasePythonCodeEditor):
             entry: DaeCompletionEntry = self._completion_entries[entry_data]
             text_cursor: QtGui.QTextCursor = self.textCursor()
             text_cursor.beginEditBlock()
-            text_cursor.movePosition(
-                QtGui.QTextCursor.MoveOperation.Left,
-                QtGui.QTextCursor.MoveMode.KeepAnchor,
-                len(self._last_completion_prefix),
-            )
+            if text_cursor.hasSelection():
+                # The selected placeholder or user selection is already the
+                # exact source range that completion must replace.
+                pass
+            else:
+                text_cursor.movePosition(
+                    QtGui.QTextCursor.MoveOperation.Left,
+                    QtGui.QTextCursor.MoveMode.KeepAnchor,
+                    len(self._last_completion_prefix),
+                )
             text_cursor.removeSelectedText()
             text_cursor.insertText(entry.get_insertion_text())
             cursor_backtrack: int = entry.get_cursor_backtrack()
@@ -3170,6 +3427,15 @@ class DaeCodeEditor(BasePythonCodeEditor):
                     QtGui.QTextCursor.MoveOperation.Left,
                     QtGui.QTextCursor.MoveMode.MoveAnchor,
                     cursor_backtrack,
+                )
+            else:
+                pass
+            selection_length: int = entry.get_selection_length()
+            if selection_length > 0:
+                text_cursor.movePosition(
+                    QtGui.QTextCursor.MoveOperation.Left,
+                    QtGui.QTextCursor.MoveMode.KeepAnchor,
+                    selection_length,
                 )
             else:
                 pass
@@ -3462,20 +3728,31 @@ def build_dialogue_dae_language_context(
         namespace: Mapping[str, Expr],
         symbol_model: BlockSymbolDraftModel,
         root_block: Block,
-        equation_owner: Block) -> DaeLanguageContext:
+        equation_owner: Block,
+        retained_mode_names: Sequence[str]) -> DaeLanguageContext:
     """Build the shared parser/completion context from staged dialogue rows.
 
     :param namespace: Joint DAE and runtime-logic validation namespace.
     :param symbol_model: Detached Variables and Parameters table model.
     :param root_block: Complete edited block tree containing external mappings.
     :param equation_owner: Block owning the currently visible equation buffer.
+    :param retained_mode_names: Staged retained modes available to procedural outputs.
     :return: Synchronized language context for the DAE editor.
     """
     entries: List[DaeCompletionEntry] = list()
     initializable_names: List[str] = list()
     names_seen: set[str] = set()
     entry_indices: Dict[str, int] = dict()
+    procedural_variable_names: List[str] = list()
+    runtime_parameter_names: List[str] = list()
     power_flow_initialized_variables: set[Var] = set()
+    procedural_variable_kinds: tuple[BlockSymbolKind, ...] = (
+        BlockSymbolKind.INPUT,
+        BlockSymbolKind.STATE,
+        BlockSymbolKind.ALGEBRAIC,
+        BlockSymbolKind.DIFFERENTIAL,
+        BlockSymbolKind.OUTPUT_ONLY,
+    )
     mapped_owner: Block
     for mapped_owner in root_block.get_all_blocks():
         mapped_variable: Var | None
@@ -3527,6 +3804,20 @@ def build_dialogue_dae_language_context(
                 initializable_names.append(symbol_name)
             else:
                 pass
+            if (
+                    row.get_kind() in procedural_variable_kinds
+                    and symbol_name not in procedural_variable_names
+            ):
+                procedural_variable_names.append(symbol_name)
+            else:
+                pass
+            if (
+                    row.get_kind() == BlockSymbolKind.EVENT_PARAMETER
+                    and symbol_name not in runtime_parameter_names
+            ):
+                runtime_parameter_names.append(symbol_name)
+            else:
+                pass
         else:
             pass
 
@@ -3564,6 +3855,9 @@ def build_dialogue_dae_language_context(
             equation_owner,
             BlockSymbolKind.DIFFERENTIAL,
         ),
+        mode_names=retained_mode_names,
+        runtime_parameter_names=runtime_parameter_names,
+        variable_names=procedural_variable_names,
     )
 
 
@@ -3607,6 +3901,8 @@ def build_equation_code(block: Block) -> str:
         expressions=block.diff_init_eqs,
         comments=list(("Map each derivative to its initial expression. Example: d_x: 0.0,",)),
     ))
+    lines.append("")
+    lines.extend(build_runtime_logic_code(block))
     return "\n".join(lines)
 
 
@@ -3713,6 +4009,173 @@ def replace_dae_identifier(code: str, old_name: str, new_name: str) -> str:
         identifier_pattern: str = rf"\b{re.escape(old_name)}\b"
         result = re.sub(identifier_pattern, new_name, code)
     return result
+
+
+def insert_source_before_section_closing_line(
+        code: str,
+        section_name: str,
+        insertion_lines: Sequence[str],
+) -> str:
+    """Insert source immediately before a top-level list or dictionary closing line.
+
+    :param code: Complete model-code buffer.
+    :param section_name: Existing list or dictionary assignment to extend.
+    :param insertion_lines: Fully indented lines inserted in source order.
+    :return: Updated complete source.
+    """
+    _normalized_code: str
+    module: ast.Module
+    _normalized_code, module = parse_model_code_module(code)
+    assignment: ast.Assign = get_model_code_assignment(module, section_name)
+    if not isinstance(assignment.value, (ast.Dict, ast.List)):
+        raise ValueError(f"Section '{section_name}' must be a list or dictionary")
+    else:
+        source_lines: List[str] = code.splitlines()
+        closing_line_index: int = int(assignment.value.end_lineno) - 1
+    insertion_index: int
+    for insertion_index in range(len(insertion_lines)):
+        source_lines.insert(
+            closing_line_index + insertion_index,
+            insertion_lines[insertion_index],
+        )
+    return "\n".join(source_lines)
+
+
+def remove_source_dictionary_entries(code: str,
+                                     section_name: str,
+                                     entry_names: Sequence[str]) -> str:
+    """Remove selected named entries from one top-level source dictionary.
+
+    The edit uses AST locations only to identify dictionary entries. Unrelated
+    expressions, comments, and formatting remain byte-for-byte unchanged. Both
+    the normal multiline editor format and compact inline dictionaries are
+    supported.
+
+    :param code: Complete model-code buffer.
+    :param section_name: Dictionary assignment containing managed entries.
+    :param entry_names: Exact identifier keys to remove.
+    :return: Source without the selected dictionary entries.
+    """
+    if len(entry_names) == 0:
+        return code
+    else:
+        pass
+
+    _normalized_code: str
+    module: ast.Module
+    _normalized_code, module = parse_model_code_module(code)
+    assignment: ast.Assign = get_model_code_assignment(module, section_name)
+    if not isinstance(assignment.value, ast.Dict):
+        raise ValueError(f"Section '{section_name}' must be a dictionary")
+    else:
+        pass
+
+    source_lines: List[str] = code.splitlines(keepends=True)
+    line_offsets: List[int] = list()
+    source_offset: int = 0
+    source_line: str
+    for source_line in source_lines:
+        line_offsets.append(source_offset)
+        source_offset += len(source_line)
+
+    requested_names: set[str] = set(entry_names)
+    removal_spans: List[tuple[int, int]] = list()
+    entry_index: int
+    for entry_index in range(len(assignment.value.keys)):
+        key_node: ast.expr | None = assignment.value.keys[entry_index]
+        value_node: ast.expr = assignment.value.values[entry_index]
+        removable: bool = isinstance(key_node, ast.Name) and key_node.id in requested_names
+        if removable and key_node is not None:
+            entry_start: int = line_offsets[int(key_node.lineno) - 1] + int(key_node.col_offset)
+            entry_end: int = line_offsets[int(value_node.end_lineno) - 1] + int(value_node.end_col_offset)
+
+            # Include indentation when an entry owns its complete source line.
+            entry_line_start: int = line_offsets[int(key_node.lineno) - 1]
+            line_prefix: str = code[entry_line_start:entry_start]
+            if len(line_prefix.strip()) == 0:
+                entry_start = entry_line_start
+            else:
+                pass
+
+            # Prefer consuming a following comma. If this is the final compact
+            # entry, consume its preceding comma instead so the dictionary stays
+            # syntactically valid.
+            following_offset: int = entry_end
+            while following_offset < len(code) and code[following_offset] in (" ", "\t"):
+                following_offset += 1
+            if following_offset < len(code) and code[following_offset] == ",":
+                following_offset += 1
+                line_end_offset: int = code.find("\n", following_offset)
+                if line_end_offset < 0:
+                    line_end_offset = len(code)
+                else:
+                    line_end_offset += 1
+                trailing_source: str = code[following_offset:line_end_offset].strip()
+                if len(trailing_source) == 0 or trailing_source.startswith("#"):
+                    entry_end = line_end_offset
+                else:
+                    entry_end = following_offset
+            else:
+                preceding_offset: int = entry_start - 1
+                while preceding_offset >= 0 and code[preceding_offset] in (" ", "\t"):
+                    preceding_offset -= 1
+                if preceding_offset >= 0 and code[preceding_offset] == ",":
+                    entry_start = preceding_offset
+                else:
+                    pass
+            removal_spans.append((entry_start, entry_end))
+        else:
+            pass
+
+    removal_spans.sort(reverse=True)
+    updated_code: str = code
+    removal_start: int
+    removal_end: int
+    for removal_start, removal_end in removal_spans:
+        updated_code = updated_code[:removal_start] + updated_code[removal_end:]
+    return updated_code
+
+
+def synchronize_retained_mode_source(
+        code: str,
+        owner: Block,
+        modes: Sequence[RuntimeModeDraft],
+) -> str:
+    """Replace one owner's retained-mode dictionary from detached drafts.
+
+    Only the managed runtime section is normalized. Equations, procedural
+    calls, and their comments remain untouched, which keeps inline tree edits
+    local and reviewable.
+
+    :param code: Complete model-code buffer for ``owner``.
+    :param owner: Direct block whose retained modes are serialized.
+    :param modes: Active retained-mode drafts from the dialogue transaction.
+    :return: Source with a synchronized ``retained_modes`` dictionary.
+    """
+    _normalized_code: str
+    module: ast.Module
+    _normalized_code, module = parse_model_code_module(code)
+    assignment: ast.Assign = get_model_code_assignment(module, "retained_modes")
+    replacement_lines: List[str] = list((
+        "retained_modes = {",
+        "    # Map each retained mode to its symbolic initialization expression.",
+        "    # Example: latched_value: 0.0,",
+    ))
+    mode: RuntimeModeDraft
+    for mode in modes:
+        if mode.get_owner() is owner and not mode.is_removed():
+            replacement_lines.append(
+                f"    {mode.get_name()}: {mode.get_initial_expression()},"
+            )
+        else:
+            pass
+    replacement_lines.append("}")
+
+    source_lines: List[str] = code.splitlines()
+    first_line_index: int = int(assignment.lineno) - 1
+    final_line_index: int = int(assignment.end_lineno)
+    source_lines[first_line_index:final_line_index] = replacement_lines
+    return "\n".join(source_lines)
 
 
 def serialize_dae_expression(expression: Expr | Comparison) -> str:
@@ -3944,6 +4407,10 @@ def _parse_equation_statement(statement: ast.stmt,
             namespace=namespace,
             section_name=section_name,
         )
+    elif section_name in ("retained_modes", "procedural_logic"):
+        # Runtime sections are parsed by the typed procedural-language layer
+        # after all owners have contributed their retained-mode namespace.
+        pass
     else:
         raise ValueError(f"Unsupported DAE section '{section_name}'")
 
@@ -4274,7 +4741,6 @@ def block_has_advanced_logic(block: Block) -> bool:
             child.inequalities
             or child.discrete_eqs
             or child.boolean_guards
-            or child.procedural_logic
             or child.reformulated_vars
         ):
             result = True
@@ -4438,6 +4904,178 @@ def _get_documentation_relative_path(block_type_name: str, block_name: str) -> s
         return None
 
 
+class RetainedModeDraftTableModel(QtCore.QAbstractTableModel):
+    """Qt projection of retained modes owned by the runtime draft collection."""
+
+    modeNameChanged = Signal(object, str, str)
+    __slots__ = ("_collection", "_rows")
+
+    def __init__(self,
+                 collection: RuntimeLogicDraftCollection,
+                 parent: QtCore.QObject | None = None) -> None:
+        """Create an editable projection without duplicating runtime semantics.
+
+        :param collection: Detached runtime draft collection used by Validate and Apply.
+        :param parent: Owning Qt object.
+        :return: None.
+        """
+        super().__init__(parent)
+        self._collection: RuntimeLogicDraftCollection = collection
+        self._rows: List[RuntimeModeDraft] = collection.get_active_modes()
+
+    def reload(self, collection: RuntimeLogicDraftCollection) -> None:
+        """Rebind rows after source parsing or a successful Apply.
+
+        :param collection: Replacement runtime draft collection.
+        :return: None.
+        """
+        self.beginResetModel()
+        self._collection = collection
+        self._rows = collection.get_active_modes()
+        self.endResetModel()
+
+    def rowCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
+        """Return the number of visible retained modes.
+
+        :param parent: Qt parent index; retained modes form a flat source model.
+        :return: Number of active mode drafts.
+        """
+        if parent.isValid():
+            result: int = 0
+        else:
+            result = len(self._rows)
+        return result
+
+    def columnCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
+        """Return Name, Type, empty value, and Output columns.
+
+        :param parent: Qt parent index; retained modes form a flat source model.
+        :return: Four columns matching the property tree.
+        """
+        if parent.isValid():
+            result: int = 0
+        else:
+            result = 4
+        return result
+
+    def get_row(self, row_index: int) -> RuntimeModeDraft | None:
+        """Return one retained-mode draft by source row.
+
+        :param row_index: Flat source-model row.
+        :return: Mode draft or ``None`` outside the model.
+        """
+        if 0 <= row_index < len(self._rows):
+            result: RuntimeModeDraft | None = self._rows[row_index]
+        else:
+            result = None
+        return result
+
+    def data(self,
+             index: QtCore.QModelIndex,
+             role: int = Qt.ItemDataRole.DisplayRole) -> object:
+        """Return retained-mode structure without exposing initialization values.
+
+        :param index: Requested source index.
+        :param role: Qt display or edit role.
+        :return: Requested mode value or ``None`` for unsupported roles.
+        """
+        row: RuntimeModeDraft | None = self.get_row(index.row())
+        if row is None or role not in (
+                Qt.ItemDataRole.DisplayRole,
+                Qt.ItemDataRole.EditRole,
+                Qt.ItemDataRole.ToolTipRole):
+            result: object = None
+        elif index.column() == 0:
+            result = row.get_name()
+        elif index.column() == 1:
+            result = self.tr("Retained mode")
+        else:
+            result = None
+        return result
+
+    def flags(self, index: QtCore.QModelIndex) -> Qt.ItemFlag:
+        """Allow inline mode renaming while keeping Python code authoritative.
+
+        :param index: Requested source index.
+        :return: Qt item flags for the represented cell.
+        """
+        if not index.isValid():
+            result: Qt.ItemFlag = Qt.ItemFlag.NoItemFlags
+        else:
+            result = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
+            if index.column() == 0:
+                result |= Qt.ItemFlag.ItemIsEditable
+            else:
+                pass
+        return result
+
+    def setData(self,
+                index: QtCore.QModelIndex,
+                value: object,
+                role: int = Qt.ItemDataRole.EditRole) -> bool:
+        """Stage a mode name without exposing a second initialization editor.
+
+        :param index: Edited source index.
+        :param value: New inline text.
+        :param role: Qt edit role.
+        :return: Whether the draft accepted the structural edit.
+        """
+        row: RuntimeModeDraft | None = self.get_row(index.row())
+        if row is None or role != Qt.ItemDataRole.EditRole:
+            accepted: bool = False
+        elif index.column() == 0:
+            name: str = str(value).strip()
+            if len(name) > 0 and name.isidentifier() and not keyword.iskeyword(name):
+                old_name: str = row.get_name()
+                row.set_name(name)
+                if old_name != name:
+                    self.modeNameChanged.emit(row.get_owner(), old_name, name)
+                else:
+                    pass
+                accepted = True
+            else:
+                accepted = False
+        else:
+            accepted = False
+        if accepted:
+            self.dataChanged.emit(
+                index,
+                index,
+                list((Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.EditRole,)),
+            )
+        else:
+            pass
+        return accepted
+
+    def remove_mode(self, row_index: int) -> tuple[bool, str]:
+        """Stage deletion through the runtime collection's dependency rules.
+
+        :param row_index: Visible source row selected in the property tree.
+        :return: Success flag and an optional blocking message.
+        """
+        selected_mode: RuntimeModeDraft | None = self.get_row(row_index)
+        if selected_mode is None:
+            return False, self.tr("Select one retained mode.")
+        else:
+            collection_modes: List[RuntimeModeDraft] = self._collection.get_modes()
+        collection_index: int = -1
+        candidate_index: int
+        candidate_mode: RuntimeModeDraft
+        for candidate_index, candidate_mode in enumerate(collection_modes):
+            if candidate_mode is selected_mode:
+                collection_index = candidate_index
+            else:
+                pass
+        removed: bool
+        message: str
+        removed, message = self._collection.remove_mode(collection_index)
+        if removed:
+            self.reload(self._collection)
+        else:
+            pass
+        return removed, message
+
+
 class BlockPropertyTreeModel(QtGui.QStandardItemModel):
     """Present structural and symbol drafts in a single owner-grouped tree.
 
@@ -4449,16 +5087,19 @@ class BlockPropertyTreeModel(QtGui.QStandardItemModel):
     rebuilt = Signal()
     pendingNameChanged = Signal(str, str)
     existingNameChangeRequested = Signal(object)
-    __slots__ = ("_root_block", "_symbols", "_parameters", "_structure")
+    __slots__ = ("_root_block", "_symbols", "_parameters", "_modes", "_structure")
 
     def __init__(self, root: Block, symbols: BlockSymbolDraftModel,
-                 parameters: BlockParameterDraftModel, structure: BlockStructuralSettingsModel,
+                 parameters: BlockParameterDraftModel,
+                 modes: RetainedModeDraftTableModel,
+                 structure: BlockStructuralSettingsModel,
                  parent: QtCore.QObject | None = None) -> None:
         """Connect the hierarchy to the existing staged models.
 
         :param root: Block whose recursive owners are displayed.
         :param symbols: Authoritative symbol draft used by Apply.
         :param parameters: Existing dynamic-parameter expression drafts.
+        :param modes: Retained-mode projection backed by runtime drafts.
         :param structure: General structural settings, excluding special settings.
         :param parent: Owning Qt object.
         :return: None.
@@ -4467,6 +5108,7 @@ class BlockPropertyTreeModel(QtGui.QStandardItemModel):
         self._root_block: Block = root
         self._symbols: BlockSymbolDraftModel = symbols
         self._parameters: BlockParameterDraftModel = parameters
+        self._modes: RetainedModeDraftTableModel = modes
         self._structure: BlockStructuralSettingsModel = structure
         self.setHorizontalHeaderLabels(
             list((
@@ -4480,8 +5122,15 @@ class BlockPropertyTreeModel(QtGui.QStandardItemModel):
         self._symbols.rowsRemoved.connect(self.rebuild)
         self._symbols.modelReset.connect(self.rebuild)
         self._parameters.modelReset.connect(self.refresh_values)
+        self._modes.rowsInserted.connect(self.rebuild)
+        self._modes.rowsRemoved.connect(self.rebuild)
+        self._modes.modelReset.connect(self.rebuild)
+        self._structure.rowsInserted.connect(self.rebuild)
+        self._structure.rowsRemoved.connect(self.rebuild)
+        self._structure.modelReset.connect(self.rebuild)
         self._symbols.dataChanged.connect(self.refresh_values)
         self._parameters.dataChanged.connect(self.refresh_values)
+        self._modes.dataChanged.connect(self.refresh_values)
         self._structure.dataChanged.connect(self.refresh_values)
         self.rebuild()
 
@@ -4514,9 +5163,15 @@ class BlockPropertyTreeModel(QtGui.QStandardItemModel):
             self.removeRows(0, existing_row_count)
         else:
             pass
+        # Empty categories convey no useful information. The independent Add
+        # symbol form remains available, and its source-model insertion signal
+        # rebuilds this tree when the first row of a category is staged.
         if self._structure.rowCount() > 0:
-            structure_group: QtGui.QStandardItem = QtGui.QStandardItem(self.tr("General structure"))
+            structure_group: QtGui.QStandardItem = QtGui.QStandardItem(
+                BlockSymbolCategory.GENERAL.value
+            )
             structure_group.setEditable(False)
+            structure_group.setData(BlockSymbolCategory.GENERAL, Qt.ItemDataRole.UserRole + 2)
             self.appendRow(structure_group)
             row_index: int
             for row_index in range(self._structure.rowCount()):
@@ -4524,10 +5179,38 @@ class BlockPropertyTreeModel(QtGui.QStandardItemModel):
         else:
             pass
 
-        # Retain owners even when empty so users can select where to add the
-        # first parameter or variable. Owner labels match Equation owner.
+        has_parameters: bool = False
+        has_variables: bool = False
+        symbol_index: int
+        for symbol_index in range(self._symbols.rowCount()):
+            symbol_row: BlockSymbolDraftRow | None = self._symbols.get_row(symbol_index)
+            if symbol_row is None:
+                pass
+            elif symbol_row.get_kind() in (
+                    BlockSymbolKind.PARAMETER,
+                    BlockSymbolKind.EVENT_PARAMETER):
+                has_parameters = True
+            else:
+                has_variables = True
+
+        visible_categories: List[BlockSymbolCategory] = list()
+        if has_parameters:
+            visible_categories.append(BlockSymbolCategory.PARAMETERS)
+        else:
+            pass
+        if has_variables:
+            visible_categories.append(BlockSymbolCategory.VARIABLES)
+        else:
+            pass
+        if self._modes.rowCount() > 0:
+            visible_categories.append(BlockSymbolCategory.RETAINED_MODES)
+        else:
+            pass
+
+        # Once a category has data, retain every recursive owner branch so the
+        # hierarchy remains aligned with the Equation owner and Add selectors.
         category: BlockSymbolCategory
-        for category in (BlockSymbolCategory.PARAMETERS, BlockSymbolCategory.VARIABLES):
+        for category in visible_categories:
             category_group: QtGui.QStandardItem = QtGui.QStandardItem(category.value)
             category_group.setEditable(False)
             category_group.setData(category, Qt.ItemDataRole.UserRole + 2)
@@ -4540,19 +5223,27 @@ class BlockPropertyTreeModel(QtGui.QStandardItemModel):
                 owner_item.setData(owner, Qt.ItemDataRole.UserRole + 1)
                 owner_item.setData(category, Qt.ItemDataRole.UserRole + 2)
                 category_group.appendRow(owner_item)
-                symbol_index: int
-                for symbol_index in range(self._symbols.rowCount()):
-                    row: BlockSymbolDraftRow | None = self._symbols.get_row(symbol_index)
-                    if row is None or row.get_owner() is not owner or row.get_kind() == BlockSymbolKind.MODE_PARAMETER:
-                        pass
-                    else:
-                        is_parameter: bool = row.get_kind() in (
-                            BlockSymbolKind.PARAMETER, BlockSymbolKind.EVENT_PARAMETER,
-                        )
-                        if is_parameter == (category == BlockSymbolCategory.PARAMETERS):
-                            self.append_source_row(owner_item, self._symbols.index(symbol_index, 0))
+                if category == BlockSymbolCategory.RETAINED_MODES:
+                    mode_index: int
+                    for mode_index in range(self._modes.rowCount()):
+                        mode: RuntimeModeDraft | None = self._modes.get_row(mode_index)
+                        if mode is not None and mode.get_owner() is owner:
+                            self.append_source_row(owner_item, self._modes.index(mode_index, 0))
                         else:
                             pass
+                else:
+                    for symbol_index in range(self._symbols.rowCount()):
+                        row: BlockSymbolDraftRow | None = self._symbols.get_row(symbol_index)
+                        if row is None or row.get_owner() is not owner:
+                            pass
+                        else:
+                            is_parameter: bool = row.get_kind() in (
+                                BlockSymbolKind.PARAMETER, BlockSymbolKind.EVENT_PARAMETER,
+                            )
+                            if is_parameter == (category == BlockSymbolCategory.PARAMETERS):
+                                self.append_source_row(owner_item, self._symbols.index(symbol_index, 0))
+                            else:
+                                pass
         self.rebuilt.emit()
 
     def source_index(self, index: QtCore.QModelIndex) -> QtCore.QModelIndex:
@@ -4582,6 +5273,19 @@ class BlockPropertyTreeModel(QtGui.QStandardItemModel):
         else:
             return None
 
+    def retained_mode_row(self, index: QtCore.QModelIndex) -> RuntimeModeDraft | None:
+        """Return a retained-mode draft for one tree leaf.
+
+        :param index: Tree cell selected or edited by the user.
+        :return: Runtime mode draft or ``None`` for another row type.
+        """
+        source: QtCore.QModelIndex = self.source_index(index)
+        if source.isValid() and source.model() is self._modes:
+            result: RuntimeModeDraft | None = self._modes.get_row(source.row())
+        else:
+            result = None
+        return result
+
     def data(self, index: QtCore.QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> object:
         """Read values directly from the underlying drafts.
 
@@ -4597,6 +5301,8 @@ class BlockPropertyTreeModel(QtGui.QStandardItemModel):
                 return self._structure.data(source.siblingAtColumn(index.column() // 2), role)
             else:
                 return None
+        elif source.model() is self._modes:
+            return self._modes.data(source.siblingAtColumn(index.column()), role)
         else:
             row: BlockSymbolDraftRow | None = self._symbols.get_row(source.row())
         if row is None:
@@ -4625,9 +5331,13 @@ class BlockPropertyTreeModel(QtGui.QStandardItemModel):
             else:
                 return self._symbols.data(source.siblingAtColumn(4), role)
         elif role == Qt.ItemDataRole.ToolTipRole:
-            return str(self._symbols.data(source.siblingAtColumn(4))) + "\n" + self.tr(
-                "Power-flow reference; variable mappings are used for initialization."
-            )
+            external_reference: VarPowerFlowReferenceType | None = row.get_external_reference()
+            if external_reference is not None:
+                return self.tr(
+                    "Power-flow reference; variable mappings are used for initialization."
+                )
+            else:
+                return None
         elif role == Qt.ItemDataRole.DisplayRole:
             reference: ParamPowerFlowReferenceType | VarPowerFlowReferenceType | None = (
                 row.get_static_reference() if row.supports_static_reference() else row.get_external_reference()
@@ -4635,7 +5345,7 @@ class BlockPropertyTreeModel(QtGui.QStandardItemModel):
             if reference is not None:
                 return reference.name
             else:
-                return self.tr("None")
+                return ""
         else:
             return self._symbols.data(source.siblingAtColumn(4), role)
 
@@ -4653,6 +5363,8 @@ class BlockPropertyTreeModel(QtGui.QStandardItemModel):
                 return self._structure.flags(source.siblingAtColumn(1))
             else:
                 return Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
+        elif source.model() is self._modes:
+            return self._modes.flags(source.siblingAtColumn(index.column()))
         else:
             row: BlockSymbolDraftRow | None = self.symbol_row(index)
         if index.column() == 0 and row is not None:
@@ -4687,6 +5399,12 @@ class BlockPropertyTreeModel(QtGui.QStandardItemModel):
                 return self._structure.setData(source.siblingAtColumn(1), value, role)
             else:
                 return False
+        elif source.model() is self._modes:
+            return self._modes.setData(
+                source.siblingAtColumn(index.column()),
+                value,
+                role,
+            )
         else:
             row: BlockSymbolDraftRow | None = self.symbol_row(index)
         if index.column() == 2 and row is not None and row.get_kind() == BlockSymbolKind.EVENT_PARAMETER:
@@ -4838,6 +5556,55 @@ class BlockPropertyValueDelegate(StructuralSettingDelegate):
             super().setModelData(editor, model, index)
 
 
+def get_procedural_logic_menu_groups() -> tuple[tuple[str, tuple[ProceduralLogicType, ...]], ...]:
+    """Return complete presentation groups for procedural insertion actions.
+
+    Every concrete Engine type appears exactly once. The groups shorten visual
+    scanning without introducing another persistent editor-selection state.
+
+    :return: Ordered group labels and their concrete procedural types.
+    """
+    return (
+        (
+            "Sampling and history",
+            (
+                ProceduralLogicType.FixedSample,
+                ProceduralLogicType.SampledValue,
+                ProceduralLogicType.TimeDelay,
+                ProceduralLogicType.MovingAverage,
+            ),
+        ),
+        (
+            "Limits and latches",
+            (
+                ProceduralLogicType.HardSaturation,
+                ProceduralLogicType.GradientLimiter,
+                ProceduralLogicType.FlipFlop,
+                ProceduralLogicType.AnalogFlipFlop,
+                ProceduralLogicType.PickupDropoff,
+                ProceduralLogicType.DelayedThresholdLatch,
+            ),
+        ),
+        (
+            "Events and diagnostics",
+            (
+                ProceduralLogicType.ConditionalDiagnostic,
+                ProceduralLogicType.DelayedSwitchEvent,
+                ProceduralLogicType.ResetOnRisingEdge,
+                ProceduralLogicType.StartupHandover,
+            ),
+        ),
+        (
+            "Switching and modulation",
+            (
+                ProceduralLogicType.ValveState,
+                ProceduralLogicType.ThreePhaseCarrierPwm,
+                ProceduralLogicType.ThreePhaseCarrierSampledModulation,
+            ),
+        ),
+    )
+
+
 class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
     """Property editor content for one Dynamic Model Editor block."""
 
@@ -4858,16 +5625,18 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         "_var_factory",
         "_parameter_model",
         "_symbol_model",
+        "_retained_mode_model",
         "_property_tree_model",
         "_property_tree",
         "_property_search",
         "_expanded_property_groups",
         "_equation_panel",
         "_equations_button",
-        "_runtime_logic_editor",
+        "_runtime_logic_drafts",
         "_new_symbol_owner",
         "_new_symbol_name",
         "_new_symbol_category",
+        "_new_symbol_kind_label",
         "_new_symbol_kind",
         "_new_symbol_exported",
         "_new_state_derivative",
@@ -4879,6 +5648,8 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         "_new_static_reference",
         "_new_static_reference_label",
         "_add_symbol_button",
+        "_procedural_add_button",
+        "_procedural_add_menu",
         "_namespace",
         "_tabs",
         "_equation_buffers",
@@ -4890,7 +5661,6 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         "_dae_search_previous_button",
         "_dae_search_next_button",
         "_dae_search_status",
-        "_dae_highlighter",
         "_validate_code_button",
         "_dae_splitter",
         "_property_tools_splitter",
@@ -4917,7 +5687,8 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                  var_factory: VarFactory,
                  parent: QtWidgets.QWidget | None = None,
                  structural_block_type: BlockType | None = None,
-                 structural_builder: TemplateDefinition | None = None) -> None:
+                 structural_builder: TemplateDefinition | None = None,
+                 dark_theme: bool = False) -> None:
         """
         Create the modal around a detached parameter and equation draft.
 
@@ -4927,6 +5698,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         :param parent: Owning Qt widget.
         :param structural_block_type: Value supplied for ``structural_block_type``.
         :param structural_builder: Value supplied for ``structural_builder``.
+        :param dark_theme: Whether source editors use the dark application palette.
         :return: None.
         """
         super().__init__(parent)
@@ -4963,9 +5735,6 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._var_factory: VarFactory = var_factory
         self._parameter_model: BlockParameterDraftModel = BlockParameterDraftModel(block, self)
         self._symbol_model: BlockSymbolDraftModel = BlockSymbolDraftModel(block, self)
-        self._property_tree_model: BlockPropertyTreeModel = BlockPropertyTreeModel(
-            block, self._symbol_model, self._parameter_model, self._general_structural_model, self,
-        )
         self._property_tree: QtWidgets.QTreeView = QtWidgets.QTreeView(self)
         self._property_search: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
         self._property_search.setClearButtonEnabled(True)
@@ -4981,6 +5750,9 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._new_symbol_owner: QtWidgets.QComboBox = QtWidgets.QComboBox(self)
         self._new_symbol_name: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
         self._new_symbol_category: QtWidgets.QComboBox = QtWidgets.QComboBox(self)
+        self._new_symbol_kind_label: QtWidgets.QLabel = QtWidgets.QLabel(
+            self.tr("Type"), self
+        )
         self._new_symbol_kind: QtWidgets.QComboBox = QtWidgets.QComboBox(self)
         self._new_symbol_exported: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self.tr("Output"), self)
         self._new_state_derivative: QtWidgets.QCheckBox = QtWidgets.QCheckBox(
@@ -5014,22 +5786,66 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             self.tr("Static device mapping"), self
         )
         self._add_symbol_button: QtWidgets.QPushButton = QtWidgets.QPushButton(self.tr("Add symbol"), self)
-        self._namespace: Dict[str, Expr] = build_block_symbol_namespace(block)
-        self._runtime_logic_editor: RuntimeLogicEditorWidget = RuntimeLogicEditorWidget(
-            block,
-            self._namespace,
+        self._procedural_add_button: QtWidgets.QPushButton = QtWidgets.QPushButton(
+            self.tr("+ Add procedural logic"),
             self,
         )
-        self._namespace = self._runtime_logic_editor.build_validation_namespace(self._namespace)
+        self._procedural_add_button.setToolTip(
+            self.tr("Add one procedural behavior to the active equation owner's Python code.")
+        )
+        self._procedural_add_menu: QtWidgets.QMenu = QtWidgets.QMenu(
+            self._procedural_add_button
+        )
+        self._procedural_add_menu.setToolTipsVisible(True)
+        group_label: str
+        grouped_types: tuple[ProceduralLogicType, ...]
+        for group_label, grouped_types in get_procedural_logic_menu_groups():
+            self._procedural_add_menu.addSection(self.tr(group_label))
+            logic_tpe: ProceduralLogicType
+            for logic_tpe in grouped_types:
+                logic_action: QtGui.QAction = self._procedural_add_menu.addAction(
+                    logic_tpe.value.replace("_", " ").title()
+                )
+                logic_action.setData(logic_tpe)
+                procedural_help: str | None = get_procedural_logic_help_by_code_name(
+                    logic_tpe.value
+                )
+                if procedural_help is not None:
+                    logic_action.setToolTip(procedural_help)
+                    logic_action.setStatusTip(procedural_help)
+                else:
+                    pass
+        self._procedural_add_button.setMenu(self._procedural_add_menu)
+        self._namespace: Dict[str, Expr] = build_block_symbol_namespace(block)
         self._tabs: QtWidgets.QTabWidget = self.ui.tab_widget
         self._equation_buffers: List[BlockCodeBuffer] = list()
         child_block: Block
         for child_block in block.get_all_blocks():
             self._equation_buffers.append(BlockCodeBuffer(child_block))
+        self._runtime_logic_drafts: RuntimeLogicDraftCollection = (
+            self._build_runtime_logic_drafts_from_buffers()
+        )
+        self._retained_mode_model: RetainedModeDraftTableModel = RetainedModeDraftTableModel(
+            self._runtime_logic_drafts,
+            self,
+        )
+        self._property_tree_model: BlockPropertyTreeModel = BlockPropertyTreeModel(
+            block,
+            self._symbol_model,
+            self._parameter_model,
+            self._retained_mode_model,
+            self._general_structural_model,
+            self,
+        )
+        self._namespace = self._runtime_logic_drafts.build_validation_namespace(self._namespace)
         self._equation_owner_combo: QtWidgets.QComboBox = QtWidgets.QComboBox(self)
         self._active_equation_buffer_index: int = self._find_initial_equation_buffer_index()
         self._loading_equation_buffer: bool = False
-        self._dae_editor: DaeCodeEditor = DaeCodeEditor(self, self._namespace)
+        self._dae_editor: DaeCodeEditor = DaeCodeEditor(
+            self,
+            self._namespace,
+            dark_theme=dark_theme,
+        )
         self._dae_code_search: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
         self._dae_code_search.setClearButtonEnabled(True)
         self._dae_code_search.setPlaceholderText(self.tr("Search Python code..."))
@@ -5040,10 +5856,6 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._dae_search_next_button.setText(self.tr("Next"))
         self._dae_search_next_button.setEnabled(False)
         self._dae_search_status: QtWidgets.QLabel = QtWidgets.QLabel(self)
-        self._dae_highlighter: DaeCodeHighlighter = DaeCodeHighlighter(
-            self._dae_editor.document(),
-            tuple(self._namespace.keys()),
-        )
         self._refresh_dae_language_context()
         self._validate_code_button: QtWidgets.QPushButton = QtWidgets.QPushButton(
             self.tr("Validate model"), self
@@ -5052,7 +5864,14 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._dae_validation_status_label.setTextInteractionFlags(
             Qt.TextInteractionFlag.TextSelectableByMouse
         )
-        self._dae_validation_status_label.setWordWrap(True)
+        # Validation feedback shares a compact action row with the button. A
+        # wrapped warning can exceed that row's height and become unreadable,
+        # so every result remains a single selectable line.
+        self._dae_validation_status_label.setWordWrap(False)
+        self._dae_validation_status_label.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Fixed,
+        )
         self._dae_validation_status_label.hide()
         self._dae_splitter: QtWidgets.QSplitter = QtWidgets.QSplitter(Qt.Orientation.Horizontal, self)
         self._property_tools_splitter: QtWidgets.QSplitter = QtWidgets.QSplitter(
@@ -5105,12 +5924,24 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             pass
         else:
             self._prepared_to_delete = True
-            self._runtime_logic_editor.prepare_to_delete()
             self._dae_editor.prepare_to_delete()
             self._property_tree.setModel(None)
-            self._dae_highlighter.setDocument(None)
             self._latex_selection_tree.clear()
             self._equation_owner_combo.clear()
+
+    def set_dark_mode(self) -> None:
+        """Apply the dark palette to source editors owned by this dialogue.
+
+        :return: None.
+        """
+        self._dae_editor.set_dark_mode()
+
+    def set_light_mode(self) -> None:
+        """Apply the light palette to source editors owned by this dialogue.
+
+        :return: None.
+        """
+        self._dae_editor.set_light_mode()
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         """Release owned Qt resources before accepting the close event.
@@ -5158,8 +5989,6 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         general_page: QtWidgets.QWidget = self._build_general_page()
         general_index: int = self._tabs.addTab(general_page, self.tr("General options"))
         self._tabs.setTabIcon(general_index, QtGui.QIcon(":/Icons/icons/gear.png"))
-        # Keep runtime data and validation, but defer its UI to a later change.
-        self._runtime_logic_editor.hide()
         if self._special_structural_model.rowCount() > 0:
             special_page: QtWidgets.QWidget = self._build_special_settings_page()
             special_index: int = self._tabs.addTab(special_page, self.tr("Special configuration"))
@@ -5388,6 +6217,49 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         """
         self._filter_property_branch(QtCore.QModelIndex(), search_text.strip().casefold(), False)
 
+    def _select_retained_mode_in_tree(self, owner: Block, mode_name: str) -> None:
+        """Reveal and select one newly staged retained mode.
+
+        :param owner: Direct block receiving the new mode.
+        :param mode_name: Name inserted into the retained-mode dictionary.
+        :return: None.
+        """
+        category_row: int
+        for category_row in range(self._property_tree_model.rowCount()):
+            category_index: QtCore.QModelIndex = self._property_tree_model.index(
+                category_row,
+                0,
+            )
+            category: object = category_index.data(Qt.ItemDataRole.UserRole + 2)
+            if category == BlockSymbolCategory.RETAINED_MODES:
+                owner_row: int
+                for owner_row in range(self._property_tree_model.rowCount(category_index)):
+                    owner_index: QtCore.QModelIndex = self._property_tree_model.index(
+                        owner_row,
+                        0,
+                        category_index,
+                    )
+                    row_owner: object = owner_index.data(Qt.ItemDataRole.UserRole + 1)
+                    if row_owner is owner:
+                        mode_row: int
+                        for mode_row in range(self._property_tree_model.rowCount(owner_index)):
+                            mode_index: QtCore.QModelIndex = self._property_tree_model.index(
+                                mode_row,
+                                0,
+                                owner_index,
+                            )
+                            if str(mode_index.data()) == mode_name:
+                                self._property_tree.expand(category_index)
+                                self._property_tree.expand(owner_index)
+                                self._property_tree.setCurrentIndex(mode_index)
+                                self._property_tree.scrollTo(mode_index)
+                            else:
+                                pass
+                    else:
+                        pass
+            else:
+                pass
+
     def _filter_property_branch(self, parent: QtCore.QModelIndex, query: str, ancestor_matches: bool) -> bool:
         """Apply a recursive visibility filter without sorting the DAE lists.
 
@@ -5427,7 +6299,9 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         :return: None.
         """
         row: BlockSymbolDraftRow | None = self._property_tree_model.symbol_row(index)
-        branch: QtCore.QModelIndex = index.parent() if row is not None else index.siblingAtColumn(0)
+        mode: RuntimeModeDraft | None = self._property_tree_model.retained_mode_row(index)
+        is_leaf: bool = row is not None or mode is not None
+        branch: QtCore.QModelIndex = index.parent() if is_leaf else index.siblingAtColumn(0)
         owner: object = branch.data(Qt.ItemDataRole.UserRole + 1)
         category: object = branch.data(Qt.ItemDataRole.UserRole + 2)
         if isinstance(owner, Block):
@@ -5436,7 +6310,11 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         else:
             pass
         if isinstance(category, BlockSymbolCategory):
-            self._new_symbol_category.setCurrentIndex(self._new_symbol_category.findData(category))
+            category_index: int = self._new_symbol_category.findData(category)
+            if category_index >= 0:
+                self._new_symbol_category.setCurrentIndex(category_index)
+            else:
+                pass
         else:
             pass
 
@@ -5448,7 +6326,8 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         """
         index: QtCore.QModelIndex = self._property_tree.currentIndex().siblingAtColumn(0)
         row: BlockSymbolDraftRow | None = self._property_tree_model.symbol_row(index)
-        if row is not None:
+        mode: RuntimeModeDraft | None = self._property_tree_model.retained_mode_row(index)
+        if row is not None or mode is not None:
             self._property_tree.edit(index)
         else:
             pass
@@ -5459,7 +6338,10 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
 
         :return: None.
         """
-        if self._property_tree_model.symbol_row(self._property_tree.currentIndex()) is not None:
+        selected_index: QtCore.QModelIndex = self._property_tree.currentIndex()
+        row: BlockSymbolDraftRow | None = self._property_tree_model.symbol_row(selected_index)
+        mode: RuntimeModeDraft | None = self._property_tree_model.retained_mode_row(selected_index)
+        if row is not None or mode is not None:
             self._delete_selected_symbol(self._property_tree)
         else:
             pass
@@ -5533,6 +6415,10 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         code_search_layout.addWidget(self._dae_search_status)
         code_search_layout.addWidget(self._dae_search_previous_button)
         code_search_layout.addWidget(self._dae_search_next_button)
+        # Procedural logic is an insertion action, not an editor-selection
+        # state. Its menu therefore belongs to the code toolbar rather than
+        # beside the equation-owner selector.
+        code_search_layout.addWidget(self._procedural_add_button)
         python_layout.addLayout(code_search_layout)
         self._dae_editor.setPlainText(self._equation_buffers[self._active_equation_buffer_index].get_code())
         self._dae_editor.setLineWrapMode(QtWidgets.QPlainTextEdit.LineWrapMode.NoWrap)
@@ -5698,6 +6584,10 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._new_symbol_name.setPlaceholderText(self.tr("Enter a name"))
         self._new_symbol_category.addItem(BlockSymbolCategory.VARIABLES.value, BlockSymbolCategory.VARIABLES)
         self._new_symbol_category.addItem(BlockSymbolCategory.PARAMETERS.value, BlockSymbolCategory.PARAMETERS)
+        self._new_symbol_category.addItem(
+            BlockSymbolCategory.RETAINED_MODES.value,
+            BlockSymbolCategory.RETAINED_MODES,
+        )
 
         variable_options_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout(
             self._new_variable_options
@@ -5752,7 +6642,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         add_layout.addWidget(self._new_symbol_name, 3, 0)
         add_layout.addWidget(QtWidgets.QLabel(self.tr("Symbol category"), add_group), 4, 0)
         add_layout.addWidget(self._new_symbol_category, 5, 0)
-        add_layout.addWidget(QtWidgets.QLabel(self.tr("Type"), add_group), 6, 0)
+        add_layout.addWidget(self._new_symbol_kind_label, 6, 0)
         add_layout.addWidget(self._new_symbol_kind, 7, 0)
         add_layout.addWidget(self._new_variable_options, 8, 0)
         add_layout.addWidget(self._new_parameter_value_label, 8, 0)
@@ -5806,8 +6696,12 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._new_symbol_category.currentIndexChanged.connect(self.update_new_symbol_category)
         self._new_symbol_kind.currentIndexChanged.connect(self.update_new_symbol_controls)
         self._add_symbol_button.clicked.connect(self.add_staged_symbol)
+        self._procedural_add_menu.triggered.connect(self.insert_procedural_logic)
         self._symbol_model.dataChanged.connect(self.on_symbol_draft_changed)
-        self._runtime_logic_editor.changed.connect(self.on_runtime_logic_changed)
+        self._retained_mode_model.dataChanged.connect(self.on_retained_mode_draft_changed)
+        self._retained_mode_model.modeNameChanged.connect(
+            self.on_retained_mode_name_changed
+        )
         self._property_tree.customContextMenuRequested.connect(self.show_symbol_context_menu)
         self._property_tree.clicked.connect(self.on_property_selected)
         self._property_search.textChanged.connect(self.filter_properties)
@@ -6284,7 +7178,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                                 bottom_right: QtCore.QModelIndex,
                                 roles: List[int]) -> None:
         """
-        Rebuild validation names after an editable symbol cell changes.
+        Rebuild editing names after an editable symbol cell changes.
 
         :param top_left: Value supplied for ``top_left``.
         :param bottom_right: Value supplied for ``bottom_right``.
@@ -6300,30 +7194,146 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             # language-context refresh after installing that source.
             pass
         else:
-            try:
-                self._namespace = self._build_joint_validation_namespace()
-            except ValueError as error:
-                self._show_validation_error(str(error))
-            else:
-                self._refresh_dae_language_context()
-                self._clear_dae_validation_feedback()
-
-    @QtCore.Slot()
-    def on_runtime_logic_changed(self) -> None:
-        """Refresh the joint namespace after a retained-mode draft changes.
-
-        :return: None.
-        """
-        try:
-            # New or removed retained modes immediately participate in DAE
-            # highlighting and validation, while the source block remains
-            # untouched until Apply succeeds.
-            self._namespace = self._build_joint_validation_namespace()
-        except (TypeError, ValueError) as error:
-            self._show_validation_error(str(error))
-        else:
+            # A cell edit is a draft operation. Keep language assistance in
+            # sync without rejecting the edit because another code section is
+            # temporarily incomplete.
+            self._namespace = self._build_staged_editing_namespace()
             self._refresh_dae_language_context()
             self._clear_dae_validation_feedback()
+
+    @QtCore.Slot(QtCore.QModelIndex, QtCore.QModelIndex, list)
+    def on_retained_mode_draft_changed(
+            self,
+            top_left: QtCore.QModelIndex,
+            bottom_right: QtCore.QModelIndex,
+            roles: List[int],
+    ) -> None:
+        """Project an inline retained-mode name edit back into its owner buffer.
+
+        :param top_left: First changed retained-mode source index.
+        :param bottom_right: Last changed retained-mode source index.
+        :param roles: Qt roles changed by the inline editor.
+        :return: None.
+        """
+        _unused_bottom_right: QtCore.QModelIndex = bottom_right
+        _unused_roles: List[int] = roles
+        mode: RuntimeModeDraft | None = self._retained_mode_model.get_row(top_left.row())
+        if mode is None or self._loading_equation_buffer or top_left.column() != 0:
+            pass
+        else:
+            synchronized: bool = self._synchronize_retained_mode_owner_source(
+                mode.get_owner()
+            )
+            if synchronized:
+                self._namespace = self._build_staged_editing_namespace()
+                self._refresh_dae_language_context()
+                self._clear_dae_validation_feedback()
+            else:
+                pass
+
+    @QtCore.Slot(object, str, str)
+    def on_retained_mode_name_changed(self,
+                                      owner_object: object,
+                                      old_name: str,
+                                      new_name: str) -> None:
+        """Rename retained-mode references throughout every staged code buffer.
+
+        Retained modes share the recursive model namespace, so equations or
+        procedural entries owned by another internal block may consume them.
+        Token-aware replacement keeps all those staged references aligned while
+        the Engine identities remain untouched until Apply.
+
+        :param owner_object: Direct mode owner emitted by the source model.
+        :param old_name: Previous retained-mode identifier.
+        :param new_name: Accepted retained-mode identifier.
+        :return: None.
+        """
+        if not isinstance(owner_object, Block) or old_name == new_name:
+            pass
+        else:
+            buffer_index: int
+            buffer: BlockCodeBuffer
+            for buffer_index, buffer in enumerate(self._equation_buffers):
+                updated_code: str = replace_dae_identifier(
+                    buffer.get_code(),
+                    old_name,
+                    new_name,
+                )
+                buffer.set_code(updated_code)
+                if buffer_index == self._active_equation_buffer_index:
+                    self._loading_equation_buffer = True
+                    self._dae_editor.setPlainText(updated_code)
+                    self._loading_equation_buffer = False
+                else:
+                    pass
+
+    def _synchronize_retained_mode_owner_source(self, owner: Block) -> bool:
+        """Write active retained-mode drafts into one owner's code buffer.
+
+        :param owner: Direct block whose mode dictionary changed.
+        :return: Whether the source buffer was synchronized.
+        """
+        target_index: int = self._find_equation_buffer_index(owner)
+        if target_index < 0:
+            self._show_validation_error(
+                self.tr("The retained mode owner has no Python-code buffer.")
+            )
+            result: bool = False
+        else:
+            target_buffer: BlockCodeBuffer = self._equation_buffers[target_index]
+            try:
+                updated_code: str = synchronize_retained_mode_source(
+                    code=target_buffer.get_code(),
+                    owner=owner,
+                    modes=self._runtime_logic_drafts.get_active_modes(),
+                )
+            except (TypeError, ValueError) as error:
+                self._show_validation_error(str(error))
+                result = False
+            else:
+                target_buffer.set_code(updated_code)
+                if target_index == self._active_equation_buffer_index:
+                    self._loading_equation_buffer = True
+                    self._dae_editor.setPlainText(updated_code)
+                    self._loading_equation_buffer = False
+                else:
+                    pass
+                result = True
+        return result
+
+    def _find_equation_buffer_index(self, owner: Block) -> int:
+        """Find the Python-code buffer belonging to one direct block owner.
+
+        Every recursive block normally owns exactly one buffer. Centralizing
+        this identity lookup keeps all add, delete, and synchronization paths
+        consistent when a structural rebuild replaces child objects.
+
+        :param owner: Direct block whose buffer is requested.
+        :return: Buffer index, or ``-1`` when the owner is no longer present.
+        """
+        result: int = -1
+        buffer_index: int
+        buffer: BlockCodeBuffer
+        for buffer_index, buffer in enumerate(self._equation_buffers):
+            if buffer.get_block() is owner:
+                result = buffer_index
+            else:
+                pass
+        return result
+
+    def _build_runtime_logic_drafts_from_buffers(self) -> RuntimeLogicDraftCollection:
+        """Parse retained modes and procedural entries from every owner buffer.
+
+        :return: Detached recursive runtime draft collection.
+        """
+        owner_code: List[tuple[Block, str]] = list()
+        buffer: BlockCodeBuffer
+        for buffer in self._equation_buffers:
+            owner_code.append((buffer.get_block(), buffer.get_code()))
+        return build_runtime_logic_drafts_from_code(
+            root=self._block,
+            owner_code=owner_code,
+        )
 
     def _build_joint_validation_namespace(self) -> Dict[str, Expr]:
         """Build the staged DAE namespace including retained runtime modes.
@@ -6333,7 +7343,24 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         symbol_namespace: Dict[str, Expr] = self._symbol_model.build_validation_namespace(
             build_block_symbol_namespace(self._block)
         )
-        return self._runtime_logic_editor.build_validation_namespace(symbol_namespace)
+        self._runtime_logic_drafts = self._build_runtime_logic_drafts_from_buffers()
+        self._retained_mode_model.reload(self._runtime_logic_drafts)
+        return self._runtime_logic_drafts.build_validation_namespace(symbol_namespace)
+
+    def _build_staged_editing_namespace(self) -> Dict[str, Expr]:
+        """Build language assistance from staged symbols without model validation.
+
+        The detached runtime collection is intentionally not rebuilt from the
+        source buffers here. Python code may contain placeholders while the
+        user adds the retained modes, variables, or parameters that will replace
+        them. Validate model and Apply changes perform the authoritative parse.
+
+        :return: Permissive namespace used by completion and highlighting.
+        """
+        symbol_namespace: Dict[str, Expr] = self._symbol_model.build_editing_namespace(
+            build_block_symbol_namespace(self._block)
+        )
+        return self._runtime_logic_drafts.build_validation_namespace(symbol_namespace)
 
     def _refresh_dae_language_context(self) -> None:
         """Synchronize parser, completer, and highlighter after draft changes.
@@ -6343,14 +7370,18 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         active_buffer: BlockCodeBuffer = self._equation_buffers[
             self._active_equation_buffer_index
         ]
+        retained_mode_names: List[str] = list()
+        runtime_mode: RuntimeModeDraft
+        for runtime_mode in self._runtime_logic_drafts.get_active_modes():
+            retained_mode_names.append(runtime_mode.get_name())
         language_context: DaeLanguageContext = build_dialogue_dae_language_context(
             namespace=self._namespace,
             symbol_model=self._symbol_model,
             root_block=self._block,
             equation_owner=active_buffer.get_block(),
+            retained_mode_names=retained_mode_names,
         )
         self._dae_editor.set_language_context(language_context)
-        self._dae_highlighter.set_symbol_names(tuple(self._namespace.keys()))
 
     @QtCore.Slot(int)
     def update_new_symbol_category(self, unused_index: int = 0) -> None:
@@ -6386,8 +7417,19 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                     )
                 else:
                     pass
+        elif selected_category == BlockSymbolCategory.RETAINED_MODES:
+            self._new_symbol_kind.addItem(
+                self.tr("Retained mode"),
+                BlockSymbolKind.MODE_PARAMETER,
+            )
         else:
             pass
+        # Retained modes currently have one and only one supported kind. Keep
+        # that value in the model but do not ask the user to make a choice that
+        # does not exist. Other categories restore the selector immediately.
+        shows_kind_selector: bool = selected_category != BlockSymbolCategory.RETAINED_MODES
+        self._new_symbol_kind_label.setVisible(shows_kind_selector)
+        self._new_symbol_kind.setVisible(shows_kind_selector)
         self.update_new_symbol_controls()
 
     @QtCore.Slot(int)
@@ -6413,10 +7455,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             # Inputs receive their value from a graphical incoming connection.
             # A newly declared input must therefore not offer a second,
             # conflicting power-flow initialization source.
-            supports_external_reference: bool = (
-                temporary_row.supports_external_reference()
-                and selected_data != BlockSymbolKind.INPUT
-            )
+            supports_external_reference: bool = temporary_row.supports_external_reference()
             self._new_symbol_exported.setVisible(supports_export)
             self._new_symbol_exported.setEnabled(supports_export)
             self._new_state_derivative.setVisible(selected_data == BlockSymbolKind.STATE)
@@ -6458,7 +7497,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
     @QtCore.Slot()
     def add_staged_symbol(self) -> None:
         """
-        Add one validated detached symbol row to the selected block.
+        Add one detached symbol row to the selected block draft.
 
         :return: None.
         """
@@ -6471,31 +7510,293 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             self._show_validation_error(self.tr("Select a valid symbol type."))
         elif not isinstance(selected_owner, Block):
             self._show_validation_error(self.tr("Select a valid owner block."))
+        elif selected_data == BlockSymbolKind.MODE_PARAMETER:
+            self._insert_retained_mode(
+                owner=selected_owner,
+                name=name,
+            )
         else:
+            creates_derivative: bool = self._new_state_derivative.isChecked()
+            external_reference: VarPowerFlowReferenceType | None = (
+                self._get_selected_new_external_reference(selected_data)
+            )
             self._symbol_model.add_symbol(
                 owner=selected_owner,
                 name=name,
                 kind=selected_data,
                 exported=self._new_symbol_exported.isChecked(),
                 value=self._new_parameter_value.value(),
-                create_derivative=self._new_state_derivative.isChecked(),
-                external_reference=self._get_selected_new_external_reference(selected_data),
+                create_derivative=creates_derivative,
+                external_reference=external_reference,
                 static_reference=self._get_selected_new_static_reference(selected_data),
             )
+            # Adding a declaration must remain possible while procedural code
+            # still contains placeholders that refer to that future symbol.
+            # Complete semantic validation is deferred to Validate and Apply.
+            self._namespace = self._build_staged_editing_namespace()
+            self._new_symbol_name.clear()
+            self._synchronize_dae_variable_declarations_for_block(selected_owner)
+            initialization_inserted: bool = self._insert_default_initialization_for_new_symbol(
+                owner=selected_owner,
+                name=name,
+                kind=selected_data,
+                external_reference=external_reference,
+                creates_derivative=creates_derivative,
+            )
+            self._refresh_dae_language_context()
+            if initialization_inserted:
+                self._clear_dae_validation_feedback()
+            else:
+                pass
+
+    def _insert_default_initialization_for_new_symbol(
+            self,
+            owner: Block,
+            name: str,
+            kind: BlockSymbolKind,
+            external_reference: VarPowerFlowReferenceType | None,
+            creates_derivative: bool,
+    ) -> bool:
+        """Insert deterministic initialization entries for a new variable.
+
+        Inputs are supplied by their graphical connection, parameters own their
+        value dictionaries, and power-flow variables already have an external
+        initialization source. Block-owned algebraic/state variables receive a
+        zero initial expression; a requested derivative receives its own zero
+        derivative initialization.
+
+        :param owner: Direct block receiving the staged symbol.
+        :param name: New variable identifier.
+        :param kind: Primary staged variable role.
+        :param external_reference: Optional power-flow initialization source.
+        :param creates_derivative: Whether a state also created ``d_<name>``.
+        :return: Whether the owner source remained synchronized.
+        """
+        target_index: int = self._find_equation_buffer_index(owner)
+        if target_index < 0:
+            self._show_validation_error(
+                self.tr("The selected owner has no Python-code buffer.")
+            )
+            result: bool = False
+        else:
+            target_buffer: BlockCodeBuffer = self._equation_buffers[target_index]
+            updated_code: str = target_buffer.get_code()
+            owns_initial_expression: bool = kind in (
+                BlockSymbolKind.STATE,
+                BlockSymbolKind.ALGEBRAIC,
+                BlockSymbolKind.OUTPUT_ONLY,
+            )
             try:
-                self._namespace = self._build_joint_validation_namespace()
-            except ValueError as error:
-                self._symbol_model.remove_new_symbol(self._symbol_model.rowCount() - 1)
-                if selected_data == BlockSymbolKind.STATE and self._new_state_derivative.isChecked():
-                    self._symbol_model.remove_new_symbol(self._symbol_model.rowCount() - 1)
+                if owns_initial_expression and external_reference is None:
+                    updated_code = insert_source_before_section_closing_line(
+                        code=updated_code,
+                        section_name="init_eqs",
+                        insertion_lines=list((f"    {name}: 0.0,",)),
+                    )
                 else:
                     pass
+                if kind == BlockSymbolKind.STATE and creates_derivative:
+                    updated_code = insert_source_before_section_closing_line(
+                        code=updated_code,
+                        section_name="diff_init_eqs",
+                        insertion_lines=list((f"    d_{name}: 0.0,",)),
+                    )
+                else:
+                    pass
+            except (TypeError, ValueError) as error:
                 self._show_validation_error(str(error))
+                result = False
             else:
-                self._new_symbol_name.clear()
-                self._synchronize_dae_variable_declarations_for_block(selected_owner)
-                self._refresh_dae_language_context()
-                self._clear_dae_validation_feedback()
+                target_buffer.set_code(updated_code)
+                if target_index == self._active_equation_buffer_index:
+                    self._loading_equation_buffer = True
+                    self._dae_editor.setPlainText(updated_code)
+                    self._loading_equation_buffer = False
+                else:
+                    pass
+                result = True
+        return result
+
+    def _remove_initialization_for_deleted_symbol(self,
+                                                  owner: Block,
+                                                  name: str,
+                                                  kind: BlockSymbolKind,
+                                                  associated_derivative_names: Sequence[str]) -> bool:
+        """Remove initialization entries that cannot survive a symbol deletion.
+
+        :param owner: Direct block losing the staged symbol.
+        :param name: Deleted symbol identifier.
+        :param kind: Deleted symbol's primary DAE role.
+        :param associated_derivative_names: Derivatives removed with a state.
+        :return: Whether the owner's code buffer remained synchronized.
+        """
+        target_index: int = self._find_equation_buffer_index(owner)
+        if target_index < 0:
+            self._show_validation_error(
+                self.tr("The selected owner has no Python-code buffer.")
+            )
+            result: bool = False
+        else:
+            target_buffer: BlockCodeBuffer = self._equation_buffers[target_index]
+            updated_code: str = target_buffer.get_code()
+            ordinary_names: List[str] = list()
+            derivative_names: List[str] = list()
+            if kind in (
+                    BlockSymbolKind.STATE,
+                    BlockSymbolKind.ALGEBRAIC,
+                    BlockSymbolKind.OUTPUT_ONLY):
+                ordinary_names.append(name)
+            else:
+                pass
+            if kind == BlockSymbolKind.STATE:
+                derivative_names.extend(associated_derivative_names)
+            elif kind == BlockSymbolKind.DIFFERENTIAL:
+                derivative_names.append(name)
+            else:
+                pass
+            try:
+                updated_code = remove_source_dictionary_entries(
+                    code=updated_code,
+                    section_name="init_eqs",
+                    entry_names=ordinary_names,
+                )
+                updated_code = remove_source_dictionary_entries(
+                    code=updated_code,
+                    section_name="diff_init_eqs",
+                    entry_names=derivative_names,
+                )
+            except (TypeError, ValueError) as error:
+                self._show_validation_error(str(error))
+                result = False
+            else:
+                target_buffer.set_code(updated_code)
+                if target_index == self._active_equation_buffer_index:
+                    self._loading_equation_buffer = True
+                    self._dae_editor.setPlainText(updated_code)
+                    self._loading_equation_buffer = False
+                else:
+                    pass
+                result = True
+        return result
+
+    def _insert_retained_mode(
+            self,
+            owner: Block,
+            name: str,
+    ) -> None:
+        """Insert a zero-initialized retained mode into its owner's source.
+
+        :param owner: Direct block owner selected in the add-symbol form.
+        :param name: New retained-mode identifier.
+        :return: None.
+        """
+        initial_expression: str = "0.0"
+        target_index: int = self._find_equation_buffer_index(owner)
+        if target_index < 0:
+            self._show_validation_error(self.tr("The selected owner has no Python-code buffer."))
+            return
+        else:
+            target_buffer: BlockCodeBuffer = self._equation_buffers[target_index]
+            previous_code: str = target_buffer.get_code()
+
+        try:
+            updated_code: str = insert_source_before_section_closing_line(
+                code=previous_code,
+                section_name="retained_modes",
+                insertion_lines=list((f"    {name}: {initial_expression},",)),
+            )
+        except (TypeError, ValueError) as error:
+            self._show_validation_error(str(error))
+        else:
+            # Stage the declaration both in source and in the lightweight
+            # runtime collection. Do not parse unrelated procedural entries:
+            # they may intentionally remain incomplete until this mode exists.
+            target_buffer.set_code(updated_code)
+            self._runtime_logic_drafts.add_mode(
+                owner=owner,
+                name=name,
+                initial_expression=initial_expression,
+            )
+            self._retained_mode_model.reload(self._runtime_logic_drafts)
+            self._namespace = self._build_staged_editing_namespace()
+            self._new_symbol_name.clear()
+            if target_index == self._active_equation_buffer_index:
+                self._loading_equation_buffer = True
+                self._dae_editor.setPlainText(updated_code)
+                self._loading_equation_buffer = False
+            else:
+                # The retained mode belongs to the selected add-symbol owner.
+                # Show that owner's buffer immediately so the new dictionary
+                # entry is visible instead of leaving an unrelated owner in the
+                # Python editor and making the successful insertion look lost.
+                self._equation_owner_combo.setCurrentIndex(target_index)
+            self._refresh_dae_language_context()
+            self._clear_dae_validation_feedback()
+            self._select_retained_mode_in_tree(owner, name)
+
+    @QtCore.Slot(QtGui.QAction)
+    def insert_procedural_logic(self, action: QtGui.QAction) -> None:
+        """Insert a complete typed procedural skeleton into the active owner.
+
+        :param action: Menu action carrying the selected procedural type.
+        :return: None.
+        """
+        selected_data: object = action.data()
+        if not isinstance(selected_data, ProceduralLogicType) or selected_data == ProceduralLogicType.Base:
+            self._show_validation_error(self.tr("Select a valid procedural logic type."))
+            return
+        else:
+            active_buffer: BlockCodeBuffer = self._equation_buffers[
+                self._active_equation_buffer_index
+            ]
+            relative_lines: List[str]
+            first_placeholder: str | None
+            relative_lines, first_placeholder = build_procedural_logic_call_lines(
+                selected_data
+            )
+            snippet_lines: List[str] = list()
+            relative_line: str
+            for relative_line in relative_lines:
+                snippet_lines.append(f"    {relative_line}")
+        try:
+            updated_code: str = insert_source_before_section_closing_line(
+                code=active_buffer.get_code(),
+                section_name="procedural_logic",
+                insertion_lines=snippet_lines,
+            )
+        except ValueError as error:
+            self._show_validation_error(str(error))
+        else:
+            active_buffer.set_code(updated_code)
+            self._loading_equation_buffer = True
+            self._dae_editor.setPlainText(updated_code)
+            self._loading_equation_buffer = False
+            # Place the caret at the first required reference or text value so
+            # insertion naturally continues as an edit instead of jumping to
+            # the beginning of a potentially long model source.
+            inserted_source: str = "\n".join(snippet_lines)
+            inserted_start: int = updated_code.rfind(inserted_source)
+            if first_placeholder is not None and inserted_start >= 0:
+                placeholder_start: int = updated_code.find(
+                    first_placeholder,
+                    inserted_start,
+                )
+            else:
+                placeholder_start = -1
+            cursor: QtGui.QTextCursor = self._dae_editor.textCursor()
+            if placeholder_start >= 0 and first_placeholder is not None:
+                cursor.setPosition(placeholder_start)
+                cursor.setPosition(
+                    placeholder_start + len(first_placeholder),
+                    QtGui.QTextCursor.MoveMode.KeepAnchor,
+                )
+            elif inserted_start >= 0:
+                cursor.setPosition(inserted_start)
+            else:
+                cursor.movePosition(QtGui.QTextCursor.MoveOperation.End)
+            self._dae_editor.setTextCursor(cursor)
+            self._dae_editor.setFocus()
+            self._clear_dae_validation_feedback()
 
     def _synchronize_dae_variable_declarations_for_block(self, owner: Block) -> None:
         """Project one owner's staged variable order into its DAE buffer.
@@ -6515,40 +7816,41 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             owner,
             BlockSymbolKind.DIFFERENTIAL,
         )
-        buffer_index: int
-        equation_buffer: BlockCodeBuffer
-        for buffer_index, equation_buffer in enumerate(self._equation_buffers):
-            if equation_buffer.get_block() is owner:
-                previous_code: str = equation_buffer.get_code()
-                updated_code: str = synchronize_dae_variable_declarations(
-                    code=previous_code,
-                    state_names=state_names,
-                    algebraic_names=algebraic_names,
-                    differential_names=differential_names,
-                )
-                if updated_code != previous_code:
-                    equation_buffer.set_code(updated_code)
-                    if buffer_index == self._active_equation_buffer_index:
-                        previous_cursor: QtGui.QTextCursor = self._dae_editor.textCursor()
-                        previous_length: int = len(previous_code)
-                        position_from_end: int = previous_length - previous_cursor.position()
-                        anchor_from_end: int = previous_length - previous_cursor.anchor()
-                        updated_length: int = len(updated_code)
-                        updated_position: int = max(0, updated_length - position_from_end)
-                        updated_anchor: int = max(0, updated_length - anchor_from_end)
-                        self._loading_equation_buffer = True
-                        self._dae_editor.setPlainText(updated_code)
-                        self._loading_equation_buffer = False
-                        restored_cursor: QtGui.QTextCursor = self._dae_editor.textCursor()
-                        restored_cursor.setPosition(min(updated_anchor, updated_length))
-                        restored_cursor.setPosition(
-                            min(updated_position, updated_length),
-                            QtGui.QTextCursor.MoveMode.KeepAnchor,
-                        )
-                        self._dae_editor.setTextCursor(restored_cursor)
-                        self.update_dae_code_search(self._dae_code_search.text())
-                    else:
-                        pass
+        buffer_index: int = self._find_equation_buffer_index(owner)
+        if buffer_index < 0:
+            self._show_validation_error(
+                self.tr("The selected owner has no Python-code buffer.")
+            )
+        else:
+            equation_buffer: BlockCodeBuffer = self._equation_buffers[buffer_index]
+            previous_code: str = equation_buffer.get_code()
+            updated_code: str = synchronize_dae_variable_declarations(
+                code=previous_code,
+                state_names=state_names,
+                algebraic_names=algebraic_names,
+                differential_names=differential_names,
+            )
+            if updated_code != previous_code:
+                equation_buffer.set_code(updated_code)
+                if buffer_index == self._active_equation_buffer_index:
+                    previous_cursor: QtGui.QTextCursor = self._dae_editor.textCursor()
+                    previous_length: int = len(previous_code)
+                    position_from_end: int = previous_length - previous_cursor.position()
+                    anchor_from_end: int = previous_length - previous_cursor.anchor()
+                    updated_length: int = len(updated_code)
+                    updated_position: int = max(0, updated_length - position_from_end)
+                    updated_anchor: int = max(0, updated_length - anchor_from_end)
+                    self._loading_equation_buffer = True
+                    self._dae_editor.setPlainText(updated_code)
+                    self._loading_equation_buffer = False
+                    restored_cursor: QtGui.QTextCursor = self._dae_editor.textCursor()
+                    restored_cursor.setPosition(min(updated_anchor, updated_length))
+                    restored_cursor.setPosition(
+                        min(updated_position, updated_length),
+                        QtGui.QTextCursor.MoveMode.KeepAnchor,
+                    )
+                    self._dae_editor.setTextCursor(restored_cursor)
+                    self.update_dae_code_search(self._dae_code_search.text())
                 else:
                     pass
             else:
@@ -6570,7 +7872,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             False,
             "0.0",
         )
-        if temporary_row.supports_external_reference() and selected_kind != BlockSymbolKind.INPUT:
+        if temporary_row.supports_external_reference():
             selected_reference: object = self._new_external_reference.currentData()
             if isinstance(selected_reference, VarPowerFlowReferenceType):
                 result: VarPowerFlowReferenceType | None = selected_reference
@@ -6606,7 +7908,9 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         :return: None.
         """
         index: QtCore.QModelIndex = self._property_tree.indexAt(position)
-        if self._property_tree_model.symbol_row(index) is not None:
+        row: BlockSymbolDraftRow | None = self._property_tree_model.symbol_row(index)
+        mode: RuntimeModeDraft | None = self._property_tree_model.retained_mode_row(index)
+        if row is not None or mode is not None:
             self._show_symbol_context_menu(self._property_tree, position)
         else:
             pass
@@ -6625,8 +7929,11 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             table.setCurrentIndex(clicked_index)
             menu: QtWidgets.QMenu = QtWidgets.QMenu(table)
             source_row: BlockSymbolDraftRow | None = self._get_selected_symbol_row(table)
+            source_mode: RuntimeModeDraft | None = self._property_tree_model.retained_mode_row(
+                clicked_index
+            )
             rename_action: QtGui.QAction | None
-            if source_row is not None:
+            if source_row is not None or source_mode is not None:
                 rename_action = menu.addAction(self.tr("Rename"))
             else:
                 rename_action = None
@@ -6773,7 +8080,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         # updated active buffer.
         self._loading_equation_buffer = True
         self._symbol_model.refresh_existing_names()
-        self._namespace = self._build_joint_validation_namespace()
+        self._namespace = self._build_staged_editing_namespace()
         active_buffer: BlockCodeBuffer = self._equation_buffers[self._active_equation_buffer_index]
         self._dae_editor.setPlainText(active_buffer.get_code())
         self._refresh_dae_language_context()
@@ -6797,24 +8104,91 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             pass
         proxy_model: QtCore.QAbstractItemModel | None = table.model()
         removed_owner: Block | None = None
+        removed_mode_owner: Block | None = None
+        removed_name: str = ""
+        removed_kind: BlockSymbolKind | None = None
+        removed_derivative_names: List[str] = list()
+        removal_message: str = ""
         if isinstance(proxy_model, BlockPropertyTreeModel):
             source_index: QtCore.QModelIndex = proxy_model.source_index(selected_rows[0])
-            selected_row: BlockSymbolDraftRow | None = self._symbol_model.get_row(source_index.row())
-            if selected_row is not None:
-                removed_owner = selected_row.get_owner()
+            if source_index.model() is self._retained_mode_model:
+                selected_mode: RuntimeModeDraft | None = self._retained_mode_model.get_row(
+                    source_index.row()
+                )
+                if selected_mode is not None:
+                    removed_mode_owner = selected_mode.get_owner()
+                else:
+                    pass
+                removed: bool
+                removed, removal_message = self._retained_mode_model.remove_mode(
+                    source_index.row()
+                )
             else:
-                pass
-            removed: bool = self._symbol_model.remove_symbol(source_index.row())
+                selected_row: BlockSymbolDraftRow | None = self._symbol_model.get_row(
+                    source_index.row()
+                )
+                if selected_row is not None:
+                    removed_owner = selected_row.get_owner()
+                    removed_name = selected_row.get_name()
+                    removed_kind = selected_row.get_kind()
+                    if removed_kind == BlockSymbolKind.STATE:
+                        selected_variable: Var | None = selected_row.get_variable()
+                        candidate_index: int
+                        for candidate_index in range(self._symbol_model.rowCount()):
+                            candidate_row: BlockSymbolDraftRow | None = self._symbol_model.get_row(
+                                candidate_index
+                            )
+                            if candidate_row is not None:
+                                candidate_variable: Var | None = candidate_row.get_variable()
+                                staged_derivative: bool = (
+                                    candidate_row.get_kind() == BlockSymbolKind.DIFFERENTIAL
+                                    and candidate_row.get_derivative_base_row() is selected_row
+                                )
+                                existing_derivative: bool = (
+                                    candidate_row.get_kind() == BlockSymbolKind.DIFFERENTIAL
+                                    and selected_variable is not None
+                                    and candidate_variable is not None
+                                    and candidate_variable.base_var is selected_variable
+                                )
+                                if staged_derivative or existing_derivative:
+                                    removed_derivative_names.append(candidate_row.get_name())
+                                else:
+                                    pass
+                            else:
+                                pass
+                    else:
+                        pass
+                else:
+                    pass
+                removed = self._symbol_model.remove_symbol(source_index.row())
         else:
             removed = False
         if removed:
-            if removed_owner is not None:
+            if removed_mode_owner is not None:
+                synchronized: bool = self._synchronize_retained_mode_owner_source(
+                    removed_mode_owner
+                )
+            elif removed_owner is not None:
                 self._synchronize_dae_variable_declarations_for_block(removed_owner)
+                if removed_kind is not None:
+                    synchronized = self._remove_initialization_for_deleted_symbol(
+                        owner=removed_owner,
+                        name=removed_name,
+                        kind=removed_kind,
+                        associated_derivative_names=removed_derivative_names,
+                    )
+                else:
+                    synchronized = False
+            else:
+                synchronized = False
+            if synchronized:
+                self._namespace = self._build_staged_editing_namespace()
+                self._refresh_dae_language_context()
+                self._clear_dae_validation_feedback()
             else:
                 pass
-            self._namespace = self._build_joint_validation_namespace()
-            self._refresh_dae_language_context()
-            self._clear_dae_validation_feedback()
+        elif len(removal_message) > 0:
+            self._show_validation_error(removal_message)
         else:
             pass
 
@@ -6882,7 +8256,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             return False
         else:
             self._dae_editor.set_diagnostics(list())
-            self._show_dae_validation_message(self.tr("DAE code is valid."), "color: #16825d;")
+            self._show_dae_validation_message(self.tr("Model code is valid."), "color: #16825d;")
             self._rebuild_latex_selection_tree()
             return True
 
@@ -6893,18 +8267,22 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
 
         :return: None.
         """
+        runtime_warnings: List[str] = list()
         try:
             symbol_namespace: Dict[str, Expr] = self._symbol_model.build_validation_namespace(
                 build_block_symbol_namespace(self._block)
             )
-            runtime_validation: RuntimeLogicValidationResult = self._runtime_logic_editor.validate(
+            self._runtime_logic_drafts = self._build_runtime_logic_drafts_from_buffers()
+            self._retained_mode_model.reload(self._runtime_logic_drafts)
+            runtime_validation: RuntimeLogicValidationResult = self._runtime_logic_drafts.validate(
                 symbol_namespace
             )
             if not runtime_validation.is_valid():
                 self._show_validation_error(runtime_validation.get_errors()[0])
                 return
             else:
-                validation_namespace: Dict[str, Expr] = self._runtime_logic_editor.build_validation_namespace(
+                runtime_warnings = runtime_validation.get_warnings()
+                validation_namespace: Dict[str, Expr] = self._runtime_logic_drafts.build_validation_namespace(
                     symbol_namespace
                 )
             pending_expressions: List[tuple[Block, Var, Expr]] = self._parameter_model.get_pending_event_expressions(
@@ -6913,7 +8291,17 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             pending_expressions.extend(self._symbol_model.get_new_event_expressions(validation_namespace))
             validate_event_parameter_expression_dependencies(self._block, pending_expressions)
         except (ValueError, TypeError) as error:
-            self._show_validation_error(str(error))
+            active_code: str = self._equation_buffers[
+                self._active_equation_buffer_index
+            ].get_code()
+            source_diagnostics: List[DaeCodeDiagnostic] = build_dae_code_diagnostics(
+                active_code,
+                self._namespace,
+            )
+            if len(source_diagnostics) > 0:
+                self._show_dae_validation_diagnostics(source_diagnostics)
+            else:
+                self._show_validation_error(str(error))
             return
 
         valid: bool = True
@@ -6954,7 +8342,16 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         if valid:
             self._namespace = validation_namespace
             self._refresh_dae_language_context()
-            self.validate_dae_code()
+            active_valid: bool = self.validate_dae_code()
+            if active_valid and len(runtime_warnings) > 0:
+                self._show_dae_validation_message(
+                    self.tr("Model is valid. Warning: {message}").format(
+                        message=runtime_warnings[0]
+                    ),
+                    "color: #9a6700;",
+                )
+            else:
+                pass
         else:
             if invalid_index != self._active_equation_buffer_index:
                 self._equation_owner_combo.setCurrentIndex(invalid_index)
@@ -6981,9 +8378,9 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         Output exposure is deliberately absent from this rule: checking or
         unchecking Output only changes the public interface and never changes a
         variable's DAE role or its equation. Initialization equations belong
-        only to state and algebraic variables. Runtime event parameters store
-        their scalar value or initialization expression directly in
-        ``event_dict`` and therefore have exactly one initialization source.
+        to state, algebraic, and direct output-only variables. Runtime event
+        parameters store their scalar value or initialization expression
+        directly in ``event_dict`` and therefore have exactly one source.
 
         :param block: Equation owner being validated.
         :param equation_draft: Parsed equations staged for that owner.
@@ -6998,24 +8395,17 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         )
         state_equation_count: int = len(equation_draft.get_state_eqs())
         algebraic_equation_count: int = len(equation_draft.get_algebraic_eqs())
-        initializable_names: set[str] = set()
-        initializable_kind: BlockSymbolKind
-        for initializable_kind in (
-                BlockSymbolKind.STATE,
-                BlockSymbolKind.ALGEBRAIC):
-            initializable_name: str
-            for initializable_name in self._symbol_model.get_role_names(
-                    block,
-                    initializable_kind):
-                initializable_names.add(initializable_name)
+        initializable_names: set[str] = set(
+            self._symbol_model.get_initializable_names(block)
+        )
         initialized_variable: Var
         for initialized_variable in equation_draft.get_init_eqs():
             if initialized_variable.name in initializable_names:
                 pass
             else:
                 raise ValueError(
-                    f"Variable '{initialized_variable.name}' is not state or "
-                    "algebraic and cannot own an initialization equation. "
+                    f"Variable '{initialized_variable.name}' is not state, "
+                    "algebraic, or a direct output and cannot own an initialization equation. "
                     "Put an event parameter's initialization expression in "
                     "General options instead"
                 )
@@ -7110,14 +8500,16 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             symbol_namespace: Dict[str, Expr] = self._symbol_model.build_validation_namespace(
                 build_block_symbol_namespace(self._block)
             )
-            runtime_validation: RuntimeLogicValidationResult = self._runtime_logic_editor.validate(
+            self._runtime_logic_drafts = self._build_runtime_logic_drafts_from_buffers()
+            self._retained_mode_model.reload(self._runtime_logic_drafts)
+            runtime_validation: RuntimeLogicValidationResult = self._runtime_logic_drafts.validate(
                 symbol_namespace
             )
             if not runtime_validation.is_valid():
                 self._show_validation_error(runtime_validation.get_errors()[0])
                 return
             else:
-                validation_namespace: Dict[str, Expr] = self._runtime_logic_editor.build_validation_namespace(
+                validation_namespace: Dict[str, Expr] = self._runtime_logic_drafts.build_validation_namespace(
                     symbol_namespace
                 )
             pending_static_values = self._parameter_model.get_pending_static_values()
@@ -7168,8 +8560,15 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         )
         has_new_symbols: bool = self._symbol_model.has_new_symbols()
         has_symbol_changes: bool = self._symbol_model.has_symbol_changes()
-        runtime_logic_changes: bool = self._runtime_logic_editor.has_changes()
-        has_new_modes: bool = self._runtime_logic_editor.has_new_modes()
+        has_mapping_changes: bool = self._symbol_model.has_mapping_changes()
+        runtime_logic_changes: bool = False
+        runtime_buffer: BlockCodeBuffer
+        for runtime_buffer in self._equation_buffers:
+            if runtime_buffer.has_runtime_changes():
+                runtime_logic_changes = True
+            else:
+                pass
+        has_new_modes: bool = self._runtime_logic_drafts.has_new_modes()
         output_export_changes: List[tuple[Block, Var, bool]] = self._symbol_model.get_output_export_changes()
         if structural_changes:
             changed_equations: bool = False
@@ -7179,7 +8578,12 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                     changed_equations = True
                 else:
                     pass
-            if changed_equations or has_symbol_changes or runtime_logic_changes or len(output_export_changes) > 0:
+            if (
+                    changed_equations
+                    or has_symbol_changes
+                    or has_mapping_changes
+                    or runtime_logic_changes
+                    or len(output_export_changes) > 0):
                 self._show_validation_error(
                     self.tr(
                         "Apply structural settings separately from DAE-code or symbol-interface changes."
@@ -7236,12 +8640,12 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._symbol_model.apply_to_blocks(self._var_factory)
         symbol_namespace: Dict[str, Expr] = build_block_symbol_namespace(self._block)
         if runtime_logic_changes:
-            self._namespace = self._runtime_logic_editor.apply_to_blocks(
+            self._namespace = self._runtime_logic_drafts.apply_to_blocks(
                 self._var_factory,
                 symbol_namespace,
             )
         else:
-            self._namespace = self._runtime_logic_editor.build_validation_namespace(symbol_namespace)
+            self._namespace = self._runtime_logic_drafts.build_validation_namespace(symbol_namespace)
 
         # Reparse changed event expressions after symbol application so their
         # trees bind to the authoritative VarFactory identities rather than any
@@ -7297,7 +8701,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._show_status_message(status_message, "color: #16825d;")
 
     def _reload_applied_models(self) -> None:
-        """Reload property models and hidden runtime drafts from the current block.
+        """Reload property models and runtime drafts from the current block.
 
         Reusing the table models keeps the tree delegates and signals attached.
         Runtime drafts are recreated because structural edits can replace owners.
@@ -7315,16 +8719,12 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._parameter_model.reload(self._block)
         self._symbol_model.reload(self._block)
 
-        # Runtime editing is hidden, but its validation draft must likewise
-        # discard references to old children after structural regeneration.
+        # Structural regeneration can replace owner objects. Keep a temporary
+        # model-backed draft until the source buffers are rebuilt below.
         self._namespace = build_block_symbol_namespace(self._block)
-        self._runtime_logic_editor.changed.disconnect(self.on_runtime_logic_changed)
-        self._runtime_logic_editor.prepare_to_delete()
-        self._runtime_logic_editor.deleteLater()
-        self._runtime_logic_editor = RuntimeLogicEditorWidget(self._block, self._namespace, self)
-        self._runtime_logic_editor.hide()
-        self._runtime_logic_editor.changed.connect(self.on_runtime_logic_changed)
-        self._namespace = self._runtime_logic_editor.build_validation_namespace(self._namespace)
+        self._runtime_logic_drafts = RuntimeLogicDraftCollection(self._block)
+        self._retained_mode_model.reload(self._runtime_logic_drafts)
+        self._namespace = self._runtime_logic_drafts.build_validation_namespace(self._namespace)
 
     def _refresh_after_apply(self, rebuilt_structure: bool) -> None:
         """Rebind the complete properties page to the successfully applied model.
@@ -7403,6 +8803,14 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             # identities are current, without firing intermediate owner changes.
             self._equation_owner_combo.setCurrentIndex(self._active_equation_buffer_index)
             self._new_symbol_owner.setCurrentIndex(selected_add_index)
+            self._runtime_logic_drafts = self._build_runtime_logic_drafts_from_buffers()
+            self._retained_mode_model.reload(self._runtime_logic_drafts)
+            symbol_namespace: Dict[str, Expr] = self._symbol_model.build_validation_namespace(
+                build_block_symbol_namespace(self._block)
+            )
+            self._namespace = self._runtime_logic_drafts.build_validation_namespace(
+                symbol_namespace
+            )
             active_buffer: BlockCodeBuffer = self._equation_buffers[self._active_equation_buffer_index]
             if self._dae_editor.toPlainText() != active_buffer.get_code():
                 cursor_position: int = self._dae_editor.textCursor().position()
@@ -7457,15 +8865,20 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._clear_status_message()
 
     def _show_dae_validation_message(self, message: str, style_sheet: str) -> None:
-        """Display DAE validation feedback beneath the equation editor.
+        """Display one-line DAE validation feedback beneath the editor.
 
         :param message: Human-readable result of validating the DAE source.
         :param style_sheet: Qt style sheet that conveys the result severity.
         :return: None.
         """
         self._clear_status_message()
+        message_parts: List[str] = message.split()
+        single_line_message: str = " ".join(message_parts)
         self._dae_validation_status_label.setStyleSheet(style_sheet)
-        self._dae_validation_status_label.setText(message)
+        self._dae_validation_status_label.setText(single_line_message)
+        # Preserve access to the complete warning if the available horizontal
+        # space is temporarily narrow because the property pane is expanded.
+        self._dae_validation_status_label.setToolTip(single_line_message)
         self._dae_validation_status_label.show()
 
     def _clear_dae_validation_message(self) -> None:
@@ -7474,6 +8887,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         :return: None.
         """
         self._dae_validation_status_label.clear()
+        self._dae_validation_status_label.setToolTip("")
         self._dae_validation_status_label.setStyleSheet("")
         self._dae_validation_status_label.hide()
 
@@ -7529,7 +8943,13 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         :param message: Value supplied for ``message``.
         :return: None.
         """
-        self._show_status_message(
+        # All model-validation failures share the compact row beneath Python
+        # code. Revealing that page also makes Apply errors discoverable when
+        # the equation panel was collapsed before the attempted operation.
+        self._tabs.setCurrentIndex(0)
+        self._equations_button.setChecked(True)
+        self._equation_panel.setCurrentIndex(0)
+        self._show_dae_validation_message(
             self.tr("Nothing was applied: {message}").format(message=message),
             "color: #b42318;",
         )
