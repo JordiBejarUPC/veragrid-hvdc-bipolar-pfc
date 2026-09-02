@@ -25,7 +25,6 @@ from VeraGridEngine.IO.fmu.importer.device_api import (
     attach_rms_fmu_cs_device,
     attach_rms_fmu_me_device,
 )
-from VeraGridEngine.IO.fmu.importer.model_exchange import FmuMeIntegrationMethod
 from VeraGridEngine.IO.fmu.importer.model_description import FmuInterfaceMode
 from VeraGridEngine.IO.fmu.importer.runtime_worker_host import (
     FmiThreeWorkerHostLimits,
@@ -78,7 +77,6 @@ class FmuDeviceAttachmentRequest:
     :param communication_step: Optional FMI communication step.
     :param relative_tolerance: Optional FMI relative tolerance.
     :param debug_logging: Enable FMI debug logging.
-    :param integration_method: Internal ME predictor method.
     :param worker_limits: Explicit FMI 3 worker supervision policy, when used.
     :param maximum_event_iterations: Positive Event Mode convergence bound.
     :param configuration_float64_values: Structural Float64 declarations.
@@ -99,7 +97,6 @@ class FmuDeviceAttachmentRequest:
         "communication_step",
         "relative_tolerance",
         "debug_logging",
-        "integration_method",
         "worker_limits",
         "maximum_event_iterations",
     )
@@ -117,7 +114,6 @@ class FmuDeviceAttachmentRequest:
         communication_step: float | None = None,
         relative_tolerance: float | None = None,
         debug_logging: bool = False,
-        integration_method: FmuMeIntegrationMethod = FmuMeIntegrationMethod.EXPLICIT_EULER,
         worker_limits: FmiThreeWorkerHostLimits | None = None,
         maximum_event_iterations: int = 32,
         configuration_float64_values: tuple[
@@ -140,7 +136,6 @@ class FmuDeviceAttachmentRequest:
         :param communication_step: Optional FMI communication step.
         :param relative_tolerance: Optional FMI relative tolerance.
         :param debug_logging: Enable FMI debug logging.
-        :param integration_method: Internal ME predictor method.
         :param worker_limits: Explicit FMI 3 worker supervision policy.
         :param maximum_event_iterations: Positive Event Mode convergence bound.
         :param configuration_float64_values: Structural Float64 declarations.
@@ -175,7 +170,6 @@ class FmuDeviceAttachmentRequest:
         self.communication_step: float | None = communication_step
         self.relative_tolerance: float | None = relative_tolerance
         self.debug_logging: bool = bool(debug_logging)
-        self.integration_method: FmuMeIntegrationMethod = integration_method
         self.worker_limits: FmiThreeWorkerHostLimits | None = worker_limits
         if (
             isinstance(maximum_event_iterations, int)
@@ -278,7 +272,6 @@ def attach_fmu_to_device(device: Any, grid: MultiCircuit, request: FmuDeviceAtta
                     output_bindings=request.output_bindings,
                     name=template_name,
                     output_defaults=output_defaults,
-                    integration_method=request.integration_method,
                     worker_limits=request.worker_limits,
                     maximum_event_iterations=request.maximum_event_iterations,
                     configuration_float64_values=(
@@ -319,7 +312,6 @@ def attach_fmu_to_device(device: Any, grid: MultiCircuit, request: FmuDeviceAtta
                         output_bindings=request.output_bindings,
                         name=template_name,
                         output_defaults=output_defaults,
-                        integration_method=request.integration_method,
                         worker_limits=request.worker_limits,
                         maximum_event_iterations=request.maximum_event_iterations,
                         configuration_float64_values=(

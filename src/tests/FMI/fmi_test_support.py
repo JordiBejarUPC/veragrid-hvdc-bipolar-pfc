@@ -23,7 +23,9 @@ from VeraGridEngine.IO.fmu.exporter_me.api import export_fmu_me
 from VeraGridEngine.IO.fmu.exporter_me.config import ExportConfig as MeExportConfig, detect_target_platform as detect_me_target_platform
 from VeraGridEngine.IO.fmu.importer.bindings import FmuRefBinding
 from VeraGridEngine.IO.fmu.importer.model_description import FmuInterfaceMode
-from VeraGridEngine.IO.fmu.importer.model_exchange import FmuMeIntegrationMethod
+from VeraGridEngine.IO.fmu.importer.runtime_worker_host import (
+    FmiThreeWorkerHostLimits,
+)
 from VeraGridEngine.IO.fmu.importer.user_api import (
     FmuDeviceAttachmentRequest,
     FmuDeviceDomain,
@@ -388,6 +390,13 @@ def build_test_emt_grid() -> tuple[MultiCircuit, Load]:
 def execute_test_rms_fmu_case(
         output_dir: Path,
         mode: FmuInterfaceMode,
+        source_fmu_path: Path | None = None,
+        me_input_variable_name: str = "u",
+        active_power_output_name: str = "p_out",
+        reactive_power_output_name: str = "q_out",
+        worker_limits: FmiThreeWorkerHostLimits | None = None,
+        static_active_power_mw: float = 10.0,
+        static_reactive_power_mvar: float = 1.0,
 ) -> tuple[RmsSimulationDriver, Load, Path]:
     """Execute one RMS FMU integration case through the product API.
 
@@ -396,18 +405,34 @@ def execute_test_rms_fmu_case(
 
     :param output_dir: Isolated directory for the FMU and native staging files.
     :param mode: FMI interface mode exercised by the integration test.
+    :param source_fmu_path: Optional prebuilt FMU used instead of local export.
+    :param me_input_variable_name: Model Exchange voltage-input variable name.
+    :param active_power_output_name: Active-power output variable name.
+    :param reactive_power_output_name: Reactive-power output variable name.
+    :param worker_limits: Explicit FMI 3 native-worker supervision policy.
+    :param static_active_power_mw: Load active power used by the initial power flow.
+    :param static_reactive_power_mvar: Load reactive power used by the initial power flow.
     :return: Completed RMS driver, attached load, and generated FMU path.
     """
 
     output_dir.mkdir(parents=True, exist_ok=True)
     input_bindings: tuple[FmuRefBinding, ...]
     if mode == FmuInterfaceMode.CO_SIMULATION:
-        fmu_path: Path = export_test_rms_cs_fmu(output_dir)
+        if source_fmu_path is None:
+            fmu_path: Path = export_test_rms_cs_fmu(output_dir)
+        else:
+            fmu_path = source_fmu_path.resolve()
         input_bindings = tuple()
     elif mode == FmuInterfaceMode.MODEL_EXCHANGE:
-        fmu_path = export_test_rms_me_fmu(output_dir)
+        if source_fmu_path is None:
+            fmu_path = export_test_rms_me_fmu(output_dir)
+        else:
+            fmu_path = source_fmu_path.resolve()
         input_bindings = (
-            FmuRefBinding(VarPowerFlowReferenceType.Vm, "u"),
+            FmuRefBinding(
+                VarPowerFlowReferenceType.Vm,
+                me_input_variable_name,
+            ),
         )
     else:
         raise ValueError(f"Unsupported RMS FMI test mode: {mode.value}")
@@ -415,6 +440,8 @@ def execute_test_rms_fmu_case(
     grid: MultiCircuit
     load: Load
     grid, load = build_test_rms_grid()
+    load.P = float(static_active_power_mw)
+    load.Q = float(static_reactive_power_mvar)
     power_flow_driver: PowerFlowDriver = PowerFlowDriver(
         grid=grid,
         options=build_test_power_flow_options(),
@@ -438,15 +465,21 @@ def execute_test_rms_fmu_case(
         mode=mode,
         input_bindings=input_bindings,
         output_bindings=(
-            FmuRefBinding(VarPowerFlowReferenceType.P, "p_out"),
-            FmuRefBinding(VarPowerFlowReferenceType.Q, "q_out"),
+            FmuRefBinding(
+                VarPowerFlowReferenceType.P,
+                active_power_output_name,
+            ),
+            FmuRefBinding(
+                VarPowerFlowReferenceType.Q,
+                reactive_power_output_name,
+            ),
         ),
         output_defaults=(
             FmuReferenceValue(VarPowerFlowReferenceType.P, bus_power.real),
             FmuReferenceValue(VarPowerFlowReferenceType.Q, bus_power.imag),
         ),
         extraction_root=output_dir,
-        integration_method=FmuMeIntegrationMethod.EXPLICIT_EULER,
+        worker_limits=worker_limits,
     )
     attach_fmu_to_device(load, grid, request)
 
@@ -468,11 +501,13 @@ def execute_test_rms_fmu_case(
 def execute_test_emt_fmu_case(
         output_dir: Path,
         mode: FmuInterfaceMode,
+        solver_tpe: EmtSolverTypes = EmtSolverTypes.Symbolic,
 ) -> tuple[EmtSimulationDriver, Load, Path]:
     """Execute one EMT FMU integration case through the product API.
 
     :param output_dir: Isolated directory for the FMU and native staging files.
     :param mode: FMI interface mode exercised by the integration test.
+    :param solver_tpe: EMT Jacobian backend exercised by the integration test.
     :return: Completed EMT driver, attached load, and generated FMU path.
     """
 
@@ -521,18 +556,23 @@ def execute_test_emt_fmu_case(
             FmuReferenceValue(VarPowerFlowReferenceType.i_C, 0.0),
         ),
         extraction_root=output_dir,
-        integration_method=FmuMeIntegrationMethod.EXPLICIT_EULER,
     )
     attach_fmu_to_device(load, grid, request)
 
+    if mode == FmuInterfaceMode.MODEL_EXCHANGE:
+        integration_method: DynamicIntegrationMethod = (
+            DynamicIntegrationMethod.DaeBackEuler
+        )
+    else:
+        integration_method = DynamicIntegrationMethod.DaeTrapezoidal
     emt_driver: EmtSimulationDriver = EmtSimulationDriver(
         grid=grid,
         options=EmtOptions(
             time_step=5.0e-6,
             simulation_time=1.0e-3,
             tolerance=1.0e-6,
-            solver_type=EmtSolverTypes.Symbolic,
-            integration_method=DynamicIntegrationMethod.DaeTrapezoidal,
+            solver_type=solver_tpe,
+            integration_method=integration_method,
             initialization_method=EmtInitializationMethod.Auto,
             verbose=0,
         ),

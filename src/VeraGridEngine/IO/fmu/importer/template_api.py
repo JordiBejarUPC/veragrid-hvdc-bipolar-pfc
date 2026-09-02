@@ -34,7 +34,6 @@ from VeraGridEngine.IO.fmu.importer.co_simulation import (
 )
 from VeraGridEngine.IO.fmu.importer.model_exchange import (
     FmuMeDomain,
-    FmuMeIntegrationMethod,
     build_emt_fmu_me_injection_template,
     build_rms_fmu_me_injection_template,
 )
@@ -710,7 +709,6 @@ def configure_fmu_template(
                     name=resolved_name,
                     device_tpe=device_tpe,
                     output_defaults=output_defaults,
-                    integration_method=FmuMeIntegrationMethod.EXPLICIT_EULER,
                     worker_limits=worker_limits,
                 )
                 _decorate_template_block(shell_template.block, var_factory, metadata, input_bindings, output_bindings)
@@ -721,7 +719,6 @@ def configure_fmu_template(
                         input_bindings=input_bindings,
                         output_bindings=output_bindings,
                         output_defaults=output_defaults,
-                        integration_method=FmuMeIntegrationMethod.EXPLICIT_EULER.value,
                         block=shell_template.block,
                         worker_limits=worker_limits,
                     )
@@ -763,7 +760,6 @@ def configure_fmu_template(
                         name=resolved_name,
                         device_tpe=device_tpe,
                         output_defaults=output_defaults,
-                        integration_method=FmuMeIntegrationMethod.EXPLICIT_EULER,
                         worker_limits=worker_limits,
                     )
                     _decorate_template_block(shell_template.block, var_factory, metadata, input_bindings, output_bindings)
@@ -774,7 +770,6 @@ def configure_fmu_template(
                             input_bindings=input_bindings,
                             output_bindings=output_bindings,
                             output_defaults=output_defaults,
-                            integration_method=FmuMeIntegrationMethod.EXPLICIT_EULER.value,
                             block=shell_template.block,
                             worker_limits=worker_limits,
                         )

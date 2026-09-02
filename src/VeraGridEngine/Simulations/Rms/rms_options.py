@@ -29,6 +29,11 @@ class RmsOptions(OptionsTemplate):
         GCProp(key="max_iter", tpe=int),
         GCProp(key="fmi_state_event_time_tolerance", tpe=float),
         GCProp(key="fmi_state_event_max_iterations", tpe=int),
+        GCProp(key="fmi_me_newton_absolute_tolerance", tpe=float),
+        GCProp(key="fmi_me_newton_relative_tolerance", tpe=float),
+        GCProp(key="fmi_me_newton_max_iterations", tpe=int),
+        GCProp(key="fmi_me_max_continuous_states", tpe=int),
+        GCProp(key="fmi_me_max_runtime_evaluations_per_step", tpe=int),
         GCProp(key="rms_event_groups", tpe=SubObjectType.ObjectsList),
     )
 
@@ -43,16 +48,27 @@ class RmsOptions(OptionsTemplate):
                  max_iter: int = 1000,
                  verbose: int = 0,
                  fmi_state_event_time_tolerance: float = 1e-9,
-                 fmi_state_event_max_iterations: int = 32):
+                 fmi_state_event_max_iterations: int = 32,
+                 fmi_me_newton_absolute_tolerance: float = 1e-8,
+                 fmi_me_newton_relative_tolerance: float = 1e-8,
+                 fmi_me_newton_max_iterations: int = 20,
+                 fmi_me_max_continuous_states: int = 128,
+                 fmi_me_max_runtime_evaluations_per_step: int = 100000) -> None:
         """
         RmsOptions
         :param time_step: time step of the simulations (s)
         :param simulation_time: simulation time (s)
         :param max_iter: max number of iterations
         :param tolerance: Integration tolerance
-        :param integration_method: Integration method (default Trapezoid)
+        :param integration_method: Integration method (default Backward Euler)
         :param fmi_state_event_time_tolerance: Absolute FMI ME event-time tolerance in seconds.
         :param fmi_state_event_max_iterations: Maximum FMI ME event bisections.
+        :param fmi_me_newton_absolute_tolerance: Absolute scale used by the FMI ME Newton residual.
+        :param fmi_me_newton_relative_tolerance: Relative scale used by the FMI ME Newton residual.
+        :param fmi_me_newton_max_iterations: Maximum FMI ME Backward Euler Newton updates.
+        :param fmi_me_max_continuous_states: Maximum dense FMI ME state dimension.
+        :param fmi_me_max_runtime_evaluations_per_step: Shared runtime-call limit for one FMI ME step.
+        :return: None.
         """
 
         OptionsTemplate.__init__(self, name='RmsSimulationOptions')
@@ -88,5 +104,59 @@ class RmsOptions(OptionsTemplate):
             raise ValueError(
                 "RMS FMI state-event maximum iterations must be a positive integer"
             )
-        self.verbose = verbose
-
+        if (
+            math.isfinite(fmi_me_newton_absolute_tolerance)
+            and fmi_me_newton_absolute_tolerance > 0.0
+        ):
+            self.fmi_me_newton_absolute_tolerance: float = (
+                fmi_me_newton_absolute_tolerance
+            )
+        else:
+            raise ValueError(
+                "RMS FMI ME Newton absolute tolerance must be finite and positive"
+            )
+        if (
+            math.isfinite(fmi_me_newton_relative_tolerance)
+            and fmi_me_newton_relative_tolerance > 0.0
+        ):
+            self.fmi_me_newton_relative_tolerance: float = (
+                fmi_me_newton_relative_tolerance
+            )
+        else:
+            raise ValueError(
+                "RMS FMI ME Newton relative tolerance must be finite and positive"
+            )
+        if (
+            isinstance(fmi_me_newton_max_iterations, int)
+            and not isinstance(fmi_me_newton_max_iterations, bool)
+            and 1 <= fmi_me_newton_max_iterations <= 100
+        ):
+            self.fmi_me_newton_max_iterations: int = fmi_me_newton_max_iterations
+        else:
+            raise ValueError(
+                "RMS FMI ME Newton iteration limit must be an integer between 1 and 100"
+            )
+        if (
+            isinstance(fmi_me_max_continuous_states, int)
+            and not isinstance(fmi_me_max_continuous_states, bool)
+            and 1 <= fmi_me_max_continuous_states <= 128
+        ):
+            self.fmi_me_max_continuous_states: int = fmi_me_max_continuous_states
+        else:
+            raise ValueError(
+                "RMS FMI ME state limit must be an integer between 1 and 128"
+            )
+        if (
+            isinstance(fmi_me_max_runtime_evaluations_per_step, int)
+            and not isinstance(fmi_me_max_runtime_evaluations_per_step, bool)
+            and 1 <= fmi_me_max_runtime_evaluations_per_step <= 10_000_000
+        ):
+            self.fmi_me_max_runtime_evaluations_per_step: int = (
+                fmi_me_max_runtime_evaluations_per_step
+            )
+        else:
+            raise ValueError(
+                "RMS FMI ME runtime evaluation limit must be an integer between "
+                "1 and 10000000"
+            )
+        self.verbose: int = verbose

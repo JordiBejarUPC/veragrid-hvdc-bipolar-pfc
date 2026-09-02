@@ -85,10 +85,15 @@ def test_emt_fmu_co_simulation_runs_end_to_end(tmp_path: Path) -> None:
 
 
 @pytest.mark.skipif(not host_build_capable(), reason="No usable host build toolchain available")
-def test_emt_fmu_model_exchange_runs_end_to_end(tmp_path: Path) -> None:
+@pytest.mark.parametrize("solver_tpe", tuple(EmtSolverTypes))
+def test_emt_fmu_model_exchange_runs_end_to_end(
+    tmp_path: Path,
+    solver_tpe: EmtSolverTypes,
+) -> None:
     """Exercise EMT Model Exchange through the complete product integration path.
 
     :param tmp_path: Isolated FMU and native staging directory supplied by pytest.
+    :param solver_tpe: EMT Jacobian backend under test.
     :return: None.
     """
 
@@ -99,6 +104,7 @@ def test_emt_fmu_model_exchange_runs_end_to_end(tmp_path: Path) -> None:
     driver, load, fmu_path = execute_test_emt_fmu_case(
         tmp_path,
         FmuInterfaceMode.MODEL_EXCHANGE,
+        solver_tpe,
     )
 
     if driver.results is None:

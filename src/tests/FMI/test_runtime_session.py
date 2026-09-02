@@ -17,7 +17,11 @@ from VeraGridEngine.IO.fmu.importer.bindings import (
     FmuRefBinding,
     resolve_fmi_three_float64_session_value_selectors,
 )
-from VeraGridEngine.IO.fmu.importer.errors import FmuBindingError, FmuModeError
+from VeraGridEngine.IO.fmu.importer.errors import (
+    FmuBindingError,
+    FmuImportError,
+    FmuModeError,
+)
 from VeraGridEngine.IO.fmu.importer.runtime_protocol import (
     FmiThreeWorkerCompletedIntegratorStepResult,
     FmiThreeWorkerDiscreteStatesResult,
@@ -286,7 +290,7 @@ def test_fmi_three_model_exchange_session_evaluates_without_integrating(
     try:
         assert session.supports_fmu_state_checkpoint()
         assert not session.supports_serialized_fmu_state()
-        assert not session.needs_completed_integrator_step()
+        assert session.needs_completed_integrator_step()
         state_values: tuple[float, ...]
         initialized_values: tuple[float, ...]
         state_values, initialized_values = (
@@ -456,11 +460,10 @@ def test_fmi_three_model_exchange_coordinator_resolves_candidates_and_events(
         )
         assert accepted_states == pytest.approx((6.0,))
         assert accepted_values == pytest.approx((0.0, 0.75, 2.0))
-        with pytest.raises(
-            FmuModeError,
-            match="requires complete accepted and candidate",
-        ):
-            coordinator.reject_candidate()
+        coordinator.reject_candidate()
+        restored_point = coordinator.get_accepted_point()
+        assert restored_point[0] == pytest.approx(0.75)
+        assert restored_point[1] == pytest.approx((6.0,))
     finally:
         coordinator.close()
         coordinator.close()
@@ -695,30 +698,31 @@ def test_fmi_three_model_exchange_rejects_nonprogressing_time_events() -> None:
     assert future_coordinator.get_next_event_time() == pytest.approx(2.0)
 
 
-def test_fmi_three_model_exchange_rejects_solver_coupling_without_checkpoint() -> None:
-    """Reject solver-coupled ME before any mutable native lifecycle call."""
+def test_fmi_three_model_exchange_accepts_optional_checkpoint_absence() -> None:
+    """Construct the coordinator without invoking an optional checkpoint API."""
 
     session: Mock = Mock()
     session.supports_fmu_state_checkpoint.return_value = False
 
-    with pytest.raises(FmuModeError, match="requires native FMU state checkpoints"):
+    coordinator: FmiThreeModelExchangeCoordinator = (
         FmiThreeModelExchangeCoordinator(
             session=session,
             maximum_event_iterations=4,
         )
+    )
 
-    session.supports_fmu_state_checkpoint.assert_called_once_with()
+    assert not coordinator.supports_rollback()
     session.initialize_model_exchange.assert_not_called()
     session.evaluate_model_exchange.assert_not_called()
     session.save_checkpoint.assert_not_called()
     session.restore_checkpoint.assert_not_called()
 
 
-def test_fmi_three_model_exchange_rejects_without_optional_checkpoint(
+def test_fmi_three_model_exchange_reconstructs_without_optional_checkpoint(
     compiled_fmi_three_scalar_model_exchange_without_checkpoint_fmu: Path,
     tmp_path: Path,
 ) -> None:
-    """Reject a native no-checkpoint FMU before solver-coupled initialization.
+    """Reject a candidate by exact visible reconstruction without checkpoints.
 
     :param compiled_fmi_three_scalar_model_exchange_without_checkpoint_fmu:
         Scalar Model Exchange fixture declaring no checkpoint support.
@@ -726,7 +730,7 @@ def test_fmi_three_model_exchange_rejects_without_optional_checkpoint(
     :return: None.
     """
 
-    staging_parent: Path = tmp_path / "model-exchange-no-checkpoint-rejection"
+    staging_parent: Path = tmp_path / "model-exchange-no-checkpoint-reconstruction"
     session: FmiThreeFloat64Session = _open_float64_session(
         compiled_fmu_path=(
             compiled_fmi_three_scalar_model_exchange_without_checkpoint_fmu
@@ -735,17 +739,82 @@ def test_fmi_three_model_exchange_rejects_without_optional_checkpoint(
         float64_profile=FmiThreeWorkerFloat64Profile.SCALAR,
         interface_mode=FmuInterfaceMode.MODEL_EXCHANGE,
     )
+    coordinator: FmiThreeModelExchangeCoordinator = (
+        FmiThreeModelExchangeCoordinator(
+            session=session,
+            maximum_event_iterations=4,
+        )
+    )
     try:
-        with pytest.raises(
-            FmuModeError,
-            match="requires native FMU state checkpoints",
-        ):
-            FmiThreeModelExchangeCoordinator(
-                session=session,
-                maximum_event_iterations=4,
-            )
+        initialized_states: tuple[float, ...]
+        initialized_values: tuple[float, ...]
+        initialized_states, initialized_values = coordinator.initialize(
+            start_time=0.0,
+            stop_time=1.0,
+            relative_tolerance=1.0e-6,
+            initial_writable_values=(2.0,),
+        )
+        assert not coordinator.supports_rollback()
+        assert initialized_states == pytest.approx((1.0,))
+        assert initialized_values == pytest.approx((0.0, 0.0, 2.0))
+        coordinator.evaluate_candidate(
+            time_value=0.25,
+            continuous_state_values=(1.25,),
+            writable_values=(2.0,),
+        )
+        coordinator.reject_candidate()
+        accepted_point = coordinator.get_accepted_point()
+        assert accepted_point[0] == pytest.approx(0.0)
+        assert accepted_point[1] == pytest.approx((1.0,))
     finally:
-        session.close()
+        coordinator.close()
+    assert tuple(staging_parent.glob("veragrid_fmu_stage_*")) == tuple()
+
+
+def test_fmi_three_no_checkpoint_reconstruction_rejects_observable_state_leakage(
+    compiled_fmi_three_state_leak_model_exchange_fmu: Path,
+    tmp_path: Path,
+) -> None:
+    """Reject hidden native state that changes a reconstructed visible point.
+
+    :param compiled_fmi_three_state_leak_model_exchange_fmu: Native adversarial
+        Model Exchange fixture declaring no checkpoint support.
+    :param tmp_path: Isolated staging parent provided by pytest.
+    :return: None.
+    """
+
+    staging_parent: Path = tmp_path / "model-exchange-visible-state-leak"
+    session: FmiThreeFloat64Session = _open_float64_session(
+        compiled_fmu_path=compiled_fmi_three_state_leak_model_exchange_fmu,
+        staging_parent=staging_parent,
+        float64_profile=FmiThreeWorkerFloat64Profile.SCALAR,
+        interface_mode=FmuInterfaceMode.MODEL_EXCHANGE,
+    )
+    coordinator: FmiThreeModelExchangeCoordinator = (
+        FmiThreeModelExchangeCoordinator(
+            session=session,
+            maximum_event_iterations=4,
+        )
+    )
+    try:
+        coordinator.initialize(
+            start_time=0.0,
+            stop_time=1.0,
+            relative_tolerance=1.0e-6,
+            initial_writable_values=(2.0,),
+        )
+        coordinator.evaluate_candidate(
+            time_value=0.25,
+            continuous_state_values=(1.25,),
+            writable_values=(2.0,),
+        )
+        with pytest.raises(
+            FmuImportError,
+            match="unsupported observable state leakage",
+        ):
+            coordinator.reject_candidate()
+    finally:
+        coordinator.close()
     assert tuple(staging_parent.glob("veragrid_fmu_stage_*")) == tuple()
 
 

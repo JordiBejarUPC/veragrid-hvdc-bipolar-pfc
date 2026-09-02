@@ -214,7 +214,7 @@ def test_fmi_three_worker_host_runs_model_exchange_continuous_time_lifecycle(
         assert host.get_interface_mode() == FmuInterfaceMode.MODEL_EXCHANGE
         assert host.supports_fmu_state_checkpoint()
         assert not host.supports_serialized_fmu_state()
-        assert not host.needs_completed_integrator_step()
+        assert host.needs_completed_integrator_step()
         assert host.get_state() == FmiThreeWorkerHostState.READY
         host.initialize(
             start_time=0.0,

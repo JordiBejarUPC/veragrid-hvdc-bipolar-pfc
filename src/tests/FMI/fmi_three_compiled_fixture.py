@@ -41,6 +41,7 @@ class FmiThreeCompiledFixtureProfile(Enum):
     SCALAR = 1
     CONSTANT_ARRAY = 2
     CONFIGURABLE_ARRAY = 3
+    SCALAR_OBSERVABLE_STATE_LEAK = 4
 
 
 def _create_fmi_three_scalar_model_description() -> ModelDescription:
@@ -479,6 +480,7 @@ def _install_fmi_three_scalar_metadata(
     if model_exchange is not None:
         model_exchange.set("canGetAndSetFMUState", "true")
         model_exchange.set("canSerializeFMUState", "false")
+        model_exchange.set("needsCompletedIntegratorStep", "true")
     else:
         raise AssertionError("Generated FMI 3 scalar fixture has no ModelExchange")
 
@@ -1050,7 +1052,10 @@ def _install_fmi_three_behavior(
         block_name="include",
     )
 
-    if fixture_profile == FmiThreeCompiledFixtureProfile.SCALAR:
+    if fixture_profile in (
+        FmiThreeCompiledFixtureProfile.SCALAR,
+        FmiThreeCompiledFixtureProfile.SCALAR_OBSERVABLE_STATE_LEAK,
+    ):
         # Retain the importer permission in native fixture state so the same
         # compiled FMU can prove both the strict default and negotiated path.
         scalar_storage_replacement: str = """typedef struct {
@@ -1431,6 +1436,38 @@ fmi3Status fmi3GetNumberOfContinuousStates(fmi3Instance instance,
 }
 
 """
+        # The adversarial profile intentionally changes a later derivative
+        # getter without changing the visible time, state, or input tuple. This
+        # models hidden vendor state that cannot be reconstructed safely when
+        # the FMU does not provide optional Get/Set FMU State checkpoints.
+        if (
+            fixture_profile
+            == FmiThreeCompiledFixtureProfile.SCALAR_OBSERVABLE_STATE_LEAK
+        ):
+            conforming_derivative_block: str = """        model->state_derivative = model->control_input - model->continuous_state;
+        derivatives[0] = model->state_derivative;
+"""
+            leaking_derivative_block: str = """        model->state_derivative = model->control_input - model->continuous_state
+            + (fmi3Float64)model->discrete_state_iteration;
+        model->discrete_state_iteration += 1u;
+        derivatives[0] = model->state_derivative;
+"""
+            if model_exchange_lifecycle_replacement.count(
+                conforming_derivative_block
+            ) == 1:
+                model_exchange_lifecycle_replacement = (
+                    model_exchange_lifecycle_replacement.replace(
+                        conforming_derivative_block,
+                        leaking_derivative_block,
+                        1,
+                    )
+                )
+            else:
+                raise AssertionError(
+                    "The scalar Model Exchange derivative block changed unexpectedly"
+                )
+        else:
+            pass
         normalized_source = _replace_verified_fmi_three_source_block(
             source_text=normalized_source,
             start_marker=(
@@ -1529,7 +1566,10 @@ static void reset(Model* instance) {
                 block_name="configurable-array storage",
             )
         else:
-            if fixture_profile == FmiThreeCompiledFixtureProfile.SCALAR:
+            if fixture_profile in (
+                FmiThreeCompiledFixtureProfile.SCALAR,
+                FmiThreeCompiledFixtureProfile.SCALAR_OBSERVABLE_STATE_LEAK,
+            ):
                 pass
             else:
                 raise ValueError("Unsupported compiled FMI 3 fixture profile")
@@ -1645,6 +1685,7 @@ fmi3Status fmi3FreeFMUState(fmi3Instance instance, fmi3FMUState* FMUState) {
     # enter/exit ABI surface so the worker exercises a real native write.
     if fixture_profile in (
         FmiThreeCompiledFixtureProfile.SCALAR,
+        FmiThreeCompiledFixtureProfile.SCALAR_OBSERVABLE_STATE_LEAK,
         FmiThreeCompiledFixtureProfile.CONFIGURABLE_ARRAY,
     ):
         configuration_replacement: str = """fmi3Status fmi3EnterConfigurationMode(fmi3Instance instance) {
@@ -2045,7 +2086,10 @@ def build_fmi_three_co_simulation_fmu(
 
     # Generate FMPy's required FMI 3 symbol surface from fixed VeraGrid
     # metadata, then expand it into isolated staging for host compilation.
-    if fixture_profile == FmiThreeCompiledFixtureProfile.SCALAR:
+    if fixture_profile in (
+        FmiThreeCompiledFixtureProfile.SCALAR,
+        FmiThreeCompiledFixtureProfile.SCALAR_OBSERVABLE_STATE_LEAK,
+    ):
         fmi_three_description: ModelDescription = (
             _create_fmi_three_scalar_model_description()
         )
@@ -2075,7 +2119,10 @@ def build_fmi_three_co_simulation_fmu(
     if fixture_profile == FmiThreeCompiledFixtureProfile.CONSTANT_ARRAY:
         _install_fmi_three_constant_array_dimensions(staging_directory)
     else:
-        if fixture_profile == FmiThreeCompiledFixtureProfile.SCALAR:
+        if fixture_profile in (
+            FmiThreeCompiledFixtureProfile.SCALAR,
+            FmiThreeCompiledFixtureProfile.SCALAR_OBSERVABLE_STATE_LEAK,
+        ):
             _install_fmi_three_scalar_metadata(staging_directory)
         else:
             if fixture_profile == FmiThreeCompiledFixtureProfile.CONFIGURABLE_ARRAY:

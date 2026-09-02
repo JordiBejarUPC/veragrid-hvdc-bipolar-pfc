@@ -46,6 +46,7 @@ from VeraGridEngine.IO.fmu.importer.model_exchange import (
     register_rms_fmu_me_device,
     resolve_rms_fmu_me_devices,
 )
+from VeraGridEngine.IO.fmu.importer.runtime_profile import FmuMeEvaluationBudget
 
 
 def _tic():
@@ -159,6 +160,7 @@ class RmsProblemPhasor(RmsProblemTemplate):
         self._fmu_cs_initialized: bool = False
         self._fmu_me_adapters: List[object] = list()
         self._fmu_me_initialized: bool = False
+        self._fmu_me_evaluation_budget: FmuMeEvaluationBudget | None = None
 
         # --------------------------------------------------------------------------------------------------------------
         # Initialize the RMS problem

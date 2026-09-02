@@ -40,7 +40,6 @@ from VeraGridEngine.IO.fmu.importer.co_simulation import (
 )
 from VeraGridEngine.IO.fmu.importer.model_exchange import (
     FmuMeDomain,
-    FmuMeIntegrationMethod,
     register_emt_fmu_me_device,
     register_rms_fmu_me_device,
 )
@@ -51,6 +50,7 @@ from VeraGridEngine.IO.fmu.importer.runtime_worker_host import (
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.enumerations import (
     DeviceType,
+    DynamicIntegrationMethod,
     FmuInterfaceMode,
     VarPowerFlowReferenceType,
 )
@@ -101,6 +101,13 @@ class FakeProblem:
         self.uid2idx_event_params = {var.uid: index for index, var in enumerate(block.event_dict.keys())}
         self._fmu_cs_adapters = list()
         self._fmu_me_adapters = list()
+        self.options = SimpleNamespace(
+            integration_method=DynamicIntegrationMethod.DaeBackEuler,
+            fmi_me_newton_absolute_tolerance=1.0e-8,
+            fmi_me_newton_relative_tolerance=1.0e-8,
+            fmi_me_newton_max_iterations=20,
+            fmi_me_max_continuous_states=128,
+        )
 
 
 def test_fmi_three_configuration_declarations_validate_public_values() -> None:
@@ -351,7 +358,6 @@ def test_fmi_three_worker_limits_roundtrip_in_me_device_config() -> None:
         ),
         output_defaults=dict(),
         output_param_names=dict(),
-        integration_method=FmuMeIntegrationMethod.EXPLICIT_EULER.value,
         worker_limits=worker_limits,
         maximum_event_iterations=17,
         configuration_float64_values=(float64_configuration,),
@@ -438,7 +444,6 @@ def test_fmi_three_v4_me_config_requires_strict_event_iteration_bound() -> None:
             output_bindings=tuple(),
             output_defaults=dict(),
             output_param_names=dict(),
-            integration_method=FmuMeIntegrationMethod.EXPLICIT_EULER.value,
             maximum_event_iterations=accepted_bound,
         )
         accepted_payload: str = dump_fmu_me_device_config(accepted_record)
@@ -461,7 +466,6 @@ def test_fmi_three_v4_me_config_requires_strict_event_iteration_bound() -> None:
                 output_bindings=tuple(),
                 output_defaults=dict(),
                 output_param_names=dict(),
-                integration_method=FmuMeIntegrationMethod.EXPLICIT_EULER.value,
                 maximum_event_iterations=rejected_bound,
             )
 
@@ -473,7 +477,6 @@ def test_fmi_three_v4_me_config_requires_strict_event_iteration_bound() -> None:
         output_bindings=tuple(),
         output_defaults=dict(),
         output_param_names=dict(),
-        integration_method=FmuMeIntegrationMethod.EXPLICIT_EULER.value,
         maximum_event_iterations=32,
     )
     valid_payload: dict[str, object] = json.loads(
@@ -624,7 +627,6 @@ def test_rms_me_device_config_can_restore_runtime_spec() -> None:
             input_bindings=(FmuRefBinding(VarPowerFlowReferenceType.Vm, "u"),),
             output_bindings=(FmuRefBinding(VarPowerFlowReferenceType.P, "y"),),
             output_defaults={VarPowerFlowReferenceType.P: 0.0},
-            integration_method=FmuMeIntegrationMethod.EXPLICIT_EULER,
             name="restore_rms_me_template",
         )
 
@@ -669,7 +671,6 @@ def test_emt_me_device_config_can_restore_runtime_spec() -> None:
             input_bindings=tuple(),
             output_bindings=(FmuRefBinding(reference=VarPowerFlowReferenceType.i_A, fmu_variable_name="y"),),
             output_defaults={VarPowerFlowReferenceType.i_A: 0.0},
-            integration_method=FmuMeIntegrationMethod.EXPLICIT_EULER,
             name="restore_emt_me_template",
         )
 
