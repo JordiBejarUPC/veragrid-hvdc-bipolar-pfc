@@ -470,39 +470,41 @@ def __solve_island_limited_support(island: NumericalCircuit,
             if solver_type == SolverType.HELM:
                 adms = island.get_series_admittance_matrices()
 
-                solution = pflw.helm_dpr(nc=island,
-                                         Ybus=adm.Ybus,
-                                         Yf=adm.Yf,
-                                         Yt=adm.Yt,
-                                         Yshunt_bus=adm.Yshunt_bus,
-                                         Yseries=adms.Yseries,
-                                         V0=V0,
-                                         S0=Sbase_plus_hvdc,
-                                         Ysh0=adms.Yshunt,
-                                         pq=indices.pq,
-                                         pv=indices.pv,
-                                         vd=indices.vd,
-                                         no_slack=indices.no_slack,
-                                         tolerance=options.tolerance,
-                                         max_coefficients=options.max_iter,
-                                         use_pade=False,
-                                         use_classical_germ=False,
-                                         control_q=options.control_Q,
-                                         pqv=indices.pqv,
-                                         p=indices.p,
-                                         Qmin=Qmin,
-                                         Qmax=Qmax,
-                                         control_discrete_shunts=np.any(
-                                             island.shunt_data.control_mode_int == ShuntControlMode.Discrete.idx()
-                                         ),
-                                         control_qv_droop=np.any(
-                                             island.generator_data.control_mode_int == GeneratorControlMode.QVDroop.idx()
-                                         ),
-                                         distributed_slack=options.distributed_slack,
-                                         bus_installed_power=island.bus_data.installed_power,
-                                         controls_tol=options.controls_start_tolerance,
-                                         verbose=options.verbose,
-                                         logger=logger)
+                solution = pflw.helm_dpr(
+                    nc=island,
+                    Ybus=adm.Ybus,
+                    Yf=adm.Yf,
+                    Yt=adm.Yt,
+                    Yshunt_bus=adm.Yshunt_bus,
+                    Yseries=adms.Yseries,
+                    V0=V0,
+                    S0=Sbase_plus_hvdc,
+                    Ysh0=adms.Yshunt,
+                    pq=indices.pq,
+                    pv=indices.pv,
+                    vd=indices.vd,
+                    pqv=indices.pqv,
+                    p=indices.p,
+                    no_slack=indices.no_slack,
+                    tolerance=options.tolerance,
+                    max_coefficients=options.max_iter,
+                    use_pade=False,
+                    use_classical_germ=not options.use_stored_guess,
+                    control_q=options.control_Q,
+                    Qmin=Qmin,
+                    Qmax=Qmax,
+                    control_discrete_shunts=np.any(
+                        island.shunt_data.control_mode_int == ShuntControlMode.Discrete.idx()
+                    ),
+                    control_qv_droop=np.any(
+                        island.generator_data.control_mode_int == GeneratorControlMode.QVDroop.idx()
+                    ),
+                    distributed_slack=options.distributed_slack,
+                    bus_installed_power=island.bus_data.installed_power,
+                    controls_tol=options.controls_start_tolerance,
+                    verbose=options.verbose,
+                    logger=logger
+                )
 
             # type DC
             elif solver_type == SolverType.Linear:
@@ -1046,7 +1048,7 @@ def multi_island_pf_nc(nc: NumericalCircuit,
 
         vm_abs: Vec = np.abs(results.voltage)
         slack_bus_mask: np.ndarray = (
-            results.bus_types == BusMode.Slack_tpe.value
+                results.bus_types == BusMode.Slack_tpe.value
         )
         fixed_load_bus: CxVec = (
                 nc.load_data.get_injections_per_bus()
@@ -1179,7 +1181,7 @@ def multi_island_pf_nc(nc: NumericalCircuit,
 
         vm_abs: Vec = np.abs(results.voltage)
         slack_bus_mask: np.ndarray = (
-            results.bus_types == BusMode.Slack_tpe.value
+                results.bus_types == BusMode.Slack_tpe.value
         )
         fixed_load_bus: CxVec = (
                 nc.load_data.get_injections_per_bus()
