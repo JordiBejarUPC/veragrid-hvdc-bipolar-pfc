@@ -14,6 +14,7 @@ import VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics as graph
 import VeraGridEngine.api as gce
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
+from VeraGrid.Gui.DynamicModelEditor.dynamic_block_properties import DynamicBlockPropertiesDialog
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Templates.BasicBlockCatalog import BasicBlockTemplateDescriptor
 from VeraGridEngine.Templates.BasicBlockCatalog import get_basic_block_catalog_descriptor_by_key
@@ -344,9 +345,9 @@ def test_rms_editor_exposes_basic_block_catalog_under_basic() -> None:
 
 def test_proxy_drag_payload_materializes_catalog_template() -> None:
     editor = _build_editor(DynamicSimulationMode.EMT)
-    park_descriptor = get_basic_block_catalog_descriptor_by_key()["park_transform_dq"]
-    park_label = park_descriptor.display_label
-    source_index = _find_index_by_label(editor.library.library_model, park_label)
+    descriptor = get_basic_block_catalog_descriptor_by_key()["movingavg"]
+    descriptor_label = descriptor.display_label
+    source_index = _find_index_by_label(editor.library.library_model, descriptor_label)
 
     assert source_index.isValid()
 
@@ -358,11 +359,15 @@ def test_proxy_drag_payload_materializes_catalog_template() -> None:
 
     assert payload is not None
     assert isinstance(payload, BasicBlockTemplateDescriptor)
-    assert payload.template_key == "park_transform_dq"
+    assert payload.template_key == "movingavg"
 
+    children_before: int = len(editor.main_block.children)
     block_item = editor.create_library_payload_item(payload, 10.0, 20.0)
+
     assert block_item is not None
-    assert len(editor.main_block.children) == 1
+    assert len(editor.main_block.children) == children_before + 1
+    assert block_item.subsys is editor.main_block.children[-1]
+    assert block_item.subsys.name == "movingavg__77"
 
     editor.has_unapplied_changes = False
     editor.close()
@@ -400,6 +405,96 @@ def test_rate_limiter_signal_variant_exposes_gradient_ports_while_parameter_vari
     editor.close()
 
 
+def test_side_panel_contains_only_library_while_modal_loads_block_parameters() -> None:
+    """The editor owns only Library while Block properties owns parameter editing."""
+    editor: DynamicBlockEditorGUI = _build_editor(DynamicSimulationMode.EMT)
+    block_item: graph.GenericBlockItem = _build_catalog_block_item(editor, "pulse")
+    assert block_item.subsys is not None
+
+    editor.ui.toolBox.setCurrentWidget(editor.ui.page_7)
+    editor.scene.clearSelection()
+    block_item.setSelected(True)
+    QtWidgets.QApplication.processEvents()
+
+    assert editor.ui.toolBox.count() == 1
+    assert editor.ui.toolBox.currentWidget() is editor.ui.page_7
+
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
+        block=block_item.subsys,
+        block_type_name=graph.EditorGraphicsCommonFeatures.TEMPLATE_NODE_TYPE,
+        var_factory=editor.var_factory,
+    )
+    assert dialogue._parameter_model.rowCount() > 0
+    dialogue.close()
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_modal_parameter_edit_preserves_non_structural_block_identity() -> None:
+    """Editing a catalogue constant must not reconstruct the symbolic block."""
+    editor: DynamicBlockEditorGUI = _build_editor(DynamicSimulationMode.EMT)
+    block_item: graph.GenericBlockItem = _build_catalog_block_item(editor, "pulse")
+    assert block_item.subsys is not None
+    target_block: Block = block_item.subsys
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
+        block=target_block,
+        block_type_name=graph.EditorGraphicsCommonFeatures.TEMPLATE_NODE_TYPE,
+        var_factory=editor.var_factory,
+    )
+    dialogue.blockApplied.connect(editor.on_block_properties_applied)
+    assert dialogue._parameter_model.rowCount() > 0
+    value_index: QtCore.QModelIndex = dialogue._parameter_model.index(0, 2)
+    assert dialogue._parameter_model.data(value_index) == "None"
+    changed_value: float = 1.0
+
+    assert dialogue._parameter_model.setData(
+        value_index,
+        changed_value,
+        QtCore.Qt.ItemDataRole.EditRole,
+    )
+    dialogue.apply_changes()
+
+    assert editor.get_block_from_main_block(target_block.uid) is target_block
+    assert float(str(dialogue._parameter_model.data(value_index))) == changed_value
+    dialogue.close()
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_parameter_modal_separates_runtime_modes_for_pulse_block() -> None:
+    """General options keeps events while the hidden runtime model owns retained modes."""
+    editor: DynamicBlockEditorGUI = _build_editor(DynamicSimulationMode.EMT)
+    block_item: graph.GenericBlockItem = _build_catalog_block_item(editor, "pulse")
+    assert block_item.subsys is not None
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
+        block=block_item.subsys,
+        block_type_name=graph.EditorGraphicsCommonFeatures.TEMPLATE_NODE_TYPE,
+        var_factory=editor.var_factory,
+    )
+
+    row_types: list[str] = list()
+    row_index: int
+    for row_index in range(dialogue._parameter_model.rowCount()):
+        index: QtCore.QModelIndex = dialogue._parameter_model.index(row_index, 0)
+        row_types.append(str(dialogue._parameter_model.data(index, QtCore.Qt.ItemDataRole.DisplayRole)))
+
+    assert any(row_type.startswith("Dynamic parameter") for row_type in row_types)
+    assert not any(row_type.startswith("Mode parameter") for row_type in row_types)
+    assert dialogue._runtime_logic_editor._mode_model.rowCount() > 0
+    tab_titles: list[str] = list()
+    tab_index: int
+    for tab_index in range(dialogue._tabs.count()):
+        tab_titles.append(dialogue._tabs.tabText(tab_index))
+    assert "Runtime logic" not in tab_titles
+    assert dialogue._runtime_logic_editor.isHidden()
+    dialogue.close()
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
 def test_line_emt_editor_exposes_jmarti_device_block() -> None:
     circuit = gce.MultiCircuit(Sbase=25.0, fbase=60.0)
     bus0 = gce.Bus(name="BusLineDevice0", Vnom=13.8)
@@ -426,5 +521,3 @@ def test_ground_emt_block_is_available_from_library() -> None:
 
     editor.has_unapplied_changes = False
     editor.close()
-
-

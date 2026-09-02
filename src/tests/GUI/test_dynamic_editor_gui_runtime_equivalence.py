@@ -624,6 +624,11 @@ def test_rms_editor_open_materializes_connection_vars(qt_app: QtWidgets.QApplica
             scene_item: Any
             block_type: BlockType
             semantic_reference: VarPowerFlowReferenceType | None
+            interface_ports: list[graph.PortItem]
+            interface_port: graph.PortItem
+            expected_reference: VarPowerFlowReferenceType
+            mapped_var: Any
+            matching_semantic_refs: list[VarPowerFlowReferenceType]
             for scene_item in editor.scene.items():
                 if isinstance(scene_item, graph.ProtectedConnectionBlockItem):
                     if scene_item.subsys is None:
@@ -639,7 +644,35 @@ def test_rms_editor_open_materializes_connection_vars(qt_app: QtWidgets.QApplica
                         )
                         if semantic_reference is not None:
                             visible_refs.add(semantic_reference)
-                            visible_positions.add((scene_item.pos().x(), scene_item.pos().y()))
+                            if block_type == BlockType.INPUT_CONN:
+                                interface_ports = scene_item.outputs
+                            else:
+                                interface_ports = scene_item.inputs
+                            assert len(interface_ports) == 1
+                            visible_positions.add((interface_ports[0].scenePos().x(),
+                                                   interface_ports[0].scenePos().y()))
+                        else:
+                            pass
+                elif isinstance(scene_item, graph.MeasurementsItem):
+                    for interface_port in scene_item.inputs + scene_item.outputs:
+                        if (interface_port.base_var is not None
+                                and isinstance(interface_port.base_var.ref, VarPowerFlowReferenceType)):
+                            matching_semantic_refs = list()
+                            for expected_reference in expected_refs:
+                                mapped_var = editor.main_block.external_mapping.get(expected_reference, None)
+                                if (mapped_var is not None
+                                        and mapped_var.non_mutable_uid
+                                        == interface_port.base_var.non_mutable_uid):
+                                    matching_semantic_refs.append(expected_reference)
+                                else:
+                                    pass
+
+                            if len(matching_semantic_refs) == 1:
+                                visible_refs.add(matching_semantic_refs[0])
+                            else:
+                                visible_refs.add(interface_port.base_var.ref)
+                            visible_positions.add((interface_port.scenePos().x(),
+                                                   interface_port.scenePos().y()))
                         else:
                             pass
                 else:
@@ -1061,6 +1094,9 @@ def test_canvas_copy_paste_clones_blocks_without_parent_connections(
         editor.scene.connect_ports(source_item.outputs[0], target_item.inputs[0])
         connection_count_before_copy: int = len(editor.diagram.con_data)
         assert connection_count_before_copy == 1
+        child_uids_before_paste: set[int] = set(
+            child_block.uid for child_block in root_block.children
+        )
 
         editor.scene.clearSelection()
         source_item.setSelected(True)
@@ -1071,7 +1107,7 @@ def test_canvas_copy_paste_clones_blocks_without_parent_connections(
         pasted_candidates: List[Block] = list()
         child_block: Block
         for child_block in root_block.children:
-            if child_block.uid not in set((source_block.uid, target_block.uid)):
+            if child_block.uid not in child_uids_before_paste:
                 pasted_candidates.append(child_block)
             else:
                 pass

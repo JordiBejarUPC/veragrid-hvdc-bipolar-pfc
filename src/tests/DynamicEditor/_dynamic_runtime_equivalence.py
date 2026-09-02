@@ -114,16 +114,20 @@ def _select_template(entry: DynamicEditorEntry,
 
 def _find_root_wrapper(editor: DynamicBlockEditorGUI,
                        reference: VarPowerFlowReferenceType,
-                       block_type: BlockType) -> graph.ProtectedConnectionBlockItem:
-    """Resolve one root-interface wrapper by its semantic network reference.
+                       block_type: BlockType) -> graph.PortItem:
+    """Resolve one exact root-interface port by its semantic network reference.
 
     :param editor: Active root Dynamic Editor.
     :param reference: Required network reference.
     :param block_type: Input or output connection direction.
-    :return: Matching protected root-interface item.
+    :return: Matching protected or grouped root-interface port.
     :raises AssertionError: If the GUI did not materialize the required port.
     """
     scene_item: object
+    interface_ports: list[graph.PortItem]
+    interface_port: graph.PortItem
+    mapped_var: Var | None = editor.main_block.external_mapping.get(reference, None)
+
     for scene_item in editor.scene.items():
         if isinstance(scene_item, graph.ProtectedConnectionBlockItem) and scene_item.subsys is not None:
             semantic_reference: VarPowerFlowReferenceType | None = editor._get_semantic_root_interface_reference(
@@ -131,13 +135,41 @@ def _find_root_wrapper(editor: DynamicBlockEditorGUI,
                 block_type=block_type,
             )
             if semantic_reference == reference:
-                return scene_item
+                if block_type == BlockType.INPUT_CONN:
+                    interface_ports = scene_item.outputs
+                elif block_type == BlockType.OUTPUT_CONN:
+                    interface_ports = scene_item.inputs
+                else:
+                    interface_ports = list()
+
+                if len(interface_ports) == 1:
+                    return interface_ports[0]
+                else:
+                    pass
             else:
                 pass
+        elif isinstance(scene_item, graph.MeasurementsItem):
+            if block_type == BlockType.INPUT_CONN:
+                interface_ports = scene_item.outputs
+            elif block_type == BlockType.OUTPUT_CONN:
+                interface_ports = scene_item.inputs
+            else:
+                interface_ports = list()
+
+            for interface_port in interface_ports:
+                if interface_port.base_var is None:
+                    pass
+                elif (mapped_var is not None
+                      and interface_port.base_var.non_mutable_uid == mapped_var.non_mutable_uid):
+                    return interface_port
+                elif mapped_var is None and interface_port.base_var.ref == reference:
+                    return interface_port
+                else:
+                    pass
         else:
             pass
 
-    raise AssertionError(f"The Dynamic Editor did not create the root wrapper for {reference.name}.")
+    raise AssertionError(f"The Dynamic Editor did not create the root port for {reference.name}.")
 
 
 def _find_template_port(item: graph.GenericBlockItem,
@@ -244,13 +276,13 @@ def build_dynamic_model_with_editor(application: QtWidgets.QApplication,
     # Reproduce the user wiring every network input from the device boundary.
     for variable in template_block.in_vars:
         if isinstance(variable.ref, VarPowerFlowReferenceType):
-            input_wrapper: graph.ProtectedConnectionBlockItem = _find_root_wrapper(
+            input_wrapper_port: graph.PortItem = _find_root_wrapper(
                 editor=editor,
                 reference=variable.ref,
                 block_type=BlockType.INPUT_CONN,
             )
             editor.scene.connect_ports(
-                input_wrapper.outputs[0],
+                input_wrapper_port,
                 _find_template_port(item=template_item, reference=variable.ref, is_input=True),
             )
         else:
@@ -260,14 +292,14 @@ def build_dynamic_model_with_editor(application: QtWidgets.QApplication,
     # Reproduce the user wiring every model output back to the device boundary.
     for variable in template_block.out_vars:
         if isinstance(variable.ref, VarPowerFlowReferenceType):
-            output_wrapper: graph.ProtectedConnectionBlockItem = _find_root_wrapper(
+            output_wrapper_port: graph.PortItem = _find_root_wrapper(
                 editor=editor,
                 reference=variable.ref,
                 block_type=BlockType.OUTPUT_CONN,
             )
             editor.scene.connect_ports(
                 _find_template_port(item=template_item, reference=variable.ref, is_input=False),
-                output_wrapper.inputs[0],
+                output_wrapper_port,
             )
         else:
             _dispose_page(page=page, application=application)
