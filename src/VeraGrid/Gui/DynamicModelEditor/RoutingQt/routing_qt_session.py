@@ -6,16 +6,21 @@
 from __future__ import annotations
 
 from PySide6.QtGui import QPainterPath
+from PySide6.QtWidgets import QGraphicsScene
 
 from VeraGrid.Gui.DynamicModelEditor.Routing.route_builder import RouteBuilder
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_editor import RoutingEditor
+from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingNode
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingSegment
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_graph import RoutingGraph
+from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingConnectionGeometry
+from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingSegmentObstacle
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_serializer import RoutingGraphSerializer
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_serializer import RoutingSerializedGraph
 from VeraGrid.Gui.DynamicModelEditor.RoutingQt.routing_qt_adapter import QtRoutingGraphAdapter
 from VeraGrid.Gui.DynamicModelEditor.RoutingQt.routing_qt_port_snapshot import QtRoutingPortSnapshot
 from VeraGrid.Gui.DynamicModelEditor.RoutingQt.routing_qt_port_snapshot import build_qt_routing_port_snapshot
+from VeraGrid.Gui.DynamicModelEditor.RoutingQt.routing_qt_scene_geometry_adapter import QtRoutingSceneGeometryAdapter
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics import PortItem
 
 
@@ -26,7 +31,7 @@ class QtRoutingSession:
     :return: None.
     """
 
-    __slots__ = ("_graphs_by_connection_uid", "_serializer", "_adapter")
+    __slots__ = ("_graphs_by_connection_uid", "_serializer", "_adapter", "_scene_geometry_adapter")
 
     def __init__(self) -> None:
         """
@@ -37,6 +42,7 @@ class QtRoutingSession:
         self._graphs_by_connection_uid: dict[int, RoutingGraph] = dict()
         self._serializer: RoutingGraphSerializer = RoutingGraphSerializer()
         self._adapter: QtRoutingGraphAdapter = QtRoutingGraphAdapter()
+        self._scene_geometry_adapter: QtRoutingSceneGeometryAdapter = QtRoutingSceneGeometryAdapter()
 
     def has_connection(self, connection_uid: int) -> bool:
         """
@@ -89,6 +95,11 @@ class QtRoutingSession:
         """
         source_snapshot: QtRoutingPortSnapshot = build_qt_routing_port_snapshot(source_port)
         destination_snapshot: QtRoutingPortSnapshot = build_qt_routing_port_snapshot(destination_port)
+        connection_geometry: RoutingConnectionGeometry = self._capture_connection_geometry(
+            connection_uid=connection_uid,
+            source_port=source_port,
+            destination_port=destination_port,
+        )
         # The session only translates Qt ports into immutable routing inputs.
         # The builder remains the sole component that creates new topology.
         route_builder: RouteBuilder = RouteBuilder(
@@ -96,6 +107,7 @@ class QtRoutingSession:
             destination_position=destination_snapshot.get_position(),
             source_port_side=source_snapshot.get_port_side(),
             destination_port_side=destination_snapshot.get_port_side(),
+            connection_geometry=connection_geometry,
         )
         routing_graph: RoutingGraph = route_builder.build()
         self._graphs_by_connection_uid[int(connection_uid)] = routing_graph
@@ -148,7 +160,15 @@ class QtRoutingSession:
 
         source_snapshot: QtRoutingPortSnapshot = build_qt_routing_port_snapshot(source_port)
         destination_snapshot: QtRoutingPortSnapshot = build_qt_routing_port_snapshot(destination_port)
-        routing_editor: RoutingEditor = RoutingEditor(routing_graph)
+        connection_geometry: RoutingConnectionGeometry = self._capture_connection_geometry(
+            connection_uid=connection_uid,
+            source_port=source_port,
+            destination_port=destination_port,
+        )
+        routing_editor: RoutingEditor = RoutingEditor(
+            graph=routing_graph,
+            connection_geometry=connection_geometry,
+        )
         source_node = routing_graph.get_source_node()
         destination_node = routing_graph.get_destination_node()
         graph_snapshot: RoutingGraph = routing_graph.clone()
@@ -230,13 +250,22 @@ class QtRoutingSession:
         else:
             return refreshed_graph
 
-    def move_segment(self, connection_uid: int, segment_id: int, coordinate_offset: float) -> bool:
+    def move_segment(
+            self,
+            connection_uid: int,
+            segment_id: int,
+            coordinate_offset: float,
+            source_port: PortItem,
+            destination_port: PortItem,
+    ) -> bool:
         """
         Move one segment in one registered graph.
 
         :param connection_uid: Stable connection identifier.
         :param segment_id: Segment identifier.
         :param coordinate_offset: Offset along the allowed drag axis.
+        :param source_port: Live source endpoint used to capture current block geometry.
+        :param destination_port: Live destination endpoint used to capture current block geometry.
         :return: ``True`` when the segment moved.
         """
         routing_graph: RoutingGraph | None = self.get_graph(connection_uid)
@@ -245,12 +274,86 @@ class QtRoutingSession:
         else:
             pass
 
-        routing_editor: RoutingEditor = RoutingEditor(routing_graph)
+        connection_geometry: RoutingConnectionGeometry = self._capture_connection_geometry(
+            connection_uid=connection_uid,
+            source_port=source_port,
+            destination_port=destination_port,
+        )
+        routing_editor: RoutingEditor = RoutingEditor(
+            graph=routing_graph,
+            connection_geometry=connection_geometry,
+        )
         moved: bool = routing_editor.move_segment(
             segment_id=segment_id,
             coordinate_offset=coordinate_offset,
         )
         return moved
+
+    def _capture_connection_geometry(
+            self,
+            connection_uid: int,
+            source_port: PortItem,
+            destination_port: PortItem,
+    ) -> RoutingConnectionGeometry:
+        """
+        Capture one current non-Qt block-geometry snapshot for an operation.
+
+        :param connection_uid: Connection whose own graph must be excluded.
+        :param source_port: Live source endpoint.
+        :param destination_port: Live destination endpoint.
+        :return: Immutable connection geometry snapshot.
+        """
+        source_scene: QGraphicsScene | None = source_port.scene()
+        other_connection_segments: tuple[RoutingSegmentObstacle, ...] = self._capture_other_connection_segments(
+            connection_uid=connection_uid,
+        )
+        connection_geometry: RoutingConnectionGeometry = self._scene_geometry_adapter.capture_connection_geometry(
+            scene=source_scene,
+            source_port=source_port,
+            destination_port=destination_port,
+            other_connection_segments=other_connection_segments,
+        )
+        return connection_geometry
+
+    def _capture_other_connection_segments(
+            self,
+            connection_uid: int,
+    ) -> tuple[RoutingSegmentObstacle, ...]:
+        """
+        Capture segments from every registered graph except the active one.
+
+        Routing graphs remain the source of truth. Painter paths are never
+        inspected, and the active connection is excluded as one complete graph
+        so its adjacent segments cannot be mistaken for external crossings.
+
+        :param connection_uid: Active connection identifier to exclude.
+        :return: Immutable point-in-time sequence of foreign route segments.
+        """
+        active_connection_uid: int = int(connection_uid)
+        obstacle_segments: list[RoutingSegmentObstacle] = list()
+        other_connection_uid: int
+        other_graph: RoutingGraph
+
+        for other_connection_uid, other_graph in self._graphs_by_connection_uid.items():
+            if other_connection_uid == active_connection_uid:
+                pass
+            else:
+                route_segment: RoutingSegment
+                for route_segment in other_graph.get_segments():
+                    start_node: RoutingNode | None = other_graph.get_node(route_segment.get_start_node_id())
+                    end_node: RoutingNode | None = other_graph.get_node(route_segment.get_end_node_id())
+                    if start_node is None or end_node is None:
+                        pass
+                    else:
+                        obstacle_segment: RoutingSegmentObstacle = RoutingSegmentObstacle(
+                            connection_uid=other_connection_uid,
+                            segment_id=route_segment.get_segment_id(),
+                            start_position=start_node.get_position(),
+                            end_position=end_node.get_position(),
+                        )
+                        obstacle_segments.append(obstacle_segment)
+
+        return tuple(obstacle_segments)
 
     def build_connection_path(self, connection_uid: int) -> QPainterPath | None:
         """

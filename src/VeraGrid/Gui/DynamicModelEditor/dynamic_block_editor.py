@@ -5653,6 +5653,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     connection_uid=item.con_uid,
                     segment_id=route_segment.get_segment_id(),
                     coordinate_offset=coordinate_offset,
+                    source_port=item.source_port,
+                    destination_port=item.target_port,
                 )
                 if moved:
                     painter_path = self._qt_routing_session.build_connection_path(item.con_uid)

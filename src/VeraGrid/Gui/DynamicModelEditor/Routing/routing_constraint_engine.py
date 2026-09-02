@@ -6,9 +6,14 @@
 from __future__ import annotations
 
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingNode
+from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingPoint
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_graph import RoutingGraph
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_geometry import RoutingGeometry
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingSegment
+from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingBlockGeometry
+from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingBounds
+from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingConnectionGeometry
+from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingSegmentObstacle
 from VeraGridEngine.enumerations import RoutingAxis, RoutingNodeKind, RoutingPortSide
 
 
@@ -189,44 +194,295 @@ class RoutingConstraintEngine:
     def segment_intersects_block(
             self,
             segment: RoutingSegment,
-            block_bounds: object | None = None,
+            block_bounds: RoutingBounds | None = None,
     ) -> bool:
         """
-        Return whether one segment intersects the owning block geometry.
+        Return whether one segment penetrates the owning block interior.
 
-        The real block-boundary geometry is not part of Phase 2.1 yet. The API
-        exists now so future algorithms can ask this question through the same
-        constraint engine without redesigning the call sites.
+        Contact with the visible boundary is allowed because the segment must
+        originate at its port. Penetration beyond the shared visual tolerance
+        is rejected. The tolerance absorbs the graphics-item pen width and
+        other sub-pixel differences introduced while converting Qt bounds.
 
         :param segment: Segment to inspect.
-        :param block_bounds: Placeholder block geometry payload.
-        :return: ``False`` until block geometry integration exists.
+        :param block_bounds: Non-Qt bounds of the endpoint's owning block.
+        :return: ``True`` when the segment overlaps the effective block interior.
         """
-        del segment
-        del block_bounds
-        return False
+        if block_bounds is None:
+            return False
+        else:
+            pass
+
+        start_node: RoutingNode | None = self._graph.get_node(segment.get_start_node_id())
+        end_node: RoutingNode | None = self._graph.get_node(segment.get_end_node_id())
+        if start_node is None or end_node is None:
+            return False
+        else:
+            pass
+
+        interior_bounds: RoutingBounds | None = self._build_effective_block_interior(
+            block_bounds=block_bounds,
+        )
+        if interior_bounds is None:
+            return False
+        else:
+            pass
+
+        start_x: float = start_node.get_position().get_x()
+        start_y: float = start_node.get_position().get_y()
+        end_x: float = end_node.get_position().get_x()
+        end_y: float = end_node.get_position().get_y()
+        segment_axis: RoutingAxis | None = self._geometry.derive_axis(
+            start_x=start_x,
+            start_y=start_y,
+            end_x=end_x,
+            end_y=end_y,
+        )
+
+        # Orthogonal segments intersect a rectangle only when their fixed
+        # coordinate is interior and their varying interval overlaps it.
+        if segment_axis == RoutingAxis.HORIZONTAL:
+            if not self._is_value_inside_open_interval(
+                    value=start_y,
+                    lower_bound=interior_bounds.get_top(),
+                    upper_bound=interior_bounds.get_bottom(),
+            ):
+                return False
+            else:
+                return self._open_intervals_overlap(
+                    first_start=min(start_x, end_x),
+                    first_end=max(start_x, end_x),
+                    second_start=interior_bounds.get_left(),
+                    second_end=interior_bounds.get_right(),
+                )
+        elif segment_axis == RoutingAxis.VERTICAL:
+            if not self._is_value_inside_open_interval(
+                    value=start_x,
+                    lower_bound=interior_bounds.get_left(),
+                    upper_bound=interior_bounds.get_right(),
+            ):
+                return False
+            else:
+                return self._open_intervals_overlap(
+                    first_start=min(start_y, end_y),
+                    first_end=max(start_y, end_y),
+                    second_start=interior_bounds.get_top(),
+                    second_end=interior_bounds.get_bottom(),
+                )
+        else:
+            # Non-orthogonal geometry is rejected by validate_segment(). This
+            # predicate remains conservative and leaves that rule authoritative.
+            return False
 
     def is_segment_inside_block(
             self,
             segment: RoutingSegment,
-            block_bounds: object | None = None,
+            block_bounds: RoutingBounds | None = None,
     ) -> bool:
         """
-        Return whether one segment lies inside the owning block geometry.
+        Return whether both segment endpoints lie inside the owning block.
 
-        The real block-boundary geometry is not part of Phase 2.1 yet. The API
-        exists now so future algorithms can ask this question through the same
-        constraint engine without redesigning the call sites.
+        Boundary contact remains valid for a real port attachment, so the same
+        effective interior used by the intersection check is applied here.
 
         :param segment: Segment to inspect.
-        :param block_bounds: Placeholder block geometry payload.
-        :return: ``False`` until block geometry integration exists.
+        :param block_bounds: Non-Qt bounds of the endpoint's owning block.
+        :return: ``True`` when the complete segment lies in the effective interior.
         """
-        del segment
-        del block_bounds
-        return False
+        if block_bounds is None:
+            return False
+        else:
+            pass
 
-    def validate_segment(self, segment: RoutingSegment) -> bool:
+        start_node: RoutingNode | None = self._graph.get_node(segment.get_start_node_id())
+        end_node: RoutingNode | None = self._graph.get_node(segment.get_end_node_id())
+        if start_node is None or end_node is None:
+            return False
+        else:
+            pass
+
+        interior_bounds: RoutingBounds | None = self._build_effective_block_interior(
+            block_bounds=block_bounds,
+        )
+        if interior_bounds is None:
+            return False
+        else:
+            start_inside: bool = self._is_point_inside_bounds(
+                route_node=start_node,
+                block_bounds=interior_bounds,
+            )
+            end_inside: bool = self._is_point_inside_bounds(
+                route_node=end_node,
+                block_bounds=interior_bounds,
+            )
+            if start_inside and end_inside:
+                return True
+            else:
+                return False
+
+    def segment_intersects_foreign_block(
+            self,
+            segment: RoutingSegment,
+            block_bounds: RoutingBounds,
+    ) -> bool:
+        """
+        Return whether one segment touches or enters an unrelated block.
+
+        Unlike the owner policy, a foreign block is a complete obstacle. Both
+        boundary contact and interior penetration are invalid because no port
+        on that block belongs to the connection being validated.
+
+        :param segment: Segment to inspect.
+        :param block_bounds: Non-Qt bounds of one unrelated block.
+        :return: ``True`` when the segment intersects the closed rectangle.
+        """
+        start_node: RoutingNode | None = self._graph.get_node(segment.get_start_node_id())
+        end_node: RoutingNode | None = self._graph.get_node(segment.get_end_node_id())
+        if start_node is None or end_node is None:
+            return False
+        else:
+            pass
+
+        start_x: float = start_node.get_position().get_x()
+        start_y: float = start_node.get_position().get_y()
+        end_x: float = end_node.get_position().get_x()
+        end_y: float = end_node.get_position().get_y()
+        segment_axis: RoutingAxis | None = self._geometry.derive_axis(
+            start_x=start_x,
+            start_y=start_y,
+            end_x=end_x,
+            end_y=end_y,
+        )
+
+        # Foreign obstacles use a closed rectangle. Merely touching their
+        # visible outline is therefore a collision, unlike an owning port edge.
+        if segment_axis == RoutingAxis.HORIZONTAL:
+            if not self._is_value_inside_closed_interval(
+                    value=start_y,
+                    lower_bound=block_bounds.get_top(),
+                    upper_bound=block_bounds.get_bottom(),
+            ):
+                return False
+            else:
+                return self._closed_intervals_overlap(
+                    first_start=min(start_x, end_x),
+                    first_end=max(start_x, end_x),
+                    second_start=block_bounds.get_left(),
+                    second_end=block_bounds.get_right(),
+                )
+        elif segment_axis == RoutingAxis.VERTICAL:
+            if not self._is_value_inside_closed_interval(
+                    value=start_x,
+                    lower_bound=block_bounds.get_left(),
+                    upper_bound=block_bounds.get_right(),
+            ):
+                return False
+            else:
+                return self._closed_intervals_overlap(
+                    first_start=min(start_y, end_y),
+                    first_end=max(start_y, end_y),
+                    second_start=block_bounds.get_top(),
+                    second_end=block_bounds.get_bottom(),
+                )
+        else:
+            return False
+
+    def segment_intersects_other_connection(
+            self,
+            segment: RoutingSegment,
+            obstacle_segment: RoutingSegmentObstacle,
+    ) -> bool:
+        """
+        Return whether one segment touches or crosses another connection.
+
+        Perpendicular crossings, collinear overlap and endpoint-only contact
+        are all invalid. Junction and shared-trunk semantics do not exist yet,
+        so accepting any of those shapes would produce a misleading visual
+        relationship between electrically independent connections.
+
+        :param segment: Segment from the graph currently being validated.
+        :param obstacle_segment: Point-in-time segment from another graph.
+        :return: ``True`` when both closed orthogonal segments intersect.
+        """
+        start_node: RoutingNode | None = self._graph.get_node(segment.get_start_node_id())
+        end_node: RoutingNode | None = self._graph.get_node(segment.get_end_node_id())
+        if start_node is None or end_node is None:
+            return False
+        else:
+            pass
+
+        start_position: RoutingPoint = start_node.get_position()
+        end_position: RoutingPoint = end_node.get_position()
+        obstacle_start: RoutingPoint = obstacle_segment.get_start_position()
+        obstacle_end: RoutingPoint = obstacle_segment.get_end_position()
+        segment_axis: RoutingAxis | None = self._geometry.derive_axis(
+            start_x=start_position.get_x(),
+            start_y=start_position.get_y(),
+            end_x=end_position.get_x(),
+            end_y=end_position.get_y(),
+        )
+        obstacle_axis: RoutingAxis | None = self._geometry.derive_axis(
+            start_x=obstacle_start.get_x(),
+            start_y=obstacle_start.get_y(),
+            end_x=obstacle_end.get_x(),
+            end_y=obstacle_end.get_y(),
+        )
+        if segment_axis is None or obstacle_axis is None:
+            return False
+        elif segment_axis == RoutingAxis.HORIZONTAL and obstacle_axis == RoutingAxis.HORIZONTAL:
+            if not self._geometry.are_y_aligned_values(
+                    first_y=start_position.get_y(),
+                    second_y=obstacle_start.get_y(),
+            ):
+                return False
+            else:
+                return self._closed_intervals_overlap(
+                    first_start=min(start_position.get_x(), end_position.get_x()),
+                    first_end=max(start_position.get_x(), end_position.get_x()),
+                    second_start=min(obstacle_start.get_x(), obstacle_end.get_x()),
+                    second_end=max(obstacle_start.get_x(), obstacle_end.get_x()),
+                )
+        elif segment_axis == RoutingAxis.VERTICAL and obstacle_axis == RoutingAxis.VERTICAL:
+            if not self._geometry.are_x_aligned_values(
+                    first_x=start_position.get_x(),
+                    second_x=obstacle_start.get_x(),
+            ):
+                return False
+            else:
+                return self._closed_intervals_overlap(
+                    first_start=min(start_position.get_y(), end_position.get_y()),
+                    first_end=max(start_position.get_y(), end_position.get_y()),
+                    second_start=min(obstacle_start.get_y(), obstacle_end.get_y()),
+                    second_end=max(obstacle_start.get_y(), obstacle_end.get_y()),
+                )
+        elif segment_axis == RoutingAxis.HORIZONTAL:
+            crossing_x: float = obstacle_start.get_x()
+            crossing_y: float = start_position.get_y()
+            return self._orthogonal_crossing_point_belongs_to_both_segments(
+                crossing_x=crossing_x,
+                crossing_y=crossing_y,
+                horizontal_start=start_position,
+                horizontal_end=end_position,
+                vertical_start=obstacle_start,
+                vertical_end=obstacle_end,
+            )
+        else:
+            crossing_x = start_position.get_x()
+            crossing_y = obstacle_start.get_y()
+            return self._orthogonal_crossing_point_belongs_to_both_segments(
+                crossing_x=crossing_x,
+                crossing_y=crossing_y,
+                horizontal_start=obstacle_start,
+                horizontal_end=obstacle_end,
+                vertical_start=start_position,
+                vertical_end=end_position,
+            )
+
+    def validate_segment(
+            self,
+            segment: RoutingSegment,
+            connection_geometry: RoutingConnectionGeometry | None = None,
+    ) -> bool:
         """
         Return whether one segment satisfies every active segment-level constraint.
 
@@ -235,16 +491,26 @@ class RoutingConstraintEngine:
         calling code.
 
         :param segment: Segment to inspect.
+        :param connection_geometry: Point-in-time owner and foreign-block geometry.
         :return: ``True`` when the segment satisfies every active constraint.
         """
         if not self.is_segment_orthogonal(segment=segment):
             return False
         elif not self.is_segment_long_enough(segment=segment):
             return False
+        elif not self._segment_avoids_foreign_blocks(
+                segment=segment,
+                connection_geometry=connection_geometry,
+        ):
+            return False
+        elif not self._segment_avoids_other_connections(
+                segment=segment,
+                connection_geometry=connection_geometry,
+        ):
+            return False
         else:
-            # Segment-level validation stays intentionally small in this phase.
-            # Future constraints can extend this single composition point
-            # without changing editor call sites.
+            # Every segment-level rule remains composed here so builders and
+            # editors cannot accidentally apply different obstacle policies.
             return True
 
     def validate_connection(
@@ -252,7 +518,8 @@ class RoutingConstraintEngine:
             port_node: RoutingNode,
             neighbour_node: RoutingNode,
             segment: RoutingSegment,
-            block_bounds: object | None = None,
+            block_bounds: RoutingBounds | None = None,
+            connection_geometry: RoutingConnectionGeometry | None = None,
     ) -> bool:
         """
         Return whether one local port connection satisfies every active constraint.
@@ -263,7 +530,8 @@ class RoutingConstraintEngine:
         :param port_node: Port node to inspect.
         :param neighbour_node: First neighbour of the port node.
         :param segment: Connecting segment between both nodes.
-        :param block_bounds: Placeholder block geometry payload.
+        :param block_bounds: Non-Qt bounds of the endpoint's owning block.
+        :param connection_geometry: Point-in-time owner and obstacle geometry.
         :return: ``True`` when every active constraint is satisfied.
         """
         if not self.is_port_connection_perpendicular(
@@ -276,7 +544,10 @@ class RoutingConstraintEngine:
                 neighbour_node=neighbour_node,
         ):
             return False
-        elif not self.validate_segment(segment=segment):
+        elif not self.validate_segment(
+                segment=segment,
+                connection_geometry=connection_geometry,
+        ):
             return False
         elif self.segment_intersects_block(segment=segment, block_bounds=block_bounds):
             return False
@@ -287,6 +558,292 @@ class RoutingConstraintEngine:
             # segment rules so higher-level algorithms can ask one question
             # without duplicating constraint sequencing.
             return True
+
+    def _segment_avoids_foreign_blocks(
+            self,
+            segment: RoutingSegment,
+            connection_geometry: RoutingConnectionGeometry | None,
+    ) -> bool:
+        """
+        Return whether one segment avoids every block foreign to that segment.
+
+        Endpoint owners are foreign to interior segments but not to the first
+        segment attached to their own port. Other scene blocks are always full
+        obstacles. Owner-specific penetration is checked separately through
+        :meth:`validate_connection`.
+
+        :param segment: Segment to validate against captured block geometry.
+        :param connection_geometry: Point-in-time connection geometry or ``None``.
+        :return: ``True`` when no foreign block intersects the segment.
+        """
+        if connection_geometry is None:
+            return True
+        else:
+            pass
+
+        block_geometry: RoutingBlockGeometry
+        for block_geometry in connection_geometry.get_other_blocks():
+            if self.segment_intersects_foreign_block(
+                    segment=segment,
+                    block_bounds=block_geometry.get_bounds(),
+            ):
+                return False
+            else:
+                pass
+
+        source_owner: RoutingBlockGeometry | None = connection_geometry.get_source_owner()
+        destination_owner: RoutingBlockGeometry | None = connection_geometry.get_destination_owner()
+        source_segment: bool = self._segment_contains_node(
+            segment=segment,
+            node_id=self._graph.get_source_node_id(),
+        )
+        destination_segment: bool = self._segment_contains_node(
+            segment=segment,
+            node_id=self._graph.get_destination_node_id(),
+        )
+        same_endpoint_owner: bool = destination_owner is source_owner and destination_owner is not None
+        source_owner_is_local: bool = source_segment or (same_endpoint_owner and destination_segment)
+        if source_owner is not None and not source_owner_is_local:
+            if self.segment_intersects_foreign_block(
+                    segment=segment,
+                    block_bounds=source_owner.get_bounds(),
+            ):
+                return False
+            else:
+                pass
+        else:
+            pass
+
+        if destination_owner is not None and not same_endpoint_owner and not destination_segment:
+            if self.segment_intersects_foreign_block(
+                    segment=segment,
+                    block_bounds=destination_owner.get_bounds(),
+            ):
+                return False
+            else:
+                pass
+        elif same_endpoint_owner:
+            # A shared endpoint owner was already checked through the source
+            # role above, so no duplicate rectangle evaluation is necessary.
+            pass
+        else:
+            pass
+
+        return True
+
+    def _segment_avoids_other_connections(
+            self,
+            segment: RoutingSegment,
+            connection_geometry: RoutingConnectionGeometry | None,
+    ) -> bool:
+        """
+        Return whether one segment avoids every captured foreign connection.
+
+        :param segment: Segment from the active routing graph.
+        :param connection_geometry: Point-in-time geometry or ``None``.
+        :return: ``True`` when no foreign segment touches the active segment.
+        """
+        if connection_geometry is None:
+            return True
+        else:
+            pass
+
+        obstacle_segment: RoutingSegmentObstacle
+        for obstacle_segment in connection_geometry.get_other_connection_segments():
+            if self.segment_intersects_other_connection(
+                    segment=segment,
+                    obstacle_segment=obstacle_segment,
+            ):
+                return False
+            else:
+                pass
+        return True
+
+    def _orthogonal_crossing_point_belongs_to_both_segments(
+            self,
+            crossing_x: float,
+            crossing_y: float,
+            horizontal_start: RoutingPoint,
+            horizontal_end: RoutingPoint,
+            vertical_start: RoutingPoint,
+            vertical_end: RoutingPoint,
+    ) -> bool:
+        """
+        Return whether one perpendicular crossing point lies on both segments.
+
+        :param crossing_x: Horizontal coordinate of the candidate crossing.
+        :param crossing_y: Vertical coordinate of the candidate crossing.
+        :param horizontal_start: First endpoint of the horizontal segment.
+        :param horizontal_end: Second endpoint of the horizontal segment.
+        :param vertical_start: First endpoint of the vertical segment.
+        :param vertical_end: Second endpoint of the vertical segment.
+        :return: ``True`` when the closed segments share the crossing point.
+        """
+        crossing_on_horizontal: bool = self._is_value_inside_closed_interval(
+            value=crossing_x,
+            lower_bound=min(horizontal_start.get_x(), horizontal_end.get_x()),
+            upper_bound=max(horizontal_start.get_x(), horizontal_end.get_x()),
+        )
+        crossing_on_vertical: bool = self._is_value_inside_closed_interval(
+            value=crossing_y,
+            lower_bound=min(vertical_start.get_y(), vertical_end.get_y()),
+            upper_bound=max(vertical_start.get_y(), vertical_end.get_y()),
+        )
+        if crossing_on_horizontal and crossing_on_vertical:
+            return True
+        else:
+            return False
+
+    def _segment_contains_node(self, segment: RoutingSegment, node_id: int) -> bool:
+        """
+        Return whether one node identifier is an endpoint of a segment.
+
+        :param segment: Segment whose endpoints must be inspected.
+        :param node_id: Candidate endpoint identifier.
+        :return: ``True`` when the node belongs to the segment.
+        """
+        if segment.get_start_node_id() == int(node_id):
+            return True
+        elif segment.get_end_node_id() == int(node_id):
+            return True
+        else:
+            return False
+
+    def _build_effective_block_interior(self, block_bounds: RoutingBounds) -> RoutingBounds | None:
+        """
+        Build the strict block interior after applying visual-edge tolerance.
+
+        :param block_bounds: Captured scene bounds including their visual pen.
+        :return: Effective interior bounds, or ``None`` for a collapsed rectangle.
+        """
+        tolerance: float = self._geometry.get_visual_alignment_threshold()
+        interior_left: float = block_bounds.get_left() + tolerance
+        interior_top: float = block_bounds.get_top() + tolerance
+        interior_right: float = block_bounds.get_right() - tolerance
+        interior_bottom: float = block_bounds.get_bottom() - tolerance
+        if interior_left < interior_right and interior_top < interior_bottom:
+            return RoutingBounds(
+                left=interior_left,
+                top=interior_top,
+                right=interior_right,
+                bottom=interior_bottom,
+            )
+        else:
+            return None
+
+    def _is_point_inside_bounds(
+            self,
+            route_node: RoutingNode,
+            block_bounds: RoutingBounds,
+    ) -> bool:
+        """
+        Return whether one node lies strictly inside supplied bounds.
+
+        :param route_node: Routing node whose position must be inspected.
+        :param block_bounds: Effective open rectangle bounds.
+        :return: ``True`` when both coordinates are strictly interior.
+        """
+        x_inside: bool = self._is_value_inside_open_interval(
+            value=route_node.get_position().get_x(),
+            lower_bound=block_bounds.get_left(),
+            upper_bound=block_bounds.get_right(),
+        )
+        y_inside: bool = self._is_value_inside_open_interval(
+            value=route_node.get_position().get_y(),
+            lower_bound=block_bounds.get_top(),
+            upper_bound=block_bounds.get_bottom(),
+        )
+        if x_inside and y_inside:
+            return True
+        else:
+            return False
+
+    def _is_value_inside_open_interval(
+            self,
+            value: float,
+            lower_bound: float,
+            upper_bound: float,
+    ) -> bool:
+        """
+        Return whether one scalar lies strictly inside an open interval.
+
+        :param value: Scalar coordinate to inspect.
+        :param lower_bound: Open interval lower bound.
+        :param upper_bound: Open interval upper bound.
+        :return: ``True`` when the value is strictly interior.
+        """
+        if float(lower_bound) < float(value) < float(upper_bound):
+            return True
+        else:
+            return False
+
+    def _is_value_inside_closed_interval(
+            self,
+            value: float,
+            lower_bound: float,
+            upper_bound: float,
+    ) -> bool:
+        """
+        Return whether one scalar lies inside a closed interval.
+
+        :param value: Scalar coordinate to inspect.
+        :param lower_bound: Closed interval lower bound.
+        :param upper_bound: Closed interval upper bound.
+        :return: ``True`` when the value lies on or within both bounds.
+        """
+        if float(lower_bound) <= float(value) <= float(upper_bound):
+            return True
+        else:
+            return False
+
+    def _open_intervals_overlap(
+            self,
+            first_start: float,
+            first_end: float,
+            second_start: float,
+            second_end: float,
+    ) -> bool:
+        """
+        Return whether two ordered intervals share a non-zero interior span.
+
+        Endpoint-only contact is intentionally excluded so a port connection
+        can touch the effective owner boundary without being rejected.
+
+        :param first_start: First interval start.
+        :param first_end: First interval end.
+        :param second_start: Second interval start.
+        :param second_end: Second interval end.
+        :return: ``True`` when both intervals overlap beyond one endpoint.
+        """
+        overlap_start: float = max(float(first_start), float(second_start))
+        overlap_end: float = min(float(first_end), float(second_end))
+        if overlap_start < overlap_end:
+            return True
+        else:
+            return False
+
+    def _closed_intervals_overlap(
+            self,
+            first_start: float,
+            first_end: float,
+            second_start: float,
+            second_end: float,
+    ) -> bool:
+        """
+        Return whether two ordered closed intervals touch or overlap.
+
+        :param first_start: First interval start.
+        :param first_end: First interval end.
+        :param second_start: Second interval start.
+        :param second_end: Second interval end.
+        :return: ``True`` when the intervals share at least one coordinate.
+        """
+        overlap_start: float = max(float(first_start), float(second_start))
+        overlap_end: float = min(float(first_end), float(second_end))
+        if overlap_start <= overlap_end:
+            return True
+        else:
+            return False
 
     def _get_port_perpendicular_axis(self, port_node: RoutingNode) -> RoutingAxis | None:
         """

@@ -15,6 +15,10 @@ from VeraGrid.Gui.DynamicModelEditor.Routing.routing_serializer import RoutingGr
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_serializer import RoutingSerializedGraph
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_serializer import RoutingSerializedNode
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_serializer import RoutingSerializedSegment
+from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingBlockGeometry
+from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingBounds
+from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingConnectionGeometry
+from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingSegmentObstacle
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_validation import RoutingValidationMessage
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_validation import RoutingValidationReport
 from VeraGridEngine.enumerations import (
@@ -27,7 +31,10 @@ from VeraGridEngine.enumerations import (
 __all__: list[str] = [
     "RouteBuilder",
     "RoutingAxis",
+    "RoutingBlockGeometry",
+    "RoutingBounds",
     "RoutingConstraintEngine",
+    "RoutingConnectionGeometry",
     "RoutingEditor",
     "RoutingGeometry",
     "RoutingGraph",
@@ -36,6 +43,7 @@ __all__: list[str] = [
     "RoutingPortSide",
     "RoutingPoint",
     "RoutingSegment",
+    "RoutingSegmentObstacle",
     "RoutingGraphSerializer",
     "RoutingSerializedGraph",
     "RoutingSerializedNode",

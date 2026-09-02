@@ -11,6 +11,9 @@ from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingPoin
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingSegment
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_graph import RoutingGraph
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_geometry import RoutingGeometry
+from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingBlockGeometry
+from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingBounds
+from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingConnectionGeometry
 from VeraGridEngine.enumerations import RoutingNodeKind, RoutingPortSide
 
 
@@ -26,6 +29,7 @@ class RouteBuilder:
         "_destination_position",
         "_source_port_side",
         "_destination_port_side",
+        "_connection_geometry",
         "_geometry",
     )
 
@@ -35,6 +39,7 @@ class RouteBuilder:
             destination_position: RoutingPoint,
             source_port_side: RoutingPortSide,
             destination_port_side: RoutingPortSide,
+            connection_geometry: RoutingConnectionGeometry | None = None,
     ) -> None:
         """
         Build one route builder.
@@ -43,12 +48,14 @@ class RouteBuilder:
         :param destination_position: Destination port position.
         :param source_port_side: Physical side of the source port on its block.
         :param destination_port_side: Physical side of the destination port on its block.
+        :param connection_geometry: Point-in-time non-Qt block geometry for the connection.
         :return: None.
         """
         self._source_position: RoutingPoint = source_position.copy()
         self._destination_position: RoutingPoint = destination_position.copy()
         self._source_port_side: RoutingPortSide = source_port_side
         self._destination_port_side: RoutingPortSide = destination_port_side
+        self._connection_geometry: RoutingConnectionGeometry | None = connection_geometry
         self._geometry: RoutingGeometry = RoutingGeometry()
 
     def build(self) -> RoutingGraph:
@@ -90,10 +97,9 @@ class RouteBuilder:
         """
         Validate one newly constructed graph before exposing it to callers.
 
-        Block bounds are unavailable in the routing core, so connection checks
-        deliberately receive ``None``. The existing collision methods remain
-        inactive placeholders while every other graph and geometric constraint
-        is enforced here.
+        When Qt supplies a point-in-time geometry snapshot, the builder also
+        checks endpoint owners, foreign blocks and existing routed connections.
+        Pure-core callers remain supported by omitting that optional snapshot.
 
         :param routing_graph: Newly materialized graph.
         :return: ``True`` when topology and active constraints are valid.
@@ -106,11 +112,6 @@ class RouteBuilder:
         constraint_engine: RoutingConstraintEngine = RoutingConstraintEngine(graph=routing_graph)
         route_segment: RoutingSegment
         for route_segment in routing_graph.get_segments():
-            if constraint_engine.validate_segment(segment=route_segment):
-                pass
-            else:
-                return False
-
             start_node: RoutingNode | None = routing_graph.get_node(route_segment.get_start_node_id())
             end_node: RoutingNode | None = routing_graph.get_node(route_segment.get_end_node_id())
             if start_node is None or end_node is None:
@@ -118,12 +119,12 @@ class RouteBuilder:
             else:
                 pass
 
-            if start_node.get_kind() == RoutingNodeKind.PORT:
-                if constraint_engine.validate_connection(
-                        port_node=start_node,
-                        neighbour_node=end_node,
+            start_is_port: bool = start_node.get_kind() == RoutingNodeKind.PORT
+            end_is_port: bool = end_node.get_kind() == RoutingNodeKind.PORT
+            if not start_is_port and not end_is_port:
+                if constraint_engine.validate_segment(
                         segment=route_segment,
-                        block_bounds=None,
+                        connection_geometry=self._connection_geometry,
                 ):
                     pass
                 else:
@@ -131,12 +132,35 @@ class RouteBuilder:
             else:
                 pass
 
-            if end_node.get_kind() == RoutingNodeKind.PORT:
+            if start_is_port:
+                start_owner_bounds: RoutingBounds | None = self._get_port_owner_bounds(
+                    routing_graph=routing_graph,
+                    port_node=start_node,
+                )
+                if constraint_engine.validate_connection(
+                        port_node=start_node,
+                        neighbour_node=end_node,
+                        segment=route_segment,
+                        block_bounds=start_owner_bounds,
+                        connection_geometry=self._connection_geometry,
+                ):
+                    pass
+                else:
+                    return False
+            else:
+                pass
+
+            if end_is_port:
+                end_owner_bounds: RoutingBounds | None = self._get_port_owner_bounds(
+                    routing_graph=routing_graph,
+                    port_node=end_node,
+                )
                 if constraint_engine.validate_connection(
                         port_node=end_node,
                         neighbour_node=start_node,
                         segment=route_segment,
-                        block_bounds=None,
+                        block_bounds=end_owner_bounds,
+                        connection_geometry=self._connection_geometry,
                 ):
                     pass
                 else:
@@ -145,6 +169,35 @@ class RouteBuilder:
                 pass
 
         return True
+
+    def _get_port_owner_bounds(
+            self,
+            routing_graph: RoutingGraph,
+            port_node: RoutingNode,
+    ) -> RoutingBounds | None:
+        """
+        Return the captured owner bounds for one route endpoint.
+
+        :param routing_graph: Graph whose endpoint role must be resolved.
+        :param port_node: Port node being validated.
+        :return: Matching endpoint-owner bounds or ``None`` when unavailable.
+        """
+        if self._connection_geometry is None:
+            return None
+        elif port_node.get_node_id() == routing_graph.get_source_node_id():
+            source_owner: RoutingBlockGeometry | None = self._connection_geometry.get_source_owner()
+            if source_owner is not None:
+                return source_owner.get_bounds()
+            else:
+                return None
+        elif port_node.get_node_id() == routing_graph.get_destination_node_id():
+            destination_owner: RoutingBlockGeometry | None = self._connection_geometry.get_destination_owner()
+            if destination_owner is not None:
+                return destination_owner.get_bounds()
+            else:
+                return None
+        else:
+            return None
 
     def _build_stub_topology(self, routing_graph: RoutingGraph) -> None:
         """
