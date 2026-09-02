@@ -29,7 +29,6 @@ from VeraGridEngine.enumerations import (
 
 from VeraGridEngine.IO.fmu.exporter.compat import Var
 from VeraGridEngine.IO.fmu.importer.bindings import FmuRefBinding
-from VeraGridEngine.IO.fmu.importer.model_exchange import FmuMeIntegrationMethod
 from VeraGridEngine.IO.fmu.importer.model_description import FmuInterfaceMode
 from VeraGridEngine.IO.fmu.importer.user_api import (
     FmuDeviceAttachmentRequest,
@@ -376,7 +375,6 @@ def _build_rms_example_request(
             ),
         ),
         extraction_root=output_dir,
-        integration_method=FmuMeIntegrationMethod.EXPLICIT_EULER,
     )
 
 
@@ -829,7 +827,6 @@ def run_emt_me_example(output_dir: Path) -> Path:
             FmuReferenceValue(VarPowerFlowReferenceType.i_C, 0.0),
         ),
         extraction_root=output_dir,
-        integration_method=FmuMeIntegrationMethod.EXPLICIT_EULER,
     )
 
     # The bus template already exposes the real phase-A voltage reference used
@@ -842,7 +839,7 @@ def run_emt_me_example(output_dir: Path) -> Path:
             simulation_time=1.0e-3,
             tolerance=1.0e-6,
             solver_type=EmtSolverTypes.Symbolic,
-            integration_method=DynamicIntegrationMethod.DaeTrapezoidal,
+            integration_method=DynamicIntegrationMethod.DaeBackEuler,
             initialization_method=EmtInitializationMethod.Auto,
             verbose=0,
         ),
