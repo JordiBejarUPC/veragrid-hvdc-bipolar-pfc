@@ -22,6 +22,7 @@ from VeraGrid.Gui.SigmaAnalysis.sigma_analysis_dialogue import SigmaAnalysisGUI
 from VeraGrid.Gui.ProceduralGrid.procedural_grid import ProceduralGridWindow
 from VeraGrid.Gui.ProceduralGrid.map_warning import MapWarningDialog
 from VeraGrid.Gui.CandidateInvestments.candidate_investments import CandidateInvestmentsWindow
+from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, is_dialog_available
 from VeraGrid.Session.session import GcThread
 from VeraGrid.Session.server_driver import RemoteJobDriver
 from VeraGrid.Gui.DynamicEventsDialog.dynamic_events_editor_support import create_dynamic_events_group_with_dialog
@@ -988,6 +989,37 @@ class SimulationsMain(TimeEventsMain):
         self.ui.resultsTableView.setModel(None)
         self.ui.resultsLogsTreeView.setModel(None)
         self.changed_study()
+
+    def refresh_runtime_translations(self) -> None:
+        """
+        Refresh runtime-built results labels after one language change.
+
+        :return: None.
+        """
+        super().refresh_runtime_translations()
+
+        available_results: List[DRIVER_OBJECTS] = self.get_available_drivers()
+        selected_simulation_type: SimulationTypes | None = self.ui.available_results_to_color_comboBox.currentData()
+        combo_values: List[SimulationTypes] = [SimulationTypes.DesignView]
+        driver: DRIVER_OBJECTS
+
+        self.ui.results_treeView.setModel(self.build_results_tree_model(available_results=available_results))
+
+        for driver in available_results:
+            combo_values.append(driver.tpe)
+
+        combo_values.reverse()
+        model: gf.ComboModel = gf.ComboModel(enum_values=combo_values, translate=translate_tree_label)
+        self.ui.available_results_to_color_comboBox.setModel(model)
+
+        if selected_simulation_type is not None:
+            index: int = self.ui.available_results_to_color_comboBox.findData(selected_simulation_type)
+            if index >= 0:
+                self.ui.available_results_to_color_comboBox.setCurrentIndex(index)
+            else:
+                pass
+        else:
+            pass
 
     def get_compatible_from_to_buses_and_inter_branches(self) -> dev.InterAggregationInfo:
         """
@@ -3362,6 +3394,12 @@ class SimulationsMain(TimeEventsMain):
             if not sigma_driver.results.converged:
                 self.show_error_toast("Sigma coefficients did not converge :(")
 
+            old_dialog: SigmaAnalysisGUI | None = self.sigma_dialogue
+            if is_dialog_available(dialog=old_dialog):
+                delete_dialog_safely(dialog=old_dialog)
+            else:
+                pass
+
             self.sigma_dialogue = SigmaAnalysisGUI(parent=self,
                                                    results=sigma_driver.results,
                                                    bus_names=bus_names,
@@ -3521,11 +3559,7 @@ class SimulationsMain(TimeEventsMain):
             self._investments_all = list(self.circuit.investments)
             all_elements_dict, _ = self.circuit.get_all_elements_dict()
 
-            # Apply the best Pareto-optimal combination to the live grid so the user lands on a
-            # usable state. No dedicated diagram is created: the Variations panel lets the user
-            # click any Pareto combination and applies it to the currently selected diagram, so an
-            # auto-generated "best Pareto" diagram would just be a redundant duplicate that
-            # accumulates one copy per run.
+            # create a schematic diagram for the best Pareto-optimal investment combination
             if driver is not None and len(results.sorting_indices) > 0:
                 best_x = results.x[results.sorting_indices[0], :]
                 inv_list = driver.problem.get_investments_for_combination(x=best_x)
@@ -4399,12 +4433,18 @@ class SimulationsMain(TimeEventsMain):
 
         # Check if the active diagram is NOT a MapWidget
         if current_diagram is None:  # Before it was "if not isinstance(current_diagram, MapWidget):" but it did not work
-            self.map_warning = MapWarningDialog(parent=self)
-            self.map_warning.exec()
+            map_warning: MapWarningDialog = MapWarningDialog(parent=self)
+            try:
+                map_warning.exec()
+            finally:
+                delete_dialog_safely(dialog=map_warning)
             return
 
-        self.procedural_grid_window = ProceduralGridWindow(app=self)
-        self.procedural_grid_window.exec()
+        procedural_grid_window: ProceduralGridWindow = ProceduralGridWindow(app=self)
+        try:
+            procedural_grid_window.exec()
+        finally:
+            delete_dialog_safely(dialog=procedural_grid_window)
 
     def catalogue_element_optimization(self) -> None:
         """
