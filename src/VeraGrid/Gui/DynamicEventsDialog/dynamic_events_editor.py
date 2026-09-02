@@ -122,6 +122,7 @@ class DynamicEventEditor(QtWidgets.QDialog):
             self._set_tree_visible(False)
         else:
             self._set_tree_visible(True)
+            self._ensure_event_group_exists(preferred_mode)
 
     def _configure_buttons(self) -> None:
         """Apply the explicit transaction-control button captions.
@@ -224,6 +225,10 @@ class DynamicEventEditor(QtWidgets.QDialog):
             self.ui.tabBar.setCurrentIndex(existing_index)
             return self.pages[existing_index]
         else:
+            # A mode needs at least one global group before any device event
+            # can reference it. Run this guard before building the page so its
+            # initial tree immediately includes a group accepted by the user.
+            self._ensure_event_group_exists(mode)
             parameters: list[Var]
             mode_parameter_uids: set[int]
             model_is_empty: bool
@@ -318,13 +323,56 @@ class DynamicEventEditor(QtWidgets.QDialog):
             group_mode: DynamicSimulationMode = self.preferred_mode
         else:
             group_mode = current_page.mode
+        self._request_event_group(group_mode)
+
+    def _ensure_event_group_exists(self, mode: DynamicSimulationMode) -> None:
+        """Require an RMS or EMT event group before editing that mode.
+
+        The warning and name request reproduce the pre-refactor entry flow.
+        Cancelling the name dialog still leaves the general workspace open,
+        where ``New Event Group`` remains available.
+
+        :param mode: Dynamic simulation family about to be displayed.
+        :return: None.
+        """
+        existing_groups: list[DynamicEventGroupDraft] = self.session.get_groups(mode)
+        if len(existing_groups) == 0:
+            message_title: str
+            message_body: str
+            if mode == DynamicSimulationMode.RMS:
+                message_title = self.tr("No RMS Events Group")
+                message_body = self.tr(
+                    "No RMS Events Group found, please create one before adding an event."
+                )
+            elif mode == DynamicSimulationMode.EMT:
+                message_title = self.tr("No EMT Events Group")
+                message_body = self.tr(
+                    "No EMT Events Group found, please create one before adding an event."
+                )
+            else:
+                return
+
+            QtWidgets.QMessageBox.information(self, message_title, message_body)
+            self._request_event_group(mode)
+        else:
+            pass
+
+    def _request_event_group(
+            self,
+            mode: DynamicSimulationMode,
+    ) -> DynamicEventGroupDraft | None:
+        """Ask for and append one transaction-only event group.
+
+        :param mode: RMS or EMT family that will own the new group.
+        :return: Created group draft, or ``None`` when cancelled or invalid.
+        """
         group_dialog: DynamicEventsGroupsDialog = DynamicEventsGroupsDialog(
-            mode=group_mode,
+            mode=mode,
             parent=self,
         )
         if group_dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
             created_group: DynamicEventGroupDraft | None = self.session.add_group(
-                group_mode,
+                mode,
                 group_dialog.get_name(),
             )
             if created_group is None:
@@ -334,9 +382,10 @@ class DynamicEventEditor(QtWidgets.QDialog):
                     self.tr("The event group name must be non-empty and unique in this simulation mode."),
                 )
             else:
-                pass
+                return created_group
         else:
             pass
+        return None
 
     @QtCore.Slot()
     def accept_changes(self) -> None:
