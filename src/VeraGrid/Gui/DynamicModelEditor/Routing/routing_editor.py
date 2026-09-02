@@ -11,7 +11,8 @@ from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingPoin
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingSegment
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_geometry import RoutingGeometry
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_graph import RoutingGraph
-from VeraGridEngine.enumerations import RoutingAxis, RoutingNodeKind
+from VeraGrid.Gui.DynamicModelEditor.Routing.routing_validation import RoutingValidationReport
+from VeraGridEngine.enumerations import RoutingAxis, RoutingNodeKind, RoutingPortSide
 
 
 class RoutingEditor:
@@ -56,8 +57,7 @@ class RoutingEditor:
         else:
             pass
 
-        original_position: RoutingPoint = elbow_node.get_position().copy()
-        if self._points_are_equal(original_position, new_position):
+        if self._points_are_equal(elbow_node.get_position(), new_position):
             return True
         else:
             pass
@@ -93,13 +93,19 @@ class RoutingEditor:
         # An elbow move changes exactly one graph node. The connected segments
         # change only because they are incident to that node; no topology is
         # rebuilt and no unrelated geometry is touched.
-        elbow_node.set_position(chosen_position)
-        if self._incident_segments_are_valid_for_nodes(list((elbow_id,))):
-            return True
-        else:
-            elbow_node.set_position(original_position)
+        try:
+            elbow_node.set_position(chosen_position)
+            if self._validate_constraints(
+                    affected_node_ids=list((elbow_id,)),
+                    block_bounds=None,
+            ):
+                return True
+            else:
+                self._graph._restore_from(graph_snapshot)
+                return False
+        except Exception:
             self._graph._restore_from(graph_snapshot)
-            return False
+            raise
 
     def update_port(self, node_id: int, new_position: RoutingPoint) -> bool:
         """
@@ -139,24 +145,61 @@ class RoutingEditor:
         else:
             pass
 
-        # A port update starts by moving the physical port endpoint itself. The
-        # neighbouring stub is then rebuilt from the same shared geometry rule
-        # used by the builder so the endpoint topology remains consistent.
-        route_node.set_position(new_position.copy())
-
-        stub_node: RoutingNode = adjacent_nodes[0]
-        if stub_node.get_kind() != RoutingNodeKind.STUB:
-            self._graph._restore_from(graph_snapshot)
-            return False
-        elif not route_node.has_port_side():
-            self._graph._restore_from(graph_snapshot)
-            return False
-        else:
-            stub_position: RoutingPoint = self._geometry.build_port_stub_point(
-                port_position=new_position,
-                port_side=route_node.get_port_side(),
+        try:
+            updated: bool
+            affected_node_ids: list[int]
+            updated, affected_node_ids = self._apply_port_update(
+                route_node=route_node,
+                stub_node=adjacent_nodes[0],
+                new_position=new_position,
             )
-            stub_node.set_position(stub_position)
+            if updated and self._validate_constraints(
+                    affected_node_ids=affected_node_ids,
+                    block_bounds=None,
+            ):
+                return True
+            else:
+                self._graph._restore_from(graph_snapshot)
+                return False
+        except Exception:
+            self._graph._restore_from(graph_snapshot)
+            raise
+
+    def _apply_port_update(
+            self,
+            route_node: RoutingNode,
+            stub_node: RoutingNode,
+            new_position: RoutingPoint,
+    ) -> tuple[bool, list[int]]:
+        """
+        Apply the complete local port and stub geometry update.
+
+        This helper mutates only the live graph neighbourhood. The public
+        operation owns the snapshot, final validation and rollback.
+
+        :param route_node: Port node being moved.
+        :param stub_node: Immediate stub connected to the port.
+        :param new_position: Requested new port position.
+        :return: Update state and node identifiers whose geometry may differ.
+        """
+        affected_node_ids: list[int] = list()
+        node_id: int = route_node.get_node_id()
+        port_side: RoutingPortSide | None = route_node.get_port_side()
+        if stub_node.get_kind() != RoutingNodeKind.STUB:
+            return False, affected_node_ids
+        elif not route_node.has_port_side() or port_side is None:
+            return False, affected_node_ids
+        else:
+            pass
+
+        # Move the physical endpoint and rebuild its explicit stub through the
+        # same geometry policy used by RouteBuilder before repairing the bend.
+        route_node.set_position(new_position.copy())
+        stub_position: RoutingPoint = self._geometry.build_port_stub_point(
+            port_position=new_position,
+            port_side=port_side,
+        )
+        stub_node.set_position(stub_position)
 
         if self._graph.get_source_node_id() == node_id:
             updated: bool = self._update_source_stub_neighbourhood(
@@ -167,14 +210,20 @@ class RoutingEditor:
                 stub_node_id=stub_node.get_node_id(),
             )
         else:
-            self._graph._restore_from(graph_snapshot)
-            return False
+            return False, affected_node_ids
 
         if updated:
-            return True
+            affected_node_ids.append(node_id)
+            affected_node_ids.append(stub_node.get_node_id())
+            adjacent_node: RoutingNode
+            for adjacent_node in self._graph.adjacent_nodes(stub_node.get_node_id()):
+                if adjacent_node.get_node_id() in affected_node_ids:
+                    pass
+                else:
+                    affected_node_ids.append(adjacent_node.get_node_id())
+            return True, affected_node_ids
         else:
-            self._graph._restore_from(graph_snapshot)
-            return False
+            return False, affected_node_ids
 
     def move_segment(self, segment_id: int, coordinate_offset: float) -> bool:
         """
@@ -216,40 +265,45 @@ class RoutingEditor:
         # A segment move edits exactly the two elbow nodes that bound the moved
         # segment. The neighbouring topology stays intact and only the local
         # incident geometry changes as a consequence of those node moves.
-        if segment_axis == RoutingAxis.HORIZONTAL:
-            start_node.set_position(
-                RoutingPoint(
-                    start_node.get_position().get_x(),
-                    start_node.get_position().get_y() + offset_value,
+        try:
+            if segment_axis == RoutingAxis.HORIZONTAL:
+                start_node.set_position(
+                    RoutingPoint(
+                        start_node.get_position().get_x(),
+                        start_node.get_position().get_y() + offset_value,
+                    )
                 )
-            )
-            end_node.set_position(
-                RoutingPoint(
-                    end_node.get_position().get_x(),
-                    end_node.get_position().get_y() + offset_value,
+                end_node.set_position(
+                    RoutingPoint(
+                        end_node.get_position().get_x(),
+                        end_node.get_position().get_y() + offset_value,
+                    )
                 )
-            )
-        else:
-            start_node.set_position(
-                RoutingPoint(
-                    start_node.get_position().get_x() + offset_value,
-                    start_node.get_position().get_y(),
+            else:
+                start_node.set_position(
+                    RoutingPoint(
+                        start_node.get_position().get_x() + offset_value,
+                        start_node.get_position().get_y(),
+                    )
                 )
-            )
-            end_node.set_position(
-                RoutingPoint(
-                    end_node.get_position().get_x() + offset_value,
-                    end_node.get_position().get_y(),
+                end_node.set_position(
+                    RoutingPoint(
+                        end_node.get_position().get_x() + offset_value,
+                        end_node.get_position().get_y(),
+                    )
                 )
-            )
 
-        if self._incident_segments_are_valid_for_nodes(
-                list((start_node.get_node_id(), end_node.get_node_id(),))
-        ):
-            return True
-        else:
+            if self._validate_constraints(
+                    affected_node_ids=list((start_node.get_node_id(), end_node.get_node_id(),)),
+                    block_bounds=None,
+            ):
+                return True
+            else:
+                self._graph._restore_from(graph_snapshot)
+                return False
+        except Exception:
             self._graph._restore_from(graph_snapshot)
-            return False
+            raise
 
     def _choose_closest_candidate(
             self,
@@ -350,9 +404,7 @@ class RoutingEditor:
                 first_node=anchor_node,
                 second_node=first_neighbour,
         ):
-            return self._incident_segments_are_valid_for_nodes(
-                list((anchor_node.get_node_id(), first_neighbour.get_node_id(),))
-            )
+            return True
         elif first_neighbour.get_kind() != RoutingNodeKind.ELBOW and first_neighbour.get_kind() != RoutingNodeKind.STUB:
             return False
         elif len(ordered_nodes) < 4:
@@ -422,22 +474,35 @@ class RoutingEditor:
                 first_node=port_node,
                 second_node=elbow_node,
         ):
-            return self._incident_segments_are_valid_for_nodes(
-                list((port_node.get_node_id(), elbow_node.get_node_id(), adjacent_node.get_node_id(),))
-            )
+            return True
         else:
             return False
 
-    def _incident_segments_are_valid_for_nodes(self, node_ids: list[int]) -> bool:
+    def _validate_constraints(
+            self,
+            affected_node_ids: list[int],
+            block_bounds: object | None,
+    ) -> bool:
         """
-        Return whether every segment incident to the given nodes remains valid.
+        Validate graph invariants and geometric constraints after one edit.
 
-        :param node_ids: Node identifiers whose local neighbourhood changed.
-        :return: ``True`` when every incident segment remains orthogonal and non-zero.
+        The editor owns the transaction and graph mutation. This method only
+        identifies the affected geometry and asks the graph and constraint
+        engine whether the resulting state can be committed.
+
+        :param affected_node_ids: Nodes whose local geometry may have changed.
+        :param block_bounds: Optional non-Qt block geometry; currently ``None``.
+        :return: ``True`` when topology and every active constraint are valid.
         """
-        segment_ids: list[int] = list()
+        graph_report: RoutingValidationReport = self._graph.validate()
+        if graph_report.is_valid():
+            pass
+        else:
+            return False
+
+        affected_segment_ids: set[int] = set()
         node_id: int
-        for node_id in node_ids:
+        for node_id in affected_node_ids:
             route_node: RoutingNode | None = self._graph.get_node(node_id)
             if route_node is None:
                 return False
@@ -446,22 +511,52 @@ class RoutingEditor:
 
             incident_segment_id: int
             for incident_segment_id in route_node.get_incident_segment_ids():
-                if incident_segment_id in segment_ids:
-                    pass
-                else:
-                    segment_ids.append(incident_segment_id)
+                affected_segment_ids.add(incident_segment_id)
 
-        # Each changed node validates the complete set of incident segments so
-        # one local edit cannot leave an unnoticed broken segment nearby.
+        # Segment constraints run for the complete changed neighbourhood. Port
+        # connections then receive their additional side and stub-length rules.
         segment_id: int
-        for segment_id in segment_ids:
+        for segment_id in sorted(affected_segment_ids):
             route_segment: RoutingSegment | None = self._graph.get_segment(segment_id)
             if route_segment is None:
                 return False
-            elif self._constraints.validate_segment(segment=route_segment):
-                pass
-            else:
+            elif not self._constraints.validate_segment(segment=route_segment):
                 return False
+            else:
+                pass
+
+            start_node: RoutingNode | None = self._graph.get_node(route_segment.get_start_node_id())
+            end_node: RoutingNode | None = self._graph.get_node(route_segment.get_end_node_id())
+            if start_node is None or end_node is None:
+                return False
+            else:
+                pass
+
+            if start_node.get_kind() == RoutingNodeKind.PORT:
+                if self._constraints.validate_connection(
+                        port_node=start_node,
+                        neighbour_node=end_node,
+                        segment=route_segment,
+                        block_bounds=block_bounds,
+                ):
+                    pass
+                else:
+                    return False
+            else:
+                pass
+
+            if end_node.get_kind() == RoutingNodeKind.PORT:
+                if self._constraints.validate_connection(
+                        port_node=end_node,
+                        neighbour_node=start_node,
+                        segment=route_segment,
+                        block_bounds=block_bounds,
+                ):
+                    pass
+                else:
+                    return False
+            else:
+                pass
         return True
 
     def _points_are_equal(self, first_point: RoutingPoint, second_point: RoutingPoint) -> bool:

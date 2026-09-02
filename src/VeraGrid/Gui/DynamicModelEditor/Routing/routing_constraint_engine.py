@@ -55,11 +55,9 @@ class RoutingConstraintEngine:
         """
         Return whether the connection leaving one port is perpendicular.
 
-        Phase 2.1 introduces only the shared constraint API. The current graph
-        model does not yet persist the physical attachment orientation of each
-        port, so the engine cannot infer a reliable expected axis from topology
-        alone. Until that metadata exists, the constraint remains permissive and
-        reports ``True`` for valid port nodes so no editor behaviour changes.
+        ``RoutingNode`` persists the physical port side, allowing the engine to
+        validate both the expected axis and the direction in which the first
+        segment leaves the owning block.
 
         :param port_node: Port node to inspect.
         :param neighbour_node: Immediate neighbour of the port node.

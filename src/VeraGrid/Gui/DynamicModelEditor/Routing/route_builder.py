@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+from VeraGrid.Gui.DynamicModelEditor.Routing.routing_constraint_engine import RoutingConstraintEngine
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingNode
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingPoint
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingSegment
@@ -77,7 +78,73 @@ class RouteBuilder:
 
         self._build_stub_topology(routing_graph)
 
-        return routing_graph
+        if self._is_built_graph_valid(routing_graph=routing_graph):
+            return routing_graph
+        else:
+            # A deterministic builder failure is a programming error rather
+            # than a recoverable edit. The invalid graph is never accepted by
+            # the caller or exposed to the Qt routing session.
+            raise ValueError("RouteBuilder produced an invalid routing graph.")
+
+    def _is_built_graph_valid(self, routing_graph: RoutingGraph) -> bool:
+        """
+        Validate one newly constructed graph before exposing it to callers.
+
+        Block bounds are unavailable in the routing core, so connection checks
+        deliberately receive ``None``. The existing collision methods remain
+        inactive placeholders while every other graph and geometric constraint
+        is enforced here.
+
+        :param routing_graph: Newly materialized graph.
+        :return: ``True`` when topology and active constraints are valid.
+        """
+        if routing_graph.validate().is_valid():
+            pass
+        else:
+            return False
+
+        constraint_engine: RoutingConstraintEngine = RoutingConstraintEngine(graph=routing_graph)
+        route_segment: RoutingSegment
+        for route_segment in routing_graph.get_segments():
+            if constraint_engine.validate_segment(segment=route_segment):
+                pass
+            else:
+                return False
+
+            start_node: RoutingNode | None = routing_graph.get_node(route_segment.get_start_node_id())
+            end_node: RoutingNode | None = routing_graph.get_node(route_segment.get_end_node_id())
+            if start_node is None or end_node is None:
+                return False
+            else:
+                pass
+
+            if start_node.get_kind() == RoutingNodeKind.PORT:
+                if constraint_engine.validate_connection(
+                        port_node=start_node,
+                        neighbour_node=end_node,
+                        segment=route_segment,
+                        block_bounds=None,
+                ):
+                    pass
+                else:
+                    return False
+            else:
+                pass
+
+            if end_node.get_kind() == RoutingNodeKind.PORT:
+                if constraint_engine.validate_connection(
+                        port_node=end_node,
+                        neighbour_node=start_node,
+                        segment=route_segment,
+                        block_bounds=None,
+                ):
+                    pass
+                else:
+                    return False
+            else:
+                pass
+
+        return True
 
     def _build_stub_topology(self, routing_graph: RoutingGraph) -> None:
         """
