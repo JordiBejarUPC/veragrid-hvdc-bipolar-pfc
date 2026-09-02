@@ -420,6 +420,17 @@ class GridMapWidget(BaseDiagramWidget):
                 if line_id not in selected_line_ids:
                     selected_line_ids.add(line_id)
                     selected_lines.append(item.container)
+                else:
+                    pass
+            elif isinstance(item, LineLocationGraphicItem):
+                line_id = id(item.line_container)
+                if line_id not in selected_line_ids:
+                    selected_line_ids.add(line_id)
+                    selected_lines.append(item.line_container)
+                else:
+                    pass
+            else:
+                pass
 
         return selected_lines
 
