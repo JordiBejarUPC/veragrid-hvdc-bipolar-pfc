@@ -30,6 +30,62 @@ class FmiThreeWorkerFloat64Profile(Enum):
     CONFIGURABLE_ARRAY = 3
 
 
+class FmuMeEvaluationBudget:
+    """Bound runtime-boundary invocations for one FMI ME transaction.
+
+    The counter deliberately has no reset operation. A simulation owner
+    creates a new instance for initialization or for one solver step and shares
+    that exact instance across every attached Model Exchange device.
+
+    :param maximum_operations: Positive maximum number of runtime calls.
+    """
+
+    __slots__ = ("_maximum_operations", "_consumed_count")
+
+    def __init__(self, maximum_operations: int) -> None:
+        """Initialize an empty bounded counter.
+
+        :param maximum_operations: Integer limit between 1 and 10,000,000.
+        :return: None.
+        """
+
+        if (
+            isinstance(maximum_operations, int)
+            and not isinstance(maximum_operations, bool)
+            and 1 <= maximum_operations <= 10_000_000
+        ):
+            self._maximum_operations: int = maximum_operations
+        else:
+            raise ValueError(
+                "FMI ME runtime evaluation limit must be an integer between "
+                "1 and 10000000"
+            )
+        self._consumed_count: int = 0
+
+    def consume(self) -> None:
+        """Reserve one runtime-boundary invocation before it is executed.
+
+        :return: None.
+        :raises FmuModeError: If the configured limit is already exhausted.
+        """
+
+        if self._consumed_count < self._maximum_operations:
+            self._consumed_count += 1
+        else:
+            raise FmuModeError(
+                "FMI ME runtime evaluation budget was exhausted before the "
+                "next native call"
+            )
+
+    def get_consumed_count(self) -> int:
+        """Return the number of runtime-boundary invocations already reserved.
+
+        :return: Current monotonically increasing count.
+        """
+
+        return self._consumed_count
+
+
 def resolve_fmi_three_worker_float64_profile(
     metadata: FmuModelDescription,
 ) -> FmiThreeWorkerFloat64Profile:

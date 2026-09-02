@@ -877,22 +877,18 @@ class FmuImportConfig:
         self,
         metadata: FmuModelDescription,
     ) -> FmuInterfaceMode:
-        """Return the FMI 2 mode selected by this import configuration.
+        """Return the declared FMI execution mode selected by this configuration.
 
         :param metadata: Parsed FMU model description.
         :return: Selected Co-Simulation or Model Exchange interface.
-        :raises FmuModeError: If the FMI version is not executable yet.
+        :raises FmuModeError: If the FMI version family is unsupported.
         """
 
         if metadata.fmi_version_family == FmiVersion.FMI_2_0:
             return metadata.select_declared_interface(self.preferred_mode)
         else:
             if metadata.fmi_version_family == FmiVersion.FMI_3_0:
-                validate_fmi_three_co_simulation_worker_profile(
-                    metadata,
-                    self.preferred_mode,
-                )
-                raise FmuModeError("FMI 3 worker execution is not connected yet")
+                return metadata.select_declared_interface(self.preferred_mode)
             else:
                 raise FmuModeError(
                     f"FMI {metadata.fmi_version} execution is not supported yet"

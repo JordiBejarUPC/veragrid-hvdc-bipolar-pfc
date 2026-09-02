@@ -6,20 +6,10 @@
 
 from __future__ import annotations
 
+import argparse
 from pathlib import Path
-import sys
 
-
-if __package__ is None or __package__ == "":
-    repo_root = Path(__file__).resolve().parents[6]
-    sys.path.insert(0, str(repo_root))
-    sys.path.insert(0, str(repo_root / "src"))
-else:
-    pass
-
-
-from VeraGridEngine.IO.fmu.importer.examples.common import (
-    get_example_output_dir,
+from trunk.dynamics.fmi_comparison.fmi_example_runner import (
     run_emt_cs_example,
     run_emt_me_example,
     run_rms_cs_example,
@@ -33,8 +23,18 @@ def main() -> int:
     :return: Process exit code.
     """
 
-    output_dir = get_example_output_dir()
-    reports = (
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(
+        description="Run the four repository FMI device examples."
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        required=True,
+        help="Directory that will own generated FMUs and reports.",
+    )
+    arguments: argparse.Namespace = parser.parse_args()
+    output_dir: Path = arguments.output_dir.resolve()
+    reports: tuple[Path, ...] = (
         run_rms_cs_example(output_dir),
         run_rms_me_example(output_dir),
         run_emt_cs_example(output_dir),

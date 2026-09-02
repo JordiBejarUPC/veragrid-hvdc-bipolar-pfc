@@ -154,6 +154,35 @@ def compiled_fmi_three_scalar_model_exchange_without_checkpoint_fmu(
 
 
 @pytest.fixture(scope="session")
+def compiled_fmi_three_state_leak_model_exchange_fmu(
+    tmp_path_factory: pytest.TempPathFactory,
+    pytestconfig: pytest.Config,
+) -> Path:
+    """Build the adversarial scalar ME fixture without checkpoint support.
+
+    :param tmp_path_factory: Session-scoped pytest temporary-directory factory.
+    :param pytestconfig: Active pytest configuration containing the CI build gate.
+    :return: Native Model Exchange FMU with observable hidden-state leakage.
+    """
+
+    compiled_source_fmu_path: Path = _build_compiled_fmi_three_fixture(
+        tmp_path_factory=tmp_path_factory,
+        pytestconfig=pytestconfig,
+        fixture_profile=(
+            FmiThreeCompiledFixtureProfile.SCALAR_OBSERVABLE_STATE_LEAK
+        ),
+        temporary_directory_prefix="fmi-three-native-state-leak-fixture",
+    )
+    work_directory: Path = tmp_path_factory.mktemp(
+        "fmi-three-state-leak-me-no-checkpoint"
+    )
+    return derive_fmi_three_model_exchange_fmu_without_checkpoint(
+        source_fmu_path=compiled_source_fmu_path,
+        work_directory=work_directory,
+    )
+
+
+@pytest.fixture(scope="session")
 def compiled_fmi_three_constant_array_co_simulation_fmu(
     tmp_path_factory: pytest.TempPathFactory,
     pytestconfig: pytest.Config,

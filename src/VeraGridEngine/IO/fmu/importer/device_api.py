@@ -14,6 +14,7 @@ from VeraGridEngine.IO.fmu.importer.bindings import (
     FmiThreeFloat64ConfigurationValue,
     FmiThreeUInt64ConfigurationValue,
     FmuImportConfig,
+    FmuRefBinding,
 )
 from VeraGridEngine.IO.fmu.importer.device_config import (
     build_me_record_from_device_arguments,
@@ -21,8 +22,8 @@ from VeraGridEngine.IO.fmu.importer.device_config import (
     dump_fmu_cs_device_config,
     dump_fmu_me_device_config,
 )
-from VeraGridEngine.IO.fmu.importer.experimental_cs import FmuCsDomain, FmuRefBinding, build_emt_fmu_cs_injection_template, build_rms_fmu_cs_injection_template
-from VeraGridEngine.IO.fmu.importer.experimental_me import FmuMeDomain, FmuMeIntegrationMethod, build_emt_fmu_me_injection_template, build_rms_fmu_me_injection_template
+from VeraGridEngine.IO.fmu.importer.co_simulation import FmuCsDomain, build_emt_fmu_cs_injection_template, build_rms_fmu_cs_injection_template
+from VeraGridEngine.IO.fmu.importer.model_exchange import FmuMeDomain, build_emt_fmu_me_injection_template, build_rms_fmu_me_injection_template
 from VeraGridEngine.IO.fmu.importer.runtime_worker_host import (
     FmiThreeWorkerHostLimits,
 )
@@ -172,7 +173,6 @@ def attach_rms_fmu_me_device(
     output_bindings: tuple[FmuRefBinding, ...],
     name: str,
     output_defaults: dict[Any, float] | None = None,
-    integration_method: FmuMeIntegrationMethod = FmuMeIntegrationMethod.EXPLICIT_EULER,
     worker_limits: FmiThreeWorkerHostLimits | None = None,
     maximum_event_iterations: int = 32,
     configuration_float64_values: tuple[
@@ -191,7 +191,6 @@ def attach_rms_fmu_me_device(
     :param output_bindings: FMU-to-VeraGrid bindings.
     :param name: Template name.
     :param output_defaults: Default output values before the first FMU step.
-    :param integration_method: Internal ME predictor method.
     :param worker_limits: Explicit FMI 3 worker supervision policy, when used.
     :param maximum_event_iterations: Positive Event Mode convergence bound.
     :param configuration_float64_values: Structural Float64 declarations.
@@ -207,7 +206,6 @@ def attach_rms_fmu_me_device(
         name=name,
         device_tpe=device.device_type,
         output_defaults=output_defaults,
-        integration_method=integration_method,
         worker_limits=worker_limits,
         maximum_event_iterations=maximum_event_iterations,
     )
@@ -222,7 +220,6 @@ def attach_rms_fmu_me_device(
         input_bindings=input_bindings,
         output_bindings=output_bindings,
         output_defaults=defaults,
-        integration_method=integration_method.value,
         block=template.block,
         worker_limits=worker_limits,
         maximum_event_iterations=maximum_event_iterations,
@@ -245,7 +242,6 @@ def attach_emt_fmu_me_device(
     output_bindings: tuple[FmuRefBinding, ...],
     name: str,
     output_defaults: dict[Any, float] | None = None,
-    integration_method: FmuMeIntegrationMethod = FmuMeIntegrationMethod.EXPLICIT_EULER,
     worker_limits: FmiThreeWorkerHostLimits | None = None,
     maximum_event_iterations: int = 32,
     configuration_float64_values: tuple[
@@ -264,7 +260,6 @@ def attach_emt_fmu_me_device(
     :param output_bindings: FMU-to-VeraGrid bindings.
     :param name: Template name.
     :param output_defaults: Default output values before the first FMU step.
-    :param integration_method: Internal ME predictor method.
     :param worker_limits: Explicit FMI 3 worker supervision policy, when used.
     :param maximum_event_iterations: Positive Event Mode convergence bound.
     :param configuration_float64_values: Structural Float64 declarations.
@@ -280,7 +275,6 @@ def attach_emt_fmu_me_device(
         name=name,
         device_tpe=device.device_type,
         output_defaults=output_defaults,
-        integration_method=integration_method,
         worker_limits=worker_limits,
         maximum_event_iterations=maximum_event_iterations,
     )
@@ -295,7 +289,6 @@ def attach_emt_fmu_me_device(
         input_bindings=input_bindings,
         output_bindings=output_bindings,
         output_defaults=defaults,
-        integration_method=integration_method.value,
         block=template.block,
         worker_limits=worker_limits,
         maximum_event_iterations=maximum_event_iterations,

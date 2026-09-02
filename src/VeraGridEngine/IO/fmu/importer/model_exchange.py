@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import math
 from enum import Enum
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import numpy as np
 
@@ -16,7 +16,13 @@ from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
-from VeraGridEngine.enumerations import DeviceType, FmiVersion, ParamPowerFlowReferenceType, VarPowerFlowReferenceType
+from VeraGridEngine.enumerations import (
+    DeviceType,
+    DynamicIntegrationMethod,
+    FmiVersion,
+    ParamPowerFlowReferenceType,
+    VarPowerFlowReferenceType,
+)
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var
 
@@ -33,13 +39,19 @@ from VeraGridEngine.IO.fmu.importer.bindings import (
     resolve_fmi_three_float64_session_value_selectors,
 )
 from VeraGridEngine.IO.fmu.importer.device_config import load_fmu_me_device_config, restore_fmu_me_spec_from_record
-from VeraGridEngine.IO.fmu.importer.errors import FmuModeError
-from VeraGridEngine.IO.fmu.importer.experimental_cs import (
+from VeraGridEngine.IO.fmu.importer.errors import FmuImportError, FmuModeError
+from VeraGridEngine.IO.fmu.importer.co_simulation import (
+    _build_template_block,
     _ensure_emt_external_mapping_keys,
 )
 from VeraGridEngine.IO.fmu.importer.model_description import FmuInterfaceMode, FmuModelDescription, FmuVariableDescription, read_fmu_model_description
-from VeraGridEngine.IO.fmu.importer.runtime_host import FmuRuntimeHost, open_fmu_runtime_host
+from VeraGridEngine.IO.fmu.importer.runtime_host import (
+    FmiTwoEventUpdate,
+    FmuRuntimeHost,
+    open_fmu_runtime_host,
+)
 from VeraGridEngine.IO.fmu.importer.runtime_profile import (
+    FmuMeEvaluationBudget,
     FmiThreeWorkerFloat64Profile,
     resolve_fmi_three_worker_float64_profile,
     validate_fmi_three_model_exchange_worker_profile,
@@ -55,6 +67,12 @@ from VeraGridEngine.IO.fmu.importer.runtime_worker_host import (
     FmiThreeWorkerHostLimits,
 )
 
+if TYPE_CHECKING:
+    from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
+    from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
+else:
+    pass
+
 
 class FmuMeDomain(str, Enum):
     """Enumerate the VeraGrid domains that may host FMU ME devices.
@@ -66,13 +84,81 @@ class FmuMeDomain(str, Enum):
     EMT = "emt"
 
 
-class FmuMeIntegrationMethod(str, Enum):
-    """Enumerate the internal predictor methods available for FMU ME devices.
+class FmuMeSolverPolicy:
+    """Store the simulation-owned numerical limits for one FMI ME adapter.
 
-    :return: None.
+    :param integration_method: Integration method selected by the simulation.
+    :param absolute_tolerance: Absolute Backward Euler Newton scale.
+    :param relative_tolerance: Relative Backward Euler Newton scale.
+    :param maximum_newton_iterations: Maximum number of Newton updates.
+    :param maximum_continuous_states: Maximum dense state-vector dimension.
     """
 
-    EXPLICIT_EULER = "explicit_euler"
+    __slots__ = (
+        "integration_method",
+        "absolute_tolerance",
+        "relative_tolerance",
+        "maximum_newton_iterations",
+        "maximum_continuous_states",
+    )
+
+    def __init__(
+        self,
+        integration_method: DynamicIntegrationMethod,
+        absolute_tolerance: float,
+        relative_tolerance: float,
+        maximum_newton_iterations: int,
+        maximum_continuous_states: int,
+    ) -> None:
+        """Validate and store one immutable-by-interface solver policy.
+
+        :param integration_method: Simulation integration method.
+        :param absolute_tolerance: Finite positive absolute tolerance.
+        :param relative_tolerance: Finite positive relative tolerance.
+        :param maximum_newton_iterations: Integer limit from 1 through 100.
+        :param maximum_continuous_states: Integer limit from 1 through 128.
+        :return: None.
+        """
+
+        if integration_method == DynamicIntegrationMethod.DaeBackEuler:
+            self.integration_method: DynamicIntegrationMethod = integration_method
+        else:
+            raise FmuModeError(
+                "Attached FMI Model Exchange devices currently require "
+                "DynamicIntegrationMethod.DaeBackEuler"
+            )
+        if math.isfinite(absolute_tolerance) and absolute_tolerance > 0.0:
+            self.absolute_tolerance: float = float(absolute_tolerance)
+        else:
+            raise ValueError(
+                "FMI ME Newton absolute tolerance must be finite and positive"
+            )
+        if math.isfinite(relative_tolerance) and relative_tolerance > 0.0:
+            self.relative_tolerance: float = float(relative_tolerance)
+        else:
+            raise ValueError(
+                "FMI ME Newton relative tolerance must be finite and positive"
+            )
+        if (
+            isinstance(maximum_newton_iterations, int)
+            and not isinstance(maximum_newton_iterations, bool)
+            and 1 <= maximum_newton_iterations <= 100
+        ):
+            self.maximum_newton_iterations: int = maximum_newton_iterations
+        else:
+            raise ValueError(
+                "FMI ME Newton iteration limit must be an integer between 1 and 100"
+            )
+        if (
+            isinstance(maximum_continuous_states, int)
+            and not isinstance(maximum_continuous_states, bool)
+            and 1 <= maximum_continuous_states <= 128
+        ):
+            self.maximum_continuous_states: int = maximum_continuous_states
+        else:
+            raise ValueError(
+                "FMI ME state limit must be an integer between 1 and 128"
+            )
 
 
 class FmuMeDeviceSpec:
@@ -85,7 +171,6 @@ class FmuMeDeviceSpec:
     :param output_variable_names: Ordered FMU output names.
     :param state_variable_names: Ordered FMU continuous-state names.
     :param derivative_variable_names: Ordered FMU derivative names.
-    :param integration_method: Internal predictor used by the adapter.
     :param worker_limits: Explicit FMI 3 worker supervision policy, when used.
     :param float64_profile: Derived FMI 3 worker shape profile, when used.
     :param maximum_event_iterations: Positive Event Mode convergence bound.
@@ -101,7 +186,6 @@ class FmuMeDeviceSpec:
         "output_variable_names",
         "state_variable_names",
         "derivative_variable_names",
-        "integration_method",
         "worker_limits",
         "float64_profile",
         "maximum_event_iterations",
@@ -122,7 +206,6 @@ class FmuMeDeviceSpec:
         output_variable_names: tuple[str, ...],
         state_variable_names: tuple[str, ...],
         derivative_variable_names: tuple[str, ...],
-        integration_method: FmuMeIntegrationMethod,
         worker_limits: FmiThreeWorkerHostLimits | None,
         float64_profile: FmiThreeWorkerFloat64Profile | None,
         input_bindings: tuple[FmuRefBinding, ...],
@@ -146,7 +229,6 @@ class FmuMeDeviceSpec:
         :param output_variable_names: Ordered FMU output names.
         :param state_variable_names: Ordered continuous-state names.
         :param derivative_variable_names: Ordered continuous-derivative names.
-        :param integration_method: Predictor selected by the current adapter.
         :param worker_limits: Explicit FMI 3 worker supervision policy.
         :param float64_profile: Derived FMI 3 worker shape profile.
         :param maximum_event_iterations: Positive Event Mode convergence bound.
@@ -166,7 +248,6 @@ class FmuMeDeviceSpec:
         self.output_variable_names: tuple[str, ...] = output_variable_names
         self.state_variable_names: tuple[str, ...] = state_variable_names
         self.derivative_variable_names: tuple[str, ...] = derivative_variable_names
-        self.integration_method: FmuMeIntegrationMethod = integration_method
         self.worker_limits: FmiThreeWorkerHostLimits | None = worker_limits
         self.float64_profile: FmiThreeWorkerFloat64Profile | None = float64_profile
         if (
@@ -196,43 +277,83 @@ class FmuMeDeviceSpec:
 
 
 class FmuMeDeviceAdapter:
-    """Execute one FMU ME device with a light internal predictor.
+    """Execute one FMU ME device with simulation-owned Backward Euler.
 
     :param spec: Runtime specification of the FMU ME device.
+    :param solver_policy: Numerical policy copied from simulation options.
     """
 
     __slots__ = (
         "spec",
+        "solver_policy",
         "runtime_host",
         "fmi_three_coordinator",
         "state_vector",
         "pending_time",
         "pending_candidate_state_values",
+        "pending_candidate_derivative_values",
+        "pending_candidate_readable_values",
         "pending_candidate_event_indicators",
         "pending_accepted_time",
         "pending_accepted_state_values",
         "pending_accepted_input_values",
+        "pending_accepted_derivative_values",
+        "pending_accepted_readable_values",
+        "pending_accepted_event_indicators",
         "localized_state_event_time",
+        "fmi_two_next_event_time",
+        "fmi_two_accepted_derivative_values",
+        "fmi_two_accepted_readable_values",
+        "fmi_two_accepted_event_indicators",
         "initialized",
     )
 
-    def __init__(self, spec: FmuMeDeviceSpec) -> None:
+    def __init__(
+        self,
+        spec: FmuMeDeviceSpec,
+        solver_policy: FmuMeSolverPolicy,
+    ) -> None:
         """Store the FMU ME runtime adapter.
 
+        :param spec: Validated runtime FMU specification.
+        :param solver_policy: Simulation-owned Backward Euler policy.
         :return: None.
         """
 
         self.spec: FmuMeDeviceSpec = spec
+        if solver_policy.integration_method == DynamicIntegrationMethod.DaeBackEuler:
+            self.solver_policy: FmuMeSolverPolicy = solver_policy
+        else:
+            raise FmuModeError(
+                "Attached FMI Model Exchange devices require Backward Euler"
+            )
+        state_count: int = len(spec.state_variable_names)
+        if state_count <= solver_policy.maximum_continuous_states:
+            pass
+        else:
+            raise FmuModeError(
+                "FMI ME continuous-state count exceeds the configured dense "
+                "Backward Euler limit"
+            )
         self.runtime_host: Optional[FmuRuntimeHost] = None
         self.fmi_three_coordinator: FmiThreeModelExchangeCoordinator | None = None
         self.state_vector: Optional[np.ndarray] = None
         self.pending_time: float | None = None
         self.pending_candidate_state_values: tuple[float, ...] | None = None
+        self.pending_candidate_derivative_values: tuple[float, ...] | None = None
+        self.pending_candidate_readable_values: tuple[float, ...] | None = None
         self.pending_candidate_event_indicators: tuple[float, ...] | None = None
         self.pending_accepted_time: float | None = None
         self.pending_accepted_state_values: tuple[float, ...] | None = None
         self.pending_accepted_input_values: tuple[float, ...] | None = None
+        self.pending_accepted_derivative_values: tuple[float, ...] | None = None
+        self.pending_accepted_readable_values: tuple[float, ...] | None = None
+        self.pending_accepted_event_indicators: tuple[float, ...] | None = None
         self.localized_state_event_time: float | None = None
+        self.fmi_two_next_event_time: float | None = None
+        self.fmi_two_accepted_derivative_values: tuple[float, ...] | None = None
+        self.fmi_two_accepted_readable_values: tuple[float, ...] | None = None
+        self.fmi_two_accepted_event_indicators: tuple[float, ...] | None = None
         self.initialized: bool = False
 
     def _clear_pending_state_event_data(self) -> None:
@@ -243,10 +364,15 @@ class FmuMeDeviceAdapter:
 
         self.pending_time = None
         self.pending_candidate_state_values = None
+        self.pending_candidate_derivative_values = None
+        self.pending_candidate_readable_values = None
         self.pending_candidate_event_indicators = None
         self.pending_accepted_time = None
         self.pending_accepted_state_values = None
         self.pending_accepted_input_values = None
+        self.pending_accepted_derivative_values = None
+        self.pending_accepted_readable_values = None
+        self.pending_accepted_event_indicators = None
 
     def _build_ordered_writable_values(
         self,
@@ -339,14 +465,20 @@ class FmuMeDeviceAdapter:
         self,
         time_value: float,
         input_values: dict[str, float],
+        evaluation_budget: FmuMeEvaluationBudget | None = None,
     ) -> tuple[float, ...]:
         """Evaluate outputs while preserving their declared binding order.
 
         :param time_value: Current evaluation time.
         :param input_values: Complete scalar FMU input values.
+        :param evaluation_budget: Optional owner-provided runtime-call budget.
         :return: Output values aligned with names or selected device bindings.
         """
 
+        if evaluation_budget is not None:
+            evaluation_budget.consume()
+        else:
+            pass
         if self.runtime_host is not None:
             self.runtime_host.set_time(time_value)
             self._apply_inputs(input_values)
@@ -402,19 +534,89 @@ class FmuMeDeviceAdapter:
             state_values[state_index] = float(self.state_vector[state_index])
         return tuple(state_values)
 
+    def _settle_fmi_two_event_mode(
+        self,
+        entry_time: float,
+        evaluation_budget: FmuMeEvaluationBudget,
+    ) -> None:
+        """Converge FMI 2 Event Mode and enter Continuous-Time Mode.
+
+        :param entry_time: Exact time at which Event Mode was entered.
+        :param evaluation_budget: Shared initialization or step call budget.
+        :return: None.
+        :raises FmuImportError: If the FMU requests termination.
+        :raises FmuModeError: If the event fixpoint or next time is invalid.
+        """
+
+        if self.runtime_host is not None:
+            runtime_host: FmuRuntimeHost = self.runtime_host
+        else:
+            raise FmuModeError("FMI 2 Event Mode requires an initialized host")
+        normalized_entry_time: float = float(entry_time)
+        if math.isfinite(normalized_entry_time):
+            pass
+        else:
+            raise ValueError("FMI 2 Event Mode entry time must be finite")
+
+        converged: bool = False
+        event_iteration: int
+        for event_iteration in range(self.spec.maximum_event_iterations):
+            evaluation_budget.consume()
+            event_update: FmiTwoEventUpdate = runtime_host.new_discrete_states()
+            if event_update.terminate_simulation:
+                raise FmuImportError(
+                    "FMI 2 Model Exchange requested termination in Event Mode"
+                )
+            else:
+                pass
+            if event_update.next_event_time is not None:
+                normalized_next_event_time: float = float(
+                    event_update.next_event_time
+                )
+                if (
+                    math.isfinite(normalized_next_event_time)
+                    and normalized_next_event_time > normalized_entry_time
+                ):
+                    self.fmi_two_next_event_time = normalized_next_event_time
+                else:
+                    raise FmuModeError(
+                        "FMI 2 nextEventTime must be finite and follow Event Mode entry"
+                    )
+            else:
+                self.fmi_two_next_event_time = None
+            if event_update.discrete_states_need_update:
+                pass
+            else:
+                converged = True
+                break
+        if converged:
+            evaluation_budget.consume()
+            runtime_host.enter_continuous_time_mode()
+        else:
+            raise FmuModeError(
+                "FMI 2 Model Exchange Event Mode exceeded its iteration bound"
+            )
+
     def initialize(
         self,
         start_time: float,
         input_values: dict[str, float] | None = None,
         start_values: dict[str, float] | None = None,
+        evaluation_budget: FmuMeEvaluationBudget | None = None,
     ) -> None:
         """Open and initialize the FMU ME runtime.
 
         :param start_time: Initial simulation time.
         :param input_values: FMU input values applied during initialization.
         :param start_values: Additional FMU start values.
+        :param evaluation_budget: Optional owner-provided initialization budget.
         :return: None.
         """
+
+        if evaluation_budget is None:
+            active_budget: FmuMeEvaluationBudget = FmuMeEvaluationBudget(100000)
+        else:
+            active_budget = evaluation_budget
 
         start_values_payload: dict[str, float] = dict()
         if start_values is not None:
@@ -448,14 +650,48 @@ class FmuMeDeviceAdapter:
             # FMI 2 keeps the established in-process runtime until its own
             # isolation increment is explicitly designed.
             self.runtime_host = open_fmu_runtime_host(self.spec.config)
+            active_budget.consume()
             self.runtime_host.initialize(
                 start_time=start_time,
                 start_values=start_values_payload,
             )
+            self._settle_fmi_two_event_mode(
+                entry_time=start_time,
+                evaluation_budget=active_budget,
+            )
+            active_budget.consume()
             self.state_vector = np.array(
                 self.runtime_host.get_continuous_states(),
                 dtype=float,
             )
+            initial_input_values: dict[str, float] = dict()
+            if input_values is not None:
+                initial_input_values.update(input_values)
+            else:
+                pass
+            initial_derivatives: np.ndarray
+            initial_readable_values: tuple[float, ...] | None
+            initial_derivatives, initial_readable_values = (
+                self._evaluate_derivatives_for_state(
+                    time_value=start_time,
+                    state_values=self.state_vector,
+                    input_values=initial_input_values,
+                    evaluation_budget=active_budget,
+                )
+            )
+            if initial_readable_values is not None:
+                pass
+            else:
+                raise FmuModeError("FMI 2 initialization lost readable values")
+            active_budget.consume()
+            initial_event_indicators: tuple[float, ...] = tuple(
+                self.runtime_host.get_event_indicators()
+            )
+            self.fmi_two_accepted_derivative_values = tuple(
+                initial_derivatives.tolist()
+            )
+            self.fmi_two_accepted_readable_values = initial_readable_values
+            self.fmi_two_accepted_event_indicators = initial_event_indicators
         else:
             # A device scalar cannot provide an incomplete native input array.
             # Output arrays are safe because the session reads their complete
@@ -542,6 +778,7 @@ class FmuMeDeviceAdapter:
                     stop_time=None,
                     relative_tolerance=self.spec.config.relative_tolerance,
                     initial_writable_values=initial_writable_values,
+                    evaluation_budget=active_budget,
                 )
             except Exception:
                 session.close()
@@ -639,17 +876,24 @@ class FmuMeDeviceAdapter:
                     "FMU ME adapter must be initialized before derivative evaluation"
                 )
 
-    def evaluate_outputs(self, time_value: float, input_values: dict[str, float]) -> dict[str, float]:
+    def evaluate_outputs(
+        self,
+        time_value: float,
+        input_values: dict[str, float],
+        evaluation_budget: FmuMeEvaluationBudget | None = None,
+    ) -> dict[str, float]:
         """Evaluate the FMU output vector at the provided time and inputs.
 
         :param time_value: Current evaluation time.
         :param input_values: FMU input values.
+        :param evaluation_budget: Optional owner-provided runtime-call budget.
         :return: Output values indexed by FMU variable name.
         """
 
         ordered_values: tuple[float, ...] = self._evaluate_ordered_output_values(
             time_value=time_value,
             input_values=input_values,
+            evaluation_budget=evaluation_budget,
         )
         return self._map_named_output_values(ordered_values)
 
@@ -657,6 +901,7 @@ class FmuMeDeviceAdapter:
         self,
         time_value: float,
         input_values: dict[str, float],
+        evaluation_budget: FmuMeEvaluationBudget | None = None,
     ) -> dict[VarPowerFlowReferenceType, float]:
         """Evaluate outputs aligned with the owning device bindings.
 
@@ -665,123 +910,431 @@ class FmuMeDeviceAdapter:
 
         :param time_value: Current evaluation time.
         :param input_values: Complete scalar FMU input values.
+        :param evaluation_budget: Optional owner-provided runtime-call budget.
         :return: Output values indexed by VeraGrid reference.
         """
 
         ordered_values: tuple[float, ...] = self._evaluate_ordered_output_values(
             time_value=time_value,
             input_values=input_values,
+            evaluation_budget=evaluation_budget,
         )
         return self._map_bound_output_values(ordered_values)
 
-    def _advance_explicit_euler_state(
+    def _validate_finite_vector(
+        self,
+        values: np.ndarray,
+        expected_size: int,
+        vector_name: str,
+    ) -> None:
+        """Require one finite one-dimensional vector with exact cardinality.
+
+        :param values: Candidate numeric vector.
+        :param expected_size: Exact required element count.
+        :param vector_name: Stable diagnostic name.
+        :return: None.
+        :raises FmuModeError: If shape, size, or finiteness is invalid.
+        """
+
+        if (
+            values.ndim == 1
+            and values.size == expected_size
+            and bool(np.all(np.isfinite(values)))
+        ):
+            pass
+        else:
+            raise FmuModeError(
+                f"FMI ME {vector_name} must contain exactly {expected_size} "
+                "finite values"
+            )
+
+    def _evaluate_derivatives_for_state(
+        self,
+        time_value: float,
+        state_values: np.ndarray,
+        input_values: dict[str, float],
+        evaluation_budget: FmuMeEvaluationBudget,
+    ) -> tuple[np.ndarray, tuple[float, ...] | None]:
+        """Evaluate derivatives at one solver-provided continuous point.
+
+        One budget unit represents this complete product boundary invocation,
+        including the coalesced FMI calls needed to present the point.
+
+        :param time_value: Finite evaluation time.
+        :param state_values: Complete solver-provided state vector.
+        :param input_values: Frozen scalar FMU input values.
+        :param evaluation_budget: Shared owner-provided call budget.
+        :return: Derivatives and FMI 3 coalesced readable values when available.
+        """
+
+        normalized_time: float = float(time_value)
+        expected_size: int = state_values.size
+        if math.isfinite(normalized_time):
+            pass
+        else:
+            raise FmuModeError("FMI ME derivative evaluation time must be finite")
+        self._validate_finite_vector(
+            values=state_values,
+            expected_size=expected_size,
+            vector_name="state vector",
+        )
+
+        evaluation_budget.consume()
+        if self.runtime_host is not None:
+            self.runtime_host.set_time(normalized_time)
+            self._apply_inputs(input_values)
+            self.runtime_host.set_continuous_states(state_values.tolist())
+            derivative_values: np.ndarray = np.array(
+                self.runtime_host.get_derivatives(),
+                dtype=float,
+            )
+            # FMI 2 does not provide the FMI 3 worker's coalesced transaction,
+            # so capture the bound outputs immediately after the derivatives.
+            # This makes both vectors describe the same solver-presented point.
+            named_readable_values: dict[str, float] = self.runtime_host.get_real(
+                list(self.spec.output_variable_names)
+            )
+            ordered_readable_values: list[float] = [0.0] * len(
+                self.spec.output_variable_names
+            )
+            output_index: int
+            for output_index in range(len(self.spec.output_variable_names)):
+                output_name: str = self.spec.output_variable_names[output_index]
+                ordered_readable_values[output_index] = float(
+                    named_readable_values[output_name]
+                )
+            readable_values: tuple[float, ...] | None = tuple(
+                ordered_readable_values
+            )
+        else:
+            if self.fmi_three_coordinator is not None:
+                derivative_tuple: tuple[float, ...]
+                fmi_three_readable_values: tuple[float, ...]
+                derivative_tuple, fmi_three_readable_values = (
+                    self.fmi_three_coordinator.evaluate_probe(
+                        time_value=normalized_time,
+                        continuous_state_values=tuple(state_values.tolist()),
+                        writable_values=(
+                            self._build_ordered_writable_values(input_values)
+                        ),
+                    )
+                )
+                derivative_values = np.array(derivative_tuple, dtype=float)
+                readable_values = fmi_three_readable_values
+            else:
+                raise RuntimeError(
+                    "FMU ME adapter must be initialized before derivative evaluation"
+                )
+        self._validate_finite_vector(
+            values=derivative_values,
+            expected_size=expected_size,
+            vector_name="derivative vector",
+        )
+        if readable_values is not None:
+            readable_array: np.ndarray = np.array(readable_values, dtype=float)
+            self._validate_finite_vector(
+                values=readable_array,
+                expected_size=len(self.spec.output_variable_names),
+                vector_name="readable output vector",
+            )
+        else:
+            pass
+        return derivative_values, readable_values
+
+    def _evaluate_backward_euler_residual(
+        self,
+        target_time: float,
+        step_size: float,
+        accepted_state_values: np.ndarray,
+        candidate_state_values: np.ndarray,
+        input_values: dict[str, float],
+        evaluation_budget: FmuMeEvaluationBudget,
+    ) -> tuple[np.ndarray, np.ndarray, tuple[float, ...] | None]:
+        """Evaluate the unscaled Backward Euler residual at one candidate.
+
+        :param target_time: End time of the shortened or full solver step.
+        :param step_size: Positive step length measured from acceptance.
+        :param accepted_state_values: Accepted state x_n.
+        :param candidate_state_values: Newton candidate y.
+        :param input_values: Inputs frozen at u_n.
+        :param evaluation_budget: Shared runtime-call budget.
+        :return: Residual, derivatives, and coalesced FMI 3 readable values.
+        """
+
+        derivative_values: np.ndarray
+        readable_values: tuple[float, ...] | None
+        derivative_values, readable_values = self._evaluate_derivatives_for_state(
+            time_value=target_time,
+            state_values=candidate_state_values,
+            input_values=input_values,
+            evaluation_budget=evaluation_budget,
+        )
+        residual_values: np.ndarray = (
+            candidate_state_values
+            - accepted_state_values
+            - step_size * derivative_values
+        )
+        self._validate_finite_vector(
+            values=residual_values,
+            expected_size=accepted_state_values.size,
+            vector_name="Backward Euler residual",
+        )
+        return residual_values, derivative_values, readable_values
+
+    def _evaluate_forward_difference_jacobian(
+        self,
+        target_time: float,
+        step_size: float,
+        accepted_state_values: np.ndarray,
+        candidate_state_values: np.ndarray,
+        base_residual_values: np.ndarray,
+        input_values: dict[str, float],
+        evaluation_budget: FmuMeEvaluationBudget,
+    ) -> np.ndarray:
+        """Build the unscaled forward-difference residual Jacobian.
+
+        :param target_time: End time of the current Backward Euler solve.
+        :param step_size: Positive integration step.
+        :param accepted_state_values: Accepted state x_n.
+        :param candidate_state_values: Current Newton iterate y.
+        :param base_residual_values: Already evaluated unscaled R(y).
+        :param input_values: Inputs frozen at u_n.
+        :param evaluation_budget: Shared runtime-call budget.
+        :return: Dense square residual Jacobian.
+        """
+
+        state_count: int = candidate_state_values.size
+        jacobian: np.ndarray = np.empty(
+            (state_count, state_count),
+            dtype=float,
+        )
+        square_root_epsilon: float = math.sqrt(np.finfo(np.float64).eps)
+        state_index: int
+        for state_index in range(state_count):
+            perturbation: float = square_root_epsilon * max(
+                1.0,
+                abs(float(candidate_state_values[state_index])),
+            )
+            perturbed_state_values: np.ndarray = np.array(
+                candidate_state_values,
+                copy=True,
+            )
+            perturbed_state_values[state_index] += perturbation
+            perturbed_residual_values: np.ndarray
+            ignored_derivatives: np.ndarray
+            ignored_readable_values: tuple[float, ...] | None
+            (
+                perturbed_residual_values,
+                ignored_derivatives,
+                ignored_readable_values,
+            ) = self._evaluate_backward_euler_residual(
+                target_time=target_time,
+                step_size=step_size,
+                accepted_state_values=accepted_state_values,
+                candidate_state_values=perturbed_state_values,
+                input_values=input_values,
+                evaluation_budget=evaluation_budget,
+            )
+            jacobian[:, state_index] = (
+                perturbed_residual_values - base_residual_values
+            ) / perturbation
+        self._validate_finite_vector(
+            values=jacobian.reshape(state_count * state_count),
+            expected_size=state_count * state_count,
+            vector_name="Backward Euler Jacobian",
+        )
+        return jacobian
+
+    def _solve_backward_euler_candidate(
         self,
         current_time: float,
         step_size: float,
+        accepted_state_values: np.ndarray,
         input_values: dict[str, float],
-    ) -> tuple[float, ...] | None:
-        """Advance only the externally owned explicit-Euler state vector.
+        evaluation_budget: FmuMeEvaluationBudget,
+    ) -> tuple[np.ndarray, np.ndarray, tuple[float, ...] | None]:
+        """Solve one bounded Backward Euler candidate without accepting it.
 
-        :param current_time: Current accepted integration time.
-        :param step_size: Positive integration step length.
-        :param input_values: Complete scalar FMU input values.
-        :return: Candidate readable values for FMI 3, otherwise ``None``.
+        :param current_time: Finite accepted time t_n.
+        :param step_size: Finite positive interval length h.
+        :param accepted_state_values: Accepted continuous state x_n.
+        :param input_values: Inputs frozen at the accepted network point.
+        :param evaluation_budget: Shared runtime-call budget.
+        :return: Converged candidate, endpoint derivatives, and FMI 3 outputs.
+        :raises FmuModeError: If dimensions, data, linear solve, or convergence fail.
         """
 
-        if self.fmi_three_coordinator is not None:
-            state_values: tuple[float, ...] = self._get_fmi_three_state_values()
-            writable_values: tuple[float, ...] = (
-                self._build_ordered_writable_values(input_values)
-            )
-            start_probe: tuple[tuple[float, ...], tuple[float, ...]] = (
-                self.fmi_three_coordinator.evaluate_probe(
-                    time_value=current_time,
-                    continuous_state_values=state_values,
-                    writable_values=writable_values,
-                )
-            )
-            derivative_values: tuple[float, ...] = start_probe[0]
-            candidate_state: np.ndarray = np.array(state_values, dtype=float)
-            if candidate_state.size > 0:
-                candidate_state += step_size * np.array(
-                    derivative_values,
-                    dtype=float,
-                )
-            else:
-                pass
-            candidate_result: tuple[
-                tuple[float, ...],
-                tuple[float, ...],
-                tuple[float, ...],
-            ] = self.fmi_three_coordinator.evaluate_candidate(
-                time_value=current_time + step_size,
-                continuous_state_values=tuple(candidate_state.tolist()),
-                writable_values=writable_values,
-            )
-            candidate_readable_values: tuple[float, ...] = candidate_result[1]
-            candidate_event_indicators: tuple[float, ...] = candidate_result[2]
-            self.state_vector = candidate_state
-            self.pending_time = current_time + step_size
-            self.pending_candidate_state_values = tuple(candidate_state.tolist())
-            self.pending_candidate_event_indicators = candidate_event_indicators
-
-            # A previously localized source event is processed before the
-            # coupled Newton solve at that exact target.  Its post-event
-            # outputs therefore participate in the same-time algebraic solve.
-            localized_event_time: float | None = self.localized_state_event_time
-            candidate_time: float = current_time + step_size
-            event_time_scale: float = max(
-                abs(candidate_time),
-                abs(localized_event_time) if localized_event_time is not None else 0.0,
-                1.0,
-            )
-            machine_time_tolerance: float = 16.0 * math.ulp(event_time_scale)
-            if (
-                localized_event_time is not None
-                and abs(candidate_time - localized_event_time)
-                <= machine_time_tolerance
-            ):
-                resolved_states: tuple[float, ...]
-                resolved_readable_values: tuple[float, ...]
-                resolved_states, resolved_readable_values = (
-                    self.fmi_three_coordinator.accept_candidate(
-                        importer_detected_event=True
-                    )
-                )
-                self.state_vector = np.array(resolved_states, dtype=float)
-                self.localized_state_event_time = None
-                self._clear_pending_state_event_data()
-                return resolved_readable_values
-            else:
-                return candidate_readable_values
+        normalized_time: float = float(current_time)
+        normalized_step: float = float(step_size)
+        state_count: int = accepted_state_values.size
+        if math.isfinite(normalized_time):
+            pass
         else:
-            # FMI 2 has no coordinator transaction, so retain only the accepted
-            # continuous point needed when another FMI 3 device localizes an
-            # earlier global event in the same coupled substep.
-            accepted_state_values: tuple[float, ...] = tuple(
-                self.get_state_vector().tolist()
+            raise FmuModeError("FMI ME accepted time must be finite")
+        if math.isfinite(normalized_step) and normalized_step > 0.0:
+            pass
+        else:
+            raise FmuModeError("FMI ME Backward Euler step must be finite and positive")
+        self._validate_finite_vector(
+            values=accepted_state_values,
+            expected_size=state_count,
+            vector_name="accepted state vector",
+        )
+        if state_count <= self.solver_policy.maximum_continuous_states:
+            pass
+        else:
+            raise FmuModeError(
+                "FMI ME continuous-state count exceeds the configured dense "
+                "Backward Euler limit"
             )
-            self.pending_accepted_time = float(current_time)
-            self.pending_accepted_state_values = accepted_state_values
-            self.pending_accepted_input_values = (
-                self._build_ordered_writable_values(input_values)
-            )
-            derivatives: np.ndarray = self.evaluate_derivatives(
-                current_time,
-                input_values,
-            )
-            state_vector: np.ndarray = self.get_state_vector()
-            if state_vector.size > 0:
-                state_vector = state_vector + step_size * derivatives
-                self.set_state_vector(state_vector)
-            else:
-                pass
-            self.pending_time = current_time + step_size
-            return None
 
-    def _restore_fmi_two_pending_point(self) -> tuple[float, ...]:
+        target_time: float = normalized_time + normalized_step
+        if math.isfinite(target_time):
+            pass
+        else:
+            raise FmuModeError("FMI ME Backward Euler target time must be finite")
+        if state_count == 0:
+            endpoint_derivatives: np.ndarray
+            endpoint_readable_values: tuple[float, ...] | None
+            endpoint_derivatives, endpoint_readable_values = (
+                self._evaluate_derivatives_for_state(
+                    time_value=target_time,
+                    state_values=np.zeros(0, dtype=float),
+                    input_values=input_values,
+                    evaluation_budget=evaluation_budget,
+                )
+            )
+            return (
+                np.zeros(0, dtype=float),
+                endpoint_derivatives,
+                endpoint_readable_values,
+            )
+        else:
+            pass
+
+        start_derivatives: np.ndarray
+        ignored_start_readable_values: tuple[float, ...] | None
+        start_derivatives, ignored_start_readable_values = (
+            self._evaluate_derivatives_for_state(
+                time_value=normalized_time,
+                state_values=accepted_state_values,
+                input_values=input_values,
+                evaluation_budget=evaluation_budget,
+            )
+        )
+        candidate_state_values: np.ndarray = (
+            accepted_state_values + normalized_step * start_derivatives
+        )
+        self._validate_finite_vector(
+            values=candidate_state_values,
+            expected_size=state_count,
+            vector_name="Backward Euler predictor",
+        )
+
+        residual_values: np.ndarray
+        endpoint_derivatives = np.zeros(state_count, dtype=float)
+        endpoint_readable_values = None
+        (
+            residual_values,
+            endpoint_derivatives,
+            endpoint_readable_values,
+        ) = self._evaluate_backward_euler_residual(
+            target_time=target_time,
+            step_size=normalized_step,
+            accepted_state_values=accepted_state_values,
+            candidate_state_values=candidate_state_values,
+            input_values=input_values,
+            evaluation_budget=evaluation_budget,
+        )
+        residual_scale: np.ndarray = (
+            self.solver_policy.absolute_tolerance
+            + self.solver_policy.relative_tolerance
+            * np.maximum(
+                np.abs(accepted_state_values),
+                np.abs(candidate_state_values),
+            )
+        )
+        scaled_residual_norm: float = float(
+            np.max(np.abs(residual_values) / residual_scale)
+        )
+        converged: bool = scaled_residual_norm <= 1.0
+        iteration_index: int = 0
+        while (
+            not converged
+            and iteration_index < self.solver_policy.maximum_newton_iterations
+        ):
+            jacobian: np.ndarray = self._evaluate_forward_difference_jacobian(
+                target_time=target_time,
+                step_size=normalized_step,
+                accepted_state_values=accepted_state_values,
+                candidate_state_values=candidate_state_values,
+                base_residual_values=residual_values,
+                input_values=input_values,
+                evaluation_budget=evaluation_budget,
+            )
+            try:
+                correction_values: np.ndarray = np.linalg.solve(
+                    jacobian,
+                    -residual_values,
+                )
+            except np.linalg.LinAlgError as linear_error:
+                raise FmuModeError(
+                    "FMI ME Backward Euler residual Jacobian is singular"
+                ) from linear_error
+            self._validate_finite_vector(
+                values=correction_values,
+                expected_size=state_count,
+                vector_name="Backward Euler correction",
+            )
+            candidate_state_values = candidate_state_values + correction_values
+            self._validate_finite_vector(
+                values=candidate_state_values,
+                expected_size=state_count,
+                vector_name="Backward Euler Newton iterate",
+            )
+            (
+                residual_values,
+                endpoint_derivatives,
+                endpoint_readable_values,
+            ) = self._evaluate_backward_euler_residual(
+                target_time=target_time,
+                step_size=normalized_step,
+                accepted_state_values=accepted_state_values,
+                candidate_state_values=candidate_state_values,
+                input_values=input_values,
+                evaluation_budget=evaluation_budget,
+            )
+            residual_scale = (
+                self.solver_policy.absolute_tolerance
+                + self.solver_policy.relative_tolerance
+                * np.maximum(
+                    np.abs(accepted_state_values),
+                    np.abs(candidate_state_values),
+                )
+            )
+            scaled_residual_norm = float(
+                np.max(np.abs(residual_values) / residual_scale)
+            )
+            converged = scaled_residual_norm <= 1.0
+            iteration_index += 1
+        if converged:
+            return (
+                candidate_state_values,
+                endpoint_derivatives,
+                endpoint_readable_values,
+            )
+        else:
+            raise FmuModeError(
+                "FMI ME Backward Euler Newton iteration limit was exhausted"
+            )
+
+    def _restore_fmi_two_pending_point(
+        self,
+        evaluation_budget: FmuMeEvaluationBudget,
+    ) -> tuple[float, ...]:
         """Restore one FMI 2 ME point after a coupled substep is rejected.
 
+        :param evaluation_budget: Shared owner-provided runtime-call budget.
         :return: Readable values recomputed at the restored accepted point.
         :raises FmuModeError: If the minimal pending snapshot is incomplete.
         """
@@ -793,11 +1346,23 @@ class FmuMeDeviceAdapter:
         accepted_inputs: tuple[float, ...] | None = (
             self.pending_accepted_input_values
         )
+        accepted_derivatives: tuple[float, ...] | None = (
+            self.pending_accepted_derivative_values
+        )
+        accepted_readable_values: tuple[float, ...] | None = (
+            self.pending_accepted_readable_values
+        )
+        accepted_event_indicators: tuple[float, ...] | None = (
+            self.pending_accepted_event_indicators
+        )
         if (
             self.runtime_host is not None
             and accepted_time is not None
             and accepted_states is not None
             and accepted_inputs is not None
+            and accepted_derivatives is not None
+            and accepted_readable_values is not None
+            and accepted_event_indicators is not None
             and len(accepted_inputs) == len(self.spec.input_variable_names)
         ):
             pass
@@ -812,28 +1377,63 @@ class FmuMeDeviceAdapter:
             restored_inputs[self.spec.input_variable_names[input_index]] = (
                 accepted_inputs[input_index]
             )
-        self.state_vector = np.array(accepted_states, dtype=float)
-        restored_values: tuple[float, ...] = self._evaluate_ordered_output_values(
-            time_value=accepted_time,
-            input_values=restored_inputs,
+        restored_state_values: np.ndarray = np.array(accepted_states, dtype=float)
+        restored_derivatives: np.ndarray
+        restored_readable_values: tuple[float, ...] | None
+        restored_derivatives, restored_readable_values = (
+            self._evaluate_derivatives_for_state(
+                time_value=accepted_time,
+                state_values=restored_state_values,
+                input_values=restored_inputs,
+                evaluation_budget=evaluation_budget,
+            )
         )
+        evaluation_budget.consume()
+        restored_event_indicators: tuple[float, ...] = tuple(
+            self.runtime_host.get_event_indicators()
+        )
+        derivatives_match: bool = (
+            tuple(restored_derivatives.tolist()) == accepted_derivatives
+        )
+        readable_values_match: bool = (
+            restored_readable_values == accepted_readable_values
+        )
+        event_indicators_match: bool = (
+            restored_event_indicators == accepted_event_indicators
+        )
+        if derivatives_match and readable_values_match and event_indicators_match:
+            self.state_vector = restored_state_values
+        else:
+            raise FmuImportError(
+                "FMI 2 visible rollback did not reproduce the accepted point "
+                f"(derivatives={derivatives_match}, "
+                f"readable_values={readable_values_match}, "
+                f"event_indicators={event_indicators_match})"
+            )
         self._clear_pending_state_event_data()
-        return restored_values
+        return accepted_readable_values
 
     def resolve_pending_step(
         self,
         accepted: bool,
         importer_detected_event: bool = False,
+        evaluation_budget: FmuMeEvaluationBudget | None = None,
     ) -> tuple[float, ...] | None:
         """Accept or reject one prepared Model Exchange candidate.
 
         :param accepted: Whether the owning numerical solver accepted the step.
         :param importer_detected_event: Whether an event was localized here.
+        :param evaluation_budget: Optional owner-provided runtime-call budget.
         :return: Restored FMI 2 or resolved FMI 3 readings when applicable.
         """
 
         coordinator: FmiThreeModelExchangeCoordinator | None = (
             self.fmi_three_coordinator
+        )
+        localized_event_is_due: bool = (
+            self.localized_state_event_time is not None
+            and self.pending_time is not None
+            and self.pending_time >= self.localized_state_event_time
         )
         if coordinator is not None and coordinator.has_pending_candidate():
             resolved_states: tuple[float, ...]
@@ -848,14 +1448,20 @@ class FmuMeDeviceAdapter:
                 resolved_states, resolved_readable_values = (
                     coordinator.accept_candidate(
                         importer_detected_event=(
-                            importer_detected_event or time_event_is_due
-                        )
+                            importer_detected_event
+                            or localized_event_is_due
+                            or time_event_is_due
+                        ),
+                        evaluation_budget=evaluation_budget,
                     )
                 )
             else:
-                coordinator.reject_candidate()
+                coordinator.reject_candidate(
+                    evaluation_budget=evaluation_budget
+                )
                 accepted_point: tuple[
                     float,
+                    tuple[float, ...],
                     tuple[float, ...],
                     tuple[float, ...],
                     tuple[float, ...],
@@ -865,6 +1471,10 @@ class FmuMeDeviceAdapter:
                 resolved_states = accepted_point[1]
                 resolved_readable_values = accepted_point[3]
             self.state_vector = np.array(resolved_states, dtype=float)
+            if accepted:
+                self.localized_state_event_time = None
+            else:
+                pass
             self._clear_pending_state_event_data()
             return resolved_readable_values
         else:
@@ -873,10 +1483,132 @@ class FmuMeDeviceAdapter:
                 and self.pending_accepted_time is not None
             ):
                 if accepted:
+                    if evaluation_budget is not None:
+                        active_budget: FmuMeEvaluationBudget = evaluation_budget
+                    else:
+                        active_budget = FmuMeEvaluationBudget(100000)
+                    runtime_host: FmuRuntimeHost = self.runtime_host
+                    completed_step_requested_event: bool = False
+                    if runtime_host.needs_completed_integrator_step():
+                        active_budget.consume()
+                        enter_event_mode: bool
+                        terminate_simulation: bool
+                        (
+                            enter_event_mode,
+                            terminate_simulation,
+                        ) = runtime_host.completed_integrator_step()
+                        if terminate_simulation:
+                            raise FmuImportError(
+                                "FMI 2 Model Exchange requested simulation termination"
+                            )
+                        else:
+                            completed_step_requested_event = enter_event_mode
+                    else:
+                        pass
+                    time_event_is_due: bool = (
+                        self.fmi_two_next_event_time is not None
+                        and self.pending_time is not None
+                        and self.pending_time >= self.fmi_two_next_event_time
+                    )
+                    event_is_required: bool = (
+                        importer_detected_event
+                        or localized_event_is_due
+                        or completed_step_requested_event
+                        or time_event_is_due
+                    )
+                    resolved_readable_values: tuple[float, ...] | None = (
+                        self.pending_candidate_readable_values
+                    )
+                    if event_is_required:
+                        if self.pending_time is not None:
+                            accepted_event_time: float = self.pending_time
+                        else:
+                            raise FmuModeError(
+                                "FMI 2 event acceptance lost its candidate time"
+                            )
+                        active_budget.consume()
+                        runtime_host.enter_event_mode()
+                        self._settle_fmi_two_event_mode(
+                            entry_time=accepted_event_time,
+                            evaluation_budget=active_budget,
+                        )
+                        active_budget.consume()
+                        post_event_states: np.ndarray = np.array(
+                            runtime_host.get_continuous_states(),
+                            dtype=float,
+                        )
+                        accepted_input_values: tuple[float, ...] | None = (
+                            self.pending_accepted_input_values
+                        )
+                        if accepted_input_values is not None:
+                            pass
+                        else:
+                            raise FmuModeError(
+                                "FMI 2 event acceptance lost its input vector"
+                            )
+                        accepted_inputs: dict[str, float] = dict()
+                        input_index: int
+                        for input_index in range(len(self.spec.input_variable_names)):
+                            accepted_inputs[self.spec.input_variable_names[input_index]] = (
+                                accepted_input_values[input_index]
+                            )
+                        post_event_derivatives: np.ndarray
+                        post_event_readable_values: tuple[float, ...] | None
+                        (
+                            post_event_derivatives,
+                            post_event_readable_values,
+                        ) = self._evaluate_derivatives_for_state(
+                            time_value=accepted_event_time,
+                            state_values=post_event_states,
+                            input_values=accepted_inputs,
+                            evaluation_budget=active_budget,
+                        )
+                        active_budget.consume()
+                        post_event_indicators: tuple[float, ...] = tuple(
+                            runtime_host.get_event_indicators()
+                        )
+                        self.state_vector = post_event_states
+                        self.fmi_two_accepted_derivative_values = tuple(
+                            post_event_derivatives.tolist()
+                        )
+                        self.fmi_two_accepted_readable_values = (
+                            post_event_readable_values
+                        )
+                        self.fmi_two_accepted_event_indicators = (
+                            post_event_indicators
+                        )
+                        resolved_readable_values = post_event_readable_values
+                    else:
+                        self.fmi_two_accepted_derivative_values = (
+                            self.pending_candidate_derivative_values
+                        )
+                        self.fmi_two_accepted_readable_values = (
+                            self.pending_candidate_readable_values
+                        )
+                        self.fmi_two_accepted_event_indicators = (
+                            self.pending_candidate_event_indicators
+                        )
+                    if resolved_readable_values is not None:
+                        pass
+                    else:
+                        raise FmuModeError(
+                            "FMI 2 acceptance lost its candidate readable values"
+                        )
+                    self.localized_state_event_time = None
                     self._clear_pending_state_event_data()
-                    return None
+                    return resolved_readable_values
                 else:
-                    return self._restore_fmi_two_pending_point()
+                    if evaluation_budget is not None:
+                        return self._restore_fmi_two_pending_point(
+                            evaluation_budget=evaluation_budget
+                        )
+                    else:
+                        fallback_budget: FmuMeEvaluationBudget = (
+                            FmuMeEvaluationBudget(100000)
+                        )
+                        return self._restore_fmi_two_pending_point(
+                            evaluation_budget=fallback_budget
+                        )
             else:
                 return None
 
@@ -884,16 +1616,13 @@ class FmuMeDeviceAdapter:
         self,
         time_tolerance: float,
         maximum_iterations: int,
+        evaluation_budget: FmuMeEvaluationBudget,
     ) -> float | None:
-        """Locate the first domain change inside the pending ME candidate.
-
-        The current explicit-Euler predictor is linear in the continuous state,
-        so midpoint states are interpolated consistently with that predictor.
-        A shared bracket is reduced to the earliest indicator event without
-        entering Event Mode.
+        """Locate the first method-consistent event inside a pending candidate.
 
         :param time_tolerance: Positive absolute event-time tolerance in seconds.
         :param maximum_iterations: Positive bisection iteration bound.
+        :param evaluation_budget: Shared owner-provided runtime-call budget.
         :return: Earliest localized event time, or ``None`` without a crossing.
         """
 
@@ -915,38 +1644,50 @@ class FmuMeDeviceAdapter:
                 "FMI ME state-event iteration bound must be a positive integer"
             )
 
-        coordinator: FmiThreeModelExchangeCoordinator | None = (
-            self.fmi_three_coordinator
-        )
         candidate_time: float | None = self.pending_time
         candidate_states: tuple[float, ...] | None = (
             self.pending_candidate_state_values
         )
+        candidate_derivatives: tuple[float, ...] | None = (
+            self.pending_candidate_derivative_values
+        )
+        candidate_readable_values: tuple[float, ...] | None = (
+            self.pending_candidate_readable_values
+        )
         candidate_indicators: tuple[float, ...] | None = (
             self.pending_candidate_event_indicators
         )
+        accepted_time: float | None = self.pending_accepted_time
+        accepted_states: tuple[float, ...] | None = (
+            self.pending_accepted_state_values
+        )
+        accepted_inputs: tuple[float, ...] | None = (
+            self.pending_accepted_input_values
+        )
+        accepted_indicators: tuple[float, ...] | None = (
+            self.pending_accepted_event_indicators
+        )
         if (
-            coordinator is not None
-            and coordinator.has_pending_candidate()
-            and candidate_time is not None
+            candidate_time is not None
             and candidate_states is not None
+            and candidate_derivatives is not None
+            and candidate_readable_values is not None
             and candidate_indicators is not None
+            and accepted_time is not None
+            and accepted_states is not None
+            and accepted_inputs is not None
+            and accepted_indicators is not None
+            and (
+                (
+                    self.fmi_three_coordinator is not None
+                    and self.fmi_three_coordinator.has_pending_candidate()
+                )
+                or self.runtime_host is not None
+            )
         ):
             pass
         else:
             return None
-
-        accepted_point: tuple[
-            float,
-            tuple[float, ...],
-            tuple[float, ...],
-            tuple[float, ...],
-            tuple[float, ...],
-            tuple[float, ...],
-        ] = coordinator.get_accepted_point()
-        accepted_time: float = accepted_point[0]
-        accepted_states: tuple[float, ...] = accepted_point[1]
-        accepted_indicators: tuple[float, ...] = accepted_point[4]
         interval_width: float = candidate_time - accepted_time
         if (
             len(accepted_states) == len(candidate_states)
@@ -1014,75 +1755,128 @@ class FmuMeDeviceAdapter:
         else:
             pass
 
-        # One shared bracket locates the earliest crossing among every indicator
-        # whose endpoint domain differs.  This keeps the worker traffic bounded
-        # by the configured iteration cap rather than multiplying it by the
-        # number of event indicators in one FMU.
-        lower_time: float = accepted_time
-        upper_time: float = candidate_time
-        midpoint_states_list: list[float] = [0.0] * len(accepted_states)
-        iteration_index: int = 0
-        while iteration_index < required_iterations:
-            bracket_width: float = upper_time - lower_time
-            midpoint_time: float = lower_time + bracket_width * 0.5
-            if lower_time < midpoint_time < upper_time:
-                pass
-            else:
-                # Adjacent binary floats are already at the numerical floor;
-                # the finite upper endpoint is the conservative event bracket.
-                return upper_time
-            interpolation_fraction: float = (
-                (midpoint_time - accepted_time)
-                / interval_width
+        input_values: dict[str, float] = dict()
+        input_index: int
+        for input_index in range(len(self.spec.input_variable_names)):
+            input_values[self.spec.input_variable_names[input_index]] = (
+                accepted_inputs[input_index]
             )
-            state_index: int
-            for state_index in range(len(accepted_states)):
-                midpoint_states_list[state_index] = (
-                    accepted_states[state_index]
-                    + interpolation_fraction
-                    * (
-                        candidate_states[state_index]
-                        - accepted_states[state_index]
+
+        # Each indicator owns its bracket.  A shortened Backward Euler solve
+        # establishes every midpoint so localization uses the same method as
+        # the accepted integration path.
+        earliest_event_time: float | None = None
+        crossing_position: int
+        for crossing_position in range(crossing_count):
+            event_indicator_index: int = crossing_indices[crossing_position]
+            accepted_is_positive: bool = (
+                accepted_indicators[event_indicator_index] > 0.0
+            )
+            lower_time: float = accepted_time
+            upper_time: float = candidate_time
+            iteration_index: int = 0
+            while iteration_index < required_iterations:
+                bracket_width: float = upper_time - lower_time
+                midpoint_time: float = lower_time + bracket_width * 0.5
+                if lower_time < midpoint_time < upper_time:
+                    midpoint_states: np.ndarray
+                    ignored_midpoint_derivatives: np.ndarray
+                    ignored_midpoint_readable_values: tuple[float, ...] | None
+                    (
+                        midpoint_states,
+                        ignored_midpoint_derivatives,
+                        ignored_midpoint_readable_values,
+                    ) = self._solve_backward_euler_candidate(
+                        current_time=accepted_time,
+                        step_size=midpoint_time - accepted_time,
+                        accepted_state_values=np.array(
+                            accepted_states,
+                            dtype=float,
+                        ),
+                        input_values=input_values,
+                        evaluation_budget=evaluation_budget,
                     )
-                )
-            midpoint_indicators: tuple[float, ...] = (
-                coordinator.evaluate_event_indicators_probe(
-                    time_value=midpoint_time,
-                    continuous_state_values=tuple(midpoint_states_list),
-                )
-            )
-            if len(midpoint_indicators) == len(accepted_indicators):
-                pass
+                    if self.fmi_three_coordinator is not None:
+                        midpoint_indicators: tuple[float, ...] = (
+                            self.fmi_three_coordinator.evaluate_event_indicators_probe(
+                                time_value=midpoint_time,
+                                continuous_state_values=tuple(
+                                    midpoint_states.tolist()
+                                ),
+                                point_is_presented=True,
+                                evaluation_budget=evaluation_budget,
+                            )
+                        )
+                    else:
+                        if self.runtime_host is not None:
+                            evaluation_budget.consume()
+                            midpoint_indicators = tuple(
+                                self.runtime_host.get_event_indicators()
+                            )
+                            restored_derivatives: np.ndarray
+                            restored_readable_values: tuple[float, ...] | None
+                            (
+                                restored_derivatives,
+                                restored_readable_values,
+                            ) = self._evaluate_derivatives_for_state(
+                                time_value=candidate_time,
+                                state_values=np.array(
+                                    candidate_states,
+                                    dtype=float,
+                                ),
+                                input_values=input_values,
+                                evaluation_budget=evaluation_budget,
+                            )
+                            evaluation_budget.consume()
+                            restored_indicators: tuple[float, ...] = tuple(
+                                self.runtime_host.get_event_indicators()
+                            )
+                            if (
+                                tuple(restored_derivatives.tolist())
+                                == candidate_derivatives
+                                and restored_readable_values
+                                == candidate_readable_values
+                                and restored_indicators == candidate_indicators
+                            ):
+                                pass
+                            else:
+                                raise FmuImportError(
+                                    "FMI 2 event localization did not restore "
+                                    "the pending endpoint"
+                                )
+                        else:
+                            raise FmuModeError(
+                                "FMI ME localization lost its runtime"
+                            )
+                    if len(midpoint_indicators) == len(accepted_indicators):
+                        pass
+                    else:
+                        raise FmuModeError(
+                            "FMI ME event-indicator cardinality changed during localization"
+                        )
+                    midpoint_is_positive: bool = (
+                        midpoint_indicators[event_indicator_index] > 0.0
+                    )
+                    if midpoint_is_positive != accepted_is_positive:
+                        upper_time = midpoint_time
+                    else:
+                        lower_time = midpoint_time
+                else:
+                    lower_time = upper_time
+                iteration_index += 1
+            if (upper_time - lower_time) <= effective_tolerance:
+                if (
+                    earliest_event_time is None
+                    or upper_time < earliest_event_time
+                ):
+                    earliest_event_time = upper_time
+                else:
+                    pass
             else:
                 raise FmuModeError(
-                    "FMI ME event-indicator cardinality changed during localization"
+                    "FMI ME state-event localization exceeded its iteration bound"
                 )
-
-            crossing_reached: bool = False
-            crossing_position: int = 0
-            while crossing_position < crossing_count and not crossing_reached:
-                event_indicator_index: int = crossing_indices[crossing_position]
-                accepted_is_positive: bool = (
-                    accepted_indicators[event_indicator_index] > 0.0
-                )
-                midpoint_is_positive: bool = (
-                    midpoint_indicators[event_indicator_index] > 0.0
-                )
-                if midpoint_is_positive != accepted_is_positive:
-                    crossing_reached = True
-                else:
-                    crossing_position += 1
-            if crossing_reached:
-                upper_time = midpoint_time
-            else:
-                lower_time = midpoint_time
-            iteration_index += 1
-        if (upper_time - lower_time) <= effective_tolerance:
-            return upper_time
-        else:
-            raise FmuModeError(
-                "FMI ME state-event localization exceeded its iteration bound"
-            )
+        return earliest_event_time
 
     def _get_pending_state_event_crossing_indices(
         self,
@@ -1098,22 +1892,15 @@ class FmuMeDeviceAdapter:
         :return: Ordered indices changing between ``z > 0`` and ``z <= 0``.
         """
 
-        coordinator: FmiThreeModelExchangeCoordinator | None = (
-            self.fmi_three_coordinator
-        )
-        if coordinator is not None and coordinator.has_pending_candidate():
-            pass
-        else:
-            return tuple()
         if accepted_indicators is None:
-            accepted_indicators = coordinator.get_accepted_point()[4]
+            accepted_indicators = self.pending_accepted_event_indicators
         else:
             pass
         if candidate_indicators is None:
             candidate_indicators = self.pending_candidate_event_indicators
         else:
             pass
-        if candidate_indicators is not None:
+        if accepted_indicators is not None and candidate_indicators is not None:
             pass
         else:
             raise FmuModeError(
@@ -1142,23 +1929,31 @@ class FmuMeDeviceAdapter:
     def prepare_state_event_retry(
         self,
         event_time: float | None,
+        evaluation_budget: FmuMeEvaluationBudget,
     ) -> tuple[float, ...]:
         """Reject the pending endpoint and optionally arm a localized event.
 
         :param event_time: Global retry time for a source event, or ``None``
             when this FMU only participates in the global rollback.
+        :param evaluation_budget: Shared owner-provided runtime-call budget.
         :return: Readable values restored from the accepted point.
         """
 
         coordinator: FmiThreeModelExchangeCoordinator | None = (
             self.fmi_three_coordinator
         )
+        accepted_time: float | None = self.pending_accepted_time
         restored_readable_values: tuple[float, ...] | None
         if coordinator is not None and coordinator.has_pending_candidate():
-            restored_readable_values = self.resolve_pending_step(accepted=False)
+            restored_readable_values = self.resolve_pending_step(
+                accepted=False,
+                evaluation_budget=evaluation_budget,
+            )
         else:
-            if self.runtime_host is not None and event_time is None:
-                restored_readable_values = self._restore_fmi_two_pending_point()
+            if self.runtime_host is not None:
+                restored_readable_values = self._restore_fmi_two_pending_point(
+                    evaluation_budget=evaluation_budget
+                )
             else:
                 raise FmuModeError(
                     "FMI ME state-event retry requires a pending candidate"
@@ -1173,8 +1968,9 @@ class FmuMeDeviceAdapter:
             self.localized_state_event_time = None
         else:
             normalized_event_time: float = float(event_time)
-            accepted_time: float = coordinator.get_accepted_point()[0]
             if (
+                accepted_time is not None
+                and
                 math.isfinite(normalized_event_time)
                 and normalized_event_time > accepted_time
             ):
@@ -1207,92 +2003,275 @@ class FmuMeDeviceAdapter:
                 else:
                     return scheduled_event_time
         else:
-            return None
-
-    def explicit_euler_step(self, current_time: float, step_size: float, input_values: dict[str, float]) -> dict[str, float]:
-        """Advance the FMU one explicit-Euler predictor step.
-
-        :param current_time: Current integration time.
-        :param step_size: Step length.
-        :param input_values: FMU input values.
-        :return: Output values after the step.
-        """
-
-        if self.spec.integration_method == FmuMeIntegrationMethod.EXPLICIT_EULER:
-            readable_values: tuple[float, ...] | None = (
-                self._advance_explicit_euler_state(
-                    current_time=current_time,
-                    step_size=step_size,
-                    input_values=input_values,
-                )
-            )
-            if readable_values is None:
-                outputs: dict[str, float] = self.evaluate_outputs(
-                    current_time + step_size,
-                    input_values,
-                )
-                self.resolve_pending_step(accepted=True)
-            else:
-                crossing_indices: tuple[int, ...] = (
-                    self._get_pending_state_event_crossing_indices()
-                )
-                if len(crossing_indices) == 0:
-                    resolved_readable_values: tuple[float, ...] | None = (
-                        self.resolve_pending_step(accepted=True)
-                    )
-                    if resolved_readable_values is not None:
-                        outputs = self._map_named_output_values(
-                            resolved_readable_values
-                        )
-                    else:
-                        outputs = self._map_named_output_values(readable_values)
+            if self.runtime_host is not None:
+                scheduled_event_time = self.fmi_two_next_event_time
+                localized_event_time = self.localized_state_event_time
+                if scheduled_event_time is None:
+                    return localized_event_time
                 else:
-                    self.resolve_pending_step(accepted=False)
-                    raise FmuModeError(
-                        "Direct FMI ME stepping cannot accept a state event; "
-                        "use the RMS or EMT solver-owned localization path"
-                    )
-            return outputs
-        else:
-            raise ValueError(f"Unsupported FMU ME integration method {self.spec.integration_method.value}")
+                    if (
+                        localized_event_time is not None
+                        and localized_event_time < scheduled_event_time
+                    ):
+                        return localized_event_time
+                    else:
+                        return scheduled_event_time
+            else:
+                return None
 
-    def _explicit_euler_bound_step(
+    def prepare_step(
         self,
         current_time: float,
         step_size: float,
         input_values: dict[str, float],
+        evaluation_budget: FmuMeEvaluationBudget | None = None,
+    ) -> dict[str, float]:
+        """Prepare and immediately resolve one direct Backward Euler step.
+
+        The direct API cannot coordinate a network retry.  It therefore rejects
+        state events and directs coupled users to the RMS or EMT boundary.
+
+        :param current_time: Current accepted integration time.
+        :param step_size: Positive Backward Euler step length.
+        :param input_values: Complete frozen FMU input values.
+        :param evaluation_budget: Optional caller-owned runtime-call budget.
+        :return: Output values at the accepted endpoint.
+        """
+
+        if evaluation_budget is None:
+            active_budget: FmuMeEvaluationBudget = FmuMeEvaluationBudget(100000)
+        else:
+            active_budget = evaluation_budget
+        accepted_state_values: np.ndarray = self.get_state_vector()
+        self.pending_accepted_time = float(current_time)
+        self.pending_accepted_state_values = tuple(
+            accepted_state_values.tolist()
+        )
+        self.pending_accepted_input_values = (
+            self._build_ordered_writable_values(input_values)
+        )
+        if self.fmi_three_coordinator is not None:
+            accepted_point = self.fmi_three_coordinator.get_accepted_point()
+            self.pending_accepted_derivative_values = accepted_point[6]
+            self.pending_accepted_readable_values = accepted_point[3]
+            self.pending_accepted_event_indicators = accepted_point[4]
+        else:
+            self.pending_accepted_derivative_values = (
+                self.fmi_two_accepted_derivative_values
+            )
+            self.pending_accepted_readable_values = (
+                self.fmi_two_accepted_readable_values
+            )
+            self.pending_accepted_event_indicators = (
+                self.fmi_two_accepted_event_indicators
+            )
+        candidate_state_values: np.ndarray
+        candidate_derivatives: np.ndarray
+        candidate_readable_values: tuple[float, ...] | None
+        (
+            candidate_state_values,
+            candidate_derivatives,
+            candidate_readable_values,
+        ) = self._solve_backward_euler_candidate(
+            current_time=current_time,
+            step_size=step_size,
+            accepted_state_values=accepted_state_values,
+            input_values=input_values,
+            evaluation_budget=active_budget,
+        )
+        candidate_time: float = current_time + step_size
+        self.state_vector = np.array(candidate_state_values, copy=True)
+        self.pending_time = candidate_time
+        self.pending_candidate_state_values = tuple(
+            candidate_state_values.tolist()
+        )
+        self.pending_candidate_derivative_values = tuple(
+            candidate_derivatives.tolist()
+        )
+        self.pending_candidate_readable_values = candidate_readable_values
+
+        if self.fmi_three_coordinator is not None:
+            active_budget.consume()
+            candidate_result: tuple[
+                tuple[float, ...],
+                tuple[float, ...],
+                tuple[float, ...],
+            ] = self.fmi_three_coordinator.evaluate_candidate(
+                time_value=candidate_time,
+                continuous_state_values=tuple(candidate_state_values.tolist()),
+                writable_values=(
+                    self._build_ordered_writable_values(input_values)
+                ),
+                presented_derivative_values=tuple(
+                    candidate_derivatives.tolist()
+                ),
+                presented_readable_values=candidate_readable_values,
+            )
+            readable_values: tuple[float, ...] = candidate_result[1]
+            self.pending_candidate_event_indicators = candidate_result[2]
+        else:
+            if self.runtime_host is not None:
+                active_budget.consume()
+                named_outputs: dict[str, float] = self.runtime_host.get_real(
+                    list(self.spec.output_variable_names)
+                )
+                ordered_outputs: list[float] = [0.0] * len(
+                    self.spec.output_variable_names
+                )
+                output_index: int
+                for output_index in range(len(self.spec.output_variable_names)):
+                    output_name: str = self.spec.output_variable_names[
+                        output_index
+                    ]
+                    ordered_outputs[output_index] = float(
+                        named_outputs[output_name]
+                    )
+                readable_values = tuple(ordered_outputs)
+                self.pending_candidate_readable_values = readable_values
+                active_budget.consume()
+                self.pending_candidate_event_indicators = tuple(
+                    self.runtime_host.get_event_indicators()
+                )
+            else:
+                raise RuntimeError(
+                    "FMU ME adapter must be initialized before preparing a step"
+                )
+
+        crossing_indices: tuple[int, ...] = (
+            self._get_pending_state_event_crossing_indices()
+        )
+        if len(crossing_indices) == 0:
+            resolved_readable_values: tuple[float, ...] | None = (
+                self.resolve_pending_step(
+                    accepted=True,
+                    evaluation_budget=active_budget,
+                )
+            )
+            if resolved_readable_values is not None:
+                return self._map_named_output_values(resolved_readable_values)
+            else:
+                return self._map_named_output_values(readable_values)
+        else:
+            self.resolve_pending_step(
+                accepted=False,
+                evaluation_budget=active_budget,
+            )
+            raise FmuModeError(
+                "Direct FMI ME stepping cannot accept a state event; use the "
+                "RMS or EMT solver-owned localization path"
+            )
+
+    def _prepare_bound_step(
+        self,
+        current_time: float,
+        step_size: float,
+        input_values: dict[str, float],
+        evaluation_budget: FmuMeEvaluationBudget,
     ) -> dict[VarPowerFlowReferenceType, float]:
-        """Advance one step and retain every selected device output element.
+        """Prepare one solver-owned Backward Euler candidate.
 
         :param current_time: Current accepted integration time.
         :param step_size: Integration step length.
         :param input_values: Complete scalar FMU input values.
-        :return: Output values indexed by VeraGrid reference.
+        :param evaluation_budget: Shared owner-provided runtime-call budget.
+        :return: Candidate outputs indexed by VeraGrid reference.
         """
 
-        if self.spec.integration_method == FmuMeIntegrationMethod.EXPLICIT_EULER:
-            readable_values: tuple[float, ...] | None = (
-                self._advance_explicit_euler_state(
-                    current_time=current_time,
-                    step_size=step_size,
-                    input_values=input_values,
-                )
+        accepted_state_values: np.ndarray = self.get_state_vector()
+        self.pending_accepted_time = float(current_time)
+        self.pending_accepted_state_values = tuple(
+            accepted_state_values.tolist()
+        )
+        self.pending_accepted_input_values = (
+            self._build_ordered_writable_values(input_values)
+        )
+        if self.fmi_three_coordinator is not None:
+            accepted_point = self.fmi_three_coordinator.get_accepted_point()
+            self.pending_accepted_derivative_values = accepted_point[6]
+            self.pending_accepted_readable_values = accepted_point[3]
+            self.pending_accepted_event_indicators = accepted_point[4]
+        else:
+            self.pending_accepted_derivative_values = (
+                self.fmi_two_accepted_derivative_values
             )
-            if readable_values is None:
-                outputs: dict[VarPowerFlowReferenceType, float] = (
-                    self._evaluate_bound_outputs(
-                    time_value=current_time + step_size,
-                    input_values=input_values,
+            self.pending_accepted_readable_values = (
+                self.fmi_two_accepted_readable_values
+            )
+            self.pending_accepted_event_indicators = (
+                self.fmi_two_accepted_event_indicators
+            )
+        candidate_state_values: np.ndarray
+        candidate_derivatives: np.ndarray
+        candidate_readable_values: tuple[float, ...] | None
+        (
+            candidate_state_values,
+            candidate_derivatives,
+            candidate_readable_values,
+        ) = self._solve_backward_euler_candidate(
+            current_time=current_time,
+            step_size=step_size,
+            accepted_state_values=accepted_state_values,
+            input_values=input_values,
+            evaluation_budget=evaluation_budget,
+        )
+        candidate_time: float = current_time + step_size
+        self.state_vector = np.array(candidate_state_values, copy=True)
+        self.pending_time = candidate_time
+        self.pending_candidate_state_values = tuple(
+            candidate_state_values.tolist()
+        )
+        self.pending_candidate_derivative_values = tuple(
+            candidate_derivatives.tolist()
+        )
+        self.pending_candidate_readable_values = candidate_readable_values
+
+        if self.fmi_three_coordinator is not None:
+            evaluation_budget.consume()
+            candidate_result: tuple[
+                tuple[float, ...],
+                tuple[float, ...],
+                tuple[float, ...],
+            ] = self.fmi_three_coordinator.evaluate_candidate(
+                time_value=candidate_time,
+                continuous_state_values=tuple(candidate_state_values.tolist()),
+                writable_values=(
+                    self._build_ordered_writable_values(input_values)
+                ),
+                presented_derivative_values=tuple(
+                    candidate_derivatives.tolist()
+                ),
+                presented_readable_values=candidate_readable_values,
+            )
+            readable_values: tuple[float, ...] = candidate_result[1]
+            self.pending_candidate_event_indicators = candidate_result[2]
+        else:
+            if self.runtime_host is not None:
+                evaluation_budget.consume()
+                named_outputs: dict[str, float] = self.runtime_host.get_real(
+                    list(self.spec.output_variable_names)
                 )
+                ordered_outputs: list[float] = [0.0] * len(
+                    self.spec.output_variable_names
+                )
+                output_index: int
+                for output_index in range(len(self.spec.output_variable_names)):
+                    output_name: str = self.spec.output_variable_names[
+                        output_index
+                    ]
+                    ordered_outputs[output_index] = float(
+                        named_outputs[output_name]
+                    )
+                readable_values = tuple(ordered_outputs)
+                self.pending_candidate_readable_values = readable_values
+                evaluation_budget.consume()
+                self.pending_candidate_event_indicators = tuple(
+                    self.runtime_host.get_event_indicators()
                 )
             else:
-                outputs = self._map_bound_output_values(readable_values)
-            return outputs
-        else:
-            raise ValueError(
-                "Unsupported FMU ME integration method "
-                f"{self.spec.integration_method.value}"
-            )
+                raise RuntimeError(
+                    "FMU ME adapter must be initialized before preparing a step"
+                )
+        return self._map_bound_output_values(readable_values)
 
     def close(self) -> None:
         """Release the FMU runtime used by the adapter.
@@ -1312,6 +2291,10 @@ class FmuMeDeviceAdapter:
             pass
         self.initialized = False
         self.localized_state_event_time = None
+        self.fmi_two_next_event_time = None
+        self.fmi_two_accepted_derivative_values = None
+        self.fmi_two_accepted_readable_values = None
+        self.fmi_two_accepted_event_indicators = None
         self._clear_pending_state_event_data()
 
 
@@ -1350,7 +2333,6 @@ def build_fmu_me_device_spec(
     device_tpe: DeviceType,
     input_variable_names: tuple[str, ...],
     output_variable_names: tuple[str, ...],
-    integration_method: FmuMeIntegrationMethod = FmuMeIntegrationMethod.EXPLICIT_EULER,
     worker_limits: FmiThreeWorkerHostLimits | None = None,
     maximum_event_iterations: int = 32,
     input_bindings: tuple[FmuRefBinding, ...] | None = None,
@@ -1371,7 +2353,6 @@ def build_fmu_me_device_spec(
     :param device_tpe: VeraGrid device type.
     :param input_variable_names: Ordered FMU input names.
     :param output_variable_names: Ordered FMU output names.
-    :param integration_method: Predictor used by the adapter.
     :param worker_limits: Explicit FMI 3 worker supervision policy, when used.
     :param maximum_event_iterations: Positive Event Mode convergence bound.
     :param input_bindings: Optional typed bindings aligned with input names.
@@ -1448,7 +2429,7 @@ def build_fmu_me_device_spec(
             pass
     else:
         if metadata.fmi_version_family == FmiVersion.FMI_3_0:
-            resolved_mode = metadata.select_declared_interface(config.preferred_mode)
+            resolved_mode = config.resolve_execution_mode(metadata)
             float64_profile = resolve_fmi_three_worker_float64_profile(metadata)
             validate_fmi_three_model_exchange_worker_profile(
                 metadata=metadata,
@@ -1533,7 +2514,6 @@ def build_fmu_me_device_spec(
             output_variable_names=output_variable_names,
             state_variable_names=state_variable_names,
             derivative_variable_names=derivative_variable_names,
-            integration_method=integration_method,
             worker_limits=worker_limits,
             float64_profile=float64_profile,
             maximum_event_iterations=maximum_event_iterations,
@@ -1548,55 +2528,6 @@ def build_fmu_me_device_spec(
         raise ValueError(f"FMU ME device specs require a Model Exchange FMU, got {resolved_mode.value}")
 
 
-def _build_rms_me_output_shell_block(
-    vfactory: VarFactory,
-    name: str,
-    output_bindings: tuple[FmuRefBinding, ...],
-    output_defaults: dict[VarPowerFlowReferenceType, float] | None,
-) -> Block:
-    """Build the symbolic RMS shell used to expose FMU ME outputs to VeraGrid.
-
-    :param vfactory: Variable factory used by the owning grid.
-    :param name: Template name.
-    :param output_bindings: FMU-to-VeraGrid bindings.
-    :param output_defaults: Default output values before the first FMU step.
-    :return: Symbolic shell block.
-    """
-
-    defaults: dict[VarPowerFlowReferenceType, float]
-    if output_defaults is None:
-        defaults = dict()
-    else:
-        defaults = dict(output_defaults)
-
-    algebraic_vars: list[Var] = list()
-    algebraic_eqs: list[Any] = list()
-    event_dict: dict[Var, Const] = dict()
-    external_mapping: dict[VarPowerFlowReferenceType, Var] = dict()
-
-    binding: FmuRefBinding
-    for binding in output_bindings:
-        reference_name: str = binding.reference.value.replace("-", "_")
-        output_var: Var = vfactory.add_var(name=f"fmu_{reference_name}_{name}", reference=binding.reference)
-        parameter_var: Var = vfactory.add_var(name=f"fmu_param_{reference_name}_{name}")
-        default_value: float = float(defaults.get(binding.reference, 0.0))
-
-        # The FMU outputs are projected into runtime parameters so the RMS DAE sees a normal block.
-        event_dict[parameter_var] = vfactory.add_const(default_value)
-        algebraic_vars.append(output_var)
-        algebraic_eqs.append(output_var - parameter_var)
-        external_mapping[binding.reference] = output_var
-
-    return Block(
-        algebraic_vars=algebraic_vars,
-        algebraic_eqs=algebraic_eqs,
-        out_vars=list(algebraic_vars),
-        event_dict=event_dict,
-        external_mapping=external_mapping,
-        name=name,
-    )
-
-
 def build_rms_fmu_me_injection_template(
     vfactory: VarFactory,
     config: FmuImportConfig,
@@ -1605,7 +2536,6 @@ def build_rms_fmu_me_injection_template(
     name: str,
     device_tpe: DeviceType = DeviceType.LoadDevice,
     output_defaults: dict[VarPowerFlowReferenceType, float] | None = None,
-    integration_method: FmuMeIntegrationMethod = FmuMeIntegrationMethod.EXPLICIT_EULER,
     worker_limits: FmiThreeWorkerHostLimits | None = None,
     maximum_event_iterations: int = 32,
 ) -> RmsModelTemplate:
@@ -1618,7 +2548,6 @@ def build_rms_fmu_me_injection_template(
     :param name: Template name.
     :param device_tpe: VeraGrid device type.
     :param output_defaults: Default output values before the first FMU step.
-    :param integration_method: Internal ME predictor method.
     :param worker_limits: Explicit FMI 3 worker supervision policy, when used.
     :param maximum_event_iterations: Positive Event Mode convergence bound.
     :return: RMS template wrapping the FMU shell block.
@@ -1643,7 +2572,6 @@ def build_rms_fmu_me_injection_template(
         device_tpe=device_tpe,
         input_variable_names=tuple(input_variable_names),
         output_variable_names=tuple(output_variable_names),
-        integration_method=integration_method,
         worker_limits=worker_limits,
         maximum_event_iterations=maximum_event_iterations,
         input_bindings=input_bindings,
@@ -1652,7 +2580,7 @@ def build_rms_fmu_me_injection_template(
 
     template: RmsModelTemplate = RmsModelTemplate(name=name)
     template.tpe = device_tpe
-    template.block = _build_rms_me_output_shell_block(vfactory, name, output_bindings, output_defaults)
+    template.block = _build_template_block(vfactory, name, output_bindings, output_defaults)
     return template
 
 
@@ -1664,7 +2592,6 @@ def build_emt_fmu_me_injection_template(
     name: str,
     device_tpe: DeviceType = DeviceType.LoadDevice,
     output_defaults: dict[VarPowerFlowReferenceType, float] | None = None,
-    integration_method: FmuMeIntegrationMethod = FmuMeIntegrationMethod.EXPLICIT_EULER,
     worker_limits: FmiThreeWorkerHostLimits | None = None,
     maximum_event_iterations: int = 32,
 ) -> EmtModelTemplate:
@@ -1677,7 +2604,6 @@ def build_emt_fmu_me_injection_template(
     :param name: Template name.
     :param device_tpe: VeraGrid device type.
     :param output_defaults: Default output values before the first FMU step.
-    :param integration_method: Internal ME predictor method.
     :param worker_limits: Explicit FMI 3 worker supervision policy, when used.
     :param maximum_event_iterations: Positive Event Mode convergence bound.
     :return: EMT template wrapping the FMU shell block.
@@ -1701,7 +2627,6 @@ def build_emt_fmu_me_injection_template(
         device_tpe=device_tpe,
         input_variable_names=tuple(input_variable_names),
         output_variable_names=tuple(output_variable_names),
-        integration_method=integration_method,
         worker_limits=worker_limits,
         maximum_event_iterations=maximum_event_iterations,
         input_bindings=input_bindings,
@@ -1710,7 +2635,13 @@ def build_emt_fmu_me_injection_template(
 
     template: EmtModelTemplate = EmtModelTemplate(name=name)
     template.tpe = device_tpe
-    template.block = _build_rms_me_output_shell_block(vfactory, name, output_bindings, output_defaults)
+    template.block = _build_template_block(
+        vfactory=vfactory,
+        name=name,
+        output_bindings=output_bindings,
+        output_defaults=output_defaults,
+        input_bindings=input_bindings,
+    )
     _ensure_emt_external_mapping_keys(template.block)
     template.block.api_obj_mapping = dict()
     template.block.api_obj_mapping[ParamPowerFlowReferenceType.Pl0_A] = None
@@ -1866,6 +2797,7 @@ class RmsFmuMeDeviceAdapter:
         device: Any,
         spec: FmuMeDeviceSpec,
         output_param_indices: dict[VarPowerFlowReferenceType, int],
+        solver_policy: FmuMeSolverPolicy,
     ) -> None:
         """Store the RMS FMU ME runtime adapter.
 
@@ -1876,7 +2808,10 @@ class RmsFmuMeDeviceAdapter:
         self.device: Any = device
         self.spec: FmuMeDeviceSpec = spec
         self.output_param_indices: dict[VarPowerFlowReferenceType, int] = output_param_indices
-        self.runtime_adapter: FmuMeDeviceAdapter = FmuMeDeviceAdapter(spec)
+        self.runtime_adapter: FmuMeDeviceAdapter = FmuMeDeviceAdapter(
+            spec=spec,
+            solver_policy=solver_policy,
+        )
         self.last_outputs: dict[VarPowerFlowReferenceType, float] = dict()
 
     def _build_input_values(self, x_snapshot: np.ndarray) -> dict[str, float]:
@@ -1892,38 +2827,57 @@ class RmsFmuMeDeviceAdapter:
             input_values[binding.fmu_variable_name] = _get_rms_me_input_value(self.problem, self.device, binding.reference, x_snapshot)
         return input_values
 
-    def initialize_outputs(self, time_value: float, x_snapshot: np.ndarray) -> dict[VarPowerFlowReferenceType, float]:
+    def initialize_outputs(
+        self,
+        time_value: float,
+        x_snapshot: np.ndarray,
+        evaluation_budget: FmuMeEvaluationBudget,
+    ) -> dict[VarPowerFlowReferenceType, float]:
         """Initialize the FMU ME runtime and return its first output sample.
 
         :param time_value: Current simulation time.
         :param x_snapshot: Current accepted state snapshot.
+        :param evaluation_budget: Shared initialization runtime-call budget.
         :return: FMU outputs indexed by VeraGrid reference.
         """
 
-        self.runtime_adapter.initialize(start_time=time_value, input_values=self._build_input_values(x_snapshot))
+        self.runtime_adapter.initialize(
+            start_time=time_value,
+            input_values=self._build_input_values(x_snapshot),
+            evaluation_budget=evaluation_budget,
+        )
         outputs: dict[VarPowerFlowReferenceType, float] = (
             self.runtime_adapter._evaluate_bound_outputs(
                 time_value,
                 self._build_input_values(x_snapshot),
+                evaluation_budget=evaluation_budget,
             )
         )
         self.last_outputs = dict(outputs)
         return outputs
 
-    def advance(self, current_time: float, step_size: float, x_snapshot: np.ndarray) -> dict[VarPowerFlowReferenceType, float]:
+    def advance(
+        self,
+        current_time: float,
+        step_size: float,
+        x_snapshot: np.ndarray,
+        evaluation_budget: FmuMeEvaluationBudget,
+    ) -> dict[VarPowerFlowReferenceType, float]:
         """Advance the FMU ME runtime for one RMS communication step.
 
         :param current_time: Current simulation time.
         :param step_size: RMS communication step.
         :param x_snapshot: Current accepted state snapshot.
+        :param evaluation_budget: Shared solver-step runtime-call budget.
         :return: FMU outputs indexed by VeraGrid reference.
         """
 
         outputs: dict[VarPowerFlowReferenceType, float] = (
-            self.runtime_adapter._explicit_euler_bound_step(
+            self.runtime_adapter._prepare_bound_step(
                 current_time=current_time,
                 step_size=step_size,
                 input_values=self._build_input_values(x_snapshot),
+                evaluation_budget=evaluation_budget,
             )
         )
         self.last_outputs = dict(outputs)
@@ -1932,15 +2886,20 @@ class RmsFmuMeDeviceAdapter:
     def resolve_step(
         self,
         accepted: bool,
+        evaluation_budget: FmuMeEvaluationBudget,
     ) -> dict[VarPowerFlowReferenceType, float]:
         """Resolve the pending FMI 3 candidate after the RMS solve.
 
         :param accepted: Whether the RMS numerical step converged.
+        :param evaluation_budget: Shared solver-step runtime-call budget.
         :return: Outputs belonging to the resolved accepted point.
         """
 
         readable_values: tuple[float, ...] | None = (
-            self.runtime_adapter.resolve_pending_step(accepted=accepted)
+            self.runtime_adapter.resolve_pending_step(
+                accepted=accepted,
+                evaluation_budget=evaluation_budget,
+            )
         )
         if readable_values is not None:
             resolved_outputs: dict[VarPowerFlowReferenceType, float] = (
@@ -1969,15 +2928,6 @@ class RmsFmuMeDeviceAdapter:
         :return: None.
         """
 
-        if len(self.last_outputs) == 0:
-            if self.runtime_adapter.initialized:
-                self.last_outputs = dict(
-                    self.runtime_adapter._evaluate_bound_outputs(0.0, dict())
-                )
-            else:
-                pass
-        else:
-            pass
         self.runtime_adapter.close()
 
 
@@ -2008,6 +2958,7 @@ class EmtFmuMeDeviceAdapter:
         device: Any,
         spec: FmuMeDeviceSpec,
         output_param_indices: dict[VarPowerFlowReferenceType, int],
+        solver_policy: FmuMeSolverPolicy,
     ) -> None:
         """Store the EMT FMU ME runtime adapter.
 
@@ -2018,7 +2969,10 @@ class EmtFmuMeDeviceAdapter:
         self.device: Any = device
         self.spec: FmuMeDeviceSpec = spec
         self.output_param_indices: dict[VarPowerFlowReferenceType, int] = output_param_indices
-        self.runtime_adapter: FmuMeDeviceAdapter = FmuMeDeviceAdapter(spec)
+        self.runtime_adapter: FmuMeDeviceAdapter = FmuMeDeviceAdapter(
+            spec=spec,
+            solver_policy=solver_policy,
+        )
         self.last_time: float = 0.0
         self.initialized: bool = False
         self.last_outputs: dict[VarPowerFlowReferenceType, float] = dict()
@@ -2037,40 +2991,59 @@ class EmtFmuMeDeviceAdapter:
             input_values[binding.fmu_variable_name] = _get_emt_me_input_value(self.problem, self.device, binding.reference, x_snapshot)
         return input_values
 
-    def initialize_outputs(self, time_value: float, x_snapshot: np.ndarray) -> dict[VarPowerFlowReferenceType, float]:
+    def initialize_outputs(
+        self,
+        time_value: float,
+        x_snapshot: np.ndarray,
+        evaluation_budget: FmuMeEvaluationBudget,
+    ) -> dict[VarPowerFlowReferenceType, float]:
         """Initialize the FMU ME runtime and return its first output sample.
 
         :param time_value: Current simulation time.
         :param x_snapshot: Current accepted state snapshot.
+        :param evaluation_budget: Shared initialization runtime-call budget.
         :return: FMU outputs indexed by VeraGrid reference.
         """
 
-        self.runtime_adapter.initialize(start_time=time_value, input_values=self._build_input_values(x_snapshot))
+        self.runtime_adapter.initialize(
+            start_time=time_value,
+            input_values=self._build_input_values(x_snapshot),
+            evaluation_budget=evaluation_budget,
+        )
         self.initialized = True
         self.last_time = time_value
         outputs: dict[VarPowerFlowReferenceType, float] = (
             self.runtime_adapter._evaluate_bound_outputs(
             time_value,
             self._build_input_values(x_snapshot),
+            evaluation_budget=evaluation_budget,
         )
         )
         self.last_outputs = dict(outputs)
         return outputs
 
-    def advance(self, current_time: float, step_size: float, x_snapshot: np.ndarray) -> dict[VarPowerFlowReferenceType, float]:
+    def advance(
+        self,
+        current_time: float,
+        step_size: float,
+        x_snapshot: np.ndarray,
+        evaluation_budget: FmuMeEvaluationBudget,
+    ) -> dict[VarPowerFlowReferenceType, float]:
         """Advance the FMU ME runtime for one EMT communication step.
 
         :param current_time: Current simulation time.
         :param step_size: EMT communication step.
         :param x_snapshot: Current accepted state snapshot.
+        :param evaluation_budget: Shared solver-step runtime-call budget.
         :return: FMU outputs indexed by VeraGrid reference.
         """
 
         outputs: dict[VarPowerFlowReferenceType, float] = (
-            self.runtime_adapter._explicit_euler_bound_step(
+            self.runtime_adapter._prepare_bound_step(
                 current_time=current_time,
                 step_size=step_size,
                 input_values=self._build_input_values(x_snapshot),
+                evaluation_budget=evaluation_budget,
             )
         )
         self.pending_previous_time = current_time
@@ -2081,15 +3054,20 @@ class EmtFmuMeDeviceAdapter:
     def resolve_step(
         self,
         accepted: bool,
+        evaluation_budget: FmuMeEvaluationBudget,
     ) -> dict[VarPowerFlowReferenceType, float]:
         """Resolve the pending FMI 3 candidate after the EMT solve.
 
         :param accepted: Whether the EMT numerical step converged.
+        :param evaluation_budget: Shared solver-step runtime-call budget.
         :return: Outputs belonging to the resolved accepted point.
         """
 
         readable_values: tuple[float, ...] | None = (
-            self.runtime_adapter.resolve_pending_step(accepted=accepted)
+            self.runtime_adapter.resolve_pending_step(
+                accepted=accepted,
+                evaluation_budget=evaluation_budget,
+            )
         )
         if readable_values is not None:
             resolved_outputs: dict[VarPowerFlowReferenceType, float] = (
@@ -2129,6 +3107,24 @@ class EmtFmuMeDeviceAdapter:
         self.runtime_adapter.close()
 
 
+def _build_fmu_me_solver_policy(
+    options: RmsOptions | EmtOptions,
+) -> FmuMeSolverPolicy:
+    """Copy the owning simulation's FMI ME numerical policy.
+
+    :param options: Validated RMS or EMT simulation options.
+    :return: Immutable-by-interface policy for attached ME adapters.
+    """
+
+    return FmuMeSolverPolicy(
+        integration_method=options.integration_method,
+        absolute_tolerance=options.fmi_me_newton_absolute_tolerance,
+        relative_tolerance=options.fmi_me_newton_relative_tolerance,
+        maximum_newton_iterations=options.fmi_me_newton_max_iterations,
+        maximum_continuous_states=options.fmi_me_max_continuous_states,
+    )
+
+
 def register_rms_fmu_me_device(problem: Any, device: Any, block: Block) -> None:
     """Register one imported FMU ME device in the active RMS problem.
 
@@ -2155,8 +3151,17 @@ def register_rms_fmu_me_device(problem: Any, device: Any, block: Block) -> None:
         for reference, uid in spec.output_param_uids.items():
             output_param_indices[reference] = uid_to_index[uid]
 
+        solver_policy: FmuMeSolverPolicy = _build_fmu_me_solver_policy(
+            problem.options
+        )
         problem._fmu_me_adapters.append(
-            RmsFmuMeDeviceAdapter(problem=problem, device=device, spec=spec, output_param_indices=output_param_indices)
+            RmsFmuMeDeviceAdapter(
+                problem=problem,
+                device=device,
+                spec=spec,
+                output_param_indices=output_param_indices,
+                solver_policy=solver_policy,
+            )
         )
         problem._fmu_me_initialized = False
 
@@ -2171,9 +3176,16 @@ def initialize_rms_fmu_me_devices(problem: Any, x_snapshot: np.ndarray, time_val
     """
 
     if len(problem._fmu_me_adapters) > 0:
+        initialization_budget: FmuMeEvaluationBudget = FmuMeEvaluationBudget(
+            problem.options.fmi_me_max_runtime_evaluations_per_step
+        )
         adapter: RmsFmuMeDeviceAdapter
         for adapter in problem._fmu_me_adapters:
-            outputs = adapter.initialize_outputs(time_value, x_snapshot)
+            outputs = adapter.initialize_outputs(
+                time_value,
+                x_snapshot,
+                evaluation_budget=initialization_budget,
+            )
             adapter.apply_outputs(problem._variable_parameters_values, outputs)
             if problem._variable_parameters_values is None:
                 problem._last_variable_parameters_values = None
@@ -2200,9 +3212,18 @@ def advance_rms_fmu_me_devices(problem: Any, time_value: float, x_snapshot: np.n
         else:
             initialize_rms_fmu_me_devices(problem=problem, x_snapshot=x_snapshot, time_value=time_value)
 
+        evaluation_budget: FmuMeEvaluationBudget = FmuMeEvaluationBudget(
+            problem.options.fmi_me_max_runtime_evaluations_per_step
+        )
+        problem._fmu_me_evaluation_budget = evaluation_budget
         adapter: RmsFmuMeDeviceAdapter
         for adapter in problem._fmu_me_adapters:
-            outputs = adapter.advance(current_time=time_value, step_size=step_size, x_snapshot=x_snapshot)
+            outputs = adapter.advance(
+                current_time=time_value,
+                step_size=step_size,
+                x_snapshot=x_snapshot,
+                evaluation_budget=evaluation_budget,
+            )
             adapter.apply_outputs(problem._variable_parameters_values, outputs)
             if problem._variable_parameters_values is None:
                 problem._last_variable_parameters_values = None
@@ -2223,10 +3244,18 @@ def resolve_rms_fmu_me_devices(
     :return: Always ``None`` because localization happens before Co-Simulation.
     """
 
+    evaluation_budget: FmuMeEvaluationBudget | None = (
+        problem._fmu_me_evaluation_budget
+    )
+    if evaluation_budget is not None:
+        pass
+    else:
+        raise FmuModeError("RMS FMI ME step lost its evaluation budget")
     adapter: RmsFmuMeDeviceAdapter
     for adapter in problem._fmu_me_adapters:
         outputs: dict[VarPowerFlowReferenceType, float] = adapter.resolve_step(
-            accepted=accepted
+            accepted=accepted,
+            evaluation_budget=evaluation_budget,
         )
         adapter.apply_outputs(problem._variable_parameters_values, outputs)
     if problem._variable_parameters_values is None:
@@ -2236,6 +3265,7 @@ def resolve_rms_fmu_me_devices(
             problem._variable_parameters_values,
             copy=True,
         )
+    problem._fmu_me_evaluation_budget = None
     return None
 
 
@@ -2257,6 +3287,13 @@ def _prepare_rms_fmu_me_state_event_retry(
     """
 
     adapter_count: int = len(problem._fmu_me_adapters)
+    evaluation_budget: FmuMeEvaluationBudget | None = (
+        problem._fmu_me_evaluation_budget
+    )
+    if evaluation_budget is not None:
+        pass
+    else:
+        raise FmuModeError("RMS FMI ME localization lost its evaluation budget")
     localized_times: list[float | None] = [None] * adapter_count
     earliest_event_time: float | None = None
     adapter_index: int
@@ -2268,6 +3305,7 @@ def _prepare_rms_fmu_me_state_event_retry(
             adapter.runtime_adapter.get_pending_state_event_time(
                 time_tolerance=state_event_time_tolerance,
                 maximum_iterations=state_event_max_iterations,
+                evaluation_budget=evaluation_budget,
             )
         )
         localized_times[adapter_index] = localized_time
@@ -2298,7 +3336,8 @@ def _prepare_rms_fmu_me_state_event_retry(
                 retry_event_time = None
             restored_values: tuple[float, ...] = (
                 adapter.runtime_adapter.prepare_state_event_retry(
-                    event_time=retry_event_time
+                    event_time=retry_event_time,
+                    evaluation_budget=evaluation_budget,
                 )
             )
             restored_outputs: dict[VarPowerFlowReferenceType, float] = (
@@ -2391,8 +3430,17 @@ def register_emt_fmu_me_device(problem: Any, device: Any, block: Block) -> None:
         for reference, uid in spec.output_param_uids.items():
             output_param_indices[reference] = uid_to_index[uid]
 
+        solver_policy: FmuMeSolverPolicy = _build_fmu_me_solver_policy(
+            problem.options
+        )
         problem._fmu_me_adapters.append(
-            EmtFmuMeDeviceAdapter(problem=problem, device=device, spec=spec, output_param_indices=output_param_indices)
+            EmtFmuMeDeviceAdapter(
+                problem=problem,
+                device=device,
+                spec=spec,
+                output_param_indices=output_param_indices,
+                solver_policy=solver_policy,
+            )
         )
 
 

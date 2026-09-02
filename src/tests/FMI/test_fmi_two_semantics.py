@@ -590,7 +590,6 @@ def test_fmi_three_namespace_rules_apply_after_version_dispatch(tmp_path: Path) 
     ("fmi_version", "expected_error"),
     (
         ("1.0", "FMI 1.0 execution is not supported yet"),
-        ("3.0", "FMI 3 worker execution is not connected yet"),
     ),
 )
 def test_import_config_gate_rejects_unconnected_metadata_family(

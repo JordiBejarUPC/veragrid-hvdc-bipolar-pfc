@@ -735,9 +735,7 @@ def open_fmi_three_float64_session(
     """
 
     metadata: FmuModelDescription = read_fmu_model_description(config.fmu_path)
-    interface_mode: FmuInterfaceMode = metadata.select_declared_interface(
-        config.preferred_mode
-    )
+    interface_mode: FmuInterfaceMode = config.resolve_execution_mode(metadata)
     if interface_mode == FmuInterfaceMode.CO_SIMULATION:
         validate_fmi_three_co_simulation_worker_profile(
             metadata=metadata,
