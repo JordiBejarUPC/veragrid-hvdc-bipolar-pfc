@@ -121,12 +121,17 @@ def _validate_annotations(
             f"Annotation for {fmi_owner_description}",
             path,
         )
-        read_required_attribute(
-            annotation_element,
-            "type",
-            f"Annotation for {fmi_owner_description}",
-            path,
-        )
+        # The type value is an unrestricted xs:normalizedString. Require the
+        # attribute itself without imposing the non-empty policy used by
+        # semantic identifiers elsewhere in the importer.
+        annotation_type: str | None = annotation_element.attrib.get("type", None)
+        if annotation_type is None:
+            raise FmuArchiveError(
+                f"Annotation for {fmi_owner_description} in {path} is missing "
+                "required attribute type"
+            )
+        else:
+            pass
 
 
 def _validate_optional_annotations(
@@ -328,6 +333,155 @@ def _validate_optional_fmi3_generation_datetime(root: ET.Element, path: Path) ->
                             raise FmuArchiveError(validation_error_message)
 
 
+def _validate_fmi3_log_categories(root: ET.Element, path: Path) -> None:
+    """Validate the optional FMI 3 log-category declaration.
+
+    The category metadata is intentionally discarded because the current
+    runtime exposes no selective logging-category consumer.
+
+    :param root: FMI 3 fmiModelDescription element.
+    :param path: FMU source path included in validation errors.
+    :return: None.
+    :raises FmuArchiveError: If the declaration violates the represented FMI
+        schema surface.
+    """
+
+    log_categories_elements: list[ET.Element] = root.findall("LogCategories")
+    if len(log_categories_elements) > 1:
+        raise FmuArchiveError(f"FMI 3 LogCategories is duplicated in {path}")
+    else:
+        if len(log_categories_elements) == 0:
+            return
+        else:
+            log_categories: ET.Element = log_categories_elements[0]
+
+    # The wrapper is element-only and owns no attributes in the FMI 3 schema.
+    _validate_attribute_subset(
+        log_categories,
+        tuple(),
+        "FMI 3 LogCategories",
+        path,
+    )
+    wrapper_text: str | None = log_categories.text
+    if wrapper_text is None or all(
+        xml_character in " \t\r\n" for xml_character in wrapper_text
+    ):
+        pass
+    else:
+        raise FmuArchiveError(
+            f"FMI 3 LogCategories in {path} contains non-whitespace text"
+        )
+
+    category_elements: list[ET.Element] = list(log_categories)
+    if len(category_elements) > 0:
+        pass
+    else:
+        raise FmuArchiveError(
+            f"FMI 3 LogCategories in {path} must contain a Category"
+        )
+
+    normalized_category_names: set[str] = set()
+    category_element: ET.Element
+    for category_element in category_elements:
+        if category_element.tag == "Category":
+            pass
+        else:
+            raise FmuArchiveError(
+                f"Unexpected {category_element.tag!r} in FMI 3 LogCategories in {path}"
+            )
+
+        _validate_attribute_subset(
+            category_element,
+            ("name", "description"),
+            "FMI 3 LogCategories Category",
+            path,
+        )
+        raw_category_name: str | None = category_element.attrib.get("name", None)
+        if raw_category_name is None:
+            raise FmuArchiveError(
+                f"FMI 3 LogCategories Category in {path} is missing required attribute name"
+            )
+        else:
+            # xs:normalizedString replaces only XML control whitespace. Leading,
+            # trailing, repeated, and empty text remain semantically distinct.
+            normalized_category_name: str = (
+                raw_category_name
+                .replace("\r", " ")
+                .replace("\n", " ")
+                .replace("\t", " ")
+            )
+        if normalized_category_name in normalized_category_names:
+            raise FmuArchiveError(
+                f"FMI 3 LogCategories Category name {normalized_category_name!r} "
+                f"is duplicated in {path}"
+            )
+        else:
+            normalized_category_names.add(normalized_category_name)
+
+        # Validate the existing annotation extension point before checking its
+        # element-only container whitespace.
+        _validate_optional_annotations(
+            category_element,
+            "FMI 3 LogCategories Category",
+            path,
+        )
+        category_text: str | None = category_element.text
+        if category_text is None or all(
+            xml_character in " \t\r\n" for xml_character in category_text
+        ):
+            pass
+        else:
+            raise FmuArchiveError(
+                f"FMI 3 LogCategories Category in {path} contains non-whitespace text"
+            )
+
+        category_child: ET.Element
+        for category_child in category_element:
+            annotations_text: str | None = category_child.text
+            if annotations_text is None or all(
+                xml_character in " \t\r\n" for xml_character in annotations_text
+            ):
+                pass
+            else:
+                raise FmuArchiveError(
+                    f"Annotations for FMI 3 LogCategories Category in {path} "
+                    "contains non-whitespace text"
+                )
+
+            annotation_element: ET.Element
+            for annotation_element in category_child:
+                annotation_tail: str | None = annotation_element.tail
+                if annotation_tail is None or all(
+                    xml_character in " \t\r\n" for xml_character in annotation_tail
+                ):
+                    pass
+                else:
+                    raise FmuArchiveError(
+                        f"Annotations for FMI 3 LogCategories Category in {path} "
+                        "contains non-whitespace text"
+                    )
+
+            annotations_tail: str | None = category_child.tail
+            if annotations_tail is None or all(
+                xml_character in " \t\r\n" for xml_character in annotations_tail
+            ):
+                pass
+            else:
+                raise FmuArchiveError(
+                    f"FMI 3 LogCategories Category in {path} contains non-whitespace text"
+                )
+
+        category_tail: str | None = category_element.tail
+        if category_tail is None or all(
+            xml_character in " \t\r\n" for xml_character in category_tail
+        ):
+            pass
+        else:
+            raise FmuArchiveError(
+                f"FMI 3 LogCategories in {path} contains non-whitespace text"
+            )
+
+
 def _validate_fmi3_root_structure(root: ET.Element, path: Path) -> None:
     """Validate root attributes, child order, and represented sections.
 
@@ -369,7 +523,7 @@ def _validate_fmi3_root_structure(root: ET.Element, path: Path) -> None:
         "ModelStructure", "Annotations",
     )
     unsupported_root_elements: tuple[str, ...] = (
-        "ScheduledExecution", "UnitDefinitions", "TypeDefinitions", "LogCategories",
+        "ScheduledExecution", "UnitDefinitions", "TypeDefinitions",
     )
     annotations_elements: list[ET.Element] = root.findall("Annotations")
     if len(annotations_elements) <= 1:
@@ -398,6 +552,7 @@ def _validate_fmi3_root_structure(root: ET.Element, path: Path) -> None:
                 _validate_annotations(root_child, "fmiModelDescription", path)
             else:
                 pass
+    _validate_fmi3_log_categories(root, path)
 
 
 def _validate_default_experiment(root: ET.Element, path: Path) -> None:

@@ -1478,6 +1478,159 @@ def test_fmi3_accepts_standard_generation_date_and_time(
     assert metadata.model_name == "VeraGridPhysicalCompositionContainerPFTimeLatticeV41"
 
 
+def test_fmi3_accepts_valid_log_categories(tmp_path: Path) -> None:
+    """Accept the complete represented FMI 3 log-category metadata surface.
+
+    :param tmp_path: Isolated extracted-FMU directory provided by pytest.
+    :return: None.
+    """
+
+    # Exercise the retained Reference FMU categories together with the full
+    # normalizedString spacing envelope and the Annotation mixed-content point.
+    log_categories_xml: str = """      <LogCategories>
+        <Category name="logEvents" description="Log events"/>
+        <Category name="logStatusError" description="Log error messages"/>
+        <Category name=""/>
+        <Category name="   "/>
+        <Category name=" leading "/>
+        <Category name="a b"/>
+        <Category name="a  b"/>
+        <Category name="annotated">
+          <Annotations>
+            <Annotation type="">mixed<vendor:data xmlns:vendor="urn:vendor"/>content</Annotation>
+            <Annotation type="   ">spaced type</Annotation>
+          </Annotations>
+        </Category>
+      </LogCategories>
+"""
+    valid_xml: str = _scalar_fmi3_worker_profile_fixture_xml().replace(
+        '      <DefaultExperiment startTime="0" stepSize="0.001"/>',
+        log_categories_xml
+        + '      <DefaultExperiment startTime="0" stepSize="0.001"/>',
+        1,
+    )
+    fmu_path: Path = _write_extracted_fmi3_model_description(
+        tmp_path / "valid-log-categories",
+        valid_xml,
+    )
+
+    metadata: FmuModelDescription = read_fmu_model_description(fmu_path)
+
+    assert metadata.model_name == "VeraGridPhysicalCompositionContainerPFTimeLatticeV41"
+
+
+@pytest.mark.parametrize(
+    ("invalid_log_categories_xml", "expected_error"),
+    (
+        ("<LogCategories/>", "must contain a Category"),
+        (
+            '<LogCategories><Category name="first"/></LogCategories>'
+            '<LogCategories><Category name="second"/></LogCategories>',
+            "LogCategories is duplicated",
+        ),
+        (
+            '<LogCategories vendor="unsupported"><Category name="x"/></LogCategories>',
+            "attribute 'vendor'",
+        ),
+        (
+            "<LogCategories><Unexpected/></LogCategories>",
+            "Unexpected 'Unexpected'",
+        ),
+        (
+            "<LogCategories><Category/></LogCategories>",
+            "missing required attribute name",
+        ),
+        (
+            '<LogCategories><Category name="x" vendor="unsupported"/></LogCategories>',
+            "attribute 'vendor'",
+        ),
+        (
+            '<LogCategories><Category name="same"/><Category name="same"/></LogCategories>',
+            "name 'same' is duplicated",
+        ),
+        (
+            '<LogCategories><Category name="a b"/><Category name="a&#x9;b"/></LogCategories>',
+            "name 'a b' is duplicated",
+        ),
+        (
+            '<LogCategories><Category name="a b"/><Category name="a&#xD;b"/></LogCategories>',
+            "name 'a b' is duplicated",
+        ),
+        (
+            '<LogCategories><Category name="a b"/><Category name="a&#xA;b"/></LogCategories>',
+            "name 'a b' is duplicated",
+        ),
+        (
+            '<LogCategories>unexpected<Category name="x"/></LogCategories>',
+            "LogCategories.*non-whitespace text",
+        ),
+        (
+            '<LogCategories>&#xA0;<Category name="x"/></LogCategories>',
+            "LogCategories.*non-whitespace text",
+        ),
+        (
+            '<LogCategories><Category name="x">unexpected</Category></LogCategories>',
+            "Category.*non-whitespace text",
+        ),
+        (
+            '<LogCategories><Category name="x"/>unexpected'
+            '<Category name="y"/></LogCategories>',
+            "LogCategories.*non-whitespace text",
+        ),
+        (
+            '<LogCategories><Category name="x"><Annotations>unexpected'
+            '<Annotation type="valid"/></Annotations></Category></LogCategories>',
+            "Annotations.*non-whitespace text",
+        ),
+        (
+            '<LogCategories><Category name="x"><Annotations>'
+            '<Annotation type="valid"/>unexpected</Annotations></Category></LogCategories>',
+            "Annotations.*non-whitespace text",
+        ),
+        (
+            '<LogCategories><Category name="x"><Annotations/></Category></LogCategories>',
+            "must contain an Annotation",
+        ),
+        (
+            '<LogCategories><Category name="x"><Annotations><Annotation/>'
+            "</Annotations></Category></LogCategories>",
+            "missing required attribute type",
+        ),
+        (
+            '<LogCategories><Category name="x"><Unexpected/>'
+            "</Category></LogCategories>",
+            "contains unsupported child elements",
+        ),
+    ),
+)
+def test_fmi3_rejects_invalid_log_categories(
+    tmp_path: Path,
+    invalid_log_categories_xml: str,
+    expected_error: str,
+) -> None:
+    """Reject malformed FMI 3 log-category structures and lexical duplicates.
+
+    :param tmp_path: Isolated extracted-FMU directory provided by pytest.
+    :param invalid_log_categories_xml: Invalid complete LogCategories section.
+    :param expected_error: Stable validation error fragment.
+    :return: None.
+    """
+
+    invalid_xml: str = _scalar_fmi3_worker_profile_fixture_xml().replace(
+        '      <DefaultExperiment startTime="0" stepSize="0.001"/>',
+        f"      {invalid_log_categories_xml}\n"
+        '      <DefaultExperiment startTime="0" stepSize="0.001"/>',
+        1,
+    )
+    fmu_path: Path = _write_extracted_fmi3_model_description(
+        tmp_path / "invalid-log-categories",
+        invalid_xml,
+    )
+
+    with pytest.raises(FmuArchiveError, match=expected_error):
+        read_fmu_model_description(fmu_path)
+
+
 @pytest.mark.parametrize(
     ("valid_xml_fragment", "invalid_xml_fragment", "expected_error"),
     (
