@@ -1480,8 +1480,17 @@ def fill_controllable_branch(
     ctrl_data.vset[ii] = elm.get_vset_at(t_idx)
 
     if opf_results is not None:
-        ctrl_data.tap_angle[ii] = opf_results.tap_angle[t_idx, ii]
+        if opf_results.tap_angle.ndim == 1:
+            ctrl_data.tap_angle[ii] = opf_results.tap_angle[ii]
+        else:
+            if t_idx is None:
+                ctrl_data.tap_angle[ii] = opf_results.tap_angle[0, ii]
+            else:
+                ctrl_data.tap_angle[ii] = opf_results.tap_angle[t_idx, ii]
+
         ctrl_data.tap_module[ii] = elm.get_tap_module_at(t_idx)
+        ctrl_data.tap_phase_control_mode[ii] = TapPhaseControl.fixed.idx()
+        ctrl_data.tap_module_control_mode[ii] = TapModuleControl.fixed.idx()
     else:
         ctrl_data.tap_angle[ii] = elm.get_tap_phase_at(t_idx)
         ctrl_data.tap_module[ii] = elm.get_tap_module_at(t_idx)

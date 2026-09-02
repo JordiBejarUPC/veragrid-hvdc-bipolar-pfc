@@ -87,7 +87,7 @@ def wait_for_simulation(gui: VeraGridMainGUI,
 
 def run_cnd_contingency_gui_flow(message_queue: Any) -> None:
     """
-    Launch the GUI, load the CND training file, and run contingency analysis.
+    Launch the GUI, run OPF, enable OPF copy, and run contingencies.
 
     :param message_queue: Parent-visible queue receiving failure details.
     :return: None.
@@ -109,7 +109,15 @@ def run_cnd_contingency_gui_flow(message_queue: Any) -> None:
         assert gui.circuit.get_bus_number() > 0
         assert len(gui.circuit.contingency_groups) > 0
 
-        gui.contingencies_dispatcher()
+        gui.ui.actionOPF.trigger()
+        wait_for_simulation(gui=gui, app=app, simulation_type=SimulationTypes.OPF_run, timeout_s=180.0)
+
+        opf_driver, opf_results = gui.session.optimal_power_flow
+        assert opf_driver is not None
+        assert opf_results is not None
+
+        gui.ui.actionOpf_to_Power_flow.setChecked(True)
+        gui.ui.actionContingency_analysis.trigger()
         if gui.ui.actionactivate_time_series.isChecked():
             simulation_type: SimulationTypes = SimulationTypes.ContingencyAnalysisTS_run
         else:
@@ -136,7 +144,7 @@ def run_cnd_contingency_gui_flow(message_queue: Any) -> None:
 
 def test_cnd_training_file_contingency_analysis_does_not_clean_crash() -> None:
     """
-    Check the reported CND training-file contingency GUI crash in a subprocess.
+    Check the reported CND OPF-to-contingency GUI crash in a subprocess.
 
     :return: None.
     """
@@ -153,7 +161,7 @@ def test_cnd_training_file_contingency_analysis_does_not_clean_crash() -> None:
     )
 
     process.start()
-    process.join(240.0)
+    process.join(360.0)
 
     if process.is_alive():
         process.terminate()
