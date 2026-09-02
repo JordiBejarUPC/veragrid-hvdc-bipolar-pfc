@@ -9,6 +9,7 @@ from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingNode
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingPoint
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_graph import RoutingGraph
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_geometry import RoutingGeometry
+from VeraGrid.Gui.DynamicModelEditor.Routing.routing_policy import AutomaticRoutingPolicy
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingSegment
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingBlockGeometry
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingBounds
@@ -33,6 +34,7 @@ class RoutingConstraintEngine:
         "_geometry",
         "_minimum_segment_length",
         "_minimum_first_segment_length",
+        "_minimum_stub_continuation_length",
     )
 
     def __init__(self, graph: RoutingGraph) -> None:
@@ -51,6 +53,7 @@ class RoutingConstraintEngine:
         self._geometry: RoutingGeometry = graph.get_geometry()
         self._minimum_segment_length: float = 1.0
         self._minimum_first_segment_length: float = 10.0
+        self._minimum_stub_continuation_length: float = 10.0
 
     def is_port_connection_perpendicular(
             self,
@@ -387,6 +390,37 @@ class RoutingConstraintEngine:
         else:
             return False
 
+    def is_point_inside_foreign_block(
+            self,
+            point: RoutingPoint,
+            block_bounds: RoutingBounds,
+    ) -> bool:
+        """
+        Return whether one candidate routing point touches a foreign block.
+
+        Foreign blocks use closed bounds, matching segment collision semantics.
+        The automatic builder uses this query to avoid materializing search
+        nodes that cannot participate in any valid route.
+
+        :param point: Candidate routing point.
+        :param block_bounds: Closed foreign-block bounds.
+        :return: ``True`` when the point lies on or inside the block.
+        """
+        x_inside: bool = self._is_value_inside_closed_interval(
+            value=point.get_x(),
+            lower_bound=block_bounds.get_left(),
+            upper_bound=block_bounds.get_right(),
+        )
+        y_inside: bool = self._is_value_inside_closed_interval(
+            value=point.get_y(),
+            lower_bound=block_bounds.get_top(),
+            upper_bound=block_bounds.get_bottom(),
+        )
+        if x_inside and y_inside:
+            return True
+        else:
+            return False
+
     def segment_intersects_other_connection(
             self,
             segment: RoutingSegment,
@@ -482,6 +516,7 @@ class RoutingConstraintEngine:
             self,
             segment: RoutingSegment,
             connection_geometry: RoutingConnectionGeometry | None = None,
+            routing_policy: AutomaticRoutingPolicy = AutomaticRoutingPolicy.STRICT,
     ) -> bool:
         """
         Return whether one segment satisfies every active segment-level constraint.
@@ -492,7 +527,41 @@ class RoutingConstraintEngine:
 
         :param segment: Segment to inspect.
         :param connection_geometry: Point-in-time owner and foreign-block geometry.
+        :param routing_policy: Collision policy applied to other connections.
         :return: ``True`` when the segment satisfies every active constraint.
+        """
+        if not self.validate_hard_segment_constraints(
+                segment=segment,
+                connection_geometry=connection_geometry,
+        ):
+            return False
+        elif not self._segment_avoids_other_connections(
+                segment=segment,
+                connection_geometry=connection_geometry,
+                routing_policy=routing_policy,
+        ):
+            return False
+        else:
+            # Every segment-level rule remains composed here so builders and
+            # editors cannot accidentally apply different obstacle policies.
+            return True
+
+    def validate_hard_segment_constraints(
+            self,
+            segment: RoutingSegment,
+            connection_geometry: RoutingConnectionGeometry | None = None,
+    ) -> bool:
+        """
+        Validate constraints that no routing policy may relax.
+
+        Orthogonality, minimum length and every block collision remain hard
+        constraints. Wire policy is intentionally absent from this entry point
+        so automatic graph construction cannot accidentally relax blocks while
+        preparing a crossing-permitted fallback.
+
+        :param segment: Segment to inspect.
+        :param connection_geometry: Point-in-time owner and block geometry.
+        :return: ``True`` when every non-relaxable constraint is satisfied.
         """
         if not self.is_segment_orthogonal(segment=segment):
             return False
@@ -503,14 +572,219 @@ class RoutingConstraintEngine:
                 connection_geometry=connection_geometry,
         ):
             return False
-        elif not self._segment_avoids_other_connections(
-                segment=segment,
-                connection_geometry=connection_geometry,
-        ):
+        elif not self.is_stub_continuation_valid_for_segment(segment=segment):
             return False
         else:
-            # Every segment-level rule remains composed here so builders and
-            # editors cannot accidentally apply different obstacle policies.
+            return True
+
+    def is_stub_continuation_valid_for_segment(self, segment: RoutingSegment) -> bool:
+        """
+        Validate an interior segment attached directly to an endpoint stub.
+
+        PORT -> STUB segments retain their separate port constraints. A STUB
+        -> interior segment must continue along the same outward axis and keep
+        enough length to absorb manual movement of the following segment.
+
+        :param segment: Segment that may be incident to an endpoint stub.
+        :return: ``True`` when no continuation rule is violated.
+        """
+        start_node: RoutingNode | None = self._graph.get_node(segment.get_start_node_id())
+        end_node: RoutingNode | None = self._graph.get_node(segment.get_end_node_id())
+        if start_node is None or end_node is None:
+            return False
+        elif start_node.get_kind() == RoutingNodeKind.STUB and end_node.get_kind() != RoutingNodeKind.PORT:
+            return self._is_stub_continuation_valid(
+                stub_node=start_node,
+                continuation_node=end_node,
+            )
+        elif end_node.get_kind() == RoutingNodeKind.STUB and start_node.get_kind() != RoutingNodeKind.PORT:
+            return self._is_stub_continuation_valid(
+                stub_node=end_node,
+                continuation_node=start_node,
+            )
+        else:
+            return True
+
+    def _is_stub_continuation_valid(
+            self,
+            stub_node: RoutingNode,
+            continuation_node: RoutingNode,
+    ) -> bool:
+        """
+        Validate one stub continuation against its adjacent endpoint port.
+
+        :param stub_node: Fixed endpoint stub.
+        :param continuation_node: First movable interior node.
+        :return: ``True`` when alignment, direction and length are valid.
+        """
+        adjacent_node: RoutingNode
+        port_node: RoutingNode | None = None
+        for adjacent_node in self._graph.adjacent_nodes(stub_node.get_node_id()):
+            if adjacent_node.get_kind() == RoutingNodeKind.PORT:
+                port_node = adjacent_node
+            else:
+                pass
+
+        if port_node is None:
+            return False
+        else:
+            port_side: RoutingPortSide | None = port_node.get_port_side()
+
+        if port_side is None:
+            return False
+        else:
+            pass
+
+        stub_position: RoutingPoint = stub_node.get_position()
+        continuation_position: RoutingPoint = continuation_node.get_position()
+        continuation_length: float = self._distance_between_nodes(
+            first_node=stub_node,
+            second_node=continuation_node,
+        )
+        if continuation_length < self._minimum_stub_continuation_length:
+            return False
+        elif port_side == RoutingPortSide.LEFT:
+            return (self._geometry.are_y_aligned(stub_position, continuation_position)
+                    and continuation_position.get_x() < stub_position.get_x())
+        elif port_side == RoutingPortSide.RIGHT:
+            return (self._geometry.are_y_aligned(stub_position, continuation_position)
+                    and continuation_position.get_x() > stub_position.get_x())
+        elif port_side == RoutingPortSide.TOP:
+            return (self._geometry.are_x_aligned(stub_position, continuation_position)
+                    and continuation_position.get_y() < stub_position.get_y())
+        else:
+            return (self._geometry.are_x_aligned(stub_position, continuation_position)
+                    and continuation_position.get_y() > stub_position.get_y())
+
+    def segment_has_invalid_own_route_intersection(self, segment: RoutingSegment) -> bool:
+        """
+        Return whether one segment intersects its own route illegally.
+
+        Non-adjacent segments may never touch, cross or overlap. Adjacent
+        segments may meet only at their shared topology node; collinear
+        backtracking over the same geometry remains invalid.
+
+        :param segment: Segment to compare with the remaining route.
+        :return: ``True`` when the route contains an invalid self-intersection.
+        """
+        other_segment: RoutingSegment
+        for other_segment in self._graph.get_segments():
+            if other_segment.get_segment_id() == segment.get_segment_id():
+                pass
+            elif self._segments_intersect(segment=segment, other_segment=other_segment):
+                shared_node_id: int | None = self._get_shared_node_id(
+                    first_segment=segment,
+                    second_segment=other_segment,
+                )
+                if shared_node_id is None:
+                    return True
+                elif self._adjacent_segments_overlap_beyond_shared_node(
+                        first_segment=segment,
+                        second_segment=other_segment,
+                        shared_node_id=shared_node_id,
+                ):
+                    return True
+                else:
+                    pass
+            else:
+                pass
+        return False
+
+    def _segments_intersect(
+            self,
+            segment: RoutingSegment,
+            other_segment: RoutingSegment,
+    ) -> bool:
+        """
+        Compare two segments through the shared orthogonal intersection rule.
+
+        :param segment: First segment owned by the active graph.
+        :param other_segment: Second segment owned by the same graph.
+        :return: ``True`` when both closed segments intersect.
+        """
+        other_start: RoutingNode | None = self._graph.get_node(other_segment.get_start_node_id())
+        other_end: RoutingNode | None = self._graph.get_node(other_segment.get_end_node_id())
+        if other_start is None or other_end is None:
+            return True
+        else:
+            obstacle_segment: RoutingSegmentObstacle = RoutingSegmentObstacle(
+                connection_uid=-1,
+                segment_id=other_segment.get_segment_id(),
+                start_position=other_start.get_position(),
+                end_position=other_end.get_position(),
+            )
+            return self.segment_intersects_other_connection(
+                segment=segment,
+                obstacle_segment=obstacle_segment,
+            )
+
+    def _get_shared_node_id(
+            self,
+            first_segment: RoutingSegment,
+            second_segment: RoutingSegment,
+    ) -> int | None:
+        """
+        Return the topology node shared by two adjacent segments.
+
+        :param first_segment: First segment.
+        :param second_segment: Second segment.
+        :return: Shared node identifier or ``None``.
+        """
+        first_start_id: int = first_segment.get_start_node_id()
+        first_end_id: int = first_segment.get_end_node_id()
+        second_start_id: int = second_segment.get_start_node_id()
+        second_end_id: int = second_segment.get_end_node_id()
+        if first_start_id == second_start_id or first_start_id == second_end_id:
+            return first_start_id
+        elif first_end_id == second_start_id or first_end_id == second_end_id:
+            return first_end_id
+        else:
+            return None
+
+    def _adjacent_segments_overlap_beyond_shared_node(
+            self,
+            first_segment: RoutingSegment,
+            second_segment: RoutingSegment,
+            shared_node_id: int,
+    ) -> bool:
+        """
+        Return whether adjacent collinear segments backtrack over each other.
+
+        :param first_segment: First adjacent segment.
+        :param second_segment: Second adjacent segment.
+        :param shared_node_id: Their common topology node.
+        :return: ``True`` when their intersection exceeds the shared point.
+        """
+        first_axis: RoutingAxis | None = self._graph.get_segment_axis(first_segment.get_segment_id())
+        second_axis: RoutingAxis | None = self._graph.get_segment_axis(second_segment.get_segment_id())
+        if first_axis is None or second_axis is None:
+            return True
+        elif first_axis != second_axis:
+            return False
+        else:
+            pass
+
+        shared_node: RoutingNode | None = self._graph.get_node(shared_node_id)
+        first_other_id: int | None = first_segment.get_other_node_id(shared_node_id)
+        second_other_id: int | None = second_segment.get_other_node_id(shared_node_id)
+        if shared_node is None or first_other_id is None or second_other_id is None:
+            return True
+        else:
+            first_other: RoutingNode | None = self._graph.get_node(first_other_id)
+            second_other: RoutingNode | None = self._graph.get_node(second_other_id)
+
+        if first_other is None or second_other is None:
+            return True
+        elif first_axis == RoutingAxis.HORIZONTAL:
+            first_delta: float = first_other.get_position().get_x() - shared_node.get_position().get_x()
+            second_delta: float = second_other.get_position().get_x() - shared_node.get_position().get_x()
+        else:
+            first_delta = first_other.get_position().get_y() - shared_node.get_position().get_y()
+            second_delta = second_other.get_position().get_y() - shared_node.get_position().get_y()
+
+        if first_delta * second_delta < 0.0:
+            return False
+        else:
             return True
 
     def validate_connection(
@@ -520,6 +794,7 @@ class RoutingConstraintEngine:
             segment: RoutingSegment,
             block_bounds: RoutingBounds | None = None,
             connection_geometry: RoutingConnectionGeometry | None = None,
+            routing_policy: AutomaticRoutingPolicy = AutomaticRoutingPolicy.STRICT,
     ) -> bool:
         """
         Return whether one local port connection satisfies every active constraint.
@@ -532,6 +807,7 @@ class RoutingConstraintEngine:
         :param segment: Connecting segment between both nodes.
         :param block_bounds: Non-Qt bounds of the endpoint's owning block.
         :param connection_geometry: Point-in-time owner and obstacle geometry.
+        :param routing_policy: Collision policy applied to other connections.
         :return: ``True`` when every active constraint is satisfied.
         """
         if not self.is_port_connection_perpendicular(
@@ -547,6 +823,7 @@ class RoutingConstraintEngine:
         elif not self.validate_segment(
                 segment=segment,
                 connection_geometry=connection_geometry,
+                routing_policy=routing_policy,
         ):
             return False
         elif self.segment_intersects_block(segment=segment, block_bounds=block_bounds):
@@ -635,15 +912,19 @@ class RoutingConstraintEngine:
             self,
             segment: RoutingSegment,
             connection_geometry: RoutingConnectionGeometry | None,
+            routing_policy: AutomaticRoutingPolicy,
     ) -> bool:
         """
         Return whether one segment avoids every captured foreign connection.
 
         :param segment: Segment from the active routing graph.
         :param connection_geometry: Point-in-time geometry or ``None``.
+        :param routing_policy: Collision policy applied to other connections.
         :return: ``True`` when no foreign segment touches the active segment.
         """
         if connection_geometry is None:
+            return True
+        elif routing_policy == AutomaticRoutingPolicy.ALLOW_WIRE_CROSSINGS:
             return True
         else:
             pass
@@ -658,6 +939,38 @@ class RoutingConstraintEngine:
             else:
                 pass
         return True
+
+    def count_other_connection_intersections(
+            self,
+            segment: RoutingSegment,
+            connection_geometry: RoutingConnectionGeometry | None,
+    ) -> int:
+        """
+        Count foreign wire segments intersected by one candidate segment.
+
+        The automatic builder uses this non-mutating query to penalize, rather
+        than silently ignore, crossings in its relaxed fallback search.
+
+        :param segment: Candidate segment from the active graph.
+        :param connection_geometry: Point-in-time connection geometry or ``None``.
+        :return: Number of intersected foreign segments.
+        """
+        intersection_count: int = 0
+        if connection_geometry is None:
+            return intersection_count
+        else:
+            pass
+
+        obstacle_segment: RoutingSegmentObstacle
+        for obstacle_segment in connection_geometry.get_other_connection_segments():
+            if self.segment_intersects_other_connection(
+                    segment=segment,
+                    obstacle_segment=obstacle_segment,
+            ):
+                intersection_count += 1
+            else:
+                pass
+        return intersection_count
 
     def _orthogonal_crossing_point_belongs_to_both_segments(
             self,

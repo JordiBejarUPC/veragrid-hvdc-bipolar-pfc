@@ -198,7 +198,12 @@ class QtRoutingSession:
                 pass
             else:
                 routing_graph._restore_from(graph_snapshot)
-                return None
+                return self._rebuild_connection_graph_for_ports(
+                    routing_graph=routing_graph,
+                    source_snapshot=source_snapshot,
+                    destination_snapshot=destination_snapshot,
+                    connection_geometry=connection_geometry,
+                )
         else:
             pass
 
@@ -215,38 +220,147 @@ class QtRoutingSession:
                 pass
             else:
                 routing_graph._restore_from(graph_snapshot)
-                return None
+                return self._rebuild_connection_graph_for_ports(
+                    routing_graph=routing_graph,
+                    source_snapshot=source_snapshot,
+                    destination_snapshot=destination_snapshot,
+                    connection_geometry=connection_geometry,
+                )
         else:
             pass
 
-        return routing_graph
+        if self._graph_matches_port_snapshots(
+                routing_graph=routing_graph,
+                source_snapshot=source_snapshot,
+                destination_snapshot=destination_snapshot,
+        ):
+            return routing_graph
+        else:
+            routing_graph._restore_from(graph_snapshot)
+            return self._rebuild_connection_graph_for_ports(
+                routing_graph=routing_graph,
+                source_snapshot=source_snapshot,
+                destination_snapshot=destination_snapshot,
+                connection_geometry=connection_geometry,
+            )
+
+    def _rebuild_connection_graph_for_ports(
+            self,
+            routing_graph: RoutingGraph,
+            source_snapshot: QtRoutingPortSnapshot,
+            destination_snapshot: QtRoutingPortSnapshot,
+            connection_geometry: RoutingConnectionGeometry,
+    ) -> RoutingGraph | None:
+        """
+        Rebuild one complete route after incremental endpoint repair fails.
+
+        The existing graph object remains registered and is replaced only after
+        the detached builder returns a fully validated route. This preserves
+        references held by the Qt session while preventing an old endpoint
+        position from being rendered against a block that has already moved.
+
+        :param routing_graph: Registered live graph to replace after success.
+        :param source_snapshot: Current source port snapshot.
+        :param destination_snapshot: Current destination port snapshot.
+        :param connection_geometry: Current block and connection obstacles.
+        :return: Rebuilt registered graph or ``None`` when no route exists.
+        """
+        route_builder: RouteBuilder = RouteBuilder(
+            source_position=source_snapshot.get_position(),
+            destination_position=destination_snapshot.get_position(),
+            source_port_side=source_snapshot.get_port_side(),
+            destination_port_side=destination_snapshot.get_port_side(),
+            connection_geometry=connection_geometry,
+        )
+        try:
+            rebuilt_graph: RoutingGraph = route_builder.build()
+        except ValueError:
+            return None
+        else:
+            if self._graph_matches_port_snapshots(
+                    routing_graph=rebuilt_graph,
+                    source_snapshot=source_snapshot,
+                    destination_snapshot=destination_snapshot,
+            ):
+                routing_graph._restore_from(rebuilt_graph)
+                return routing_graph
+            else:
+                return None
+
+    def _graph_matches_port_snapshots(
+            self,
+            routing_graph: RoutingGraph,
+            source_snapshot: QtRoutingPortSnapshot,
+            destination_snapshot: QtRoutingPortSnapshot,
+    ) -> bool:
+        """
+        Return whether graph endpoints exactly represent both live Qt ports.
+
+        :param routing_graph: Candidate synchronized graph.
+        :param source_snapshot: Current source Qt port snapshot.
+        :param destination_snapshot: Current destination Qt port snapshot.
+        :return: ``True`` when positions and physical sides match.
+        """
+        source_node: RoutingNode | None = routing_graph.get_source_node()
+        destination_node: RoutingNode | None = routing_graph.get_destination_node()
+        if source_node is None or destination_node is None:
+            return False
+        else:
+            pass
+
+        source_position_matches: bool = (
+            source_node.get_position().get_x() == source_snapshot.get_position().get_x()
+            and source_node.get_position().get_y() == source_snapshot.get_position().get_y()
+        )
+        destination_position_matches: bool = (
+            destination_node.get_position().get_x() == destination_snapshot.get_position().get_x()
+            and destination_node.get_position().get_y() == destination_snapshot.get_position().get_y()
+        )
+        source_side_matches: bool = source_node.get_port_side() == source_snapshot.get_port_side()
+        destination_side_matches: bool = destination_node.get_port_side() == destination_snapshot.get_port_side()
+        if (source_position_matches
+                and destination_position_matches
+                and source_side_matches
+                and destination_side_matches):
+            return True
+        else:
+            return False
 
     def synchronize_connection_graph(
             self,
             connection_uid: int,
             source_port: PortItem,
             destination_port: PortItem,
-    ) -> RoutingGraph:
+    ) -> RoutingGraph | None:
         """
         Ensure that one connection graph exists and is synchronized with live ports.
 
         :param connection_uid: Stable connection identifier.
         :param source_port: Source Qt port item.
         :param destination_port: Destination Qt port item.
-        :return: Synchronized routing graph.
+        :return: Synchronized routing graph or ``None`` when rebuilding fails.
         """
-        routing_graph: RoutingGraph = self.ensure_connection_graph(
-            connection_uid=connection_uid,
-            source_port=source_port,
-            destination_port=destination_port,
-        )
+        try:
+            routing_graph: RoutingGraph = self.ensure_connection_graph(
+                connection_uid=connection_uid,
+                source_port=source_port,
+                destination_port=destination_port,
+            )
+        except ValueError:
+            self.remove_connection(connection_uid=connection_uid)
+            return None
+        else:
+            pass
         refreshed_graph: RoutingGraph | None = self.refresh_connection_graph(
             connection_uid=connection_uid,
             source_port=source_port,
             destination_port=destination_port,
         )
         if refreshed_graph is None:
-            return routing_graph
+            # A graph with stale endpoint coordinates must not remain available
+            # for rendering or persistence after synchronization has failed.
+            self.remove_connection(connection_uid=connection_uid)
+            return None
         else:
             return refreshed_graph
 

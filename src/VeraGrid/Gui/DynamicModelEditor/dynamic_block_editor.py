@@ -5573,13 +5573,18 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         payload=dict(connection_record.routing_payload),
                     )
                     if imported:
-                        self._qt_routing_session.synchronize_connection_graph(
+                        synchronized: bool = self._qt_routing_session.synchronize_connection_graph(
                             connection_uid=item.con_uid,
                             source_port=item.source_port,
                             destination_port=item.target_port,
-                        )
-                        painter_path = self._qt_routing_session.build_connection_path(item.con_uid)
+                        ) is not None
+                        if not synchronized:
+                            self._clear_unsynchronized_connection_path(item=item)
+                            return False
+                        else:
+                            painter_path = self._qt_routing_session.build_connection_path(item.con_uid)
                         if painter_path is None:
+                            self._clear_unsynchronized_connection_path(item=item)
                             return False
                         else:
                             item.setPath(painter_path)
@@ -5591,13 +5596,18 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 else:
                     pass
 
-                self._qt_routing_session.synchronize_connection_graph(
+                synchronized = self._qt_routing_session.synchronize_connection_graph(
                     connection_uid=item.con_uid,
                     source_port=item.source_port,
                     destination_port=item.target_port,
-                )
-                painter_path = self._qt_routing_session.build_connection_path(item.con_uid)
+                ) is not None
+                if not synchronized:
+                    self._clear_unsynchronized_connection_path(item=item)
+                    return False
+                else:
+                    painter_path = self._qt_routing_session.build_connection_path(item.con_uid)
                 if painter_path is None:
+                    self._clear_unsynchronized_connection_path(item=item)
                     return False
                 else:
                     item.setPath(painter_path)
@@ -5608,6 +5618,20 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 return False
         else:
             return False
+
+    def _clear_unsynchronized_connection_path(self, item: graph.ConnectionItem) -> None:
+        """
+        Remove a stale route whose graph no longer matches its live Qt ports.
+
+        The session has already rejected and unregistered the graph. Clearing
+        the derived painter path prevents the previous endpoint coordinates
+        from remaining visible after its owning block has moved.
+
+        :param item: Connection item whose derived route is stale.
+        :return: None.
+        """
+        item.setPath(QtGui.QPainterPath())
+        item._sync_elbow_items()
 
     def move_connection_segment_with_routing_graph(
             self,
@@ -5627,11 +5651,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
         if self.supports_routing_graph_connection(item):
             if isinstance(item.source_port, graph.PortItem) and isinstance(item.target_port, graph.PortItem):
-                self._qt_routing_session.synchronize_connection_graph(
+                synchronized: bool = self._qt_routing_session.synchronize_connection_graph(
                     connection_uid=item.con_uid,
                     source_port=item.source_port,
                     destination_port=item.target_port,
-                )
+                ) is not None
+                if synchronized:
+                    pass
+                else:
+                    return False
                 ordered_segments = self._qt_routing_session.get_ordered_segments(item.con_uid)
                 if 0 <= segment_index < len(ordered_segments):
                     route_segment = ordered_segments[segment_index]

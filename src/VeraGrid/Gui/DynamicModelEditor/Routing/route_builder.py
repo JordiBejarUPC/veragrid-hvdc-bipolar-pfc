@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+from VeraGrid.Gui.DynamicModelEditor.Routing.automatic_route_builder import AutomaticRouteBuilder
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_constraint_engine import RoutingConstraintEngine
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingNode
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingPoint
@@ -87,6 +88,16 @@ class RouteBuilder:
 
         if self._is_built_graph_valid(routing_graph=routing_graph):
             return routing_graph
+        elif self._connection_geometry is not None:
+            automatic_builder: AutomaticRouteBuilder = AutomaticRouteBuilder(
+                graph=routing_graph,
+                connection_geometry=self._connection_geometry,
+            )
+            alternative_graph: RoutingGraph | None = automatic_builder.build_alternative()
+            if alternative_graph is not None:
+                return alternative_graph
+            else:
+                raise ValueError("RouteBuilder could not find a valid automatic routing alternative.")
         else:
             # A deterministic builder failure is a programming error rather
             # than a recoverable edit. The invalid graph is never accepted by
@@ -112,6 +123,10 @@ class RouteBuilder:
         constraint_engine: RoutingConstraintEngine = RoutingConstraintEngine(graph=routing_graph)
         route_segment: RoutingSegment
         for route_segment in routing_graph.get_segments():
+            if constraint_engine.segment_has_invalid_own_route_intersection(segment=route_segment):
+                return False
+            else:
+                pass
             start_node: RoutingNode | None = routing_graph.get_node(route_segment.get_start_node_id())
             end_node: RoutingNode | None = routing_graph.get_node(route_segment.get_end_node_id())
             if start_node is None or end_node is None:
@@ -201,17 +216,16 @@ class RouteBuilder:
 
     def _build_stub_topology(self, routing_graph: RoutingGraph) -> None:
         """
-        Build the route by reusing the existing central path between two stubs.
+        Build the route with fixed stubs and minimum straight continuations.
 
         The builder still uses the same deterministic orthogonal route
-        algorithm for the interior geometry. The only difference is that the
-        effective endpoints of that interior route are the two stub points
-        rather than the two ports themselves.
+        algorithm for the central geometry. Its effective endpoints are two
+        continuation elbows beyond the fixed endpoint stubs, which leaves a
+        movable segment beside each stub without stretching the stub itself.
 
         :param routing_graph: Graph under construction.
         :return: None.
         """
-        # route_points: list[RoutingPoint] = self._build_stubbed_route_points()
         route_points: list[RoutingPoint] = list()
         source_stub: RoutingPoint = self._build_stub_point(
             port_position=self._source_position,
@@ -221,20 +235,30 @@ class RouteBuilder:
             port_position=self._destination_position,
             port_side=self._destination_port_side,
         )
+        source_continuation: RoutingPoint = self._geometry.build_stub_continuation_point(
+            stub_position=source_stub,
+            port_side=self._source_port_side,
+        )
+        destination_continuation: RoutingPoint = self._geometry.build_stub_continuation_point(
+            stub_position=destination_stub,
+            port_side=self._destination_port_side,
+        )
         # The central route keeps the legacy minimal dogleg algorithm. Only the
-        # effective endpoints change from the ports themselves to the stub
-        # endpoints, so the visible construction policy stays simple.
+        # effective endpoints change from the ports themselves to the endpoint
+        # continuations, so the visible construction policy stays simple.
         inner_route_points: list[RoutingPoint] = self._build_minimal_route_points(
-            start_position=source_stub,
-            end_position=destination_stub,
+            start_position=source_continuation,
+            end_position=destination_continuation,
         )
 
         # The final point chain always includes both real ports so the graph
         # keeps explicit topology for the physical block attachment points.
         route_points.append(self._source_position.copy())
+        route_points.append(source_stub.copy())
         inner_point: RoutingPoint
         for inner_point in inner_route_points:
             route_points.append(inner_point.copy())
+        route_points.append(destination_stub.copy())
         route_points.append(self._destination_position.copy())
         # The builder owns the only topology-from-scratch step. Once the full
         # point chain is known, the graph is materialized in one deterministic

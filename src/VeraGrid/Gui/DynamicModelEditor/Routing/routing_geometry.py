@@ -85,6 +85,27 @@ class RoutingGeometry:
                 port_position.get_y() + self._port_stub_length,
             )
 
+    def build_stub_continuation_point(
+            self,
+            stub_position: RoutingPoint,
+            port_side: RoutingPortSide,
+    ) -> RoutingPoint:
+        """
+        Build the default straight continuation beyond one fixed port stub.
+
+        The continuation uses the same direction and construction length as
+        the stub. It provides movable route geometry without requiring the
+        fixed PORT -> STUB attachment itself to stretch.
+
+        :param stub_position: Fixed endpoint of the port stub.
+        :param port_side: Physical side defining the outward direction.
+        :return: Default continuation endpoint.
+        """
+        return self.build_port_stub_point(
+            port_position=stub_position,
+            port_side=port_side,
+        )
+
     def are_x_aligned_values(self, first_x: float, second_x: float) -> bool:
         """
         Return whether two x coordinates are visually aligned.

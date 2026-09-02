@@ -5,10 +5,12 @@
 
 from __future__ import annotations
 
+from VeraGrid.Gui.DynamicModelEditor.Routing.automatic_route_builder import AutomaticRouteBuilder
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_constraint_engine import RoutingConstraintEngine
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingNode
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingPoint
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingSegment
+from VeraGrid.Gui.DynamicModelEditor.Routing.routing_edit_validation import RoutingEditValidationResult
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_geometry import RoutingGeometry
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_graph import RoutingGraph
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingBlockGeometry
@@ -104,9 +106,15 @@ class RoutingEditor:
         # rebuilt and no unrelated geometry is touched.
         try:
             elbow_node.set_position(chosen_position)
-            if self._validate_constraints(
-                    affected_node_ids=list((elbow_id,)),
-            ):
+            validation_result: RoutingEditValidationResult = self._validate_constraints(
+                affected_node_ids=list((elbow_id,)),
+            )
+            if validation_result == RoutingEditValidationResult.VALID:
+                return True
+            elif validation_result == RoutingEditValidationResult.INTERNAL_CONFLICT:
+                self._graph._restore_from(graph_snapshot)
+                return False
+            elif self._try_automatic_rebuild():
                 return True
             else:
                 self._graph._restore_from(graph_snapshot)
@@ -161,9 +169,12 @@ class RoutingEditor:
                 stub_node=adjacent_nodes[0],
                 new_position=new_position,
             )
-            if updated and self._validate_constraints(
-                    affected_node_ids=affected_node_ids,
-            ):
+            validation_result: RoutingEditValidationResult = self._validate_constraints(
+                affected_node_ids=affected_node_ids,
+            )
+            if updated and validation_result == RoutingEditValidationResult.VALID:
+                return True
+            elif updated and self._try_automatic_rebuild():
                 return True
             else:
                 self._graph._restore_from(graph_snapshot)
@@ -300,9 +311,15 @@ class RoutingEditor:
                     )
                 )
 
-            if self._validate_constraints(
-                    affected_node_ids=list((start_node.get_node_id(), end_node.get_node_id(),)),
-            ):
+            validation_result: RoutingEditValidationResult = self._validate_constraints(
+                affected_node_ids=list((start_node.get_node_id(), end_node.get_node_id(),)),
+            )
+            if validation_result == RoutingEditValidationResult.VALID:
+                return True
+            elif validation_result == RoutingEditValidationResult.INTERNAL_CONFLICT:
+                self._graph._restore_from(graph_snapshot)
+                return False
+            elif self._try_automatic_rebuild():
                 return True
             else:
                 self._graph._restore_from(graph_snapshot)
@@ -487,7 +504,7 @@ class RoutingEditor:
     def _validate_constraints(
             self,
             affected_node_ids: list[int],
-    ) -> bool:
+    ) -> RoutingEditValidationResult:
         """
         Validate graph invariants and geometric constraints after one edit.
 
@@ -496,20 +513,20 @@ class RoutingEditor:
         engine whether the resulting state can be committed.
 
         :param affected_node_ids: Nodes whose local geometry may have changed.
-        :return: ``True`` when topology and every active constraint are valid.
+        :return: Validation result distinguishing internal and environmental failures.
         """
         graph_report: RoutingValidationReport = self._graph.validate()
         if graph_report.is_valid():
             pass
         else:
-            return False
+            return RoutingEditValidationResult.INTERNAL_CONFLICT
 
         affected_segment_ids: set[int] = set()
         node_id: int
         for node_id in affected_node_ids:
             route_node: RoutingNode | None = self._graph.get_node(node_id)
             if route_node is None:
-                return False
+                return RoutingEditValidationResult.INTERNAL_CONFLICT
             else:
                 pass
 
@@ -523,19 +540,61 @@ class RoutingEditor:
         for segment_id in sorted(affected_segment_ids):
             route_segment: RoutingSegment | None = self._graph.get_segment(segment_id)
             if route_segment is None:
-                return False
+                return RoutingEditValidationResult.INTERNAL_CONFLICT
             else:
                 pass
 
             start_node: RoutingNode | None = self._graph.get_node(route_segment.get_start_node_id())
             end_node: RoutingNode | None = self._graph.get_node(route_segment.get_end_node_id())
             if start_node is None or end_node is None:
-                return False
+                return RoutingEditValidationResult.INTERNAL_CONFLICT
+            else:
+                pass
+
+            # Manual geometry cannot collapse, become diagonal, cross another
+            # part of its own route or backtrack over an adjacent segment.
+            # These failures act as drag limits and must never invoke automatic
+            # route reconstruction.
+            if not self._constraints.is_segment_orthogonal(segment=route_segment):
+                return RoutingEditValidationResult.INTERNAL_CONFLICT
+            elif not self._constraints.is_segment_long_enough(segment=route_segment):
+                return RoutingEditValidationResult.INTERNAL_CONFLICT
+            elif not self._constraints.is_stub_continuation_valid_for_segment(segment=route_segment):
+                return RoutingEditValidationResult.INTERNAL_CONFLICT
+            elif self._constraints.segment_has_invalid_own_route_intersection(segment=route_segment):
+                return RoutingEditValidationResult.INTERNAL_CONFLICT
             else:
                 pass
 
             start_is_port: bool = start_node.get_kind() == RoutingNodeKind.PORT
             end_is_port: bool = end_node.get_kind() == RoutingNodeKind.PORT
+            if start_is_port:
+                if (not self._constraints.is_port_connection_perpendicular(
+                        port_node=start_node,
+                        neighbour_node=end_node,
+                ) or not self._constraints.is_first_segment_long_enough(
+                        port_node=start_node,
+                        neighbour_node=end_node,
+                )):
+                    return RoutingEditValidationResult.INTERNAL_CONFLICT
+                else:
+                    pass
+            else:
+                pass
+            if end_is_port:
+                if (not self._constraints.is_port_connection_perpendicular(
+                        port_node=end_node,
+                        neighbour_node=start_node,
+                ) or not self._constraints.is_first_segment_long_enough(
+                        port_node=end_node,
+                        neighbour_node=start_node,
+                )):
+                    return RoutingEditValidationResult.INTERNAL_CONFLICT
+                else:
+                    pass
+            else:
+                pass
+
             if not start_is_port and not end_is_port:
                 if self._constraints.validate_segment(
                         segment=route_segment,
@@ -543,7 +602,7 @@ class RoutingEditor:
                 ):
                     pass
                 else:
-                    return False
+                    return RoutingEditValidationResult.ENVIRONMENT_CONFLICT
             else:
                 pass
 
@@ -558,7 +617,7 @@ class RoutingEditor:
                 ):
                     pass
                 else:
-                    return False
+                    return RoutingEditValidationResult.ENVIRONMENT_CONFLICT
             else:
                 pass
 
@@ -573,10 +632,10 @@ class RoutingEditor:
                 ):
                     pass
                 else:
-                    return False
+                    return RoutingEditValidationResult.ENVIRONMENT_CONFLICT
             else:
                 pass
-        return True
+        return RoutingEditValidationResult.VALID
 
     def _get_port_owner_bounds(self, port_node: RoutingNode) -> RoutingBounds | None:
         """
@@ -601,6 +660,31 @@ class RoutingEditor:
                 return None
         else:
             return None
+
+    def _try_automatic_rebuild(self) -> bool:
+        """
+        Replace the current conflicting interval with an automatic candidate.
+
+        The automatic builder works on the current temporary graph and returns
+        a detached result. The public edit retains ownership of the original
+        snapshot and therefore still performs the final rollback when no
+        alternative can be found.
+
+        :return: ``True`` when an alternative graph replaced the temporary graph.
+        """
+        if self._connection_geometry is None:
+            return False
+        else:
+            automatic_builder: AutomaticRouteBuilder = AutomaticRouteBuilder(
+                graph=self._graph,
+                connection_geometry=self._connection_geometry,
+            )
+            alternative_graph: RoutingGraph | None = automatic_builder.build_alternative()
+            if alternative_graph is None:
+                return False
+            else:
+                self._graph._restore_from(alternative_graph)
+                return True
 
     def _points_are_equal(self, first_point: RoutingPoint, second_point: RoutingPoint) -> bool:
         """

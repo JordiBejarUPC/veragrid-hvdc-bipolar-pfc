@@ -3,6 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.001--.0-
 
+from VeraGrid.Gui.DynamicModelEditor.Routing.automatic_route_builder import AutomaticRouteBuilder
 from VeraGrid.Gui.DynamicModelEditor.Routing.route_builder import RouteBuilder
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_constraint_engine import RoutingConstraintEngine
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_editor import RoutingEditor
@@ -11,6 +12,7 @@ from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingPoin
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingSegment
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_geometry import RoutingGeometry
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_graph import RoutingGraph
+from VeraGrid.Gui.DynamicModelEditor.Routing.routing_policy import AutomaticRoutingPolicy
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_serializer import RoutingGraphSerializer
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_serializer import RoutingSerializedGraph
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_serializer import RoutingSerializedNode
@@ -30,6 +32,8 @@ from VeraGridEngine.enumerations import (
 
 __all__: list[str] = [
     "RouteBuilder",
+    "AutomaticRouteBuilder",
+    "AutomaticRoutingPolicy",
     "RoutingAxis",
     "RoutingBlockGeometry",
     "RoutingBounds",
