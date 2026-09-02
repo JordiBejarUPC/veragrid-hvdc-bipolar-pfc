@@ -6738,22 +6738,22 @@ class SchematicWidget(BaseDiagramWidget):
         # Note: graphical shunts have been added already
         # the order of the buses matches the order of the branches because the
         # transformation function already works like that
-        for i, branch_graphic in enumerate(branch_graphics):
-            new_bus_graphic = self._query_bus_graphic(new_buses[i])
-            if new_bus_graphic is None:
-                continue
+        for branch_graphic, new_bus in zip(branch_graphics, new_buses):
+            new_bus_graphic = self._query_bus_graphic(new_bus)
+            if new_bus_graphic is not None:
+                new_bus_graphic.terminal.reassign_terminal(
+                    graphic_obj=branch_graphic,
+                    another_terminal=bus_graphics.terminal
+                )
 
-            new_bus_graphic.terminal.reassign_terminal(
-                graphic_obj=branch_graphic,
-                another_terminal=bus_graphics.terminal
-            )
+                branch_graphic.api_object.reassign_bus(
+                    old_bus=bus_graphics.api_object,
+                    new_bus=new_bus_graphic.api_object
+                )
 
-            branch_graphic.api_object.reassign_bus(
-                old_bus=bus_graphics.api_object,
-                new_bus=new_bus_graphic.api_object
-            )
-
-            new_bus_graphic.get_terminal().update()
+                new_bus_graphic.get_terminal().update()
+            else:
+                pass
 
     def move_behind_converter(self, injection_graphics: INJECTION_GRAPHICS):
         """
@@ -7192,16 +7192,29 @@ List[FluidPath]]:
     branches_by_bus = defaultdict(list)
     has_winding = False
     for br in all_branches:
-        branches_by_bus[br.bus_from].append(br)
-        branches_by_bus[br.bus_to].append(br)
+        if br.bus_from is not None:
+            branches_by_bus[br.bus_from].append(br)
+        else:
+            pass
+
+        if br.bus_to is not None:
+            branches_by_bus[br.bus_to].append(br)
+        else:
+            pass
+
         if isinstance(br, Winding):
             has_winding = True
+        else:
+            pass
 
     # create a pool of buses
     bus_pool: List[Tuple[Bus, int]] = list()  # store the bus objects and their level from the root
 
     for b in buses_set:
-        bus_pool.append((b, 0))
+        if b is not None:
+            bus_pool.append((b, 0))
+        else:
+            pass
 
     # create maps of the multi-winding transformers that own the windings
     windings2tr3 = dict()
@@ -7230,38 +7243,53 @@ List[FluidPath]]:
         # search the next bus
         bus, level = bus_pool.pop()
 
-        bus_idx.append(bus_dict[bus])
+        bus_index = bus_dict.get(bus, None)
+        if bus_index is not None:
+            bus_idx.append(bus_index)
 
-        # add searched bus
-        if bus.graphic_type == BusGraphicType.BusBar or bus.graphic_type == BusGraphicType.Connectivity:
-            buses_set.add(bus)
+            # add searched bus
+            if bus.graphic_type == BusGraphicType.BusBar or bus.graphic_type == BusGraphicType.Connectivity:
+                buses_set.add(bus)
+            else:
+                pass
 
-        if level < (max_level + max_level_offset):
+            if level < (max_level + max_level_offset):
 
-            # Use the built index for O(1) lookup of branches connected to this bus
-            for br in branches_by_bus.get(bus, []):
+                # Use the built index for O(1) lookup of branches connected to this bus
+                for br in branches_by_bus.get(bus, []):
 
-                # Always add the branch if connected to current bus
-                selected_branches.add(br)
+                    # Always add the branch if connected to current bus
+                    selected_branches.add(br)
 
-                # Determine the other bus and add if not visited
-                if br.bus_from == bus:
-                    other_bus = br.bus_to
-                elif br.bus_to == bus:
-                    other_bus = br.bus_from
-                else:
-                    other_bus = None
+                    # Determine the other bus and add if not visited
+                    if br.bus_from == bus:
+                        other_bus = br.bus_to
+                    elif br.bus_to == bus:
+                        other_bus = br.bus_from
+                    else:
+                        other_bus = None
 
-                if other_bus not in visited:
-                    # If voltage level restriction is active, only follow to buses within allowed voltage levels
-                    should_expand = True
-                    if restrict_to_voltage_levels is not None:
-                        other_vl = other_bus.voltage_level if other_bus is not None else None
-                        should_expand = other_vl in restrict_to_voltage_levels
+                    if other_bus is not None and other_bus not in visited:
+                        # If voltage level restriction is active, only follow to buses within allowed voltage levels
+                        should_expand = True
+                        if restrict_to_voltage_levels is not None:
+                            other_vl = other_bus.voltage_level
+                            should_expand = other_vl in restrict_to_voltage_levels
+                        else:
+                            pass
 
-                    if should_expand:
-                        bus_pool.append((other_bus, level + 1))
-                        visited.add(other_bus)
+                        if should_expand:
+                            bus_pool.append((other_bus, level + 1))
+                            visited.add(other_bus)
+                        else:
+                            pass
+                    else:
+                        pass
+
+            else:
+                pass
+        else:
+            pass
 
     # sort Branches
     lines: List[Line] = list()
@@ -7346,7 +7374,9 @@ List[FluidPath]]:
     for b in buses_tr_nw:
         buses_set.add(b)
 
-    return (list(buses_set), lines, dc_lines, transformers2w, list(transformers3w_set), list(transformers_nw_set),
+    return (list(buses_set), lines, dc_lines, transformers2w,
+            list(transformers3w_set),
+            list(transformers_nw_set),
             windings, hvdc_lines, vsc_converters, upfc_devices, series_reactances, switches,
             list(fluid_nodes), fluid_paths)
 
