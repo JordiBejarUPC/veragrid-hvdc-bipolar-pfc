@@ -136,11 +136,14 @@ def test_ieee9():
     va_test = [0.0, 0.0854008, 0.05670578, -0.0429894, -0.0695051, 0.0105133, -0.0208879, 0.0157974, -0.0805577]
     Pg_test = [0.897986, 1.343206, 0.941874]
     Qg_test = [0.129387, 0.00047729, -0.226197]
+    lam_p_test = [24.755716, 24.034502, 24.075908, 24.755902, 24.998474,
+                  24.075908, 24.253897, 24.034502, 24.998487]
     res = case9()
     assert np.allclose(res.Vm, vm_test, atol=1e-3)
     assert np.allclose(res.Va, va_test, atol=1e-3)
     assert np.allclose(res.Pg, Pg_test, atol=1e-3)
     assert np.allclose(res.Qg, Qg_test, atol=1e-3)
+    assert np.allclose(res.lam_p, lam_p_test, atol=1e-3)
     # pass
 
 
