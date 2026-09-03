@@ -12,7 +12,7 @@ from typing import List, Mapping, Sequence
 
 from PySide6 import QtCore, QtGui, QtSvg
 
-from VeraGrid.Gui.DynamicModelEditor.dynamic_latex_renderer import LatexRenderer, RenderedSvgEquation
+from VeraGrid.Gui.DynamicModelEditor.BlockProperties.dynamic_latex_renderer import LatexRenderer, RenderedSvgEquation
 from VeraGridEngine.enumerations import EquationExportSection
 from VeraGridEngine.Utils.Symbolic.latex_printer import symbolic_to_latex
 from VeraGridEngine.Utils.Symbolic.symbolic import Expr, Var, symbolic_to_string

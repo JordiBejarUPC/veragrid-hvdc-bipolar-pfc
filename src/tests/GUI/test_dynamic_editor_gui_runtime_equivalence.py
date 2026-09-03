@@ -8,7 +8,7 @@ from PySide6 import QtCore, QtWidgets
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_preparation import prepare_block_for_editing
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_tab import resolve_navigation_content_block
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_utilities import create_generic_block
+from VeraGrid.Gui.DynamicModelEditor.Dynamic_library.dynamic_editor_utilities import create_generic_block
 import VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics as graph
 from VeraGridEngine.Devices.Branches.dc_line import DcLine
 from VeraGridEngine.Devices.Branches.line import Line

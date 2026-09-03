@@ -1,20 +1,17 @@
 from __future__ import annotations
 
 import gc
-import math
 import sys
 
-import numpy as np
 import pytest
 from PySide6 import QtCore, QtWidgets
-from PySide6.QtTest import QTest
 
 import VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor as dynamic_block_editor_module
 import VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics as graph
 import VeraGridEngine.api as gce
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
-from VeraGrid.Gui.DynamicModelEditor.dynamic_block_properties import DynamicBlockPropertiesDialog
+from VeraGrid.Gui.DynamicModelEditor.BlockProperties.dynamic_block_properties import DynamicBlockPropertiesDialog
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Templates.BasicBlockCatalog import BasicBlockTemplateDescriptor
 from VeraGridEngine.Templates.BasicBlockCatalog import get_basic_block_catalog_descriptor_by_key
@@ -26,8 +23,6 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import BlockType
 from VeraGridEngine.enumerations import DynamicSimulationMode
 from VeraGridEngine.enumerations import DeviceType
-from VeraGridEngine.enumerations import ShuntConnectionType
-from VeraGridEngine.enumerations import WindingType
 
 pytestmark = pytest.mark.filterwarnings("error")
 

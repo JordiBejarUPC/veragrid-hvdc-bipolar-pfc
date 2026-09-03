@@ -12,7 +12,7 @@ from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Injections.generator import Generator
 
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
-from VeraGrid.Gui.DynamicModelEditor.dynamic_block_properties import (
+from VeraGrid.Gui.DynamicModelEditor.BlockProperties.dynamic_block_properties import (
     BlockStructuralEditRequest,
     BlockSymbolKind,
     BlockSymbolDraftRow,
@@ -22,7 +22,7 @@ import VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor as dynamic_block_edi
 import VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics as graph
 import VeraGrid.Gui.DynamicModelEditor.dynamic_editor_models as dialog_models
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_window import DynamicEditorWorkspaceWindow
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_utilities import (
+from VeraGrid.Gui.DynamicModelEditor.Dynamic_library.dynamic_editor_utilities import (
     create_default_template_builder,
     initialize_template_builder_from_block,
 )

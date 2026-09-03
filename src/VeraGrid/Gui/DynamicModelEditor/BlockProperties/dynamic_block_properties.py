@@ -18,9 +18,8 @@ from typing import Dict, List, Mapping, Sequence
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtCore import Qt, Signal
 
-from VeraGrid.Gui.Icons import icons_rc
 from VeraGrid.Gui.base_python_code_editor import BasePythonCodeEditor
-from VeraGrid.Gui.DynamicModelEditor.dae_code_completion import (
+from VeraGrid.Gui.DynamicModelEditor.BlockProperties.dae_code_completion import (
     DaeCompletionEntry,
     DaeCompletionPosition,
     DaeLanguageContext,
@@ -29,13 +28,13 @@ from VeraGrid.Gui.DynamicModelEditor.dae_code_completion import (
     build_generic_dae_language_context,
     get_dae_section_names,
 )
-from VeraGrid.Gui.DynamicModelEditor.dae_code_linter import (
+from VeraGrid.Gui.DynamicModelEditor.BlockProperties.dae_code_linter import (
     DaeCodeDiagnostic,
     build_dae_code_diagnostics,
     build_semantic_dae_diagnostic,
     normalize_algebraic_equality_syntax,
 )
-from VeraGrid.Gui.DynamicModelEditor.dynamic_block_properties_gui import (
+from VeraGrid.Gui.DynamicModelEditor.BlockProperties.dynamic_block_properties_gui import (
     Ui_DynamicBlockPropertiesDialog,
 )
 from VeraGridEngine.enumerations import (
@@ -49,7 +48,7 @@ from VeraGridEngine.enumerations import (
     VarPowerFlowReferenceType,
     WindingType,
 )
-from VeraGrid.Gui.DynamicModelEditor.dynamic_equation_pdf import (
+from VeraGrid.Gui.DynamicModelEditor.BlockProperties.dynamic_equation_pdf import (
     EquationExportEntry,
     build_equation_pdf_suggested_name,
     build_latex_source,
@@ -59,7 +58,7 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_equation_pdf import (
     order_state_differential_variables,
     write_equation_pdf,
 )
-from VeraGrid.Gui.DynamicModelEditor.dynamic_procedural_logic import (
+from VeraGrid.Gui.DynamicModelEditor.BlockProperties.dynamic_procedural_logic import (
     RuntimeLogicDraftCollection,
     RuntimeLogicValidationResult,
     RuntimeModeDraft,

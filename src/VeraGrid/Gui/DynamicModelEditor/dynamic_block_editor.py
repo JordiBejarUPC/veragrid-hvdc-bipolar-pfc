@@ -12,7 +12,6 @@ from PySide6.QtGui import (QDropEvent, QDragEnterEvent, QDragMoveEvent)
 from PySide6.QtCore import Qt, QPointF, Signal
 
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
-from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 
@@ -21,9 +20,7 @@ from VeraGridEngine.Utils.Symbolic.rms_measurements_functions import (measuremen
                                                                       build_rms_voltage_meter_outputs_from_polar,
                                                                       build_rms_voltage_meter_outputs_from_dc,
                                                                       build_rms_current_meter_outputs_from_pq,
-                                                                      build_rms_current_meter_outputs_from_dc,
-
-                                                                      build_rms_power_meter_outputs_from_pq)
+                                                                      build_rms_current_meter_outputs_from_dc)
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowReferenceType, ParamPowerFlowReferenceType, \
     DynamicSimulationMode, DynEditorGraphicsModes
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_algebraic_vars
@@ -56,17 +53,17 @@ from VeraGridEngine.Utils.Symbolic.dynamic_connection_intent import (DynamicConn
 from VeraGrid.Gui.DynamicModelEditor.block_editor import Ui_BlockEditorWindow
 import VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics as graph
 from VeraGrid.Session.dynamic_editor_entries import DynamicEditorEntry
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_library import DynamicEditorLibrary, LibraryTreeFilterProxyModel
+from VeraGrid.Gui.DynamicModelEditor.Dynamic_library.dynamic_editor_library import DynamicEditorLibrary, LibraryTreeFilterProxyModel
 from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.measurements_dialog import MeasurementsDialog
 import VeraGrid.Gui.DynamicModelEditor.dynamic_editor_models as dialog_models
-from VeraGrid.Gui.DynamicModelEditor.dynamic_block_properties import (
+from VeraGrid.Gui.DynamicModelEditor.BlockProperties.dynamic_block_properties import (
     BlockStructuralEditRequest,
     BlockVariableRenameRequest,
     DynamicBlockPropertiesDialog,
     DynamicBlockPropertiesDockWidget,
 )
 import VeraGrid.Gui.DynamicModelEditor.dynamic_editor_validation as valid
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_utilities import (
+from VeraGrid.Gui.DynamicModelEditor.Dynamic_library.dynamic_editor_utilities import (
     create_block_of_type,
     create_default_template_builder,
     create_structural_template_builder,
