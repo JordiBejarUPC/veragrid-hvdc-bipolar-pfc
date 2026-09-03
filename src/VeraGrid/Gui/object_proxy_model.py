@@ -158,9 +158,8 @@ class ObjectModelFilterProxy(QtCore.QSortFilterProxyModel):
                 new_allowed_rows = set()
                 has_error = True
 
-        self.beginFilterChange()
         self._allowed_rows = new_allowed_rows
-        self.endFilterChange(QtCore.QSortFilterProxyModel.Direction.Rows)
+        self.invalidate()
 
         return has_error, error_txt
 
@@ -292,7 +291,6 @@ class ObjectModelFilterProxy(QtCore.QSortFilterProxyModel):
         all_values: Set[str] = set(self.get_column_filter_values(source_column=source_column))
         new_values: Set[str] = set(accepted_values)
 
-        self.beginFilterChange()
         if new_values == all_values:
             if source_column in self._column_filters:
                 self._column_filters.pop(source_column)
@@ -300,7 +298,7 @@ class ObjectModelFilterProxy(QtCore.QSortFilterProxyModel):
                 pass
         else:
             self._column_filters[source_column] = new_values
-        self.endFilterChange(QtCore.QSortFilterProxyModel.Direction.Rows)
+        self.invalidate()
 
     def clear_column_filter(self, source_column: int) -> None:
         """
@@ -309,12 +307,11 @@ class ObjectModelFilterProxy(QtCore.QSortFilterProxyModel):
         :param source_column: Source column index.
         :return: None.
         """
-        self.beginFilterChange()
         if source_column in self._column_filters:
             self._column_filters.pop(source_column)
         else:
             pass
-        self.endFilterChange(QtCore.QSortFilterProxyModel.Direction.Rows)
+        self.invalidate()
 
         if self.has_column_sort(source_column=source_column):
             self.clear_column_sort()
@@ -327,9 +324,8 @@ class ObjectModelFilterProxy(QtCore.QSortFilterProxyModel):
 
         :return: None.
         """
-        self.beginFilterChange()
         self._column_filters = dict()
-        self.endFilterChange(QtCore.QSortFilterProxyModel.Direction.Rows)
+        self.invalidate()
         self.clear_column_sort()
 
     def has_column_filter(self, source_column: int) -> bool:

@@ -579,6 +579,10 @@ class Bus(DynamicBusDevice):
             self._voltage_level = val
 
             if val is not None:
+
+                if self.auto_update_enabled:
+                    self.Vnom = val.Vnom
+
                 if val.substation is not None and self.substation is None:
                     self.substation = val.substation
         else:

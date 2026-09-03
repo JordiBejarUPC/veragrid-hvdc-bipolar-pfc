@@ -8,6 +8,7 @@ import os
 import json
 import numpy as np
 import pandas as pd
+import shiboken6
 from typing import Any, List, Set, Dict, Union, Tuple, TYPE_CHECKING, Iterable, TypeVar
 from collections.abc import Callable
 from collections import defaultdict
@@ -76,6 +77,7 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.transformerNw_graphics impor
 from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.generator_graphics import GeneratorGraphicItem
 from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.injections_template_graphics import InjectionTemplateGraphicItem
 from VeraGrid.Gui.Diagrams.generic_graphics import ACTIVE, GenericDiagramWidget
+from VeraGrid.Gui.Diagrams.graphics_manager import ALL_GRAPHICS
 from VeraGrid.Gui.Diagrams.base_diagram_widget import BaseDiagramWidget
 from VeraGrid.Gui.general_dialogues import InputNumberDialogue
 import VeraGrid.Gui.Visualization.visualization as viz
@@ -874,7 +876,15 @@ class SchematicWidget(BaseDiagramWidget):
 
     def _query_terminal_owner_graphic(self,
                                       elm: Bus | FluidNode | None) -> TERMINAL_OWNER_GRAPHICS | None:
-        graphic_object = self._query_bus_graphic(elm) if isinstance(elm, Bus) else self._query_fluid_node_graphic(elm)
+        if isinstance(elm, Bus):
+            raw_graphic_object: ALL_GRAPHICS | None = self.graphics_manager.query(elm=elm)
+            if isinstance(raw_graphic_object, (BusGraphicItem, FluidNodeGraphicItem)):
+                graphic_object: TERMINAL_OWNER_GRAPHICS | None = raw_graphic_object
+            else:
+                graphic_object = None
+        else:
+            graphic_object = self._query_fluid_node_graphic(elm)
+
         return graphic_object
 
     def _query_line_graphic(self, elm: ALL_DEV_TYPES | None) -> LineGraphicTemplateItem | None:
@@ -1419,8 +1429,10 @@ class SchematicWidget(BaseDiagramWidget):
         """
         if self._saved_viewport_update_mode is None:
             pass
-        else:
+        elif shiboken6.isValid(self.editor_graphics_view):
             self.editor_graphics_view.setViewportUpdateMode(self._saved_viewport_update_mode)
+            self._saved_viewport_update_mode = None
+        else:
             self._saved_viewport_update_mode = None
 
     def schedule_branch_callbacks_after_draw(self) -> None:
@@ -1447,6 +1459,11 @@ class SchematicWidget(BaseDiagramWidget):
         """
         Refresh terminal-hosted branch callbacks after the scene graph has settled.
         """
+        if not shiboken6.isValid(self) or not shiboken6.isValid(self.editor_graphics_view):
+            return
+        else:
+            pass
+
         self._branch_refresh_scheduled = False
         branch_graphics_to_refresh: set = set()
         self._is_batch_refreshing_branches = True
@@ -1456,22 +1473,34 @@ class SchematicWidget(BaseDiagramWidget):
                 graphics_dict = self.graphics_manager.get_device_type_dict(device_type=category)
 
                 for idtag, graphic in graphics_dict.items():
-                    terminal = graphic.get_terminal()
-                    terminal.update()
-                    terminal.process_callbacks(terminal.scenePos())
-                    graphic.auto_assign_branch_slots()
+                    if shiboken6.isValid(graphic):
+                        terminal = graphic.get_terminal()
+                        if shiboken6.isValid(terminal):
+                            terminal.update()
+                            terminal.process_callbacks(terminal.scenePos())
+                            graphic.auto_assign_branch_slots()
 
-                    for branch_graphic in graphic.get_associated_branch_graphics():
-                        branch_graphics_to_refresh.add(branch_graphic)
+                            for branch_graphic in graphic.get_associated_branch_graphics():
+                                if shiboken6.isValid(branch_graphic):
+                                    branch_graphics_to_refresh.add(branch_graphic)
+                                else:
+                                    pass
 
-                    graphic.arrange_children()
+                            graphic.arrange_children()
+                        else:
+                            pass
+                    else:
+                        pass
 
             self._is_batch_refreshing_branches = False
 
             for branch_graphic in branch_graphics_to_refresh:
-                branch_graphic.upgrade_legacy_layout_from_diagram()
-                branch_graphic.load_route_points_from_diagram()
-                branch_graphic.redraw()
+                if shiboken6.isValid(branch_graphic):
+                    branch_graphic.upgrade_legacy_layout_from_diagram()
+                    branch_graphic.load_route_points_from_diagram()
+                    branch_graphic.redraw()
+                else:
+                    pass
         finally:
             self._is_batch_refreshing_branches = False
             self._is_loading_diagram = False
@@ -2299,6 +2328,7 @@ class SchematicWidget(BaseDiagramWidget):
                             fn.bus = fn_bus
                         else:
                             fn_bus = fn.bus
+                            fn_bus.Vnom = bus.Vnom
 
                         self.create_line(bus_from=fn_bus,
                                          bus_to=bus,
@@ -2319,6 +2349,7 @@ class SchematicWidget(BaseDiagramWidget):
                             fn.bus = fn_bus
                         else:
                             fn_bus = fn.bus
+                            fn_bus.Vnom = bus.Vnom
 
                         self.create_line(bus_from=bus,
                                          bus_to=fn_bus,
@@ -2327,14 +2358,31 @@ class SchematicWidget(BaseDiagramWidget):
 
                     else:
                         warn('unknown connection')
+                else:
+                    pass
 
-            if self.started_branch is not None:
-                self.started_branch.unregister_port_from()
-                self.started_branch.unregister_port_to()
-                self._remove_from_scene(self.started_branch)
+                if self.started_branch is not None:
+                    self.started_branch.unregister_port_from()
+                    self.started_branch.unregister_port_to()
+                    self._remove_from_scene(self.started_branch)
+                else:
+                    pass
 
-            # release this pointer
-            self.started_branch = None
+                # release this pointer
+                self.started_branch = None
+                return None
+            else:
+                pass
+
+        if self.started_branch is not None:
+            self.started_branch.unregister_port_from()
+            self.started_branch.unregister_port_to()
+            self._remove_from_scene(self.started_branch)
+        else:
+            pass
+
+        # release this pointer after no terminal accepted the branch
+        self.started_branch = None
 
     def apply_expansion_factor(self, factor: float):
         """
