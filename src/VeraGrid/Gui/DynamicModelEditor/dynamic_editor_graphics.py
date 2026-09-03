@@ -231,7 +231,7 @@ def _is_dynamic_block_item(item: QGraphicsItem) -> bool:
     :param item: Graphics item being inspected.
     :return: Value produced by the graphics operation.
     """
-    return item.__class__.__name__ in set(("GenericBlockItem", "PairedItem", "BlockItem", "ProtectedConnectionBlockItem", "UnOpItem", "RoundBaseArithmeticOpItem", "RectBaseArithmeticOpItem",))
+    return item.__class__.__name__ in set(("GenericBlockItem", "PairedItem", "BlockItem", "ProtectedConnectionBlockItem", "UnOpItem", "RoundBaseArithmeticOpItem", "RectBaseArithmeticOpItem", "MeasurementsItem",))
 
 
 def _expanded_item_scene_rect(item: QGraphicsItem, pos: QPointF, margin: float) -> QtCore.QRectF:
@@ -251,7 +251,7 @@ def _position_collides_with_blocks(item: QGraphicsItem, pos: QPointF, margin: fl
 
     :param item: Item being positioned.
     :param pos: Proposed scene position.
-    :param margin: Additional collision clearance around both blocks.
+    :param margin: Minimum clearance required between both block rectangles.
     :return: ``True`` when another root block intersects the candidate rectangle.
     """
     scene = item.scene()
@@ -260,7 +260,10 @@ def _position_collides_with_blocks(item: QGraphicsItem, pos: QPointF, margin: fl
     else:
         pass
 
-    candidate_rect = _expanded_item_scene_rect(item, pos, margin)
+    # Expanding only the moving rectangle makes ``margin`` equal to the real
+    # minimum distance between items. Expanding both rectangles would silently
+    # double the configured clearance.
+    candidate_rect: QtCore.QRectF = _expanded_item_scene_rect(item, pos, margin)
     other: QGraphicsItem
     for other in scene.items(candidate_rect):
         is_distinct_root_block: bool = (
@@ -269,7 +272,7 @@ def _position_collides_with_blocks(item: QGraphicsItem, pos: QPointF, margin: fl
             and other.parentItem() is None
         )
         if is_distinct_root_block:
-            if candidate_rect.intersects(other.sceneBoundingRect().adjusted(-margin, -margin, margin, margin)):
+            if candidate_rect.intersects(other.sceneBoundingRect()):
                 return True
             else:
                 pass
@@ -279,9 +282,9 @@ def _position_collides_with_blocks(item: QGraphicsItem, pos: QPointF, margin: fl
 
 
 def _resolve_non_overlapping_position(item: GenericBlockItem | PairedItem | BlockItem
-                                      | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem,
+                                      | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem | MeasurementsItem,
                                       proposed_pos: QPointF,
-                                      margin: float = 6.0) -> QPointF:
+                                      margin: float = 30.0) -> QPointF:
     """Resolve a collision-free position while preserving the last valid point.
 
     :param item: Movable dynamic block item.
@@ -324,7 +327,7 @@ def _resolve_non_overlapping_position(item: GenericBlockItem | PairedItem | Bloc
 
 
 def _handle_block_item_change(item: GenericBlockItem | PairedItem | BlockItem
-                              | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem,
+                              | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem | MeasurementsItem,
                               change: QGraphicsItem.GraphicsItemChange,
                               value: object) -> object:
     """Persist the latest collision-free position reported by Qt.
@@ -335,7 +338,7 @@ def _handle_block_item_change(item: GenericBlockItem | PairedItem | BlockItem
     :return: Original Qt change payload.
     """
     if change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged:
-        if not _position_collides_with_blocks(item, item.pos(), 6.0):
+        if not _position_collides_with_blocks(item, item.pos(), 30.0):
             item._last_valid_pos = QPointF(item.pos())
         else:
             pass
@@ -345,7 +348,7 @@ def _handle_block_item_change(item: GenericBlockItem | PairedItem | BlockItem
 
 
 def _refresh_block_item_connections(item: GenericBlockItem | PairedItem | BlockItem
-                                    | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem) -> None:
+                                    | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem | MeasurementsItem) -> None:
     """Recompute every graphical connection attached to one block.
 
     :param item: Dynamic block whose incident paths must be refreshed.
@@ -365,7 +368,7 @@ def _refresh_block_item_connections(item: GenericBlockItem | PairedItem | BlockI
 
 
 def _notify_block_item_manual_route_drag(item: GenericBlockItem | PairedItem | BlockItem
-                                         | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem,
+                                         | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem | MeasurementsItem,
                                          started: bool) -> None:
     """Notify incident connections that a manual endpoint drag changed state.
 
@@ -391,8 +394,8 @@ def _notify_block_item_manual_route_drag(item: GenericBlockItem | PairedItem | B
 
 
 def _finalize_block_drop(item: GenericBlockItem | PairedItem | BlockItem
-                         | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem,
-                         margin: float = 6.0) -> None:
+                         | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem | MeasurementsItem,
+                         margin: float = 30.0) -> None:
     """Resolve a final block position and update its incident paths.
 
     :param item: Dynamic block completing a drag operation.
