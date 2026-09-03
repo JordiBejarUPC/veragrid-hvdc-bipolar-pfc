@@ -7,6 +7,8 @@ import sys
 import chardet
 import subprocess
 import time
+import pkg_resources
+from importlib.metadata import version, distributions
 from PySide6 import QtCore, QtWidgets
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QClipboard
@@ -24,8 +26,6 @@ from VeraGridEngine.Compilers.circuit_to_pgm import (PGM_AVAILABLE,
                                                      PGM_VERSION)
 
 try:
-    from importlib.metadata import distributions
-
 
     def get_packages():
         """
@@ -34,7 +34,7 @@ try:
         """
         for d in distributions():
             name = d.metadata.get("Name", "")
-            version = d.version
+            versn = d.version
             license_ = d.metadata.get("License", "")
 
             # Installation directory
@@ -47,11 +47,9 @@ try:
             deps = d.metadata.get_all("Requires-Dist") or []
             deps_text = ", ".join(deps)
 
-            yield name, version, license_, install_path, deps_text
+            yield name, versn, license_, install_path, deps_text
 
 except ImportError:
-    import pkg_resources
-
 
     def get_packages():
         """
@@ -60,7 +58,7 @@ except ImportError:
         """
         for d in pkg_resources.working_set:
             name = d.project_name
-            version = d.version
+            versn = d.version
             license_ = getattr(d, "license", "")
 
             install_path = d.location
@@ -69,7 +67,7 @@ except ImportError:
             deps = d.requires()
             deps_text = ", ".join(str(dep) for dep in deps)
 
-            yield name, version, license_, install_path, deps_text
+            yield name, versn, license_, install_path, deps_text
 
 
 def make_item(text):
@@ -142,7 +140,7 @@ def get_installed_package_version(package_name: str) -> str:
     package_version: str = ""
 
     try:
-        from importlib.metadata import version
+
         package_version = version(package_name)
     except Exception:
         package_version = ""
@@ -375,12 +373,11 @@ class AboutDialogueGuiGUI(QtWidgets.QDialog):
         self.ui.librariesTableWidget.setRowCount(len(rows))
         self.ui.librariesTableWidget.setHorizontalHeaderLabels([
             self.tr("Name"),
-            self.tr("Installed"),
+            self.tr("Action"),
             self.tr("Installed version"),
             self.tr("Newest version"),
             self.tr("Supported version"),
             self.tr("Licensed"),
-            self.tr("Action"),
         ])
 
         row_idx: int
@@ -406,16 +403,15 @@ class AboutDialogueGuiGUI(QtWidgets.QDialog):
             licensed_text = self.tr("True") if library_status.licensed else self.tr("False")
 
             self.ui.librariesTableWidget.setItem(row_idx, 0, make_item(library_status.name))
-            self.ui.librariesTableWidget.setItem(row_idx, 1, make_item(installed_text))
+            self.ui.librariesTableWidget.setCellWidget(
+                row_idx,
+                1,
+                self.create_optional_library_action_button(library_status=library_status),
+            )
             self.ui.librariesTableWidget.setItem(row_idx, 2, make_item(installed_version))
             self.ui.librariesTableWidget.setItem(row_idx, 3, make_item(latest_version))
             self.ui.librariesTableWidget.setItem(row_idx, 4, make_item(library_status.supported_version))
             self.ui.librariesTableWidget.setItem(row_idx, 5, make_item(licensed_text))
-            self.ui.librariesTableWidget.setCellWidget(
-                row_idx,
-                6,
-                self.create_optional_library_action_button(library_status=library_status),
-            )
 
         self.ui.librariesTableWidget.resizeColumnsToContents()
 
@@ -485,16 +481,16 @@ class AboutDialogueGuiGUI(QtWidgets.QDialog):
             else:
                 self.msg(
                     text=(
-                        self.tr("{name} update failed after {attempts} attempt(s).").format(
-                            name=package_name,
-                            attempts=attempts_used,
-                        )
-                        + "\n"
-                        + self.tr("Exit code: {code}").format(code=return_code)
-                        + "\n\n"
-                        + self.tr("Command output:")
-                        + "\n"
-                        + output_excerpt
+                            self.tr("{name} update failed after {attempts} attempt(s).").format(
+                                name=package_name,
+                                attempts=attempts_used,
+                            )
+                            + "\n"
+                            + self.tr("Exit code: {code}").format(code=return_code)
+                            + "\n\n"
+                            + self.tr("Command output:")
+                            + "\n"
+                            + output_excerpt
                     ),
                     title=self.tr("Warning"),
                 )
@@ -518,9 +514,9 @@ class AboutDialogueGuiGUI(QtWidgets.QDialog):
         pkgs = sorted(get_packages(), key=lambda x: x[0].lower())
         self.ui.allLibsTableWidget.setRowCount(len(pkgs))
 
-        for row, (name, version, license_, path, deps) in enumerate(pkgs):
+        for row, (name, versn, license_, path, deps) in enumerate(pkgs):
             self.ui.allLibsTableWidget.setItem(row, 0, make_item(name))
-            self.ui.allLibsTableWidget.setItem(row, 1, make_item(version))
+            self.ui.allLibsTableWidget.setItem(row, 1, make_item(versn))
             self.ui.allLibsTableWidget.setItem(row, 2, make_item(license_))
             self.ui.allLibsTableWidget.setItem(row, 3, make_item(path))
             self.ui.allLibsTableWidget.setItem(row, 4, make_item(deps))
