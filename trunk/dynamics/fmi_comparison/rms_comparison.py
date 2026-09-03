@@ -277,11 +277,11 @@ def _hash_file(path: Path) -> str:
         return hashlib.file_digest(file_handle, "sha256").hexdigest()
 
 
-def _build_me_input_signal(
+def _build_input_signal(
         time_seconds: np.ndarray,
         voltage_magnitude: np.ndarray,
 ) -> np.ndarray:
-    """Build the direct FMPy ME input from accepted RMS voltage samples.
+    """Build the direct FMPy input from accepted RMS voltage samples.
 
     :param time_seconds: Exact accepted RMS time lattice.
     :param voltage_magnitude: Exact accepted bus-voltage samples.
@@ -298,7 +298,7 @@ def _build_me_input_signal(
     if inputs_are_valid:
         pass
     else:
-        raise ValueError("ME input time and voltage traces must be finite and aligned")
+        raise ValueError("FMI input time and voltage traces must be finite and aligned")
 
     input_signal: np.ndarray = np.empty(
         time_seconds.size,
@@ -323,24 +323,25 @@ def _get_direct_fmpy_trace(
     time_seconds: np.ndarray = execution.get_time_seconds()
     stop_time: float = float(time_seconds[-1])
     output_names: list[str] = list(("p_out", "q_out"))
+    voltage_magnitude: np.ndarray | None = execution.get_voltage_magnitude()
+    if voltage_magnitude is None:
+        raise RuntimeError("The RMS execution did not retain its voltage input")
+    else:
+        input_signal: np.ndarray = _build_input_signal(
+            time_seconds,
+            voltage_magnitude,
+        )
     mode: FmuInterfaceMode = execution.get_mode()
     if mode == FmuInterfaceMode.CO_SIMULATION:
         simulation_result: np.ndarray = simulate_cs_fmu_with_fmpy(
             execution.get_fmu_path(),
             stop_time=stop_time,
             output=output_names,
+            input_signal=input_signal,
             extraction_root=extraction_root,
             output_interval=1.0e-3,
         )
     elif mode == FmuInterfaceMode.MODEL_EXCHANGE:
-        voltage_magnitude: np.ndarray | None = execution.get_voltage_magnitude()
-        if voltage_magnitude is None:
-            raise RuntimeError("The RMS ME execution did not retain its voltage input")
-        else:
-            input_signal: np.ndarray = _build_me_input_signal(
-                time_seconds,
-                voltage_magnitude,
-            )
         simulation_result = simulate_me_fmu_with_fmpy(
             execution.get_fmu_path(),
             stop_time=stop_time,
@@ -421,7 +422,7 @@ def _compare_aligned_trajectories(
     :return: Conclusive comparison metrics.
     """
 
-    expected_time_seconds: np.ndarray = np.arange(6, dtype=float) * 1.0e-3
+    expected_time_seconds: np.ndarray = np.arange(301, dtype=float) * 1.0e-3
     shapes_are_valid: bool = bool(
         rms_time_seconds.shape == expected_time_seconds.shape
         and rms_active_power.shape == expected_time_seconds.shape
@@ -433,7 +434,7 @@ def _compare_aligned_trajectories(
     if shapes_are_valid:
         pass
     else:
-        raise ValueError("RMS FMI comparison requires exactly six aligned samples")
+        raise ValueError("RMS FMI comparison requires exactly 301 aligned samples")
 
     values_are_finite: bool = bool(
         np.all(np.isfinite(rms_time_seconds))
@@ -466,7 +467,7 @@ def _compare_aligned_trajectories(
         pass
     else:
         raise ValueError(
-            "RMS and direct FMPy trajectories must share the exact six-sample lattice"
+            "RMS and direct FMPy trajectories must share the exact 301-sample lattice"
         )
 
     absolute_active_power_error: np.ndarray = np.abs(
@@ -543,6 +544,12 @@ def _write_trace_csv(
     rms_time_seconds: np.ndarray = execution.get_time_seconds()
     rms_active_power: np.ndarray = execution.get_active_power()
     rms_reactive_power: np.ndarray = execution.get_reactive_power()
+    rms_voltage_magnitude: np.ndarray | None = execution.get_voltage_magnitude()
+    if rms_voltage_magnitude is None:
+        raise RuntimeError("RMS FMI trace evidence requires the retained voltage input")
+    else:
+        pass
+    event_time_seconds: float = execution.get_event_time_seconds()
     absolute_active_power_error: np.ndarray = (
         metrics.get_absolute_active_power_error()
     )
@@ -558,6 +565,8 @@ def _write_trace_csv(
         "sample_index",
         "time_seconds",
         "regime",
+        "scenario_phase",
+        "rms_voltage_magnitude_pu",
         "rms_active_power_pu",
         "fmpy_active_power_pu",
         "absolute_active_power_error_pu",
@@ -577,16 +586,25 @@ def _write_trace_csv(
         writer.writerow(header)
         sample_index: int
         for sample_index in range(rms_time_seconds.size):
+            sample_time_seconds: float = float(rms_time_seconds[sample_index])
             if sample_index == 0:
                 regime: str = "initial_projection"
                 power_flow_term: float = power_flow_residual
             else:
                 regime = "accepted_step"
                 power_flow_term = 0.0
+            if abs(sample_time_seconds - event_time_seconds) <= 1.0e-12:
+                scenario_phase: str = "event_boundary"
+            elif sample_time_seconds < event_time_seconds:
+                scenario_phase = "pre_event"
+            else:
+                scenario_phase = "post_event"
             row: tuple[object, ...] = (
                 sample_index,
                 f"{direct_time_seconds[sample_index]:.16e}",
                 regime,
+                scenario_phase,
+                f"{rms_voltage_magnitude[sample_index]:.16e}",
                 f"{rms_active_power[sample_index]:.16e}",
                 f"{direct_active_power[sample_index]:.16e}",
                 f"{absolute_active_power_error[sample_index]:.16e}",
@@ -666,6 +684,7 @@ def _render_trajectory_figure(
         rms_reactive_power: np.ndarray,
         direct_active_power: np.ndarray,
         direct_reactive_power: np.ndarray,
+        event_time_seconds: float,
 ) -> tuple[Path, ...]:
     """Render aligned P/Q trajectories without validation decoration.
 
@@ -676,6 +695,7 @@ def _render_trajectory_figure(
     :param rms_reactive_power: VeraGrid RMS reactive power in p.u.
     :param direct_active_power: Direct FMPy active power in p.u.
     :param direct_reactive_power: Direct FMPy reactive power in p.u.
+    :param event_time_seconds: Exact load-step boundary in seconds.
     :return: Written PDF, SVG and PNG paths.
     """
 
@@ -690,6 +710,7 @@ def _render_trajectory_figure(
     canvas: FigureCanvasAgg = FigureCanvasAgg(figure)
     active_axis: Axes = figure.add_subplot(2, 1, 1)
     reactive_axis: Axes = figure.add_subplot(2, 1, 2, sharex=active_axis)
+    marker_interval: int = max(1, int(time_seconds.size // 12))
     active_axis.plot(
         time_seconds,
         rms_active_power,
@@ -704,6 +725,10 @@ def _render_trajectory_figure(
         color="#0072B2",
         linestyle="--",
         linewidth=1.4,
+        marker="o",
+        markerfacecolor="none",
+        markersize=3.5,
+        markevery=marker_interval,
         label="Direct FMPy backend",
     )
     reactive_axis.plot(
@@ -719,14 +744,31 @@ def _render_trajectory_figure(
         color="#0072B2",
         linestyle="--",
         linewidth=1.4,
+        marker="o",
+        markerfacecolor="none",
+        markersize=3.5,
+        markevery=marker_interval,
+    )
+    active_axis.axvline(
+        event_time_seconds,
+        color="#777777",
+        linestyle=":",
+        linewidth=1.0,
+        label="Load-step boundary",
+    )
+    reactive_axis.axvline(
+        event_time_seconds,
+        color="#777777",
+        linestyle=":",
+        linewidth=1.0,
     )
     _configure_scientific_axis(active_axis, "Active power (p.u.)")
     _configure_scientific_axis(reactive_axis, "Reactive power (p.u.)")
     active_axis.tick_params(labelbottom=False)
     reactive_axis.set_xlabel("Time (s)")
-    active_axis.legend(loc="best", frameon=False, ncol=2)
+    active_axis.legend(loc="best", frameon=False, ncol=3)
     figure.suptitle(
-        f"RMS FMI 2 {interface_label} trajectories",
+        f"RMS FMI 2 {interface_label} load-step response",
         fontsize=11,
         fontweight="normal",
     )
@@ -741,6 +783,7 @@ def _render_error_figure(
         mode: FmuInterfaceMode,
         time_seconds: np.ndarray,
         metrics: RmsFmiComparisonMetrics,
+        event_time_seconds: float,
 ) -> tuple[Path, ...]:
     """Render absolute P/Q error against each per-sample derived budget.
 
@@ -748,6 +791,7 @@ def _render_error_figure(
     :param mode: FMI interface mode represented by the errors.
     :param time_seconds: Exact common time lattice.
     :param metrics: Passed errors and per-sample acceptance budgets.
+    :param event_time_seconds: Exact load-step boundary in seconds.
     :return: Written PDF, SVG and PNG paths.
     """
 
@@ -800,11 +844,24 @@ def _render_error_figure(
         linestyle="--",
         linewidth=1.4,
     )
+    active_axis.axvline(
+        event_time_seconds,
+        color="#777777",
+        linestyle=":",
+        linewidth=1.0,
+        label="Load-step boundary",
+    )
+    reactive_axis.axvline(
+        event_time_seconds,
+        color="#777777",
+        linestyle=":",
+        linewidth=1.0,
+    )
     _configure_scientific_axis(active_axis, "Absolute P error (p.u.)")
     _configure_scientific_axis(reactive_axis, "Absolute Q error (p.u.)")
     active_axis.tick_params(labelbottom=False)
     reactive_axis.set_xlabel("Time (s)")
-    active_axis.legend(loc="best", frameon=False, ncol=2)
+    active_axis.legend(loc="best", frameon=False, ncol=3)
     figure.suptitle(
         f"RMS FMI 2 {interface_label} absolute error",
         fontsize=11,
@@ -879,6 +936,66 @@ def _write_staged_manifest(
 
     absolute_tolerance: float = config.get_absolute_tolerance()
     relative_tolerance: float = config.get_relative_tolerance()
+    cs_time_seconds: np.ndarray = cs_execution.get_time_seconds()
+    me_time_seconds: np.ndarray = me_execution.get_time_seconds()
+    event_time_seconds: float = cs_execution.get_event_time_seconds()
+    me_event_time_seconds: float = me_execution.get_event_time_seconds()
+    event_boundary_indices: np.ndarray = np.flatnonzero(
+        np.abs(cs_time_seconds - event_time_seconds) <= 1.0e-12
+    )
+    event_configuration_is_conclusive: bool = bool(
+        np.array_equal(cs_time_seconds, me_time_seconds)
+        and event_time_seconds == me_event_time_seconds
+        and cs_time_seconds.size == 301
+        and event_boundary_indices.size == 1
+        and int(event_boundary_indices[0]) == 100
+    )
+    if event_configuration_is_conclusive:
+        event_boundary_index: int = int(event_boundary_indices[0])
+        first_post_event_index: int = event_boundary_index + 1
+    else:
+        raise RuntimeError("CS and ME event configuration evidence is inconsistent")
+
+    cs_voltage_magnitude: np.ndarray | None = cs_execution.get_voltage_magnitude()
+    me_voltage_magnitude: np.ndarray | None = me_execution.get_voltage_magnitude()
+    if cs_voltage_magnitude is not None and me_voltage_magnitude is not None:
+        pass
+    else:
+        raise RuntimeError("Both FMI modes must retain voltage-input evidence")
+    cs_active_power: np.ndarray = cs_execution.get_active_power()
+    me_active_power: np.ndarray = me_execution.get_active_power()
+    cs_voltage_response: float = float(
+        np.max(
+            np.abs(
+                cs_voltage_magnitude[first_post_event_index:]
+                - cs_voltage_magnitude[event_boundary_index]
+            )
+        )
+    )
+    me_voltage_response: float = float(
+        np.max(
+            np.abs(
+                me_voltage_magnitude[first_post_event_index:]
+                - me_voltage_magnitude[event_boundary_index]
+            )
+        )
+    )
+    cs_active_power_response: float = float(
+        np.max(
+            np.abs(
+                cs_active_power[first_post_event_index:]
+                - cs_active_power[event_boundary_index]
+            )
+        )
+    )
+    me_active_power_response: float = float(
+        np.max(
+            np.abs(
+                me_active_power[first_post_event_index:]
+                - me_active_power[event_boundary_index]
+            )
+        )
+    )
     cs_mode_record: dict[str, object] = dict(
         mode=FmuInterfaceMode.CO_SIMULATION.value,
         fmu_path=cs_execution.get_fmu_path().relative_to(staging_dir).as_posix(),
@@ -894,6 +1011,10 @@ def _write_staged_manifest(
         max_reactive_power_error=cs_metrics.get_max_reactive_power_error(),
         rms_active_power_error=cs_metrics.get_rms_active_power_error(),
         rms_reactive_power_error=cs_metrics.get_rms_reactive_power_error(),
+        voltage_input_min=float(np.min(cs_voltage_magnitude)),
+        voltage_input_max=float(np.max(cs_voltage_magnitude)),
+        post_event_voltage_response=cs_voltage_response,
+        post_event_active_power_response=cs_active_power_response,
     )
     me_mode_record: dict[str, object] = dict(
         mode=FmuInterfaceMode.MODEL_EXCHANGE.value,
@@ -910,6 +1031,10 @@ def _write_staged_manifest(
         max_reactive_power_error=me_metrics.get_max_reactive_power_error(),
         rms_active_power_error=me_metrics.get_rms_active_power_error(),
         rms_reactive_power_error=me_metrics.get_rms_reactive_power_error(),
+        voltage_input_min=float(np.min(me_voltage_magnitude)),
+        voltage_input_max=float(np.max(me_voltage_magnitude)),
+        post_event_voltage_response=me_voltage_response,
+        post_event_active_power_response=me_active_power_response,
     )
     manifest_payload: dict[str, object] = dict(
         schema="veragrid.rms-fmi-comparison/1",
@@ -930,8 +1055,8 @@ def _write_staged_manifest(
         ),
         configuration=dict(
             time_step_seconds=1.0e-3,
-            stop_time_seconds=5.0e-3,
-            sample_count=6,
+            stop_time_seconds=float(cs_time_seconds[-1]),
+            sample_count=cs_time_seconds.size,
             time_alignment_tolerance_seconds=1.0e-12,
             floating_absolute_term=absolute_tolerance,
             floating_relative_coefficient=relative_tolerance,
@@ -944,7 +1069,26 @@ def _write_staged_manifest(
                 "relative_coefficient*abs(direct_fmpy)"
             ),
             initial_sample_indices=list((0,)),
-            accepted_step_indices=list((1, 2, 3, 4, 5)),
+            accepted_step_indices=list(range(1, cs_time_seconds.size)),
+        ),
+        event_scenario=dict(
+            kind="RMS native load active-power step",
+            disturbance_load_initial_active_power_mw=5.0,
+            disturbance_load_initial_reactive_power_mvar=1.0,
+            parameter="Pl0",
+            pre_event_value_pu=-0.05,
+            post_event_value_pu=-0.15,
+            event_time_seconds=event_time_seconds,
+            event_boundary_index=event_boundary_index,
+            first_post_event_index=first_post_event_index,
+            boundary_semantics="old_value_at_boundary_step_after_boundary",
+            voltage_response_threshold_pu=1.0e-5,
+            active_power_response_threshold_pu=1.0e-5,
+            fmu_state_initialization="x(0) = u(0)",
+            fmu_state_derivative="der(x) = 0",
+            fmu_active_power_equation="p_out = -0.1 - 2.0*(u - x)",
+            fmu_reactive_power_equation="q_out = -0.01 - (u - x)",
+            shared_input="u = retained VeraGrid RMS bus voltage magnitude",
         ),
         modes=list((cs_mode_record, me_mode_record)),
         runtime=dict(
@@ -1211,12 +1355,14 @@ def generate_rms_fmi_comparison(config: RmsFmiComparisonConfig) -> Path:
             cs_execution.get_reactive_power(),
             cs_direct_active_power,
             cs_direct_reactive_power,
+            cs_execution.get_event_time_seconds(),
         )
         _render_error_figure(
             figures_dir / "co_simulation_absolute_error",
             FmuInterfaceMode.CO_SIMULATION,
             cs_execution.get_time_seconds(),
             cs_metrics,
+            cs_execution.get_event_time_seconds(),
         )
         _render_trajectory_figure(
             figures_dir / "model_exchange_trajectories",
@@ -1226,12 +1372,14 @@ def generate_rms_fmi_comparison(config: RmsFmiComparisonConfig) -> Path:
             me_execution.get_reactive_power(),
             me_direct_active_power,
             me_direct_reactive_power,
+            me_execution.get_event_time_seconds(),
         )
         _render_error_figure(
             figures_dir / "model_exchange_absolute_error",
             FmuInterfaceMode.MODEL_EXCHANGE,
             me_execution.get_time_seconds(),
             me_metrics,
+            me_execution.get_event_time_seconds(),
         )
 
         _write_staged_manifest(

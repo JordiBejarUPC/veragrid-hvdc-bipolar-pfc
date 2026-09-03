@@ -59,12 +59,6 @@ from VeraGridEngine.enumerations import (
 )
 
 
-def _tmp_root() -> Path:
-    root = Path(__file__).resolve().parent / ".tmp"
-    root.mkdir(parents=True, exist_ok=True)
-    return root.resolve()
-
-
 def build_simple_output_fmu_block() -> Block:
     x = Var("x")
     dx = Var("dx", base_var=x)
@@ -517,10 +511,16 @@ def test_fmi_three_v4_me_config_requires_strict_event_iteration_bound() -> None:
 
 
 @pytest.mark.skipif(not host_build_capable(), reason="No usable host build toolchain available")
-def test_rms_device_config_can_restore_runtime_spec() -> None:
+def test_rms_device_config_can_restore_runtime_spec(tmp_path: Path) -> None:
+    """Restore one RMS CS runtime specification from persisted configuration.
+
+    :param tmp_path: Isolated build and archive directory supplied by pytest.
+    :return: None.
+    """
+
     pytest.importorskip("fmpy")
 
-    output_root = _tmp_root()
+    output_root: Path = tmp_path
     fmu_path = output_root / "restore_rms.fmu"
     try:
         exported_fmu = export_fmu(
@@ -819,10 +819,16 @@ def test_current_cs_v4_and_me_v5_parameter_mappings_round_trip() -> None:
 
 
 @pytest.mark.skipif(not host_build_capable(), reason="No usable host build toolchain available")
-def test_emt_device_config_can_restore_runtime_spec() -> None:
+def test_emt_device_config_can_restore_runtime_spec(tmp_path: Path) -> None:
+    """Restore one EMT CS runtime specification from persisted configuration.
+
+    :param tmp_path: Isolated build and archive directory supplied by pytest.
+    :return: None.
+    """
+
     pytest.importorskip("fmpy")
 
-    output_root = _tmp_root()
+    output_root: Path = tmp_path
     fmu_path = output_root / "restore_emt.fmu"
     try:
         exported_fmu = export_fmu(
@@ -863,10 +869,16 @@ def test_emt_device_config_can_restore_runtime_spec() -> None:
 
 
 @pytest.mark.skipif(not host_build_capable(), reason="No usable host build toolchain available")
-def test_rms_me_device_config_can_restore_runtime_spec() -> None:
+def test_rms_me_device_config_can_restore_runtime_spec(tmp_path: Path) -> None:
+    """Restore one RMS ME runtime specification from persisted configuration.
+
+    :param tmp_path: Isolated build and archive directory supplied by pytest.
+    :return: None.
+    """
+
     pytest.importorskip("fmpy")
 
-    output_root = _tmp_root()
+    output_root: Path = tmp_path
     fmu_path = output_root / "restore_rms_me.fmu"
     try:
         exported_fmu = export_fmu_me(
@@ -907,10 +919,16 @@ def test_rms_me_device_config_can_restore_runtime_spec() -> None:
 
 
 @pytest.mark.skipif(not host_build_capable(), reason="No usable host build toolchain available")
-def test_emt_me_device_config_can_restore_runtime_spec() -> None:
+def test_emt_me_device_config_can_restore_runtime_spec(tmp_path: Path) -> None:
+    """Restore one EMT ME runtime specification from persisted configuration.
+
+    :param tmp_path: Isolated build and archive directory supplied by pytest.
+    :return: None.
+    """
+
     pytest.importorskip("fmpy")
 
-    output_root = _tmp_root()
+    output_root: Path = tmp_path
     fmu_path = output_root / "restore_emt_me.fmu"
     try:
         exported_fmu = export_fmu_me(

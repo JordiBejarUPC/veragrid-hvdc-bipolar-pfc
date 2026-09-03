@@ -224,12 +224,6 @@ def _build_test_me_solver_policy() -> FmuMeSolverPolicy:
     )
 
 
-def _tmp_root() -> Path:
-    root = Path(__file__).resolve().parent / ".tmp"
-    root.mkdir(parents=True, exist_ok=True)
-    return root.resolve()
-
-
 def build_cs_output_block() -> Block:
     x = Var("x")
     dx = Var("dx", base_var=x)
@@ -291,14 +285,15 @@ def build_parameterized_output_block() -> Block:
     not host_build_capable(),
     reason="No usable host build toolchain available",
 )
-def test_fmi_two_cs_and_me_parameters_are_initialize_only() -> None:
+def test_fmi_two_cs_and_me_parameters_are_initialize_only(tmp_path: Path) -> None:
     """Initialize FMI 2 CS/ME parameters once and retain their native values.
 
+    :param tmp_path: Isolated build and archive directory supplied by pytest.
     :return: None.
     """
 
     pytest.importorskip("fmpy")
-    output_root: Path = _tmp_root()
+    output_root: Path = tmp_path
     cs_fmu_path: Path = output_root / "fmi_two_parameter_initialize_only_cs.fmu"
     me_fmu_path: Path = output_root / "fmi_two_parameter_initialize_only_me.fmu"
     try:
@@ -408,15 +403,16 @@ def test_fmi_two_cs_and_me_parameters_are_initialize_only() -> None:
 
 
 @pytest.mark.skipif(not host_build_capable(), reason="No usable host build toolchain available")
-def test_user_api_attaches_rms_cs_device() -> None:
+def test_user_api_attaches_rms_cs_device(tmp_path: Path) -> None:
     """Persist one public CS attachment request and its worker policy.
 
+    :param tmp_path: Isolated build and archive directory supplied by pytest.
     :return: None.
     """
 
     pytest.importorskip("fmpy")
 
-    output_root = _tmp_root()
+    output_root: Path = tmp_path
     fmu_path = output_root / "user_api_rms_cs.fmu"
     try:
         exported_fmu = export_fmu(
@@ -1280,10 +1276,16 @@ def test_fmi_three_me_selects_configurable_array_device_outputs(
 
 
 @pytest.mark.skipif(not host_build_capable(), reason="No usable host build toolchain available")
-def test_user_api_attaches_emt_me_device() -> None:
+def test_user_api_attaches_emt_me_device(tmp_path: Path) -> None:
+    """Persist one public EMT ME attachment request.
+
+    :param tmp_path: Isolated build and archive directory supplied by pytest.
+    :return: None.
+    """
+
     pytest.importorskip("fmpy")
 
-    output_root = _tmp_root()
+    output_root: Path = tmp_path
     fmu_path = output_root / "user_api_emt_me.fmu"
     try:
         exported_fmu = export_fmu_me(

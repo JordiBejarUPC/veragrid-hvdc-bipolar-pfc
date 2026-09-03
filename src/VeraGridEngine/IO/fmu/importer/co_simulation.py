@@ -1215,14 +1215,14 @@ def align_rms_fmu_cs_device_output_parameters(problem: Any, x_snapshot: np.ndarr
         pass
 
 
-def advance_rms_fmu_cs_devices(problem: Any, time_value: float, x_snapshot: np.ndarray, step_size: float) -> None:
+def advance_rms_fmu_cs_devices(problem: Any, time_value: float, x_snapshot: np.ndarray, step_size: float) -> bool:
     """Advance all imported FMU CS RMS devices for one solver step.
 
     :param problem: RMS problem instance.
     :param time_value: Current simulation time.
     :param x_snapshot: Current accepted state snapshot.
     :param step_size: RMS communication step.
-    :return: None.
+    :return: Whether at least one registered CS adapter completed advancement.
     """
 
     if len(problem._fmu_cs_adapters) > 0:
@@ -1239,8 +1239,9 @@ def advance_rms_fmu_cs_devices(problem: Any, time_value: float, x_snapshot: np.n
                 problem._last_variable_parameters_values = None
             else:
                 problem._last_variable_parameters_values = np.array(problem._variable_parameters_values, copy=True)
+        return True
     else:
-        pass
+        return False
 
 
 def close_rms_fmu_cs_devices(problem: Any) -> None:

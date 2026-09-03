@@ -10,6 +10,7 @@ import uuid
 
 from VeraGridEngine.Devices.Branches.line import Line
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
+from VeraGridEngine.Devices.Events.rms_event import RmsEvent
 from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.Injections.load import Load
@@ -24,10 +25,11 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOpt
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template_with_ref
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
+from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
-from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
-from VeraGridEngine.enumerations import BranchImpedanceMode, SolverType
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model, set_rms_model
+from VeraGridEngine.enumerations import BranchImpedanceMode, ParamPowerFlowReferenceType, SolverType
 
 def _build_rms_cs_source_block() -> Block:
     """Build the self-contained source block used to export an example RMS CS FMU.
@@ -39,13 +41,16 @@ def _build_rms_cs_source_block() -> Block:
     dx: Var = Var("dx", base_var=x)
     p_out: Var = Var("p_out")
     q_out: Var = Var("q_out")
+    u: Var = Var("u")
     return Block(
         state_vars=list((x,)),
-        state_eqs=list((Const(1.0),)),
+        # A zero derivative keeps CS and ME state integration mathematically
+        # identical after initialization captures the actual voltage input.
+        state_eqs=list((Const(0.0),)),
         algebraic_vars=list((p_out, q_out)),
         algebraic_eqs=list((
-            p_out - (Const(-0.1) - Const(0.02) * x),
-            q_out - Const(-0.01),
+            p_out - (Const(-0.1) - Const(2.0) * (u - x)),
+            q_out - (Const(-0.01) - (u - x)),
         )),
         diff_vars=list((dx,)),
         init_values=dict((
@@ -54,9 +59,11 @@ def _build_rms_cs_source_block() -> Block:
             (q_out, Const(-0.01)),
         )),
         init_eqs=dict((
+            (x, u),
             (p_out, Const(-0.1)),
             (q_out, Const(-0.01)),
         )),
+        in_vars=list((u,)),
         out_vars=list((p_out, q_out)),
     )
 
@@ -74,15 +81,14 @@ def _build_rms_me_source_block() -> Block:
     u: Var = Var("u")
     return Block(
         state_vars=list((x,)),
-        # The example begins at the coupled load operating point. The voltage
-        # input therefore produces no artificial derivative at u=1 and x=0.
-        state_eqs=list((u - Const(1.0) - x,)),
+        # The state captures the actual initial voltage and then remains
+        # stationary, eliminating solver truncation from this comparison.
+        state_eqs=list((Const(0.0),)),
         algebraic_vars=list((p_out, q_out)),
-        # Active power retains a small state response while both outputs start
-        # from the same nonzero values used by the static demonstration load.
+        # Both outputs expose the same voltage-driven event response as CS.
         algebraic_eqs=list((
-            p_out - (Const(-0.1) - Const(0.02) * x),
-            q_out - Const(-0.01),
+            p_out - (Const(-0.1) - Const(2.0) * (u - x)),
+            q_out - (Const(-0.01) - (u - x)),
         )),
         diff_vars=list((dx,)),
         init_values=dict((
@@ -91,6 +97,7 @@ def _build_rms_me_source_block() -> Block:
             (q_out, Const(-0.01)),
         )),
         init_eqs=dict((
+            (x, u),
             (p_out, Const(-0.1)),
             (q_out, Const(-0.01)),
         )),
@@ -289,11 +296,17 @@ def build_example_power_flow_options() -> PowerFlowOptions:
     )
 
 
-def build_rms_example_grid() -> tuple[MultiCircuit, Load]:
+def build_rms_example_grid(event_time_seconds: float) -> tuple[MultiCircuit, Load]:
     """Build the minimal RMS demo grid used by the RMS FMU import examples.
 
+    :param event_time_seconds: Exact solver-aligned disturbance boundary.
     :return: Grid and imported device.
     """
+
+    if event_time_seconds > 0.0:
+        pass
+    else:
+        raise ValueError("RMS example event time must be positive")
 
     grid: MultiCircuit = MultiCircuit(Sbase=100.0, fbase=50.0)
     bus_slack: Bus = Bus(name="Bus0", Vnom=10.0, is_slack=True)
@@ -316,13 +329,48 @@ def build_rms_example_grid() -> tuple[MultiCircuit, Load]:
         freq=50.0,
     )
     load: Load = Load(name="ImportedLoad", P=10.0, Q=1.0)
+    disturbance_load: Load = Load(name="DisturbanceLoad", P=5.0, Q=1.0)
 
     grid.add_line(line)
     grid.add_generator(bus=bus_slack, api_obj=generator)
     grid.add_load(bus=bus_load, api_obj=load)
+    grid.add_load(bus=bus_load, api_obj=disturbance_load)
     line.rms_template = get_line_rms_template(grid.var_factory)
     generator.rms_template = get_complete_generator_template_rms(grid.var_factory)
-    grid.add_rms_events_group(RmsEventsGroup(name="default_rms_example_group"))
+
+    # Use the established product load model for the physical disturbance. A
+    # separate device preserves FMU ownership of the imported load outputs.
+    disturbance_model: Block = get_load_rms_template(
+        vfactory=grid.var_factory,
+        pl0_init=-0.05,
+        ql0_init=-0.01,
+    ).block
+    set_rms_model(
+        device=disturbance_load,
+        model=disturbance_model,
+        var_factory=grid.var_factory,
+    )
+    active_power_parameter_candidate: Var | None = disturbance_model.api_obj_mapping.get(
+        ParamPowerFlowReferenceType.Pl0,
+        None,
+    )
+    if isinstance(active_power_parameter_candidate, Var):
+        active_power_parameter: Var = active_power_parameter_candidate
+    else:
+        raise RuntimeError("Disturbance load must expose its Pl0 event parameter through the typed API mapping")
+
+    event_group: RmsEventsGroup = RmsEventsGroup(name="rms_load_step")
+    grid.add_rms_events_group(event_group)
+    grid.add_rms_event(
+        RmsEvent(
+            device=disturbance_load,
+            parameter=active_power_parameter,
+            time=event_time_seconds,
+            value=-0.15,
+            group=event_group,
+            force_step_alignment=True,
+        )
+    )
     return grid, load
 
 

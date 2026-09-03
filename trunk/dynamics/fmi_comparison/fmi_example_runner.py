@@ -11,7 +11,6 @@ import numpy as np
 from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup
 from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.Injections.load import Load
-from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.EMT.emt_driver import EmtSimulationDriver
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
@@ -72,6 +71,7 @@ class RmsFmiExampleExecution:
         "_active_power",
         "_reactive_power",
         "_voltage_magnitude",
+        "_event_time_seconds",
         "_solver_tolerance",
         "_power_flow_residual",
     )
@@ -85,6 +85,7 @@ class RmsFmiExampleExecution:
             active_power: np.ndarray,
             reactive_power: np.ndarray,
             voltage_magnitude: np.ndarray | None,
+            event_time_seconds: float,
             solver_tolerance: float,
             power_flow_residual: float,
     ) -> None:
@@ -97,6 +98,7 @@ class RmsFmiExampleExecution:
         :param active_power: Accepted active-power trajectory in p.u.
         :param reactive_power: Accepted reactive-power trajectory in p.u.
         :param voltage_magnitude: Accepted bus-voltage trajectory in p.u., when required.
+        :param event_time_seconds: Exact RMS load-step boundary in seconds.
         :param solver_tolerance: RMS algebraic residual tolerance.
         :param power_flow_residual: Actual converged power-flow infinity-norm residual.
         :return: None.
@@ -112,6 +114,7 @@ class RmsFmiExampleExecution:
             self._voltage_magnitude: np.ndarray | None = None
         else:
             self._voltage_magnitude = np.array(voltage_magnitude, dtype=float, copy=True)
+        self._event_time_seconds: float = float(event_time_seconds)
         self._solver_tolerance: float = float(solver_tolerance)
         self._power_flow_residual: float = float(power_flow_residual)
 
@@ -174,6 +177,14 @@ class RmsFmiExampleExecution:
         else:
             return self._voltage_magnitude.copy()
 
+    def get_event_time_seconds(self) -> float:
+        """Return the exact RMS load-step boundary.
+
+        :return: Event boundary in seconds.
+        """
+
+        return self._event_time_seconds
+
     def get_solver_tolerance(self) -> float:
         """Return the RMS algebraic residual tolerance used by the driver.
 
@@ -191,27 +202,25 @@ class RmsFmiExampleExecution:
         return self._power_flow_residual
 
 
-def _get_bus_power_default(
+def _get_load_power_default(
         grid: MultiCircuit,
-        pf_results: PowerFlowResults,
-        bus: Bus,
+        load: Load,
 ) -> tuple[float, float]:
-    """
-    Return the exact active and reactive power injection solved at one bus.
+    """Return the active and reactive injection owned by one load.
 
-    The FMU examples use these values as output defaults so the imported FMU shell
-    starts from the same operating point that the static network used during the
-    power-flow initialization.
+    A bus can own other devices, including the independent disturbance load.
+    Therefore the imported FMU shell must derive its defaults from its own
+    static device powers rather than from the aggregate solved bus injection.
 
-    :param grid: Solved grid.
-    :param pf_results: Finished power-flow results.
-    :param bus: Bus where the imported FMU device is connected.
-    :return: Active and reactive bus injections.
+    :param grid: Grid that owns the system base power.
+    :param load: Imported load represented by the FMU.
+    :return: Active and reactive device injections in p.u.
     """
 
-    bus_index: int = grid.buses.index(bus)
-    bus_power: complex = complex(pf_results.Sbus[bus_index] / grid.Sbase)
-    return float(bus_power.real), float(bus_power.imag)
+    base_power_mva: float = float(grid.Sbase)
+    active_power_pu: float = -float(load.P) / base_power_mva
+    reactive_power_pu: float = -float(load.Q) / base_power_mva
+    return active_power_pu, reactive_power_pu
 
 
 def _get_rms_example_group_index(driver: RmsSimulationDriver) -> int:
@@ -346,10 +355,11 @@ def _build_rms_example_request(
     :return: Complete RMS attachment request.
     """
 
-    if mode == FmuInterfaceMode.CO_SIMULATION:
-        input_bindings: tuple[FmuRefBinding, ...] = tuple()
-    elif mode == FmuInterfaceMode.MODEL_EXCHANGE:
-        input_bindings = (
+    if (
+        mode == FmuInterfaceMode.CO_SIMULATION
+        or mode == FmuInterfaceMode.MODEL_EXCHANGE
+    ):
+        input_bindings: tuple[FmuRefBinding, ...] = (
             FmuRefBinding(VarPowerFlowReferenceType.Vm, "u"),
         )
     else:
@@ -558,6 +568,9 @@ def execute_rms_fmi_example(
     """
 
     output_dir.mkdir(parents=True, exist_ok=True)
+    time_step_seconds: float = 1.0e-3
+    simulation_time_seconds: float = 3.0e-1
+    event_time_seconds: float = 1.0e-1
 
     # Export exactly once so the native RMS path and the later direct FMPy
     # consumer can be bound to the same archive bytes.
@@ -574,7 +587,7 @@ def execute_rms_fmi_example(
     # actual infinity-norm residual is retained for the row-zero error budget.
     grid: MultiCircuit
     load: Load
-    grid, load = build_rms_example_grid()
+    grid, load = build_rms_example_grid(event_time_seconds=event_time_seconds)
     power_flow_options: PowerFlowOptions = build_example_power_flow_options()
     pf_driver: PowerFlowDriver = PowerFlowDriver(
         grid=grid,
@@ -602,10 +615,9 @@ def execute_rms_fmi_example(
     if load.bus is None:
         raise RuntimeError("The RMS FMI example load is not connected to a bus")
     else:
-        active_power_default, reactive_power_default = _get_bus_power_default(
+        active_power_default, reactive_power_default = _get_load_power_default(
             grid,
-            power_flow_results,
-            load.bus,
+            load,
         )
     request: FmuDeviceAttachmentRequest = _build_rms_example_request(
         fmu_path=fmu_path,
@@ -619,8 +631,8 @@ def execute_rms_fmi_example(
     # Keep the time lattice and nonlinear tolerance explicit because both are
     # part of the comparison proof, not display-only metadata.
     rms_options: RmsOptions = RmsOptions(
-        time_step=1.0e-3,
-        simulation_time=5.0e-3,
+        time_step=time_step_seconds,
+        simulation_time=simulation_time_seconds,
         tolerance=1.0e-6,
         integration_method=DynamicIntegrationMethod.DaeBackEuler,
         max_iter=50,
@@ -653,29 +665,82 @@ def execute_rms_fmi_example(
         np.asarray(rms_driver.results.time_array.asi8, dtype=float) * 1.0e-9
     )
 
-    # ME direct execution must receive the identical accepted voltage samples
-    # used by the native adapter. CS has no voltage input, so it retains none.
-    if mode == FmuInterfaceMode.MODEL_EXCHANGE:
-        vm_candidate: Var | None = load.bus.rms_model.external_mapping.get(
-            VarPowerFlowReferenceType.Vm,
-            None,
+    # Both FMI modes consume the same physical bus-voltage trajectory. Retain
+    # the exact accepted samples so direct FMPy can replay the event excitation.
+    vm_candidate: Var | None = load.bus.rms_model.external_mapping.get(
+        VarPowerFlowReferenceType.Vm,
+        None,
+    )
+    if isinstance(vm_candidate, Var):
+        voltage_magnitude: np.ndarray | None = _get_rms_result_trace(
+            rms_driver,
+            vm_candidate,
+            group_index,
         )
-        if isinstance(vm_candidate, Var):
-            voltage_magnitude: np.ndarray | None = _get_rms_result_trace(
-                rms_driver,
-                vm_candidate,
-                group_index,
-            )
-        else:
-            raise RuntimeError("The RMS ME example did not expose bus voltage magnitude")
     else:
-        voltage_magnitude = None
+        raise RuntimeError("The RMS FMI example did not expose bus voltage magnitude")
+
+    # The solver stores the boundary with the old event value and applies the
+    # step strictly afterward. Validate the exact lattice and a measurable
+    # physical input/output response rather than relying on plot autoscaling.
+    expected_sample_count: int = int(
+        round(simulation_time_seconds / time_step_seconds)
+    ) + 1
+    boundary_indices: np.ndarray = np.flatnonzero(
+        np.abs(time_seconds - event_time_seconds) <= 1.0e-12
+    )
+    post_event_indices: np.ndarray = np.flatnonzero(
+        time_seconds > event_time_seconds
+    )
+    lattice_is_conclusive: bool = bool(
+        time_seconds.size == expected_sample_count
+        and boundary_indices.size == 1
+        and post_event_indices.size > 0
+        and int(boundary_indices[0]) == 100
+        and int(post_event_indices[0]) == 101
+        and abs(float(time_seconds[post_event_indices[0]]) - 1.01e-1) <= 1.0e-12
+    )
+    if lattice_is_conclusive:
+        boundary_index: int = int(boundary_indices[0])
+    else:
+        raise RuntimeError("The RMS event comparison lattice is not conclusive")
+    voltage_response: float = float(
+        np.max(
+            np.abs(
+                voltage_magnitude[post_event_indices]
+                - voltage_magnitude[boundary_index]
+            )
+        )
+    )
+    active_power_response: float = float(
+        np.max(
+            np.abs(
+                active_power[post_event_indices]
+                - active_power[boundary_index]
+            )
+        )
+    )
+    response_is_conclusive: bool = bool(
+        voltage_response >= 1.0e-5
+        and active_power_response >= 1.0e-5
+    )
+    if response_is_conclusive:
+        pass
+    else:
+        raise RuntimeError(
+            "The RMS event did not produce the required measurable response: "
+            f"Vm={voltage_response:.16e}, P={active_power_response:.16e}"
+        )
 
     lines: tuple[str, ...] = (
         f"fmu_path = {fmu_path}",
         f"mode = {request.mode.value}",
         f"power_flow_residual = {power_flow_residual:.16e}",
         f"rms_solver_tolerance = {rms_options.tolerance:.16e}",
+        f"event_time_seconds = {event_time_seconds:.16e}",
+        "event_boundary_semantics = old_value_at_boundary_step_after_boundary",
+        f"post_event_voltage_response = {voltage_response:.16e}",
+        f"post_event_active_power_response = {active_power_response:.16e}",
     ) + _build_rms_results_summary(rms_driver, load)
     written_report_path: Path = write_example_report(report_path, lines)
     return RmsFmiExampleExecution(
@@ -686,6 +751,7 @@ def execute_rms_fmi_example(
         active_power=active_power,
         reactive_power=reactive_power,
         voltage_magnitude=voltage_magnitude,
+        event_time_seconds=event_time_seconds,
         solver_tolerance=rms_options.tolerance,
         power_flow_residual=power_flow_residual,
     )
