@@ -133,15 +133,15 @@ class ScriptingMain(IoMain):
             "  res = drv.results",
             "",
             "Read GUI-completed study results",
-            "  _, res = app.session.power_flow",
-            "  _, res = app.session.power_flow_3ph",
-            "  _, res = app.session.power_flow_ts",
-            "  _, res = app.session.linear_power_flow",
-            "  _, res = app.session.short_circuit",
-            "  _, res = app.session.contingency",
-            "  _, res = app.session.optimal_power_flow",
-            "  _, res = app.session.continuation_power_flow",
-            "  _, res = app.session.stochastic_power_flow",
+            "  drv, res = app.session.power_flow",
+            "  drv, res = app.session.power_flow_3ph",
+            "  drv, res = app.session.power_flow_ts",
+            "  drv, res = app.session.linear_power_flow",
+            "  drv, res = app.session.short_circuit",
+            "  drv, res = app.session.contingency",
+            "  drv, res = app.session.optimal_power_flow",
+            "  drv, res = app.session.continuation_power_flow",
+            "  drv, res = app.session.stochastic_power_flow",
             "",
             "Frequently used result fields",
             "  PF:  res.voltage, res.Sbus, res.Sf, res.St",
@@ -166,10 +166,10 @@ class ScriptingMain(IoMain):
             "=" * 78,
         ]
 
-        # Emit one console row at a time so the GUI console keeps normal line
-        # wrapping and selection behaviour.
+        # Emit the newline explicitly because append_output writes the text as
+        # received.
         for line in help_lines:
-            self.console.append_output(line)
+            self.console.append_output(line + "\n")
 
     def add_console_vars(self):
         """
