@@ -8906,22 +8906,22 @@ You need to load or create a grid!</source>
     <message>
         <location filename="../DeviceEditors/TowerBuilder/tower_builder.ui" line="205"/>
         <source>Wire catalogue</source>
-        <translation>Catálogo de cables</translation>
+        <translation>Catálogo de conductores</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/TowerBuilder/tower_builder.ui" line="265"/>
         <source>Wire composition</source>
-        <translation>Composición de cables</translation>
+        <translation>Composición de conductores</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/TowerBuilder/tower_builder.ui" line="272"/>
         <source>Add wire</source>
-        <translation>Añadir cable</translation>
+        <translation>Añadir conductor</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/TowerBuilder/tower_builder.ui" line="286"/>
         <source>Delete wire</source>
-        <translation>Eliminar cable</translation>
+        <translation>Eliminar conductor</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/TowerBuilder/tower_builder.ui" line="362"/>
@@ -11389,7 +11389,7 @@ You need to load or create a grid!</source>
     </message>
     <message>
         <source>Wire</source>
-        <translation>Cable</translation>
+        <translation>Conductor</translation>
     </message>
     <message>
         <source>Zone</source>

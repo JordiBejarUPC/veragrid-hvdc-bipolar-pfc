@@ -2249,8 +2249,14 @@ class NonLinearOptimalPfProblem:
         Pg[self.gen_nondisp_idx] = np.real(self.Sg_undis)
         Qg[self.gen_nondisp_idx] = np.imag(self.Sg_undis)
 
-        # convert the Lagrange multipliers to significant ones
-        lam_p, lam_q = ips_results.lam[:self.nbus], ips_results.lam[self.nbus: 2 * self.nbus]
+        # The IPS problem uses p.u. balance equations and a scaled objective; undo both factors for economic results.
+        lambda_scale: float = self.objective_scale * self.Sbase
+        if lambda_scale > 0.0:
+            lam_p: Vec = ips_results.lam[:self.nbus] / lambda_scale
+            lam_q: Vec = ips_results.lam[self.nbus: 2 * self.nbus] / lambda_scale
+        else:
+            lam_p = ips_results.lam[:self.nbus]
+            lam_q = ips_results.lam[self.nbus: 2 * self.nbus]
 
         loading = np.abs(self.allSf) / (self.rates + 1e-9)
 

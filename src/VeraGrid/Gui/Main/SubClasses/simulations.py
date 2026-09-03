@@ -21,6 +21,7 @@ from VeraGrid.Gui.Main.SubClasses.Model.time_events import TimeEventsMain
 from VeraGrid.Gui.SigmaAnalysis.sigma_analysis_dialogue import SigmaAnalysisGUI
 from VeraGrid.Gui.ProceduralGrid.procedural_grid import ProceduralGridWindow
 from VeraGrid.Gui.ProceduralGrid.map_warning import MapWarningDialog
+from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, is_dialog_available
 from VeraGrid.Session.session import GcThread
 from VeraGrid.Session.server_driver import RemoteJobDriver
 from VeraGrid.Gui.DynamicEventsDialog.dynamic_events_editor_support import create_dynamic_events_group_with_dialog
@@ -3391,6 +3392,12 @@ class SimulationsMain(TimeEventsMain):
             if not sigma_driver.results.converged:
                 self.show_error_toast("Sigma coefficients did not converge :(")
 
+            old_dialog: SigmaAnalysisGUI | None = self.sigma_dialogue
+            if is_dialog_available(dialog=old_dialog):
+                delete_dialog_safely(dialog=old_dialog)
+            else:
+                pass
+
             self.sigma_dialogue = SigmaAnalysisGUI(parent=self,
                                                    results=sigma_driver.results,
                                                    bus_names=bus_names,
@@ -4425,12 +4432,18 @@ class SimulationsMain(TimeEventsMain):
 
         # Check if the active diagram is NOT a MapWidget
         if current_diagram is None:  # Before it was "if not isinstance(current_diagram, MapWidget):" but it did not work
-            self.map_warning = MapWarningDialog(parent=self)
-            self.map_warning.exec()
+            map_warning: MapWarningDialog = MapWarningDialog(parent=self)
+            try:
+                map_warning.exec()
+            finally:
+                delete_dialog_safely(dialog=map_warning)
             return
 
-        self.procedural_grid_window = ProceduralGridWindow(app=self)
-        self.procedural_grid_window.exec()
+        procedural_grid_window: ProceduralGridWindow = ProceduralGridWindow(app=self)
+        try:
+            procedural_grid_window.exec()
+        finally:
+            delete_dialog_safely(dialog=procedural_grid_window)
 
     def catalogue_element_optimization(self) -> None:
         """

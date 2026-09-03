@@ -28,7 +28,7 @@ def test_proxy_helpers_map_sorted_rows_to_source_objects() -> None:
     """
     Check that sorted proxy rows expose and edit the matching source object.
     """
-    get_qt_app()
+    _unused_application: QtWidgets.QApplication = get_qt_app()
 
     view: QtWidgets.QTableView = QtWidgets.QTableView()
     zulu: Bus = Bus(name="Zulu")
@@ -71,7 +71,7 @@ def test_proxy_exact_column_filter_preserves_edit_mapping() -> None:
     """
     Check that exact column filters expose and edit the matching source object.
     """
-    get_qt_app()
+    _unused_application: QtWidgets.QApplication = get_qt_app()
 
     view: QtWidgets.QTableView = QtWidgets.QTableView()
     zulu: Bus = Bus(name="Zulu")
@@ -128,7 +128,7 @@ def test_column_filter_dialog_uses_icon_only_buttons() -> None:
     """
     Check that the filter popup builds with icon-only action buttons.
     """
-    get_qt_app()
+    _unused_application: QtWidgets.QApplication = get_qt_app()
 
     view: QtWidgets.QTableView = QtWidgets.QTableView()
     bus: Bus = Bus(name="Alpha")
@@ -162,7 +162,7 @@ def test_line_edit_clear_action_uses_filter_popup_icon() -> None:
     """
     Check that line edits use the same clear icon as the filter popup.
     """
-    get_qt_app()
+    _unused_application: QtWidgets.QApplication = get_qt_app()
 
     line_edit: QtWidgets.QLineEdit = QtWidgets.QLineEdit()
     action: QtGui.QAction = set_line_edit_clear_action(line_edit=line_edit)
@@ -188,7 +188,7 @@ def test_column_filter_dialog_cancel_clears_filter() -> None:
     """
     Check that the cancel/X action removes the active column filter.
     """
-    get_qt_app()
+    _unused_application: QtWidgets.QApplication = get_qt_app()
 
     view: QtWidgets.QTableView = QtWidgets.QTableView()
     zulu: Bus = Bus(name="Zulu")
@@ -236,7 +236,7 @@ def test_sorted_column_header_has_sort_indicator() -> None:
     """
     Check that sorted object columns expose a header indicator like filters.
     """
-    get_qt_app()
+    _unused_application: QtWidgets.QApplication = get_qt_app()
 
     view: QtWidgets.QTableView = QtWidgets.QTableView()
     header: HeaderViewWithWordWrap = HeaderViewWithWordWrap(view)

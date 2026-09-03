@@ -15,6 +15,7 @@ from VeraGrid.Gui.messages import error_msg, warning_msg, yes_no_question
 from VeraGrid.Gui.Main.SubClasses.simulations import SimulationsMain
 from VeraGrid.Gui.results_model import ResultsModel
 from VeraGrid.Gui.general_dialogues import fill_tree_from_logs
+from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely
 import VeraGridEngine.Utils.Filtering as flt
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.enumerations import (ResultTypes, SimulationTypes, PlotSimulationType, DynamicPlotEntryKind,
@@ -591,22 +592,25 @@ class ResultsMain(SimulationsMain):
             layout.addWidget(mode_label)
             layout.addWidget(mode_combo)
             layout.addWidget(buttons)
-            accepted: bool = dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted
-            if accepted:
-                group_name: str = name_edit.text()
-                selected_mode_data: object = mode_combo.currentData()
-                selected_mode: DynamicPlotMode = DynamicPlotMode.TIME_SERIES
-                if isinstance(selected_mode_data, DynamicPlotMode):
-                    selected_mode = selected_mode_data
+            try:
+                accepted: bool = dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted
+                if accepted:
+                    group_name: str = name_edit.text()
+                    selected_mode_data: object = mode_combo.currentData()
+                    selected_mode: DynamicPlotMode = DynamicPlotMode.TIME_SERIES
+                    if isinstance(selected_mode_data, DynamicPlotMode):
+                        selected_mode = selected_mode_data
+                    else:
+                        pass
+                    created: bool = self.dynamic_results_handler.create_plot_group(name=group_name, mode=selected_mode)
+                    if created:
+                        self.ui.dynamicsPlotsTreeView.expandAll()
+                    else:
+                        self.show_warning_toast(self.tr("The plot group name is empty or already exists."))
                 else:
                     pass
-                created: bool = self.dynamic_results_handler.create_plot_group(name=group_name, mode=selected_mode)
-                if created:
-                    self.ui.dynamicsPlotsTreeView.expandAll()
-                else:
-                    self.show_warning_toast(self.tr("The plot group name is empty or already exists."))
-            else:
-                pass
+            finally:
+                delete_dialog_safely(dialog=dialog)
         else:
             self.show_warning_toast(self.tr("There are no RMS dynamics results loaded."))
 

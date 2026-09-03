@@ -147,9 +147,20 @@ class VeraGridMainGUI(ScriptingMain):
         """
         Save all configuration files needed
         """
-        self.save_gui_config()
-        self.save_server_config()
-        self.save_ai_config()
+        try:
+            self.save_gui_config()
+        except OSError as error:
+            print(f"Could not save GUI config: {error}")
+
+        try:
+            self.save_server_config()
+        except OSError as error:
+            print(f"Could not save server config: {error}")
+
+        try:
+            self.save_ai_config()
+        except OSError as error:
+            print(f"Could not save AI config: {error}")
 
     def load_all_config(self) -> None:
         """
