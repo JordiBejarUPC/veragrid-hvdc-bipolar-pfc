@@ -11473,7 +11473,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         uid_to_blockitem: Dict[
             int,
             graph.BlockItem | graph.GenericBlockItem | graph.RoundBaseArithmeticOpItem |
-            graph.RectBaseArithmeticOpItem | graph.UnOpItem | graph.PairedItem,
+            graph.RectBaseArithmeticOpItem | graph.UnOpItem | graph.PairedItem | graph.MeasurementsItem,
         ] = dict()
         signal_in_items: List[graph.PairedItem] = list()
         signal_out_items: List[graph.PairedItem] = list()
@@ -11513,6 +11513,22 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                   graph.GenericBlockItem | None = None
 
             if block_type == BlockType.INPUT_CONN or block_type == BlockType.OUTPUT_CONN:
+
+                # item_name: str = f"{block_type.name}"
+                # block_model: Block = Block(name= item_name)
+                # block_model.uid = uid
+                #
+                # var: Var
+                # if block_type == BlockType.INPUT_CONN:
+                #     for var in self.main_block.in_vars:
+                #         block_model.out_vars.append(var)
+                #
+                # elif block_type == BlockType.OUTPUT_CONN:
+                #     for var in self.main_block.out_vars:
+                #         block_model.in_vars.append(var)
+                #
+                # else:
+                #     pass
                 # repaired_wrapper: Block | None = self._build_root_interface_wrapper_block(
                 #     block_type=block_type,
                 #     fallback_block_model=block_model,
@@ -11537,28 +11553,28 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 #         self.main_block.add(block_model)
 
                 # Diagram endpoints always reference the wrapper block UID.
-                node.device_uid = uid
-                node.name = block_model.name
-                register_legacy_interface_uid_alias(
-                    aliases=legacy_interface_uid_aliases,
-                    old_uid=persisted_node_uid,
-                    repaired_uid=uid,
-                )
-                register_legacy_interface_uid_alias(
-                    aliases=legacy_interface_uid_aliases,
-                    old_uid=persisted_block_uid,
-                    repaired_uid=uid,
-                )
-
-                interface_var: Var | None = get_single_interface_var(block_model)
-                if interface_var is not None:
-                    register_legacy_interface_uid_alias(
-                        aliases=legacy_interface_uid_aliases,
-                        old_uid=interface_var.uid,
-                        repaired_uid=uid,
-                    )
-                else:
-                    pass
+                # node.device_uid = uid
+                # node.name = block_model.name
+                # register_legacy_interface_uid_alias(
+                #     aliases=legacy_interface_uid_aliases,
+                #     old_uid=persisted_node_uid,
+                #     repaired_uid=uid,
+                # )
+                # register_legacy_interface_uid_alias(
+                #     aliases=legacy_interface_uid_aliases,
+                #     old_uid=persisted_block_uid,
+                #     repaired_uid=uid,
+                # )
+                #
+                # interface_var: Var | None = get_single_interface_var(block_model)
+                # if interface_var is not None:
+                #     register_legacy_interface_uid_alias(
+                #         aliases=legacy_interface_uid_aliases,
+                #         old_uid=interface_var.uid,
+                #         repaired_uid=uid,
+                #     )
+                # else:
+                #     pass
 
                 block_item: graph.MeasurementsItem = graph.MeasurementsItem(
                     editor=self,
@@ -11573,7 +11589,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 block_item.recolour()
                 self.scene.addItem(block_item)
                 block_item.setPos(QPointF(node.x, node.y))
-                uid_to_blockitem[uid] = block_item
+                uid_to_blockitem[node.device_uid] = block_item
 
                 current_count: int = self.block_counters.get(block_type, 0) + 1
                 self.block_counters[block_type] = current_count
