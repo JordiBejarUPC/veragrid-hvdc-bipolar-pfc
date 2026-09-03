@@ -2317,7 +2317,14 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             pass
 
         if can_open:
-            self.close_block_properties_dock()
+            previous_properties_closed: bool = self.close_block_properties_dock()
+            if not previous_properties_closed:
+                # The existing editor owns an unapplied transaction and its
+                # discard confirmation was cancelled. Do not replace it with
+                # another block's properties page.
+                return
+            else:
+                pass
             dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
                 block=block,
                 block_type_name=block_type_name,
@@ -2352,10 +2359,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self._block_properties_dialogue = dialogue
             self._block_properties_dock = properties_dock
 
-            # Register a legal right-side slot before floating the dock. Qt can
-            # then show its native draggable title bar immediately and restore
-            # it below the fixed Library when the user drags it back to the
-            # editor's right edge.
+            # Register a legal right-side slot so the freely movable editor can
+            # be docked back into the Dynamic Editor whenever the user chooses.
             self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, properties_dock)
             if self._library_dock is not None:
                 self.splitDockWidget(
@@ -2622,16 +2627,17 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-    def close_block_properties_dock(self) -> None:
+    def close_block_properties_dock(self) -> bool:
         """Close the active property dock before opening another one.
 
-        :return: None.
+        :return: Whether no dock remains or its close request was accepted.
         """
         properties_dock: DynamicBlockPropertiesDockWidget | None = self._block_properties_dock
         if properties_dock is not None:
-            properties_dock.close()
+            closed: bool = properties_dock.close()
         else:
-            pass
+            closed = True
+        return closed
 
     @QtCore.Slot()
     def on_block_properties_dock_closed(self) -> None:
@@ -10359,9 +10365,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     @QtCore.Slot(object)
     def on_block_properties_applied(self, block_uid: int) -> None:
         """
-        Mark a validated modal edit as dirty without rebuilding unchanged graphics.
+        Mark a validated Block Properties edit as dirty and refresh its graphics.
 
-        :param block_uid: Identity of the block changed by the modal dialogue.
+        :param block_uid: Identity of the block changed by Block Properties.
         :return: None.
         """
         self.mark_unapplied_changes()
@@ -11893,7 +11899,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             pass
 
         self._prepared_to_delete = True
-        # Close modeless property tooling before any of the model or scene
+        # Close property tooling before any of the model or scene
         # objects referenced by its signals are dismantled.
         self._dispose_block_properties_dock()
 
