@@ -44,6 +44,7 @@ from VeraGrid.Gui.DynamicEventsDialog.dynamic_events_editor_support import Switc
 from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.jmarti_line_emt_dialog import JMartiLineEmtDialog
 from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.lookup_table_dialog import LookupArrayLinearDialog
 from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.lookup_table_dialog import LookupMatrixLinearDialog
+from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.measurements_dialog import MeasurementsDialog
 from VeraGrid.Gui.DynamicModelEditor.detachable_editor_tabs_widget import DynamicEditorPickerDialog
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_properties import DynamicBlockPropertiesDialog
@@ -119,6 +120,7 @@ from VeraGridEngine.enumerations import BlockType
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.enumerations import DynamicSimulationMode
 from VeraGridEngine.enumerations import DynEditorGraphicsModes
+from VeraGridEngine.enumerations import VarPowerFlowReferenceType
 from VeraGridEngine.enumerations import WaveformSequenceType
 
 
@@ -153,6 +155,7 @@ class DialogSmokeTarget(Enum):
     JMARTI_LINE_EMT = "JMartiLineEmtDialog"
     LOOKUP_ARRAY_LINEAR = "LookupArrayLinearDialog"
     LOOKUP_MATRIX_LINEAR = "LookupMatrixLinearDialog"
+    MEASUREMENTS = "MeasurementsDialog"
     DYNAMIC_BLOCK_EDITOR = "DynamicBlockEditorGUI"
     DYNAMIC_BLOCK_PROPERTIES = "DynamicBlockPropertiesDialog"
     DYNAMIC_EDITOR_PICKER = "DynamicEditorPickerDialog"
@@ -594,6 +597,8 @@ def build_smoke_circuit() -> vge.MultiCircuit:
     circuit.add_controllable_shunt(bus=bus_to, api_obj=shunt)
     substation: vge.Substation = vge.Substation(name="Substation")
     circuit.add_substation(substation)
+    rms_events_group: vge.RmsEventsGroup = vge.RmsEventsGroup(name="RMS events")
+    circuit.add_rms_events_group(rms_events_group)
 
     return circuit
 
@@ -717,9 +722,7 @@ def build_dialog_for_smoke(target: DialogSmokeTarget, context: DialogSmokeContex
     elif target == DialogSmokeTarget.DYNAMIC_EVENT_EDITOR:
         dialog = DynamicEventEditor(
             circuit=circuit,
-            parameters_list=list(),
-            target_device_name="Generator",
-            mode=DynamicSimulationMode.RMS,
+            preferred_mode=DynamicSimulationMode.RMS,
         )
     elif target == DialogSmokeTarget.SWITCH_SEQUENCE:
         dialog = SwitchSequenceDialog(mode_parameters=list(), events_groups=list())
@@ -731,6 +734,17 @@ def build_dialog_for_smoke(target: DialogSmokeTarget, context: DialogSmokeContex
         dialog = LookupArrayLinearDialog(block_label="Lookup")
     elif target == DialogSmokeTarget.LOOKUP_MATRIX_LINEAR:
         dialog = LookupMatrixLinearDialog(block_label="Lookup")
+    elif target == DialogSmokeTarget.MEASUREMENTS:
+        measurements: Dict[str, Dict[BlockType, List[VarPowerFlowReferenceType]]] = dict()
+        ac_measurements: Dict[BlockType, List[VarPowerFlowReferenceType]] = dict()
+        voltage_references: List[VarPowerFlowReferenceType] = list()
+        voltage_references.append(VarPowerFlowReferenceType.Vm)
+        ac_measurements[BlockType.MEASUREMENTS_VOLTAGE_ANGLE] = voltage_references
+        measurements["a_c_bus"] = ac_measurements
+        dialog = MeasurementsDialog(
+            buses=circuit.buses,
+            measurement_vars_dict=measurements,
+        )
     elif target == DialogSmokeTarget.DYNAMIC_BLOCK_EDITOR:
         root_block: Block = Block(name="Root")
         dialog = DynamicBlockEditorGUI(
@@ -984,9 +998,11 @@ def run_dialog_smoke_suite_in_child(message_queue: Any) -> None:
     target: DialogSmokeTarget
     for target in DialogSmokeTarget:
         context: DialogSmokeContext = DialogSmokeContext(app=app)
-        dialog: QtWidgets.QWidget = build_dialog_for_smoke(target=target, context=context)
+        dialog: QtWidgets.QWidget | None = None
+        message_queue.put(target.value)
 
         try:
+            dialog = build_dialog_for_smoke(target=target, context=context)
             dialog.show()
             app.processEvents()
             assert shiboken6.isValid(dialog)
@@ -994,7 +1010,10 @@ def run_dialog_smoke_suite_in_child(message_queue: Any) -> None:
             message_queue.put(f"{target.value}\n{traceback.format_exc()}")
             raise
         finally:
-            close_dialog_for_smoke(dialog=dialog, app=app)
+            if dialog is None:
+                pass
+            else:
+                close_dialog_for_smoke(dialog=dialog, app=app)
 
         active_modal_widget: QtWidgets.QWidget | None = app.activeModalWidget()
         if active_modal_widget is None:
@@ -1021,21 +1040,22 @@ def run_dialog_smoke_suite_subprocess(timeout_s: float) -> None:
     process.start()
     process.join(timeout_s)
 
+    message: str = ""
+    try:
+        while True:
+            queued_message: object = message_queue.get_nowait()
+            if isinstance(queued_message, str):
+                message = queued_message
+            else:
+                message = repr(queued_message)
+    except queue.Empty:
+        pass
+
     if process.is_alive():
         process.terminate()
         process.join(10.0)
-        raise AssertionError(f"Dialog smoke subprocess timed out after {timeout_s} seconds")
+        raise AssertionError(f"Dialog smoke subprocess timed out after {timeout_s} seconds: {message}")
     else:
-        pass
-
-    message: str = ""
-    try:
-        queued_message: object = message_queue.get_nowait()
-        if isinstance(queued_message, str):
-            message = queued_message
-        else:
-            message = repr(queued_message)
-    except queue.Empty:
         pass
 
     assert process.exitcode == 0, message

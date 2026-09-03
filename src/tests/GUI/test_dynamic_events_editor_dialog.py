@@ -83,7 +83,7 @@ def test_selected_device_opens_requested_page_with_tree_collapsed() -> None:
 
     :return: None.
     """
-    get_qt_application()
+    _unused_application: QtWidgets.QApplication = get_qt_application()
     circuit, load, _parameter, _group = build_dynamic_target(DynamicSimulationMode.RMS)
     dialog: DynamicEventEditor = DynamicEventEditor(
         circuit=circuit,
@@ -103,7 +103,7 @@ def test_no_selected_device_opens_general_tree() -> None:
 
     :return: None.
     """
-    get_qt_application()
+    _unused_application: QtWidgets.QApplication = get_qt_application()
     circuit, _load, _parameter, _group = build_dynamic_target(DynamicSimulationMode.EMT)
     dialog: DynamicEventEditor = DynamicEventEditor(
         circuit=circuit,
@@ -120,7 +120,7 @@ def test_empty_model_page_keeps_existing_events_visible_and_disables_add() -> No
 
     :return: None.
     """
-    get_qt_application()
+    _unused_application: QtWidgets.QApplication = get_qt_application()
     circuit, load, parameter, group = build_dynamic_target(
         DynamicSimulationMode.RMS,
         empty_model=True,
@@ -153,7 +153,7 @@ def test_empty_model_message_is_page_specific_and_uses_block_empty_state() -> No
 
     :return: None.
     """
-    get_qt_application()
+    _unused_application: QtWidgets.QApplication = get_qt_application()
     circuit, load, _parameter, _group = build_dynamic_target(
         DynamicSimulationMode.RMS,
         empty_model=True,
@@ -182,7 +182,7 @@ def test_add_event_expands_group_selects_row_and_starts_editing() -> None:
 
     :return: None.
     """
-    get_qt_application()
+    _unused_application: QtWidgets.QApplication = get_qt_application()
     circuit, load, _parameter, _group = build_dynamic_target(DynamicSimulationMode.RMS)
     dialog: DynamicEventEditor = DynamicEventEditor(
         circuit=circuit,
@@ -207,7 +207,7 @@ def test_page_filters_events_by_device_but_displays_every_group() -> None:
 
     :return: None.
     """
-    get_qt_application()
+    _unused_application: QtWidgets.QApplication = get_qt_application()
     circuit, first_load, parameter, group = build_dynamic_target(DynamicSimulationMode.EMT)
     assert isinstance(group, EmtEventsGroup)
     second_bus: vge.Bus = vge.Bus(name="Second bus", Vnom=10.0)
@@ -238,7 +238,7 @@ def test_dragging_event_to_another_group_moves_draft_and_save_persists_it() -> N
 
     :return: None.
     """
-    get_qt_application()
+    _unused_application: QtWidgets.QApplication = get_qt_application()
     circuit, load, parameter, source_group = build_dynamic_target(DynamicSimulationMode.RMS)
     assert isinstance(source_group, RmsEventsGroup)
     target_group: RmsEventsGroup = RmsEventsGroup(name="RMS target group", active=False)
@@ -304,7 +304,7 @@ def test_event_drop_rejects_invalid_targets_and_close_discards_valid_move() -> N
 
     :return: None.
     """
-    get_qt_application()
+    _unused_application: QtWidgets.QApplication = get_qt_application()
     circuit, load, parameter, source_group = build_dynamic_target(DynamicSimulationMode.EMT)
     assert isinstance(source_group, EmtEventsGroup)
     target_group: EmtEventsGroup = EmtEventsGroup(name="EMT target group")
@@ -378,7 +378,7 @@ def test_group_active_and_rename_are_transactional() -> None:
 
     :return: None.
     """
-    get_qt_application()
+    _unused_application: QtWidgets.QApplication = get_qt_application()
     circuit, load, _parameter, group = build_dynamic_target(DynamicSimulationMode.RMS)
     assert isinstance(group, RmsEventsGroup)
     cancelled_dialog: DynamicEventEditor = DynamicEventEditor(
@@ -448,7 +448,7 @@ def test_group_removal_cascades_events_across_devices_on_save() -> None:
 
     :return: None.
     """
-    get_qt_application()
+    _unused_application: QtWidgets.QApplication = get_qt_application()
     circuit, load, parameter, group = build_dynamic_target(DynamicSimulationMode.EMT)
     assert isinstance(group, EmtEventsGroup)
     circuit.add_emt_event(vge.EmtEvent(device=load, parameter=parameter, time=1.0, value=1.0, group=group))
@@ -471,7 +471,7 @@ def test_align_step_checkbox_accepts_qt_check_state_enum() -> None:
 
     :return: None.
     """
-    get_qt_application()
+    _unused_application: QtWidgets.QApplication = get_qt_application()
     circuit, load, _parameter, group = build_dynamic_target(DynamicSimulationMode.EMT)
     assert isinstance(group, EmtEventsGroup)
     mode_parameter: Var = VarFactory().add_var("switch_closed_mode_test")
@@ -511,7 +511,7 @@ def test_tabs_are_unique_per_device_and_mode() -> None:
 
     :return: None.
     """
-    get_qt_application()
+    _unused_application: QtWidgets.QApplication = get_qt_application()
     circuit, load, _parameter, _group = build_dynamic_target(DynamicSimulationMode.RMS)
     emt_group: EmtEventsGroup = EmtEventsGroup(name="EMT group")
     circuit.add_emt_events_group(emt_group)
@@ -538,7 +538,7 @@ def test_save_button_and_event_controls_use_new_workspace_contract() -> None:
 
     :return: None.
     """
-    get_qt_application()
+    _unused_application: QtWidgets.QApplication = get_qt_application()
     circuit, load, _parameter, _group = build_dynamic_target(DynamicSimulationMode.RMS)
     dialog: DynamicEventEditor = DynamicEventEditor(
         circuit=circuit,
@@ -573,7 +573,7 @@ def test_draft_validation_rejects_overlapping_events() -> None:
 
     :return: None.
     """
-    get_qt_application()
+    _unused_application: QtWidgets.QApplication = get_qt_application()
     circuit, load, _parameter, _group = build_dynamic_target(DynamicSimulationMode.RMS)
     dialog: DynamicEventEditor = DynamicEventEditor(
         circuit=circuit,
