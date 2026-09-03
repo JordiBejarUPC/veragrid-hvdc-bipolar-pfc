@@ -83,6 +83,11 @@ from VeraGridEngine.Templates.BasicBlockCatalog import (
     load_basic_block_catalog_template,
 )
 from VeraGridEngine.Templates.BasicBlockCatalog.predefined_blocks import generic
+from VeraGridEngine.Templates.ProceduralLogicCatalog import (
+    ProceduralBlockTemplateDescriptor,
+    build_procedural_block_catalog_template,
+    get_procedural_block_template_descriptors,
+)
 
 
 def get_qt_application() -> QtWidgets.QApplication:
@@ -2083,6 +2088,7 @@ def test_every_phase_selective_builder_defaults_to_abc_without_neutral() -> None
         ("Genrow rms template", "RMS\\genrou_genrow.md"),
         ("Line_rms_template", "RMS\\line.md"),
         ("Load rms template", "RMS\\load.md"),
+        ("Voltage source RMS template", "RMS\\voltage_source.md"),
         ("PVD1 DC-MPPT RMS template", "RMS\\distributed_pv.md"),
         ("ESD1 RMS template", "RMS\\battery.md"),
         ("rms_trafo_template", "RMS\\2w_transformer.md"),
@@ -2192,6 +2198,30 @@ def test_every_basic_catalogue_template_resolves_its_own_markdown() -> None:
         ), descriptor.display_label
 
 
+def test_procedural_template_documentation_uses_engine_logic_type_after_rename() -> None:
+    """Procedural Block info must survive user-visible block renaming.
+
+    :return: None.
+    """
+    descriptor: ProceduralBlockTemplateDescriptor
+    for descriptor in get_procedural_block_template_descriptors():
+        template: EmtModelTemplate = build_procedural_block_catalog_template(
+            descriptor=descriptor,
+            var_factory=VarFactory(),
+        )
+        template.block.name = "User renamed procedural block"
+        documentation_url: str | None = resolve_block_documentation_url(
+            BlockType.PROCEDURAL_LOGIC.name,
+            template.block.name,
+            template.block,
+        )
+
+        assert documentation_url is not None
+        assert documentation_url.endswith(
+            f"procedural_logic/{descriptor.logic_tpe.value}.html"
+        )
+
+
 @pytest.mark.parametrize("block_type, page_name", (
     (BlockType.GFL_VSC_HVDC_RMS, "hvdc_vsc_gfl"),
     (BlockType.VSC_PLL_RMS, "vsc_pll"),
@@ -2204,6 +2234,7 @@ def test_every_basic_catalogue_template_resolves_its_own_markdown() -> None:
     (BlockType.VSC_DC_LINK_RMS, "vsc_dc_link"),
     (BlockType.VSC_TERMINAL_POWER_RMS, "vsc_terminal_power"),
     (BlockType.DC_LINE_RMS, "dc_line"),
+    (BlockType.VOLTAGE_SOURCE_RMS, "voltage_source"),
 ))
 def test_rms_component_block_info_uses_native_type_after_rename(
         block_type: BlockType,

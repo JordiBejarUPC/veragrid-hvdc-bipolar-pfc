@@ -18,6 +18,10 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_block_properties import DynamicBloc
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Templates.BasicBlockCatalog import BasicBlockTemplateDescriptor
 from VeraGridEngine.Templates.BasicBlockCatalog import get_basic_block_catalog_descriptor_by_key
+from VeraGridEngine.Templates.ProceduralLogicCatalog import (
+    ProceduralBlockTemplateDescriptor,
+    get_procedural_block_template_descriptors,
+)
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import BlockType
 from VeraGridEngine.enumerations import DynamicSimulationMode
@@ -368,6 +372,71 @@ def test_proxy_drag_payload_materializes_catalog_template() -> None:
     assert len(editor.main_block.children) == children_before + 1
     assert block_item.subsys is editor.main_block.children[-1]
     assert block_item.subsys.name == "movingavg__77"
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+@pytest.mark.parametrize("mode", (DynamicSimulationMode.RMS, DynamicSimulationMode.EMT))
+def test_procedural_logic_branch_exposes_every_engine_descriptor(
+        mode: DynamicSimulationMode,
+) -> None:
+    """RMS and EMT libraries must expose the same native procedural primitives.
+
+    :param mode: Dynamic editor mode under inspection.
+    :return: None.
+    """
+    editor: DynamicBlockEditorGUI = _build_editor(mode)
+    procedural_root: QtCore.QModelIndex = _find_index_by_label(
+        editor.library.library_model,
+        "Procedural logic",
+    )
+    assert procedural_root.isValid()
+    descriptor: ProceduralBlockTemplateDescriptor
+    for descriptor in get_procedural_block_template_descriptors():
+        source_index: QtCore.QModelIndex = _find_index_by_label(
+            editor.library.library_model,
+            descriptor.display_label,
+            procedural_root,
+        )
+        assert source_index.isValid(), descriptor.display_label
+        payload: object = source_index.data(editor.block_role)
+        assert isinstance(payload, ProceduralBlockTemplateDescriptor)
+        assert payload.logic_tpe == descriptor.logic_tpe
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_procedural_library_double_click_materializes_canvas_block() -> None:
+    """A procedural leaf double-click must use the normal template creation path.
+
+    :return: None.
+    """
+    editor: DynamicBlockEditorGUI = _build_editor(DynamicSimulationMode.EMT)
+    descriptor: ProceduralBlockTemplateDescriptor = list(
+        get_procedural_block_template_descriptors()
+    )[0]
+    procedural_root: QtCore.QModelIndex = _find_index_by_label(
+        editor.library.library_model,
+        "Procedural logic",
+    )
+    assert procedural_root.isValid()
+    source_index: QtCore.QModelIndex = _find_index_by_label(
+        editor.library.library_model,
+        descriptor.display_label,
+        procedural_root,
+    )
+    proxy_index: QtCore.QModelIndex = editor.library_proxy_model.mapFromSource(source_index)
+    children_before: int = len(editor.main_block.children)
+
+    editor.on_library_item_double_clicked(proxy_index)
+
+    assert len(editor.main_block.children) == children_before + 1
+    inserted_block: Block = editor.main_block.children[-1]
+    assert len(inserted_block.procedural_logic) == 1
+    assert inserted_block.procedural_logic[0].logic_tpe == descriptor.logic_tpe
+    assert editor.diagram.node_data[inserted_block.uid].tpe == BlockType.PROCEDURAL_LOGIC.name
 
     editor.has_unapplied_changes = False
     editor.close()

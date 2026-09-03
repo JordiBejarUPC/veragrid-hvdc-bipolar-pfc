@@ -36,6 +36,10 @@ from VeraGridEngine.Templates.BasicBlockCatalog.predefined_blocks import signal_
 from VeraGridEngine.Templates.BasicBlockCatalog import BasicBlockTemplateDescriptor
 
 from VeraGridEngine.Templates.BasicBlockCatalog import load_basic_block_catalog_template
+from VeraGridEngine.Templates.ProceduralLogicCatalog import (
+    ProceduralBlockTemplateDescriptor,
+    build_procedural_block_catalog_template,
+)
 
 import VeraGridEngine.Templates.BasicBlockCatalog as BasicBlockTemplates
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
@@ -189,6 +193,14 @@ class SignalPairOutputClipboardEntry:
 
 
 CanvasClipboardEntry: TypeAlias = BlockClipboardEntry | SignalPairOutputClipboardEntry
+DynamicLibraryPayload: TypeAlias = (
+    BlockType
+    | BasicBlockTemplateDescriptor
+    | ProceduralBlockTemplateDescriptor
+    | RmsModelTemplate
+    | EmtModelTemplate
+    | FmuTemplate
+)
 
 
 def block_has_internal_equation_content(block: Block) -> bool:
@@ -1811,6 +1823,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.libraryTreeView.setDragEnabled(True)
         self.ui.libraryTreeView.setHeaderHidden(False)
         self.ui.libraryTreeView.setUniformRowHeights(True)
+        self.ui.libraryTreeView.doubleClicked.connect(self.on_library_item_double_clicked)
 
         self.ui.librarySearchLineEdit.setVisible(True)
         self.ui.librarySearchLineEdit.setClearButtonEnabled(True)
@@ -2636,13 +2649,48 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
     def reset_library_tree_expansion(self) -> None:
         """
-        Restore the default expansion depth for the library tree.
+        Restore the default expansion state for the library tree.
+
+        The first two levels remain visible for the established Library
+        branches. Procedural logic is the exception: its named behavior groups
+        provide enough context while collapsed and otherwise expose every
+        primitive at once, making the tree unnecessarily long.
 
         :return: None.
         """
 
         self.ui.libraryTreeView.collapseAll()
         self.ui.libraryTreeView.expandToDepth(1)
+
+        # Keep the Procedural logic root visible while folding its four
+        # behavior groups. Users can then open only the family they need.
+        top_level_row: int
+        for top_level_row in range(self.library_proxy_model.rowCount()):
+            top_level_index: QtCore.QModelIndex = self.library_proxy_model.index(
+                top_level_row,
+                0,
+            )
+            top_level_label: str = str(
+                self.library_proxy_model.data(
+                    top_level_index,
+                    QtCore.Qt.ItemDataRole.DisplayRole,
+                )
+            )
+            if top_level_label == "Procedural logic":
+                procedural_group_row: int
+                for procedural_group_row in range(
+                        self.library_proxy_model.rowCount(top_level_index)
+                ):
+                    procedural_group_index: QtCore.QModelIndex = (
+                        self.library_proxy_model.index(
+                            procedural_group_row,
+                            0,
+                            top_level_index,
+                        )
+                    )
+                    self.ui.libraryTreeView.collapse(procedural_group_index)
+            else:
+                pass
 
     def on_library_search_text_changed(self, text: str) -> None:
         """
@@ -2659,8 +2707,54 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             self.reset_library_tree_expansion()
 
+    @QtCore.Slot(QtCore.QModelIndex)
+    def on_library_item_double_clicked(self, proxy_index: QtCore.QModelIndex) -> None:
+        """Insert one double-clicked Library leaf at the visible canvas center.
+
+        Branch rows carry no supported payload and therefore retain their
+        normal expand/collapse behavior. Leaf rows use the same materialization
+        path as drag-and-drop, ensuring both interactions create equivalent
+        symbolic blocks with fresh variable identities.
+
+        :param proxy_index: Double-clicked index in the filtered Library model.
+        :return: None.
+        """
+        if proxy_index.isValid():
+            source_index: QtCore.QModelIndex = self.library_proxy_model.mapToSource(proxy_index)
+            payload_data: object = self.library.library_model.data(
+                source_index,
+                self.library.block_role,
+            )
+            if isinstance(
+                    payload_data,
+                    (
+                        BlockType,
+                        BasicBlockTemplateDescriptor,
+                        ProceduralBlockTemplateDescriptor,
+                        RmsModelTemplate,
+                        EmtModelTemplate,
+                        FmuTemplate,
+                    ),
+            ):
+                viewport_center: QtCore.QPoint = self.view.viewport().rect().center()
+                scene_position: QtCore.QPointF = self.view.mapToScene(viewport_center)
+                block_item: DynamicBlockGraphicsItem | graph.MeasurementsItem | None = \
+                    self.create_library_payload_item(
+                    payload=payload_data,
+                    x_pos=scene_position.x(),
+                    y_pos=scene_position.y(),
+                )
+                if block_item is not None:
+                    block_item.recolour()
+                else:
+                    pass
+            else:
+                pass
+        else:
+            pass
+
     def get_library_payload_from_mime_data(self,
-                                           mime_data: QtCore.QMimeData) -> BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | None:
+                                           mime_data: QtCore.QMimeData) -> DynamicLibraryPayload | None:
         """
         Decode the dragged library payload from the tree-view mime payload.
 
@@ -2675,7 +2769,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             payload = self.library.library_model.get_drag_payload(drag_token)
 
             if isinstance(payload,
-                          (BlockType, BasicBlockTemplateDescriptor, RmsModelTemplate, EmtModelTemplate, FmuTemplate)):
+                          (BlockType, BasicBlockTemplateDescriptor, ProceduralBlockTemplateDescriptor,
+                           RmsModelTemplate, EmtModelTemplate, FmuTemplate)):
                 return payload
             else:
                 return None
@@ -3818,17 +3913,24 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     def create_template_block_item(self,
                                    template: RmsModelTemplate | EmtModelTemplate | FmuTemplate,
                                    x_pos: float,
-                                   y_pos: float) -> graph.BlockItem | graph.GenericBlockItem | None:
+                                   y_pos: float,
+                                   block_type: BlockType | None = None,
+                                   ) -> graph.BlockItem | graph.GenericBlockItem | None:
         """
         Create and place a copied template block in the canvas scene.
 
         :param template:
         :param x_pos:
         :param y_pos:
+        :param block_type: Optional persistent native type for specialized templates.
         :return:
         """
         item_name: str = template.name
         block_model: Block = duplicate_block(template.block, var_factory=self.var_factory)
+        if block_type is not None:
+            self._block2blocktype[block_model.uid] = block_type
+        else:
+            pass
         self.main_block.add(block_model)
         item: graph.GenericBlockItem = graph.GenericBlockItem(
             editor=self,
@@ -3847,11 +3949,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         item.setPos(QtCore.QPointF(x_pos, y_pos))
         self.scene.addItem(item)
 
+        if block_type is None:
+            diagram_node_type: str = graph.EditorGraphicsCommonFeatures.TEMPLATE_NODE_TYPE
+        else:
+            diagram_node_type = block_type.name
         self.diagram.add_node(
             name=item_name,
             x=x_pos,
             y=y_pos,
-            tpe=graph.EditorGraphicsCommonFeatures.TEMPLATE_NODE_TYPE,
+            tpe=diagram_node_type,
             device_uid=block_model.uid
         )
 
@@ -4087,7 +4193,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     # TODO: create PV power plant block item
 
     def create_library_payload_item(self,
-                                    payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate,
+                                    payload: DynamicLibraryPayload,
                                     x_pos: float,
                                     y_pos: float) -> graph.BlockItem | graph.MeasurementsItem | graph.GenericBlockItem | graph.RoundBaseArithmeticOpItem | graph.RectBaseArithmeticOpItem | graph.PairedItem | None:
         """
@@ -4124,6 +4230,18 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         elif isinstance(payload, BasicBlockTemplateDescriptor):
             template: EmtModelTemplate = load_basic_block_catalog_template(payload, self.var_factory)
             return self.create_template_block_item(template=template, x_pos=x_pos, y_pos=y_pos)
+
+        elif isinstance(payload, ProceduralBlockTemplateDescriptor):
+            procedural_template: EmtModelTemplate = build_procedural_block_catalog_template(
+                descriptor=payload,
+                var_factory=self.var_factory,
+            )
+            return self.create_template_block_item(
+                template=procedural_template,
+                x_pos=x_pos,
+                y_pos=y_pos,
+                block_type=BlockType.PROCEDURAL_LOGIC,
+            )
 
         elif isinstance(payload, (RmsModelTemplate, EmtModelTemplate, FmuTemplate)):
             return self.create_template_block_item(template=payload, x_pos=x_pos, y_pos=y_pos)
@@ -11820,7 +11938,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param event:
         :return:
         """
-        payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | None = self.get_library_payload_from_mime_data(
+        payload: DynamicLibraryPayload | None = self.get_library_payload_from_mime_data(
             event.mimeData()
         )
 
@@ -11836,7 +11954,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param event:
         :return:
         """
-        payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | None = self.get_library_payload_from_mime_data(
+        payload: DynamicLibraryPayload | None = self.get_library_payload_from_mime_data(
             event.mimeData()
         )
 
@@ -11852,7 +11970,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param event:
         :return:
         """
-        payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | None = self.get_library_payload_from_mime_data(
+        payload: DynamicLibraryPayload | None = self.get_library_payload_from_mime_data(
             event.mimeData()
         )
         scene_position: QtCore.QPointF = self.ui.graphicsView.mapToScene(

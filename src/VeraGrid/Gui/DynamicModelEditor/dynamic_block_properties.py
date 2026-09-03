@@ -74,6 +74,10 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_procedural_logic import (
 )
 from VeraGridEngine.Utils.procedural_logic import ProceduralLogicBase
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.Templates.ProceduralLogicCatalog import (
+    ProceduralBlockTemplateDescriptor,
+    get_procedural_block_template_descriptors,
+)
 from VeraGridEngine.Templates.template_definition import TemplateDefinition, TemplateProp
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import (
@@ -4749,7 +4753,11 @@ def block_has_advanced_logic(block: Block) -> bool:
     return result
 
 
-def resolve_block_documentation_url(block_type_name: str, block_name: str) -> str | None:
+def resolve_block_documentation_url(
+        block_type_name: str,
+        block_name: str,
+        block: Block | None = None,
+) -> str | None:
     """Resolve the online catalogue documentation URL for one library block.
 
     The returned page describes the original predefined block. A working copy
@@ -4757,12 +4765,35 @@ def resolve_block_documentation_url(block_type_name: str, block_name: str) -> st
 
     :param block_type_name: Persisted diagram node type.
     :param block_name: Symbolic template or block name used to refine the lookup.
+    :param block: Optional symbolic block used to identify one procedural primitive.
     :return: ReadTheDocs URL or ``None`` for a genuinely custom block.
     """
-    # Reuse the single catalogue mapping and only translate its Sphinx source
-    # path into the HTML path published by ReadTheDocs. Runtime code therefore
-    # never needs the repository's local ``doc`` directory.
-    relative_path: str | None = _get_documentation_relative_path(block_type_name, block_name)
+    # A native procedural template carries its semantic identity in the Engine
+    # entry itself. This remains valid after the user renames the canvas block
+    # and avoids encoding GUI-only suffixes in symbolic names.
+    normalized_block_type: str = block_type_name.upper()
+    relative_path: str | None
+    if (
+            normalized_block_type == BlockType.PROCEDURAL_LOGIC.name
+            and block is not None
+            and len(block.procedural_logic) > 0
+    ):
+        procedural_entry: object = block.procedural_logic[0]
+        if isinstance(procedural_entry, ProceduralLogicBase):
+            relative_path = None
+            procedural_descriptor: ProceduralBlockTemplateDescriptor
+            for procedural_descriptor in get_procedural_block_template_descriptors():
+                if procedural_descriptor.logic_tpe == procedural_entry.logic_tpe:
+                    relative_path = procedural_descriptor.documentation_relative_path
+                    break
+                else:
+                    pass
+        else:
+            relative_path = _get_documentation_relative_path(block_type_name, block_name)
+    else:
+        # Reuse the single catalogue mapping and only translate its Sphinx
+        # source path into the HTML path published by ReadTheDocs.
+        relative_path = _get_documentation_relative_path(block_type_name, block_name)
     if relative_path is None:
         result: str | None = None
     else:
@@ -4806,6 +4837,7 @@ def _get_documentation_relative_path(block_type_name: str, block_name: str) -> s
         (BlockType.VSC_DC_LINK_RMS, "vsc_dc_link.md"),
         (BlockType.VSC_TERMINAL_POWER_RMS, "vsc_terminal_power.md"),
         (BlockType.DC_LINE_RMS, "dc_line.md"),
+        (BlockType.VOLTAGE_SOURCE_RMS, "voltage_source.md"),
     ))
     native_type: BlockType | None = BlockType.__members__.get(normalized, None)
     rms_page: str | None = rms_pages.get(native_type, None) if native_type is not None else None
@@ -4832,6 +4864,8 @@ def _get_documentation_relative_path(block_type_name: str, block_name: str) -> s
         return "RMS/line.md"
     elif normalized_block_name.startswith("LOAD_RMS_TEMPLATE"):
         return "RMS/load.md"
+    elif normalized_block_name.startswith("VOLTAGE_SOURCE_RMS"):
+        return "RMS/voltage_source.md"
     elif normalized_block_name.startswith("DISTRIBUTED_PV") or \
             normalized_block_name.startswith("PVD1"):
         return "RMS/distributed_pv.md"
@@ -5556,55 +5590,6 @@ class BlockPropertyValueDelegate(StructuralSettingDelegate):
             super().setModelData(editor, model, index)
 
 
-def get_procedural_logic_menu_groups() -> tuple[tuple[str, tuple[ProceduralLogicType, ...]], ...]:
-    """Return complete presentation groups for procedural insertion actions.
-
-    Every concrete Engine type appears exactly once. The groups shorten visual
-    scanning without introducing another persistent editor-selection state.
-
-    :return: Ordered group labels and their concrete procedural types.
-    """
-    return (
-        (
-            "Sampling and history",
-            (
-                ProceduralLogicType.FixedSample,
-                ProceduralLogicType.SampledValue,
-                ProceduralLogicType.TimeDelay,
-                ProceduralLogicType.MovingAverage,
-            ),
-        ),
-        (
-            "Limits and latches",
-            (
-                ProceduralLogicType.HardSaturation,
-                ProceduralLogicType.GradientLimiter,
-                ProceduralLogicType.FlipFlop,
-                ProceduralLogicType.AnalogFlipFlop,
-                ProceduralLogicType.PickupDropoff,
-                ProceduralLogicType.DelayedThresholdLatch,
-            ),
-        ),
-        (
-            "Events and diagnostics",
-            (
-                ProceduralLogicType.ConditionalDiagnostic,
-                ProceduralLogicType.DelayedSwitchEvent,
-                ProceduralLogicType.ResetOnRisingEdge,
-                ProceduralLogicType.StartupHandover,
-            ),
-        ),
-        (
-            "Switching and modulation",
-            (
-                ProceduralLogicType.ValveState,
-                ProceduralLogicType.ThreePhaseCarrierPwm,
-                ProceduralLogicType.ThreePhaseCarrierSampledModulation,
-            ),
-        ),
-    )
-
-
 class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
     """Property editor content for one Dynamic Model Editor block."""
 
@@ -5797,24 +5782,29 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             self._procedural_add_button
         )
         self._procedural_add_menu.setToolTipsVisible(True)
-        group_label: str
-        grouped_types: tuple[ProceduralLogicType, ...]
-        for group_label, grouped_types in get_procedural_logic_menu_groups():
-            self._procedural_add_menu.addSection(self.tr(group_label))
-            logic_tpe: ProceduralLogicType
-            for logic_tpe in grouped_types:
-                logic_action: QtGui.QAction = self._procedural_add_menu.addAction(
-                    logic_tpe.value.replace("_", " ").title()
-                )
-                logic_action.setData(logic_tpe)
-                procedural_help: str | None = get_procedural_logic_help_by_code_name(
-                    logic_tpe.value
-                )
-                if procedural_help is not None:
-                    logic_action.setToolTip(procedural_help)
-                    logic_action.setStatusTip(procedural_help)
-                else:
-                    pass
+        current_group_label: str | None = None
+        procedural_descriptor: ProceduralBlockTemplateDescriptor
+        for procedural_descriptor in get_procedural_block_template_descriptors():
+            group_label: str = procedural_descriptor.category_path[0]
+            if group_label != current_group_label:
+                self._procedural_add_menu.addSection(self.tr(group_label))
+                current_group_label = group_label
+            else:
+                pass
+
+            logic_tpe: ProceduralLogicType = procedural_descriptor.logic_tpe
+            logic_action: QtGui.QAction = self._procedural_add_menu.addAction(
+                procedural_descriptor.display_label
+            )
+            logic_action.setData(logic_tpe)
+            procedural_help: str | None = get_procedural_logic_help_by_code_name(
+                logic_tpe.value
+            )
+            if procedural_help is not None:
+                logic_action.setToolTip(procedural_help)
+                logic_action.setStatusTip(procedural_help)
+            else:
+                pass
         self._procedural_add_button.setMenu(self._procedural_add_menu)
         self._namespace: Dict[str, Expr] = build_block_symbol_namespace(block)
         self._tabs: QtWidgets.QTabWidget = self.ui.tab_widget
@@ -5896,6 +5886,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._block_documentation_url: str | None = resolve_block_documentation_url(
             block_type_name,
             block.name,
+            block,
         )
         self._block_info_button: QtWidgets.QPushButton = QtWidgets.QPushButton(
             self.tr("Block info"),
@@ -6008,7 +5999,25 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             self.tr("Block configuration"), page,
         )
         identity_layout: QtWidgets.QFormLayout = QtWidgets.QFormLayout(identity_group)
-        identity_layout.addRow(self.tr("Type"), QtWidgets.QLabel(self._block_type_name, identity_group))
+        block_type_label: str = self._block_type_name
+        if (
+                self._block_type_name.upper() == BlockType.PROCEDURAL_LOGIC.name
+                and len(self._block.procedural_logic) > 0
+        ):
+            first_procedural_entry: object = self._block.procedural_logic[0]
+            if isinstance(first_procedural_entry, ProceduralLogicBase):
+                procedural_descriptor: ProceduralBlockTemplateDescriptor
+                for procedural_descriptor in get_procedural_block_template_descriptors():
+                    if procedural_descriptor.logic_tpe == first_procedural_entry.logic_tpe:
+                        block_type_label = procedural_descriptor.display_label
+                        break
+                    else:
+                        pass
+            else:
+                pass
+        else:
+            pass
+        identity_layout.addRow(self.tr("Type"), QtWidgets.QLabel(block_type_label, identity_group))
         # Online documentation describes the immutable library definition. It
         # remains useful for edited instances, but the tooltip must make clear
         # that local equations and symbols can intentionally differ from it.

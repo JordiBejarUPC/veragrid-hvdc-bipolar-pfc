@@ -4819,6 +4819,7 @@ class BlockType(Enum):
 
     # generic
     GENERIC = "Generic"
+    PROCEDURAL_LOGIC = "PROCEDURAL_LOGIC"
 
     # common basic maths
     CONST = "CONST"
