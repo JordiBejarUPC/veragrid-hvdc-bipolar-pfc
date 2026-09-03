@@ -668,6 +668,7 @@ def init_explicit_common(
         uid2idx_event_params: Dict[int, int],
         params_array: np.ndarray,
         compile_single_equation: Union[SymbolicVectorSingleEquationCompiler, RmsSingleEquationCompiler],
+        event_params_array_seed: np.ndarray | None = None,
         verbose: bool = False,
 ) -> Tuple[Dict[int, float | int | complex | None], Dict[int, float | int | complex | None]]:
     """
@@ -712,7 +713,15 @@ def init_explicit_common(
     # initialize array for model variables
     x: np.ndarray = np.ones(len(sys_vars))
     dx: np.ndarray = np.zeros(len(sys_diff_vars))
-    event_params_array: np.ndarray = np.ones(len(variable_parameters))
+    if event_params_array_seed is None:
+        event_params_array: np.ndarray = np.ones(len(variable_parameters))
+    else:
+        event_params_array = np.asarray(event_params_array_seed, dtype=np.float64).copy()
+        if event_params_array.shape != (len(variable_parameters),):
+            raise ValueError(
+                "Explicit initialization runtime seed has shape "
+                f"{event_params_array.shape}; expected {(len(variable_parameters),)}"
+            )
 
     # Seed the working vectors with the guesses already assembled before the
     # explicit stage. The problem relies on those PF-driven values and on previously
@@ -725,6 +734,10 @@ def init_explicit_common(
         if uid in uid2idx_diff:
             dx[uid2idx_diff[uid]] = val
 
+    for uid, val in event_param_init_dict.items():
+        if uid in uid2idx_event_params and val is not None:
+            event_params_array[uid2idx_event_params[uid]] = val
+
 
     dic_total, dependencies, topo_order, init_event = build_explicit_init_graph(mdl)
 
@@ -732,19 +745,22 @@ def init_explicit_common(
         eq: Union[Expr, Const] = dic_total[var]
 
         if var in init_event:
-            result = evaluate_explicit_init_equation(
-                eq=eq,
-                event_params_array=event_params_array,
-                x=x,
-                params_array=params_array,
-                dx=dx,
-                uid2idx_event_params=uid2idx_event_params,
-                uid2idx_vars=uid2idx_vars,
-                uid2idx_params=uid2idx_params,
-                uid2idx_diff=uid2idx_diff,
-                init_guess=init_guess,
-                diff_init_guess=diff_init_guess,
-            )
+            if var.uid in event_param_init_dict and event_param_init_dict[var.uid] is not None:
+                result = event_param_init_dict[var.uid]
+            else:
+                result = evaluate_explicit_init_equation(
+                    eq=eq,
+                    event_params_array=event_params_array,
+                    x=x,
+                    params_array=params_array,
+                    dx=dx,
+                    uid2idx_event_params=uid2idx_event_params,
+                    uid2idx_vars=uid2idx_vars,
+                    uid2idx_params=uid2idx_params,
+                    uid2idx_diff=uid2idx_diff,
+                    init_guess=init_guess,
+                    diff_init_guess=diff_init_guess,
+                )
             event_params_array[uid2idx_event_params[var.uid]] = result
             store_resolved_event_parameter(
                 event_param=var,

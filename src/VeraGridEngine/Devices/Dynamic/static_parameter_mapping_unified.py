@@ -3156,6 +3156,22 @@ def assign_transformer2w_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
+        key=ParamPowerFlowReferenceType.r,
+        value=float(transformer.R),
+        logger=logger,
+        device_name=transformer.name,
+        problem_mapping=problem_mapping,
+    )
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowReferenceType.x,
+        value=float(transformer.X),
+        logger=logger,
+        device_name=transformer.name,
+        problem_mapping=problem_mapping,
+    )
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
         key=ParamPowerFlowReferenceType.g,
         value=float(transformer.R / (transformer.R ** 2 + transformer.X ** 2)),
         logger=logger,
