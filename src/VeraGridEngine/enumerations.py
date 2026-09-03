@@ -4898,7 +4898,6 @@ class BlockType(Enum):
     VSC_VD_HAT_RMS = "VSC_VD_HAT_RMS"
     VSC_VQ_HAT_RMS = "VSC_VQ_HAT_RMS"
     VSC_DC_LINK_RMS = "VSC_DC_LINK_RMS"
-    VSC_TERMINAL_POWER_RMS = "VSC_TERMINAL_POWER_RMS"
     VOLTAGE_SOURCE_RMS = "Voltage_source_rms"
     TRANSFORMER_2W_RMS = "Transformer_2w_rms"
     DC_LINE_RMS = "DC_line_rms"

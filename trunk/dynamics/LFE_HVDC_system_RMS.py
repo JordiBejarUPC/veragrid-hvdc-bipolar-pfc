@@ -176,8 +176,8 @@ vsc_1 = vge.VSC(
 vsc_2 = vge.VSC(
     name="VSC_2", bus_from=dc_2, bus_to=ac_vsc_2, rate=sbase,
     control1=ConverterControlType.Pdc, control2=ConverterControlType.Qac,
-    # RMS DC buses are algebraic (no EMT capacitor state), so initialize
-    # the link at a non-zero transfer to avoid the I_dc=0 singular point.
+    # The RMS DC bus voltage is algebraic and is constrained to the VSC-owned
+    # capacitor state. Start from non-zero transfer to avoid I_dc = 0.
     control1_val=20.0, control2_val=0.0,
 )
 grid.add_vsc(vsc_1)
@@ -190,7 +190,7 @@ for vsc in (vsc_1, vsc_2):
 zbase_dc = dc_kv * dc_kv / sbase
 grid.add_dc_line(vge.DcLine(
     name="HVDC_Line", bus_from=dc_1, bus_to=dc_2,
-    r=(0.5 + 0.25 + 0.4) / zbase_dc, rate=sbase,
+    r=0.01, rate=sbase,
 ))
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -226,9 +226,11 @@ for generator in grid.generators:
     generator_model: Block = VoltageSourceBuild(var_factory, name=generator.name).block
     set_rms_model(device=generator, model=generator_model, var_factory=var_factory)
 
-# Each VSC owns one complete explicit-state converter model. The DC and AC
-# terminal mappings are connected explicitly because the branch helper is
-# intended primarily for symmetric AC branches.
+# Each VSC owns one converter and one DC-link block. The electrical component
+# exposes Pt/Qt directly, while the DC-link exposes Pf and constrains the
+# capacitor state to the algebraic DC-bus voltage. No terminal adapter is used.
+# The DC and AC terminal mappings are connected explicitly because the branch
+# helper is intended primarily for symmetric AC branches.
 vsc: VSC
 for vsc in grid.vsc_devices:
     vsc_model: Block = build_hvdc_vsc_gfl_rms(
@@ -311,7 +313,12 @@ if active_power_reference is None:
 else:
     pass
 
-initial_active_power: float = -float(np.real(power_flow_results.St_vsc[1]) / grid.Sbase)
+# Pdc control follows the physical from-side terminal power Pf. Use the same
+# power-flow quantity and sign convention as the RMS initializer.
+initial_active_power: float = float(
+    np.real(power_flow_results.Pfn_vsc[1] + power_flow_results.Pfp_vsc[1])
+    / grid.Sbase
+)
 grid.add_rms_event(RmsEvent(
     device=grid.vsc_devices[1],
     parameter=active_power_reference,

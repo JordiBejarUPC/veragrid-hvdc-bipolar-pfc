@@ -2232,7 +2232,6 @@ def test_procedural_template_documentation_uses_engine_logic_type_after_rename()
     (BlockType.VSC_VD_HAT_RMS, "vsc_vd_hat"),
     (BlockType.VSC_VQ_HAT_RMS, "vsc_vq_hat"),
     (BlockType.VSC_DC_LINK_RMS, "vsc_dc_link"),
-    (BlockType.VSC_TERMINAL_POWER_RMS, "vsc_terminal_power"),
     (BlockType.DC_LINE_RMS, "dc_line"),
     (BlockType.VOLTAGE_SOURCE_RMS, "voltage_source"),
 ))

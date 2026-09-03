@@ -777,9 +777,6 @@ def create_block_of_type(var_factory: VarFactory,
     elif block_type == BlockType.VSC_DC_LINK_RMS:
         return rms_templates.build_vsc_dc_link_rms(var_factory, name=item_name)
 
-    elif block_type == BlockType.VSC_TERMINAL_POWER_RMS:
-        return rms_templates.build_vsc_terminal_power_rms(var_factory, name=item_name)
-
     elif block_type == BlockType.VOLTAGE_SOURCE_RMS:
         blk = rms_templates.VoltageSourceBuild(var_factory, name=item_name).block
         blk.name = item_name
@@ -968,13 +965,12 @@ def synchronize_vsc_library_initialization(
         root: Block,
         block_types: dict[int, BlockType] | None = None,
 ) -> list[Var]:
-    """Bind the original VSC initial conditions when saving a Library assembly.
+    """Bind the VSC inner-PI initial conditions for a Library assembly.
 
-    Only the electrical P/Q and inner-PI output initializations are generated.
-    They follow the actual symbolic connections, including intermediate ELK
-    operation blocks, rather than labels or power-flow reference coincidences.
-    The saved model remains an ordinary Block with ordinary init_eqs: neither
-    the numerical initializer nor the runtime equations need special handling.
+    The two inner-PI output initializations follow the actual symbolic
+    connections, including intermediate ELK operation blocks, rather than
+    labels. Physical Pt/Qt are power-flow-initialized algebraic variables and
+    must not receive duplicate initialization equations.
 
     :param root: Complete editor working tree with its physical root interface.
     :param block_types: Optional in-memory component types; persisted diagrams
@@ -995,10 +991,7 @@ def synchronize_vsc_library_initialization(
     targets: dict[int, Var] = dict()
     for candidate in blocks:
         block_type: BlockType | None = types_by_uid.get(candidate.uid, None)
-        if block_type == BlockType.VSC_ELECTRICAL_RMS and len(candidate.out_vars) == 4:
-            targets[candidate.out_vars[2].uid] = candidate.out_vars[2]
-            targets[candidate.out_vars[3].uid] = candidate.out_vars[3]
-        elif block_type in (BlockType.VSC_VD_HAT_RMS, BlockType.VSC_VQ_HAT_RMS) and len(candidate.out_vars) == 1:
+        if block_type in (BlockType.VSC_VD_HAT_RMS, BlockType.VSC_VQ_HAT_RMS) and len(candidate.out_vars) == 1:
             targets[candidate.out_vars[0].uid] = candidate.out_vars[0]
         else:
             pass
@@ -1028,8 +1021,8 @@ def synchronize_vsc_library_initialization(
         for variable in candidate.algebraic_vars:
             owners[variable.uid] = candidate
 
-    # These are physical network seeds, not inferred connections. Internal
-    # converter P/Q mappings must not be mistaken for PF-initialized powers.
+    # These are physical network seeds, not inferred connections. In
+    # particular, Pt/Qt now belong directly to the electrical component.
     root_port_group: list[Var]
     for root_port_group in (root.in_vars, root.out_vars):
         known.update(variable.uid for variable in root_port_group)
@@ -1085,7 +1078,7 @@ def synchronize_vsc_library_initialization(
                 pass
 
     # Intermediate graphical operations are substituted, not added as new
-    # initialization owners. Only the original four VSC quantities are saved.
+    # initialization owners. Only the two inner-PI outputs are saved.
     unresolved: list[Var] = list()
     for variable in targets.values():
         initial_expression: Expr | None = inferred.get(variable, None)

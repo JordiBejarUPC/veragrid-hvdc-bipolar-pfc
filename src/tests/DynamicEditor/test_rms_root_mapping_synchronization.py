@@ -21,7 +21,53 @@ from VeraGridEngine.Utils.Symbolic.templates_common_functions import (
     synchronize_saved_rms_root_mappings_from_children,
 )
 from VeraGridEngine.basic_structures import Logger
-from VeraGridEngine.enumerations import ParamPowerFlowReferenceType, VarPowerFlowReferenceType
+from VeraGridEngine.enumerations import (
+    ConverterControlType,
+    ParamPowerFlowReferenceType,
+    VarPowerFlowReferenceType,
+)
+
+
+@pytest.mark.parametrize("control1", (
+    ConverterControlType.Vm_dc,
+    ConverterControlType.Pdc,
+    ConverterControlType.Pac,
+))
+def test_complete_vsc_owns_terminal_equations_without_adapter(
+        control1: ConverterControlType,
+) -> None:
+    """Keep each physical terminal quantity in one component only.
+
+    :param control1: Active controller variant used to check its feedback port.
+    :return: None.
+    """
+    model: Block = build_hvdc_vsc_gfl_rms(
+        vfactory=VarFactory(),
+        control1=control1,
+    ).block
+    converter: Block = model.children[0]
+    dc_link: Block = model.children[1]
+    electrical: Block = converter.children[6]
+
+    # The former third terminal-equations component is intentionally absent.
+    assert len(model.children) == 2
+    assert model.external_mapping[VarPowerFlowReferenceType.Pt] is electrical.out_vars[2]
+    assert model.external_mapping[VarPowerFlowReferenceType.Qt] is electrical.out_vars[3]
+    assert model.external_mapping[VarPowerFlowReferenceType.Pf] is dc_link.out_vars[1]
+    assert dc_link.state_vars[0] is dc_link.out_vars[0]
+    assert dc_link.algebraic_vars[0] is dc_link.out_vars[1]
+    assert electrical.out_vars[2] not in electrical.init_eqs
+    assert electrical.out_vars[3] not in electrical.init_eqs
+    assert dc_link.out_vars[1] not in dc_link.init_eqs
+    assert converter.children[1].in_vars[0] is electrical.out_vars[3]
+
+    active_controller: Block = converter.children[0]
+    if control1 == ConverterControlType.Vm_dc:
+        assert active_controller.in_vars[0] is dc_link.out_vars[0]
+    elif control1 == ConverterControlType.Pdc:
+        assert active_controller.in_vars[0] is dc_link.out_vars[1]
+    else:
+        assert active_controller.in_vars[0] is electrical.out_vars[2]
 
 
 @pytest.mark.parametrize("loss_coefficients", ((0.0, 0.0, 0.0), (0.001, 0.015, 0.20)))

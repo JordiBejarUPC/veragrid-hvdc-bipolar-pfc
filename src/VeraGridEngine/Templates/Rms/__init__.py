@@ -33,7 +33,6 @@ from VeraGridEngine.Templates.Rms.hvdc_vsc_gfl_rms_template_v2 import (
     build_vsc_vd_hat_rms,
     build_vsc_vq_hat_rms,
     build_vsc_dc_link_rms,
-    build_vsc_terminal_power_rms,
     get_hvdc_vdc_q_vsc_rms,
     get_hvdc_pdc_q_vsc_rms,
 )

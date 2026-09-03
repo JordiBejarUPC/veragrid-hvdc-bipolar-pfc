@@ -266,7 +266,6 @@ class DynamicEditorLibrary:
                     "q-axis current PI controller", BlockType.VSC_VQ_HAT_RMS,
                     search_text="q-axis current PI controller inner loop voltage correction vq hat vq_hat y_vq_hat",
                 ),
-                LibraryLeafSpec("VSC terminal power equations", BlockType.VSC_TERMINAL_POWER_RMS),
             ))),
         ))
 

@@ -261,6 +261,29 @@ class ParameterDraftRow:
         """
         self._draft_text = value
 
+    def rename_identifier(self, old_name: str, new_name: str) -> None:
+        """Rename one symbol in both the draft and its applied baseline.
+
+        Existing-symbol renames are applied immediately by the owning Dynamic
+        Editor. Updating both texts preserves any independent value edit while
+        preventing the already-applied rename from becoming a false dirty
+        state in Block Properties.
+
+        :param old_name: Identifier that was present before the central rename.
+        :param new_name: Authoritative identifier after the rename.
+        :return: None.
+        """
+        self._draft_text = replace_dae_identifier(
+            self._draft_text,
+            old_name,
+            new_name,
+        )
+        self._original_text = replace_dae_identifier(
+            self._original_text,
+            old_name,
+            new_name,
+        )
+
     def parse_value(self) -> float | complex:
         """
         Parse the pending value as a finite real or complex number.
@@ -855,6 +878,7 @@ class BlockSymbolDraftRow:
         "_original_kind",
         "_exported",
         "_value_text",
+        "_original_value_text",
         "_external_reference",
         "_static_reference",
         "_original_external_reference",
@@ -893,6 +917,7 @@ class BlockSymbolDraftRow:
         self._original_kind: BlockSymbolKind = kind
         self._exported: bool = exported and kind != BlockSymbolKind.INPUT
         self._value_text: str = value_text
+        self._original_value_text: str = value_text
         self._derivative_base_row: BlockSymbolDraftRow | None = derivative_base_row
         if self.supports_external_reference():
             self._external_reference: VarPowerFlowReferenceType | None = external_reference
@@ -1103,6 +1128,28 @@ class BlockSymbolDraftRow:
             self._external_reference != self._original_external_reference
             or self._static_reference != self._original_static_reference
         )
+
+    def has_changes(self) -> bool:
+        """Return whether this row differs from its authoritative block state.
+
+        :return: ``True`` for a new symbol or a changed role, value, mapping or
+            output exposure.
+        """
+        if self.is_new():
+            result: bool = True
+        elif self._kind != self._original_kind:
+            result = True
+        elif self._value_text.strip() != self._original_value_text.strip():
+            result = True
+        elif self.has_mapping_changes():
+            result = True
+        else:
+            variable: Var | None = self._variable
+            if variable is not None:
+                result = self._exported != (variable in self._owner.out_vars)
+            else:
+                result = True
+        return result
 
     def parse_value(self) -> float:
         """
@@ -1538,8 +1585,8 @@ class BlockSymbolDraftModel(QtCore.QAbstractTableModel):
         elif index.column() == 2 and row.is_new():
             flags |= Qt.ItemFlag.ItemIsEditable
         elif index.column() == 3 and row.kind_supports_export():
-            # Applying the checkbox later preserves transactional dialog behavior:
-            # cancelling the modal still leaves the source block untouched.
+            # Applying the checkbox later preserves transactional editor behavior:
+            # closing the host still leaves the source block untouched.
             flags |= Qt.ItemFlag.ItemIsUserCheckable
         elif index.column() == 4 and (
                 row.supports_external_reference() or row.supports_static_reference()):
@@ -1989,6 +2036,24 @@ class BlockSymbolDraftModel(QtCore.QAbstractTableModel):
                 pass
         return result
 
+    def has_changes(self) -> bool:
+        """Return whether any staged symbol property differs from the block.
+
+        :return: Whether a symbol was added, removed, reclassified, remapped,
+            assigned a different value, or exposed through a different output.
+        """
+        if len(self._removed_rows) > 0:
+            result: bool = True
+        else:
+            result = False
+            row: BlockSymbolDraftRow
+            for row in self._rows:
+                if row.has_changes():
+                    result = True
+                else:
+                    pass
+        return result
+
     def has_mapping_changes(self) -> bool:
         """Return whether an existing or new row changed its typed mapping.
 
@@ -2361,15 +2426,33 @@ class BlockParameterDraftModel(QtCore.QAbstractTableModel):
         row_index: int
         row: ParameterDraftRow
         for row_index, row in enumerate(self._rows):
-            updated_text: str = row.get_draft_text()
             old_name: str
             new_name: str
             for old_name, new_name in renames:
-                updated_text = replace_dae_identifier(updated_text, old_name, new_name)
-            if updated_text != row.get_draft_text():
-                self.setData(self.index(row_index, 2), updated_text)
+                row.rename_identifier(old_name, new_name)
+            if len(renames) > 0:
+                value_index: QtCore.QModelIndex = self.index(row_index, 2)
+                self.dataChanged.emit(
+                    value_index,
+                    value_index,
+                    list((Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.EditRole,)),
+                )
             else:
                 pass
+
+    def has_changes(self) -> bool:
+        """Return whether an editable parameter expression is unapplied.
+
+        :return: Whether at least one parameter draft differs from its baseline.
+        """
+        result: bool = False
+        row: ParameterDraftRow
+        for row in self._rows:
+            if row.has_changes():
+                result = True
+            else:
+                pass
+        return result
 
     def _append_event_parameter_rows(self,
                                      category: str,
@@ -2758,6 +2841,28 @@ class BlockCodeBuffer:
         :return: Whether either runtime section differs from the accepted baseline.
         """
         return build_runtime_code_signature(self._code) != self._original_runtime_signature
+
+    def rename_identifier(self, old_name: str, new_name: str) -> None:
+        """Propagate an editor-owned rename through draft and baseline source.
+
+        Renaming an existing Engine variable is applied immediately by the
+        Dynamic Editor. Updating both source versions keeps independent code
+        edits dirty without treating the already-authoritative rename itself
+        as an unapplied Block Properties change.
+
+        :param old_name: Identifier replaced by the central editor.
+        :param new_name: New authoritative identifier.
+        :return: None.
+        """
+        self._code = replace_dae_identifier(self._code, old_name, new_name)
+        self._original_code = replace_dae_identifier(
+            self._original_code,
+            old_name,
+            new_name,
+        )
+        self._original_runtime_signature = build_runtime_code_signature(
+            self._original_code
+        )
 
     def accept_source(self, code: str) -> None:
         """Keep accepted source text as the baseline for subsequent edits.
@@ -4835,7 +4940,6 @@ def _get_documentation_relative_path(block_type_name: str, block_name: str) -> s
         (BlockType.VSC_VD_HAT_RMS, "vsc_vd_hat.md"),
         (BlockType.VSC_VQ_HAT_RMS, "vsc_vq_hat.md"),
         (BlockType.VSC_DC_LINK_RMS, "vsc_dc_link.md"),
-        (BlockType.VSC_TERMINAL_POWER_RMS, "vsc_terminal_power.md"),
         (BlockType.DC_LINE_RMS, "dc_line.md"),
         (BlockType.VOLTAGE_SOURCE_RMS, "voltage_source.md"),
     ))
@@ -5662,6 +5766,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         "_block_documentation_url",
         "_block_info_button",
         "_prepared_to_delete",
+        "_draft_has_changes",
         "_status_label",
         "_apply_button",
     )
@@ -5675,7 +5780,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                  structural_builder: TemplateDefinition | None = None,
                  dark_theme: bool = False) -> None:
         """
-        Create the modal around a detached parameter and equation draft.
+        Create the editor around a detached parameter and equation draft.
 
         :param block: Symbolic block used by the operation.
         :param block_type_name: Value supplied for ``block_type_name``.
@@ -5695,7 +5800,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         # Direct test and tooling call sites do not necessarily pass through the
         # editor wrapper that used to set this attribute. Make ownership
         # deterministic at the dialogue boundary so Qt destroys the complete
-        # child tree when the modal closes.
+        # child tree when its dock host closes.
         self.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose, True)
         self._block: Block = block
         self._block_type_name: str = block_type_name
@@ -5893,6 +5998,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             self,
         )
         self._prepared_to_delete: bool = False
+        self._draft_has_changes: bool = False
         self._status_label: QtWidgets.QLabel = self.ui.status_label
         # Status feedback belongs to the edited page. It starts collapsed so
         # an empty message cannot create a gap above the dialogue-wide action.
@@ -5901,6 +6007,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._build_ui()
         self._connect_signals()
         self._clear_dae_validation_feedback()
+        self.refresh_draft_state()
 
     def prepare_to_delete(self) -> None:
         """Detach Qt models and document resources before binary destruction.
@@ -5975,7 +6082,11 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         :return: None.
         """
         self.setWindowTitle(self.tr("Block properties - {name}").format(name=self._block.name))
-        self.setModal(True)
+        # This content is hosted by a dock, so QDialog modality does not govern
+        # the visible window. The dock owns the permanent modal interaction
+        # boundary while this editor is open; draft state is retained only for
+        # the close-time discard confirmation.
+        self.setModal(False)
 
         general_page: QtWidgets.QWidget = self._build_general_page()
         general_index: int = self._tabs.addTab(general_page, self.tr("General options"))
@@ -6707,7 +6818,19 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._add_symbol_button.clicked.connect(self.add_staged_symbol)
         self._procedural_add_menu.triggered.connect(self.insert_procedural_logic)
         self._symbol_model.dataChanged.connect(self.on_symbol_draft_changed)
+        self._symbol_model.rowsInserted.connect(self.refresh_draft_state)
+        self._symbol_model.rowsRemoved.connect(self.refresh_draft_state)
+        self._symbol_model.modelReset.connect(self.refresh_draft_state)
+        self._parameter_model.dataChanged.connect(self.refresh_draft_state)
+        self._parameter_model.modelReset.connect(self.refresh_draft_state)
+        self._general_structural_model.dataChanged.connect(self.refresh_draft_state)
+        self._general_structural_model.modelReset.connect(self.refresh_draft_state)
+        self._special_structural_model.dataChanged.connect(self.refresh_draft_state)
+        self._special_structural_model.modelReset.connect(self.refresh_draft_state)
         self._retained_mode_model.dataChanged.connect(self.on_retained_mode_draft_changed)
+        self._retained_mode_model.rowsInserted.connect(self.refresh_draft_state)
+        self._retained_mode_model.rowsRemoved.connect(self.refresh_draft_state)
+        self._retained_mode_model.modelReset.connect(self.refresh_draft_state)
         self._retained_mode_model.modeNameChanged.connect(
             self.on_retained_mode_name_changed
         )
@@ -6739,6 +6862,47 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._latex_clear_button.clicked.connect(self.clear_latex_sections)
         self._latex_selection_tree.itemChanged.connect(self.on_latex_selection_changed)
         self._export_rendered_button.clicked.connect(self.export_rendered_equations_pdf)
+
+    def has_unapplied_changes(self) -> bool:
+        """Return the cached transaction state exposed to the dock host.
+
+        :return: Whether the complete Block Properties draft differs from its
+            most recently accepted model state.
+        """
+        return self._draft_has_changes
+
+    @QtCore.Slot()
+    def refresh_draft_state(self) -> None:
+        """Recompute and publish whether Block Properties owns pending edits.
+
+        Code, symbols, parameter expressions and structural settings form one
+        transaction. The comparison is also run after every edit so manually
+        restoring the accepted value unlocks the rest of VeraGrid immediately.
+
+        :return: None.
+        """
+        if self._prepared_to_delete or self._loading_equation_buffer:
+            pass
+        else:
+            has_changes: bool = (
+                self._general_structural_model.has_changes()
+                or self._special_structural_model.has_changes()
+                or self._parameter_model.has_changes()
+                or self._symbol_model.has_changes()
+            )
+            if not has_changes:
+                equation_buffer: BlockCodeBuffer
+                for equation_buffer in self._equation_buffers:
+                    if equation_buffer.has_changes():
+                        has_changes = True
+                    else:
+                        pass
+            else:
+                pass
+            if has_changes != self._draft_has_changes:
+                self._draft_has_changes = has_changes
+            else:
+                pass
 
     @QtCore.Slot()
     def open_block_documentation(self) -> None:
@@ -7307,6 +7471,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                     self._loading_equation_buffer = False
                 else:
                     pass
+                self.refresh_draft_state()
                 result = True
         return result
 
@@ -7623,6 +7788,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                     self._loading_equation_buffer = False
                 else:
                     pass
+                self.refresh_draft_state()
                 result = True
         return result
 
@@ -7685,6 +7851,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                     self._loading_equation_buffer = False
                 else:
                     pass
+                self.refresh_draft_state()
                 result = True
         return result
 
@@ -7742,6 +7909,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             self._refresh_dae_language_context()
             self._clear_dae_validation_feedback()
             self._select_retained_mode_in_tree(owner, name)
+            self.refresh_draft_state()
 
     @QtCore.Slot(QtGui.QAction)
     def insert_procedural_logic(self, action: QtGui.QAction) -> None:
@@ -7806,6 +7974,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             self._dae_editor.setTextCursor(cursor)
             self._dae_editor.setFocus()
             self._clear_dae_validation_feedback()
+            self.refresh_draft_state()
 
     def _synchronize_dae_variable_declarations_for_block(self, owner: Block) -> None:
         """Project one owner's staged variable order into its DAE buffer.
@@ -7864,6 +8033,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                     pass
             else:
                 pass
+            self.refresh_draft_state()
 
     def _get_selected_new_external_reference(
             self,
@@ -8063,17 +8233,15 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         :param rename_pairs: All aliases changed by the editor or a pending row.
         :return: None.
         """
-        row_index: int
         equation_buffer: BlockCodeBuffer
         for equation_buffer in self._equation_buffers:
-            updated_code: str = equation_buffer.get_code()
             old_name: str
             new_name: str
             for old_name, new_name in rename_pairs:
-                updated_code = replace_dae_identifier(updated_code, old_name, new_name)
-            equation_buffer.set_code(updated_code)
+                equation_buffer.rename_identifier(old_name, new_name)
 
         self._parameter_model.rename_draft_identifiers(rename_pairs)
+        row_index: int
         for row_index in range(self._symbol_model.rowCount()):
             pending_row: BlockSymbolDraftRow | None = self._symbol_model.get_row(row_index)
             if pending_row is not None and pending_row.is_new():
@@ -8095,6 +8263,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._refresh_dae_language_context()
         self._loading_equation_buffer = False
         self._clear_dae_validation_feedback()
+        self.refresh_draft_state()
 
     def _delete_selected_symbol(self, table: QtWidgets.QAbstractItemView) -> None:
         """Stage deletion of the single selected proxy row.
@@ -8219,6 +8388,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             self._latex_source_preview.clear()
             self._clear_dae_validation_feedback()
             self.update_dae_code_search(self._dae_code_search.text())
+            self.refresh_draft_state()
 
     @QtCore.Slot(int)
     def on_equation_owner_changed(self, combo_index: int) -> None:
@@ -8838,6 +9008,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             self._loading_equation_buffer = False
             self._equation_owner_combo.blockSignals(previous_owner_signals)
             self._new_symbol_owner.blockSignals(previous_add_signals)
+        self.refresh_draft_state()
 
     def _show_equation_buffer_diagnostics(self,
                                           buffer_index: int,
@@ -8969,6 +9140,8 @@ class DynamicBlockPropertiesDockWidget(QtWidgets.QDockWidget):
 
     The host supplies the native draggable title bar. Its allowed docking
     areas are deliberately restricted by the Dynamic Editor before display.
+    While the host is open, an application event filter gives this otherwise
+    modeless dock the same interaction boundary as a modal device editor.
     Closing the host explicitly prepares the Qt-heavy child tree before Qt
     schedules the binary widgets for deletion.
     """
@@ -8978,6 +9151,13 @@ class DynamicBlockPropertiesDockWidget(QtWidgets.QDockWidget):
     __slots__ = (
         "_properties_widget",
         "_prepared_to_delete",
+        "_interaction_locked",
+        "_event_filter_installed",
+        "_blocked_event_types",
+        "_attention_event_types",
+        "_attention_timer",
+        "_attention_effect",
+        "_attention_flash_phase",
     )
 
     def __init__(
@@ -8994,6 +9174,39 @@ class DynamicBlockPropertiesDockWidget(QtWidgets.QDockWidget):
         super().__init__(properties_widget.windowTitle(), parent)
         self._properties_widget: DynamicBlockPropertiesDialog = properties_widget
         self._prepared_to_delete: bool = False
+        self._interaction_locked: bool = False
+        self._event_filter_installed: bool = False
+        self._attention_event_types: tuple[QtCore.QEvent.Type, ...] = (
+            QtCore.QEvent.Type.MouseButtonPress,
+            QtCore.QEvent.Type.MouseButtonDblClick,
+            QtCore.QEvent.Type.NonClientAreaMouseButtonPress,
+            QtCore.QEvent.Type.NonClientAreaMouseButtonDblClick,
+            QtCore.QEvent.Type.Wheel,
+            QtCore.QEvent.Type.ContextMenu,
+            QtCore.QEvent.Type.KeyPress,
+            QtCore.QEvent.Type.Shortcut,
+            QtCore.QEvent.Type.Drop,
+            QtCore.QEvent.Type.TouchBegin,
+            QtCore.QEvent.Type.Close,
+        )
+        passive_event_types: tuple[QtCore.QEvent.Type, ...] = (
+            QtCore.QEvent.Type.MouseButtonRelease,
+            QtCore.QEvent.Type.NonClientAreaMouseButtonRelease,
+            QtCore.QEvent.Type.MouseMove,
+            QtCore.QEvent.Type.Enter,
+            QtCore.QEvent.Type.HoverEnter,
+            QtCore.QEvent.Type.HoverMove,
+            QtCore.QEvent.Type.ToolTip,
+            QtCore.QEvent.Type.KeyRelease,
+            QtCore.QEvent.Type.ShortcutOverride,
+            QtCore.QEvent.Type.DragEnter,
+            QtCore.QEvent.Type.DragMove,
+            QtCore.QEvent.Type.TouchUpdate,
+            QtCore.QEvent.Type.TouchEnd,
+        )
+        self._blocked_event_types: tuple[QtCore.QEvent.Type, ...] = (
+            self._attention_event_types + passive_event_types
+        )
         self.setObjectName("dynamicBlockPropertiesDock")
         self.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose, True)
         self.setFeatures(
@@ -9003,7 +9216,153 @@ class DynamicBlockPropertiesDockWidget(QtWidgets.QDockWidget):
         )
         self._properties_widget.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose, False)
         self.setWidget(self._properties_widget)
+        self._attention_timer: QtCore.QTimer = QtCore.QTimer(self)
+        self._attention_timer.setInterval(130)
+        self._attention_timer.timeout.connect(self._advance_attention_flash)
+        self._attention_effect: QtWidgets.QGraphicsColorizeEffect = (
+            QtWidgets.QGraphicsColorizeEffect(self._properties_widget)
+        )
+        self._attention_effect.setStrength(0.0)
+        self._attention_effect.setEnabled(False)
+        self._attention_flash_phase: int = 0
+        self._properties_widget.setGraphicsEffect(self._attention_effect)
         self.topLevelChanged.connect(self.configure_floating_close_only_frame)
+        self.set_interaction_locked(True)
+
+    @QtCore.Slot(bool)
+    def set_interaction_locked(self, locked: bool) -> None:
+        """Enable or remove the host's application-wide modal boundary.
+
+        :param locked: Whether Block Properties must own all VeraGrid interaction.
+        :return: None.
+        """
+        self._interaction_locked = locked
+        if locked:
+            pass
+        else:
+            self._attention_timer.stop()
+            self._attention_effect.setStrength(0.0)
+            self._attention_effect.setEnabled(False)
+            self._attention_flash_phase = 0
+        application_instance: QtCore.QCoreApplication | None = (
+            QtWidgets.QApplication.instance()
+        )
+        if isinstance(application_instance, QtWidgets.QApplication):
+            if locked and not self._event_filter_installed:
+                application_instance.installEventFilter(self)
+                self._event_filter_installed = True
+            elif not locked and self._event_filter_installed:
+                application_instance.removeEventFilter(self)
+                self._event_filter_installed = False
+            else:
+                pass
+        else:
+            self._event_filter_installed = False
+
+    def _owns_event_target(self, watched: QtCore.QObject) -> bool:
+        """Return whether an event receiver belongs to Block Properties.
+
+        QObject ancestry also admits menus, completers and child dialogues
+        opened from the property editor even when they are native top-level
+        widgets rather than visual descendants of the dock frame.
+
+        :param watched: Application event receiver.
+        :return: Whether the receiver is part of this editing transaction.
+        """
+        candidate: QtCore.QObject | None = watched
+        owned: bool = False
+        while candidate is not None and not owned:
+            if candidate is self or candidate is self._properties_widget:
+                owned = True
+            else:
+                candidate = candidate.parent()
+        if not owned and isinstance(watched, QtWidgets.QWidget):
+            owned = self.isAncestorOf(watched)
+        elif not owned and isinstance(watched, QtGui.QWindow):
+            dock_window: QtGui.QWindow | None = self.windowHandle()
+            properties_window: QtGui.QWindow | None = self._properties_widget.windowHandle()
+            owned = watched is dock_window or watched is properties_window
+        else:
+            pass
+        return owned
+
+    def _notify_interaction_blocked(self) -> None:
+        """Bring the pending editor forward and request native attention.
+
+        :return: None.
+        """
+        self.show()
+        self.raise_()
+        if self.isFloating():
+            attention_window: QtWidgets.QWidget = self
+        else:
+            attention_window = self.window()
+        self._attention_timer.stop()
+        self._attention_flash_phase = 0
+        self._attention_effect.setColor(
+            self._properties_widget.palette().color(QtGui.QPalette.ColorRole.Highlight)
+        )
+        self._attention_effect.setEnabled(True)
+        self._advance_attention_flash()
+        self._attention_timer.start()
+        application_instance: QtCore.QCoreApplication | None = (
+            QtWidgets.QApplication.instance()
+        )
+        if isinstance(application_instance, QtWidgets.QApplication):
+            # The native request mirrors the attention flash produced by an
+            # application-modal QDialog. The color effect supplies the same
+            # feedback when Block Properties is docked into an active window.
+            application_instance.alert(attention_window, 1100)
+        else:
+            pass
+
+    @QtCore.Slot()
+    def _advance_attention_flash(self) -> None:
+        """Render four short highlight pulses and then restore editor focus.
+
+        :return: None.
+        """
+        if self._attention_flash_phase < 8:
+            bright_phase: bool = self._attention_flash_phase % 2 == 0
+            if bright_phase:
+                self._attention_effect.setStrength(0.32)
+            else:
+                self._attention_effect.setStrength(0.0)
+            self._attention_flash_phase += 1
+        else:
+            self._attention_timer.stop()
+            self._attention_effect.setStrength(0.0)
+            self._attention_effect.setEnabled(False)
+            self.raise_()
+            self.activateWindow()
+
+    def eventFilter(self, watched: QtCore.QObject, event: QtCore.QEvent) -> bool:
+        """Block user interaction outside the dock for its complete lifetime.
+
+        :param watched: Object that would receive the application event.
+        :param event: Pending Qt event.
+        :return: ``True`` when an outside action was consumed.
+        """
+        programmatic_close: bool = (
+            event.type() == QtCore.QEvent.Type.Close
+            and not event.spontaneous()
+        )
+        should_block: bool = (
+            self._interaction_locked
+            and event.type() in self._blocked_event_types
+            and not programmatic_close
+            and not self._owns_event_target(watched)
+        )
+        if should_block:
+            event.accept()
+            if event.type() in self._attention_event_types:
+                self._notify_interaction_blocked()
+            else:
+                pass
+            result: bool = True
+        else:
+            result = QtWidgets.QDockWidget.eventFilter(self, watched, event)
+        return result
 
     @QtCore.Slot(bool)
     def configure_floating_close_only_frame(self, floating: bool) -> None:
@@ -9043,6 +9402,13 @@ class DynamicBlockPropertiesDockWidget(QtWidgets.QDockWidget):
             pass
         else:
             self._prepared_to_delete = True
+            self.set_interaction_locked(False)
+            try:
+                self._attention_timer.timeout.disconnect(
+                    self._advance_attention_flash
+                )
+            except (RuntimeError, TypeError):
+                pass
             try:
                 self.topLevelChanged.disconnect(self.configure_floating_close_only_frame)
             except (RuntimeError, TypeError):
@@ -9055,6 +9421,40 @@ class DynamicBlockPropertiesDockWidget(QtWidgets.QDockWidget):
         :param event: Incoming dock close event.
         :return: None.
         """
-        self.prepare_to_delete()
-        self.closed.emit()
-        QtWidgets.QDockWidget.closeEvent(self, event)
+        requires_confirmation: bool = (
+            not self._prepared_to_delete
+            and self._properties_widget.has_unapplied_changes()
+        )
+        if requires_confirmation:
+            # QMessageBox supplies its own modal interaction boundary. Remove
+            # the application event filter while that nested modal loop is
+            # active so its Discard and Cancel controls remain interactive.
+            # Cancelling below restores the dirty-draft boundary immediately.
+            self.set_interaction_locked(False)
+            selected_button: QtWidgets.QMessageBox.StandardButton = (
+                QtWidgets.QMessageBox.warning(
+                    self,
+                    self.tr("Unsaved Block Properties changes"),
+                    self.tr(
+                        "Block Properties contains changes that have not been applied. "
+                        "Discard those changes and close the editor?"
+                    ),
+                    QtWidgets.QMessageBox.StandardButton.Discard
+                    | QtWidgets.QMessageBox.StandardButton.Cancel,
+                    QtWidgets.QMessageBox.StandardButton.Cancel,
+                )
+            )
+            discard_changes: bool = (
+                selected_button == QtWidgets.QMessageBox.StandardButton.Discard
+            )
+        else:
+            discard_changes = True
+
+        if discard_changes:
+            self.prepare_to_delete()
+            self.closed.emit()
+            QtWidgets.QDockWidget.closeEvent(self, event)
+        else:
+            event.ignore()
+            self.set_interaction_locked(True)
+            self._notify_interaction_blocked()
