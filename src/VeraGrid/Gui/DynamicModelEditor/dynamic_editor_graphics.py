@@ -246,13 +246,87 @@ def _expanded_item_scene_rect(item: QGraphicsItem, pos: QPointF, margin: float) 
     return item.sceneBoundingRect().translated(delta).adjusted(-margin, -margin, margin, margin)
 
 
+def _connection_is_incident_to_block(connection: ConnectionItem, item: QGraphicsItem) -> bool:
+    """Return whether one connection terminates at the moving block.
+
+    Incident connections must remain allowed to touch their owner at a port.
+    Treating them as foreign obstacles would reject every connected block at
+    its valid attachment point.
+
+    :param connection: Scene connection being classified.
+    :param item: Moving root block item.
+    :return: ``True`` when either endpoint belongs to the moving block.
+    """
+    source_owner: QGraphicsItem | None
+    target_owner: QGraphicsItem | None
+    if isinstance(connection.source_port, PortItem):
+        source_owner = connection.source_port.parentItem()
+    elif isinstance(connection.source_port, BranchingItem):
+        source_owner = connection.source_port.subsystem
+    else:
+        source_owner = None
+
+    if isinstance(connection.target_port, PortItem):
+        target_owner = connection.target_port.parentItem()
+    elif isinstance(connection.target_port, BranchingItem):
+        target_owner = connection.target_port.subsystem
+    else:
+        target_owner = None
+
+    return source_owner is item or target_owner is item
+
+
+def _connection_collides_with_block_position(
+        connection: ConnectionItem,
+        item: QGraphicsItem,
+        pos: QPointF,
+        margin: float,
+) -> bool:
+    """Return whether a foreign connection violates the block clearance.
+
+    The connection path is transformed to scene coordinates and widened by
+    the requested clearance. This preserves the real routed shape instead of
+    treating its potentially large bounding rectangle as a solid obstacle.
+
+    :param connection: Foreign connection represented by a painter path.
+    :param item: Moving root block item.
+    :param pos: Proposed block position.
+    :param margin: Minimum distance required from the connection.
+    :return: ``True`` when the block intersects the widened connection path.
+    """
+    if _connection_is_incident_to_block(connection=connection, item=item):
+        return False
+    else:
+        connection_path: QPainterPath = connection.path()
+
+    if connection_path.isEmpty():
+        return False
+    else:
+        scene_connection_path: QPainterPath = connection.sceneTransform().map(connection_path)
+
+    # The full requested clearance is represented by half of the stroker width
+    # on each side of the route centreline. Include the visible pen width so
+    # the distance starts at the rendered edge rather than its centreline.
+    path_stroker: QtGui.QPainterPathStroker = QtGui.QPainterPathStroker()
+    visible_pen_width: float = max(connection.pen().widthF(), 1.0)
+    path_stroker.setWidth(2.0 * margin + visible_pen_width)
+    path_stroker.setCapStyle(Qt.PenCapStyle.RoundCap)
+    path_stroker.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+    connection_obstacle_path: QPainterPath = path_stroker.createStroke(scene_connection_path)
+
+    candidate_rect: QtCore.QRectF = _expanded_item_scene_rect(item=item, pos=pos, margin=0.0)
+    candidate_path: QPainterPath = QPainterPath()
+    candidate_path.addRect(candidate_rect)
+    return candidate_path.intersects(connection_obstacle_path)
+
+
 def _position_collides_with_blocks(item: QGraphicsItem, pos: QPointF, margin: float) -> bool:
-    """Return whether a proposed item rectangle overlaps another root block.
+    """Return whether a proposed item overlaps a block or foreign connection.
 
     :param item: Item being positioned.
     :param pos: Proposed scene position.
     :param margin: Minimum clearance required between both block rectangles.
-    :return: ``True`` when another root block intersects the candidate rectangle.
+    :return: ``True`` when any scene obstacle violates the required clearance.
     """
     scene = item.scene()
     if scene is None:
@@ -273,6 +347,16 @@ def _position_collides_with_blocks(item: QGraphicsItem, pos: QPointF, margin: fl
         )
         if is_distinct_root_block:
             if candidate_rect.intersects(other.sceneBoundingRect()):
+                return True
+            else:
+                pass
+        elif isinstance(other, ConnectionItem):
+            if _connection_collides_with_block_position(
+                    connection=other,
+                    item=item,
+                    pos=pos,
+                    margin=margin,
+            ):
                 return True
             else:
                 pass
