@@ -2004,6 +2004,25 @@ class BlockSymbolDraftModel(QtCore.QAbstractTableModel):
                 pass
         return changes
 
+    def get_existing_symbol_removals(self) -> List[tuple[Block, Var]]:
+        """Return existing symbols whose deletion is staged for Apply.
+
+        The Dynamic Editor consumes this snapshot before the owning block is
+        mutated so it can remove any direct interface-wrapper child and its
+        persisted wires while the deleted port is still identifiable.
+
+        :return: Direct owner and existing variable pairs staged for deletion.
+        """
+        removals: List[tuple[Block, Var]] = list()
+        removed_row: BlockSymbolDraftRow
+        for removed_row in self._removed_rows:
+            removed_variable: Var | None = removed_row.get_variable()
+            if removed_variable is not None:
+                removals.append((removed_row.get_owner(), removed_variable))
+            else:
+                pass
+        return removals
+
     def get_role_count(self, owner: Block, kind: BlockSymbolKind) -> int:
         """Return the staged number of symbols with one primary DAE role.
 
@@ -5702,6 +5721,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
     structuralRebuildRequested = Signal(object)
     variableRenameRequested = Signal(object)
     outputExportChangesRequested = Signal(object)
+    symbolRemovalsRequested = Signal(object)
 
     __slots__ = (
         "ui",
@@ -6083,9 +6103,9 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         """
         self.setWindowTitle(self.tr("Block properties - {name}").format(name=self._block.name))
         # This content is hosted by a dock, so QDialog modality does not govern
-        # the visible window. The dock owns the permanent modal interaction
-        # boundary while this editor is open; draft state is retained only for
-        # the close-time discard confirmation.
+        # the visible window. Its host supplies native modality while floating
+        # and removes it after docking; draft state is retained independently
+        # for the close-time discard confirmation.
         self.setModal(False)
 
         general_page: QtWidgets.QWidget = self._build_general_page()
@@ -8749,6 +8769,9 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                 pass
         has_new_modes: bool = self._runtime_logic_drafts.has_new_modes()
         output_export_changes: List[tuple[Block, Var, bool]] = self._symbol_model.get_output_export_changes()
+        existing_symbol_removals: List[tuple[Block, Var]] = (
+            self._symbol_model.get_existing_symbol_removals()
+        )
         if structural_changes:
             changed_equations: bool = False
             equation_buffer: BlockCodeBuffer
@@ -8814,6 +8837,13 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             # are still valid. The model mutation immediately follows the
             # synchronous signal delivery.
             self.outputExportChangesRequested.emit(output_export_changes)
+        else:
+            pass
+        if len(existing_symbol_removals) > 0:
+            # Interface wrappers are direct graphical children rather than
+            # symbol rows. The host needs the original identities to remove
+            # those projections before the owning port list is changed.
+            self.symbolRemovalsRequested.emit(existing_symbol_removals)
         else:
             pass
         self._symbol_model.apply_to_blocks(self._var_factory)
@@ -9139,11 +9169,11 @@ class DynamicBlockPropertiesDockWidget(QtWidgets.QDockWidget):
     """Dock host that owns one block-properties editor safely.
 
     The host supplies a native title bar with the ordinary move, dock and
-    close interactions expected from Block Properties.
-    While the host is open, an application event filter gives this otherwise
-    modeless dock the same interaction boundary as a modal device editor while
-    floating. Once docked, that application filter is removed completely so
-    the Dynamic Editor, including its diagram, Library and splitters, remains
+    close interactions expected from Block Properties. While floating, native
+    Qt application modality gives it the same interaction boundary as a modal
+    device editor. Native modality automatically admits every child menu,
+    completer, delegate editor and dialogue opened by Block Properties. Once
+    docked, the host becomes non-modal so the complete Dynamic Editor remains
     usable through Qt's ordinary dock interaction.
     Closing the host explicitly prepares the Qt-heavy child tree before Qt
     schedules the binary widgets for deletion.
@@ -9154,14 +9184,7 @@ class DynamicBlockPropertiesDockWidget(QtWidgets.QDockWidget):
     __slots__ = (
         "_properties_widget",
         "_prepared_to_delete",
-        "_interaction_locked",
         "_floating",
-        "_event_filter_installed",
-        "_blocked_event_types",
-        "_attention_event_types",
-        "_attention_timer",
-        "_attention_effect",
-        "_attention_flash_phase",
     )
 
     def __init__(
@@ -9178,41 +9201,7 @@ class DynamicBlockPropertiesDockWidget(QtWidgets.QDockWidget):
         super().__init__(properties_widget.windowTitle(), parent)
         self._properties_widget: DynamicBlockPropertiesDialog = properties_widget
         self._prepared_to_delete: bool = False
-        self._interaction_locked: bool = False
         self._floating: bool = False
-        self._event_filter_installed: bool = False
-        self._attention_event_types: tuple[QtCore.QEvent.Type, ...] = (
-            QtCore.QEvent.Type.MouseButtonPress,
-            QtCore.QEvent.Type.MouseButtonDblClick,
-            QtCore.QEvent.Type.NonClientAreaMouseButtonPress,
-            QtCore.QEvent.Type.NonClientAreaMouseButtonDblClick,
-            QtCore.QEvent.Type.Wheel,
-            QtCore.QEvent.Type.ContextMenu,
-            QtCore.QEvent.Type.KeyPress,
-            QtCore.QEvent.Type.Shortcut,
-            QtCore.QEvent.Type.Drop,
-            QtCore.QEvent.Type.TouchBegin,
-            QtCore.QEvent.Type.Close,
-        )
-        passive_event_types: tuple[QtCore.QEvent.Type, ...] = (
-            QtCore.QEvent.Type.MouseButtonRelease,
-            QtCore.QEvent.Type.NonClientAreaMouseButtonRelease,
-            QtCore.QEvent.Type.MouseMove,
-            QtCore.QEvent.Type.NonClientAreaMouseMove,
-            QtCore.QEvent.Type.Enter,
-            QtCore.QEvent.Type.HoverEnter,
-            QtCore.QEvent.Type.HoverMove,
-            QtCore.QEvent.Type.ToolTip,
-            QtCore.QEvent.Type.KeyRelease,
-            QtCore.QEvent.Type.ShortcutOverride,
-            QtCore.QEvent.Type.DragEnter,
-            QtCore.QEvent.Type.DragMove,
-            QtCore.QEvent.Type.TouchUpdate,
-            QtCore.QEvent.Type.TouchEnd,
-        )
-        self._blocked_event_types: tuple[QtCore.QEvent.Type, ...] = (
-            self._attention_event_types + passive_event_types
-        )
         self.setObjectName("dynamicBlockPropertiesDock")
         self.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose, True)
         self.setFeatures(
@@ -9222,242 +9211,25 @@ class DynamicBlockPropertiesDockWidget(QtWidgets.QDockWidget):
         )
         self._properties_widget.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose, False)
         self.setWidget(self._properties_widget)
-        self._attention_timer: QtCore.QTimer = QtCore.QTimer(self)
-        self._attention_timer.setInterval(130)
-        self._attention_timer.timeout.connect(self._advance_attention_flash)
-        self._attention_effect: QtWidgets.QGraphicsColorizeEffect = (
-            QtWidgets.QGraphicsColorizeEffect(self._properties_widget)
-        )
-        self._attention_effect.setStrength(0.0)
-        self._attention_effect.setEnabled(False)
-        self._attention_flash_phase: int = 0
-        self._properties_widget.setGraphicsEffect(self._attention_effect)
         self.topLevelChanged.connect(self.configure_floating_close_only_frame)
         self.dockLocationChanged.connect(self.configure_docked_interaction_boundary)
 
     @QtCore.Slot(bool)
     def set_interaction_locked(self, locked: bool) -> None:
-        """Enable or remove the host's application-wide modal boundary.
+        """Enable or remove the host's native modal interaction boundary.
+
+        Qt owns the relationship between a modal window and every auxiliary
+        control it creates. Relying on that relationship keeps completers,
+        combo-box popups, menus, tooltips and child dialogues interactive
+        without maintaining a fragile application-wide event whitelist.
 
         :param locked: Whether Block Properties must own all VeraGrid interaction.
         :return: None.
         """
-        self._interaction_locked = locked
         if locked:
-            pass
+            self.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
         else:
-            self._attention_timer.stop()
-            self._attention_effect.setStrength(0.0)
-            self._attention_effect.setEnabled(False)
-            self._attention_flash_phase = 0
-        application_instance: QtCore.QCoreApplication | None = (
-            QtWidgets.QApplication.instance()
-        )
-        if isinstance(application_instance, QtWidgets.QApplication):
-            if locked and not self._event_filter_installed:
-                application_instance.installEventFilter(self)
-                self._event_filter_installed = True
-            elif not locked and self._event_filter_installed:
-                application_instance.removeEventFilter(self)
-                self._event_filter_installed = False
-            else:
-                pass
-        else:
-            self._event_filter_installed = False
-
-    def _is_properties_object(self, candidate: QtCore.QObject | None) -> bool:
-        """Return whether a QObject descends from the properties host.
-
-        :param candidate: Object whose Qt ownership chain must be inspected.
-        :return: Whether Block Properties owns the object.
-        """
-        belongs_to_properties: bool = False
-        while candidate is not None and not belongs_to_properties:
-            if candidate is self or candidate is self._properties_widget:
-                belongs_to_properties = True
-            else:
-                candidate = candidate.parent()
-        return belongs_to_properties
-
-    def _is_properties_window(self, candidate: QtGui.QWindow | None) -> bool:
-        """Return whether a native window is hosted or opened by the editor.
-
-        :param candidate: Native window whose transient-parent chain is inspected.
-        :return: Whether the window belongs to Block Properties.
-        """
-        dock_window: QtGui.QWindow | None = self.windowHandle()
-        properties_window: QtGui.QWindow | None = self._properties_widget.windowHandle()
-        belongs_to_properties: bool = False
-        while candidate is not None and not belongs_to_properties:
-            if candidate is dock_window or candidate is properties_window:
-                belongs_to_properties = True
-            else:
-                candidate = candidate.transientParent()
-        return belongs_to_properties
-
-    def _owns_event_target(self, watched: QtCore.QObject) -> bool:
-        """Return whether an event receiver belongs to Block Properties.
-
-        QObject ancestry also admits menus, completers and child dialogues
-        whose Qt parent remains attached to the property editor. Native popup
-        windows are handled separately because combo boxes, menus, completers
-        and file dialogues may not retain that QObject ancestry. This filter is
-        active only while Block Properties is a floating window.
-
-        :param watched: Application event receiver.
-        :return: Whether the receiver is part of this editing transaction.
-        """
-        owned: bool = self._is_properties_object(watched)
-
-        # Qt implements many editor-owned controls as temporary top-level
-        # windows. Inspect the application's active auxiliaries, then admit
-        # them only when their object or native-window ownership leads back to
-        # Block Properties.
-        application_instance: QtCore.QCoreApplication | None = (
-            QtWidgets.QApplication.instance()
-        )
-        active_popup: QtWidgets.QWidget | None = None
-        active_modal: QtWidgets.QWidget | None = None
-        if isinstance(application_instance, QtWidgets.QApplication):
-            active_popup = application_instance.activePopupWidget()
-            active_modal = application_instance.activeModalWidget()
-        else:
-            pass
-
-        popup_is_owned: bool = self._is_properties_object(active_popup)
-        modal_is_owned: bool = self._is_properties_object(active_modal)
-        if active_popup is not None and not popup_is_owned:
-            popup_is_owned = self._is_properties_window(active_popup.windowHandle())
-        else:
-            pass
-        if active_modal is not None and not modal_is_owned:
-            modal_is_owned = self._is_properties_window(active_modal.windowHandle())
-        else:
-            pass
-
-        auxiliary_owned: bool = False
-        if not owned and isinstance(watched, QtWidgets.QWidget):
-            popup_owns_widget: bool = (
-                popup_is_owned
-                and active_popup is not None
-                and (watched is active_popup or active_popup.isAncestorOf(watched))
-            )
-            modal_owns_widget: bool = (
-                modal_is_owned
-                and active_modal is not None
-                and (watched is active_modal or active_modal.isAncestorOf(watched))
-            )
-            auxiliary_owned = popup_owns_widget or modal_owns_widget
-        elif not owned and isinstance(watched, QtGui.QWindow):
-            popup_window: QtGui.QWindow | None = None
-            modal_window: QtGui.QWindow | None = None
-            if active_popup is not None:
-                popup_window = active_popup.windowHandle()
-            else:
-                pass
-            if active_modal is not None:
-                modal_window = active_modal.windowHandle()
-            else:
-                pass
-            auxiliary_owned = (
-                (popup_is_owned and watched is popup_window)
-                or (modal_is_owned and watched is modal_window)
-            )
-        else:
-            pass
-        if auxiliary_owned:
-            owned = True
-        else:
-            pass
-
-        if not owned and isinstance(watched, QtWidgets.QWidget):
-            owned = self.isAncestorOf(watched)
-        elif not owned and isinstance(watched, QtGui.QWindow):
-            owned = self._is_properties_window(watched)
-        else:
-            pass
-        return owned
-
-    def _notify_interaction_blocked(self) -> None:
-        """Bring the pending editor forward and request native attention.
-
-        :return: None.
-        """
-        self.show()
-        self.raise_()
-        if self.isFloating():
-            attention_window: QtWidgets.QWidget = self
-        else:
-            attention_window = self.window()
-        self._attention_timer.stop()
-        self._attention_flash_phase = 0
-        self._attention_effect.setColor(
-            self._properties_widget.palette().color(QtGui.QPalette.ColorRole.Highlight)
-        )
-        self._attention_effect.setEnabled(True)
-        self._advance_attention_flash()
-        self._attention_timer.start()
-        application_instance: QtCore.QCoreApplication | None = (
-            QtWidgets.QApplication.instance()
-        )
-        if isinstance(application_instance, QtWidgets.QApplication):
-            # The native request mirrors the attention flash produced by an
-            # application-modal QDialog while Block Properties is floating.
-            application_instance.alert(attention_window, 1100)
-        else:
-            pass
-
-    @QtCore.Slot()
-    def _advance_attention_flash(self) -> None:
-        """Render four short highlight pulses and then restore editor focus.
-
-        :return: None.
-        """
-        if self._attention_flash_phase < 8:
-            bright_phase: bool = self._attention_flash_phase % 2 == 0
-            if bright_phase:
-                self._attention_effect.setStrength(0.32)
-            else:
-                self._attention_effect.setStrength(0.0)
-            self._attention_flash_phase += 1
-        else:
-            self._attention_timer.stop()
-            self._attention_effect.setStrength(0.0)
-            self._attention_effect.setEnabled(False)
-            self.raise_()
-            self.activateWindow()
-
-    def eventFilter(self, watched: QtCore.QObject, event: QtCore.QEvent) -> bool:
-        """Block interaction outside Block Properties while it is floating.
-
-        :param watched: Object that would receive the application event.
-        :param event: Pending Qt event.
-        :return: ``True`` when an outside action was consumed.
-        """
-        programmatic_close: bool = (
-            event.type() == QtCore.QEvent.Type.Close
-            and not event.spontaneous()
-        )
-        should_block: bool = (
-            self._interaction_locked
-            and event.type() in self._blocked_event_types
-            and not programmatic_close
-            and not self._owns_event_target(watched)
-        )
-        if should_block:
-            event.accept()
-            if event.type() in self._attention_event_types:
-                self._notify_interaction_blocked()
-            else:
-                pass
-            result: bool = True
-        else:
-            # This object is installed as an application-wide observer rather
-            # than as a QDockWidget-internal filter. Returning ``False`` lets
-            # Qt continue normal delivery and, crucially, avoids passing a
-            # popup QWindow wrapper back into C++ after Qt has destroyed it.
-            result = False
-        return result
+            self.setWindowModality(QtCore.Qt.WindowModality.NonModal)
 
     @QtCore.Slot(bool)
     def configure_floating_close_only_frame(self, floating: bool) -> None:
@@ -9472,11 +9244,9 @@ class DynamicBlockPropertiesDockWidget(QtWidgets.QDockWidget):
         :param floating: Whether the dock has become a top-level window.
         :return: None.
         """
-        # A floating Block Properties window owns a modal-style application
-        # boundary. Docking removes the filter entirely so no Dynamic Editor
-        # control depends on QObject ancestry to remain interactive.
+        # A floating Block Properties window owns a native modal boundary.
+        # Docking removes modality entirely so the Dynamic Editor is usable.
         self._floating = floating
-        self.set_interaction_locked(floating)
         if floating:
             floating_flags: Qt.WindowType = (
                 Qt.WindowType.Window
@@ -9486,19 +9256,20 @@ class DynamicBlockPropertiesDockWidget(QtWidgets.QDockWidget):
                 | Qt.WindowType.WindowCloseButtonHint
             )
             self.setWindowFlags(floating_flags)
+            self.set_interaction_locked(True)
             # Updating native decorations temporarily hides the widget. Show
             # it again before the opening code positions the floating dock.
             self.show()
         else:
             # Qt restores its embedded dock title bar after reattachment.
-            pass
+            self.set_interaction_locked(False)
 
     @QtCore.Slot(Qt.DockWidgetArea)
     def configure_docked_interaction_boundary(
             self,
             area: Qt.DockWidgetArea,
     ) -> None:
-        """Remove the application filter as soon as docking completes.
+        """Remove native window modality as soon as docking completes.
 
         ``dockLocationChanged`` provides an independent, explicit dock-state
         notification. Handling it avoids leaving the Dynamic Editor blocked
@@ -9524,13 +9295,21 @@ class DynamicBlockPropertiesDockWidget(QtWidgets.QDockWidget):
             pass
         else:
             self._prepared_to_delete = True
-            self.set_interaction_locked(False)
-            try:
-                self._attention_timer.timeout.disconnect(
-                    self._advance_attention_flash
-                )
-            except (RuntimeError, TypeError):
+
+            # Detach the completer popup, event filters, models and document
+            # observers while their complete Qt ownership tree is still alive.
+            # Hiding first can enqueue popup events against Python wrappers
+            # that are destroyed later in this close cycle.
+            self._properties_widget.prepare_to_delete()
+
+            # Qt does not reliably apply a modality change to a visible native
+            # window. Hide it next so the floating dock leaves the modal stack
+            # before its DeferredDelete event is eventually processed.
+            if self._floating and self.isVisible():
+                self.hide()
+            else:
                 pass
+            self.set_interaction_locked(False)
             try:
                 self.topLevelChanged.disconnect(self.configure_floating_close_only_frame)
             except (RuntimeError, TypeError):
@@ -9541,7 +9320,6 @@ class DynamicBlockPropertiesDockWidget(QtWidgets.QDockWidget):
                 )
             except (RuntimeError, TypeError):
                 pass
-            self._properties_widget.prepare_to_delete()
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         """Prepare the child editor and notify its owning Dynamic Editor.
@@ -9554,11 +9332,8 @@ class DynamicBlockPropertiesDockWidget(QtWidgets.QDockWidget):
             and self._properties_widget.has_unapplied_changes()
         )
         if requires_confirmation:
-            # QMessageBox supplies its own modal interaction boundary. Remove
-            # the application event filter while that nested modal loop is
-            # active so its Discard and Cancel controls remain interactive.
-            # Cancelling below restores the Block Properties modal boundary.
-            self.set_interaction_locked(False)
+            # The confirmation is a native child of the modal properties host,
+            # so it remains interactive without opening the rest of VeraGrid.
             selected_button: QtWidgets.QMessageBox.StandardButton = (
                 QtWidgets.QMessageBox.warning(
                     self,
@@ -9584,8 +9359,8 @@ class DynamicBlockPropertiesDockWidget(QtWidgets.QDockWidget):
             QtWidgets.QDockWidget.closeEvent(self, event)
         else:
             event.ignore()
-            self.set_interaction_locked(self._floating)
             if self._floating:
-                self._notify_interaction_blocked()
+                self.raise_()
+                self.activateWindow()
             else:
                 pass

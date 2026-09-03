@@ -2339,6 +2339,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             dialogue.structuralRebuildRequested.connect(self.on_structural_rebuild_requested)
             dialogue.variableRenameRequested.connect(self.on_variable_rename_requested)
             dialogue.outputExportChangesRequested.connect(self.on_output_export_changes_requested)
+            dialogue.symbolRemovalsRequested.connect(self.on_symbol_removals_requested)
             properties_dock: DynamicBlockPropertiesDockWidget = DynamicBlockPropertiesDockWidget(
                 properties_widget=dialogue,
                 parent=self,
@@ -5070,6 +5071,32 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         var_to_disconnect: Var
         outgoing_var: Var
         var_to_disconnect, outgoing_var = resolved_vars
+        self._unregister_symbolic_connection_between_vars(
+            var_to_disconnect=var_to_disconnect,
+            outgoing_var=outgoing_var,
+        )
+
+        self._refresh_connection_endpoint_displays(source_port, target_port)
+        self._record_root_interface_connection_intent(source_port=source_port,
+                                                      target_port=target_port,
+                                                      suppressed=True)
+
+    def _unregister_symbolic_connection_between_vars(
+            self,
+            var_to_disconnect: Var,
+            outgoing_var: Var,
+    ) -> None:
+        """Remove one symbolic edge when graphics ports are unavailable.
+
+        Nested block diagrams are not part of the active scene while their
+        parent block is edited through Block Properties. This variable-level
+        path retains the same VarFactory restoration behavior as deleting a
+        visible wire.
+
+        :param var_to_disconnect: Target variable detached from the source.
+        :param outgoing_var: Source variable owning the connection record.
+        :return: None.
+        """
         connection_record: Connection | None = self._find_var_factory_connection(
             incoming_non_mutable_uid=outgoing_var.non_mutable_uid,
             substituted_non_mutable_uid=var_to_disconnect.non_mutable_uid,
@@ -5087,11 +5114,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             )
         else:
             pass
-
-        self._refresh_connection_endpoint_displays(source_port, target_port)
-        self._record_root_interface_connection_intent(source_port=source_port,
-                                                      target_port=target_port,
-                                                      suppressed=True)
 
     def _record_root_interface_connection_intent(self,
                                                  source_port: graph.PortItem,
@@ -10317,6 +10339,226 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         apply_generated_block_state(candidate_block, target_block)
         request.set_result(True, "")
 
+    def _get_direct_child_for_diagram_endpoint(
+            self,
+            owner: Block,
+            endpoint_uid: int,
+    ) -> Block | None:
+        """Resolve one persisted diagram endpoint to a direct child block.
+
+        Current diagrams key nodes by the child UID. Legacy records may retain
+        a different dictionary key while ``device_uid`` still identifies the
+        child, so both representations are accepted without descending into
+        grandchildren.
+
+        :param owner: Block whose immediate diagram is being inspected.
+        :param endpoint_uid: UID stored on one diagram connection endpoint.
+        :return: Matching direct child block, or ``None``.
+        """
+        child: Block
+        for child in owner.children:
+            if child.uid == endpoint_uid:
+                return child
+            else:
+                pass
+
+        endpoint_node: BlockDiagramNode | None = owner.diagram.node_data.get(endpoint_uid, None)
+        if endpoint_node is not None:
+            for child in owner.children:
+                if child.uid == endpoint_node.device_uid:
+                    return child
+                else:
+                    pass
+        else:
+            pass
+        return None
+
+    def _remove_direct_interface_wrappers_for_symbol(
+            self,
+            owner: Block,
+            variable: Var,
+    ) -> bool:
+        """Remove direct interface wrappers representing one deleted port.
+
+        Block Properties owns the parent port list, while the nested editor
+        materializes each port as an ``INPUT_CONN`` or ``OUTPUT_CONN`` child.
+        Removing both representations in one transaction prevents an orphaned
+        wrapper from reappearing when the user enters the block diagram.
+
+        :param owner: Block directly owning the deleted symbol and subdiagram.
+        :param variable: Existing interface symbol staged for deletion.
+        :return: Whether at least one matching direct wrapper was removed.
+        """
+        removes_input: bool = variable in owner.in_vars
+        removes_output: bool = variable in owner.out_vars
+        wrapper_child_uids: set[int] = set()
+        wrapper_node_keys: set[int] = set()
+        wrapper_endpoint_uids: set[int] = set()
+        child: Block
+        node_key: int
+        node: BlockDiagramNode
+        wrapper_variable: Var | None
+        matches_direction: bool
+        matches_variable: bool
+
+        if not removes_input and not removes_output:
+            return False
+        else:
+            pass
+
+        # Diagram node type is the authoritative wrapper role. Inspect only
+        # direct children so an identically named port in a nested block is not
+        # affected by an edit to this owner.
+        for child in owner.children:
+            matching_node_key: int | None = None
+            matching_node: BlockDiagramNode | None = owner.diagram.node_data.get(child.uid, None)
+            if matching_node is not None:
+                matching_node_key = child.uid
+            else:
+                for node_key, node in owner.diagram.node_data.items():
+                    if node.device_uid == child.uid and matching_node is None:
+                        matching_node = node
+                        matching_node_key = node_key
+                    else:
+                        pass
+
+            if matching_node is None or matching_node_key is None:
+                pass
+            else:
+                if matching_node.tpe == BlockType.INPUT_CONN.name and len(child.out_vars) == 1:
+                    wrapper_variable = child.out_vars[0]
+                    matches_direction = removes_input
+                elif matching_node.tpe == BlockType.OUTPUT_CONN.name and len(child.in_vars) == 1:
+                    wrapper_variable = child.in_vars[0]
+                    matches_direction = removes_output
+                else:
+                    wrapper_variable = None
+                    matches_direction = False
+
+                if wrapper_variable is not None:
+                    matches_variable = (
+                        wrapper_variable is variable
+                        or wrapper_variable.non_mutable_uid == variable.non_mutable_uid
+                    )
+                else:
+                    matches_variable = False
+
+                if matches_direction and matches_variable:
+                    wrapper_child_uids.add(child.uid)
+                    wrapper_node_keys.add(matching_node_key)
+                    wrapper_endpoint_uids.add(child.uid)
+                    wrapper_endpoint_uids.add(matching_node_key)
+                    wrapper_endpoint_uids.add(matching_node.device_uid)
+                else:
+                    pass
+
+        if len(wrapper_child_uids) == 0:
+            return False
+        else:
+            pass
+
+        # Disconnect every incident saved wire before deleting its endpoints.
+        # This restores downstream variables to their independent identities in
+        # the shared VarFactory just like deleting a visible connection does.
+        connection_uids_to_remove: List[int] = list()
+        connection_uid: int
+        connection: BlockDiagramConnection
+        source_block: Block | None
+        target_block: Block | None
+        source_variable: Var | None
+        target_variable: Var | None
+        var_to_disconnect: Var
+        outgoing_variable: Var
+        for connection_uid, connection in owner.diagram.con_data.items():
+            if (
+                    connection.from_uid in wrapper_endpoint_uids
+                    or connection.to_uid in wrapper_endpoint_uids
+            ):
+                source_block = self._get_direct_child_for_diagram_endpoint(
+                    owner=owner,
+                    endpoint_uid=connection.from_uid,
+                )
+                target_block = self._get_direct_child_for_diagram_endpoint(
+                    owner=owner,
+                    endpoint_uid=connection.to_uid,
+                )
+                if (
+                        source_block is not None
+                        and 0 <= connection.port_number_from < len(source_block.out_vars)
+                ):
+                    source_variable = source_block.out_vars[connection.port_number_from]
+                else:
+                    source_variable = None
+                if (
+                        target_block is not None
+                        and 0 <= connection.port_number_to < len(target_block.in_vars)
+                ):
+                    target_variable = target_block.in_vars[connection.port_number_to]
+                else:
+                    target_variable = None
+
+                if source_variable is not None and target_variable is not None:
+                    if target_variable.network_conn:
+                        var_to_disconnect = source_variable
+                        outgoing_variable = target_variable
+                    else:
+                        var_to_disconnect = target_variable
+                        outgoing_variable = source_variable
+                    self._unregister_symbolic_connection_between_vars(
+                        var_to_disconnect=var_to_disconnect,
+                        outgoing_var=outgoing_variable,
+                    )
+                else:
+                    pass
+                connection_uids_to_remove.append(connection_uid)
+            else:
+                pass
+
+        for connection_uid in connection_uids_to_remove:
+            del owner.diagram.con_data[connection_uid]
+
+        kept_children: List[Block] = list()
+        for child in owner.children:
+            if child.uid in wrapper_child_uids:
+                pass
+            else:
+                kept_children.append(child)
+        owner.children = kept_children
+
+        for node_key in wrapper_node_keys:
+            if node_key in owner.diagram.node_data:
+                del owner.diagram.node_data[node_key]
+            else:
+                pass
+
+        normalize_dynamic_connection_intents(block=owner)
+        return True
+
+    @QtCore.Slot(object)
+    def on_symbol_removals_requested(self, removals: object) -> None:
+        """Synchronize deleted symbols with direct nested interface wrappers.
+
+        :param removals: Staged ``(owner, variable)`` deletion tuples.
+        :return: None.
+        """
+        if isinstance(removals, list):
+            removal: object
+            for removal in removals:
+                if isinstance(removal, tuple) and len(removal) == 2:
+                    owner: object = removal[0]
+                    variable: object = removal[1]
+                    if isinstance(owner, Block) and isinstance(variable, Var):
+                        self._remove_direct_interface_wrappers_for_symbol(
+                            owner=owner,
+                            variable=variable,
+                        )
+                    else:
+                        pass
+                else:
+                    pass
+        else:
+            pass
+
     @QtCore.Slot(object)
     def on_output_export_changes_requested(self, changes: object) -> None:
         """Disconnect wires before existing output ports are removed.
@@ -11836,6 +12078,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             try:
                 properties_dialogue.outputExportChangesRequested.disconnect(
                     self.on_output_export_changes_requested
+                )
+            except (RuntimeError, TypeError):
+                pass
+            try:
+                properties_dialogue.symbolRemovalsRequested.disconnect(
+                    self.on_symbol_removals_requested
                 )
             except (RuntimeError, TypeError):
                 pass
