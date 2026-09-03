@@ -5986,6 +5986,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 del self.diagram.node_data[item.subsys.uid]
             else:
                 pass
+
+            # The removed child cannot become a valid connection destination
+            # again. Prune its semantic intents immediately so the working model
+            # and the next saved representation contain only current targets.
+            normalize_dynamic_connection_intents(block=self.main_block)
         else:
             pass
 
