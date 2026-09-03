@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VeraGridEngine package &mdash; VeraGrid 6.5.6 documentation</title>
+  <title>VeraGridEngine package &mdash; VeraGrid 6.5.13 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
@@ -15,7 +15,7 @@
   
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../../../_static/documentation_options.js?v=1095f081"></script>
+      <script src="../../../_static/documentation_options.js?v=3377d3ec"></script>
       <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
       <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/js/theme.js"></script>
@@ -191,10 +191,13 @@
 <li class="toctree-l4"><a class="reference internal" href="#VeraGridEngine.enumerations.ExternalGridMode"><code class="docutils literal notranslate"><span class="pre">ExternalGridMode</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#VeraGridEngine.enumerations.FaultType"><code class="docutils literal notranslate"><span class="pre">FaultType</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#VeraGridEngine.enumerations.FileType"><code class="docutils literal notranslate"><span class="pre">FileType</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#VeraGridEngine.enumerations.FmiThreeVariableCausality"><code class="docutils literal notranslate"><span class="pre">FmiThreeVariableCausality</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#VeraGridEngine.enumerations.FmiVersion"><code class="docutils literal notranslate"><span class="pre">FmiVersion</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#VeraGridEngine.enumerations.FmuInterfaceMode"><code class="docutils literal notranslate"><span class="pre">FmuInterfaceMode</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#VeraGridEngine.enumerations.FmuSourceKind"><code class="docutils literal notranslate"><span class="pre">FmuSourceKind</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#VeraGridEngine.enumerations.FmuTemplateDomain"><code class="docutils literal notranslate"><span class="pre">FmuTemplateDomain</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#VeraGridEngine.enumerations.FmuTemplateMode"><code class="docutils literal notranslate"><span class="pre">FmuTemplateMode</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#VeraGridEngine.enumerations.FmuVariableType"><code class="docutils literal notranslate"><span class="pre">FmuVariableType</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#VeraGridEngine.enumerations.GenerationNtcFormulation"><code class="docutils literal notranslate"><span class="pre">GenerationNtcFormulation</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#VeraGridEngine.enumerations.GeneratorControlMode"><code class="docutils literal notranslate"><span class="pre">GeneratorControlMode</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#VeraGridEngine.enumerations.GeneratorType"><code class="docutils literal notranslate"><span class="pre">GeneratorType</span></code></a></li>
@@ -209,6 +212,7 @@
 <li class="toctree-l4"><a class="reference internal" href="#VeraGridEngine.enumerations.MIPFramework"><code class="docutils literal notranslate"><span class="pre">MIPFramework</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#VeraGridEngine.enumerations.MIPSolvers"><code class="docutils literal notranslate"><span class="pre">MIPSolvers</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#VeraGridEngine.enumerations.MatpowerExportMode"><code class="docutils literal notranslate"><span class="pre">MatpowerExportMode</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#VeraGridEngine.enumerations.MeasurementVarType"><code class="docutils literal notranslate"><span class="pre">MeasurementVarType</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#VeraGridEngine.enumerations.MethodShortCircuit"><code class="docutils literal notranslate"><span class="pre">MethodShortCircuit</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#VeraGridEngine.enumerations.NodalCapacityMethod"><code class="docutils literal notranslate"><span class="pre">NodalCapacityMethod</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#VeraGridEngine.enumerations.OpfDispatchMode"><code class="docutils literal notranslate"><span class="pre">OpfDispatchMode</span></code></a></li>
@@ -890,6 +894,7 @@
 <li class="toctree-l4"><a class="reference internal" href="VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.add_controllable_shunt"><code class="docutils literal notranslate"><span class="pre">Assets.add_controllable_shunt()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.add_country"><code class="docutils literal notranslate"><span class="pre">Assets.add_country()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.add_current_injection"><code class="docutils literal notranslate"><span class="pre">Assets.add_current_injection()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.add_dc_cable_type"><code class="docutils literal notranslate"><span class="pre">Assets.add_dc_cable_type()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.add_dc_line"><code class="docutils literal notranslate"><span class="pre">Assets.add_dc_line()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.add_diagram"><code class="docutils literal notranslate"><span class="pre">Assets.add_diagram()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.add_dynamic_plot"><code class="docutils literal notranslate"><span class="pre">Assets.add_dynamic_plot()</span></code></a></li>
@@ -973,6 +978,7 @@
 <li class="toctree-l4"><a class="reference internal" href="VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.countries"><code class="docutils literal notranslate"><span class="pre">Assets.countries</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.create_profiles"><code class="docutils literal notranslate"><span class="pre">Assets.create_profiles()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.current_injections"><code class="docutils literal notranslate"><span class="pre">Assets.current_injections</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.dc_cable_types"><code class="docutils literal notranslate"><span class="pre">Assets.dc_cable_types</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.dc_lines"><code class="docutils literal notranslate"><span class="pre">Assets.dc_lines</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.delete_area"><code class="docutils literal notranslate"><span class="pre">Assets.delete_area()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.delete_battery"><code class="docutils literal notranslate"><span class="pre">Assets.delete_battery()</span></code></a></li>
@@ -989,6 +995,7 @@
 <li class="toctree-l4"><a class="reference internal" href="VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.delete_controllable_shunt"><code class="docutils literal notranslate"><span class="pre">Assets.delete_controllable_shunt()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.delete_country"><code class="docutils literal notranslate"><span class="pre">Assets.delete_country()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.delete_current_injection"><code class="docutils literal notranslate"><span class="pre">Assets.delete_current_injection()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.delete_dc_cable_type"><code class="docutils literal notranslate"><span class="pre">Assets.delete_dc_cable_type()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.delete_dc_line"><code class="docutils literal notranslate"><span class="pre">Assets.delete_dc_line()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.delete_dynamic_plot"><code class="docutils literal notranslate"><span class="pre">Assets.delete_dynamic_plot()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.delete_dynamic_plot_entry"><code class="docutils literal notranslate"><span class="pre">Assets.delete_dynamic_plot_entry()</span></code></a></li>
@@ -2577,7 +2584,7 @@
 <li class="toctree-l3"><a class="reference internal" href="VeraGridEngine.Utils.MIP.html">VeraGridEngine.Utils.MIP package</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="VeraGridEngine.Utils.MIP.html#subpackages">Subpackages</a></li>
 <li class="toctree-l4"><a class="reference internal" href="VeraGridEngine.Utils.MIP.html#submodules">Submodules</a></li>
-<li class="toctree-l4"><a class="reference internal" href="VeraGridEngine.Utils.MIP.html#module-VeraGridEngine.Utils.MIP.gslv_interface">VeraGridEngine.Utils.MIP.gslv_interface module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="VeraGridEngine.Utils.MIP.html#veragridengine-utils-mip-gslv-interface-module">VeraGridEngine.Utils.MIP.gslv_interface module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="VeraGridEngine.Utils.MIP.html#module-VeraGridEngine.Utils.MIP.mip_interface_template">VeraGridEngine.Utils.MIP.mip_interface_template module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="VeraGridEngine.Utils.MIP.html#module-VeraGridEngine.Utils.MIP.ortools_interface">VeraGridEngine.Utils.MIP.ortools_interface module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="VeraGridEngine.Utils.MIP.html#module-VeraGridEngine.Utils.MIP.pulp_interface">VeraGridEngine.Utils.MIP.pulp_interface module</a></li>
@@ -3139,7 +3146,7 @@ indices that best represent the whole time series. It included each sample proba
 
 <dl class="py function">
 <dt class="sig sig-object py" id="VeraGridEngine.api.continuation_power_flow">
-<span class="sig-prename descclassname"><span class="pre">VeraGridEngine.api.</span></span><span class="sig-name descname"><span class="pre">continuation_power_flow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">grid:</span> <span class="pre">~VeraGridEngine.Devices.multi_circuit.MultiCircuit,</span> <span class="pre">options:</span> <span class="pre">~VeraGridEngine.Simulations.ContinuationPowerFlow.continuation_power_flow_options.ContinuationPowerFlowOptions</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">pf_options:</span> <span class="pre">~VeraGridEngine.Simulations.PowerFlow.power_flow_options.PowerFlowOptions</span> <span class="pre">=</span> <span class="pre">.::5b57eb2c3bb14e54ad7bba56534bf78a::PowerFlowOptions,</span> <span class="pre">pf_results:</span> <span class="pre">~VeraGridEngine.Simulations.PowerFlow.power_flow_results.PowerFlowResults</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">factor:</span> <span class="pre">~numpy.ndarray[tuple[~typing.Any,</span> <span class="pre">...],</span> <span class="pre">~numpy.dtype[~numpy.float64]]</span> <span class="pre">|</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">2.0,</span> <span class="pre">stop_at=CpfStopAt.Full</span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="VeraGridEngine.Simulations.ShortCircuitStudies.html#VeraGridEngine.Simulations.ShortCircuitStudies.short_circuit_results.ShortCircuitResults" title="VeraGridEngine.Simulations.ShortCircuitStudies.short_circuit_results.ShortCircuitResults"><span class="pre">ShortCircuitResults</span></a></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/api.html#continuation_power_flow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.api.continuation_power_flow" title="Link to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">VeraGridEngine.api.</span></span><span class="sig-name descname"><span class="pre">continuation_power_flow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">grid:</span> <span class="pre">~VeraGridEngine.Devices.multi_circuit.MultiCircuit,</span> <span class="pre">options:</span> <span class="pre">~VeraGridEngine.Simulations.ContinuationPowerFlow.continuation_power_flow_options.ContinuationPowerFlowOptions</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">pf_options:</span> <span class="pre">~VeraGridEngine.Simulations.PowerFlow.power_flow_options.PowerFlowOptions</span> <span class="pre">=</span> <span class="pre">.::6151ed17b0a24714a6b17ddbf9d06aa0::PowerFlowOptions,</span> <span class="pre">pf_results:</span> <span class="pre">~VeraGridEngine.Simulations.PowerFlow.power_flow_results.PowerFlowResults</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">factor:</span> <span class="pre">~numpy.ndarray[tuple[~typing.Any,</span> <span class="pre">...],</span> <span class="pre">~numpy.dtype[~numpy.float64]]</span> <span class="pre">|</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">2.0,</span> <span class="pre">stop_at=CpfStopAt.Full</span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="VeraGridEngine.Simulations.ShortCircuitStudies.html#VeraGridEngine.Simulations.ShortCircuitStudies.short_circuit_results.ShortCircuitResults" title="VeraGridEngine.Simulations.ShortCircuitStudies.short_circuit_results.ShortCircuitResults"><span class="pre">ShortCircuitResults</span></a></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/api.html#continuation_power_flow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.api.continuation_power_flow" title="Link to this definition"></a></dt>
 <dd><p>Run continuation power flow circuit
 :param grid: MultiCircuit instance
 :param options: ContinuationPowerFlowOptions instance (optional)
@@ -3161,7 +3168,7 @@ indices that best represent the whole time series. It included each sample proba
 
 <dl class="py function">
 <dt class="sig sig-object py" id="VeraGridEngine.api.linear_opf">
-<span class="sig-prename descclassname"><span class="pre">VeraGridEngine.api.</span></span><span class="sig-name descname"><span class="pre">linear_opf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">grid</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.Devices.html#VeraGridEngine.Devices.multi_circuit.MultiCircuit" title="VeraGridEngine.Devices.multi_circuit.MultiCircuit"><span class="pre">MultiCircuit</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.Simulations.OPF.html#VeraGridEngine.Simulations.OPF.opf_options.OptimalPowerFlowOptions" title="VeraGridEngine.Simulations.OPF.opf_options.OptimalPowerFlowOptions"><span class="pre">OptimalPowerFlowOptions</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">.::7161013f50fd4f8792e543f2814b0f9c::Optimal</span> <span class="pre">power</span> <span class="pre">flow</span> <span class="pre">options</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="VeraGridEngine.Simulations.OPF.html#VeraGridEngine.Simulations.OPF.opf_results.OptimalPowerFlowResults" title="VeraGridEngine.Simulations.OPF.opf_results.OptimalPowerFlowResults"><span class="pre">OptimalPowerFlowResults</span></a></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/api.html#linear_opf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.api.linear_opf" title="Link to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">VeraGridEngine.api.</span></span><span class="sig-name descname"><span class="pre">linear_opf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">grid</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.Devices.html#VeraGridEngine.Devices.multi_circuit.MultiCircuit" title="VeraGridEngine.Devices.multi_circuit.MultiCircuit"><span class="pre">MultiCircuit</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.Simulations.OPF.html#VeraGridEngine.Simulations.OPF.opf_options.OptimalPowerFlowOptions" title="VeraGridEngine.Simulations.OPF.opf_options.OptimalPowerFlowOptions"><span class="pre">OptimalPowerFlowOptions</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">.::48930ee67af747ba8dc2a9764f577a0e::Optimal</span> <span class="pre">power</span> <span class="pre">flow</span> <span class="pre">options</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="VeraGridEngine.Simulations.OPF.html#VeraGridEngine.Simulations.OPF.opf_results.OptimalPowerFlowResults" title="VeraGridEngine.Simulations.OPF.opf_results.OptimalPowerFlowResults"><span class="pre">OptimalPowerFlowResults</span></a></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/api.html#linear_opf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.api.linear_opf" title="Link to this definition"></a></dt>
 <dd><p>Run Linear Optimal Power Flow
 :param grid: MultiCircuit instance
 :param options: Optimal Power Flow Options instance (optional)
@@ -3188,7 +3195,7 @@ indices that best represent the whole time series. It included each sample proba
 
 <dl class="py function">
 <dt class="sig sig-object py" id="VeraGridEngine.api.nonlinear_opf">
-<span class="sig-prename descclassname"><span class="pre">VeraGridEngine.api.</span></span><span class="sig-name descname"><span class="pre">nonlinear_opf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">grid</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.Devices.html#VeraGridEngine.Devices.multi_circuit.MultiCircuit" title="VeraGridEngine.Devices.multi_circuit.MultiCircuit"><span class="pre">MultiCircuit</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">opf_options</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.Simulations.OPF.html#VeraGridEngine.Simulations.OPF.opf_options.OptimalPowerFlowOptions" title="VeraGridEngine.Simulations.OPF.opf_options.OptimalPowerFlowOptions"><span class="pre">OptimalPowerFlowOptions</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">.::33efc9c1ccc54c5fb1bb26f539e84fe4::Optimal</span> <span class="pre">power</span> <span class="pre">flow</span> <span class="pre">options</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot_error</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="VeraGridEngine.Simulations.OPF.Formulations.html#VeraGridEngine.Simulations.OPF.Formulations.ac_opf_problem.NonlinearOPFResults" title="VeraGridEngine.Simulations.OPF.Formulations.ac_opf_problem.NonlinearOPFResults"><span class="pre">NonlinearOPFResults</span></a></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/api.html#nonlinear_opf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.api.nonlinear_opf" title="Link to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">VeraGridEngine.api.</span></span><span class="sig-name descname"><span class="pre">nonlinear_opf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">grid</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.Devices.html#VeraGridEngine.Devices.multi_circuit.MultiCircuit" title="VeraGridEngine.Devices.multi_circuit.MultiCircuit"><span class="pre">MultiCircuit</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">opf_options</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.Simulations.OPF.html#VeraGridEngine.Simulations.OPF.opf_options.OptimalPowerFlowOptions" title="VeraGridEngine.Simulations.OPF.opf_options.OptimalPowerFlowOptions"><span class="pre">OptimalPowerFlowOptions</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">.::9ce6fc554e8a4fd2a1d6d0dcba2f77b6::Optimal</span> <span class="pre">power</span> <span class="pre">flow</span> <span class="pre">options</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot_error</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="VeraGridEngine.Simulations.OPF.Formulations.html#VeraGridEngine.Simulations.OPF.Formulations.ac_opf_problem.NonlinearOPFResults" title="VeraGridEngine.Simulations.OPF.Formulations.ac_opf_problem.NonlinearOPFResults"><span class="pre">NonlinearOPFResults</span></a></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/api.html#nonlinear_opf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.api.nonlinear_opf" title="Link to this definition"></a></dt>
 <dd><p>Run AC Optimal Power Flow
 :param grid: MultiCircuit instance
 :param opf_options: Optimal Power Flow Options instance (optional)
@@ -3309,7 +3316,7 @@ indices that best represent the whole time series. It included each sample proba
 
 <dl class="py function">
 <dt class="sig sig-object py" id="VeraGridEngine.api.short_circuit">
-<span class="sig-prename descclassname"><span class="pre">VeraGridEngine.api.</span></span><span class="sig-name descname"><span class="pre">short_circuit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">grid</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.Devices.html#VeraGridEngine.Devices.multi_circuit.MultiCircuit" title="VeraGridEngine.Devices.multi_circuit.MultiCircuit"><span class="pre">MultiCircuit</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">fault_index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fault_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">LG</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pf_options</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.Simulations.PowerFlow.html#VeraGridEngine.Simulations.PowerFlow.power_flow_options.PowerFlowOptions" title="VeraGridEngine.Simulations.PowerFlow.power_flow_options.PowerFlowOptions"><span class="pre">PowerFlowOptions</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">.::20cd3f822c514e7b8e5c5382477b0a1e::PowerFlowOptions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pf_results</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.Simulations.PowerFlow.html#VeraGridEngine.Simulations.PowerFlow.power_flow_results.PowerFlowResults" title="VeraGridEngine.Simulations.PowerFlow.power_flow_results.PowerFlowResults"><span class="pre">PowerFlowResults</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pf_results3ph</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.Simulations.PowerFlow3ph.html#VeraGridEngine.Simulations.PowerFlow3ph.power_flow_results_3ph.PowerFlowResults3Ph" title="VeraGridEngine.Simulations.PowerFlow3ph.power_flow_results_3ph.PowerFlowResults3Ph"><span class="pre">PowerFlowResults3Ph</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="VeraGridEngine.Simulations.ShortCircuitStudies.html#VeraGridEngine.Simulations.ShortCircuitStudies.short_circuit_results.ShortCircuitResults" title="VeraGridEngine.Simulations.ShortCircuitStudies.short_circuit_results.ShortCircuitResults"><span class="pre">ShortCircuitResults</span></a></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/api.html#short_circuit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.api.short_circuit" title="Link to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">VeraGridEngine.api.</span></span><span class="sig-name descname"><span class="pre">short_circuit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">grid</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.Devices.html#VeraGridEngine.Devices.multi_circuit.MultiCircuit" title="VeraGridEngine.Devices.multi_circuit.MultiCircuit"><span class="pre">MultiCircuit</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">fault_index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fault_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">LG</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pf_options</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.Simulations.PowerFlow.html#VeraGridEngine.Simulations.PowerFlow.power_flow_options.PowerFlowOptions" title="VeraGridEngine.Simulations.PowerFlow.power_flow_options.PowerFlowOptions"><span class="pre">PowerFlowOptions</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">.::edf1dc38aecf4188983881e40e3a1892::PowerFlowOptions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pf_results</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.Simulations.PowerFlow.html#VeraGridEngine.Simulations.PowerFlow.power_flow_results.PowerFlowResults" title="VeraGridEngine.Simulations.PowerFlow.power_flow_results.PowerFlowResults"><span class="pre">PowerFlowResults</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pf_results3ph</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.Simulations.PowerFlow3ph.html#VeraGridEngine.Simulations.PowerFlow3ph.power_flow_results_3ph.PowerFlowResults3Ph" title="VeraGridEngine.Simulations.PowerFlow3ph.power_flow_results_3ph.PowerFlowResults3Ph"><span class="pre">PowerFlowResults3Ph</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="VeraGridEngine.Simulations.ShortCircuitStudies.html#VeraGridEngine.Simulations.ShortCircuitStudies.short_circuit_results.ShortCircuitResults" title="VeraGridEngine.Simulations.ShortCircuitStudies.short_circuit_results.ShortCircuitResults"><span class="pre">ShortCircuitResults</span></a></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/api.html#short_circuit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.api.short_circuit" title="Link to this definition"></a></dt>
 <dd><p>Run short circuit
 :param grid: MultiCircuit instance
 :param fault_index: Bus fault index
@@ -3322,7 +3329,7 @@ indices that best represent the whole time series. It included each sample proba
 
 <dl class="py function">
 <dt class="sig sig-object py" id="VeraGridEngine.api.simple_opf">
-<span class="sig-prename descclassname"><span class="pre">VeraGridEngine.api.</span></span><span class="sig-name descname"><span class="pre">simple_opf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">grid</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.Devices.html#VeraGridEngine.Devices.multi_circuit.MultiCircuit" title="VeraGridEngine.Devices.multi_circuit.MultiCircuit"><span class="pre">MultiCircuit</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.Simulations.OPF.html#VeraGridEngine.Simulations.OPF.opf_options.OptimalPowerFlowOptions" title="VeraGridEngine.Simulations.OPF.opf_options.OptimalPowerFlowOptions"><span class="pre">OptimalPowerFlowOptions</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">.::61e2dfdbad6b4483a80e64d7c236a667::Optimal</span> <span class="pre">power</span> <span class="pre">flow</span> <span class="pre">options</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="VeraGridEngine.Simulations.OPF.html#VeraGridEngine.Simulations.OPF.opf_results.OptimalPowerFlowResults" title="VeraGridEngine.Simulations.OPF.opf_results.OptimalPowerFlowResults"><span class="pre">OptimalPowerFlowResults</span></a></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/api.html#simple_opf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.api.simple_opf" title="Link to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">VeraGridEngine.api.</span></span><span class="sig-name descname"><span class="pre">simple_opf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">grid</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.Devices.html#VeraGridEngine.Devices.multi_circuit.MultiCircuit" title="VeraGridEngine.Devices.multi_circuit.MultiCircuit"><span class="pre">MultiCircuit</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.Simulations.OPF.html#VeraGridEngine.Simulations.OPF.opf_options.OptimalPowerFlowOptions" title="VeraGridEngine.Simulations.OPF.opf_options.OptimalPowerFlowOptions"><span class="pre">OptimalPowerFlowOptions</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">.::dd730353f2b24b3aa496a2a9349c53a2::Optimal</span> <span class="pre">power</span> <span class="pre">flow</span> <span class="pre">options</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="VeraGridEngine.Simulations.OPF.html#VeraGridEngine.Simulations.OPF.opf_results.OptimalPowerFlowResults" title="VeraGridEngine.Simulations.OPF.opf_results.OptimalPowerFlowResults"><span class="pre">OptimalPowerFlowResults</span></a></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/api.html#simple_opf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.api.simple_opf" title="Link to this definition"></a></dt>
 <dd><p>Run Linear Optimal Power Flow
 :param grid: MultiCircuit instance
 :param options: Optimal Power Flow Options instance (optional)
@@ -4345,8 +4352,18 @@ classified by hour of the year
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
 <p>Visible symbol group used to filter dynamic-block symbol tables.</p>
 <dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.BlockSymbolCategory.GENERAL">
+<span class="sig-name descname"><span class="pre">GENERAL</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'General</span> <span class="pre">structure'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.BlockSymbolCategory.GENERAL" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
 <dt class="sig sig-object py" id="VeraGridEngine.enumerations.BlockSymbolCategory.PARAMETERS">
 <span class="sig-name descname"><span class="pre">PARAMETERS</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'Parameters'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.BlockSymbolCategory.PARAMETERS" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.BlockSymbolCategory.RETAINED_MODES">
+<span class="sig-name descname"><span class="pre">RETAINED_MODES</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'Retained</span> <span class="pre">modes'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.BlockSymbolCategory.RETAINED_MODES" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -4994,6 +5011,46 @@ classified by hour of the year
 <dd></dd></dl>
 
 <dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.BlockType.MEASUREMENTS_CURRENT_FROM_DC">
+<span class="sig-name descname"><span class="pre">MEASUREMENTS_CURRENT_FROM_DC</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'MEASUREMENTS_CURRENT_FROM_DC'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.BlockType.MEASUREMENTS_CURRENT_FROM_DC" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.BlockType.MEASUREMENTS_CURRENT_FROM_PQ">
+<span class="sig-name descname"><span class="pre">MEASUREMENTS_CURRENT_FROM_PQ</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'MEASUREMENTS_CURRENT_FROM_PQ'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.BlockType.MEASUREMENTS_CURRENT_FROM_PQ" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.BlockType.MEASUREMENTS_CURRENT_PARK">
+<span class="sig-name descname"><span class="pre">MEASUREMENTS_CURRENT_PARK</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'MEASUREMENTS_CURRENT_PARK'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.BlockType.MEASUREMENTS_CURRENT_PARK" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.BlockType.MEASUREMENTS_PLL">
+<span class="sig-name descname"><span class="pre">MEASUREMENTS_PLL</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'MEASUREMENTS_PLL'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.BlockType.MEASUREMENTS_PLL" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.BlockType.MEASUREMENTS_P_Q">
+<span class="sig-name descname"><span class="pre">MEASUREMENTS_P_Q</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'MEASUREMENTS_P_Q'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.BlockType.MEASUREMENTS_P_Q" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.BlockType.MEASUREMENTS_VOLTAGE_ANGLE">
+<span class="sig-name descname"><span class="pre">MEASUREMENTS_VOLTAGE_ANGLE</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'MEASUREMENTS_VOLTAGE_ANGLE'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.BlockType.MEASUREMENTS_VOLTAGE_ANGLE" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.BlockType.MEASUREMENTS_VOLTAGE_FROM_DC">
+<span class="sig-name descname"><span class="pre">MEASUREMENTS_VOLTAGE_FROM_DC</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'MEASUREMENTS_VOLTAGE_FROM_DC'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.BlockType.MEASUREMENTS_VOLTAGE_FROM_DC" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.BlockType.MEASUREMENTS_VOLTAGE_FROM_POLAR">
+<span class="sig-name descname"><span class="pre">MEASUREMENTS_VOLTAGE_FROM_POLAR</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'MEASUREMENTS_VOLTAGE_FROM_POLAR'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.BlockType.MEASUREMENTS_VOLTAGE_FROM_POLAR" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
 <dt class="sig sig-object py" id="VeraGridEngine.enumerations.BlockType.MIN">
 <span class="sig-name descname"><span class="pre">MIN</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'Min'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.BlockType.MIN" title="Link to this definition"></a></dt>
 <dd></dd></dl>
@@ -5051,6 +5108,11 @@ classified by hour of the year
 <dl class="py attribute">
 <dt class="sig sig-object py" id="VeraGridEngine.enumerations.BlockType.POWER">
 <span class="sig-name descname"><span class="pre">POWER</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'Power'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.BlockType.POWER" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.BlockType.PROCEDURAL_LOGIC">
+<span class="sig-name descname"><span class="pre">PROCEDURAL_LOGIC</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'PROCEDURAL_LOGIC'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.BlockType.PROCEDURAL_LOGIC" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -7949,6 +8011,48 @@ classified by hour of the year
 </dd></dl>
 
 <dl class="py class">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.FmiThreeVariableCausality">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">VeraGridEngine.enumerations.</span></span><span class="sig-name descname"><span class="pre">FmiThreeVariableCausality</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/VeraGridEngine/enumerations.html#FmiThreeVariableCausality"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.enumerations.FmiThreeVariableCausality" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
+<p>Variable causalities defined by the FMI 3 model-description schema.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.FmiThreeVariableCausality.CALCULATED_PARAMETER">
+<span class="sig-name descname"><span class="pre">CALCULATED_PARAMETER</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'calculatedParameter'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.FmiThreeVariableCausality.CALCULATED_PARAMETER" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.FmiThreeVariableCausality.INDEPENDENT">
+<span class="sig-name descname"><span class="pre">INDEPENDENT</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'independent'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.FmiThreeVariableCausality.INDEPENDENT" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.FmiThreeVariableCausality.INPUT">
+<span class="sig-name descname"><span class="pre">INPUT</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'input'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.FmiThreeVariableCausality.INPUT" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.FmiThreeVariableCausality.LOCAL">
+<span class="sig-name descname"><span class="pre">LOCAL</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'local'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.FmiThreeVariableCausality.LOCAL" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.FmiThreeVariableCausality.OUTPUT">
+<span class="sig-name descname"><span class="pre">OUTPUT</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'output'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.FmiThreeVariableCausality.OUTPUT" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.FmiThreeVariableCausality.PARAMETER">
+<span class="sig-name descname"><span class="pre">PARAMETER</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'parameter'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.FmiThreeVariableCausality.PARAMETER" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.FmiThreeVariableCausality.STRUCTURAL_PARAMETER">
+<span class="sig-name descname"><span class="pre">STRUCTURAL_PARAMETER</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'structuralParameter'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.FmiThreeVariableCausality.STRUCTURAL_PARAMETER" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
 <dt class="sig sig-object py" id="VeraGridEngine.enumerations.FmiVersion">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">VeraGridEngine.enumerations.</span></span><span class="sig-name descname"><span class="pre">FmiVersion</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/VeraGridEngine/enumerations.html#FmiVersion"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.enumerations.FmiVersion" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
@@ -7971,6 +8075,23 @@ every interface in that family.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="VeraGridEngine.enumerations.FmiVersion.FMI_3_0">
 <span class="sig-name descname"><span class="pre">FMI_3_0</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'3.0'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.FmiVersion.FMI_3_0" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.FmuInterfaceMode">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">VeraGridEngine.enumerations.</span></span><span class="sig-name descname"><span class="pre">FmuInterfaceMode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/VeraGridEngine/enumerations.html#FmuInterfaceMode"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.enumerations.FmuInterfaceMode" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
+<p>Execution interfaces currently represented by the FMU importer.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.FmuInterfaceMode.CO_SIMULATION">
+<span class="sig-name descname"><span class="pre">CO_SIMULATION</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'CoSimulation'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.FmuInterfaceMode.CO_SIMULATION" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.FmuInterfaceMode.MODEL_EXCHANGE">
+<span class="sig-name descname"><span class="pre">MODEL_EXCHANGE</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ModelExchange'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.FmuInterfaceMode.MODEL_EXCHANGE" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -8022,6 +8143,58 @@ every interface in that family.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="VeraGridEngine.enumerations.FmuTemplateMode.MODEL_EXCHANGE">
 <span class="sig-name descname"><span class="pre">MODEL_EXCHANGE</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ModelExchange'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.FmuTemplateMode.MODEL_EXCHANGE" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.FmuVariableType">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">VeraGridEngine.enumerations.</span></span><span class="sig-name descname"><span class="pre">FmuVariableType</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/VeraGridEngine/enumerations.html#FmuVariableType"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.enumerations.FmuVariableType" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
+<p>Primitive variable types recognized in FMI model descriptions.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.FmuVariableType.BOOLEAN">
+<span class="sig-name descname"><span class="pre">BOOLEAN</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'Boolean'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.FmuVariableType.BOOLEAN" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.FmuVariableType.ENUMERATION">
+<span class="sig-name descname"><span class="pre">ENUMERATION</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'Enumeration'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.FmuVariableType.ENUMERATION" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.FmuVariableType.FLOAT32">
+<span class="sig-name descname"><span class="pre">FLOAT32</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'Float32'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.FmuVariableType.FLOAT32" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.FmuVariableType.FLOAT64">
+<span class="sig-name descname"><span class="pre">FLOAT64</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'Float64'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.FmuVariableType.FLOAT64" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.FmuVariableType.INTEGER">
+<span class="sig-name descname"><span class="pre">INTEGER</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'Integer'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.FmuVariableType.INTEGER" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.FmuVariableType.REAL">
+<span class="sig-name descname"><span class="pre">REAL</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'Real'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.FmuVariableType.REAL" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.FmuVariableType.STRING">
+<span class="sig-name descname"><span class="pre">STRING</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'String'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.FmuVariableType.STRING" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.FmuVariableType.UINT64">
+<span class="sig-name descname"><span class="pre">UINT64</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'UInt64'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.FmuVariableType.UINT64" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.FmuVariableType.UNKNOWN">
+<span class="sig-name descname"><span class="pre">UNKNOWN</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'Unknown'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.FmuVariableType.UNKNOWN" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -8553,6 +8726,273 @@ every interface in that family.</p>
 </dd>
 </dl>
 </dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">VeraGridEngine.enumerations.</span></span><span class="sig-name descname"><span class="pre">MeasurementVarType</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/VeraGridEngine/enumerations.html#MeasurementVarType"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
+<p>this class contains the existing measurement variables</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.DU">
+<span class="sig-name descname"><span class="pre">DU</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DU'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.DU" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.DU0">
+<span class="sig-name descname"><span class="pre">DU0</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DU0'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.DU0" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.DU0I">
+<span class="sig-name descname"><span class="pre">DU0I</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DU0I'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.DU0I" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.DU0R">
+<span class="sig-name descname"><span class="pre">DU0R</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DU0R'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.DU0R" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.DU2">
+<span class="sig-name descname"><span class="pre">DU2</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DU2'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.DU2" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.DU2I">
+<span class="sig-name descname"><span class="pre">DU2I</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DU2I'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.DU2I" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.DU2R">
+<span class="sig-name descname"><span class="pre">DU2R</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DU2R'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.DU2R" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.DUI">
+<span class="sig-name descname"><span class="pre">DUI</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DUI'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.DUI" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.DUI_A">
+<span class="sig-name descname"><span class="pre">DUI_A</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DUI_A'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.DUI_A" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.DUI_B">
+<span class="sig-name descname"><span class="pre">DUI_B</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DUI_B'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.DUI_B" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.DUI_C">
+<span class="sig-name descname"><span class="pre">DUI_C</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DUI_C'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.DUI_C" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.DUR">
+<span class="sig-name descname"><span class="pre">DUR</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DUR'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.DUR" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.DUR_A">
+<span class="sig-name descname"><span class="pre">DUR_A</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DUR_A'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.DUR_A" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.DUR_B">
+<span class="sig-name descname"><span class="pre">DUR_B</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DUR_B'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.DUR_B" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.DUR_C">
+<span class="sig-name descname"><span class="pre">DUR_C</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DUR_C'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.DUR_C" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.FE">
+<span class="sig-name descname"><span class="pre">FE</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'FE'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.FE" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.FREF">
+<span class="sig-name descname"><span class="pre">FREF</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'FREF'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.FREF" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.I">
+<span class="sig-name descname"><span class="pre">I</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'I'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.I" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.I0I">
+<span class="sig-name descname"><span class="pre">I0I</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'I0'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.I0I" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.I0R">
+<span class="sig-name descname"><span class="pre">I0R</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'I0R'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.I0R" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.I2">
+<span class="sig-name descname"><span class="pre">I2</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'I2'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.I2" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.I2I">
+<span class="sig-name descname"><span class="pre">I2I</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'I2I'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.I2I" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.I2R">
+<span class="sig-name descname"><span class="pre">I2R</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'I2R'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.I2R" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.IA">
+<span class="sig-name descname"><span class="pre">IA</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'IA'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.IA" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.ID">
+<span class="sig-name descname"><span class="pre">ID</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ID'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.ID" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.II">
+<span class="sig-name descname"><span class="pre">II</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'II'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.II" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.II_A">
+<span class="sig-name descname"><span class="pre">II_A</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'II_A'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.II_A" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.II_B">
+<span class="sig-name descname"><span class="pre">II_B</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'II_B'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.II_B" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.II_C">
+<span class="sig-name descname"><span class="pre">II_C</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'II_C'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.II_C" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.IQ">
+<span class="sig-name descname"><span class="pre">IQ</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'IQ'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.IQ" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.IR">
+<span class="sig-name descname"><span class="pre">IR</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'IR'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.IR" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.IR_A">
+<span class="sig-name descname"><span class="pre">IR_A</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'IR_A'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.IR_A" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.IR_B">
+<span class="sig-name descname"><span class="pre">IR_B</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'IR_B'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.IR_B" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.IR_C">
+<span class="sig-name descname"><span class="pre">IR_C</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'IR_C'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.IR_C" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.I_DC">
+<span class="sig-name descname"><span class="pre">I_DC</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'I_DC'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.I_DC" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.U">
+<span class="sig-name descname"><span class="pre">U</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'U'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.U" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.U0">
+<span class="sig-name descname"><span class="pre">U0</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'U0'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.U0" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.U0I">
+<span class="sig-name descname"><span class="pre">U0I</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'U0I'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.U0I" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.U0R">
+<span class="sig-name descname"><span class="pre">U0R</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'U0R'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.U0R" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.U2">
+<span class="sig-name descname"><span class="pre">U2</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'U2'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.U2" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.U2I">
+<span class="sig-name descname"><span class="pre">U2I</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'U2I'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.U2I" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.U2R">
+<span class="sig-name descname"><span class="pre">U2R</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'U2R'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.U2R" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.UI">
+<span class="sig-name descname"><span class="pre">UI</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'UI'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.UI" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.UI_A">
+<span class="sig-name descname"><span class="pre">UI_A</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'UI_A'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.UI_A" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.UI_B">
+<span class="sig-name descname"><span class="pre">UI_B</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'UI_B'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.UI_B" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.UI_C">
+<span class="sig-name descname"><span class="pre">UI_C</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'UI_C'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.UI_C" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.UR">
+<span class="sig-name descname"><span class="pre">UR</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'UR'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.UR" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.UR_A">
+<span class="sig-name descname"><span class="pre">UR_A</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'UR_A'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.UR_A" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.UR_B">
+<span class="sig-name descname"><span class="pre">UR_B</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'UR_B'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.UR_B" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.UR_C">
+<span class="sig-name descname"><span class="pre">UR_C</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'UR_C'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.UR_C" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.VD">
+<span class="sig-name descname"><span class="pre">VD</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'VD'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.VD" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.MeasurementVarType.VQ">
+<span class="sig-name descname"><span class="pre">VQ</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'VQ'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.MeasurementVarType.VQ" title="Link to this definition"></a></dt>
+<dd></dd></dl>
 
 </dd></dl>
 
@@ -10309,6 +10749,11 @@ every interface in that family.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="VeraGridEngine.enumerations.PrpCat.INV">
 <span class="sig-name descname"><span class="pre">INV</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'Investments'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.PrpCat.INV" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.PrpCat.MT">
+<span class="sig-name descname"><span class="pre">MT</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'Metadata'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.PrpCat.MT" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -14515,8 +14960,183 @@ algorithms supported by <strong>VeraGrid</strong>.</p>
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">VeraGridEngine.enumerations.</span></span><span class="sig-name descname"><span class="pre">VarPowerFlowReferenceType</span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/enumerations.html#VarPowerFlowReferenceType"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
 <dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.DU">
+<span class="sig-name descname"><span class="pre">DU</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DU'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.DU" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.DU0">
+<span class="sig-name descname"><span class="pre">DU0</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DU0'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.DU0" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.DU0I">
+<span class="sig-name descname"><span class="pre">DU0I</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DU0I'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.DU0I" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.DU0R">
+<span class="sig-name descname"><span class="pre">DU0R</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DU0R'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.DU0R" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.DU2">
+<span class="sig-name descname"><span class="pre">DU2</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DU2'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.DU2" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.DU2I">
+<span class="sig-name descname"><span class="pre">DU2I</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DU2I'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.DU2I" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.DU2R">
+<span class="sig-name descname"><span class="pre">DU2R</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DU2R'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.DU2R" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.DUI">
+<span class="sig-name descname"><span class="pre">DUI</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DUI'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.DUI" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.DUI_A">
+<span class="sig-name descname"><span class="pre">DUI_A</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DUI_A'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.DUI_A" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.DUI_B">
+<span class="sig-name descname"><span class="pre">DUI_B</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DUI_B'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.DUI_B" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.DUI_C">
+<span class="sig-name descname"><span class="pre">DUI_C</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DUI_C'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.DUI_C" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.DUR">
+<span class="sig-name descname"><span class="pre">DUR</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DUR'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.DUR" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.DUR_A">
+<span class="sig-name descname"><span class="pre">DUR_A</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DUR_A'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.DUR_A" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.DUR_B">
+<span class="sig-name descname"><span class="pre">DUR_B</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DUR_B'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.DUR_B" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.DUR_C">
+<span class="sig-name descname"><span class="pre">DUR_C</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DUR_C'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.DUR_C" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
 <dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.DcPathModeSeed">
 <span class="sig-name descname"><span class="pre">DcPathModeSeed</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DcPathModeSeed'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.DcPathModeSeed" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.FE">
+<span class="sig-name descname"><span class="pre">FE</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'FE'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.FE" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.FREF">
+<span class="sig-name descname"><span class="pre">FREF</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'FREF'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.FREF" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.I">
+<span class="sig-name descname"><span class="pre">I</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'I'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.I" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.I0I">
+<span class="sig-name descname"><span class="pre">I0I</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'I0'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.I0I" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.I0R">
+<span class="sig-name descname"><span class="pre">I0R</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'I0R'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.I0R" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.I2">
+<span class="sig-name descname"><span class="pre">I2</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'I2'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.I2" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.I2I">
+<span class="sig-name descname"><span class="pre">I2I</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'I2I'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.I2I" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.I2R">
+<span class="sig-name descname"><span class="pre">I2R</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'I2R'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.I2R" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.IA">
+<span class="sig-name descname"><span class="pre">IA</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'IA'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.IA" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.ID">
+<span class="sig-name descname"><span class="pre">ID</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ID'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.ID" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.II">
+<span class="sig-name descname"><span class="pre">II</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'II'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.II" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.II_A">
+<span class="sig-name descname"><span class="pre">II_A</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'II_A'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.II_A" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.II_B">
+<span class="sig-name descname"><span class="pre">II_B</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'II_B'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.II_B" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.II_C">
+<span class="sig-name descname"><span class="pre">II_C</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'II_C'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.II_C" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.IQ">
+<span class="sig-name descname"><span class="pre">IQ</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'IQ'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.IQ" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.IR">
+<span class="sig-name descname"><span class="pre">IR</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'IR'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.IR" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.IR_A">
+<span class="sig-name descname"><span class="pre">IR_A</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'IR_A'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.IR_A" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.IR_B">
+<span class="sig-name descname"><span class="pre">IR_B</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'IR_B'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.IR_B" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.IR_C">
+<span class="sig-name descname"><span class="pre">IR_C</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'IR_C'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.IR_C" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.I_DC">
+<span class="sig-name descname"><span class="pre">I_DC</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'I_DC'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.I_DC" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -14742,6 +15362,91 @@ algorithms supported by <strong>VeraGrid</strong>.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.St_vsc">
 <span class="sig-name descname"><span class="pre">St_vsc</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'St_vsc'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.St_vsc" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.U">
+<span class="sig-name descname"><span class="pre">U</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'U'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.U" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.U0">
+<span class="sig-name descname"><span class="pre">U0</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'U0'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.U0" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.U0I">
+<span class="sig-name descname"><span class="pre">U0I</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'U0I'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.U0I" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.U0R">
+<span class="sig-name descname"><span class="pre">U0R</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'U0R'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.U0R" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.U2">
+<span class="sig-name descname"><span class="pre">U2</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'U2'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.U2" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.U2I">
+<span class="sig-name descname"><span class="pre">U2I</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'U2I'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.U2I" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.U2R">
+<span class="sig-name descname"><span class="pre">U2R</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'U2R'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.U2R" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.UI">
+<span class="sig-name descname"><span class="pre">UI</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'UI'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.UI" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.UI_A">
+<span class="sig-name descname"><span class="pre">UI_A</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'UI_A'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.UI_A" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.UI_B">
+<span class="sig-name descname"><span class="pre">UI_B</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'UI_B'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.UI_B" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.UI_C">
+<span class="sig-name descname"><span class="pre">UI_C</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'UI_C'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.UI_C" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.UR">
+<span class="sig-name descname"><span class="pre">UR</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'UR'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.UR" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.UR_A">
+<span class="sig-name descname"><span class="pre">UR_A</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'UR_A'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.UR_A" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.UR_B">
+<span class="sig-name descname"><span class="pre">UR_B</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'UR_B'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.UR_B" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.UR_C">
+<span class="sig-name descname"><span class="pre">UR_C</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'UR_C'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.UR_C" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.VD">
+<span class="sig-name descname"><span class="pre">VD</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'VD'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.VD" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.enumerations.VarPowerFlowReferenceType.VQ">
+<span class="sig-name descname"><span class="pre">VQ</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'VQ'</span></span><a class="headerlink" href="#VeraGridEngine.enumerations.VarPowerFlowReferenceType.VQ" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">

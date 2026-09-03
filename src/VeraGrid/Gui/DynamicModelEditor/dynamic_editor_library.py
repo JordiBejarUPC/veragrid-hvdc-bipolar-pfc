@@ -15,6 +15,10 @@ from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Templates.BasicBlockCatalog import BasicBlockTemplateDescriptor, \
     get_editor_ready_basic_block_catalog_descriptors
 from VeraGridEngine.Templates.BasicBlockCatalog.catalog import build_basic_block_catalog_branch_skeleton
+from VeraGridEngine.Templates.ProceduralLogicCatalog import (
+    ProceduralBlockTemplateDescriptor,
+    get_procedural_block_template_descriptors,
+)
 from VeraGridEngine.enumerations import BlockType
 
 
@@ -321,6 +325,7 @@ class DynamicEditorLibrary:
                 self.tree_structure["Control blocks"] = list(rms_controls)
             else:
                 pass
+            self.tree_structure["Procedural logic"] = build_procedural_library_branch()
 
         elif mode == DynamicSimulationMode.EMT:
             self.tree_structure["Basic"] = build_basic_library_branch()
@@ -329,6 +334,7 @@ class DynamicEditorLibrary:
                     self.api_object.device_type if self.api_object is not None else DeviceType.NoDevice, list()))
             self.tree_structure["Devices"] = list(self.common_emt_device_blocks + specific_emt_blocks)
             self.tree_structure["Faults"] = list(self.common_emt_fault_blocks)
+            self.tree_structure["Procedural logic"] = build_procedural_library_branch()
 
         else:
             pass
@@ -407,6 +413,18 @@ class DynamicEditorLibrary:
                     item: QtGui.QStandardItem = QtGui.QStandardItem(leaf.label)
                     item.setEditable(False)
                     item.setData(leaf.search_text if leaf.search_text else leaf.label, self.LIBRARY_SEARCH_TEXT_ROLE)
+                    if isinstance(leaf.payload, ProceduralBlockTemplateDescriptor):
+                        procedural_tooltip: str = (
+                            f"{leaf.payload.display_label} — {leaf.payload.logic_tpe.value}. "
+                            "Drag onto the canvas or double-click to insert."
+                        )
+                        if leaf.payload.requires_configuration:
+                            procedural_tooltip += " Complete the external target identifiers in Python code."
+                        else:
+                            pass
+                        item.setToolTip(procedural_tooltip)
+                    else:
+                        pass
                     set_library_item_icon(item, leaf.payload)
                     model.register_drag_payload(item, leaf.payload)
                     branch_item.appendRow(item)
@@ -455,6 +473,30 @@ def build_basic_library_branch() -> Dict[str, object]:
     return dict((("Native", native_branch),))
 
 
+def build_procedural_library_branch() -> Dict[str, object]:
+    """Build the complete native procedural-logic branch.
+
+    The Engine descriptor registry is authoritative for available behaviors,
+    port surfaces and search terms. The GUI only translates that typed data
+    into the recursive Library structure.
+
+    :return: Nested branch data shared by RMS and EMT editors.
+    """
+    branch: Dict[str, object] = dict()
+    descriptor: ProceduralBlockTemplateDescriptor
+    for descriptor in get_procedural_block_template_descriptors():
+        insert_library_leaf(
+            branch=branch,
+            category_path=tuple(descriptor.category_path),
+            leaf=LibraryLeafSpec(
+                label=descriptor.display_label,
+                payload=descriptor,
+                search_text=descriptor.search_text,
+            ),
+        )
+    return branch
+
+
 def _library_leaf_label_sort_key(leaf: "LibraryLeafSpec") -> str:
     """
     Return the case-insensitive sort key for one library leaf.
@@ -475,6 +517,8 @@ def is_supported_library_payload(item_data: object) -> bool:
     if isinstance(item_data, BlockType):
         return True
     elif isinstance(item_data, BasicBlockTemplateDescriptor):
+        return True
+    elif isinstance(item_data, ProceduralBlockTemplateDescriptor):
         return True
     elif isinstance(item_data, (RmsModelTemplate, EmtModelTemplate, FmuTemplate)):
         return True
@@ -520,7 +564,7 @@ def set_library_item_icon(item: QtGui.QStandardItem, payload: object) -> None:
         item.setIcon(QtGui.QIcon(device_type_icons[DeviceType.FmuTemplateDevice.value]))
     elif isinstance(payload, RmsModelTemplate):
         item.setIcon(QtGui.QIcon(device_type_icons[DeviceType.RmsModelTemplateDevice.value]))
-    elif isinstance(payload, (EmtModelTemplate, BasicBlockTemplateDescriptor)):
+    elif isinstance(payload, (EmtModelTemplate, BasicBlockTemplateDescriptor, ProceduralBlockTemplateDescriptor)):
         item.setIcon(QtGui.QIcon(device_type_icons[DeviceType.EmtModelTemplateDevice.value]))
     else:
         pass
