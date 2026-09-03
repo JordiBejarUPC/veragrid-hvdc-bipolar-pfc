@@ -15,6 +15,7 @@ from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingSegm
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_graph import RoutingGraph
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingConnectionGeometry
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingSegmentObstacle
+from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingSceneGeometrySnapshot
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_serializer import RoutingGraphSerializer
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_serializer import RoutingSerializedGraph
 from VeraGrid.Gui.DynamicModelEditor.RoutingQt.routing_qt_adapter import QtRoutingGraphAdapter
@@ -31,7 +32,17 @@ class QtRoutingSession:
     :return: None.
     """
 
-    __slots__ = ("_graphs_by_connection_uid", "_serializer", "_adapter", "_scene_geometry_adapter")
+    __slots__ = (
+        "_graphs_by_connection_uid",
+        "_serializer",
+        "_adapter",
+        "_scene_geometry_adapter",
+        "_drag_graph_snapshots",
+        "_drag_connection_uids",
+        "_drag_failed_connection_uids",
+        "_drag_scene_geometry_snapshot",
+        "_drag_finalization_prepared",
+    )
 
     def __init__(self) -> None:
         """
@@ -43,6 +54,211 @@ class QtRoutingSession:
         self._serializer: RoutingGraphSerializer = RoutingGraphSerializer()
         self._adapter: QtRoutingGraphAdapter = QtRoutingGraphAdapter()
         self._scene_geometry_adapter: QtRoutingSceneGeometryAdapter = QtRoutingSceneGeometryAdapter()
+        self._drag_graph_snapshots: dict[int, RoutingGraph] = dict()
+        self._drag_connection_uids: set[int] = set()
+        self._drag_failed_connection_uids: set[int] = set()
+        self._drag_scene_geometry_snapshot: RoutingSceneGeometrySnapshot | None = None
+        self._drag_finalization_prepared: bool = False
+
+    def begin_drag_transaction(self, connection_uids: list[int]) -> None:
+        """Capture every committed graph affected by one block drag.
+
+        :param connection_uids: Connection identifiers incident to the block.
+        :return: None.
+        """
+        self._drag_graph_snapshots = dict()
+        self._drag_connection_uids = set(connection_uids)
+        self._drag_failed_connection_uids = set()
+        self._drag_scene_geometry_snapshot = None
+        self._drag_finalization_prepared = False
+
+        # Clone each registered graph once so all incident routes share the same
+        # transaction boundary even though Qt refreshes them independently.
+        connection_uid: int
+        for connection_uid in self._drag_connection_uids:
+            routing_graph: RoutingGraph | None = self.get_graph(connection_uid=connection_uid)
+            if routing_graph is not None:
+                self._drag_graph_snapshots[connection_uid] = routing_graph.clone()
+            else:
+                pass
+
+    def finish_drag_transaction(self, commit_requested: bool = True) -> bool:
+        """Commit or roll back every graph participating in the active drag.
+
+        :param commit_requested: Whether the caller completed the drag normally.
+        :return: ``True`` when all route synchronizations succeeded.
+        """
+        transaction_succeeded: bool = (
+            commit_requested
+            and len(self._drag_failed_connection_uids) == 0
+        )
+        if transaction_succeeded:
+            pass
+        else:
+            # Restore graph objects in place so references held by connection
+            # items and adapters remain valid after the atomic rollback.
+            connection_uid: int
+            for connection_uid in self._drag_connection_uids:
+                graph_snapshot: RoutingGraph | None = self._drag_graph_snapshots.get(connection_uid, None)
+                routing_graph: RoutingGraph | None = self.get_graph(connection_uid=connection_uid)
+                if routing_graph is not None and graph_snapshot is not None:
+                    routing_graph._restore_from(graph_snapshot)
+                elif routing_graph is not None:
+                    # A graph created during a failed drag did not exist at the
+                    # transaction boundary and must not survive the rollback.
+                    self.remove_connection(connection_uid=connection_uid)
+                else:
+                    pass
+
+        self._drag_graph_snapshots = dict()
+        self._drag_connection_uids = set()
+        self._drag_failed_connection_uids = set()
+        self._drag_scene_geometry_snapshot = None
+        self._drag_finalization_prepared = False
+        return transaction_succeeded
+
+    def prepare_drag_finalization(self) -> None:
+        """Restore committed graphs before the definitive routing calculation.
+
+        Preview routing may freely alter the registered working graphs while a
+        block follows the pointer. Final routing must instead start from the
+        manual geometry captured at the transaction boundary.
+
+        :return: None.
+        """
+        connection_uid: int
+        for connection_uid in self._drag_connection_uids:
+            graph_snapshot: RoutingGraph | None = self._drag_graph_snapshots.get(connection_uid, None)
+            routing_graph: RoutingGraph | None = self.get_graph(connection_uid=connection_uid)
+            if routing_graph is not None and graph_snapshot is not None:
+                routing_graph._restore_from(graph_snapshot)
+            elif routing_graph is not None:
+                self.remove_connection(connection_uid=connection_uid)
+            else:
+                pass
+
+        # Only definitive synchronizations performed after this point decide
+        # whether the complete drag transaction can commit.
+        self._drag_failed_connection_uids = set()
+        self._drag_scene_geometry_snapshot = None
+        self._drag_finalization_prepared = True
+
+    def preview_connection_graph(
+            self,
+            connection_uid: int,
+            source_port: PortItem,
+            destination_port: PortItem,
+    ) -> RoutingGraph | None:
+        """Update endpoints cheaply while a block follows the mouse pointer.
+
+        The preview deliberately omits scene geometry, automatic obstacle
+        search and persistence. The transaction snapshot remains the committed
+        source used by the definitive refresh after mouse release.
+
+        :param connection_uid: Stable connection identifier.
+        :param source_port: Live source endpoint.
+        :param destination_port: Live destination endpoint.
+        :return: Preview graph, or ``None`` when no simple route can be built.
+        """
+        source_snapshot: QtRoutingPortSnapshot = build_qt_routing_port_snapshot(source_port)
+        destination_snapshot: QtRoutingPortSnapshot = build_qt_routing_port_snapshot(destination_port)
+        routing_graph: RoutingGraph | None = self.get_graph(connection_uid=connection_uid)
+
+        if routing_graph is None:
+            route_builder: RouteBuilder = RouteBuilder(
+                source_position=source_snapshot.get_position(),
+                destination_position=destination_snapshot.get_position(),
+                source_port_side=source_snapshot.get_port_side(),
+                destination_port_side=destination_snapshot.get_port_side(),
+                connection_geometry=None,
+            )
+            try:
+                routing_graph = route_builder.build()
+            except ValueError:
+                return None
+            else:
+                self._graphs_by_connection_uid[int(connection_uid)] = routing_graph
+        else:
+            pass
+
+        preview_snapshot: RoutingGraph = routing_graph.clone()
+        routing_editor: RoutingEditor = RoutingEditor(
+            graph=routing_graph,
+            connection_geometry=None,
+        )
+        source_node: RoutingNode | None = routing_graph.get_source_node()
+        destination_node: RoutingNode | None = routing_graph.get_destination_node()
+        if source_node is None or destination_node is None:
+            return None
+        else:
+            pass
+
+        source_changed: bool = (
+            source_node.get_position().get_x() != source_snapshot.get_position().get_x()
+            or source_node.get_position().get_y() != source_snapshot.get_position().get_y()
+        )
+        destination_changed: bool = (
+            destination_node.get_position().get_x() != destination_snapshot.get_position().get_x()
+            or destination_node.get_position().get_y() != destination_snapshot.get_position().get_y()
+        )
+        source_updated: bool = True
+        destination_updated: bool = True
+        if source_changed:
+            source_updated = routing_editor.update_port(
+                node_id=routing_graph.get_source_node_id(),
+                new_position=source_snapshot.get_position(),
+            )
+        else:
+            pass
+        if source_updated and destination_changed:
+            destination_updated = routing_editor.update_port(
+                node_id=routing_graph.get_destination_node_id(),
+                new_position=destination_snapshot.get_position(),
+            )
+        else:
+            pass
+
+        if source_updated and destination_updated and self._graph_matches_port_snapshots(
+                routing_graph=routing_graph,
+                source_snapshot=source_snapshot,
+                destination_snapshot=destination_snapshot,
+        ):
+            return routing_graph
+        else:
+            # A simple deterministic route is a cheap preview fallback when the
+            # manual neighbourhood cannot absorb the live endpoint displacement.
+            routing_graph._restore_from(preview_snapshot)
+            fallback_builder: RouteBuilder = RouteBuilder(
+                source_position=source_snapshot.get_position(),
+                destination_position=destination_snapshot.get_position(),
+                source_port_side=source_snapshot.get_port_side(),
+                destination_port_side=destination_snapshot.get_port_side(),
+                connection_geometry=None,
+            )
+            try:
+                fallback_graph: RoutingGraph = fallback_builder.build()
+            except ValueError:
+                return None
+            else:
+                routing_graph._restore_from(fallback_graph)
+                return routing_graph
+
+    def _record_drag_synchronization(self, connection_uid: int, synchronized: bool) -> None:
+        """Record one incident connection result in the active transaction.
+
+        :param connection_uid: Connection whose synchronization completed.
+        :param synchronized: Whether the connection reached the live endpoints.
+        :return: None.
+        """
+        connection_identifier: int = int(connection_uid)
+        if connection_identifier in self._drag_connection_uids and not synchronized:
+            self._drag_failed_connection_uids.add(connection_identifier)
+        elif connection_identifier in self._drag_failed_connection_uids:
+            # The final refresh of a connection supersedes a transient failure
+            # observed at an intermediate mouse position.
+            self._drag_failed_connection_uids.remove(connection_identifier)
+        else:
+            pass
 
     def has_connection(self, connection_uid: int) -> bool:
         """
@@ -340,6 +556,9 @@ class QtRoutingSession:
         :param destination_port: Destination Qt port item.
         :return: Synchronized routing graph or ``None`` when rebuilding fails.
         """
+        # A failed synchronization is recoverable: the registered graph is the
+        # last committed route and must remain available until a replacement is
+        # built and validated completely.
         try:
             routing_graph: RoutingGraph = self.ensure_connection_graph(
                 connection_uid=connection_uid,
@@ -347,7 +566,6 @@ class QtRoutingSession:
                 destination_port=destination_port,
             )
         except ValueError:
-            self.remove_connection(connection_uid=connection_uid)
             return None
         else:
             pass
@@ -357,11 +575,18 @@ class QtRoutingSession:
             destination_port=destination_port,
         )
         if refreshed_graph is None:
-            # A graph with stale endpoint coordinates must not remain available
-            # for rendering or persistence after synchronization has failed.
-            self.remove_connection(connection_uid=connection_uid)
+            # Keep the committed graph registered. The caller receives failure
+            # and therefore neither renders nor persists a partial candidate.
+            self._record_drag_synchronization(
+                connection_uid=connection_uid,
+                synchronized=False,
+            )
             return None
         else:
+            self._record_drag_synchronization(
+                connection_uid=connection_uid,
+                synchronized=True,
+            )
             return refreshed_graph
 
     def move_segment(
@@ -418,16 +643,66 @@ class QtRoutingSession:
         :return: Immutable connection geometry snapshot.
         """
         source_scene: QGraphicsScene | None = source_port.scene()
-        other_connection_segments: tuple[RoutingSegmentObstacle, ...] = self._capture_other_connection_segments(
-            connection_uid=connection_uid,
-        )
-        connection_geometry: RoutingConnectionGeometry = self._scene_geometry_adapter.capture_connection_geometry(
-            scene=source_scene,
-            source_port=source_port,
-            destination_port=destination_port,
-            other_connection_segments=other_connection_segments,
-        )
-        return connection_geometry
+        if self._drag_finalization_prepared:
+            if self._drag_scene_geometry_snapshot is None:
+                # Capture Qt blocks and all committed routing segments once.
+                # Later connections only reclassify this immutable snapshot.
+                all_connection_segments: tuple[
+                    RoutingSegmentObstacle, ...
+                ] = self._capture_all_connection_segments()
+                self._drag_scene_geometry_snapshot = self._scene_geometry_adapter.capture_scene_geometry(
+                    scene=source_scene,
+                    connection_segments=all_connection_segments,
+                )
+            else:
+                pass
+            return self._scene_geometry_adapter.build_connection_geometry_from_snapshot(
+                snapshot=self._drag_scene_geometry_snapshot,
+                source_port=source_port,
+                destination_port=destination_port,
+                connection_uid=connection_uid,
+            )
+        else:
+            other_connection_segments: tuple[
+                RoutingSegmentObstacle, ...
+            ] = self._capture_other_connection_segments(
+                connection_uid=connection_uid,
+            )
+            connection_geometry: RoutingConnectionGeometry = (
+                self._scene_geometry_adapter.capture_connection_geometry(
+                    scene=source_scene,
+                    source_port=source_port,
+                    destination_port=destination_port,
+                    other_connection_segments=other_connection_segments,
+                )
+            )
+            return connection_geometry
+
+    def _capture_all_connection_segments(self) -> tuple[RoutingSegmentObstacle, ...]:
+        """Capture every registered route segment for one shared scene snapshot.
+
+        :return: Immutable point-in-time sequence of all connection segments.
+        """
+        obstacle_segments: list[RoutingSegmentObstacle] = list()
+        connection_uid: int
+        routing_graph: RoutingGraph
+        for connection_uid, routing_graph in self._graphs_by_connection_uid.items():
+            route_segment: RoutingSegment
+            for route_segment in routing_graph.get_segments():
+                start_node: RoutingNode | None = routing_graph.get_node(route_segment.get_start_node_id())
+                end_node: RoutingNode | None = routing_graph.get_node(route_segment.get_end_node_id())
+                if start_node is not None and end_node is not None:
+                    obstacle_segments.append(
+                        RoutingSegmentObstacle(
+                            connection_uid=connection_uid,
+                            segment_id=route_segment.get_segment_id(),
+                            start_position=start_node.get_position(),
+                            end_position=end_node.get_position(),
+                        )
+                    )
+                else:
+                    pass
+        return tuple(obstacle_segments)
 
     def _capture_other_connection_segments(
             self,

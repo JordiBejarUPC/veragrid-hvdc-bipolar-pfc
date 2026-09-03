@@ -100,6 +100,7 @@ from VeraGridEngine.Utils.SugiyamaLayered import (
 from VeraGridEngine.Utils.SugiyamaLayered.engine import EngineResult
 from VeraGridEngine.Templates.template_definition import TemplateDefinition, TemplateProp
 from VeraGrid.Gui.DynamicModelEditor.RoutingQt import QtRoutingSession
+from VeraGrid.Gui.DynamicModelEditor.Routing.routing_graph import RoutingGraph
 from VeraGridEngine.enumerations import BlockType, RoutingAxis
 from VeraGridEngine.Devices.Diagrams.block_diagram import (
     BlockDiagram, BlockDiagramConnection, BlockDiagramNode,
@@ -1745,6 +1746,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.dynamic_editor_entry: DynamicEditorEntry | None = None
         self._prepared_to_delete: bool = False
         self._qt_routing_session: QtRoutingSession = QtRoutingSession()
+        self._block_drag_start_positions: Dict[int, QtCore.QPointF] = dict()
         self.colors_palet: graph.EditorGraphicsDefaultsDark | graph.EditorGraphicsDefaultsLight = graph.EditorGraphicsDefaultsDark()
         self.current_theme: DynEditorGraphicsModes = current_theme
         self.set_colors_palet()
@@ -2690,6 +2692,169 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
 
         return graph.BlockPositionChangedCallback(self, block_uid)
+
+    def begin_block_routing_drag(
+            self,
+            item: graph.GenericBlockItem | graph.PairedItem | graph.BlockItem
+            | graph.RoundBaseArithmeticOpItem | graph.RectBaseArithmeticOpItem | graph.MeasurementsItem,
+    ) -> None:
+        """Start one atomic position-and-routing transaction for a block drag.
+
+        :param item: Block item whose drag is starting.
+        :return: None.
+        """
+        item_identifier: int = id(item)
+        self._block_drag_start_positions[item_identifier] = QtCore.QPointF(item.pos())
+        connection_uids: List[int] = list()
+        seen_connection_uids: set[int] = set()
+        port: graph.PortItem
+        connection: graph.ConnectionItem
+
+        # A block may expose the same connection through more than one
+        # collection, so identifiers are deduplicated before graph snapshots.
+        for port in item.inputs:
+            if port.connections is not None:
+                for connection in port.connections:
+                    if connection.con_uid not in seen_connection_uids:
+                        seen_connection_uids.add(connection.con_uid)
+                        connection_uids.append(connection.con_uid)
+                    else:
+                        pass
+            else:
+                pass
+        for port in item.outputs:
+            if port.connections is not None:
+                for connection in port.connections:
+                    if connection.con_uid not in seen_connection_uids:
+                        seen_connection_uids.add(connection.con_uid)
+                        connection_uids.append(connection.con_uid)
+                    else:
+                        pass
+            else:
+                pass
+
+        self._qt_routing_session.begin_drag_transaction(connection_uids=connection_uids)
+
+    def finish_block_routing_drag(
+            self,
+            item: graph.GenericBlockItem | graph.PairedItem | graph.BlockItem
+            | graph.RoundBaseArithmeticOpItem | graph.RectBaseArithmeticOpItem | graph.MeasurementsItem,
+            commit_requested: bool = True,
+    ) -> bool:
+        """Commit a complete block drag or restore its position and all routes.
+
+        :param item: Block item whose drag is ending.
+        :param commit_requested: Whether the graphical drag completed normally.
+        :return: ``True`` when every incident route remained synchronized.
+        """
+        item_identifier: int = id(item)
+        start_position: QtCore.QPointF | None = self._block_drag_start_positions.get(item_identifier, None)
+        transaction_succeeded: bool = self._qt_routing_session.finish_drag_transaction(
+            commit_requested=commit_requested,
+        )
+        if transaction_succeeded:
+            pass
+        elif start_position is not None:
+            # Graphs are restored first, then the Qt owner returns to the exact
+            # endpoint geometry represented by those committed snapshots.
+            item.setPos(QtCore.QPointF(start_position))
+            item._last_valid_pos = QtCore.QPointF(start_position)
+            self._render_committed_block_routes(item=item)
+        else:
+            pass
+
+        if item_identifier in self._block_drag_start_positions:
+            del self._block_drag_start_positions[item_identifier]
+        else:
+            pass
+        return transaction_succeeded
+
+    def prepare_block_routing_drag_finalization(self) -> None:
+        """Restore committed route geometry before final block-drop routing.
+
+        :return: None.
+        """
+        self._qt_routing_session.prepare_drag_finalization()
+
+    def preview_connection_with_routing_graph(self, item: graph.ConnectionItem) -> bool:
+        """Render one lightweight endpoint-following route during block drag.
+
+        :param item: Connection whose endpoint owner is moving.
+        :return: ``True`` when a preview graph was rendered.
+        """
+        if isinstance(item.source_port, graph.PortItem) and isinstance(item.target_port, graph.PortItem):
+            routing_graph: RoutingGraph | None = self._qt_routing_session.preview_connection_graph(
+                connection_uid=item.con_uid,
+                source_port=item.source_port,
+                destination_port=item.target_port,
+            )
+            if routing_graph is None:
+                return False
+            else:
+                painter_path: QtGui.QPainterPath | None = self._qt_routing_session.build_connection_path(
+                    connection_uid=item.con_uid,
+                )
+                if painter_path is not None:
+                    item.setPath(painter_path)
+                    item._sync_elbow_items()
+                    return True
+                else:
+                    return False
+        else:
+            return False
+
+    def _render_committed_block_routes(
+            self,
+            item: graph.GenericBlockItem | graph.PairedItem | graph.BlockItem
+            | graph.RoundBaseArithmeticOpItem | graph.RectBaseArithmeticOpItem | graph.MeasurementsItem,
+    ) -> None:
+        """Render and persist restored graphs without recalculating their routes.
+
+        :param item: Block whose incident committed routes were restored.
+        :return: None.
+        """
+        rendered_connection_uids: set[int] = set()
+        port: graph.PortItem
+        connection: graph.ConnectionItem
+
+        # Read paths directly from the restored source-of-truth graphs. Calling
+        # synchronization here would start a new edit after rollback.
+        for port in item.inputs:
+            if port.connections is not None:
+                for connection in port.connections:
+                    if connection.con_uid not in rendered_connection_uids:
+                        rendered_connection_uids.add(connection.con_uid)
+                        painter_path: QtGui.QPainterPath | None = self._qt_routing_session.build_connection_path(
+                            connection_uid=connection.con_uid,
+                        )
+                        if painter_path is not None:
+                            connection.setPath(painter_path)
+                            self.persist_connection_routing_graph_payload(connection)
+                            connection._sync_elbow_items()
+                        else:
+                            pass
+                    else:
+                        pass
+            else:
+                pass
+        for port in item.outputs:
+            if port.connections is not None:
+                for connection in port.connections:
+                    if connection.con_uid not in rendered_connection_uids:
+                        rendered_connection_uids.add(connection.con_uid)
+                        painter_path = self._qt_routing_session.build_connection_path(
+                            connection_uid=connection.con_uid,
+                        )
+                        if painter_path is not None:
+                            connection.setPath(painter_path)
+                            self.persist_connection_routing_graph_payload(connection)
+                            connection._sync_elbow_items()
+                        else:
+                            pass
+                    else:
+                        pass
+            else:
+                pass
 
     def create_item_using_blocktype_wizard(self,
                                            blocktype: BlockType,
@@ -5579,12 +5744,13 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                             destination_port=item.target_port,
                         ) is not None
                         if not synchronized:
-                            self._clear_unsynchronized_connection_path(item=item)
+                            # Keep the last committed painter path when a
+                            # recoverable routing attempt cannot produce a
+                            # complete replacement.
                             return False
                         else:
                             painter_path = self._qt_routing_session.build_connection_path(item.con_uid)
                         if painter_path is None:
-                            self._clear_unsynchronized_connection_path(item=item)
                             return False
                         else:
                             item.setPath(painter_path)
@@ -5602,12 +5768,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     destination_port=item.target_port,
                 ) is not None
                 if not synchronized:
-                    self._clear_unsynchronized_connection_path(item=item)
+                    # Rendering remains derived from the last committed graph;
+                    # failed candidates must not erase the visible connection.
                     return False
                 else:
                     painter_path = self._qt_routing_session.build_connection_path(item.con_uid)
                 if painter_path is None:
-                    self._clear_unsynchronized_connection_path(item=item)
                     return False
                 else:
                     item.setPath(painter_path)
@@ -5618,20 +5784,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 return False
         else:
             return False
-
-    def _clear_unsynchronized_connection_path(self, item: graph.ConnectionItem) -> None:
-        """
-        Remove a stale route whose graph no longer matches its live Qt ports.
-
-        The session has already rejected and unregistered the graph. Clearing
-        the derived painter path prevents the previous endpoint coordinates
-        from remaining visible after its owning block has moved.
-
-        :param item: Connection item whose derived route is stale.
-        :return: None.
-        """
-        item.setPath(QtGui.QPainterPath())
-        item._sync_elbow_items()
 
     def move_connection_segment_with_routing_graph(
             self,

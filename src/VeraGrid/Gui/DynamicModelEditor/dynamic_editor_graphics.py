@@ -440,13 +440,18 @@ def _refresh_block_item_connections(item: GenericBlockItem | PairedItem | BlockI
     """
     ports: List[PortItem] = list(item.inputs)
     ports.extend(item.outputs)
+    refreshed_connection_uids: set[int] = set()
     port: PortItem
     for port in ports:
         connections: List[ConnectionItem] | None = port.connections
         if connections is not None:
             connection: ConnectionItem
             for connection in connections:
-                connection.update_path()
+                if connection.con_uid not in refreshed_connection_uids:
+                    refreshed_connection_uids.add(connection.con_uid)
+                    connection.update_path()
+                else:
+                    pass
         else:
             pass
 
@@ -460,6 +465,11 @@ def _notify_block_item_manual_route_drag(item: GenericBlockItem | PairedItem | B
     :param started: Whether the endpoint drag is starting or ending.
     :return: None.
     """
+    if started:
+        item.editor.begin_block_routing_drag(item=item)
+    else:
+        pass
+
     ports: List[PortItem] = list(item.inputs)
     ports.extend(item.outputs)
     port: PortItem
@@ -501,7 +511,38 @@ def _finalize_block_drop(item: GenericBlockItem | PairedItem | BlockItem
             pass
     else:
         pass
-    _refresh_block_item_connections(item)
+
+
+def _complete_block_drag(item: GenericBlockItem | PairedItem | BlockItem
+                         | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem | MeasurementsItem) -> None:
+    """Finalize one block drag and preserve atomic rollback on exceptions.
+
+    :param item: Dynamic block completing its position transaction.
+    :return: None.
+    """
+    try:
+        # First resolve the definitive block position while incident
+        # connections still suppress expensive routing work.
+        _finalize_block_drop(item)
+        _notify_block_item_manual_route_drag(item, started=False)
+
+        # Discard temporary preview geometry before calculating the definitive
+        # route from the last committed manual-routing snapshot.
+        item.editor.prepare_block_routing_drag_finalization()
+
+        # Every connection is synchronized exactly once at the final endpoint
+        # positions. Automatic routing is therefore excluded from mouse-move
+        # events but remains available for the committed drop candidate.
+        _refresh_block_item_connections(item)
+        item.editor.finish_block_routing_drag(item=item)
+    except Exception:
+        item.editor.finish_block_routing_drag(
+            item=item,
+            commit_requested=False,
+        )
+        raise
+    else:
+        pass
 
 
 class EditorGraphicsDefaultsDark:
@@ -1081,6 +1122,7 @@ class ConnectionItem(QGraphicsPathItem):
         self.setAcceptedMouseButtons(Qt.MouseButton.LeftButton)
         self._dragging_segment: int = -1
         self._drag_start_scene_pos: QPointF | None = None
+        self._manual_block_drag_active: bool = False
         self.update_path()
 
     def recolour_mode(self) -> None:
@@ -1126,7 +1168,16 @@ class ConnectionItem(QGraphicsPathItem):
 
         :return: None.
         """
-        if self._uses_routing_graph():
+        if self._manual_block_drag_active:
+            # Preview updates only endpoint-local graph geometry. Obstacle
+            # capture, automatic search and persistence remain deferred until
+            # the owner block is released.
+            if self.editor is not None:
+                self.editor.preview_connection_with_routing_graph(item=self)
+            else:
+                pass
+            return
+        elif self._uses_routing_graph():
             if self.editor is not None:
                 if self.editor.sync_connection_with_routing_graph(self):
                     return
@@ -1139,21 +1190,23 @@ class ConnectionItem(QGraphicsPathItem):
 
     def begin_manual_block_drag(self, port: PortItem | BranchingItem) -> None:
         """
-        Legacy manual-route dragging no longer exists.
+        Suppress routing reconstruction while an endpoint owner is moving.
 
         :param port: Port whose owning block has started moving.
         :return: None.
         """
         del port
+        self._manual_block_drag_active = True
 
     def end_manual_block_drag(self, port: PortItem | BranchingItem) -> None:
         """
-        Legacy manual-route dragging no longer exists.
+        Re-enable routing before the final block-drop synchronization.
 
         :param port: Port whose owning block has finished moving.
         :return: None.
         """
         del port
+        self._manual_block_drag_active = False
 
     def on_elbow_moved(self, index: int, new_pos: QPointF) -> None:
         """Persist one moved elbow and refresh the connection path.
@@ -1840,8 +1893,7 @@ class GenericBlockItem(QGraphicsRectItem):
         :return: None.
         """
         super().mouseReleaseEvent(event)
-        _notify_block_item_manual_route_drag(self, started=False)
-        _finalize_block_drop(self)
+        _complete_block_drag(self)
 
     def mouseDoubleClickEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
         """
@@ -2491,8 +2543,7 @@ class PairedItem(QGraphicsPolygonItem):
         :return: None.
         """
         super().mouseReleaseEvent(event)
-        _notify_block_item_manual_route_drag(self, started=False)
-        _finalize_block_drop(self)
+        _complete_block_drag(self)
 
     def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: object) -> object:
         """Process one Qt graphics-item state change and propagate dependent geometry.
@@ -2891,8 +2942,7 @@ class BlockItem(QGraphicsRectItem):
         :return: None.
         """
         super().mouseReleaseEvent(event)
-        _notify_block_item_manual_route_drag(self, started=False)
-        _finalize_block_drop(self)
+        _complete_block_drag(self)
 
     def mouseDoubleClickEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
         """
@@ -3293,8 +3343,7 @@ class MeasurementsItem(QGraphicsRectItem):
         :return: None.
         """
         super().mouseReleaseEvent(event)
-        _notify_block_item_manual_route_drag(self, started=False)
-        _finalize_block_drop(self)
+        _complete_block_drag(self)
 
     def mouseDoubleClickEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
         """
@@ -3844,8 +3893,7 @@ class RoundBaseArithmeticOpItem(QGraphicsEllipseItem):
         :return: None.
         """
         super().mouseReleaseEvent(event)
-        _notify_block_item_manual_route_drag(self, started=False)
-        _finalize_block_drop(self)
+        _complete_block_drag(self)
 
     def mouseDoubleClickEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
         """
@@ -4143,8 +4191,7 @@ class RectBaseArithmeticOpItem(QGraphicsRectItem):
         :return: None.
         """
         super().mouseReleaseEvent(event)
-        _notify_block_item_manual_route_drag(self, started=False)
-        _finalize_block_drop(self)
+        _complete_block_drag(self)
 
     def mouseDoubleClickEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
         """

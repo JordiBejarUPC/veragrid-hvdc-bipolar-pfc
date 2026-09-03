@@ -193,6 +193,45 @@ class RoutingSegmentObstacle:
         return self._end_position.copy()
 
 
+class RoutingSceneGeometrySnapshot:
+    """Store one immutable capture of every routing obstacle in a scene.
+
+    :param blocks: Every visible block captured from the Qt scene.
+    :param connection_segments: Every segment from registered routing graphs.
+    :return: None.
+    """
+
+    __slots__ = ("_blocks", "_connection_segments")
+
+    def __init__(
+            self,
+            blocks: tuple[RoutingBlockGeometry, ...],
+            connection_segments: tuple[RoutingSegmentObstacle, ...],
+    ) -> None:
+        """Build one immutable scene-level routing snapshot.
+
+        :param blocks: Every visible block captured from the Qt scene.
+        :param connection_segments: Every registered connection segment.
+        :return: None.
+        """
+        self._blocks: tuple[RoutingBlockGeometry, ...] = tuple(blocks)
+        self._connection_segments: tuple[RoutingSegmentObstacle, ...] = tuple(connection_segments)
+
+    def get_blocks(self) -> tuple[RoutingBlockGeometry, ...]:
+        """Return all captured block geometries.
+
+        :return: Immutable block sequence.
+        """
+        return self._blocks
+
+    def get_connection_segments(self) -> tuple[RoutingSegmentObstacle, ...]:
+        """Return all captured connection segments.
+
+        :return: Immutable segment-obstacle sequence.
+        """
+        return self._connection_segments
+
+
 class RoutingConnectionGeometry:
     """
     Store the immutable block geometry relevant to one routed connection.

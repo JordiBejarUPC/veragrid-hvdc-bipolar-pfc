@@ -15,6 +15,7 @@ from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import Routi
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingBounds
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingConnectionGeometry
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingSegmentObstacle
+from VeraGrid.Gui.DynamicModelEditor.Routing.routing_spatial_index import RoutingSpatialIndex
 from VeraGridEngine.enumerations import RoutingAxis, RoutingNodeKind, RoutingPortSide
 
 
@@ -35,9 +36,10 @@ class RoutingConstraintEngine:
         "_minimum_segment_length",
         "_minimum_first_segment_length",
         "_minimum_stub_continuation_length",
+        "_spatial_index",
     )
 
-    def __init__(self, graph: RoutingGraph) -> None:
+    def __init__(self, graph: RoutingGraph, spatial_index: RoutingSpatialIndex | None = None) -> None:
         """
         Build one constraint engine bound to one graph.
 
@@ -46,6 +48,7 @@ class RoutingConstraintEngine:
         same criteria.
 
         :param graph: Graph to inspect.
+        :param spatial_index: Optional routing-core obstacle candidate index.
 
         :return: None.
         """
@@ -54,6 +57,7 @@ class RoutingConstraintEngine:
         self._minimum_segment_length: float = 1.0
         self._minimum_first_segment_length: float = 5.0
         self._minimum_stub_continuation_length: float = 5.0
+        self._spatial_index: RoutingSpatialIndex | None = spatial_index
 
     def is_port_connection_perpendicular(
             self,
@@ -859,7 +863,10 @@ class RoutingConstraintEngine:
             pass
 
         block_geometry: RoutingBlockGeometry
-        for block_geometry in connection_geometry.get_other_blocks():
+        for block_geometry in self._get_foreign_block_candidates(
+                segment=segment,
+                connection_geometry=connection_geometry,
+        ):
             if self.segment_intersects_foreign_block(
                     segment=segment,
                     block_bounds=block_geometry.get_bounds(),
@@ -930,7 +937,10 @@ class RoutingConstraintEngine:
             pass
 
         obstacle_segment: RoutingSegmentObstacle
-        for obstacle_segment in connection_geometry.get_other_connection_segments():
+        for obstacle_segment in self._get_foreign_segment_candidates(
+                segment=segment,
+                connection_geometry=connection_geometry,
+        ):
             if self.segment_intersects_other_connection(
                     segment=segment,
                     obstacle_segment=obstacle_segment,
@@ -962,7 +972,10 @@ class RoutingConstraintEngine:
             pass
 
         obstacle_segment: RoutingSegmentObstacle
-        for obstacle_segment in connection_geometry.get_other_connection_segments():
+        for obstacle_segment in self._get_foreign_segment_candidates(
+                segment=segment,
+                connection_geometry=connection_geometry,
+        ):
             if self.segment_intersects_other_connection(
                     segment=segment,
                     obstacle_segment=obstacle_segment,
@@ -971,6 +984,77 @@ class RoutingConstraintEngine:
             else:
                 pass
         return intersection_count
+
+    def _get_foreign_block_candidates(
+            self,
+            segment: RoutingSegment,
+            connection_geometry: RoutingConnectionGeometry,
+    ) -> tuple[RoutingBlockGeometry, ...]:
+        """Return spatially relevant foreign blocks for exact validation.
+
+        :param segment: Candidate segment from the active graph.
+        :param connection_geometry: Complete immutable obstacle geometry.
+        :return: Candidate foreign blocks, indexed when possible.
+        """
+        if self._spatial_index is None:
+            return connection_geometry.get_other_blocks()
+        else:
+            start_node: RoutingNode | None = self._graph.get_node(segment.get_start_node_id())
+            end_node: RoutingNode | None = self._graph.get_node(segment.get_end_node_id())
+            if start_node is None or end_node is None:
+                return connection_geometry.get_other_blocks()
+            else:
+                indexed_blocks: tuple[RoutingBlockGeometry, ...] = self._spatial_index.query_blocks(
+                    start_position=start_node.get_position(),
+                    end_position=end_node.get_position(),
+                )
+                source_owner: RoutingBlockGeometry | None = connection_geometry.get_source_owner()
+                destination_owner: RoutingBlockGeometry | None = connection_geometry.get_destination_owner()
+                if source_owner is None and destination_owner is None:
+                    # Central searches intentionally classify both endpoint
+                    # owners as ordinary foreign blocks.
+                    return indexed_blocks
+                else:
+                    candidate_blocks: list[RoutingBlockGeometry] = list()
+                    block_geometry: RoutingBlockGeometry
+                    for block_geometry in indexed_blocks:
+                        is_source_owner: bool = (
+                            source_owner is not None
+                            and block_geometry.get_block_uid() == source_owner.get_block_uid()
+                        )
+                        is_destination_owner: bool = (
+                            destination_owner is not None
+                            and block_geometry.get_block_uid() == destination_owner.get_block_uid()
+                        )
+                        if is_source_owner or is_destination_owner:
+                            pass
+                        else:
+                            candidate_blocks.append(block_geometry)
+                    return tuple(candidate_blocks)
+
+    def _get_foreign_segment_candidates(
+            self,
+            segment: RoutingSegment,
+            connection_geometry: RoutingConnectionGeometry,
+    ) -> tuple[RoutingSegmentObstacle, ...]:
+        """Return spatially relevant foreign segments for exact validation.
+
+        :param segment: Candidate segment from the active graph.
+        :param connection_geometry: Complete immutable obstacle geometry.
+        :return: Candidate foreign segments, indexed when possible.
+        """
+        if self._spatial_index is None:
+            return connection_geometry.get_other_connection_segments()
+        else:
+            start_node: RoutingNode | None = self._graph.get_node(segment.get_start_node_id())
+            end_node: RoutingNode | None = self._graph.get_node(segment.get_end_node_id())
+            if start_node is None or end_node is None:
+                return connection_geometry.get_other_connection_segments()
+            else:
+                return self._spatial_index.query_segments(
+                    start_position=start_node.get_position(),
+                    end_position=end_node.get_position(),
+                )
 
     def _orthogonal_crossing_point_belongs_to_both_segments(
             self,

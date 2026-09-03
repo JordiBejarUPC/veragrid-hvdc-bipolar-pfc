@@ -21,6 +21,7 @@ from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import Routi
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingBounds
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingConnectionGeometry
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingSegmentObstacle
+from VeraGrid.Gui.DynamicModelEditor.Routing.routing_spatial_index import RoutingSpatialIndex
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_validation import RoutingValidationMessage
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_validation import RoutingValidationReport
 from VeraGridEngine.enumerations import (
@@ -48,6 +49,7 @@ __all__: list[str] = [
     "RoutingPoint",
     "RoutingSegment",
     "RoutingSegmentObstacle",
+    "RoutingSpatialIndex",
     "RoutingGraphSerializer",
     "RoutingSerializedGraph",
     "RoutingSerializedNode",

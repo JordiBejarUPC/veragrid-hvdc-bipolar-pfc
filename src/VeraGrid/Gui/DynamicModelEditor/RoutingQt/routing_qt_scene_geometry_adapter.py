@@ -13,6 +13,7 @@ from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import Routi
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingBounds
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingConnectionGeometry
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingSegmentObstacle
+from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingSceneGeometrySnapshot
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics import BlockItem
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics import GenericBlockItem
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics import MeasurementsItem
@@ -34,6 +35,96 @@ class QtRoutingSceneGeometryAdapter:
     """
 
     __slots__ = tuple()
+
+    def capture_scene_geometry(
+            self,
+            scene: QGraphicsScene | None,
+            connection_segments: tuple[RoutingSegmentObstacle, ...],
+    ) -> RoutingSceneGeometrySnapshot:
+        """Capture every reusable routing obstacle from one Qt scene traversal.
+
+        :param scene: Live graphics scene, if available.
+        :param connection_segments: Segments from all registered routing graphs.
+        :return: Immutable scene-level geometry snapshot.
+        """
+        blocks: list[RoutingBlockGeometry] = list()
+        if scene is not None:
+            scene_item: QGraphicsItem
+            for scene_item in scene.items():
+                block_geometry: RoutingBlockGeometry | None = self._build_block_geometry(scene_item=scene_item)
+                if block_geometry is not None:
+                    blocks.append(block_geometry)
+                else:
+                    pass
+        else:
+            pass
+
+        return RoutingSceneGeometrySnapshot(
+            blocks=tuple(blocks),
+            connection_segments=connection_segments,
+        )
+
+    def build_connection_geometry_from_snapshot(
+            self,
+            snapshot: RoutingSceneGeometrySnapshot,
+            source_port: PortItem,
+            destination_port: PortItem,
+            connection_uid: int,
+    ) -> RoutingConnectionGeometry:
+        """Classify one shared scene snapshot for a specific connection.
+
+        :param snapshot: Reusable scene-level geometry snapshot.
+        :param source_port: Source endpoint whose owner is exempt at its boundary.
+        :param destination_port: Destination endpoint whose owner is exempt at its boundary.
+        :param connection_uid: Active connection whose own segments are excluded.
+        :return: Connection-specific immutable geometry.
+        """
+        source_owner_uid: int | None
+        destination_owner_uid: int | None
+        if source_port.subsystem.subsys is not None:
+            source_owner_uid = source_port.subsystem.subsys.uid
+        else:
+            source_owner_uid = None
+        if destination_port.subsystem.subsys is not None:
+            destination_owner_uid = destination_port.subsystem.subsys.uid
+        else:
+            destination_owner_uid = None
+        source_owner: RoutingBlockGeometry | None = None
+        destination_owner: RoutingBlockGeometry | None = None
+        other_blocks: list[RoutingBlockGeometry] = list()
+        block_geometry: RoutingBlockGeometry
+
+        # Classification changes per connection, while the expensive Qt scene
+        # traversal and coordinate conversion remain shared by the whole drag.
+        for block_geometry in snapshot.get_blocks():
+            block_uid: int = block_geometry.get_block_uid()
+            if source_owner_uid is not None and block_uid == source_owner_uid:
+                source_owner = block_geometry
+            else:
+                pass
+            if destination_owner_uid is not None and block_uid == destination_owner_uid:
+                destination_owner = block_geometry
+            else:
+                pass
+            if block_uid != source_owner_uid and block_uid != destination_owner_uid:
+                other_blocks.append(block_geometry)
+            else:
+                pass
+
+        other_connection_segments: list[RoutingSegmentObstacle] = list()
+        segment_obstacle: RoutingSegmentObstacle
+        for segment_obstacle in snapshot.get_connection_segments():
+            if segment_obstacle.get_connection_uid() != int(connection_uid):
+                other_connection_segments.append(segment_obstacle)
+            else:
+                pass
+
+        return RoutingConnectionGeometry(
+            source_owner=source_owner,
+            destination_owner=destination_owner,
+            other_blocks=tuple(other_blocks),
+            other_connection_segments=tuple(other_connection_segments),
+        )
 
     def capture_connection_geometry(
             self,
