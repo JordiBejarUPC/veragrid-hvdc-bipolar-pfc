@@ -34,6 +34,7 @@ from VeraGrid.Gui.DeviceEditors.LoadDesigner.load_device_editor import LoadDevic
 from VeraGrid.Gui.DeviceEditors.GeneratorEditor.generator_editor import GeneratorEditorDialog
 from VeraGrid.Gui.DeviceEditors.VscEditor.vsc_device_editor import VscDeviceEditorDialog
 from VeraGrid.Gui.DeviceEditors.TowerBuilder.LineBuilderDialogue import TowerBuilderGUI
+from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, exec_dialog_safely, is_dialog_available
 from VeraGrid.Gui.FmuTemplateEditor.fmu_template_editor import FmuTemplateEditorDialog
 from VeraGrid.Gui.SystemScaler.system_scaler import SystemScaler
 from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import GridMapWidget, generate_map_diagram
@@ -469,6 +470,12 @@ class DataBaseTableMain(DiagramsMain):
         source_column: int = header.logicalIndexAt(position)
 
         if model is not None and source_column > -1:
+            old_dialog: ObjectColumnFilterDialog | None = self.object_column_filter_dialog
+            if is_dialog_available(dialog=old_dialog):
+                delete_dialog_safely(dialog=old_dialog)
+            else:
+                pass
+
             self.object_column_filter_dialog = ObjectColumnFilterDialog(
                 proxy_model=model,
                 source_column=source_column,
@@ -727,13 +734,25 @@ class DataBaseTableMain(DiagramsMain):
                 DeviceType.ExternalGridDevice
             ]
 
-            self.new_se_dlg = CheckListDialogue(
+            new_se_dlg: CheckListDialogue = CheckListDialogue(
                 objects_list=[e.value for e in tpes]
             )
 
             if self.circuit.get_substation_number() > 0:
                 # showing this menu only makes sense if there is anything there
-                self.new_se_dlg.exec()
+                try:
+                    new_se_dlg.exec()
+                    show_substations: bool = new_se_dlg.selected(DeviceType.SubstationDevice.value)
+                    show_lines: bool = new_se_dlg.selected(DeviceType.LineDevice.value)
+                    show_dc_lines: bool = new_se_dlg.selected(DeviceType.DCLineDevice.value)
+                    show_hvdc_lines: bool = new_se_dlg.selected(DeviceType.HVDCLineDevice.value)
+                    show_external_grids: bool = new_se_dlg.selected(DeviceType.ExternalGridDevice.value)
+                    show_static_generators: bool = new_se_dlg.selected(DeviceType.StaticGeneratorDevice.value)
+                    show_loads: bool = new_se_dlg.selected(DeviceType.LoadDevice.value)
+                    show_batteries: bool = new_se_dlg.selected(DeviceType.BatteryDevice.value)
+                    show_generators: bool = new_se_dlg.selected(DeviceType.GeneratorDevice.value)
+                finally:
+                    delete_dialog_safely(dialog=new_se_dlg)
             else:
                 self.show_warning_toast("No substations to draw...")
                 return
@@ -742,26 +761,18 @@ class DataBaseTableMain(DiagramsMain):
             subgrid = self.circuit.slice_buses(buses=list(selected_buses))
 
             diagram = generate_map_diagram(
-                substations=subgrid.get_substations() if self.new_se_dlg.selected(
-                    DeviceType.SubstationDevice.value) else list(),
-                voltage_levels=subgrid.get_voltage_levels() if self.new_se_dlg.selected(
-                    DeviceType.SubstationDevice.value) else list(),
-                lines=subgrid.get_lines() if self.new_se_dlg.selected(DeviceType.LineDevice.value) else list(),
-                dc_lines=subgrid.get_dc_lines() if self.new_se_dlg.selected(
-                    DeviceType.DCLineDevice.value) else list(),
-                hvdc_lines=subgrid.get_hvdc() if self.new_se_dlg.selected(
-                    DeviceType.HVDCLineDevice.value) else list(),
+                substations=subgrid.get_substations() if show_substations else list(),
+                voltage_levels=subgrid.get_voltage_levels() if show_substations else list(),
+                lines=subgrid.get_lines() if show_lines else list(),
+                dc_lines=subgrid.get_dc_lines() if show_dc_lines else list(),
+                hvdc_lines=subgrid.get_hvdc() if show_hvdc_lines else list(),
                 fluid_nodes=subgrid.get_fluid_nodes(),
                 fluid_paths=subgrid.get_fluid_paths(),
-                external_grids=subgrid.external_grids if self.new_se_dlg.selected(
-                    DeviceType.ExternalGridDevice.value) else list(),
-                static_generators=subgrid.static_generators if self.new_se_dlg.selected(
-                    DeviceType.StaticGeneratorDevice.value) else list(),
-                loads=subgrid.loads if self.new_se_dlg.selected(DeviceType.LoadDevice.value) else list(),
-                batteries=subgrid.batteries if self.new_se_dlg.selected(
-                    DeviceType.BatteryDevice.value) else list(),
-                generators=subgrid.generators if self.new_se_dlg.selected(
-                    DeviceType.GeneratorDevice.value) else list(),
+                external_grids=subgrid.external_grids if show_external_grids else list(),
+                static_generators=subgrid.static_generators if show_static_generators else list(),
+                loads=subgrid.loads if show_loads else list(),
+                batteries=subgrid.batteries if show_batteries else list(),
+                generators=subgrid.generators if show_generators else list(),
                 prog_func=None,
                 text_func=None,
                 name='Map diagram',
@@ -832,13 +843,17 @@ class DataBaseTableMain(DiagramsMain):
             # get the previous power flow
             _, pf_res = self.session.power_flow
 
-            self.grid_reduction_dialogue = GridReduceDialogue(grid=self.circuit,
-                                                              session=self.session,
-                                                              selected_buses_set=selected_buses)
+            grid_reduction_dialogue: GridReduceDialogue = GridReduceDialogue(grid=self.circuit,
+                                                                             session=self.session,
+                                                                             selected_buses_set=selected_buses)
 
-            self.grid_reduction_dialogue.exec()
+            try:
+                grid_reduction_dialogue.exec()
+                did_reduce: bool = grid_reduction_dialogue.did_reduce
+            finally:
+                delete_dialog_safely(dialog=grid_reduction_dialogue)
 
-            if self.grid_reduction_dialogue.did_reduce:
+            if did_reduce:
 
                 # delete from the diagrams
                 self.delete_from_all_diagrams(elements=list(selected_buses))
@@ -874,14 +889,20 @@ class DataBaseTableMain(DiagramsMain):
 
             selected_buses_set: Set[dev.Bus] = {bus for i, bus, graphic in selected_buses}
 
-            self.grid_reduction_dialogue = GridReduceDialogue(grid=self.circuit,
-                                                              session=self.session,
-                                                              selected_buses_set=selected_buses_set)
+            grid_reduction_dialogue = GridReduceDialogue(grid=self.circuit,
+                                                         session=self.session,
+                                                         selected_buses_set=selected_buses_set)
 
-            self.grid_reduction_dialogue.exec()
+            try:
+                grid_reduction_dialogue.exec()
+                did_reduce = grid_reduction_dialogue.did_reduce
+            finally:
+                delete_dialog_safely(dialog=grid_reduction_dialogue)
 
-            if self.grid_reduction_dialogue.did_reduce:
+            if did_reduce:
                 self.delete_from_all_diagrams(elements=[bus for i, bus, graphic in selected_buses])
+            else:
+                pass
 
             if isinstance(diagram_widget, GridMapWidget):
                 # if this is a map, delete the elements from there
@@ -1771,52 +1792,68 @@ class DataBaseTableMain(DiagramsMain):
                     elif elm_type == DeviceType.OverheadLineTypeDevice:
 
                         # launch editor
-                        self.tower_builder_window = TowerBuilderGUI(
+                        tower_builder_window: TowerBuilderGUI = TowerBuilderGUI(
                             tower=elm,
                             wires_catalogue=self.circuit.wire_types
                         )
-                        self.tower_builder_window.setModal(True)
-                        self.tower_builder_window.resize(int(1.81 * 700.0), 700)
-                        self.tower_builder_window.exec()
+                        tower_builder_window.setModal(True)
+                        tower_builder_window.resize(int(1.81 * 700.0), 700)
+                        exec_dialog_safely(dialog=tower_builder_window)
 
                     elif elm_type == DeviceType.LineDevice or elm_type == DeviceType.DCLineDevice:
-                        dlg = build_device_editor_dialog(api_object=elm, circuit=self.circuit)
-                        if dlg.exec():
+                        dlg: QtWidgets.QDialog = build_device_editor_dialog(api_object=elm, circuit=self.circuit)
+                        if exec_dialog_safely(dialog=dlg):
+                            pass
+                        else:
                             pass
 
                     elif elm_type == DeviceType.VscDevice:
                         dlg = VscDeviceEditorDialog(api_object=elm, circuit=self.circuit, main_gui=self)
-                        if dlg.exec():
+                        if exec_dialog_safely(dialog=dlg):
+                            pass
+                        else:
                             pass
 
                     elif elm_type == DeviceType.Transformer2WDevice:
                         dlg = TransformerDeviceEditorDialog(api_object=elm, circuit=self.circuit)
-                        if dlg.exec():
+                        if exec_dialog_safely(dialog=dlg):
+                            pass
+                        else:
                             pass
 
                     elif elm_type == DeviceType.ControllableShuntDevice:
                         dlg = ControllableShuntDeviceEditorDialog(api_object=elm, circuit=self.circuit)
-                        if dlg.exec():
+                        if exec_dialog_safely(dialog=dlg):
+                            pass
+                        else:
                             pass
 
                     elif elm_type == DeviceType.LoadDevice:
                         dlg = LoadDeviceEditorDialog(api_object=elm, circuit=self.circuit)
-                        if dlg.exec():
+                        if exec_dialog_safely(dialog=dlg):
+                            pass
+                        else:
                             pass
 
                     elif elm_type == DeviceType.GeneratorDevice:
                         dlg = GeneratorEditorDialog(api_object=elm, circuit=self.circuit)
-                        if dlg.exec():
+                        if exec_dialog_safely(dialog=dlg):
+                            pass
+                        else:
                             pass
 
                     elif elm_type == DeviceType.BatteryDevice:
                         dlg = GeneratorEditorDialog(api_object=elm, circuit=self.circuit)
-                        if dlg.exec():
+                        if exec_dialog_safely(dialog=dlg):
+                            pass
+                        else:
                             pass
 
                     elif elm_type == DeviceType.Transformer3WDevice:
                         dlg = Transformer3WDeviceEditorDialog(api_object=elm, circuit=self.circuit)
-                        if dlg.exec():
+                        if exec_dialog_safely(dialog=dlg):
+                            pass
+                        else:
                             pass
 
                     elif elm_type == DeviceType.RmsModelTemplateDevice:
@@ -1834,12 +1871,16 @@ class DataBaseTableMain(DiagramsMain):
                             project_directory=self.project_directory,
                             parent=self,
                         )
-                        if dlg.exec():
+                        if exec_dialog_safely(dialog=dlg):
                             self.view_objects_data()
+                        else:
+                            pass
 
                     elif isinstance(elm, EditableDevice):
                         dlg = TemplateDeviceEditor(api_object=elm, circuit=self.circuit)
-                        if dlg.exec():
+                        if exec_dialog_safely(dialog=dlg):
+                            pass
+                        else:
                             pass
 
                     else:
@@ -2137,9 +2178,13 @@ class DataBaseTableMain(DiagramsMain):
             logger = self.delete_shit()
 
             if len(logger) > 0:
-                dlg = LogsDialogue(self.tr("Delete inconsistencies"), logger)
+                dlg: LogsDialogue = LogsDialogue(self.tr("Delete inconsistencies"), logger)
                 dlg.setModal(True)
-                dlg.exec()
+                exec_dialog_safely(dialog=dlg)
+            else:
+                pass
+        else:
+            pass
 
     def delete_shit(self, min_island=1):
         """
@@ -2199,16 +2244,20 @@ class DataBaseTableMain(DiagramsMain):
             logger = self.circuit.clean()
 
             if len(logger) > 0:
-                dlg = LogsDialogue(self.tr('DB clean logger'), logger)
-                dlg.exec()
+                dlg: LogsDialogue = LogsDialogue(self.tr('DB clean logger'), logger)
+                exec_dialog_safely(dialog=dlg)
+            else:
+                pass
+        else:
+            pass
 
     def scale(self):
         """
         Show the system scaler window
         The scaler window may modify the circuit
         """
-        system_scaler_window = SystemScaler(grid=self.circuit, parent=self)
-        system_scaler_window.exec()
+        system_scaler_window: SystemScaler = SystemScaler(grid=self.circuit, parent=self)
+        exec_dialog_safely(dialog=system_scaler_window)
 
     def detect_substations(self):
         """
