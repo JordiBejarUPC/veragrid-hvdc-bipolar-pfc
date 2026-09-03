@@ -974,18 +974,18 @@
     },
     {
       "source": "BusBar",
-      "target": "Bus",
-      "kind": "references",
-      "properties": [
-        "voltage_level"
-      ]
-    },
-    {
-      "source": "BusBar",
       "target": "ModellingAuthority",
       "kind": "references",
       "properties": [
         "modelling_authority"
+      ]
+    },
+    {
+      "source": "BusBar",
+      "target": "VoltageLevel",
+      "kind": "references",
+      "properties": [
+        "voltage_level"
       ]
     },
     {

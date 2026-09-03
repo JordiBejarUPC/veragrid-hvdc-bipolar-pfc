@@ -263,7 +263,7 @@
 |decommissioned_date|int                |    |False    |         |Decommissioned date of the asset                        |False      |       |
 |build_status       |enum BuildStatus   |    |False    |         |Device build status. Used in expansion planning.        |False      |       |
 |owners             |AssociationsList   |p.u.|False    |         |Owners associations to injections                       |False      |       |
-|voltage_level      |Bus                |    |False    |         |Voltage level of this BusBar                            |False      |       |
+|voltage_level      |Voltage level      |    |False    |         |Voltage level of this BusBar                            |False      |       |
 
 
 ### Community

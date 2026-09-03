@@ -5,7 +5,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VeraGridEngine.enumerations &mdash; VeraGrid 6.5.6 documentation</title>
+  <title>VeraGridEngine.enumerations &mdash; VeraGrid 6.5.16 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
@@ -14,7 +14,7 @@
   
       <script src="../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../../_static/documentation_options.js?v=1095f081"></script>
+      <script src="../../_static/documentation_options.js?v=6b7e4d52"></script>
       <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
       <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/js/theme.js"></script>
@@ -44,6 +44,7 @@
               <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../md_source/installation.html">💽 Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../md_source/user_interface.html">📊 User interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../md_source/veragrid_scripting_guide.html">📑 VeraGrid scripting guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../md_source/grid_analysis.html">🔎 Grid analysis</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../md_source/structure.html">🌁 Structure of VeraGrid</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../md_source/modelling.html">📐 Grid Modelling</a></li>
@@ -2249,12 +2250,13 @@
 <span class="sd">    ActionType</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">All</span> <span class="o">=</span> <span class="s1">&#39;All&#39;</span>
+    <span class="n">MT</span> <span class="o">=</span> <span class="s1">&#39;Metadata&#39;</span>
+    <span class="n">TP</span> <span class="o">=</span> <span class="s1">&#39;Topology&#39;</span>
     <span class="n">PF</span> <span class="o">=</span> <span class="s1">&#39;Power flow&#39;</span>
     <span class="n">PF3</span> <span class="o">=</span> <span class="s1">&#39;Power flow (unbalanced)&#39;</span>
     <span class="n">SC</span> <span class="o">=</span> <span class="s2">&quot;Short Circuit&quot;</span>
     <span class="n">OPF</span> <span class="o">=</span> <span class="s1">&#39;Optimal Power flow&#39;</span>
     <span class="n">CON</span> <span class="o">=</span> <span class="s2">&quot;Contingencies&quot;</span>
-    <span class="n">TP</span> <span class="o">=</span> <span class="s1">&#39;Topology&#39;</span>
     <span class="n">REL</span> <span class="o">=</span> <span class="s1">&#39;Reliability&#39;</span>
     <span class="n">NTC</span> <span class="o">=</span> <span class="s1">&#39;Net Transfer Capacity&#39;</span>
     <span class="n">INV</span> <span class="o">=</span> <span class="s2">&quot;Investments&quot;</span>
@@ -3633,6 +3635,7 @@
 
     <span class="c1"># Hydro OPF</span>
     <span class="n">FluidCurrentLevel</span> <span class="o">=</span> <span class="s1">&#39;Reservoir fluid level&#39;</span>
+    <span class="n">FluidValue</span> <span class="o">=</span> <span class="s1">&#39;Fluid value&#39;</span>
     <span class="n">FluidFlowIn</span> <span class="o">=</span> <span class="s1">&#39;Flow entering the node&#39;</span>
     <span class="n">FluidFlowOut</span> <span class="o">=</span> <span class="s1">&#39;Flow exiting the node&#39;</span>
     <span class="n">FluidP2XFlow</span> <span class="o">=</span> <span class="s1">&#39;Flow from the P2X&#39;</span>
