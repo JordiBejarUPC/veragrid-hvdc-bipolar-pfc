@@ -52,8 +52,8 @@ class RoutingConstraintEngine:
         self._graph: RoutingGraph = graph
         self._geometry: RoutingGeometry = graph.get_geometry()
         self._minimum_segment_length: float = 1.0
-        self._minimum_first_segment_length: float = 10.0
-        self._minimum_stub_continuation_length: float = 10.0
+        self._minimum_first_segment_length: float = 5.0
+        self._minimum_stub_continuation_length: float = 5.0
 
     def is_port_connection_perpendicular(
             self,

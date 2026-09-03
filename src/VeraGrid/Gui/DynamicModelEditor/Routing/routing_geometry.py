@@ -38,7 +38,7 @@ class RoutingGeometry:
         """
         self._numerical_epsilon: float = 1.0e-9
         self._visual_alignment_threshold: float = 3.0
-        self._port_stub_length: float = 20.0
+        self._port_stub_length: float = 8.0
 
     def get_visual_alignment_threshold(self) -> float:
         """
