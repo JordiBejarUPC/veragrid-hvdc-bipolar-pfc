@@ -9265,30 +9265,115 @@ class DynamicBlockPropertiesDockWidget(QtWidgets.QDockWidget):
         else:
             self._event_filter_installed = False
 
+    def _is_properties_object(self, candidate: QtCore.QObject | None) -> bool:
+        """Return whether a QObject descends from the properties host.
+
+        :param candidate: Object whose Qt ownership chain must be inspected.
+        :return: Whether Block Properties owns the object.
+        """
+        belongs_to_properties: bool = False
+        while candidate is not None and not belongs_to_properties:
+            if candidate is self or candidate is self._properties_widget:
+                belongs_to_properties = True
+            else:
+                candidate = candidate.parent()
+        return belongs_to_properties
+
+    def _is_properties_window(self, candidate: QtGui.QWindow | None) -> bool:
+        """Return whether a native window is hosted or opened by the editor.
+
+        :param candidate: Native window whose transient-parent chain is inspected.
+        :return: Whether the window belongs to Block Properties.
+        """
+        dock_window: QtGui.QWindow | None = self.windowHandle()
+        properties_window: QtGui.QWindow | None = self._properties_widget.windowHandle()
+        belongs_to_properties: bool = False
+        while candidate is not None and not belongs_to_properties:
+            if candidate is dock_window or candidate is properties_window:
+                belongs_to_properties = True
+            else:
+                candidate = candidate.transientParent()
+        return belongs_to_properties
+
     def _owns_event_target(self, watched: QtCore.QObject) -> bool:
         """Return whether an event receiver belongs to Block Properties.
 
         QObject ancestry also admits menus, completers and child dialogues
-        opened from the property editor even when they are native top-level
-        widgets rather than visual descendants of the dock frame. This filter
-        is active only while Block Properties is a floating window.
+        whose Qt parent remains attached to the property editor. Native popup
+        windows are handled separately because combo boxes, menus, completers
+        and file dialogues may not retain that QObject ancestry. This filter is
+        active only while Block Properties is a floating window.
 
         :param watched: Application event receiver.
         :return: Whether the receiver is part of this editing transaction.
         """
-        candidate: QtCore.QObject | None = watched
-        owned: bool = False
-        while candidate is not None and not owned:
-            if candidate is self or candidate is self._properties_widget:
-                owned = True
+        owned: bool = self._is_properties_object(watched)
+
+        # Qt implements many editor-owned controls as temporary top-level
+        # windows. Inspect the application's active auxiliaries, then admit
+        # them only when their object or native-window ownership leads back to
+        # Block Properties.
+        application_instance: QtCore.QCoreApplication | None = (
+            QtWidgets.QApplication.instance()
+        )
+        active_popup: QtWidgets.QWidget | None = None
+        active_modal: QtWidgets.QWidget | None = None
+        if isinstance(application_instance, QtWidgets.QApplication):
+            active_popup = application_instance.activePopupWidget()
+            active_modal = application_instance.activeModalWidget()
+        else:
+            pass
+
+        popup_is_owned: bool = self._is_properties_object(active_popup)
+        modal_is_owned: bool = self._is_properties_object(active_modal)
+        if active_popup is not None and not popup_is_owned:
+            popup_is_owned = self._is_properties_window(active_popup.windowHandle())
+        else:
+            pass
+        if active_modal is not None and not modal_is_owned:
+            modal_is_owned = self._is_properties_window(active_modal.windowHandle())
+        else:
+            pass
+
+        auxiliary_owned: bool = False
+        if not owned and isinstance(watched, QtWidgets.QWidget):
+            popup_owns_widget: bool = (
+                popup_is_owned
+                and active_popup is not None
+                and (watched is active_popup or active_popup.isAncestorOf(watched))
+            )
+            modal_owns_widget: bool = (
+                modal_is_owned
+                and active_modal is not None
+                and (watched is active_modal or active_modal.isAncestorOf(watched))
+            )
+            auxiliary_owned = popup_owns_widget or modal_owns_widget
+        elif not owned and isinstance(watched, QtGui.QWindow):
+            popup_window: QtGui.QWindow | None = None
+            modal_window: QtGui.QWindow | None = None
+            if active_popup is not None:
+                popup_window = active_popup.windowHandle()
             else:
-                candidate = candidate.parent()
+                pass
+            if active_modal is not None:
+                modal_window = active_modal.windowHandle()
+            else:
+                pass
+            auxiliary_owned = (
+                (popup_is_owned and watched is popup_window)
+                or (modal_is_owned and watched is modal_window)
+            )
+        else:
+            pass
+        if auxiliary_owned:
+            owned = True
+        else:
+            pass
+
         if not owned and isinstance(watched, QtWidgets.QWidget):
             owned = self.isAncestorOf(watched)
         elif not owned and isinstance(watched, QtGui.QWindow):
-            dock_window: QtGui.QWindow | None = self.windowHandle()
-            properties_window: QtGui.QWindow | None = self._properties_widget.windowHandle()
-            owned = watched is dock_window or watched is properties_window
+            owned = self._is_properties_window(watched)
         else:
             pass
         return owned
@@ -9367,7 +9452,11 @@ class DynamicBlockPropertiesDockWidget(QtWidgets.QDockWidget):
                 pass
             result: bool = True
         else:
-            result = QtWidgets.QDockWidget.eventFilter(self, watched, event)
+            # This object is installed as an application-wide observer rather
+            # than as a QDockWidget-internal filter. Returning ``False`` lets
+            # Qt continue normal delivery and, crucially, avoids passing a
+            # popup QWindow wrapper back into C++ after Qt has destroyed it.
+            result = False
         return result
 
     @QtCore.Slot(bool)
