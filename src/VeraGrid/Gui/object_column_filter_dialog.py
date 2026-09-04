@@ -12,6 +12,98 @@ from VeraGrid.Gui.Icons import icons_rc
 from VeraGrid.Gui.object_proxy_model import ObjectModelFilterProxy
 
 
+def get_popup_top_left_inside_rect(global_position: QtCore.QPoint,
+                                   popup_size: QtCore.QSize,
+                                   available_geometry: QtCore.QRect) -> QtCore.QPoint:
+    """
+    Clamp one popup top-left point so the full popup remains inside one screen rectangle.
+
+    :param global_position: Requested global popup top-left position.
+    :param popup_size: Popup size that must fit inside the screen.
+    :param available_geometry: Screen available geometry.
+    :return: Clamped global popup top-left position.
+    """
+    max_x: int = max(available_geometry.left(),
+                     available_geometry.left() + available_geometry.width() - popup_size.width())
+    max_y: int = max(available_geometry.top(),
+                     available_geometry.top() + available_geometry.height() - popup_size.height())
+    x_pos: int = global_position.x()
+    y_pos: int = global_position.y()
+
+    # Shift left when the popup would cross the right screen edge.
+    if x_pos > max_x:
+        x_pos = max_x
+    else:
+        pass
+
+    # Shift right when the requested point is outside the left screen edge.
+    if x_pos < available_geometry.left():
+        x_pos = available_geometry.left()
+    else:
+        pass
+
+    # Shift up when the popup would cross the bottom screen edge.
+    if y_pos > max_y:
+        y_pos = max_y
+    else:
+        pass
+
+    # Shift down when the requested point is outside the top screen edge.
+    if y_pos < available_geometry.top():
+        y_pos = available_geometry.top()
+    else:
+        pass
+
+    return QtCore.QPoint(x_pos, y_pos)
+
+
+def get_popup_available_geometry(global_position: QtCore.QPoint,
+                                 widget: QtWidgets.QWidget) -> QtCore.QRect:
+    """
+    Return the available screen geometry matching one popup position.
+
+    :param global_position: Requested global popup position.
+    :param widget: Popup widget used to find a fallback screen.
+    :return: Available screen rectangle.
+    """
+    screen: QtGui.QScreen | None = QtGui.QGuiApplication.screenAt(global_position)
+
+    if screen is None:
+        window_handle: QtGui.QWindow | None = widget.windowHandle()
+        if window_handle is not None:
+            screen = window_handle.screen()
+        else:
+            pass
+    else:
+        pass
+
+    if screen is None:
+        screen = QtGui.QGuiApplication.primaryScreen()
+    else:
+        pass
+
+    if screen is not None:
+        geometry: QtCore.QRect = screen.availableGeometry()
+    else:
+        geometry = QtCore.QRect(global_position, widget.size())
+
+    return geometry
+
+
+def get_popup_size_inside_rect(popup_size: QtCore.QSize,
+                               available_geometry: QtCore.QRect) -> QtCore.QSize:
+    """
+    Limit one popup size to the available screen rectangle.
+
+    :param popup_size: Requested popup size.
+    :param available_geometry: Screen available geometry.
+    :return: Popup size that can fit inside the screen.
+    """
+    width: int = min(popup_size.width(), available_geometry.width())
+    height: int = min(popup_size.height(), available_geometry.height())
+    return QtCore.QSize(width, height)
+
+
 def make_icon_button(icon_path: str, tooltip: str, parent: QtWidgets.QWidget) -> QtWidgets.QToolButton:
     """
     Create one compact icon-only popup button.
@@ -108,7 +200,8 @@ class ObjectColumnFilterDialog(QtWidgets.QDialog):
         self._values: List[str] = proxy_model.get_column_filter_values(source_column=source_column)
 
         self.setWindowFlags(QtCore.Qt.WindowType.Popup)
-        self.setMinimumWidth(360)
+        self.setMinimumSize(360, 280)
+        self.setSizeGripEnabled(True)
 
         layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
@@ -189,8 +282,48 @@ class ObjectColumnFilterDialog(QtWidgets.QDialog):
         :param global_position: Global screen position.
         :return: None.
         """
-        self.move(global_position)
+        available_geometry: QtCore.QRect = get_popup_available_geometry(global_position=global_position, widget=self)
+        popup_size: QtCore.QSize = get_popup_size_inside_rect(
+            popup_size=self.sizeHint().expandedTo(self.minimumSize()),
+            available_geometry=available_geometry,
+        )
+        self.setMaximumSize(available_geometry.size())
+        self.resize(popup_size)
+        self.move(get_popup_top_left_inside_rect(
+            global_position=global_position,
+            popup_size=self.size(),
+            available_geometry=available_geometry,
+        ))
         self.show()
+
+    def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
+        """
+        Keep the popup inside the screen after the user resizes it.
+
+        :param event: Resize event.
+        :return: None.
+        """
+        QtWidgets.QDialog.resizeEvent(self, event)
+        available_geometry: QtCore.QRect = get_popup_available_geometry(global_position=self.pos(), widget=self)
+        bounded_size: QtCore.QSize = get_popup_size_inside_rect(
+            popup_size=self.size(),
+            available_geometry=available_geometry,
+        )
+
+        if bounded_size != self.size():
+            self.resize(bounded_size)
+        else:
+            pass
+
+        bounded_position: QtCore.QPoint = get_popup_top_left_inside_rect(
+            global_position=self.pos(),
+            popup_size=bounded_size,
+            available_geometry=available_geometry,
+        )
+        if bounded_position != self.pos():
+            self.move(bounded_position)
+        else:
+            pass
 
     def fill_values(self) -> None:
         """

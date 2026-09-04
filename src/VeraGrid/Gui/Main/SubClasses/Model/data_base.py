@@ -11,7 +11,7 @@ from matplotlib import pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 
 from VeraGrid.Gui.associations_model import AssociationsModel
-from VeraGrid.Gui.table_view_header_wrap import HeaderViewWithWordWrap
+from VeraGrid.Gui.table_view_header_wrap import HeaderViewWithWordWrap, VerticalHeaderWidthResizer
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
 from VeraGrid.Gui.Main.SubClasses.Model.compiled_arrays_model import CompiledArraysModule
 from VeraGridEngine.Topology.VoltageLevels import vl_creation_common_functions as substation_wizards
@@ -75,6 +75,9 @@ class DataBaseTableMain(DiagramsMain):
 
         # Current column filter popup, kept alive while it is shown.
         self.object_column_filter_dialog: ObjectColumnFilterDialog | None = None
+
+        # Width-resize controller for the object table index/name header.
+        self.db_table_index_resizer: VerticalHeaderWidthResizer | None = None
 
         # setup the objects tree
         self.setup_objects_tree()
@@ -146,6 +149,7 @@ class DataBaseTableMain(DiagramsMain):
 
         # wrap headers
         self.ui.dataStructureTableView.setHorizontalHeader(HeaderViewWithWordWrap(self.ui.dataStructureTableView))
+        self.db_table_index_resizer = VerticalHeaderWidthResizer(table_view=self.ui.dataStructureTableView)
         self.ui.profiles_tableView.setHorizontalHeader(HeaderViewWithWordWrap(self.ui.profiles_tableView))
         self.ui.associationsTableView.setHorizontalHeader(HeaderViewWithWordWrap(self.ui.associationsTableView))
         self.ui.dataStructureTableView.horizontalHeader().setContextMenuPolicy(
@@ -153,6 +157,12 @@ class DataBaseTableMain(DiagramsMain):
         )
         self.ui.dataStructureTableView.horizontalHeader().customContextMenuRequested.connect(
             self.show_object_column_filter_dialog
+        )
+        self.ui.dataStructureTableView.verticalHeader().setContextMenuPolicy(
+            QtCore.Qt.ContextMenuPolicy.CustomContextMenu
+        )
+        self.ui.dataStructureTableView.verticalHeader().customContextMenuRequested.connect(
+            self.show_db_table_index_context_menu
         )
 
         # combobox change
@@ -439,6 +449,10 @@ class DataBaseTableMain(DiagramsMain):
             # update slice-view
             self.type_objects_list = elements
             self.ui.dataStructureTableView.setModel(proxy)
+            if self.db_table_index_resizer is not None:
+                self.db_table_index_resizer.reposition()
+            else:
+                pass
 
             # update time series view
             ts_mdl = gf.get_list_model(self.circuit.profile_magnitudes[elm_type][0])
@@ -1908,6 +1922,53 @@ class DataBaseTableMain(DiagramsMain):
         else:
             pass
 
+    def set_db_table_index_width(self) -> None:
+        """
+        Set the database object table index column width.
+
+        :return: None.
+        """
+        vertical_header: QtWidgets.QHeaderView = self.ui.dataStructureTableView.verticalHeader()
+        current_width: int = max(vertical_header.width(), 80)
+        width: int
+        accepted: bool
+        width, accepted = QtWidgets.QInputDialog.getInt(
+            self,
+            self.tr("Index column width"),
+            self.tr("Width in pixels"),
+            current_width,
+            40,
+            2000,
+            10,
+        )
+
+        if accepted:
+            if self.db_table_index_resizer is not None:
+                self.db_table_index_resizer.set_header_width(width=width)
+            else:
+                vertical_header.setMinimumWidth(40)
+                vertical_header.setMaximumWidth(2000)
+                vertical_header.setFixedWidth(width)
+                self.ui.dataStructureTableView.updateGeometries()
+        else:
+            pass
+
+    def show_db_table_index_context_menu(self, pos: QtCore.QPoint) -> None:
+        """
+        Show the database table index-column context menu.
+
+        :param pos: Relative click position.
+        :return: None.
+        """
+        context_menu: QtWidgets.QMenu = QtWidgets.QMenu(parent=self.ui.dataStructureTableView)
+
+        gf.add_menu_entry(menu=context_menu,
+                          text=self.tr("Set index width"),
+                          icon_path=":/Icons/icons/grid_icon.png",
+                          function_ptr=self.set_db_table_index_width)
+
+        context_menu.exec(self.ui.dataStructureTableView.verticalHeader().mapToGlobal(pos))
+
     def highlight_selection_buses(self):
         """
         Highlight and select the buses of the selected objects
@@ -2348,6 +2409,11 @@ class DataBaseTableMain(DiagramsMain):
                               text=self.tr("Set value to column"),
                               icon_path=":/Icons/icons/copy2down.png",
                               function_ptr=self.set_value_to_column)
+
+            gf.add_menu_entry(menu=context_menu,
+                              text=self.tr("Set index width"),
+                              icon_path=":/Icons/icons/grid_icon.png",
+                              function_ptr=self.set_db_table_index_width)
 
             gf.add_menu_entry(menu=context_menu,
                               text=self.tr("Assign to profile"),
