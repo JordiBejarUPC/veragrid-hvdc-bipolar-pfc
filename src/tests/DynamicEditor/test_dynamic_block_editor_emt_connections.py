@@ -26,7 +26,7 @@ from VeraGrid.Gui.DynamicModelEditor.DynamicLibrary.dynamic_editor_utilities imp
     create_default_template_builder,
     initialize_template_builder_from_block,
 )
-from VeraGrid.Session.dynamic_editor_workspace_session import DynamicEditorWorkspaceSession
+from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_workspace_session import DynamicEditorWorkspaceSession
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory

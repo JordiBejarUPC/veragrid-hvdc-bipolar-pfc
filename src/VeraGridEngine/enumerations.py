@@ -5489,3 +5489,10 @@ class MeasurementVarType(Enum):
 
     ID = "ID"
     IQ = "IQ"
+
+
+class DynamicEditorContentType(Enum):
+    """Identify the kind of content hosted by a dynamic workspace tab."""
+
+    MODEL = "Model"
+    EVENTS = "Events"

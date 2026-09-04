@@ -8,6 +8,7 @@ from VeraGrid.Gui.CatalogueElementsDialogue.catalogue_actions import CatalogueAc
 from VeraGrid.Gui.CatalogueElementsDialogue.catalogue_elements_dialogue import (
     CatalogueElementsSelectionDialogue,
 )
+import VeraGridEngine.Templates as tem
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Templates.InternationalStandardsCatalog import (
     InternationalStandardTemplateDescriptor,
@@ -34,7 +35,7 @@ def test_rms_catalogue_matches_supported_gui_device_templates(qt_app: QtWidgets.
         'rms:get_genqec_rms',
         'rms:get_genrow_rms_template',
         'rms:get_line_rms_template',
-        'rms:get_dc_line_rms_template',
+        'rms:build_dc_line_rms_v2',
         'rms:get_load_rms_template',
         'rms:get_transformer2w_rms',
         'rms:get_shunt_template',
@@ -45,7 +46,7 @@ def test_rms_catalogue_matches_supported_gui_device_templates(qt_app: QtWidgets.
         'rms:get_pvd1_dc_link_bess_rms_template',
         'rms:get_esd1_rms_template',
         'rms:VoltageSourceBuild',
-        'rms:build_vsc_rms',
+        'rms:build_hvdc_vsc_gfl_rms',
     ))
     excluded_phasor_keys: set[str] = set((
         'rms:get_line_phasor_rms_template',
@@ -73,6 +74,23 @@ def test_rms_catalogue_matches_supported_gui_device_templates(qt_app: QtWidgets.
     assert action_keys == expected_keys
     assert action_keys.isdisjoint(excluded_phasor_keys)
     assert action_keys.isdisjoint(excluded_control_keys)
+
+    actions_by_key: dict[str, CatalogueAction] = dict(
+        (action.unique_key, action) for action in actions
+    )
+    assert actions_by_key['rms:VoltageSourceBuild'].function_ptr is tem.VoltageSourceBuild
+    assert (
+        actions_by_key['rms:build_hvdc_vsc_gfl_rms'].function_ptr
+        is tem.build_hvdc_vsc_gfl_rms
+    )
+    assert (
+        actions_by_key['rms:get_transformer2w_rms'].function_ptr
+        is tem.get_transformer2w_rms
+    )
+    assert (
+        actions_by_key['rms:build_dc_line_rms_v2'].function_ptr
+        is tem.build_dc_line_rms_v2
+    )
 
     descriptor: InternationalStandardTemplateDescriptor
     for descriptor in get_international_standard_device_template_descriptors():

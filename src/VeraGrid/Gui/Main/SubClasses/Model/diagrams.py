@@ -49,7 +49,6 @@ from VeraGrid.Gui.Main.SubClasses.Model.compiled_arrays import CompiledArraysMai
 from VeraGrid.Gui.Main.object_select_window import ObjectSelectWindow, ListSelectWindow
 from VeraGrid.Gui.Diagrams.MapWidget.Tiles.TileProviders.cartodb import CartoDbTiles
 from VeraGrid.Gui.object_proxy_model import ObjectModelFilterProxy
-from VeraGrid.Gui.DynamicModelEditor.DynamicEventsDialog.dynamic_events_editor import DynamicEventEditor
 from VeraGrid.Gui.Diagrams.MapWidget.Substation.substation_graphic_item import SubstationGraphicItem
 from VeraGrid.Gui.ShortCircuitEditor.short_circuit_selector import ShortCircuitSelector
 from VeraGrid.Gui.general_dialogues import (CheckListDialogue, StartEndSelectionDialogue,
@@ -3358,11 +3357,11 @@ class DiagramsMain(CompiledArraysMain):
         self._open_dynamic_events_editor(DynamicSimulationMode.EMT)
 
     def _open_dynamic_events_editor(self, mode: DynamicSimulationMode) -> None:
-        """Open the shared dynamic-events workspace from a legacy mode action.
+        """Open the requested events content in the unified dynamic workspace.
 
-        Exactly one selected device opens directly in the requested mode with
-        the device tree collapsed. Zero or multiple selections open the same
-        modal with the tree visible, allowing an explicit device choice.
+        Exactly one selected device opens directly in an RMS or EMT events tab.
+        Zero or multiple selections expose the same workspace device tree so
+        the user can select one of its four model and events actions.
 
         :param mode: RMS or EMT family preferred by the triggering action.
         :return: None.
@@ -3376,15 +3375,18 @@ class DiagramsMain(CompiledArraysMain):
         else:
             initial_device = None
 
-        # The dialog owns a reusable transaction. Save checkpoints the current
-        # edits, while Close discards changes made after the latest checkpoint.
-        events_dialog: DynamicEventEditor = DynamicEventEditor(
-            circuit=self.circuit,
-            preferred_mode=mode,
-            initial_device=initial_device,
-            parent=self,
-        )
-        events_dialog.exec()
+        if initial_device is not None:
+            self.open_dynamic_events(
+                api_object=initial_device,
+                circuit=self.circuit,
+                mode=mode,
+                show_tree=False,
+            )
+        else:
+            # Without one unambiguous diagram target, expose the unified device
+            # tree. Its four context actions let the user choose both model or
+            # events content and the RMS or EMT family.
+            self.display_dynamic_models_editor()
 
     def add_short_circuit_events(self):
         """

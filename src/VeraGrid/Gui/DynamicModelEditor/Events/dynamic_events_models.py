@@ -125,11 +125,13 @@ class DynamicEventsDraftSession(QtCore.QObject):
 
     changed = QtCore.Signal()
     group_changed = QtCore.Signal(object)
+    dirty_state_changed = QtCore.Signal(bool)
 
     __slots__ = (
         "circuit",
         "group_drafts",
         "event_drafts",
+        "_dirty",
     )
 
     def __init__(self,
@@ -145,8 +147,46 @@ class DynamicEventsDraftSession(QtCore.QObject):
         self.circuit: MultiCircuit = circuit
         self.group_drafts: list[DynamicEventGroupDraft] = list()
         self.event_drafts: list[DynamicEventDraft] = list()
+        self._dirty: bool = False
         self._load_groups()
         self._load_events()
+
+    @property
+    def has_unapplied_changes(self) -> bool:
+        """Return whether the shared event transaction differs from the circuit.
+
+        :return: ``True`` when one or more event edits have not been saved.
+        """
+        return self._dirty
+
+    def mark_changed(self, rebuild: bool) -> None:
+        """Mark the transaction dirty and optionally rebuild every event tree.
+
+        :param rebuild: Whether the shared structural projections must rebuild.
+        :return: None.
+        """
+        if not self._dirty:
+            self._dirty = True
+            self.dirty_state_changed.emit(True)
+        else:
+            pass
+        if rebuild:
+            self.changed.emit()
+        else:
+            pass
+
+    def reload_from_circuit(self) -> None:
+        """Discard the draft and rebuild it from the persistent circuit state.
+
+        :return: None.
+        """
+        self.group_drafts.clear()
+        self.event_drafts.clear()
+        self._load_groups()
+        self._load_events()
+        self._dirty = False
+        self.changed.emit()
+        self.dirty_state_changed.emit(False)
 
     def _load_groups(self) -> None:
         """Create transaction records for every persisted RMS and EMT group.
@@ -329,7 +369,7 @@ class DynamicEventsDraftSession(QtCore.QObject):
             is_new=True,
         )
         self.group_drafts.append(draft)
-        self.changed.emit()
+        self.mark_changed(rebuild=True)
         return draft
 
     def group_name_exists(self,
@@ -371,6 +411,7 @@ class DynamicEventsDraftSession(QtCore.QObject):
             return False
         else:
             group.name = normalized_name
+        self.mark_changed(rebuild=False)
         self.group_changed.emit(group)
         return True
 
@@ -384,6 +425,7 @@ class DynamicEventsDraftSession(QtCore.QObject):
         :return: None.
         """
         group.active = bool(active)
+        self.mark_changed(rebuild=False)
         self.group_changed.emit(group)
 
     def add_event(self,
@@ -419,7 +461,7 @@ class DynamicEventsDraftSession(QtCore.QObject):
             is_new=True,
         )
         self.event_drafts.append(draft)
-        self.changed.emit()
+        self.mark_changed(rebuild=True)
         return draft
 
     def remove_event(self, event: DynamicEventDraft) -> None:
@@ -429,7 +471,7 @@ class DynamicEventsDraftSession(QtCore.QObject):
         :return: None.
         """
         event.is_removed = True
-        self.changed.emit()
+        self.mark_changed(rebuild=True)
 
     def move_event_to_group(self,
                             event: DynamicEventDraft,
@@ -482,7 +524,7 @@ class DynamicEventsDraftSession(QtCore.QObject):
             # the structural change removes the row from its old branch and
             # recreates it under the destination branch on every open page.
             event.group = target_group
-            self.changed.emit()
+            self.mark_changed(rebuild=True)
             return True
 
     def remove_group(self, group: DynamicEventGroupDraft) -> None:
@@ -498,7 +540,56 @@ class DynamicEventsDraftSession(QtCore.QObject):
                 event.is_removed = True
             else:
                 pass
-        self.changed.emit()
+        self.mark_changed(rebuild=True)
+
+    def reconcile_device_parameters(self,
+                                    device: EditableDevice,
+                                    mode: DynamicSimulationMode,
+                                    parameters: list[Var]) -> int:
+        """Rebind valid event parameters and remove events absent from a saved model.
+
+        Logical variable UIDs survive a normal model save even though the save
+        replaces the concrete ``Var`` instances. Events whose UIDs disappear
+        are removed from the transaction because their target no longer exists.
+
+        :param device: Device whose events are being regenerated.
+        :param mode: RMS or EMT model family that was loaded.
+        :param parameters: Current event parameters from the saved model.
+        :return: Number of events removed during reconciliation.
+        """
+        removed_count: int = 0
+        reference_was_rebound: bool = False
+        event: DynamicEventDraft
+        for event in self.event_drafts:
+            if event.device is device and event.mode == mode and not event.is_removed:
+                replacement: Var | None = None
+                parameter: Var
+                for parameter in parameters:
+                    if event.parameter is not None and parameter.uid == event.parameter.uid:
+                        replacement = parameter
+                    else:
+                        pass
+                if replacement is not None:
+                    if event.parameter is not replacement:
+                        reference_was_rebound = True
+                    else:
+                        pass
+                    event.parameter = replacement
+                else:
+                    event.is_removed = True
+                    removed_count += 1
+            else:
+                pass
+
+        if removed_count > 0 or reference_was_rebound:
+            # Reconciliation only changes events owned by this device page.
+            # The caller rebuilds that projection explicitly, while the shared
+            # dirty signal updates every tab title without rebuilding unrelated
+            # device trees.
+            self.mark_changed(rebuild=False)
+        else:
+            pass
+        return removed_count
 
     def count_group_devices(self, group: DynamicEventGroupDraft) -> int:
         """Count distinct devices affected by removing one group.
@@ -696,6 +787,9 @@ class DynamicEventsDraftSession(QtCore.QObject):
             else:
                 pass
         self.group_drafts = surviving_groups
+        self._dirty = False
+        self.changed.emit()
+        self.dirty_state_changed.emit(False)
 
     def _commit_group(self, group: DynamicEventGroupDraft) -> None:
         """Create or update one non-removed events group.

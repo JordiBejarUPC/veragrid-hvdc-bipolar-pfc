@@ -56,7 +56,7 @@ from VeraGridEngine.Utils.Symbolic.dynamic_connection_intent import (DynamicConn
                                                                      DynamicConnectionIntentOrigin)
 from VeraGrid.Gui.DynamicModelEditor.ui.block_editor import Ui_BlockEditorWindow
 import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_graphics as graph
-from VeraGrid.Session.dynamic_editor_entries import DynamicEditorEntry
+from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import DynamicEditorEntry
 from VeraGrid.Gui.DynamicModelEditor.DynamicLibrary.dynamic_editor_library import DynamicEditorLibrary, LibraryTreeFilterProxyModel
 from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.measurements_dialog import MeasurementsDialog
 import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_models as dialog_models

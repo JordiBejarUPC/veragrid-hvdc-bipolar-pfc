@@ -1,13 +1,23 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+# SPDX-License-Identifier: MPL-2.0
+
 from __future__ import annotations
 
 from itertools import chain
-from typing import Any, Iterable
+from typing import Iterable
 
+from VeraGridEngine.Devices.Parents.dynamic_bus_parent import DynamicBusDevice
+from VeraGridEngine.Devices.Parents.dynamic_parent import DynamicDevice
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
+from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.Devices.types import ALL_DEV_TYPES
+from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import DeviceType, DynamicSimulationMode, FmuTemplateDomain
 
 
-def get_available_dynamic_modes(api_object: Any) -> tuple[DynamicSimulationMode, ...]:
+def get_available_dynamic_modes(api_object: ALL_DEV_TYPES) -> tuple[DynamicSimulationMode, ...]:
     """
     Return the modes that can be opened for one API object.
 
@@ -23,29 +33,43 @@ def get_available_dynamic_modes(api_object: Any) -> tuple[DynamicSimulationMode,
     if device_type == DeviceType.EmtModelTemplateDevice:
         return (DynamicSimulationMode.EMT,)
 
-    try:
+    if isinstance(api_object, (DynamicDevice, DynamicBusDevice)):
         if api_object.rms_model is not None:
             modes.append(DynamicSimulationMode.RMS)
+        else:
+            pass
         if api_object.emt_model is not None:
             modes.append(DynamicSimulationMode.EMT)
-    except Exception:
+        else:
+            pass
+    else:
         pass
 
     return tuple(modes)
 
 
-def build_dynamic_editor_title(api_object: Any, mode: DynamicSimulationMode) -> str:
+def entry_supports_dynamic_events(entry: "DynamicEditorEntry") -> bool:
+    """Return whether an entry represents a concrete event-target device.
+
+    Dynamic model templates are valid model-editor entries, but events target
+    network devices. Keeping this distinction in the entry layer prevents the
+    device tree and direct routing paths from advertising invalid event tabs.
+
+    :param entry: Dynamic editor entry to inspect.
+    :return: ``True`` for concrete devices and ``False`` for model templates.
     """
-    Build the tab or window title for one dynamic editor session.
+    device_type: DeviceType = entry.api_object.device_type
+    is_model_template: bool = (
+        device_type == DeviceType.RmsModelTemplateDevice
+        or device_type == DeviceType.EmtModelTemplateDevice
+    )
+    return isinstance(entry.api_object, EditableDevice) and not is_model_template
 
-    :param api_object: Device or template being edited.
-    :param mode: Opened dynamic simulation mode.
-    :return: User-facing editor title.
-    """
-    return f"{api_object.name} [{mode.name}]"
 
-
-def build_dynamic_editor_entry(api_object: Any, circuit: Any) -> DynamicEditorEntry | None:
+def build_dynamic_editor_entry(
+        api_object: ALL_DEV_TYPES,
+        circuit: MultiCircuit,
+) -> DynamicEditorEntry | None:
     """
     Build one dynamic editor entry or return ``None`` when unsupported.
 
@@ -79,7 +103,7 @@ def build_dynamic_editor_entry(api_object: Any, circuit: Any) -> DynamicEditorEn
     )
 
 
-def iter_dynamic_editor_entries(circuit: Any) -> Iterable[DynamicEditorEntry]:
+def iter_dynamic_editor_entries(circuit: MultiCircuit) -> Iterable[DynamicEditorEntry]:
     """
     Yield every circuit object that can be opened in the dynamic editor.
 
@@ -87,10 +111,10 @@ def iter_dynamic_editor_entries(circuit: Any) -> Iterable[DynamicEditorEntry]:
     :return: Iterable of unique editor entries.
     """
     seen_keys: set[str] = set()
-    branch_objects: list[Any] = list(circuit.get_branches(add_vsc=True, add_hvdc=True, add_switch=True))
-    injection_objects: list[Any] = list(circuit.get_injection_devices())
-    scanned_objects: Iterable[Any] = chain(injection_objects, branch_objects)
-    api_object: Any
+    branch_objects: list[ALL_DEV_TYPES] = list(circuit.get_branches(add_vsc=True, add_hvdc=True, add_switch=True))
+    injection_objects: list[ALL_DEV_TYPES] = list(circuit.get_injection_devices())
+    scanned_objects: Iterable[ALL_DEV_TYPES] = chain(injection_objects, branch_objects)
+    api_object: ALL_DEV_TYPES
     entry: DynamicEditorEntry | None
 
     # The tree must list every branch-like device that can own one dynamic
@@ -111,7 +135,10 @@ def iter_dynamic_editor_entries(circuit: Any) -> Iterable[DynamicEditorEntry]:
                 yield entry
 
 
-def get_templates_for_entry(entry: DynamicEditorEntry, mode: DynamicSimulationMode) -> list[Any]:
+def get_templates_for_entry(
+        entry: DynamicEditorEntry,
+        mode: DynamicSimulationMode,
+) -> list[ALL_DEV_TYPES]:
     """
     Return the template list exposed in the editor library for one entry.
 
@@ -133,7 +160,7 @@ def get_templates_for_entry(entry: DynamicEditorEntry, mode: DynamicSimulationMo
         return list(entry.circuit.get_emt_templates_for_editor(api_object.device_type))
 
 
-def get_block_for_entry(entry: DynamicEditorEntry, mode: DynamicSimulationMode) -> Any:
+def get_block_for_entry(entry: DynamicEditorEntry, mode: DynamicSimulationMode) -> Block:
     """
     Return the block edited by one entry and mode.
 
@@ -144,7 +171,10 @@ def get_block_for_entry(entry: DynamicEditorEntry, mode: DynamicSimulationMode) 
     api_object = entry.api_object
     device_type = api_object.device_type
 
-    if device_type in {DeviceType.RmsModelTemplateDevice, DeviceType.EmtModelTemplateDevice}:
+    if (
+        device_type == DeviceType.RmsModelTemplateDevice
+        or device_type == DeviceType.EmtModelTemplateDevice
+    ):
         return api_object.block
     if mode == DynamicSimulationMode.RMS:
         return api_object.rms_model
@@ -156,10 +186,19 @@ class DynamicEditorEntry:
     One selectable and openable dynamic editor entry.
     """
 
+    __slots__ = (
+        "api_object",
+        "circuit",
+        "available_modes",
+        "display_name",
+        "type_label",
+        "key_base",
+    )
+
     def __init__(
         self,
-        api_object: Any,
-        circuit: Any,
+        api_object: ALL_DEV_TYPES,
+        circuit: MultiCircuit,
         available_modes: tuple[DynamicSimulationMode, ...],
         display_name: str,
         type_label: str,
@@ -176,12 +215,12 @@ class DynamicEditorEntry:
         :param key_base: Stable key shared by both modes of the same object.
         :return: None.
         """
-        self.api_object = api_object
-        self.circuit = circuit
-        self.available_modes = available_modes
-        self.display_name = display_name
-        self.type_label = type_label
-        self.key_base = key_base
+        self.api_object: ALL_DEV_TYPES = api_object
+        self.circuit: MultiCircuit = circuit
+        self.available_modes: tuple[DynamicSimulationMode, ...] = available_modes
+        self.display_name: str = display_name
+        self.type_label: str = type_label
+        self.key_base: str = key_base
 
     def session_key(self, mode: DynamicSimulationMode) -> str:
         """

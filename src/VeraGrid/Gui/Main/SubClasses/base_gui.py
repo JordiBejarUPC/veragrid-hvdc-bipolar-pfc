@@ -19,6 +19,7 @@ from PySide6 import QtGui, QtWidgets, QtCore
 from VeraGrid.Gui.scenario_tree_model import ScenarioTreeModel
 # Engine imports
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Devices.multiverse import MultiVerse
 import VeraGridEngine.Simulations as sim
 from VeraGridEngine.enumerations import EngineType, DeviceType, SimulationTypes, DynamicSimulationMode
@@ -43,8 +44,10 @@ from VeraGrid.Session.session import SimulationSession, GcThread
 from VeraGrid.Gui.SigmaAnalysis.sigma_analysis_dialogue import SigmaAnalysisGUI
 from VeraGrid.Gui.SyncDialogue.sync_dialogue import SyncDialogueWindow
 from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_editor import DynamicBlockEditorGUI
+from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_page import DynamicEventsPage
+from VeraGrid.Gui.DynamicModelEditor.Tabs.dynamic_editor_tab import DynamicEditorTab
 from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_workspace_window import DynamicEditorWorkspaceWindow
-from VeraGrid.Session.dynamic_editor_workspace_session import DynamicEditorWorkspaceSession
+from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_workspace_session import DynamicEditorWorkspaceSession
 from VeraGrid.Gui.Diagrams.generic_graphics import is_dark_mode
 from VeraGrid.Gui.python_console import PythonConsole
 from VeraGrid.Gui.python_script_editor import ScriptingPythonEditor
@@ -309,6 +312,7 @@ class BaseMainGui(QMainWindow):
         self.ui.actionLaunch_data_analysis_tool.triggered.connect(self.display_grid_analysis)
         self.ui.actionShow_dynamic_models_editor.triggered.connect(self.display_dynamic_models_editor)
         self.ui.actionOnline_documentation.triggered.connect(self.show_online_docs)
+        self.ui.actionCommunity_chat.triggered.connect(self.show_online_chat)
         self.ui.actionReport_a_bug.triggered.connect(self.report_a_bug)
 
         self.ui.actionFix_generators_active_based_on_the_power.triggered.connect(
@@ -457,7 +461,9 @@ class BaseMainGui(QMainWindow):
         :param show_tree: Whether the workspace should show its device tree.
         :return: Newly created workspace window.
         """
-        workspace = DynamicEditorWorkspaceWindow(session=self.dynamic_editor_workspace_session)
+        workspace: DynamicEditorWorkspaceWindow = DynamicEditorWorkspaceWindow(
+            session=self.dynamic_editor_workspace_session,
+        )
         workspace.set_tree_visible(show_tree)
         workspace.show()
         workspace.raise_()
@@ -466,12 +472,12 @@ class BaseMainGui(QMainWindow):
 
     def open_dynamic_editor(
             self,
-            api_object,
-            circuit,
+            api_object: ALL_DEV_TYPES,
+            circuit: MultiCircuit,
             preferred_mode: DynamicSimulationMode | None = None,
             target_workspace: DynamicEditorWorkspaceWindow | None = None,
             show_tree: bool = False,
-    ) -> DynamicBlockEditorGUI | None:
+    ) -> DynamicEditorTab | None:
         """
         Open one dynamic editor in this main GUI workspace session.
 
@@ -482,7 +488,11 @@ class BaseMainGui(QMainWindow):
         :param show_tree: Whether the destination workspace should show its tree panel.
         :return: Open editor page or ``None`` when no dynamic editor exists.
         """
-        workspace = target_workspace if target_workspace is not None else self.dynamic_editor_workspace_session.get_last_active_workspace()
+        workspace: DynamicEditorWorkspaceWindow | None = (
+            target_workspace
+            if target_workspace is not None
+            else self.dynamic_editor_workspace_session.get_last_active_workspace()
+        )
         if workspace is None:
             workspace = self.create_dynamic_editor_workspace(show_tree=show_tree)
         else:
@@ -495,6 +505,42 @@ class BaseMainGui(QMainWindow):
             api_object=api_object,
             circuit=circuit,
             preferred_mode=preferred_mode,
+            target_workspace=workspace,
+        )
+
+    def open_dynamic_events(
+            self,
+            api_object: ALL_DEV_TYPES,
+            circuit: MultiCircuit,
+            mode: DynamicSimulationMode,
+            target_workspace: DynamicEditorWorkspaceWindow | None = None,
+            show_tree: bool = False,
+    ) -> DynamicEventsPage | None:
+        """Open a device event page in the shared dynamic workspace.
+
+        :param api_object: Device whose events will be edited.
+        :param circuit: Circuit that owns the device and event assets.
+        :param mode: RMS or EMT event family requested by the caller.
+        :param target_workspace: Preferred destination workspace.
+        :param show_tree: Whether the destination workspace must expose its device tree.
+        :return: Open events page, or ``None`` when the device is unsupported.
+        """
+        workspace: DynamicEditorWorkspaceWindow | None = target_workspace
+        if workspace is None:
+            workspace = self.dynamic_editor_workspace_session.get_last_active_workspace()
+        else:
+            pass
+        if workspace is None:
+            workspace = self.create_dynamic_editor_workspace(show_tree=show_tree)
+        else:
+            workspace.set_tree_visible(visible=show_tree)
+            workspace.show()
+            workspace.raise_()
+            workspace.activateWindow()
+        return workspace.open_dynamic_events_for(
+            api_object=api_object,
+            circuit=circuit,
+            mode=mode,
             target_workspace=workspace,
         )
 
@@ -1110,6 +1156,13 @@ class BaseMainGui(QMainWindow):
         webbrowser.open('https://veragrid.readthedocs.io/en/latest/', new=2)
 
     @staticmethod
+    def show_online_chat():
+        """
+        Open the online chat in a web browser
+        """
+        webbrowser.open('https://matrix.to/#/#veragrid:matrix.org', new=2)
+
+    @staticmethod
     def report_a_bug():
         """
         Open the online github issues in a web browser
@@ -1208,13 +1261,15 @@ class BaseMainGui(QMainWindow):
         self.analysis_dialogue.resize(int(1.61 * 600.0), 600)
         self.analysis_dialogue.show()
 
-    def display_dynamic_models_editor(self):
+    def display_dynamic_models_editor(self) -> None:
         """
         Display the dynamic models editor workspace with the tree panel visible.
 
         :return: None.
         """
-        workspace = self.dynamic_editor_workspace_session.get_last_active_workspace()
+        workspace: DynamicEditorWorkspaceWindow | None = (
+            self.dynamic_editor_workspace_session.get_last_active_workspace()
+        )
         if workspace is None:
             workspace = self.create_dynamic_editor_workspace(show_tree=True)
         else:

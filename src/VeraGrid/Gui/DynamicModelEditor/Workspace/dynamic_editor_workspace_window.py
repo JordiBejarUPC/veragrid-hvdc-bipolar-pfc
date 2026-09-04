@@ -9,15 +9,16 @@ from typing import Iterator
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
+from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_page import DynamicEventsPage
 from VeraGrid.Gui.DynamicModelEditor.Workspace.detachable_editor_tabs_widget import DetachableEditorTabWidget
 from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGrid.Gui.DynamicModelEditor.Tabs.dynamic_editor_tab import DynamicEditorTab
 from VeraGrid.Gui.DynamicModelEditor.ui.dynamic_editor_workspace import Ui_DynamicEditorWorkspaceWindow
-from VeraGrid.Gui.Widgets.dynamic_device_tree import DynamicDeviceTreeWidget
-from VeraGrid.Session.dynamic_editor_entries import DynamicEditorEntry
-from VeraGrid.Session.dynamic_editor_entries import build_dynamic_editor_entry
-from VeraGrid.Session.dynamic_editor_workspace_session import DynamicEditorWorkspaceSession
-from VeraGridEngine.enumerations import DynamicSimulationMode
+from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_device_tree import DynamicDeviceTreeWidget
+from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import DynamicEditorEntry
+from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import build_dynamic_editor_entry
+from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_workspace_session import DynamicEditorWorkspaceSession
+from VeraGridEngine.enumerations import DynamicEditorContentType, DynamicSimulationMode
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 
@@ -34,6 +35,7 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         "device_tree_widget",
         "ui",
         "editor_tabs",
+        "_model_toolbar_actions",
     )
 
     def __init__(
@@ -62,7 +64,6 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         self.ui.verticalLayout_2.removeWidget(self.ui.treeView)
         self.ui.treeView.setParent(None)
         self.device_tree_widget: DynamicDeviceTreeWidget = DynamicDeviceTreeWidget(
-            events_context=False,
             parent=self.ui.treeFrame,
         )
         self.ui.verticalLayout_2.addWidget(self.device_tree_widget)
@@ -75,6 +76,8 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         self.editor_tabs: DetachableEditorTabWidget = DetachableEditorTabWidget(self)
         self.ui.editorFrameLayout.addWidget(self.editor_tabs)
         self.ui.editorTabs = self.editor_tabs
+        toolbar_actions: list[QtGui.QAction] = self.ui.toolBar.actions()
+        self._model_toolbar_actions: tuple[QtGui.QAction, ...] = tuple(toolbar_actions[1:])
 
         self.editor_tabs.tabCloseRequested.connect(self.close_tab_at)
         self.editor_tabs.currentChanged.connect(self._on_current_tab_changed)
@@ -92,7 +95,8 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         self.ui.actionZoom_out.triggered.connect(self.zoom_out_view)
         self.ui.action_delete_all.triggered.connect(self.delete_all_blocks_with_confirmation)
         self.ui.actionValidate.triggered.connect(self.show_model_consistency_validation)
-        self.device_tree_widget.entryModeRequested.connect(self._open_device_tree_entry)
+        self.device_tree_widget.entryPageRequested.connect(self._open_device_tree_entry)
+        self._update_toolbar_for_page(page=None)
 
     def changeEvent(self, event: QtCore.QEvent) -> None:
         """
@@ -146,7 +150,10 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         """
         return self.__session
 
-    def workspace_for_page(self, page: DynamicBlockEditorGUI) -> "DynamicEditorWorkspaceWindow | None":
+    def workspace_for_page(
+            self,
+            page: DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage,
+    ) -> "DynamicEditorWorkspaceWindow | None":
         """
         Return the workspace in this session that owns one page.
 
@@ -155,7 +162,10 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         """
         return self.session.workspace_for_page(page)
 
-    def note_page_activated(self, page: DynamicBlockEditorGUI) -> None:
+    def note_page_activated(
+            self,
+            page: DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage,
+    ) -> None:
         """
         Forward page-activation bookkeeping to the shared session.
 
@@ -169,7 +179,7 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
             entry: DynamicEditorEntry,
             preferred_mode: DynamicSimulationMode | None = None,
             target_workspace: "DynamicEditorWorkspaceWindow | None" = None,
-    ) -> DynamicBlockEditorGUI:
+    ) -> DynamicEditorTab:
         """
         Open one editor entry in this workspace session.
 
@@ -196,7 +206,7 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
             circuit: MultiCircuit,
             preferred_mode: DynamicSimulationMode | None = None,
             target_workspace: "DynamicEditorWorkspaceWindow | None" = None,
-    ) -> DynamicBlockEditorGUI | None:
+    ) -> DynamicEditorTab | None:
         """
         Open the dynamic editor for one API object in this workspace session.
 
@@ -215,6 +225,34 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
             entry,
             preferred_mode=preferred_mode,
             target_workspace=target_workspace,
+        )
+
+    def open_dynamic_events_for(
+            self,
+            api_object: ALL_DEV_TYPES,
+            circuit: MultiCircuit,
+            mode: DynamicSimulationMode,
+            target_workspace: "DynamicEditorWorkspaceWindow | None" = None,
+    ) -> DynamicEventsPage | None:
+        """Open one device's RMS or EMT events in this workspace family.
+
+        :param api_object: Device whose events will be edited.
+        :param circuit: Circuit that owns the device and event assets.
+        :param mode: RMS or EMT event family requested by the caller.
+        :param target_workspace: Preferred destination workspace.
+        :return: Open events page, or ``None`` when unsupported.
+        """
+        target: DynamicEditorWorkspaceWindow = target_workspace if target_workspace is not None else self
+        if not target.is_available_for_pages():
+            raise RuntimeError("Cannot open dynamic events in a closing workspace")
+        else:
+            pass
+        target._set_workspace_circuit(circuit=circuit)
+        return self.session.open_dynamic_events_for(
+            api_object=api_object,
+            circuit=circuit,
+            mode=mode,
+            target_workspace=target,
         )
 
     def show_hide_tree(self) -> None:
@@ -392,16 +430,29 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
             pass
         return self.open_entry(entry, preferred_mode=mode, target_workspace=self)
 
-    @QtCore.Slot(object, object)
-    def _open_device_tree_entry(self, entry: object, mode: object) -> None:
-        """Open a model editor requested by the shared device-tree widget.
+    @QtCore.Slot(object, object, object)
+    def _open_device_tree_entry(
+            self,
+            entry: object,
+            mode: object,
+            content_type: object,
+    ) -> None:
+        """Open model or event content requested by the device tree.
 
         :param entry: Dynamic device entry emitted by the tree.
         :param mode: RMS or EMT mode emitted by the tree.
+        :param content_type: Model or events content selected by the user.
         :return: None.
         """
-        if isinstance(entry, DynamicEditorEntry) and isinstance(mode, DynamicSimulationMode):
+        valid_request: bool = (
+            isinstance(entry, DynamicEditorEntry)
+            and isinstance(mode, DynamicSimulationMode)
+            and isinstance(content_type, DynamicEditorContentType)
+        )
+        if valid_request and content_type == DynamicEditorContentType.MODEL:
             self.open_entry(entry, preferred_mode=mode, target_workspace=self)
+        elif valid_request and content_type == DynamicEditorContentType.EVENTS:
+            self.session.open_events_entry(entry=entry, mode=mode, target_workspace=self)
         else:
             pass
 
@@ -500,11 +551,29 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
             self.note_page_activated(page)
         else:
             pass
+        self._update_toolbar_for_page(page=page)
         self._refresh_window_title()
+
+    def _update_toolbar_for_page(
+            self,
+            page: DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage | None,
+    ) -> None:
+        """Show model actions only while a block-model page is active.
+
+        The tree action remains visible for every page type. Event creation,
+        removal, group management and saving live inside each events page.
+
+        :param page: Newly active workspace page, or ``None`` for an empty workspace.
+        :return: None.
+        """
+        model_page_active: bool = isinstance(page, (DynamicBlockEditorGUI, DynamicEditorTab))
+        action: QtGui.QAction
+        for action in self._model_toolbar_actions:
+            action.setVisible(model_page_active)
 
     def add_editor_page(
             self,
-            page: DynamicBlockEditorGUI,
+            page: DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage,
             tab_title: str,
             activate: bool = True,
             insert_index: int = -1,
@@ -535,7 +604,10 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
 
         self._refresh_window_title()
 
-    def index_of_page(self, page: DynamicBlockEditorGUI) -> int:
+    def index_of_page(
+            self,
+            page: DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage,
+    ) -> int:
         """
         Return the tab index for one page, or ``-1`` when absent.
 
@@ -544,7 +616,10 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         """
         return self.editor_tabs.indexOf(page)
 
-    def page_at(self, index: int) -> DynamicBlockEditorGUI | DynamicEditorTab | None:
+    def page_at(
+            self,
+            index: int,
+    ) -> DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage | None:
         """
         Return the page at one tab index.
 
@@ -556,24 +631,24 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         else:
             pass
         page = self.editor_tabs.widget(index)
-        if isinstance(page, (DynamicBlockEditorGUI, DynamicEditorTab)):
+        if isinstance(page, (DynamicBlockEditorGUI, DynamicEditorTab, DynamicEventsPage)):
             return page
         else:
             return None
 
-    def pages_iter(self) -> Iterator[DynamicBlockEditorGUI | DynamicEditorTab]:
+    def pages_iter(self) -> Iterator[DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage]:
         """Yield every valid editor page in tab order.
 
         :return: Iterator over the hosted dynamic editor pages.
         """
         for index in range(self.editor_tabs.count()):
             page = self.editor_tabs.widget(index)
-            if isinstance(page, (DynamicBlockEditorGUI, DynamicEditorTab)):
+            if isinstance(page, (DynamicBlockEditorGUI, DynamicEditorTab, DynamicEventsPage)):
                 yield page
             else:
                 pass
 
-    def current_page(self) -> DynamicBlockEditorGUI | DynamicEditorTab | None:
+    def current_page(self) -> DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage | None:
         """
         Return the currently selected tab page.
 
@@ -581,7 +656,10 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         """
         return self.page_at(self.editor_tabs.currentIndex())
 
-    def remove_page(self, page: DynamicBlockEditorGUI | DynamicEditorTab) -> None:
+    def remove_page(
+            self,
+            page: DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage,
+    ) -> None:
         """
         Remove one page from the tab widget.
 
@@ -595,7 +673,11 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
             pass
         self._refresh_window_title()
 
-    def set_page_tab_title(self, page: QtWidgets.QWidget, title: str) -> None:
+    def set_page_tab_title(
+            self,
+            page: DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage,
+            title: str,
+    ) -> None:
         """
         Update the visible tab title for one page.
 
@@ -623,13 +705,14 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         else:
             pass
 
-        if not bool(page.can_close_editor(self)):
+        pages_to_close: list[DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage] = list((page,))
+        if not self.session.can_close_pages(pages=pages_to_close, parent=self):
             return
         else:
             pass
 
-        # The workspace only hosts dynamic block editors, so teardown can call
-        # the page lifecycle directly without reflective guards.
+        # Both supported page families expose the same explicit teardown
+        # contract, so the workspace can release them without reflection.
         page.prepare_to_delete()
         self.session.unregister_page(page)
         self.remove_page(page)
@@ -652,8 +735,8 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         """
         # Iterate over a stable snapshot because removing each tab changes the
         # live tab order and unregisters the page from the shared session.
-        pages_to_dispose: list[DynamicBlockEditorGUI | DynamicEditorTab] = list(self.pages_iter())
-        page_to_dispose: DynamicBlockEditorGUI | DynamicEditorTab
+        pages_to_dispose: list[DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage] = list(self.pages_iter())
+        page_to_dispose: DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage
         for page_to_dispose in pages_to_dispose:
             page_to_dispose.prepare_to_delete()
             self.session.unregister_page(page_to_dispose)
@@ -687,16 +770,12 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         :param event: Qt close event.
         :return: None.
         """
-        for index in range(self.editor_tabs.count() - 1, -1, -1):
-            page: DynamicBlockEditorGUI | DynamicEditorTab | None = self.page_at(index)
-            if page is None:
-                pass
-            else:
-                if not bool(page.can_close_editor(self)):
-                    event.ignore()
-                    return
-                else:
-                    pass
+        pages_to_close: list[DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage] = list(self.pages_iter())
+        if not self.session.can_close_pages(pages=pages_to_close, parent=self):
+            event.ignore()
+            return
+        else:
+            pass
 
         self._accepts_new_pages = False
         self._dispose_all_pages()

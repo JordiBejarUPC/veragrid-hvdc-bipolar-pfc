@@ -24,7 +24,7 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_models import clone_block_for_editing, copy_block_state
 
 from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_editor import DynamicBlockEditorGUI
-from VeraGrid.Session.dynamic_editor_entries import DynamicEditorEntry
+from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import DynamicEditorEntry
 
 
 def block_has_direct_computational_content(block: Block) -> bool:
@@ -274,7 +274,7 @@ class DynamicEditorTab(QtWidgets.QWidget):
         :return: Display title for the workspace tab.
         """
         object_name = self._api_object.name if self._api_object is not None else "Dynamic object"
-        return f"{object_name} [{self._mode.name}]"
+        return f"{object_name} [{self._mode.name} model]"
 
     @property
     def has_unapplied_changes(self) -> bool:

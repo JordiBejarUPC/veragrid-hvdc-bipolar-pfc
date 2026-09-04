@@ -301,8 +301,8 @@ class CatalogueElementsSelectionDialogue(QtWidgets.QDialog):
                 name='dc_line',
                 voltage_text='',
                 power_text='',
-                unique_key='rms:get_dc_line_rms_template',
-                function_ptr=tem.get_dc_line_rms_template,
+                unique_key='rms:build_dc_line_rms_v2',
+                function_ptr=tem.build_dc_line_rms_v2,
             ),
             CatalogueAction(
                 kind=CatalogueActionKind.AddRmsTemplate,
@@ -397,11 +397,11 @@ class CatalogueElementsSelectionDialogue(QtWidgets.QDialog):
             CatalogueAction(
                 kind=CatalogueActionKind.AddRmsTemplate,
                 args=(self._circuit.var_factory,),
-                name='vsc',
+                name='hvdc_vsc_gfl',
                 voltage_text='',
                 power_text='',
-                unique_key='rms:build_vsc_rms',
-                function_ptr=tem.build_vsc_rms,
+                unique_key='rms:build_hvdc_vsc_gfl_rms',
+                function_ptr=tem.build_hvdc_vsc_gfl_rms,
             ),
         ))
 

@@ -39,9 +39,8 @@ from VeraGrid.Gui.Diagrams.Editors.bus_selector import BusSelectorDialogue
 from VeraGrid.Gui.Diagrams.Editors.new_line_dialogue import NewMapLineDialogue
 from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import SelectionDialog
 from VeraGrid.Gui.Diagrams.SchematicWidget.diagram_bus_selection_dialogue import DiagramBusSelectorDialogue
-from VeraGrid.Gui.DynamicModelEditor.DynamicEventsDialog.dynamic_events_editor import DynamicEventEditor
-from VeraGrid.Gui.DynamicModelEditor.DynamicEventsDialog.dynamic_events_editor_support import DynamicEventsGroupsDialog
-from VeraGrid.Gui.DynamicModelEditor.DynamicEventsDialog.dynamic_events_editor_support import SwitchSequenceDialog
+from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_support import DynamicEventsGroupsDialog
+from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_support import SwitchSequenceDialog
 from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.jmarti_line_emt_dialog import JMartiLineEmtDialog
 from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.lookup_table_dialog import LookupArrayLinearDialog
 from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.lookup_table_dialog import LookupMatrixLinearDialog
@@ -109,7 +108,7 @@ from VeraGrid.Gui.object_column_filter_dialog import ObjectColumnFilterDialog
 from VeraGrid.Gui.object_model import ObjectsModel
 from VeraGrid.Gui.object_proxy_model import ObjectModelFilterProxy
 from VeraGrid.Session.session import SimulationSession
-from VeraGrid.Session.dynamic_editor_workspace_session import DynamicEditorWorkspaceSession
+from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_workspace_session import DynamicEditorWorkspaceSession
 from VeraGridEngine.Devices.Dynamic.fmu_template import FmuTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Parents.editable_device import GCProp
@@ -150,7 +149,6 @@ class DialogSmokeTarget(Enum):
     NEW_MAP_LINE = "NewMapLineDialogue"
     MAP_SELECTION = "SelectionDialog"
     DIAGRAM_BUS_SELECTOR = "DiagramBusSelectorDialogue"
-    DYNAMIC_EVENT_EDITOR = "DynamicEventEditor"
     SWITCH_SEQUENCE = "SwitchSequenceDialog"
     DYNAMIC_EVENTS_GROUPS = "DynamicEventsGroupsDialog"
     JMARTI_LINE_EMT = "JMartiLineEmtDialog"
@@ -720,11 +718,6 @@ def build_dialog_for_smoke(target: DialogSmokeTarget, context: DialogSmokeContex
         dialog = SelectionDialog(branch=FakeBranchGraphic(api_object=circuit.lines[0]), vnom=110.0)
     elif target == DialogSmokeTarget.DIAGRAM_BUS_SELECTOR:
         dialog = DiagramBusSelectorDialogue(gui=fake_app, grid=circuit, substation=circuit.substations[0])
-    elif target == DialogSmokeTarget.DYNAMIC_EVENT_EDITOR:
-        dialog = DynamicEventEditor(
-            circuit=circuit,
-            preferred_mode=DynamicSimulationMode.RMS,
-        )
     elif target == DialogSmokeTarget.SWITCH_SEQUENCE:
         dialog = SwitchSequenceDialog(mode_parameters=list(), events_groups=list())
     elif target == DialogSmokeTarget.DYNAMIC_EVENTS_GROUPS:
