@@ -312,6 +312,7 @@ class BaseMainGui(QMainWindow):
         self.ui.actionLaunch_data_analysis_tool.triggered.connect(self.display_grid_analysis)
         self.ui.actionShow_dynamic_models_editor.triggered.connect(self.display_dynamic_models_editor)
         self.ui.actionOnline_documentation.triggered.connect(self.show_online_docs)
+        self.ui.actionCommunity_chat.triggered.connect(self.show_online_chat)
         self.ui.actionReport_a_bug.triggered.connect(self.report_a_bug)
 
         self.ui.actionFix_generators_active_based_on_the_power.triggered.connect(
@@ -1153,6 +1154,13 @@ class BaseMainGui(QMainWindow):
         Open the online documentation in a web browser
         """
         webbrowser.open('https://veragrid.readthedocs.io/en/latest/', new=2)
+
+    @staticmethod
+    def show_online_chat():
+        """
+        Open the online chat in a web browser
+        """
+        webbrowser.open('https://matrix.to/#/#veragrid:matrix.org', new=2)
 
     @staticmethod
     def report_a_bug():
