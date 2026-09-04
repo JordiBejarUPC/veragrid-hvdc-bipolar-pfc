@@ -19,15 +19,23 @@ FMPy are installed:
 python -m trunk.dynamics.fmi_comparison.run_device_examples --output-dir <output-directory>
 ```
 
-The RMS comparison runner executes VeraGrid and direct FMPy consumption against
-the exact same generated FMU archive, then publishes its evidence atomically:
+The RMS comparison runner executes VeraGrid, direct FMPy, and an independent
+OMSimulator process against the exact same generated FMU archive for each mode.
+It then publishes the complete evidence package atomically:
 
 ```text
 python -m trunk.dynamics.fmi_comparison.run_rms_comparison \
   --output-dir <new-package-directory> \
   --source-revision <revision> \
-  --source-tree-sha256 <lowercase-sha256>
+  --source-tree-sha256 <lowercase-sha256> \
+  --omsimulator-executable <absolute-path-to-OMSimulator.exe>
 ```
+
+Schema v3 retains exactly 32 declared artifacts: the two combined comparison
+CSVs, two direct-FMPy raw CSVs, six raw OMSimulator artifacts per mode,
+one FMU and one RMS report per mode, and twelve fixed PDF/SVG/PNG figures.
+The manifest writer and verifier remain local to this `trunk` benchmark package;
+no manifest or manifest handler is part of `src` or the product runtime.
 
 The caller owns the revision and tree digest because the benchmark never invokes
 Git or infers provenance. Generated FMUs, reports, tables, manifests, and plots
@@ -39,18 +47,23 @@ load. The event boundary is retained at 0.1 s with the old value and the first
 post-event sample is 0.101 s. Both the Co-Simulation and Model Exchange FMUs
 capture the actual initial voltage as `x(0)=u(0)`, retain `x'=0`, and express
 the response through `u-x`; no network-specific initial voltage is hardcoded.
-Direct FMPy replays the exact retained bus-voltage samples.
+Direct FMPy replays the exact retained bus-voltage samples. The voltage response
+first appears at 0.101 s. Model Exchange can expose direct feedthrough at that
+sample; the causal Co-Simulation FMU consumes the new input over the following
+communication interval and its P/Q response therefore appears at 0.102 s.
 The package publishes raw overlaid trajectories plus separate
 absolute-error figures as PDF, editable SVG, and 300 dpi PNG files. CSV rows and
 the manifest retain the event phase, shared input, equations, response checks,
 and per-sample acceptance budgets; the figures are not the acceptance oracle.
 
-The comparison is engineering evidence, not a certification claim. FMPy is the
-direct public consumer used for this baseline, and it is also VeraGrid's FMI 2
-runtime backend in this lane. The package records that fact explicitly: these
-plots demonstrate orchestration and coupled-response equivalence, not an
-independent-runtime interoperability result or FMI-native internal time-event
-export. Independent tool comparisons remain a separate benchmark stage.
+The comparison is engineering evidence, not a certification claim. FMPy is both
+the direct public consumer and VeraGrid's FMI 2 runtime backend in this lane;
+OMSimulator supplies the independent runtime path. The package records that
+backend relationship, the exact process arguments, runtime identities, raw
+input/output and logs, pairwise errors, and derived budgets. The result supports
+an FMI 2 CS/ME orchestration and coupled-response claim for this retained
+zero-derivative fixture on the recorded Windows host. It does not claim solver
+accuracy, FMI-native internal time-event export, or cross-platform coverage.
 
 Product integration tests live under `src/tests/FMI` and deliberately use
 their own fixtures. They must not import, invoke, or add this `trunk` package

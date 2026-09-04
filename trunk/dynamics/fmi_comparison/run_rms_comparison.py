@@ -42,6 +42,12 @@ def main() -> int:
         help="Caller-declared lowercase SHA-256 of the complete source tree.",
     )
     parser.add_argument(
+        "--omsimulator-executable",
+        type=Path,
+        required=True,
+        help="Explicit installed OMSimulator executable.",
+    )
+    parser.add_argument(
         "--absolute-tolerance",
         type=float,
         default=1.0e-12,
@@ -58,6 +64,7 @@ def main() -> int:
         output_dir=arguments.output_dir,
         source_revision=arguments.source_revision,
         source_tree_sha256=arguments.source_tree_sha256,
+        omsimulator_executable=arguments.omsimulator_executable,
         absolute_tolerance=arguments.absolute_tolerance,
         relative_tolerance=arguments.relative_tolerance,
     )
@@ -68,3 +75,5 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+else:
+    pass
