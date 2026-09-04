@@ -138,6 +138,28 @@ class DynamicEditorWorkspaceSession(QtCore.QObject):
             return self._last_active_workspace
         return None
 
+    def _release_events_session(self) -> None:
+        """Release the shared events transaction and its Qt ownership link.
+
+        ``DynamicEventsDraftSession`` is parented to this long-lived workspace
+        session. Clearing only the Python attribute therefore leaves every old
+        transaction alive as a hidden QObject child, together with all event,
+        group, device and symbolic-parameter references it contains.
+
+        :return: None.
+        """
+        events_session: DynamicEventsDraftSession | None = self._events_session
+        self._events_session = None
+        self._events_circuit = None
+        if events_session is not None:
+            # No event page remains connected when this method is used. Detach
+            # before DeferredDelete so the application-long workspace session
+            # cannot retain the transaction in its QObject child collection.
+            events_session.setParent(None)
+            events_session.deleteLater()
+        else:
+            pass
+
     def reset_for_tests(self) -> None:
         """
         Close every workspace and clear all retained session state.
@@ -162,8 +184,7 @@ class DynamicEditorWorkspaceSession(QtCore.QObject):
         self._open_workspaces.clear()
         self._session_pages.clear()
         self._event_pages.clear()
-        self._events_session = None
-        self._events_circuit = None
+        self._release_events_session()
         self._last_mode_by_key_base.clear()
         self._last_active_workspace = None
         self._pending_drag_page = None
@@ -281,8 +302,7 @@ class DynamicEditorWorkspaceSession(QtCore.QObject):
         self._open_workspaces.clear()
         self._session_pages.clear()
         self._event_pages.clear()
-        self._events_session = None
-        self._events_circuit = None
+        self._release_events_session()
         self._last_mode_by_key_base.clear()
         self._last_active_workspace = None
         self._pending_drag_page = None
@@ -509,6 +529,7 @@ class DynamicEditorWorkspaceSession(QtCore.QObject):
         :return: Shared event draft session.
         """
         if self._events_session is None or self._events_circuit is not circuit:
+            self._release_events_session()
             self._events_session = DynamicEventsDraftSession(circuit=circuit, parent=self)
             self._events_circuit = circuit
         else:
@@ -666,8 +687,7 @@ class DynamicEditorWorkspaceSession(QtCore.QObject):
             pass
 
         if len(self._event_pages) == 0:
-            self._events_session = None
-            self._events_circuit = None
+            self._release_events_session()
         else:
             pass
 

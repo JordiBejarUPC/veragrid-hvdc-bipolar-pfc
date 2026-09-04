@@ -31,6 +31,9 @@ class ToastWidget(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        # Toasts are transient: closing them must destroy the native tooltip
+        # window instead of retaining one hidden child per notification.
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
 
         background_color = {
             "veragrid": "rgba(16, 191, 137, 160)",  # veragrid color
@@ -71,10 +74,13 @@ class ToastWidget(QWidget):
         self._offset_y: int = offset_y
         self._position_top: bool = position_top
         self._on_close: Optional[Callable[['ToastWidget'], None]] = on_close
+        self._close_timer: QTimer = QTimer(self)
+        self._close_timer.setSingleShot(True)
+        self._close_timer.timeout.connect(self.close_toast)
         self._reposition()
 
         self.show()
-        QTimer.singleShot(duration, self.close_toast)
+        self._close_timer.start(duration)
 
     def _reposition(self) -> None:
         """
