@@ -23,15 +23,12 @@ from VeraGrid.Gui.ProceduralGrid.procedural_grid import ProceduralGridWindow
 from VeraGrid.Gui.ProceduralGrid.map_warning import MapWarningDialog
 from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, is_dialog_available
 from VeraGrid.Session.server_driver import RemoteJobDriver
-from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_support import create_dynamic_events_group_with_dialog
 
 # Engine imports
 import VeraGridEngine.Devices as dev
 import VeraGridEngine.Simulations as sim
 import VeraGridEngine.Simulations.PowerFlow.grid_analysis as grid_analysis
 from VeraGridEngine.Devices.types import AREA_TYPES
-from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup
-from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Utils.MIP.selected_interface import get_available_mip_solvers, get_available_mip_frameworks
 from VeraGridEngine.IO.veragrid.remote import RemoteInstruction
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
@@ -45,7 +42,7 @@ from VeraGridEngine.enumerations import (DeviceType, AvailableTransferMode, Solv
                                          ReliabilityMode, OpfDispatchMode, DynamicIntegrationMethod,
                                          RmsInitializationMethod, EmtInitializationMethod, EmtSolverTypes,
                                          MethodShortCircuit, SmallSignalEmtBuildTypes,
-                                         DynamicSimulationMode, RmsProblemTypes, EmtProblemTypes)
+                                         RmsProblemTypes, EmtProblemTypes)
 
 
 def get_valid_controls_start_tolerance_index(tolerance_idx: int,
@@ -1403,6 +1400,20 @@ class SimulationsMain(TimeEventsMain):
         Dispatch the reliability action
         :return:
         """
+        if len(self.circuit.rms_events_groups) == 0:
+            # An event group defines the simulation scenario, even when it
+            # contains no events. Stop before either local or remote dispatch
+            # so starting a simulation never modifies the circuit implicitly.
+            error_msg(
+                self.tr(
+                    "An RMS simulation cannot run without an RMS Events Group. "
+                    "Go to Events -> Add RMS event and add a group, even if it contains no events."
+                )
+            )
+            return
+        else:
+            pass
+
         if self.server_driver.is_running():
             instruction = RemoteInstruction(operation=SimulationTypes.RmsDynamic_run)
             self.run_remote(instruction=instruction)
@@ -1421,30 +1432,7 @@ class SimulationsMain(TimeEventsMain):
                         dlg.exec()
                         return
                     else:
-                        if not len(self.circuit.rms_events_groups) == 0:
-                            self.run_rms()
-
-                        else:
-                            mode: DynamicSimulationMode = DynamicSimulationMode.RMS
-                            missing_group_message = "No RMS Events Group found, please create one before running a RMS simulation."
-                            created_group_message_body_prefix: str = "New group name"
-                            created_group_message_title = "RMS group Created"
-
-                            created_group: RmsEventsGroup | EmtEventsGroup | None = (
-                                create_dynamic_events_group_with_dialog(
-                                    circuit=self.circuit,
-                                    mode=mode,
-                                    parent=None,
-                                    missing_group_message=missing_group_message,
-                                    created_group_message_title=created_group_message_title,
-                                    created_group_message_body_prefix=created_group_message_body_prefix,
-                                )
-                            )
-
-                            if created_group is not None:
-                                self.run_rms()
-                            else:
-                                info_msg(self.tr("No RMS Events Group was added. The RMS simulation can't run."))
+                        self.run_rms()
 
                 else:
                     self.show_warning_toast(self.tr('Another rms simulation is running already...'))
@@ -1457,6 +1445,19 @@ class SimulationsMain(TimeEventsMain):
         Dispatch the reliability action
         :return:
         """
+        if len(self.circuit.emt_events_groups) == 0:
+            # Keep the EMT scenario selection explicit and block every
+            # execution path until the circuit owns at least one group.
+            error_msg(
+                self.tr(
+                    "An EMT simulation cannot run without an EMT Events Group. "
+                    "Go to Events -> Add EMT event and add a group, even if it contains no events."
+                )
+            )
+            return
+        else:
+            pass
+
         if self.server_driver.is_running():
             instruction = RemoteInstruction(operation=SimulationTypes.EmtDynamic_run)
             self.run_remote(instruction=instruction)
@@ -1476,31 +1477,7 @@ class SimulationsMain(TimeEventsMain):
                     #     return
                     # else:
 
-                    if not len(self.circuit.emt_events_groups) == 0:
-                        self.run_emt()
-
-                        
-
-                    else:
-                        mode: DynamicSimulationMode = DynamicSimulationMode.EMT
-                        missing_group_message = "No EMT Events Group found, please create one before running a EMT simulation."
-                        created_group_message_body_prefix: str = "New group name"
-                        created_group_message_title = "EMT group Created"
-
-                        created_group: RmsEventsGroup | EmtEventsGroup | None = (create_dynamic_events_group_with_dialog(
-                            circuit=self.circuit,
-                            mode=mode,
-                            parent=None,
-                            missing_group_message=missing_group_message,
-                            created_group_message_title=created_group_message_title,
-                            created_group_message_body_prefix=created_group_message_body_prefix,
-                        ))
-
-                        if created_group is not None:
-                            self.run_emt()
-                        else:
-                            info_msg(self.tr("No EMT Events Group was added. The EMT simulation can't run."))
-
+                    self.run_emt()
 
                 else:
                     self.show_warning_toast(self.tr('Another EMT simulation is running already...'))
