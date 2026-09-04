@@ -2769,6 +2769,25 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             pass
         return transaction_succeeded
 
+    def get_block_routing_drag_start_position(
+            self,
+            item: graph.GenericBlockItem | graph.PairedItem | graph.BlockItem
+            | graph.RoundBaseArithmeticOpItem | graph.RectBaseArithmeticOpItem | graph.MeasurementsItem,
+    ) -> QtCore.QPointF:
+        """Return the authoritative block position captured before its drag.
+
+        :param item: Block item participating in the active drag transaction.
+        :return: Snapshot position, or the current position when no drag exists.
+        """
+        item_identifier: int = id(item)
+        start_position: QtCore.QPointF | None = self._block_drag_start_positions.get(item_identifier, None)
+        if start_position is not None:
+            return QtCore.QPointF(start_position)
+        else:
+            # Programmatic or synthetic releases can lack a mouse-press
+            # transaction. Their current position is the only coherent origin.
+            return QtCore.QPointF(item.pos())
+
     def prepare_block_routing_drag_finalization(self) -> None:
         """Restore committed route geometry before final block-drop routing.
 

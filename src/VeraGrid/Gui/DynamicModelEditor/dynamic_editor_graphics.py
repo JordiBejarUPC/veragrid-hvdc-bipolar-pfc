@@ -368,32 +368,42 @@ def _position_collides_with_blocks(item: QGraphicsItem, pos: QPointF, margin: fl
 def _resolve_non_overlapping_position(item: GenericBlockItem | PairedItem | BlockItem
                                       | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem | MeasurementsItem,
                                       proposed_pos: QPointF,
+                                      reference_pos: QPointF,
                                       margin: float = 30.0) -> QPointF:
-    """Resolve a collision-free position while preserving the last valid point.
+    """Resolve a collision-free final position from one drag transaction.
 
     :param item: Movable dynamic block item.
     :param proposed_pos: Position requested by the drag operation.
+    :param reference_pos: Authoritative position captured before the drag.
     :param margin: Clearance maintained between block rectangles.
-    :return: Accepted proposal, an axis-only alternative, or the previous point.
+    :return: Accepted proposal, an axis-only alternative, or the drag origin.
     """
     if item.scene() is None:
         return proposed_pos
     else:
         pass
 
-    current_pos = item.pos()
     if not _position_collides_with_blocks(item, proposed_pos, margin):
         return proposed_pos
     else:
         pass
 
-    dx = proposed_pos.x() - current_pos.x()
-    dy = proposed_pos.y() - current_pos.y()
+    # Axis-only alternatives must combine the requested coordinate with the
+    # transaction origin. Using ``item.pos()`` here would compare the released
+    # position with itself and reduce both alternatives to the collision.
+    dx: float = proposed_pos.x() - reference_pos.x()
+    dy: float = proposed_pos.y() - reference_pos.y()
     axis_candidates: List[QPointF]
     if abs(dx) >= abs(dy):
-        axis_candidates = list((QPointF(proposed_pos.x(), current_pos.y()), QPointF(current_pos.x(), proposed_pos.y()),))
+        axis_candidates = list((
+            QPointF(proposed_pos.x(), reference_pos.y()),
+            QPointF(reference_pos.x(), proposed_pos.y()),
+        ))
     else:
-        axis_candidates = list((QPointF(current_pos.x(), proposed_pos.y()), QPointF(proposed_pos.x(), current_pos.y()),))
+        axis_candidates = list((
+            QPointF(reference_pos.x(), proposed_pos.y()),
+            QPointF(proposed_pos.x(), reference_pos.y()),
+        ))
 
     candidate: QPointF
     for candidate in axis_candidates:
@@ -402,12 +412,10 @@ def _resolve_non_overlapping_position(item: GenericBlockItem | PairedItem | Bloc
         else:
             pass
 
-    last_valid: QPointF = item._last_valid_pos
-    if isinstance(last_valid, QPointF) and not _position_collides_with_blocks(item, last_valid, margin):
-        return QPointF(last_valid)
-    else:
-        pass
-    return current_pos
+    # The drag origin and its routing snapshot form one atomic committed state.
+    # Never retain the known colliding release position when no alternative is
+    # available, even if current scene geometry now reports an obstacle there.
+    return QPointF(reference_pos)
 
 
 def _handle_block_item_change(item: GenericBlockItem | PairedItem | BlockItem
@@ -489,10 +497,12 @@ def _notify_block_item_manual_route_drag(item: GenericBlockItem | PairedItem | B
 
 def _finalize_block_drop(item: GenericBlockItem | PairedItem | BlockItem
                          | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem | MeasurementsItem,
+                         reference_pos: QPointF,
                          margin: float = 30.0) -> None:
     """Resolve a final block position and update its incident paths.
 
     :param item: Dynamic block completing a drag operation.
+    :param reference_pos: Authoritative item position captured before the drag.
     :param margin: Minimum clearance maintained from neighbouring blocks.
     :return: None.
     """
@@ -500,8 +510,13 @@ def _finalize_block_drop(item: GenericBlockItem | PairedItem | BlockItem
         return
     else:
         pass
-    current_pos = item.pos()
-    corrected_pos = _resolve_non_overlapping_position(item, current_pos, margin)
+    current_pos: QPointF = QPointF(item.pos())
+    corrected_pos: QPointF = _resolve_non_overlapping_position(
+        item=item,
+        proposed_pos=current_pos,
+        reference_pos=reference_pos,
+        margin=margin,
+    )
     if corrected_pos != current_pos:
         item.setPos(corrected_pos)
         position_changed_callback: BlockPositionChangedCallback | None = item.position_changed_callback
@@ -521,14 +536,18 @@ def _complete_block_drag(item: GenericBlockItem | PairedItem | BlockItem
     :return: None.
     """
     try:
-        # First resolve the definitive block position while incident
-        # connections still suppress expensive routing work.
-        _finalize_block_drop(item)
-        _notify_block_item_manual_route_drag(item, started=False)
+        drag_start_position: QPointF = item.editor.get_block_routing_drag_start_position(item=item)
 
-        # Discard temporary preview geometry before calculating the definitive
-        # route from the last committed manual-routing snapshot.
+        # Discard preview geometry before collision resolution. The block's
+        # committed position and the committed routes must be evaluated as one
+        # coherent snapshot rather than against temporary automatic paths.
         item.editor.prepare_block_routing_drag_finalization()
+
+        # Resolve only the released position. Movement remains unrestricted
+        # during the drag, while an invalid drop returns to the authoritative
+        # transaction origin when neither axis-only alternative is available.
+        _finalize_block_drop(item=item, reference_pos=drag_start_position)
+        _notify_block_item_manual_route_drag(item, started=False)
 
         # Every connection is synchronized exactly once at the final endpoint
         # positions. Automatic routing is therefore excluded from mouse-move
