@@ -1,54 +1,97 @@
 import os
+import platform
+import shutil
 import subprocess
 import ctypes
-from llvmlite import binding as llvm
+import tempfile
+from pathlib import Path
 
-# You need to install clang-tool-chain (pip install clang-tool-chain)
+try:
+    from llvmlite import binding as llvm
+except ImportError:
+    llvm = None
 
-# 1. Initialize native target architectures for llvmlite's machine configuration
-llvm.initialize_native_target()
-llvm.initialize_native_asmprinter()
+# You need clang++ or clang-tool-chain (pip install clang-tool-chain)
+
+
+def initialize_llvm():
+    if llvm is None:
+        print("llvmlite is not installed; continuing with the native C++ compiler.")
+        return None
+
+    # Initialize native target architectures for llvmlite's machine configuration.
+    llvm.initialize_native_target()
+    llvm.initialize_native_asmprinter()
+    target_triple = llvm.get_process_triple()
+    print(f"LLVM target triple: {target_triple}")
+    return target_triple
+
+
+def find_cpp_compiler():
+    configured_compiler = os.environ.get("CXX")
+    if configured_compiler:
+        return configured_compiler
+
+    compiler_names = (
+        ["clang++", "clang-tool-chain-clang-cpp", "clang-tool-chain-cpp"]
+        if platform.system() == "Darwin"
+        else ["clang-tool-chain-clang-cpp", "clang-tool-chain-cpp", "clang++"]
+    )
+
+    for compiler_name in compiler_names:
+        compiler_path = shutil.which(compiler_name)
+        if compiler_path is not None:
+            return compiler_path
+
+    raise RuntimeError(
+        "Could not locate a C++ compiler. Install Xcode Command Line Tools "
+        "or run: pip install clang-tool-chain"
+    )
+
+
+def run_compiler(args):
+    try:
+        subprocess.run(args, check=True, capture_output=True, text=True)
+    except subprocess.CalledProcessError as ex:
+        details = "\n".join(
+            part for part in [ex.stdout.strip(), ex.stderr.strip()] if part
+        )
+        raise RuntimeError(
+            f"Compiler command failed with exit code {ex.returncode}:\n"
+            f"{' '.join(args)}\n{details}"
+        ) from ex
 
 
 def compile_cpp_string_to_dll(cpp_code_string, output_dll_path):
-    cpp_filename = "temp_code.cpp"
-    obj_filename = "temp_code.obj" if os.name == 'nt' else "temp_code.o"
+    compiler_cmd = find_cpp_compiler()
+    output_path = Path(output_dll_path)
+    target_triple = initialize_llvm()
 
-    # We use the python-provided clang wrapper from the 'clang-tool-chain' package
-    compiler_cmd = "clang-tool-chain-cpp"
+    with tempfile.TemporaryDirectory(prefix="llvm_example_") as temp_dir:
+        temp_path = Path(temp_dir)
+        cpp_filename = temp_path / "temp_code.cpp"
+        obj_filename = temp_path / ("temp_code.obj" if os.name == 'nt' else "temp_code.o")
+        cpp_filename.write_text(cpp_code_string)
 
-    try:
-        # Write the source string out to disk
-        with open(cpp_filename, "w") as f:
-            f.write(cpp_code_string)
+        compile_args = [compiler_cmd, "-c", "-O3", str(cpp_filename), "-o", str(obj_filename)]
+        if os.name != 'nt':
+            compile_args.insert(3, "-fPIC")
 
-        # 2. Compile C++ to machine object file using the Python-packaged Clang binary
-        print(f"Compiling via Python package compiler ({compiler_cmd})...")
-        compile_args = [compiler_cmd, "-c", "-O3", "-fPIC", cpp_filename, "-o", obj_filename]
-        subprocess.run(compile_args, check=True, capture_output=True, text=True)
+        print(f"Compiling via C++ compiler ({compiler_cmd})...")
+        # 2. Compile C++ to a machine object file.
+        run_compiler(compile_args)
 
-        # 3. Pull Target Machine metadata using llvmlite
-        target_triple = llvm.get_process_triple()
-        target = llvm.Target.from_triple(target_triple)
-        target_machine = target.create_target_machine(reloc='pic', codemodel='default')
-
-        # 4. Link the object binary into a shared library via the Python-packaged Linker
+        # 3. Link the object binary into a shared library.
         print("Linking object file into shared library binary...")
-        link_args = [compiler_cmd, "-shared", obj_filename, "-o", output_dll_path]
-        subprocess.run(link_args, check=True, capture_output=True, text=True)
+        if platform.system() == "Darwin":
+            link_args = [compiler_cmd, "-dynamiclib", str(obj_filename), "-o", str(output_path)]
+            if target_triple is not None:
+                link_args[1:1] = ["-target", target_triple]
+        else:
+            link_args = [compiler_cmd, "-shared", str(obj_filename), "-o", str(output_path)]
 
-        print(f"Success! Shared library generated at: {output_dll_path}\n")
-
-    except FileNotFoundError:
-        raise RuntimeError(
-            "The packaged compiler could not be located. "
-            "Please ensure you ran: pip install clang-tool-chain"
-        )
-    finally:
-        # Clean up disk files safely
-        for temp_file in [cpp_filename, obj_filename]:
-            if os.path.exists(temp_file):
-                os.remove(temp_file)
+        run_compiler(link_args)
+        print(f"Success! Shared library generated at: {output_path}\n")
 
 
 def load_and_verify_dll(dll_path):
@@ -86,7 +129,12 @@ if __name__ == "__main__":
     """
 
     # Automatically switch extension type relative to runtime platform context
-    shared_lib_filename = "my_functions.dll" if os.name == 'nt' else "my_functions.so"
+    if os.name == 'nt':
+        shared_lib_filename = "my_functions.dll"
+    elif platform.system() == "Darwin":
+        shared_lib_filename = "my_functions.dylib"
+    else:
+        shared_lib_filename = "my_functions.so"
 
     # Step A: Compile using purely Python-installed components
     compile_cpp_string_to_dll(cpp_source, shared_lib_filename)
