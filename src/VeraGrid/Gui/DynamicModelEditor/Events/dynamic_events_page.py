@@ -7,14 +7,17 @@ from __future__ import annotations
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from VeraGrid.Gui.DynamicModelEditor.DynamicEventsDialog.dynamic_events_editor_support import SwitchSequenceData
-from VeraGrid.Gui.DynamicModelEditor.DynamicEventsDialog.dynamic_events_editor_support import SwitchSequenceDialog
-from VeraGrid.Gui.DynamicModelEditor.DynamicEventsDialog.dynamic_events_models import (
+from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_support import DynamicEventsGroupsDialog
+from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_support import collect_dynamic_events_page_parameters
+from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_support import SwitchSequenceData
+from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_support import SwitchSequenceDialog
+from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_models import (
     DynamicEventDraft,
     DynamicEventGroupDraft,
     DynamicEventsDraftSession,
 )
-from VeraGrid.Session.dynamic_editor_entries import DynamicEditorEntry
+from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import DynamicEditorEntry
+from VeraGrid.Gui.toast_widget import ToastManager
 from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
@@ -151,6 +154,24 @@ class DynamicEventsTreeModel(QtGui.QStandardItemModel):
             invalid_parent: QtGui.QStandardItem = invalid_items[self.COLUMN_PARAMETER]
             for device_event in invalid_events:
                 invalid_parent.appendRow(self._build_event_row(device_event))
+        else:
+            pass
+
+    def replace_parameters(self,
+                           parameters: list[Var],
+                           mode_parameter_uids: set[int],
+                           rebuild: bool) -> None:
+        """Replace saved-model parameter references used by this tree.
+
+        :param parameters: Current event parameters from the saved model.
+        :param mode_parameter_uids: Current discrete-mode parameter UIDs.
+        :param rebuild: Whether the visible tree must rebuild immediately.
+        :return: None.
+        """
+        self.parameters = list(parameters)
+        self.mode_parameter_uids = set(mode_parameter_uids)
+        if rebuild:
+            self.rebuild()
         else:
             pass
 
@@ -588,6 +609,7 @@ class DynamicEventsTreeModel(QtGui.QStandardItemModel):
             accepted: bool = self._set_event_data(backing, index.column(), value, role)
             if accepted:
                 self._refresh_event_row(index, backing)
+                self.session.mark_changed(rebuild=False)
             else:
                 pass
             return accepted
@@ -869,9 +891,12 @@ class DynamicEventsItemDelegate(QtWidgets.QStyledItemDelegate):
 class DynamicEventsPage(QtWidgets.QWidget):
     """One tab page displaying every event for a device and simulation mode."""
 
+    dirtyStateChanged = QtCore.Signal(bool)
+
     __slots__ = (
         "session",
         "entry",
+        "device",
         "mode",
         "parameters",
         "mode_parameter_uids",
@@ -882,11 +907,16 @@ class DynamicEventsPage(QtWidgets.QWidget):
         "switch_sequence_button",
         "add_event_button",
         "remove_button",
+        "new_group_button",
+        "save_button",
+        "toast_manager",
+        "_prepared_to_delete",
     )
 
     def __init__(self,
                  session: DynamicEventsDraftSession,
                  entry: DynamicEditorEntry,
+                 device: EditableDevice,
                  mode: DynamicSimulationMode,
                  parameters: list[Var],
                  mode_parameter_uids: set[int],
@@ -896,6 +926,7 @@ class DynamicEventsPage(QtWidgets.QWidget):
 
         :param session: Shared dynamic-events transaction.
         :param entry: Device represented by the page.
+        :param device: Concrete network device targeted by the page events.
         :param mode: RMS or EMT family represented by the page.
         :param parameters: Runtime parameters available in the current model.
         :param mode_parameter_uids: Parameters representing discrete modes.
@@ -906,17 +937,20 @@ class DynamicEventsPage(QtWidgets.QWidget):
         QtWidgets.QWidget.__init__(self, parent)
         self.session: DynamicEventsDraftSession = session
         self.entry: DynamicEditorEntry = entry
+        self.device: EditableDevice = device
         self.mode: DynamicSimulationMode = mode
         self.parameters: list[Var] = list(parameters)
         self.mode_parameter_uids: set[int] = set(mode_parameter_uids)
         self.model_is_empty: bool = bool(model_is_empty)
+        self._prepared_to_delete: bool = False
+        self.toast_manager: ToastManager = ToastManager(parent=self, position_top=False)
 
         main_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
 
-        # An empty model still receives a functional page so all persisted
-        # events remain visible. This explicit notice explains why creation is
-        # disabled without blocking inspection, removal or group management.
+        # An empty model still receives a functional page so groups and any
+        # surviving drafts remain visible. This notice explains why creation
+        # is disabled without blocking group management or saving removals.
         # It is overlaid at the center of the tree area without a panel frame,
         # matching the general workspace empty-state presentation.
         self.empty_model_message: QtWidgets.QLabel = QtWidgets.QLabel(self)
@@ -955,11 +989,21 @@ class DynamicEventsPage(QtWidgets.QWidget):
         self.remove_button.setIcon(QtGui.QIcon(":/Icons/icons/minus (gray).png"))
         self.remove_button.setToolTip(self.tr("Remove the selected event or event group"))
         action_layout.addWidget(self.remove_button)
+        self.new_group_button: QtWidgets.QPushButton = QtWidgets.QPushButton(
+            self.tr("➕ New Event Group"),
+            self,
+        )
+        self.new_group_button.setToolTip(self.tr("Create an event group for this simulation mode"))
+        action_layout.addWidget(self.new_group_button)
+        self.save_button: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.save_button.setText("")
+        self.save_button.setIcon(QtGui.QIcon(":/Icons/icons/accept.png"))
+        self.save_button.setToolTip(self.tr("Save events"))
         main_layout.addLayout(action_layout)
 
         self.tree_model: DynamicEventsTreeModel = DynamicEventsTreeModel(
             session=session,
-            device=entry.api_object,
+            device=self.device,
             mode=mode,
             parameters=self.parameters,
             mode_parameter_uids=self.mode_parameter_uids,
@@ -1007,8 +1051,18 @@ class DynamicEventsPage(QtWidgets.QWidget):
         main_layout.addLayout(content_layout, 1)
         self.empty_model_message.raise_()
 
+        # Match the model editor action placement: saving is a page-level
+        # operation and therefore lives in its own footer at the bottom-right,
+        # while event and group editing controls remain above the tree.
+        save_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout()
+        save_layout.addStretch(1)
+        save_layout.addWidget(self.save_button)
+        main_layout.addLayout(save_layout)
+
         self.add_event_button.clicked.connect(self.add_event)
         self.remove_button.clicked.connect(self.remove_selection)
+        self.new_group_button.clicked.connect(self.create_event_group)
+        self.save_button.clicked.connect(self.save_changes)
         self.switch_sequence_button.clicked.connect(self.open_switch_sequence)
         self.tree_view.customContextMenuRequested.connect(self.show_context_menu)
         self.tree_model.modelReset.connect(self.tree_view.expandAll)
@@ -1018,8 +1072,166 @@ class DynamicEventsPage(QtWidgets.QWidget):
             selection_model.selectionChanged.connect(self.update_actions)
         else:
             pass
+        self.session.dirty_state_changed.connect(self._on_dirty_state_changed)
         self.tree_view.expandAll()
         self.update_actions()
+
+    def get_dynamic_editor_entry(self) -> DynamicEditorEntry:
+        """Return the device entry represented by this workspace page.
+
+        :return: Dynamic device entry associated with the events page.
+        """
+        return self.entry
+
+    def get_dynamic_editor_mode(self) -> DynamicSimulationMode:
+        """Return the simulation mode represented by this workspace page.
+
+        :return: RMS or EMT mode.
+        """
+        return self.mode
+
+    def get_dynamic_editor_display_title(self) -> str:
+        """Build the disambiguated title displayed on the workspace tab.
+
+        :return: Device, mode and events content title.
+        """
+        return f"{self.entry.display_name} [{self.mode.name} events]"
+
+    @property
+    def has_unapplied_changes(self) -> bool:
+        """Return the dirty state of the shared event transaction.
+
+        :return: ``True`` when any event page has unsaved changes.
+        """
+        return self.session.has_unapplied_changes
+
+    def can_close_editor(self, parent: QtWidgets.QWidget | None = None) -> bool:
+        """Allow the workspace session to coordinate shared-event close guards.
+
+        :param parent: Unused compatibility parent supplied by the workspace.
+        :return: Always ``True`` because the shared session performs the guard.
+        """
+        del parent
+        return True
+
+    def prepare_to_delete(self) -> None:
+        """Disconnect the page from its shared transaction before deletion.
+
+        :return: None.
+        """
+        if self._prepared_to_delete:
+            return
+        else:
+            self._prepared_to_delete = True
+        try:
+            self.session.dirty_state_changed.disconnect(self._on_dirty_state_changed)
+        except (RuntimeError, TypeError):
+            pass
+        try:
+            self.session.changed.disconnect(self.tree_model.rebuild)
+        except (RuntimeError, TypeError):
+            pass
+        try:
+            self.session.group_changed.disconnect(self.tree_model.refresh_group)
+        except (RuntimeError, TypeError):
+            pass
+
+    def set_dark_mode(self) -> None:
+        """Refresh the events page after the application selects its dark palette.
+
+        :return: None.
+        """
+        self.tree_view.viewport().update()
+
+    def set_light_mode(self) -> None:
+        """Refresh the events page after the application selects its light palette.
+
+        :return: None.
+        """
+        self.tree_view.viewport().update()
+
+    @QtCore.Slot(bool)
+    def _on_dirty_state_changed(self, dirty: bool) -> None:
+        """Forward shared transaction changes to workspace tab-title handling.
+
+        :param dirty: New shared transaction dirty state.
+        :return: None.
+        """
+        self.dirtyStateChanged.emit(dirty)
+
+    def refresh_from_saved_model(self) -> int:
+        """Regenerate this page from the latest saved RMS or EMT model.
+
+        Existing event drafts are rebound by variable UID. Events whose target
+        parameter no longer exists are removed from the shared transaction.
+
+        :return: Number of obsolete events removed by reconciliation.
+        """
+        parameters: list[Var]
+        mode_parameter_uids: set[int]
+        model_is_empty: bool
+        parameters, mode_parameter_uids, model_is_empty = collect_dynamic_events_page_parameters(
+            entry=self.entry,
+            mode=self.mode,
+        )
+        self.parameters = list(parameters)
+        self.mode_parameter_uids = set(mode_parameter_uids)
+        self.model_is_empty = model_is_empty
+        self.empty_model_message.setVisible(self.model_is_empty)
+        self.tree_model.replace_parameters(
+            parameters=self.parameters,
+            mode_parameter_uids=self.mode_parameter_uids,
+            rebuild=False,
+        )
+        removed_count: int = self.session.reconcile_device_parameters(
+            device=self.device,
+            mode=self.mode,
+            parameters=self.parameters,
+        )
+        # Reconciliation is device-local, so rebuild this projection after
+        # updating both its parameter catalogue and its matching event drafts.
+        self.tree_model.rebuild()
+        self.update_actions()
+        return removed_count
+
+    @QtCore.Slot()
+    def create_event_group(self) -> None:
+        """Ask for and create one draft event group for this page mode.
+
+        :return: None.
+        """
+        group_dialog: DynamicEventsGroupsDialog = DynamicEventsGroupsDialog(
+            mode=self.mode,
+            parent=self,
+        )
+        if group_dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+            created_group: DynamicEventGroupDraft | None = self.session.add_group(
+                mode=self.mode,
+                name=group_dialog.get_name(),
+            )
+            if created_group is None:
+                QtWidgets.QMessageBox.warning(
+                    self,
+                    self.tr("Invalid event group"),
+                    self.tr("The event group name must be non-empty and unique in this simulation mode."),
+                )
+            else:
+                pass
+        else:
+            pass
+
+    @QtCore.Slot()
+    def save_changes(self) -> None:
+        """Validate and persist the complete shared event transaction.
+
+        :return: None.
+        """
+        validation_error: str | None = self.session.validate()
+        if validation_error is not None:
+            QtWidgets.QMessageBox.warning(self, self.tr("Invalid dynamic events"), validation_error)
+        else:
+            self.session.commit()
+            self.toast_manager.show_info_toast(self.tr("Events saved"))
 
     @QtCore.Slot(object)
     def _show_moved_event(self, backing_object: object) -> None:
@@ -1052,14 +1264,16 @@ class DynamicEventsPage(QtWidgets.QWidget):
 
     @QtCore.Slot()
     def update_actions(self) -> None:
-        """Enable page actions according to selection and model capabilities.
+        """Refresh action availability and contextual guidance.
+
+        Add and remove remain clickable without a selection so their handlers
+        can explain what the user must select through a non-blocking toast.
 
         :return: None.
         """
         selected: object | None = self._selected_backing_object()
-        can_add: bool = isinstance(selected, DynamicEventGroupDraft) and self.has_runtime_parameters()
-        self.add_event_button.setEnabled(can_add)
-        self.remove_button.setEnabled(isinstance(selected, (DynamicEventGroupDraft, DynamicEventDraft)))
+        self.add_event_button.setEnabled(True)
+        self.remove_button.setEnabled(True)
 
         mode_parameters: list[Var] = self._get_switch_mode_parameters()
         can_open_switch_sequence: bool = (
@@ -1084,7 +1298,7 @@ class DynamicEventsPage(QtWidgets.QWidget):
         selected: object | None = self._selected_backing_object()
         if isinstance(selected, DynamicEventGroupDraft):
             created_event: DynamicEventDraft | None = self.session.add_event(
-                device=self.entry.api_object,
+                device=self.device,
                 mode=self.mode,
                 group=selected,
                 parameters=self.parameters,
@@ -1103,7 +1317,9 @@ class DynamicEventsPage(QtWidgets.QWidget):
                 # visible even when the branch was previously collapsed.
                 self._reveal_event(created_event, start_editing=True)
         else:
-            pass
+            self.toast_manager.show_warning_toast(
+                self.tr("Select the event group where you want to add the event.")
+            )
 
     def _reveal_event(self,
                       event: DynamicEventDraft,
@@ -1139,7 +1355,9 @@ class DynamicEventsPage(QtWidgets.QWidget):
         elif isinstance(selected, DynamicEventGroupDraft):
             self._confirm_remove_group(selected)
         else:
-            pass
+            self.toast_manager.show_warning_toast(
+                self.tr("Select the event or event group you want to remove.")
+            )
 
     def _confirm_remove_event(self, event: DynamicEventDraft) -> None:
         """Confirm and remove one selected event.
@@ -1265,7 +1483,7 @@ class DynamicEventsPage(QtWidgets.QWidget):
                 sequence_index: int
                 for sequence_index in range(min(len(sequence_data.times), len(sequence_data.values))):
                     event: DynamicEventDraft | None = self.session.add_event(
-                        device=self.entry.api_object,
+                        device=self.device,
                         mode=self.mode,
                         group=selected,
                         parameters=self.parameters,

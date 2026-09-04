@@ -23,7 +23,7 @@ from VeraGrid.Gui.ProceduralGrid.procedural_grid import ProceduralGridWindow
 from VeraGrid.Gui.ProceduralGrid.map_warning import MapWarningDialog
 from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, is_dialog_available
 from VeraGrid.Session.server_driver import RemoteJobDriver
-from VeraGrid.Gui.DynamicModelEditor.DynamicEventsDialog.dynamic_events_editor_support import create_dynamic_events_group_with_dialog
+from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_support import create_dynamic_events_group_with_dialog
 
 # Engine imports
 import VeraGridEngine.Devices as dev

@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QDialogButtonBox,
                                QGroupBox, QHBoxLayout, QLabel,
                                QLineEdit, QPushButton, QSizePolicy, QSpacerItem,
                                QTableWidget, QTableWidgetItem, QVBoxLayout)
-from VeraGrid.Session.dynamic_editor_entries import DynamicEditorEntry
+from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import DynamicEditorEntry
 from VeraGridEngine.enumerations import DynamicEditorMimeType, DynamicSimulationMode
 
 

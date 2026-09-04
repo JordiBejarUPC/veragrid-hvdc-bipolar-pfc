@@ -8,10 +8,11 @@ from __future__ import annotations
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from VeraGrid.Gui.Icons.icon_associations import device_type_icons
-from VeraGrid.Session.dynamic_editor_entries import DynamicEditorEntry
-from VeraGrid.Session.dynamic_editor_entries import iter_dynamic_editor_entries
+from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import DynamicEditorEntry
+from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import entry_supports_dynamic_events
+from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import iter_dynamic_editor_entries
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-from VeraGridEngine.enumerations import DynamicSimulationMode
+from VeraGridEngine.enumerations import DynamicEditorContentType, DynamicSimulationMode
 
 
 def build_dynamic_device_entry_sort_key(entry: DynamicEditorEntry) -> tuple[str, str]:
@@ -24,13 +25,12 @@ def build_dynamic_device_entry_sort_key(entry: DynamicEditorEntry) -> tuple[str,
 
 
 class DynamicDeviceTreeWidget(QtWidgets.QWidget):
-    """Reusable searchable tree for devices that expose RMS or EMT models."""
+    """Searchable tree that opens model and event workspace pages."""
 
-    entryModeRequested = QtCore.Signal(object, object)
+    entryPageRequested = QtCore.Signal(object, object, object)
 
     __slots__ = (
         "_circuit",
-        "_events_context",
         "_preferred_double_click_mode",
         "_model",
         "_proxy",
@@ -39,17 +39,14 @@ class DynamicDeviceTreeWidget(QtWidgets.QWidget):
     )
 
     def __init__(self,
-                 events_context: bool,
                  parent: QtWidgets.QWidget | None = None) -> None:
         """Build the shared dynamic-device tree.
 
-        :param events_context: Whether context actions open event pages instead of model editors.
         :param parent: Optional owning widget.
         :return: None.
         """
         QtWidgets.QWidget.__init__(self, parent)
         self._circuit: MultiCircuit | None = None
-        self._events_context: bool = bool(events_context)
         self._preferred_double_click_mode: DynamicSimulationMode = DynamicSimulationMode.RMS
         self._model: QtGui.QStandardItemModel = QtGui.QStandardItemModel(self)
         self._proxy: QtCore.QSortFilterProxyModel = QtCore.QSortFilterProxyModel(self)
@@ -237,13 +234,17 @@ class DynamicDeviceTreeWidget(QtWidgets.QWidget):
         """
         entry: DynamicEditorEntry | None = self.entry_from_index(index)
         if entry is not None and self._preferred_double_click_mode in entry.available_modes:
-            self.entryModeRequested.emit(entry, self._preferred_double_click_mode)
+            self.entryPageRequested.emit(
+                entry,
+                self._preferred_double_click_mode,
+                DynamicEditorContentType.MODEL,
+            )
         else:
             pass
 
     @QtCore.Slot(QtCore.QPoint)
     def _show_context_menu(self, position: QtCore.QPoint) -> None:
-        """Show RMS and EMT actions supported by the clicked device.
+        """Show model and event actions supported by the clicked device.
 
         :param position: Tree viewport position requested by Qt.
         :return: None.
@@ -257,24 +258,34 @@ class DynamicDeviceTreeWidget(QtWidgets.QWidget):
 
         menu: QtWidgets.QMenu = QtWidgets.QMenu(self.tree_view)
         if DynamicSimulationMode.RMS in entry.available_modes:
-            if self._events_context:
-                rms_text: str = self.tr("RMS events")
-            else:
-                rms_text = self.tr("Open RMS editor")
-            rms_action: QtGui.QAction = menu.addAction(rms_text)
-            rms_action.setData(QtCore.QPersistentModelIndex(index))
-            rms_action.triggered.connect(self._open_rms_from_action)
+            rms_model_action: QtGui.QAction = menu.addAction(self.tr("RMS editor"))
+            rms_model_action.setData(QtCore.QPersistentModelIndex(index))
+            rms_model_action.triggered.connect(self._open_rms_model_from_action)
         else:
             pass
 
         if DynamicSimulationMode.EMT in entry.available_modes:
-            if self._events_context:
-                emt_text: str = self.tr("EMT events")
+            emt_model_action: QtGui.QAction = menu.addAction(self.tr("EMT editor"))
+            emt_model_action.setData(QtCore.QPersistentModelIndex(index))
+            emt_model_action.triggered.connect(self._open_emt_model_from_action)
+        else:
+            pass
+
+        if entry_supports_dynamic_events(entry):
+            menu.addSeparator()
+            if DynamicSimulationMode.RMS in entry.available_modes:
+                rms_events_action: QtGui.QAction = menu.addAction(self.tr("RMS events"))
+                rms_events_action.setData(QtCore.QPersistentModelIndex(index))
+                rms_events_action.triggered.connect(self._open_rms_events_from_action)
             else:
-                emt_text = self.tr("Open EMT editor")
-            emt_action: QtGui.QAction = menu.addAction(emt_text)
-            emt_action.setData(QtCore.QPersistentModelIndex(index))
-            emt_action.triggered.connect(self._open_emt_from_action)
+                pass
+
+            if DynamicSimulationMode.EMT in entry.available_modes:
+                emt_events_action: QtGui.QAction = menu.addAction(self.tr("EMT events"))
+                emt_events_action.setData(QtCore.QPersistentModelIndex(index))
+                emt_events_action.triggered.connect(self._open_emt_events_from_action)
+            else:
+                pass
         else:
             pass
 
@@ -284,27 +295,48 @@ class DynamicDeviceTreeWidget(QtWidgets.QWidget):
             menu.exec(self.tree_view.viewport().mapToGlobal(position))
 
     @QtCore.Slot(bool)
-    def _open_rms_from_action(self, _checked: bool = False) -> None:
-        """Request RMS mode for the context-menu device.
+    def _open_rms_model_from_action(self, _checked: bool = False) -> None:
+        """Request the RMS model page for the context-menu device.
 
         :param _checked: QAction checked state supplied by Qt.
         :return: None.
         """
-        self._emit_mode_from_sender(DynamicSimulationMode.RMS)
+        self._emit_page_from_sender(DynamicSimulationMode.RMS, DynamicEditorContentType.MODEL)
 
     @QtCore.Slot(bool)
-    def _open_emt_from_action(self, _checked: bool = False) -> None:
-        """Request EMT mode for the context-menu device.
+    def _open_emt_model_from_action(self, _checked: bool = False) -> None:
+        """Request the EMT model page for the context-menu device.
 
         :param _checked: QAction checked state supplied by Qt.
         :return: None.
         """
-        self._emit_mode_from_sender(DynamicSimulationMode.EMT)
+        self._emit_page_from_sender(DynamicSimulationMode.EMT, DynamicEditorContentType.MODEL)
 
-    def _emit_mode_from_sender(self, mode: DynamicSimulationMode) -> None:
-        """Emit one mode request using the persistent index on the sender action.
+    @QtCore.Slot(bool)
+    def _open_rms_events_from_action(self, _checked: bool = False) -> None:
+        """Request the RMS events page for the context-menu device.
+
+        :param _checked: QAction checked state supplied by Qt.
+        :return: None.
+        """
+        self._emit_page_from_sender(DynamicSimulationMode.RMS, DynamicEditorContentType.EVENTS)
+
+    @QtCore.Slot(bool)
+    def _open_emt_events_from_action(self, _checked: bool = False) -> None:
+        """Request the EMT events page for the context-menu device.
+
+        :param _checked: QAction checked state supplied by Qt.
+        :return: None.
+        """
+        self._emit_page_from_sender(DynamicSimulationMode.EMT, DynamicEditorContentType.EVENTS)
+
+    def _emit_page_from_sender(self,
+                               mode: DynamicSimulationMode,
+                               content_type: DynamicEditorContentType) -> None:
+        """Emit one page request using the persistent index on the sender action.
 
         :param mode: Requested RMS or EMT mode.
+        :param content_type: Model or events content requested by the action.
         :return: None.
         """
         action: QtCore.QObject | None = self.sender()
@@ -318,7 +350,12 @@ class DynamicDeviceTreeWidget(QtWidgets.QWidget):
             entry: DynamicEditorEntry | None = self.entry_from_index(index)
         else:
             entry = None
-        if entry is not None and mode in entry.available_modes:
-            self.entryModeRequested.emit(entry, mode)
+        content_is_supported: bool = (
+            content_type == DynamicEditorContentType.MODEL
+            or (content_type == DynamicEditorContentType.EVENTS and entry is not None
+                and entry_supports_dynamic_events(entry))
+        )
+        if entry is not None and mode in entry.available_modes and content_is_supported:
+            self.entryPageRequested.emit(entry, mode, content_type)
         else:
             pass

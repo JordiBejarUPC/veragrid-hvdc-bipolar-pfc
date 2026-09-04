@@ -8,6 +8,8 @@ from typing import List, Dict, Set
 from PySide6 import QtWidgets, QtCore
 
 from VeraGrid.Gui.messages import info_msg
+from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import DynamicEditorEntry
+from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import get_block_for_entry
 
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Utils.Symbolic.block import Block
@@ -165,6 +167,30 @@ def collect_block_runtime_event_parameters(block: Block) -> tuple[List[Var], Set
                 pass
 
     return parameters, mode_parameter_uids
+
+
+def collect_dynamic_events_page_parameters(
+        entry: DynamicEditorEntry,
+        mode: DynamicSimulationMode,
+) -> tuple[List[Var], Set[int], bool]:
+    """Collect the current saved-model parameters used by one events page.
+
+    The persistent model is read every time the events page is activated. This
+    ensures that an events page never keeps the detached ``Var`` objects owned
+    by a model editor working copy.
+
+    :param entry: Device entry represented by the events page.
+    :param mode: RMS or EMT model whose parameters are requested.
+    :return: Parameters, mode-parameter UIDs and saved-model empty state.
+    """
+    block: object = get_block_for_entry(entry=entry, mode=mode)
+    if isinstance(block, Block):
+        parameters: List[Var]
+        mode_parameter_uids: Set[int]
+        parameters, mode_parameter_uids = collect_block_runtime_event_parameters(block=block)
+        return list(parameters), set(mode_parameter_uids), block.empty()
+    else:
+        return list(), set(), True
 
 
 class SwitchSequenceRow:
