@@ -6,8 +6,8 @@ import sys
 from PySide6 import QtCore, QtGui, QtWidgets
 import shiboken6
 
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_tab import DynamicEditorTab
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_window import DynamicEditorWorkspaceWindow
+from VeraGrid.Gui.DynamicModelEditor.Tabs.dynamic_editor_tab import DynamicEditorTab
+from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_workspace_window import DynamicEditorWorkspaceWindow
 from VeraGrid.Session.dynamic_editor_entries import DynamicEditorEntry
 from VeraGrid.Session.dynamic_editor_entries import build_dynamic_editor_entry
 from VeraGrid.Session.dynamic_editor_workspace_session import DynamicEditorWorkspaceSession

@@ -9,10 +9,10 @@ from typing import Iterator
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from VeraGrid.Gui.DynamicModelEditor.detachable_editor_tabs_widget import DetachableEditorTabWidget
-from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_tab import DynamicEditorTab
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace import Ui_DynamicEditorWorkspaceWindow
+from VeraGrid.Gui.DynamicModelEditor.Workspace.detachable_editor_tabs_widget import DetachableEditorTabWidget
+from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_editor import DynamicBlockEditorGUI
+from VeraGrid.Gui.DynamicModelEditor.Tabs.dynamic_editor_tab import DynamicEditorTab
+from VeraGrid.Gui.DynamicModelEditor.ui.dynamic_editor_workspace import Ui_DynamicEditorWorkspaceWindow
 from VeraGrid.Gui.Widgets.dynamic_device_tree import DynamicDeviceTreeWidget
 from VeraGrid.Session.dynamic_editor_entries import DynamicEditorEntry
 from VeraGrid.Session.dynamic_editor_entries import build_dynamic_editor_entry

@@ -9,8 +9,8 @@ from typing import Any, List, Dict, Tuple, TYPE_CHECKING
 
 from PySide6 import QtCore, QtWidgets
 
-from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_tab import DynamicEditorTab
+from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_editor import DynamicBlockEditorGUI
+from VeraGrid.Gui.DynamicModelEditor.Tabs.dynamic_editor_tab import DynamicEditorTab
 from VeraGrid.Session.dynamic_editor_entries import DynamicEditorEntry
 from VeraGrid.Session.dynamic_editor_entries import build_dynamic_editor_entry
 from VeraGrid.Session.dynamic_editor_entries import get_block_for_entry
@@ -18,7 +18,7 @@ from VeraGrid.Session.dynamic_editor_entries import get_templates_for_entry
 from VeraGridEngine.enumerations import DynamicSimulationMode, DynEditorGraphicsModes
 
 if TYPE_CHECKING:
-    from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_window import DynamicEditorWorkspaceWindow
+    from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_workspace_window import DynamicEditorWorkspaceWindow
 
 
 def _get_page_entry(page: DynamicBlockEditorGUI | None) -> DynamicEditorEntry | None:
@@ -303,7 +303,7 @@ class DynamicEditorWorkspaceSession(QtCore.QObject):
         :param mode: Dynamic mode to open.
         :return: Newly created editor tab.
         """
-        from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_tab import DynamicEditorTab
+        from VeraGrid.Gui.DynamicModelEditor.Tabs.dynamic_editor_tab import DynamicEditorTab
 
         page = DynamicEditorTab(
             var_factory=entry.circuit.var_factory,

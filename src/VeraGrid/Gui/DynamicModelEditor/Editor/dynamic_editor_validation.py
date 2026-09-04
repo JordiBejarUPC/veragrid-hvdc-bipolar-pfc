@@ -14,7 +14,7 @@ from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.enumerations import VarPowerFlowReferenceType
 
 if TYPE_CHECKING:
-    from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
+    from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_editor import DynamicBlockEditorGUI
 else:
     pass
 

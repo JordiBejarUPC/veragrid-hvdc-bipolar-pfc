@@ -50,20 +50,20 @@ from VeraGridEngine.Utils.Symbolic.block import (Block,
 from VeraGridEngine.Utils.Symbolic.dynamic_connection_intent import (DynamicConnectionIntent,
                                                                      DynamicConnectionIntentDirection,
                                                                      DynamicConnectionIntentOrigin)
-from VeraGrid.Gui.DynamicModelEditor.block_editor import Ui_BlockEditorWindow
-import VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics as graph
+from VeraGrid.Gui.DynamicModelEditor.ui.block_editor import Ui_BlockEditorWindow
+import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_graphics as graph
 from VeraGrid.Session.dynamic_editor_entries import DynamicEditorEntry
-from VeraGrid.Gui.DynamicModelEditor.Dynamic_library.dynamic_editor_library import DynamicEditorLibrary, LibraryTreeFilterProxyModel
+from VeraGrid.Gui.DynamicModelEditor.DynamicLibrary.dynamic_editor_library import DynamicEditorLibrary, LibraryTreeFilterProxyModel
 from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.measurements_dialog import MeasurementsDialog
-import VeraGrid.Gui.DynamicModelEditor.dynamic_editor_models as dialog_models
+import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_models as dialog_models
 from VeraGrid.Gui.DynamicModelEditor.BlockProperties.dynamic_block_properties import (
     BlockStructuralEditRequest,
     BlockVariableRenameRequest,
     DynamicBlockPropertiesDialog,
     DynamicBlockPropertiesDockWidget,
 )
-import VeraGrid.Gui.DynamicModelEditor.dynamic_editor_validation as valid
-from VeraGrid.Gui.DynamicModelEditor.Dynamic_library.dynamic_editor_utilities import (
+import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_validation as valid
+from VeraGrid.Gui.DynamicModelEditor.DynamicLibrary.dynamic_editor_utilities import (
     create_block_of_type,
     create_default_template_builder,
     create_structural_template_builder,
@@ -107,7 +107,7 @@ from VeraGridEngine.Devices.Diagrams.block_diagram import (
 )
 
 if TYPE_CHECKING:
-    from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_tab import DynamicEditorDocument, DynamicEditorTab
+    from VeraGrid.Gui.DynamicModelEditor.Tabs.dynamic_editor_tab import DynamicEditorDocument, DynamicEditorTab
 else:
     pass
 

@@ -8,8 +8,8 @@ from typing import Iterator
 from PySide6 import QtCore, QtGui, QtWidgets
 import pytest
 
-import VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics as graph
-from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
+import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_graphics as graph
+from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGrid.Gui.DynamicModelEditor.BlockProperties.dynamic_block_properties import (
     BlockParameterDraftModel,
     BlockSymbolDraftModel,
@@ -43,8 +43,8 @@ from VeraGrid.Gui.DynamicModelEditor.BlockProperties.dynamic_equation_pdf import
     render_wrapped_equation,
     write_equation_pdf,
 )
-from VeraGrid.Gui.DynamicModelEditor.Dynamic_library.dynamic_editor_utilities import create_block_of_type
-from VeraGrid.Gui.DynamicModelEditor.Dynamic_library.dynamic_editor_utilities import (
+from VeraGrid.Gui.DynamicModelEditor.DynamicLibrary.dynamic_editor_utilities import create_block_of_type
+from VeraGrid.Gui.DynamicModelEditor.DynamicLibrary.dynamic_editor_utilities import (
     create_default_template_builder,
     get_blocktype2template_builder_dict,
     initialize_template_builder_from_block,

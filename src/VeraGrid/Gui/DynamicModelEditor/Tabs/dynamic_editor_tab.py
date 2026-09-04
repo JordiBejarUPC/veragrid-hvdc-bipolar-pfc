@@ -11,19 +11,19 @@ from PySide6 import QtWidgets
 from PySide6.QtCore import Signal
 
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
-from VeraGrid.Gui.DynamicModelEditor.dynamic_block_preparation import prepare_block_for_editing
+from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_preparation import prepare_block_for_editing
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.fmu_template import FmuTemplate
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_breadcrumb import DynamicEditorBreadcrumb
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_navigation import DynamicEditorNavigation
+from VeraGrid.Gui.DynamicModelEditor.Tabs.dynamic_editor_breadcrumb import DynamicEditorBreadcrumb
+from VeraGrid.Gui.DynamicModelEditor.Tabs.dynamic_editor_navigation import DynamicEditorNavigation
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.enumerations import DynamicSimulationMode, BlockType, DynEditorGraphicsModes
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_models import clone_block_for_editing, copy_block_state
+from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_models import clone_block_for_editing, copy_block_state
 
-from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
+from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGrid.Session.dynamic_editor_entries import DynamicEditorEntry
 
 

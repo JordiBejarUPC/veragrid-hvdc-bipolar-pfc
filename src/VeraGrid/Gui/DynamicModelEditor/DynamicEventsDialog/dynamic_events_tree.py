@@ -7,9 +7,9 @@ from __future__ import annotations
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from VeraGrid.Gui.DynamicEventsDialog.dynamic_events_editor_support import SwitchSequenceData
-from VeraGrid.Gui.DynamicEventsDialog.dynamic_events_editor_support import SwitchSequenceDialog
-from VeraGrid.Gui.DynamicEventsDialog.dynamic_events_models import (
+from VeraGrid.Gui.DynamicModelEditor.DynamicEventsDialog.dynamic_events_editor_support import SwitchSequenceData
+from VeraGrid.Gui.DynamicModelEditor.DynamicEventsDialog.dynamic_events_editor_support import SwitchSequenceDialog
+from VeraGrid.Gui.DynamicModelEditor.DynamicEventsDialog.dynamic_events_models import (
     DynamicEventDraft,
     DynamicEventGroupDraft,
     DynamicEventsDraftSession,

@@ -6,11 +6,11 @@ import sys
 import pytest
 from PySide6 import QtCore, QtWidgets
 
-import VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor as dynamic_block_editor_module
-import VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics as graph
+import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_editor as dynamic_block_editor_module
+import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_graphics as graph
 import VeraGridEngine.api as gce
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
+from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGrid.Gui.DynamicModelEditor.BlockProperties.dynamic_block_properties import DynamicBlockPropertiesDialog
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Templates.BasicBlockCatalog import BasicBlockTemplateDescriptor

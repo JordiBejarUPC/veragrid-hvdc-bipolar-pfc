@@ -5,11 +5,11 @@ import sys
 from PySide6 import QtCore, QtWidgets
 
 import VeraGridEngine.api as vge
-from VeraGrid.Gui.DynamicEventsDialog.dynamic_events_editor import DynamicEventEditor
-from VeraGrid.Gui.DynamicEventsDialog.dynamic_events_editor_support import collect_block_runtime_event_parameters
-from VeraGrid.Gui.DynamicEventsDialog.dynamic_events_models import DynamicEventDraft
-from VeraGrid.Gui.DynamicEventsDialog.dynamic_events_models import DynamicEventGroupDraft
-from VeraGrid.Gui.DynamicEventsDialog.dynamic_events_tree import DynamicEventsPage
+from VeraGrid.Gui.DynamicModelEditor.DynamicEventsDialog.dynamic_events_editor import DynamicEventEditor
+from VeraGrid.Gui.DynamicModelEditor.DynamicEventsDialog.dynamic_events_editor_support import collect_block_runtime_event_parameters
+from VeraGrid.Gui.DynamicModelEditor.DynamicEventsDialog.dynamic_events_models import DynamicEventDraft
+from VeraGrid.Gui.DynamicModelEditor.DynamicEventsDialog.dynamic_events_models import DynamicEventGroupDraft
+from VeraGrid.Gui.DynamicModelEditor.DynamicEventsDialog.dynamic_events_tree import DynamicEventsPage
 from VeraGrid.Session.dynamic_editor_entries import DynamicEditorEntry
 from VeraGrid.Session.dynamic_editor_entries import build_dynamic_editor_entry
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory

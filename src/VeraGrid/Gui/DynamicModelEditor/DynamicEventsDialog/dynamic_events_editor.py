@@ -7,14 +7,14 @@ from __future__ import annotations
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from VeraGrid.Gui.DynamicEventsDialog.dynamic_events_editor_dialog import Ui_DynamicEventDialogue
-from VeraGrid.Gui.DynamicEventsDialog.dynamic_events_editor_support import (
+from VeraGrid.Gui.DynamicModelEditor.DynamicEventsDialog.dynamic_events_editor_dialog import Ui_DynamicEventDialogue
+from VeraGrid.Gui.DynamicModelEditor.DynamicEventsDialog.dynamic_events_editor_support import (
     DynamicEventsGroupsDialog,
     collect_block_runtime_event_parameters,
 )
-from VeraGrid.Gui.DynamicEventsDialog.dynamic_events_models import DynamicEventGroupDraft
-from VeraGrid.Gui.DynamicEventsDialog.dynamic_events_models import DynamicEventsDraftSession
-from VeraGrid.Gui.DynamicEventsDialog.dynamic_events_tree import DynamicEventsPage
+from VeraGrid.Gui.DynamicModelEditor.DynamicEventsDialog.dynamic_events_models import DynamicEventGroupDraft
+from VeraGrid.Gui.DynamicModelEditor.DynamicEventsDialog.dynamic_events_models import DynamicEventsDraftSession
+from VeraGrid.Gui.DynamicModelEditor.DynamicEventsDialog.dynamic_events_tree import DynamicEventsPage
 from VeraGrid.Gui.Widgets.dynamic_device_tree import DynamicDeviceTreeWidget
 from VeraGrid.Gui.toast_widget import ToastManager
 from VeraGrid.Session.dynamic_editor_entries import DynamicEditorEntry

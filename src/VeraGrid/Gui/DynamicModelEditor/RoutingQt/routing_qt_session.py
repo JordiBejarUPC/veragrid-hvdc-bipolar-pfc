@@ -16,7 +16,7 @@ from VeraGrid.Gui.DynamicModelEditor.Routing.routing_serializer import RoutingSe
 from VeraGrid.Gui.DynamicModelEditor.RoutingQt.routing_qt_adapter import QtRoutingGraphAdapter
 from VeraGrid.Gui.DynamicModelEditor.RoutingQt.routing_qt_port_snapshot import QtRoutingPortSnapshot
 from VeraGrid.Gui.DynamicModelEditor.RoutingQt.routing_qt_port_snapshot import build_qt_routing_port_snapshot
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics import PortItem
+from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_graphics import PortItem
 
 
 class QtRoutingSession:
