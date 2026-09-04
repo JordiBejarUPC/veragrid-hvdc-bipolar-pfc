@@ -23,6 +23,10 @@ from VeraGridEngine.Templates.ProceduralLogicCatalog import (
     ProceduralBlockTemplateDescriptor,
     get_procedural_block_template_descriptors,
 )
+from VeraGridEngine.Templates.InternationalStandardsCatalog import (
+    InternationalStandardTemplateDescriptor,
+    get_international_standard_template_descriptors,
+)
 from VeraGridEngine.enumerations import BlockType
 
 
@@ -248,7 +252,7 @@ class DynamicEditorLibrary:
 
         # common rms
         self.common_rms_device_blocks: List[LibraryLeafSpec] = list((
-                                                                     # LibraryLeafSpec("Pll transformer", BlockType.PLL_TRANSFORM_RMS),
+                                                                     LibraryLeafSpec("Pll transformer", BlockType.PLL_TRANSFORM_RMS),
                                                                      LibraryLeafSpec("Pi current controller", BlockType.PI_CURRENT_CONTROLLER),
                                                                      LibraryLeafSpec("Pi power controller", BlockType.PI_POWER_CONTROLLER),
                                                                      ))
@@ -329,6 +333,7 @@ class DynamicEditorLibrary:
             else:
                 pass
             self.tree_structure["Procedural logic"] = build_procedural_library_branch()
+            self.tree_structure["International standards"] = build_international_standards_library_branch()
 
         elif mode == DynamicSimulationMode.EMT:
             self.tree_structure["Basic"] = build_basic_library_branch()
@@ -426,6 +431,11 @@ class DynamicEditorLibrary:
                         else:
                             pass
                         item.setToolTip(procedural_tooltip)
+                    elif isinstance(leaf.payload, InternationalStandardTemplateDescriptor):
+                        item.setToolTip(
+                            f"{leaf.payload.display_label} — international-standard RMS model. "
+                            "Drag onto the canvas or double-click to insert."
+                        )
                     else:
                         pass
                     set_library_item_icon(item, leaf.payload)
@@ -500,6 +510,29 @@ def build_procedural_library_branch() -> Dict[str, object]:
     return branch
 
 
+def build_international_standards_library_branch() -> Dict[str, object]:
+    """Build the categorized international-standard RMS model branch.
+
+    The Engine catalog owns the model inventory and family ordering. The GUI
+    only converts its typed descriptors into draggable library leaves.
+
+    :return: Nested branch data used by the RMS Dynamic Editor library.
+    """
+    branch: Dict[str, object] = dict()
+    descriptor: InternationalStandardTemplateDescriptor
+    for descriptor in get_international_standard_template_descriptors():
+        insert_library_leaf(
+            branch=branch,
+            category_path=tuple(descriptor.category_path),
+            leaf=LibraryLeafSpec(
+                label=descriptor.display_label,
+                payload=descriptor,
+                search_text=descriptor.search_text,
+            ),
+        )
+    return branch
+
+
 def _library_leaf_label_sort_key(leaf: "LibraryLeafSpec") -> str:
     """
     Return the case-insensitive sort key for one library leaf.
@@ -522,6 +555,8 @@ def is_supported_library_payload(item_data: object) -> bool:
     elif isinstance(item_data, BasicBlockTemplateDescriptor):
         return True
     elif isinstance(item_data, ProceduralBlockTemplateDescriptor):
+        return True
+    elif isinstance(item_data, InternationalStandardTemplateDescriptor):
         return True
     elif isinstance(item_data, (RmsModelTemplate, EmtModelTemplate, FmuTemplate)):
         return True
@@ -566,6 +601,8 @@ def set_library_item_icon(item: QtGui.QStandardItem, payload: object) -> None:
     if isinstance(payload, FmuTemplate):
         item.setIcon(QtGui.QIcon(device_type_icons[DeviceType.FmuTemplateDevice.value]))
     elif isinstance(payload, RmsModelTemplate):
+        item.setIcon(QtGui.QIcon(device_type_icons[DeviceType.RmsModelTemplateDevice.value]))
+    elif isinstance(payload, InternationalStandardTemplateDescriptor):
         item.setIcon(QtGui.QIcon(device_type_icons[DeviceType.RmsModelTemplateDevice.value]))
     elif isinstance(payload, (EmtModelTemplate, BasicBlockTemplateDescriptor, ProceduralBlockTemplateDescriptor)):
         item.setIcon(QtGui.QIcon(device_type_icons[DeviceType.EmtModelTemplateDevice.value]))

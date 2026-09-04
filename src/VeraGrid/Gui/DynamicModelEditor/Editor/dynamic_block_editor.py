@@ -37,6 +37,10 @@ from VeraGridEngine.Templates.ProceduralLogicCatalog import (
     ProceduralBlockTemplateDescriptor,
     build_procedural_block_catalog_template,
 )
+from VeraGridEngine.Templates.InternationalStandardsCatalog import (
+    InternationalStandardTemplateDescriptor,
+    load_international_standard_template,
+)
 
 import VeraGridEngine.Templates.BasicBlockCatalog as BasicBlockTemplates
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
@@ -194,6 +198,7 @@ DynamicLibraryPayload: TypeAlias = (
     BlockType
     | BasicBlockTemplateDescriptor
     | ProceduralBlockTemplateDescriptor
+    | InternationalStandardTemplateDescriptor
     | RmsModelTemplate
     | EmtModelTemplate
     | FmuTemplate
@@ -2656,9 +2661,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         Restore the default expansion state for the library tree.
 
         The first two levels remain visible for the established Library
-        branches. Procedural logic is the exception: its named behavior groups
-        provide enough context while collapsed and otherwise expose every
-        primitive at once, making the tree unnecessarily long.
+        branches. Procedural logic and International standards are exceptions:
+        their named groups provide enough context while collapsed and otherwise
+        expose every model at once, making the tree unnecessarily long.
 
         :return: None.
         """
@@ -2666,8 +2671,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.libraryTreeView.collapseAll()
         self.ui.libraryTreeView.expandToDepth(1)
 
-        # Keep the Procedural logic root visible while folding its four
-        # behavior groups. Users can then open only the family they need.
+        # Keep the catalog roots visible while folding their named groups.
+        # Users can then open only the behavior or model family they need.
         top_level_row: int
         for top_level_row in range(self.library_proxy_model.rowCount()):
             top_level_index: QtCore.QModelIndex = self.library_proxy_model.index(
@@ -2680,19 +2685,19 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     QtCore.Qt.ItemDataRole.DisplayRole,
                 )
             )
-            if top_level_label == "Procedural logic":
-                procedural_group_row: int
-                for procedural_group_row in range(
+            if top_level_label in ("Procedural logic", "International standards"):
+                group_row: int
+                for group_row in range(
                         self.library_proxy_model.rowCount(top_level_index)
                 ):
-                    procedural_group_index: QtCore.QModelIndex = (
+                    group_index: QtCore.QModelIndex = (
                         self.library_proxy_model.index(
-                            procedural_group_row,
+                            group_row,
                             0,
                             top_level_index,
                         )
                     )
-                    self.ui.libraryTreeView.collapse(procedural_group_index)
+                    self.ui.libraryTreeView.collapse(group_index)
             else:
                 pass
 
@@ -2735,6 +2740,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         BlockType,
                         BasicBlockTemplateDescriptor,
                         ProceduralBlockTemplateDescriptor,
+                        InternationalStandardTemplateDescriptor,
                         RmsModelTemplate,
                         EmtModelTemplate,
                         FmuTemplate,
@@ -2774,6 +2780,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
             if isinstance(payload,
                           (BlockType, BasicBlockTemplateDescriptor, ProceduralBlockTemplateDescriptor,
+                           InternationalStandardTemplateDescriptor,
                            RmsModelTemplate, EmtModelTemplate, FmuTemplate)):
                 return payload
             else:
@@ -4245,6 +4252,17 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 x_pos=x_pos,
                 y_pos=y_pos,
                 block_type=BlockType.PROCEDURAL_LOGIC,
+            )
+
+        elif isinstance(payload, InternationalStandardTemplateDescriptor):
+            international_standard_template: RmsModelTemplate = load_international_standard_template(
+                descriptor=payload,
+                var_factory=self.var_factory,
+            )
+            return self.create_template_block_item(
+                template=international_standard_template,
+                x_pos=x_pos,
+                y_pos=y_pos,
             )
 
         elif isinstance(payload, (RmsModelTemplate, EmtModelTemplate, FmuTemplate)):
