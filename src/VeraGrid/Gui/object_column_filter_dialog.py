@@ -122,6 +122,108 @@ def make_icon_button(icon_path: str, tooltip: str, parent: QtWidgets.QWidget) ->
     return button
 
 
+class PopupResizeGrip(QtWidgets.QWidget):
+    """
+    Visible bottom-right grip that resizes its top-level popup directly.
+    """
+
+    __slots__ = (
+        "_resize_start_global_pos",
+        "_resize_start_local_pos",
+        "_resize_start_size",
+        "_resizing",
+    )
+
+    def __init__(self, parent: QtWidgets.QWidget) -> None:
+        """
+        Constructor.
+
+        :param parent: Parent popup.
+        :return: None.
+        """
+        QtWidgets.QWidget.__init__(self, parent)
+
+        self._resize_start_global_pos: QtCore.QPoint = QtCore.QPoint()
+        self._resize_start_local_pos: QtCore.QPoint = QtCore.QPoint()
+        self._resize_start_size: QtCore.QSize = QtCore.QSize()
+        self._resizing: bool = False
+
+        self.setFixedSize(18, 18)
+        self.setCursor(QtCore.Qt.CursorShape.SizeFDiagCursor)
+        self.setToolTip(self.tr("Resize"))
+
+    def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
+        """
+        Start resizing the parent popup.
+
+        :param event: Mouse press event.
+        :return: None.
+        """
+        if event.button() == QtCore.Qt.MouseButton.LeftButton:
+            self._resizing = True
+            self._resize_start_global_pos = event.globalPosition().toPoint()
+            self._resize_start_local_pos = event.position().toPoint()
+            self._resize_start_size = self.window().size()
+            self.grabMouse()
+            event.accept()
+        else:
+            QtWidgets.QWidget.mousePressEvent(self, event)
+
+    def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
+        """
+        Resize the parent popup while dragging.
+
+        :param event: Mouse move event.
+        :return: None.
+        """
+        if self._resizing:
+            delta: QtCore.QPoint = event.globalPosition().toPoint() - self._resize_start_global_pos
+            if delta.x() == 0 and delta.y() == 0:
+                delta = event.position().toPoint() - self._resize_start_local_pos
+            else:
+                pass
+            popup: QtWidgets.QWidget = self.window()
+            requested_size: QtCore.QSize = QtCore.QSize(
+                self._resize_start_size.width() + delta.x(),
+                self._resize_start_size.height() + delta.y(),
+            )
+            popup.resize(requested_size.expandedTo(popup.minimumSize()).boundedTo(popup.maximumSize()))
+            event.accept()
+        else:
+            QtWidgets.QWidget.mouseMoveEvent(self, event)
+
+    def mouseReleaseEvent(self, event: QtGui.QMouseEvent) -> None:
+        """
+        Finish resizing the parent popup.
+
+        :param event: Mouse release event.
+        :return: None.
+        """
+        if self._resizing:
+            self._resizing = False
+            self.releaseMouse()
+            event.accept()
+        else:
+            QtWidgets.QWidget.mouseReleaseEvent(self, event)
+
+    def paintEvent(self, event: QtGui.QPaintEvent) -> None:
+        """
+        Paint the diagonal resize mark.
+
+        :param event: Paint event.
+        :return: None.
+        """
+        del event
+        painter: QtGui.QPainter = QtGui.QPainter(self)
+        pen: QtGui.QPen = QtGui.QPen(QtGui.QColor(120, 120, 120))
+        pen.setWidth(1)
+        painter.setPen(pen)
+
+        offset: int
+        for offset in (4, 8, 12):
+            painter.drawLine(self.width() - offset, self.height() - 2, self.width() - 2, self.height() - offset)
+
+
 def set_clear_action_visibility(action: QtGui.QAction, text: str) -> None:
     """
     Show the clear action only while the line edit has text.
@@ -175,6 +277,7 @@ class ObjectColumnFilterDialog(QtWidgets.QDialog):
         "_source_column",
         "_table_view",
         "_values",
+        "resize_grip",
         "search_line_edit",
         "values_list_widget",
     )
@@ -201,7 +304,6 @@ class ObjectColumnFilterDialog(QtWidgets.QDialog):
 
         self.setWindowFlags(QtCore.Qt.WindowType.Popup)
         self.setMinimumSize(360, 280)
-        self.setSizeGripEnabled(True)
 
         layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
@@ -272,6 +374,13 @@ class ObjectColumnFilterDialog(QtWidgets.QDialog):
         self.values_list_widget: QtWidgets.QListWidget = QtWidgets.QListWidget(self)
         self.values_list_widget.setMinimumHeight(220)
         layout.addWidget(self.values_list_widget)
+
+        grip_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout()
+        grip_layout.setContentsMargins(0, 0, 0, 0)
+        grip_layout.addStretch(1)
+        self.resize_grip: PopupResizeGrip = PopupResizeGrip(parent=self)
+        grip_layout.addWidget(self.resize_grip)
+        layout.addLayout(grip_layout)
 
         self.fill_values()
 
