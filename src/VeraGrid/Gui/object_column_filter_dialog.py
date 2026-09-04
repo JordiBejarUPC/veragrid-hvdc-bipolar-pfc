@@ -128,8 +128,10 @@ class PopupResizeGrip(QtWidgets.QWidget):
     """
 
     __slots__ = (
+        "_resize_from_top",
         "_resize_start_global_pos",
         "_resize_start_local_pos",
+        "_resize_start_position",
         "_resize_start_size",
         "_resizing",
     )
@@ -143,14 +145,29 @@ class PopupResizeGrip(QtWidgets.QWidget):
         """
         QtWidgets.QWidget.__init__(self, parent)
 
+        self._resize_from_top: bool = False
         self._resize_start_global_pos: QtCore.QPoint = QtCore.QPoint()
         self._resize_start_local_pos: QtCore.QPoint = QtCore.QPoint()
+        self._resize_start_position: QtCore.QPoint = QtCore.QPoint()
         self._resize_start_size: QtCore.QSize = QtCore.QSize()
         self._resizing: bool = False
 
         self.setFixedSize(18, 18)
         self.setCursor(QtCore.Qt.CursorShape.SizeFDiagCursor)
         self.setToolTip(self.tr("Resize"))
+
+    def set_resize_from_top(self, value: bool) -> None:
+        """
+        Select whether vertical resizing is anchored from the top edge.
+
+        :param value: True to resize upward from the top edge.
+        :return: None.
+        """
+        self._resize_from_top = value
+        if value:
+            self.setCursor(QtCore.Qt.CursorShape.SizeBDiagCursor)
+        else:
+            self.setCursor(QtCore.Qt.CursorShape.SizeFDiagCursor)
 
     def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
         """
@@ -163,6 +180,7 @@ class PopupResizeGrip(QtWidgets.QWidget):
             self._resizing = True
             self._resize_start_global_pos = event.globalPosition().toPoint()
             self._resize_start_local_pos = event.position().toPoint()
+            self._resize_start_position = self.window().pos()
             self._resize_start_size = self.window().size()
             self.grabMouse()
             event.accept()
@@ -183,11 +201,27 @@ class PopupResizeGrip(QtWidgets.QWidget):
             else:
                 pass
             popup: QtWidgets.QWidget = self.window()
+            requested_height: int
+            requested_width: int = self._resize_start_size.width() + delta.x()
+            if self._resize_from_top:
+                requested_height = self._resize_start_size.height() - delta.y()
+            else:
+                requested_height = self._resize_start_size.height() + delta.y()
+
             requested_size: QtCore.QSize = QtCore.QSize(
-                self._resize_start_size.width() + delta.x(),
-                self._resize_start_size.height() + delta.y(),
+                requested_width,
+                requested_height,
             )
-            popup.resize(requested_size.expandedTo(popup.minimumSize()).boundedTo(popup.maximumSize()))
+            minimum_size: QtCore.QSize = popup.minimumSize().expandedTo(popup.minimumSizeHint())
+            bounded_size: QtCore.QSize = requested_size.expandedTo(minimum_size).boundedTo(popup.maximumSize())
+
+            if self._resize_from_top:
+                y_position: int = self._resize_start_position.y() + self._resize_start_size.height() - bounded_size.height()
+                popup.move(self._resize_start_position.x(), y_position)
+            else:
+                pass
+
+            popup.resize(bounded_size)
             event.accept()
         else:
             QtWidgets.QWidget.mouseMoveEvent(self, event)
