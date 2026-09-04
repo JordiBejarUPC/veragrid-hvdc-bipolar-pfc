@@ -651,6 +651,16 @@ def create_block_of_type(var_factory: VarFactory,
         blk.name = item_name
         return blk
 
+    # Generic blocks use the same deterministic default interface as the
+    # dedicated library-drop path so direct factory callers remain consistent.
+    elif block_type == BlockType.GENERIC:
+        return create_generic_block(
+            var_factory=var_factory,
+            inputs=1,
+            outputs=1,
+            name=item_name,
+        )
+
     # GAIN (single input -> single output)
     elif block_type == BlockType.GAIN:
         blk = basic_block_templates.gain(var_factory, item_name)

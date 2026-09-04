@@ -6,6 +6,7 @@ import gc
 import multiprocessing
 import queue
 import tempfile
+import time
 import traceback
 from enum import Enum
 from pathlib import Path
@@ -1027,7 +1028,7 @@ def run_dialog_smoke_suite_subprocess(timeout_s: float) -> None:
     """
     Run dialog smoke coverage outside the parent pytest Qt process.
 
-    :param timeout_s: Maximum child-process runtime in seconds.
+    :param timeout_s: Maximum interval without child-process progress in seconds.
     :return: None.
     """
     process_context: multiprocessing.context.BaseContext = multiprocessing.get_context("spawn")
@@ -1038,24 +1039,41 @@ def run_dialog_smoke_suite_subprocess(timeout_s: float) -> None:
     )
 
     process.start()
-    process.join(timeout_s)
-
     message: str = ""
+
+    # Treat each queued dialog name as a watchdog heartbeat. The complete
+    # inventory can legitimately exceed one fixed wall-clock budget on slower
+    # machines, while a genuinely blocked constructor or close operation stops
+    # producing these progress messages.
+    last_progress_time_s: float = time.monotonic()
+    while process.is_alive() and time.monotonic() - last_progress_time_s <= timeout_s:
+        try:
+            queued_message: object = message_queue.get(timeout=1.0)
+            if isinstance(queued_message, str):
+                message = queued_message
+            else:
+                message = repr(queued_message)
+            last_progress_time_s = time.monotonic()
+        except queue.Empty:
+            pass
+
+    if process.is_alive():
+        process.terminate()
+        process.join(10.0)
+        raise AssertionError(f"Dialog smoke subprocess made no progress for {timeout_s} seconds: {message}")
+    else:
+        process.join(10.0)
+
+    # Capture any final diagnostic that the child queued immediately before it
+    # exited so construction failures still report their traceback.
     try:
         while True:
-            queued_message: object = message_queue.get_nowait()
+            queued_message = message_queue.get_nowait()
             if isinstance(queued_message, str):
                 message = queued_message
             else:
                 message = repr(queued_message)
     except queue.Empty:
-        pass
-
-    if process.is_alive():
-        process.terminate()
-        process.join(10.0)
-        raise AssertionError(f"Dialog smoke subprocess timed out after {timeout_s} seconds: {message}")
-    else:
         pass
 
     assert process.exitcode == 0, message
