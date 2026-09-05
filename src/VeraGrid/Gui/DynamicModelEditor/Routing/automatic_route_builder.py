@@ -22,12 +22,11 @@ from VeraGridEngine.enumerations import RoutingAxis, RoutingNodeKind, RoutingPor
 
 class AutomaticRouteBuilder:
     """
-    Rebuild the central continuation-to-continuation interval of one route.
+    Rebuild the smallest viable conflicting interval of one route.
 
     The builder never mutates the supplied graph. It preserves both mandatory
-    PORT -> STUB -> continuation attachments, searches a sparse orthogonal
-    visibility graph between both continuation elbows and returns one
-    independently validated candidate.
+    PORT -> STUB -> continuation attachments, expands the conflicting window
+    progressively, and returns the first independently validated candidate.
     Blocks remain hard obstacles. Wire crossings are attempted only after the
     strict search fails and then receive a dominant cost.
 
@@ -38,6 +37,7 @@ class AutomaticRouteBuilder:
 
     __slots__ = (
         "_graph",
+        "_reference_graph",
         "_connection_geometry",
         "_clearance",
         "_search_margin",
@@ -50,15 +50,18 @@ class AutomaticRouteBuilder:
             self,
             graph: RoutingGraph,
             connection_geometry: RoutingConnectionGeometry,
+            reference_graph: RoutingGraph | None = None,
     ) -> None:
         """
         Build one automatic route reconstruction request.
 
         :param graph: Existing route whose conflicting interval must be replaced.
         :param connection_geometry: Point-in-time block and wire obstacles.
+        :param reference_graph: Manual route snapshot used as persistence reference.
         :return: None.
         """
         self._graph: RoutingGraph = graph
+        self._reference_graph: RoutingGraph = graph.clone() if reference_graph is None else reference_graph.clone()
         self._connection_geometry: RoutingConnectionGeometry = connection_geometry
         self._clearance: float = 12.0
         self._search_margin: float = 250.0
@@ -104,74 +107,137 @@ class AutomaticRouteBuilder:
         if len(ordered_nodes) < 6:
             return None
         else:
-            # Ports, stubs and minimum continuations never participate in path
-            # finding. Automatic reconstruction replaces only the central route
-            # between the two continuation elbows.
-            first_conflict_index: int = 2
-            last_conflict_index: int = len(ordered_nodes) - 4
-            start_anchor: RoutingNode = ordered_nodes[2]
-            end_anchor: RoutingNode = ordered_nodes[-3]
-            if (start_anchor.get_kind() != RoutingNodeKind.ELBOW
-                    or end_anchor.get_kind() != RoutingNodeKind.ELBOW):
-                return None
-            else:
-                pass
-            search_start_anchor: RoutingNode = self._build_detached_continuation_anchor(
-                anchor_node=start_anchor,
-                temporary_node_id=-1,
-            )
-            search_end_anchor: RoutingNode = self._build_detached_continuation_anchor(
-                anchor_node=end_anchor,
-                temporary_node_id=-2,
-            )
-            local_geometry: RoutingConnectionGeometry = self._build_central_search_connection_geometry()
-            exterior_margins: tuple[float, ...] = self._build_exterior_search_margins(
-                start_position=search_start_anchor.get_position(),
-                end_position=search_end_anchor.get_position(),
-                local_geometry=local_geometry,
-            )
-            exterior_margin: float = exterior_margins[-1]
-            search_bounds: RoutingBounds = self._build_exterior_search_bounds(
-                start_position=search_start_anchor.get_position(),
-                end_position=search_end_anchor.get_position(),
-                local_geometry=local_geometry,
-                exterior_margin=exterior_margin,
-            )
+            pass
 
-            # Blocks define one immutable visibility topology. Wire crossings
-            # annotate its edges and are interpreted differently by the two
-            # searches without rebuilding any nodes or segments.
-            visibility_graph: RoutingGraph
-            visibility_start_node_id: int
-            visibility_end_node_id: int
-            visibility_graph, visibility_start_node_id, visibility_end_node_id = (
-                self._build_visibility_search_graph(
-                    start_anchor=search_start_anchor,
-                    end_anchor=search_end_anchor,
-                    local_geometry=local_geometry,
-                    search_bounds=search_bounds,
-                )
+        # Begin with the exact invalid segment interval. Each later window
+        # expands by one segment on both available sides, so the first valid
+        # result necessarily preserves the greatest possible manual prefix and
+        # suffix. Mandatory PORT -> STUB -> continuation attachments remain
+        # outside every search window.
+        replacement_intervals: tuple[tuple[int, int], ...] = self._build_progressive_replacement_intervals(
+            conflict_interval=conflict_interval,
+            ordered_node_count=len(ordered_nodes),
+        )
+        replacement_interval: tuple[int, int]
+        for replacement_interval in replacement_intervals:
+            interval_candidate: RoutingGraph | None = self._build_interval_alternative(
+                ordered_nodes=ordered_nodes,
+                first_conflict_index=replacement_interval[0],
+                last_conflict_index=replacement_interval[1],
             )
-            crossing_count_by_segment_id: dict[int, int] = self._build_crossing_count_lookup(
-                search_graph=visibility_graph,
-                local_geometry=local_geometry,
-            )
-            incoming_axis: RoutingAxis | None = self._graph.get_geometry().derive_axis(
-                start_x=ordered_nodes[1].get_position().get_x(),
-                start_y=ordered_nodes[1].get_position().get_y(),
-                end_x=ordered_nodes[2].get_position().get_x(),
-                end_y=ordered_nodes[2].get_position().get_y(),
-            )
-            outgoing_axis: RoutingAxis | None = self._graph.get_geometry().derive_axis(
-                start_x=ordered_nodes[-3].get_position().get_x(),
-                start_y=ordered_nodes[-3].get_position().get_y(),
-                end_x=ordered_nodes[-2].get_position().get_x(),
-                end_y=ordered_nodes[-2].get_position().get_y(),
-            )
-            if incoming_axis is None or outgoing_axis is None:
-                return None
+            if interval_candidate is not None:
+                return interval_candidate
             else:
                 pass
+        return None
+
+    def _build_progressive_replacement_intervals(
+            self,
+            conflict_interval: tuple[int, int],
+            ordered_node_count: int,
+    ) -> tuple[tuple[int, int], ...]:
+        """Build smallest-first central replacement windows.
+
+        :param conflict_interval: Inclusive invalid ordered-segment indexes.
+        :param ordered_node_count: Number of nodes in the prepared route.
+        :return: Unique replacement intervals ordered by preserved geometry.
+        """
+        minimum_segment_index: int = 2
+        maximum_segment_index: int = ordered_node_count - 4
+        first_conflict_index: int = max(minimum_segment_index, conflict_interval[0])
+        last_conflict_index: int = min(maximum_segment_index, conflict_interval[1])
+        if first_conflict_index > last_conflict_index:
+            # Conflicts confined to mandatory endpoint attachments cannot be
+            # repaired by replacing central geometry.
+            return tuple()
+        else:
+            pass
+
+        replacement_intervals: list[tuple[int, int]] = list()
+        current_first_index: int = first_conflict_index
+        current_last_index: int = last_conflict_index
+        replacement_intervals.append((current_first_index, current_last_index))
+        while current_first_index > minimum_segment_index or current_last_index < maximum_segment_index:
+            if current_first_index > minimum_segment_index:
+                current_first_index -= 1
+            else:
+                pass
+            if current_last_index < maximum_segment_index:
+                current_last_index += 1
+            else:
+                pass
+            replacement_intervals.append((current_first_index, current_last_index))
+        return tuple(replacement_intervals)
+
+    def _build_interval_alternative(
+            self,
+            ordered_nodes: list[RoutingNode],
+            first_conflict_index: int,
+            last_conflict_index: int,
+    ) -> RoutingGraph | None:
+        """Search one replacement while preserving nodes outside its interval.
+
+        :param ordered_nodes: Prepared route ordered from source to destination.
+        :param first_conflict_index: First segment replaced by this search.
+        :param last_conflict_index: Last segment replaced by this search.
+        :return: Best valid candidate for this interval, or ``None``.
+        """
+        start_anchor: RoutingNode = ordered_nodes[first_conflict_index]
+        end_anchor: RoutingNode = ordered_nodes[last_conflict_index + 1]
+        if start_anchor.get_kind() != RoutingNodeKind.ELBOW or end_anchor.get_kind() != RoutingNodeKind.ELBOW:
+            return None
+        else:
+            pass
+
+        search_start_anchor: RoutingNode = self._build_detached_continuation_anchor(
+            anchor_node=start_anchor,
+            temporary_node_id=-1,
+        )
+        search_end_anchor: RoutingNode = self._build_detached_continuation_anchor(
+            anchor_node=end_anchor,
+            temporary_node_id=-2,
+        )
+        local_geometry: RoutingConnectionGeometry = self._build_central_search_connection_geometry()
+        exterior_margins: tuple[float, ...] = self._build_exterior_search_margins(
+            start_position=search_start_anchor.get_position(),
+            end_position=search_end_anchor.get_position(),
+            local_geometry=local_geometry,
+        )
+        search_bounds: RoutingBounds = self._build_exterior_search_bounds(
+            start_position=search_start_anchor.get_position(),
+            end_position=search_end_anchor.get_position(),
+            local_geometry=local_geometry,
+            exterior_margin=exterior_margins[-1],
+        )
+        visibility_graph: RoutingGraph
+        visibility_start_node_id: int
+        visibility_end_node_id: int
+        visibility_graph, visibility_start_node_id, visibility_end_node_id = self._build_visibility_search_graph(
+            start_anchor=search_start_anchor,
+            end_anchor=search_end_anchor,
+            local_geometry=local_geometry,
+            search_bounds=search_bounds,
+        )
+        crossing_count_by_segment_id: dict[int, int] = self._build_crossing_count_lookup(
+            search_graph=visibility_graph,
+            local_geometry=local_geometry,
+        )
+        incoming_axis: RoutingAxis | None = self._graph.get_geometry().derive_axis(
+            start_x=ordered_nodes[first_conflict_index - 1].get_position().get_x(),
+            start_y=ordered_nodes[first_conflict_index - 1].get_position().get_y(),
+            end_x=start_anchor.get_position().get_x(),
+            end_y=start_anchor.get_position().get_y(),
+        )
+        outgoing_axis: RoutingAxis | None = self._graph.get_geometry().derive_axis(
+            start_x=end_anchor.get_position().get_x(),
+            start_y=end_anchor.get_position().get_y(),
+            end_x=ordered_nodes[last_conflict_index + 2].get_position().get_x(),
+            end_y=ordered_nodes[last_conflict_index + 2].get_position().get_y(),
+        )
+        if incoming_axis is None or outgoing_axis is None:
+            return None
+        else:
+            pass
 
         strict_visibility_candidate: RoutingGraph | None = self._build_valid_search_candidate(
             search_graph=visibility_graph,
@@ -204,8 +270,7 @@ class AutomaticRouteBuilder:
         else:
             pass
 
-        # Only the traversal policy changes for the graph-search fallback.
-        relaxed_candidate: RoutingGraph | None = self._build_valid_search_candidate(
+        relaxed_visibility_candidate: RoutingGraph | None = self._build_valid_search_candidate(
             search_graph=visibility_graph,
             start_node_id=visibility_start_node_id,
             end_node_id=visibility_end_node_id,
@@ -228,7 +293,7 @@ class AutomaticRouteBuilder:
             routing_policy=AutomaticRoutingPolicy.ALLOW_WIRE_CROSSINGS,
         )
         return self._select_best_candidate(
-            first_candidate=relaxed_candidate,
+            first_candidate=relaxed_visibility_candidate,
             second_candidate=relaxed_corridor_candidate,
         )
 
@@ -248,10 +313,10 @@ class AutomaticRouteBuilder:
         elif second_candidate is None:
             return first_candidate
         else:
-            first_cost: tuple[int, int, float] = self._build_complete_graph_cost(
+            first_cost: tuple[int, int, int, int, float, int, float] = self._build_complete_graph_cost(
                 graph=first_candidate,
             )
-            second_cost: tuple[int, int, float] = self._build_complete_graph_cost(
+            second_cost: tuple[int, int, int, int, float, int, float] = self._build_complete_graph_cost(
                 graph=second_candidate,
             )
             if first_cost <= second_cost:
@@ -286,7 +351,7 @@ class AutomaticRouteBuilder:
         # deterministic candidates. Comparing all valid levels is necessary to
         # let a farther two-bend route beat a nearer route with extra elbows.
         best_candidate: RoutingGraph | None = None
-        best_cost: tuple[int, int, float] | None = None
+        best_cost: tuple[int, int, int, int, float, int, float] | None = None
         exterior_margin: float
         for exterior_margin in exterior_margins:
             search_bounds: RoutingBounds = self._build_exterior_search_bounds(
@@ -305,7 +370,7 @@ class AutomaticRouteBuilder:
                 routing_policy=routing_policy,
             )
             if best_candidate_for_margin is not None:
-                candidate_cost: tuple[int, int, float] = self._build_complete_graph_cost(
+                candidate_cost: tuple[int, int, int, int, float, int, float] = self._build_complete_graph_cost(
                     graph=best_candidate_for_margin,
                 )
                 if best_cost is None or candidate_cost < best_cost:
@@ -367,7 +432,7 @@ class AutomaticRouteBuilder:
             )),
         )
         best_candidate: RoutingGraph | None = None
-        best_cost: tuple[int, int, float] | None = None
+        best_cost: tuple[int, int, int, int, float, int, float] | None = None
         corridor_points: list[RoutingPoint]
         for corridor_points in corridor_point_sets:
             normalized_points: list[RoutingPoint] = self._normalize_corridor_points(
@@ -383,7 +448,7 @@ class AutomaticRouteBuilder:
                     graph=candidate_graph,
                     routing_policy=routing_policy,
             ):
-                candidate_cost: tuple[int, int, float] = self._build_complete_graph_cost(
+                candidate_cost: tuple[int, int, int, int, float, int, float] = self._build_complete_graph_cost(
                     graph=candidate_graph,
                 )
                 if best_cost is None or candidate_cost < best_cost:
@@ -413,14 +478,17 @@ class AutomaticRouteBuilder:
                 pass
         return self._compress_collinear_points(path_points=distinct_points)
 
-    def _build_complete_graph_cost(self, graph: RoutingGraph) -> tuple[int, int, float]:
-        """Return crossings, node count and length for a complete candidate.
+    def _build_complete_graph_cost(
+            self,
+            graph: RoutingGraph,
+    ) -> tuple[int, int, int, int, float, int, float]:
+        """Return the central persistence-aware complete-route cost.
 
         :param graph: Valid candidate route.
-        :return: Lexicographically ordered route cost.
+        :return: Crossings, removed elbows, created elbows, moved elbows,
+            displacement, bends and total length.
         """
         crossing_count: int = 0
-        node_count: int = len(graph.get_nodes())
         total_length: float = 0.0
         constraint_engine: RoutingConstraintEngine = RoutingConstraintEngine(
             graph=graph,
@@ -456,7 +524,74 @@ class AutomaticRouteBuilder:
                 )
             else:
                 pass
-        return crossing_count, node_count, total_length
+        removed_elbow_count: int
+        created_elbow_count: int
+        moved_elbow_count: int
+        total_elbow_displacement: float
+        (removed_elbow_count,
+         created_elbow_count,
+         moved_elbow_count,
+         total_elbow_displacement) = self._build_persistence_cost(graph=graph)
+        bend_count: int = max(0, len(graph.get_ordered_nodes()) - 2)
+        return (
+            crossing_count,
+            removed_elbow_count,
+            created_elbow_count,
+            moved_elbow_count,
+            total_elbow_displacement,
+            bend_count,
+            total_length,
+        )
+
+    def _build_persistence_cost(self, graph: RoutingGraph) -> tuple[int, int, int, float]:
+        """Measure changes to the reference route's manual elbows.
+
+        :param graph: Complete candidate graph being compared.
+        :return: Removed elbows, created elbows, moved elbows and displacement.
+        """
+        reference_elbows_by_id: dict[int, RoutingNode] = dict()
+        candidate_elbows_by_id: dict[int, RoutingNode] = dict()
+        reference_node: RoutingNode
+        candidate_node: RoutingNode
+        for reference_node in self._reference_graph.get_ordered_nodes():
+            if reference_node.get_kind() == RoutingNodeKind.ELBOW:
+                reference_elbows_by_id[reference_node.get_node_id()] = reference_node
+            else:
+                pass
+        for candidate_node in graph.get_ordered_nodes():
+            if candidate_node.get_kind() == RoutingNodeKind.ELBOW:
+                candidate_elbows_by_id[candidate_node.get_node_id()] = candidate_node
+            else:
+                pass
+
+        removed_elbow_count: int = 0
+        created_elbow_count: int = 0
+        moved_elbow_count: int = 0
+        total_displacement: float = 0.0
+        reference_node_id: int
+        for reference_node_id, reference_node in reference_elbows_by_id.items():
+            matching_candidate_node: RoutingNode | None = candidate_elbows_by_id.get(reference_node_id, None)
+            if matching_candidate_node is None:
+                removed_elbow_count += 1
+            else:
+                displacement: float = abs(
+                    matching_candidate_node.get_position().get_x() - reference_node.get_position().get_x()
+                ) + abs(
+                    matching_candidate_node.get_position().get_y() - reference_node.get_position().get_y()
+                )
+                if displacement > 1.0e-9:
+                    moved_elbow_count += 1
+                    total_displacement += displacement
+                else:
+                    pass
+
+        candidate_node_id: int
+        for candidate_node_id in candidate_elbows_by_id:
+            if candidate_node_id in reference_elbows_by_id:
+                pass
+            else:
+                created_elbow_count += 1
+        return removed_elbow_count, created_elbow_count, moved_elbow_count, total_displacement
 
     def _build_exterior_search_bounds(
             self,
@@ -554,6 +689,7 @@ class AutomaticRouteBuilder:
             last_conflict_index: int,
             incoming_axis: RoutingAxis,
             outgoing_axis: RoutingAxis,
+            prefer_persistence: bool = True,
     ) -> RoutingGraph | None:
         """
         Search, splice and validate one candidate under a selected policy.
@@ -568,42 +704,124 @@ class AutomaticRouteBuilder:
         :param last_conflict_index: Last central segment to replace.
         :param incoming_axis: Axis entering the preserved source continuation.
         :param outgoing_axis: Axis leaving the preserved destination continuation.
+        :param prefer_persistence: Whether unchanged reference geometry precedes bends and length.
         :return: Fully validated candidate or ``None``.
         """
-        replacement_points: list[RoutingPoint] | None = self._search_replacement_points(
-            search_graph=search_graph,
-            start_node_id=start_node_id,
-            end_node_id=end_node_id,
-            crossing_count_by_segment_id=crossing_count_by_segment_id,
-            routing_policy=routing_policy,
-            incoming_axis=incoming_axis,
-            outgoing_axis=outgoing_axis,
-        )
+        replacement_points: list[RoutingPoint] | None
+        replacement_reference_node_ids: list[int | None] | None
+        if prefer_persistence:
+            interval_reference_elbows: list[RoutingNode] = self._build_reference_interval_elbows(
+                ordered_nodes=ordered_nodes,
+                first_conflict_index=first_conflict_index,
+                last_conflict_index=last_conflict_index,
+            )
+            replacement_points, replacement_reference_node_ids = self._search_reference_replacement_points(
+                search_graph=search_graph,
+                start_node_id=start_node_id,
+                end_node_id=end_node_id,
+                crossing_count_by_segment_id=crossing_count_by_segment_id,
+                routing_policy=routing_policy,
+                incoming_axis=incoming_axis,
+                outgoing_axis=outgoing_axis,
+                reference_nodes=interval_reference_elbows,
+            )
+        else:
+            replacement_points = self._search_replacement_points(
+                search_graph=search_graph,
+                start_node_id=start_node_id,
+                end_node_id=end_node_id,
+                crossing_count_by_segment_id=crossing_count_by_segment_id,
+                routing_policy=routing_policy,
+                incoming_axis=incoming_axis,
+                outgoing_axis=outgoing_axis,
+                prefer_persistence=False,
+            )
+            replacement_reference_node_ids = None
+
         if replacement_points is None:
-            return None
+            if prefer_persistence:
+                # Keep the former unconstrained objective as the final search
+                # fallback. It uses the same visibility graph and policies,
+                # so no obstacle or crossing rule is weakened.
+                return self._build_valid_search_candidate(
+                    search_graph=search_graph,
+                    start_node_id=start_node_id,
+                    end_node_id=end_node_id,
+                    crossing_count_by_segment_id=crossing_count_by_segment_id,
+                    routing_policy=routing_policy,
+                    ordered_nodes=ordered_nodes,
+                    first_conflict_index=first_conflict_index,
+                    last_conflict_index=last_conflict_index,
+                    incoming_axis=incoming_axis,
+                    outgoing_axis=outgoing_axis,
+                    prefer_persistence=False,
+                )
+            else:
+                return None
         else:
             candidate_graph: RoutingGraph | None = self._splice_replacement_points(
                 ordered_nodes=ordered_nodes,
                 first_conflict_index=first_conflict_index,
                 last_conflict_index=last_conflict_index,
                 replacement_points=replacement_points,
+                replacement_reference_node_ids=replacement_reference_node_ids,
             )
 
         if candidate_graph is None:
             return None
         elif self._is_graph_valid(graph=candidate_graph, routing_policy=routing_policy):
             return candidate_graph
+        elif prefer_persistence:
+            # Persistence is an interaction preference rather than a hard
+            # constraint. Retry the same graph with the former free objective
+            # only when the preferred path fails complete validation.
+            return self._build_valid_search_candidate(
+                search_graph=search_graph,
+                start_node_id=start_node_id,
+                end_node_id=end_node_id,
+                crossing_count_by_segment_id=crossing_count_by_segment_id,
+                routing_policy=routing_policy,
+                ordered_nodes=ordered_nodes,
+                first_conflict_index=first_conflict_index,
+                last_conflict_index=last_conflict_index,
+                incoming_axis=incoming_axis,
+                outgoing_axis=outgoing_axis,
+                prefer_persistence=False,
+            )
         else:
             return None
 
+    def _build_reference_interval_elbows(
+            self,
+            ordered_nodes: list[RoutingNode],
+            first_conflict_index: int,
+            last_conflict_index: int,
+    ) -> list[RoutingNode]:
+        """Resolve replaceable elbow identities against the pre-edit snapshot.
+
+        :param ordered_nodes: Current prepared route nodes defining the interval.
+        :param first_conflict_index: First replaced segment index.
+        :param last_conflict_index: Last replaced segment index.
+        :return: Ordered detached reference elbows inside the interval.
+        """
+        reference_elbows: list[RoutingNode] = list()
+        current_node: RoutingNode
+        for current_node in ordered_nodes[first_conflict_index + 1:last_conflict_index + 1]:
+            reference_node: RoutingNode | None = self._reference_graph.get_node(current_node.get_node_id())
+            if reference_node is not None and reference_node.get_kind() == RoutingNodeKind.ELBOW:
+                reference_elbows.append(reference_node)
+            else:
+                pass
+        return reference_elbows
+
     def _prepare_graph_with_mandatory_stubs(self) -> RoutingGraph | None:
         """
-        Clone the route and synchronize mandatory stubs and continuations.
+        Clone the route and synchronize its mandatory endpoint stubs.
 
         The route requires one explicit STUB and one continuation ELBOW next to
-        each PORT. The automatic builder does not invent missing topology; it
-        recalculates those existing positions through the shared
-        :class:`RoutingGeometry` policy before any search begins.
+        each PORT. The automatic builder does not invent missing topology. It
+        recalculates each stub through the shared :class:`RoutingGeometry`
+        policy while preserving the existing continuation elbows as anchors.
 
         :return: Detached graph with synchronized endpoint geometry, or
             ``None`` when the required topology is unavailable.
@@ -648,18 +866,12 @@ class AutomaticRouteBuilder:
             port_position=destination_port.get_position(),
             port_side=destination_port_side,
         )
-        source_continuation_position: RoutingPoint = prepared_graph.get_geometry().build_stub_continuation_point(
-            stub_position=source_stub_position,
-            port_side=source_port_side,
-        )
-        destination_continuation_position: RoutingPoint = prepared_graph.get_geometry().build_stub_continuation_point(
-            stub_position=destination_stub_position,
-            port_side=destination_port_side,
-        )
+        # Port positions determine their mandatory stubs, but existing
+        # continuation elbows remain manual anchors. Moving both continuations
+        # unconditionally would alter valid route geometry before the actual
+        # conflicting interval had even been identified.
         source_stub.set_position(source_stub_position)
         destination_stub.set_position(destination_stub_position)
-        source_continuation.set_position(source_continuation_position)
-        destination_continuation.set_position(destination_continuation_position)
         return prepared_graph
 
     def _build_detached_continuation_anchor(
@@ -684,9 +896,8 @@ class AutomaticRouteBuilder:
         """
         Return the first and last invalid ordered segment indexes.
 
-        The interval is used to decide whether reconstruction is required. The
-        actual search still spans the complete central route between both
-        mandatory continuation elbows.
+        The interval is the first replacement window. Later searches expand it
+        progressively only when the smaller preserved route has no solution.
 
         :return: Inclusive conflict interval or ``None`` for an already valid route.
         """
@@ -757,6 +968,7 @@ class AutomaticRouteBuilder:
             routing_policy: AutomaticRoutingPolicy,
             incoming_axis: RoutingAxis,
             outgoing_axis: RoutingAxis,
+            prefer_persistence: bool,
     ) -> list[RoutingPoint] | None:
         """
         Search one previously materialized sparse visibility graph.
@@ -768,6 +980,7 @@ class AutomaticRouteBuilder:
         :param routing_policy: Strict or crossing-penalized search policy.
         :param incoming_axis: Axis of the preserved segment before the search.
         :param outgoing_axis: Axis of the preserved segment after the search.
+        :param prefer_persistence: Whether reference geometry has priority over bends and length.
         :return: Compressed replacement points or ``None``.
         """
         path_node_ids: list[int] | None = self._run_lexicographic_search(
@@ -778,6 +991,7 @@ class AutomaticRouteBuilder:
             routing_policy=routing_policy,
             incoming_axis=incoming_axis,
             outgoing_axis=outgoing_axis,
+            prefer_persistence=prefer_persistence,
         )
         if path_node_ids is None:
             return None
@@ -791,6 +1005,351 @@ class AutomaticRouteBuilder:
                 else:
                     return None
             return self._compress_collinear_points(path_points=path_points)
+
+    def _search_reference_replacement_points(
+            self,
+            search_graph: RoutingGraph,
+            start_node_id: int,
+            end_node_id: int,
+            crossing_count_by_segment_id: dict[int, int],
+            routing_policy: AutomaticRoutingPolicy,
+            incoming_axis: RoutingAxis,
+            outgoing_axis: RoutingAxis,
+            reference_nodes: list[RoutingNode],
+    ) -> tuple[list[RoutingPoint] | None, list[int | None] | None]:
+        """Search while explicitly matching bends to original elbow identities.
+
+        :param search_graph: Reusable block-safe visibility graph.
+        :param start_node_id: Search start anchor identifier.
+        :param end_node_id: Search end anchor identifier.
+        :param crossing_count_by_segment_id: Foreign-wire crossings by edge.
+        :param routing_policy: Strict or crossing-permitted policy.
+        :param incoming_axis: Preserved axis entering the replacement interval.
+        :param outgoing_axis: Preserved axis leaving the replacement interval.
+        :param reference_nodes: Original nodes strictly inside the replacement interval.
+        :return: Replacement points and their selected reference elbow identifiers.
+        """
+        reference_elbows: list[RoutingNode] = list()
+        reference_node: RoutingNode
+        for reference_node in reference_nodes:
+            if reference_node.get_kind() == RoutingNodeKind.ELBOW:
+                reference_elbows.append(reference_node)
+            else:
+                pass
+
+        incoming_axis_code: int = self._build_axis_code(axis=incoming_axis)
+        outgoing_axis_code: int = self._build_axis_code(axis=outgoing_axis)
+        start_state: tuple[int, int, int] = (start_node_id, incoming_axis_code, 0)
+        initial_cost: tuple[int, int, int, int, float, int, float] = (0, 0, 0, 0, 0.0, 0, 0.0)
+        distances: dict[tuple[int, int, int], tuple[int, int, int, int, float, int, float]] = dict(
+            ((start_state, initial_cost),)
+        )
+        previous_states: dict[tuple[int, int, int], tuple[int, int, int] | None] = dict(
+            ((start_state, None),)
+        )
+        assigned_reference_by_state: dict[tuple[int, int, int], tuple[int, int | None] | None] = dict(
+            ((start_state, None),)
+        )
+        queue: list[tuple[int, int, int, int, float, int, float, int, int, int]] = list((
+            (0, 0, 0, 0, 0.0, 0, 0.0, start_node_id, incoming_axis_code, 0),
+        ))
+
+        while len(queue) > 0:
+            queue_entry: tuple[int, int, int, int, float, int, float, int, int, int] = heapq.heappop(queue)
+            current_cost: tuple[int, int, int, int, float, int, float] = queue_entry[:7]
+            current_state: tuple[int, int, int] = (queue_entry[7], queue_entry[8], queue_entry[9])
+            known_cost: tuple[int, int, int, int, float, int, float] | None = distances.get(
+                current_state,
+                None,
+            )
+            if known_cost is None or current_cost > known_cost:
+                pass
+            elif current_state[0] == end_node_id:
+                pass
+            else:
+                adjacent_segment: RoutingSegment
+                for adjacent_segment in search_graph.adjacent_segments(current_state[0]):
+                    if adjacent_segment.get_start_node_id() == current_state[0]:
+                        neighbour_node_id: int = adjacent_segment.get_end_node_id()
+                    else:
+                        neighbour_node_id = adjacent_segment.get_start_node_id()
+                    self._relax_reference_search_edge(
+                        search_graph=search_graph,
+                        route_segment=adjacent_segment,
+                        current_state=current_state,
+                        neighbour_node_id=neighbour_node_id,
+                        current_cost=current_cost,
+                        crossing_count_by_segment_id=crossing_count_by_segment_id,
+                        routing_policy=routing_policy,
+                        start_node_id=start_node_id,
+                        reference_elbows=reference_elbows,
+                        distances=distances,
+                        previous_states=previous_states,
+                        assigned_reference_by_state=assigned_reference_by_state,
+                        queue=queue,
+                    )
+
+        final_state: tuple[int, int, int] | None = self._select_reference_final_state(
+            end_node_id=end_node_id,
+            outgoing_axis_code=outgoing_axis_code,
+            reference_elbow_count=len(reference_elbows),
+            distances=distances,
+        )
+        if final_state is None:
+            return None, None
+        else:
+            return self._reconstruct_reference_search_path(
+                search_graph=search_graph,
+                final_state=final_state,
+                previous_states=previous_states,
+                assigned_reference_by_state=assigned_reference_by_state,
+            )
+
+    def _relax_reference_search_edge(
+            self,
+            search_graph: RoutingGraph,
+            route_segment: RoutingSegment,
+            current_state: tuple[int, int, int],
+            neighbour_node_id: int,
+            current_cost: tuple[int, int, int, int, float, int, float],
+            crossing_count_by_segment_id: dict[int, int],
+            routing_policy: AutomaticRoutingPolicy,
+            start_node_id: int,
+            reference_elbows: list[RoutingNode],
+            distances: dict[tuple[int, int, int], tuple[int, int, int, int, float, int, float]],
+            previous_states: dict[tuple[int, int, int], tuple[int, int, int] | None],
+            assigned_reference_by_state: dict[tuple[int, int, int], tuple[int, int | None] | None],
+            queue: list[tuple[int, int, int, int, float, int, float, int, int, int]],
+    ) -> None:
+        """Relax one visibility edge for every valid reference correspondence.
+
+        :param search_graph: Candidate visibility graph.
+        :param route_segment: Edge being traversed.
+        :param current_state: Node, arrival axis and consumed-reference count.
+        :param neighbour_node_id: Candidate neighbour identifier.
+        :param current_cost: Accumulated persistence-aware cost.
+        :param crossing_count_by_segment_id: Foreign-wire crossings by edge.
+        :param routing_policy: Strict or crossing-permitted policy.
+        :param start_node_id: Preserved start anchor identifier.
+        :param reference_elbows: Ordered original elbows inside the interval.
+        :param distances: Mutable best-cost lookup.
+        :param previous_states: Mutable predecessor lookup.
+        :param assigned_reference_by_state: Mutable bend-correspondence lookup.
+        :param queue: Mutable priority queue.
+        :return: None.
+        """
+        current_node: RoutingNode | None = search_graph.get_node(current_state[0])
+        neighbour_node: RoutingNode | None = search_graph.get_node(neighbour_node_id)
+        crossing_count: int | None = crossing_count_by_segment_id.get(route_segment.get_segment_id(), None)
+        if current_node is None or neighbour_node is None or crossing_count is None:
+            return
+        elif routing_policy == AutomaticRoutingPolicy.STRICT and crossing_count > 0:
+            return
+        else:
+            pass
+
+        segment_axis: RoutingAxis | None = search_graph.get_segment_axis(route_segment.get_segment_id())
+        if segment_axis is None:
+            return
+        else:
+            axis_code: int = self._build_axis_code(axis=segment_axis)
+        segment_length: float = abs(
+            current_node.get_position().get_x() - neighbour_node.get_position().get_x()
+        ) + abs(
+            current_node.get_position().get_y() - neighbour_node.get_position().get_y()
+        )
+        creates_bend: bool = current_state[1] != axis_code
+        if not creates_bend or current_state[0] == start_node_id:
+            self._store_reference_search_transition(
+                next_state=(neighbour_node_id, axis_code, current_state[2]),
+                previous_state=current_state,
+                assignment=None,
+                candidate_cost=(
+                    current_cost[0] + crossing_count,
+                    current_cost[1],
+                    current_cost[2],
+                    current_cost[3],
+                    current_cost[4],
+                    current_cost[5] + (1 if creates_bend else 0),
+                    current_cost[6] + segment_length,
+                ),
+                distances=distances,
+                previous_states=previous_states,
+                assigned_reference_by_state=assigned_reference_by_state,
+                queue=queue,
+            )
+        else:
+            # A new bend may either be a genuinely created elbow or correspond
+            # to any later original elbow. Advancing monotonically preserves
+            # route order and charges every skipped identity as removed.
+            self._store_reference_search_transition(
+                next_state=(neighbour_node_id, axis_code, current_state[2]),
+                previous_state=current_state,
+                assignment=(current_state[0], None),
+                candidate_cost=(
+                    current_cost[0] + crossing_count,
+                    current_cost[1],
+                    current_cost[2] + 1,
+                    current_cost[3],
+                    current_cost[4],
+                    current_cost[5] + 1,
+                    current_cost[6] + segment_length,
+                ),
+                distances=distances,
+                previous_states=previous_states,
+                assigned_reference_by_state=assigned_reference_by_state,
+                queue=queue,
+            )
+            reference_index: int
+            for reference_index in range(current_state[2], len(reference_elbows)):
+                reference_elbow: RoutingNode = reference_elbows[reference_index]
+                displacement: float = abs(
+                    current_node.get_position().get_x() - reference_elbow.get_position().get_x()
+                ) + abs(
+                    current_node.get_position().get_y() - reference_elbow.get_position().get_y()
+                )
+                moved_count: int = 1 if displacement > 1.0e-9 else 0
+                self._store_reference_search_transition(
+                    next_state=(neighbour_node_id, axis_code, reference_index + 1),
+                    previous_state=current_state,
+                    assignment=(current_state[0], reference_elbow.get_node_id()),
+                    candidate_cost=(
+                        current_cost[0] + crossing_count,
+                        current_cost[1] + reference_index - current_state[2],
+                        current_cost[2],
+                        current_cost[3] + moved_count,
+                        current_cost[4] + displacement,
+                        current_cost[5] + 1,
+                        current_cost[6] + segment_length,
+                    ),
+                    distances=distances,
+                    previous_states=previous_states,
+                    assigned_reference_by_state=assigned_reference_by_state,
+                    queue=queue,
+                )
+
+    def _store_reference_search_transition(
+            self,
+            next_state: tuple[int, int, int],
+            previous_state: tuple[int, int, int],
+            assignment: tuple[int, int | None] | None,
+            candidate_cost: tuple[int, int, int, int, float, int, float],
+            distances: dict[tuple[int, int, int], tuple[int, int, int, int, float, int, float]],
+            previous_states: dict[tuple[int, int, int], tuple[int, int, int] | None],
+            assigned_reference_by_state: dict[tuple[int, int, int], tuple[int, int | None] | None],
+            queue: list[tuple[int, int, int, int, float, int, float, int, int, int]],
+    ) -> None:
+        """Store one better reference-aware Dijkstra transition.
+
+        :param next_state: Reached node, axis and reference progress.
+        :param previous_state: State from which the edge was traversed.
+        :param assignment: Bend node and selected original UID, when applicable.
+        :param candidate_cost: Persistence-aware candidate cost.
+        :param distances: Mutable best-cost lookup.
+        :param previous_states: Mutable predecessor lookup.
+        :param assigned_reference_by_state: Mutable bend-correspondence lookup.
+        :param queue: Mutable priority queue.
+        :return: None.
+        """
+        existing_cost: tuple[int, int, int, int, float, int, float] | None = distances.get(next_state, None)
+        if existing_cost is None or candidate_cost < existing_cost:
+            distances[next_state] = candidate_cost
+            previous_states[next_state] = previous_state
+            assigned_reference_by_state[next_state] = assignment
+            heapq.heappush(queue, candidate_cost + next_state)
+        else:
+            pass
+
+    def _select_reference_final_state(
+            self,
+            end_node_id: int,
+            outgoing_axis_code: int,
+            reference_elbow_count: int,
+            distances: dict[tuple[int, int, int], tuple[int, int, int, int, float, int, float]],
+    ) -> tuple[int, int, int] | None:
+        """Select the complete reference-aware destination state.
+
+        :param end_node_id: Search destination identifier.
+        :param outgoing_axis_code: Preserved axis after the replacement interval.
+        :param reference_elbow_count: Number of replaceable original elbows.
+        :param distances: Best internal costs by correspondence state.
+        :return: Best destination state including remaining removals and exit bend.
+        """
+        best_state: tuple[int, int, int] | None = None
+        best_cost: tuple[int, int, int, int, float, int, float] | None = None
+        candidate_state: tuple[int, int, int]
+        internal_cost: tuple[int, int, int, int, float, int, float]
+        for candidate_state, internal_cost in distances.items():
+            if candidate_state[0] != end_node_id:
+                pass
+            else:
+                remaining_removals: int = reference_elbow_count - candidate_state[2]
+                exit_bend_count: int = 0 if candidate_state[1] == outgoing_axis_code else 1
+                complete_cost: tuple[int, int, int, int, float, int, float] = (
+                    internal_cost[0],
+                    internal_cost[1] + remaining_removals,
+                    internal_cost[2],
+                    internal_cost[3],
+                    internal_cost[4],
+                    internal_cost[5] + exit_bend_count,
+                    internal_cost[6],
+                )
+                if best_cost is None or complete_cost < best_cost:
+                    best_state = candidate_state
+                    best_cost = complete_cost
+                else:
+                    pass
+        return best_state
+
+    def _reconstruct_reference_search_path(
+            self,
+            search_graph: RoutingGraph,
+            final_state: tuple[int, int, int],
+            previous_states: dict[tuple[int, int, int], tuple[int, int, int] | None],
+            assigned_reference_by_state: dict[tuple[int, int, int], tuple[int, int | None] | None],
+    ) -> tuple[list[RoutingPoint] | None, list[int | None] | None]:
+        """Reconstruct points and explicit elbow identities from one search.
+
+        :param search_graph: Visibility graph owning the path nodes.
+        :param final_state: Selected destination state.
+        :param previous_states: Search predecessor lookup.
+        :param assigned_reference_by_state: Bend assignments stored by transitions.
+        :return: Compressed points and parallel reference identifiers.
+        """
+        reversed_states: list[tuple[int, int, int]] = list()
+        current_state: tuple[int, int, int] | None = final_state
+        while current_state is not None:
+            reversed_states.append(current_state)
+            current_state = previous_states.get(current_state, None)
+        reversed_states.reverse()
+
+        reference_uid_by_search_node_id: dict[int, int | None] = dict()
+        path_state: tuple[int, int, int]
+        for path_state in reversed_states:
+            assignment: tuple[int, int | None] | None = assigned_reference_by_state.get(path_state, None)
+            if assignment is not None:
+                reference_uid_by_search_node_id[assignment[0]] = assignment[1]
+            else:
+                pass
+
+        path_points: list[RoutingPoint] = list()
+        path_reference_ids: list[int | None] = list()
+        state_index: int
+        for state_index, path_state in enumerate(reversed_states):
+            path_node: RoutingNode | None = search_graph.get_node(path_state[0])
+            if path_node is None:
+                return None, None
+            elif state_index == 0 or state_index == len(reversed_states) - 1:
+                path_points.append(path_node.get_position().copy())
+                path_reference_ids.append(None)
+            else:
+                next_state: tuple[int, int, int] = reversed_states[state_index + 1]
+                if path_state[1] == next_state[1]:
+                    pass
+                else:
+                    path_points.append(path_node.get_position().copy())
+                    path_reference_ids.append(reference_uid_by_search_node_id.get(path_state[0], None))
+        return path_points, path_reference_ids
 
     def _build_crossing_count_lookup(
             self,
@@ -959,6 +1518,21 @@ class AutomaticRouteBuilder:
             seed_coordinates.add((right_x, top_y))
             seed_coordinates.add((right_x, bottom_y))
 
+        # Existing manual elbows are first-class visibility waypoints. Keeping
+        # them available lets the search retain user-authored geometry instead
+        # of seeing only obstacle corners and synthetic projections.
+        reference_node: RoutingNode
+        for reference_node in self._reference_graph.get_ordered_nodes():
+            if reference_node.get_kind() == RoutingNodeKind.ELBOW:
+                reference_x: float = reference_node.get_position().get_x()
+                reference_y: float = reference_node.get_position().get_y()
+                if reference_x in x_coordinates and reference_y in y_coordinates:
+                    seed_coordinates.add((reference_x, reference_y))
+                else:
+                    pass
+            else:
+                pass
+
         # Project every meaningful coordinate onto the anchors and exterior
         # frame. Foreign wires remain edge costs and deliberately contribute no
         # endpoint coordinates to this initial visibility topology.
@@ -1014,6 +1588,25 @@ class AutomaticRouteBuilder:
             minimum_search_y,
             maximum_search_y,
         ))
+
+        # Reference elbow axes are sparse and normally few. Adding them makes
+        # exact manual positions reachable without recreating a Cartesian grid
+        # from every foreign wire coordinate.
+        reference_node: RoutingNode
+        for reference_node in self._reference_graph.get_ordered_nodes():
+            if reference_node.get_kind() == RoutingNodeKind.ELBOW:
+                reference_x: float = reference_node.get_position().get_x()
+                reference_y: float = reference_node.get_position().get_y()
+                if minimum_search_x <= reference_x <= maximum_search_x:
+                    x_values.add(reference_x)
+                else:
+                    pass
+                if minimum_search_y <= reference_y <= maximum_search_y:
+                    y_values.add(reference_y)
+                else:
+                    pass
+            else:
+                pass
         block_geometry: RoutingBlockGeometry
         endpoint_owner: RoutingBlockGeometry | None
         for endpoint_owner in (local_geometry.get_source_owner(), local_geometry.get_destination_owner()):
@@ -1366,13 +1959,16 @@ class AutomaticRouteBuilder:
             routing_policy: AutomaticRoutingPolicy,
             incoming_axis: RoutingAxis,
             outgoing_axis: RoutingAxis,
+            prefer_persistence: bool,
     ) -> list[int] | None:
         """
-        Run Dijkstra using ``(crossings, bends, length)`` tuple ordering.
+        Run Dijkstra with optional manual-geometry persistence priority.
 
         Python compares tuples lexicographically. Consequently, no reduction
         in bends or length can compensate for one additional crossing, and no
-        reduction in length can compensate for one additional bend.
+        reduction in length can compensate for one additional bend. During
+        the preferred phase, leaving reference geometry is ordered before
+        bends; the final fallback disables that extra component.
 
         :param search_graph: Candidate-node graph used for geometry queries.
         :param start_node_id: Search source node identifier.
@@ -1381,39 +1977,45 @@ class AutomaticRouteBuilder:
         :param routing_policy: Strict or crossing-permitted search policy.
         :param incoming_axis: Axis entering the source continuation anchor.
         :param outgoing_axis: Axis leaving the destination continuation anchor.
+        :param prefer_persistence: Whether reference-edge changes precede bends.
         :return: Ordered path node identifiers or ``None``.
         """
         incoming_axis_code: int = self._build_axis_code(axis=incoming_axis)
         outgoing_axis_code: int = self._build_axis_code(axis=outgoing_axis)
         start_state: tuple[int, int] = (start_node_id, incoming_axis_code)
-        initial_cost: tuple[int, int, float] = (0, 0, 0.0)
-        distances: dict[tuple[int, int], tuple[int, int, float]] = dict(((start_state, initial_cost),))
+        initial_cost: tuple[int, int, int, float] = (0, 0, 0, 0.0)
+        distances: dict[tuple[int, int], tuple[int, int, int, float]] = dict(((start_state, initial_cost),))
         previous_states: dict[tuple[int, int], tuple[int, int] | None] = dict(((start_state, None),))
-        queue: list[tuple[int, int, float, int, int]] = list((
-            (0, 0, 0.0, start_node_id, incoming_axis_code),
+        queue: list[tuple[int, int, int, float, int, int]] = list((
+            (0, 0, 0, 0.0, start_node_id, incoming_axis_code),
         ))
 
         # Both possible arrival axes must be evaluated because the final bend
         # belongs to the complete route even though it lies outside the search.
         while len(queue) > 0:
             current_crossing_count: int
+            current_geometry_change_count: int
             current_bend_count: int
             current_length: float
             current_node_id: int
             previous_axis_code: int
-            current_crossing_count, current_bend_count, current_length, current_node_id, previous_axis_code = (
-                heapq.heappop(queue)
-            )
+            (current_crossing_count,
+             current_geometry_change_count,
+             current_bend_count,
+             current_length,
+             current_node_id,
+             previous_axis_code) = heapq.heappop(queue)
             current_state: tuple[int, int] = (current_node_id, previous_axis_code)
-            current_cost: tuple[int, int, float] = (
+            current_cost: tuple[int, int, int, float] = (
                 current_crossing_count,
+                current_geometry_change_count,
                 current_bend_count,
                 current_length,
             )
             # The heap and distance lookup store the same ordered tuple. This
             # keeps Dijkstra's stale-entry check consistent with relaxation and
             # avoids converting priorities into an imprecise scalar penalty.
-            known_cost: tuple[int, int, float] | None = distances.get(current_state, None)
+            known_cost: tuple[int, int, int, float] | None = distances.get(current_state, None)
             if known_cost is None or current_cost > known_cost:
                 pass
             elif current_node_id == end_node_id:
@@ -1434,6 +2036,7 @@ class AutomaticRouteBuilder:
                         current_cost=current_cost,
                         crossing_count_by_segment_id=crossing_count_by_segment_id,
                         routing_policy=routing_policy,
+                        prefer_persistence=prefer_persistence,
                         distances=distances,
                         previous_states=previous_states,
                         queue=queue,
@@ -1467,7 +2070,7 @@ class AutomaticRouteBuilder:
             self,
             end_node_id: int,
             outgoing_axis_code: int,
-            distances: dict[tuple[int, int], tuple[int, int, float]],
+            distances: dict[tuple[int, int], tuple[int, int, int, float]],
     ) -> tuple[int, int] | None:
         """Select the destination arrival including its preserved exit bend.
 
@@ -1477,21 +2080,22 @@ class AutomaticRouteBuilder:
         :return: Best complete-route destination state, or ``None``.
         """
         best_state: tuple[int, int] | None = None
-        best_cost: tuple[int, int, float] | None = None
+        best_cost: tuple[int, int, int, float] | None = None
         arrival_axis_code: int
         for arrival_axis_code in (1, 2):
             candidate_state: tuple[int, int] = (end_node_id, arrival_axis_code)
-            internal_cost: tuple[int, int, float] | None = distances.get(candidate_state, None)
+            internal_cost: tuple[int, int, int, float] | None = distances.get(candidate_state, None)
             if internal_cost is not None:
                 exit_bend_count: int
                 if arrival_axis_code == outgoing_axis_code:
                     exit_bend_count = 0
                 else:
                     exit_bend_count = 1
-                complete_cost: tuple[int, int, float] = (
+                complete_cost: tuple[int, int, int, float] = (
                     internal_cost[0],
-                    internal_cost[1] + exit_bend_count,
-                    internal_cost[2],
+                    internal_cost[1],
+                    internal_cost[2] + exit_bend_count,
+                    internal_cost[3],
                 )
                 if best_cost is None or complete_cost < best_cost:
                     best_state = candidate_state
@@ -1509,12 +2113,13 @@ class AutomaticRouteBuilder:
             current_node_id: int,
             neighbour_node_id: int,
             previous_axis_code: int,
-            current_cost: tuple[int, int, float],
+            current_cost: tuple[int, int, int, float],
             crossing_count_by_segment_id: dict[int, int],
             routing_policy: AutomaticRoutingPolicy,
-            distances: dict[tuple[int, int], tuple[int, int, float]],
+            prefer_persistence: bool,
+            distances: dict[tuple[int, int], tuple[int, int, int, float]],
             previous_states: dict[tuple[int, int], tuple[int, int] | None],
-            queue: list[tuple[int, int, float, int, int]],
+            queue: list[tuple[int, int, int, float, int, int]],
     ) -> None:
         """
         Validate and relax one candidate Dijkstra edge.
@@ -1524,9 +2129,10 @@ class AutomaticRouteBuilder:
         :param current_node_id: Current search node identifier.
         :param neighbour_node_id: Candidate neighbour identifier.
         :param previous_axis_code: Axis code used to reach the current node.
-        :param current_cost: Accumulated crossings, bends and length.
+        :param current_cost: Accumulated crossings, changes, bends and length.
         :param crossing_count_by_segment_id: Cached foreign-wire crossings.
         :param routing_policy: Strict or crossing-permitted policy.
+        :param prefer_persistence: Whether leaving reference geometry adds cost.
         :param distances: Mutable best-cost lookup.
         :param previous_states: Mutable predecessor lookup.
         :param queue: Mutable Dijkstra priority queue.
@@ -1574,15 +2180,25 @@ class AutomaticRouteBuilder:
             added_bend_count = 0
         else:
             added_bend_count = 1
-        # Tuple comparison is the routing policy: crossings have absolute
-        # priority, then bends, while length only breaks equal structural costs.
-        candidate_cost: tuple[int, int, float] = (
+        added_geometry_change_count: int
+        if prefer_persistence and not self._segment_reuses_reference_geometry(
+                start_position=current_node.get_position(),
+                end_position=neighbour_node.get_position(),
+        ):
+            added_geometry_change_count = 1
+        else:
+            added_geometry_change_count = 0
+        # Crossings remain absolute. In the persistence phase, departing from
+        # manual geometry precedes bends and length; the free fallback sets
+        # this component to zero for every edge.
+        candidate_cost: tuple[int, int, int, float] = (
             current_cost[0] + added_crossing_count,
-            current_cost[1] + added_bend_count,
-            current_cost[2] + segment_length,
+            current_cost[1] + added_geometry_change_count,
+            current_cost[2] + added_bend_count,
+            current_cost[3] + segment_length,
         )
         neighbour_state: tuple[int, int] = (neighbour_node_id, axis_code)
-        existing_cost: tuple[int, int, float] | None = distances.get(neighbour_state, None)
+        existing_cost: tuple[int, int, int, float] | None = distances.get(neighbour_state, None)
         if existing_cost is None or candidate_cost < existing_cost:
             distances[neighbour_state] = candidate_cost
             previous_states[neighbour_state] = (current_node_id, previous_axis_code)
@@ -1592,12 +2208,106 @@ class AutomaticRouteBuilder:
                     candidate_cost[0],
                     candidate_cost[1],
                     candidate_cost[2],
+                    candidate_cost[3],
                     neighbour_node_id,
                     axis_code,
                 ),
             )
         else:
             pass
+
+    def _segment_reuses_reference_geometry(
+            self,
+            start_position: RoutingPoint,
+            end_position: RoutingPoint,
+    ) -> bool:
+        """Return whether one search edge lies on a reference-route segment.
+
+        Visibility waypoints can subdivide one manual segment into several
+        edges. Containment, rather than exact endpoint equality, therefore
+        identifies geometry that the user already established.
+
+        :param start_position: First candidate edge position.
+        :param end_position: Second candidate edge position.
+        :return: ``True`` when the complete edge is contained by one reference segment.
+        """
+        candidate_axis: RoutingAxis | None = self._reference_graph.get_geometry().derive_axis(
+            start_x=start_position.get_x(),
+            start_y=start_position.get_y(),
+            end_x=end_position.get_x(),
+            end_y=end_position.get_y(),
+        )
+        if candidate_axis is None:
+            return False
+        else:
+            pass
+
+        candidate_minimum: float
+        candidate_maximum: float
+        candidate_fixed_coordinate: float
+        if candidate_axis == RoutingAxis.HORIZONTAL:
+            candidate_minimum = min(start_position.get_x(), end_position.get_x())
+            candidate_maximum = max(start_position.get_x(), end_position.get_x())
+            candidate_fixed_coordinate = start_position.get_y()
+        else:
+            candidate_minimum = min(start_position.get_y(), end_position.get_y())
+            candidate_maximum = max(start_position.get_y(), end_position.get_y())
+            candidate_fixed_coordinate = start_position.get_x()
+
+        reference_segment: RoutingSegment
+        for reference_segment in self._reference_graph.get_ordered_segments():
+            reference_start: RoutingNode | None = self._reference_graph.get_node(
+                reference_segment.get_start_node_id(),
+            )
+            reference_end: RoutingNode | None = self._reference_graph.get_node(
+                reference_segment.get_end_node_id(),
+            )
+            if reference_start is None or reference_end is None:
+                pass
+            else:
+                reference_axis: RoutingAxis | None = self._reference_graph.get_segment_axis(
+                    reference_segment.get_segment_id(),
+                )
+                if reference_axis != candidate_axis:
+                    pass
+                else:
+                    reference_minimum: float
+                    reference_maximum: float
+                    reference_fixed_coordinate: float
+                    if reference_axis == RoutingAxis.HORIZONTAL:
+                        reference_minimum = min(
+                            reference_start.get_position().get_x(),
+                            reference_end.get_position().get_x(),
+                        )
+                        reference_maximum = max(
+                            reference_start.get_position().get_x(),
+                            reference_end.get_position().get_x(),
+                        )
+                        reference_fixed_coordinate = reference_start.get_position().get_y()
+                    else:
+                        reference_minimum = min(
+                            reference_start.get_position().get_y(),
+                            reference_end.get_position().get_y(),
+                        )
+                        reference_maximum = max(
+                            reference_start.get_position().get_y(),
+                            reference_end.get_position().get_y(),
+                        )
+                        reference_fixed_coordinate = reference_start.get_position().get_x()
+
+                    tolerance: float = 1.0e-9
+                    same_line: bool = abs(
+                        candidate_fixed_coordinate - reference_fixed_coordinate
+                    ) <= tolerance
+                    contained: bool = (
+                        candidate_minimum >= reference_minimum - tolerance
+                        and candidate_maximum <= reference_maximum + tolerance
+                    )
+                    if same_line and contained:
+                        return True
+                    else:
+                        pass
+        return False
 
     def _reconstruct_search_path(
             self,
@@ -1661,6 +2371,7 @@ class AutomaticRouteBuilder:
             first_conflict_index: int,
             last_conflict_index: int,
             replacement_points: list[RoutingPoint],
+            replacement_reference_node_ids: list[int | None] | None = None,
     ) -> RoutingGraph | None:
         """
         Replace one conflicting interval while preserving both route ends.
@@ -1669,9 +2380,13 @@ class AutomaticRouteBuilder:
         :param first_conflict_index: First conflicting segment index.
         :param last_conflict_index: Last conflicting segment index.
         :param replacement_points: New point chain including both anchors.
+        :param replacement_reference_node_ids: Explicit UID correspondence parallel to the points.
         :return: Rebuilt candidate graph or ``None`` for malformed input.
         """
         if len(replacement_points) < 2:
+            return None
+        elif (replacement_reference_node_ids is not None
+              and len(replacement_reference_node_ids) != len(replacement_points)):
             return None
         else:
             pass
@@ -1696,6 +2411,14 @@ class AutomaticRouteBuilder:
             route_node.get_node_id() for route_node in self._graph.get_nodes()
         )
         next_node_id: int = max(existing_node_ids) + 1
+        reusable_node_ids: list[int] = list()
+        replaced_node: RoutingNode
+        for replaced_node in ordered_nodes[first_conflict_index + 1:last_conflict_index + 1]:
+            if replaced_node.get_kind() == RoutingNodeKind.ELBOW:
+                reusable_node_ids.append(replaced_node.get_node_id())
+            else:
+                pass
+
         replacement_index: int
         for replacement_index in range(1, len(replacement_points) - 1):
             node_kind: RoutingNodeKind = RoutingNodeKind.ELBOW
@@ -1705,14 +2428,56 @@ class AutomaticRouteBuilder:
                 node_kind = RoutingNodeKind.STUB
             else:
                 pass
+
+            # Exact retained positions receive their former identities first.
+            # If an elbow moved, its ordered replacement slot retains the UID
+            # where possible so displacement is measured as movement rather
+            # than as an artificial delete-and-create topology change.
+            replacement_point: RoutingPoint = replacement_points[replacement_index]
+            reusable_node_id: int | None = None
+            candidate_node_id: int
+            if replacement_reference_node_ids is not None:
+                selected_reference_node_id: int | None = replacement_reference_node_ids[replacement_index]
+                if selected_reference_node_id in reusable_node_ids:
+                    reusable_node_id = selected_reference_node_id
+                else:
+                    pass
+            else:
+                for candidate_node_id in reusable_node_ids:
+                    reference_node: RoutingNode | None = self._reference_graph.get_node(candidate_node_id)
+                    if (reference_node is not None
+                            and reference_node.get_kind() == node_kind
+                            and self._graph.get_geometry().are_points_numerically_equal(
+                                reference_node.get_position(),
+                                replacement_point,
+                            )):
+                        reusable_node_id = candidate_node_id
+                    else:
+                        pass
+
+                    if reusable_node_id is None:
+                        pass
+                    else:
+                        break
+
+                if reusable_node_id is None and len(reusable_node_ids) > 0:
+                    reusable_node_id = reusable_node_ids[0]
+                else:
+                    pass
+
+            if reusable_node_id is not None:
+                rebuilt_node_id: int = reusable_node_id
+                reusable_node_ids.remove(reusable_node_id)
+            else:
+                rebuilt_node_id = next_node_id
+                next_node_id += 1
             rebuilt_nodes.append(
                 RoutingNode(
-                    node_id=next_node_id,
+                    node_id=rebuilt_node_id,
                     kind=node_kind,
-                    position=replacement_points[replacement_index].copy(),
+                    position=replacement_point.copy(),
                 )
             )
-            next_node_id += 1
 
         for preserved_node in suffix_nodes:
             rebuilt_nodes.append(preserved_node.clone())

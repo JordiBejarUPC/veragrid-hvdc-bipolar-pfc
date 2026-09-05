@@ -111,12 +111,12 @@ class RoutingEditor:
             )
             if validation_result == RoutingEditValidationResult.VALID:
                 return True
-            elif validation_result == RoutingEditValidationResult.INTERNAL_CONFLICT:
-                self._graph._restore_from(graph_snapshot)
-                return False
-            elif self._try_automatic_rebuild():
-                return True
             else:
+                # Segment dragging is an explicitly manual operation. Every
+                # failed internal or environmental constraint restores only
+                # this incremental move; automatic reconstruction would change
+                # the selected segment identity and make the pointer appear to
+                # stop at a freshly generated route position.
                 self._graph._restore_from(graph_snapshot)
                 return False
         except Exception:
@@ -174,7 +174,7 @@ class RoutingEditor:
             )
             if updated and validation_result == RoutingEditValidationResult.VALID:
                 return True
-            elif updated and self._try_automatic_rebuild():
+            elif updated and self._try_automatic_rebuild(reference_graph=graph_snapshot):
                 return True
             else:
                 self._graph._restore_from(graph_snapshot)
@@ -210,8 +210,14 @@ class RoutingEditor:
         else:
             pass
 
+        original_port_position: RoutingPoint = route_node.get_position().copy()
+        delta_x: float = new_position.get_x() - original_port_position.get_x()
+        delta_y: float = new_position.get_y() - original_port_position.get_y()
+
         # Move the physical endpoint and rebuild its explicit stub through the
-        # same geometry policy used by RouteBuilder before repairing the bend.
+        # same geometry policy used by RouteBuilder. Its mandatory continuation
+        # receives the same translation so endpoint movement is absorbed by the
+        # central route rather than by stretching this local attachment.
         route_node.set_position(new_position.copy())
         stub_position: RoutingPoint = self._geometry.build_port_stub_point(
             port_position=new_position,
@@ -222,10 +228,14 @@ class RoutingEditor:
         if self._graph.get_source_node_id() == node_id:
             updated: bool = self._update_source_stub_neighbourhood(
                 stub_node_id=stub_node.get_node_id(),
+                delta_x=delta_x,
+                delta_y=delta_y,
             )
         elif self._graph.get_destination_node_id() == node_id:
             updated = self._update_destination_stub_neighbourhood(
                 stub_node_id=stub_node.get_node_id(),
+                delta_x=delta_x,
+                delta_y=delta_y,
             )
         else:
             return False, affected_node_ids
@@ -239,6 +249,12 @@ class RoutingEditor:
                     pass
                 else:
                     affected_node_ids.append(adjacent_node.get_node_id())
+                second_adjacent_node: RoutingNode
+                for second_adjacent_node in self._graph.adjacent_nodes(adjacent_node.get_node_id()):
+                    if second_adjacent_node.get_node_id() in affected_node_ids:
+                        pass
+                    else:
+                        affected_node_ids.append(second_adjacent_node.get_node_id())
             return True, affected_node_ids
         else:
             return False, affected_node_ids
@@ -319,7 +335,7 @@ class RoutingEditor:
             elif validation_result == RoutingEditValidationResult.INTERNAL_CONFLICT:
                 self._graph._restore_from(graph_snapshot)
                 return False
-            elif self._try_automatic_rebuild():
+            elif self._try_automatic_rebuild(reference_graph=graph_snapshot):
                 return True
             else:
                 self._graph._restore_from(graph_snapshot)
@@ -361,34 +377,54 @@ class RoutingEditor:
         delta_y: float = first_point.get_y() - second_point.get_y()
         return delta_x * delta_x + delta_y * delta_y
 
-    def _update_source_stub_neighbourhood(self, stub_node_id: int) -> bool:
+    def _update_source_stub_neighbourhood(
+            self,
+            stub_node_id: int,
+            delta_x: float,
+            delta_y: float,
+    ) -> bool:
         """
         Update the local source-side neighbourhood after moving its port stub.
 
         :param stub_node_id: Source stub node identifier.
+        :param delta_x: Horizontal port displacement.
+        :param delta_y: Vertical port displacement.
         :return: ``True`` when the local update succeeded.
         """
         return self._update_stub_neighbourhood(
             stub_node_id=stub_node_id,
             source_side=True,
+            delta_x=delta_x,
+            delta_y=delta_y,
         )
 
-    def _update_destination_stub_neighbourhood(self, stub_node_id: int) -> bool:
+    def _update_destination_stub_neighbourhood(
+            self,
+            stub_node_id: int,
+            delta_x: float,
+            delta_y: float,
+    ) -> bool:
         """
         Update the local destination-side neighbourhood after moving its port stub.
 
         :param stub_node_id: Destination stub node identifier.
+        :param delta_x: Horizontal port displacement.
+        :param delta_y: Vertical port displacement.
         :return: ``True`` when the local update succeeded.
         """
         return self._update_stub_neighbourhood(
             stub_node_id=stub_node_id,
             source_side=False,
+            delta_x=delta_x,
+            delta_y=delta_y,
         )
 
     def _update_stub_neighbourhood(
             self,
             stub_node_id: int,
             source_side: bool,
+            delta_x: float,
+            delta_y: float,
     ) -> bool:
         """
         Update the route neighbourhood immediately after one port-side stub.
@@ -400,6 +436,8 @@ class RoutingEditor:
 
         :param stub_node_id: Stub node identifier.
         :param source_side: Whether the edited port is the source side.
+        :param delta_x: Horizontal port displacement.
+        :param delta_y: Vertical port displacement.
         :return: ``True`` when the local update succeeded.
         """
         ordered_nodes: list[RoutingNode] = self._graph.get_ordered_nodes()
@@ -420,15 +458,7 @@ class RoutingEditor:
         else:
             pass
 
-        # If the stub and its immediate neighbour are already orthogonally
-        # aligned, the local port move was absorbed without touching deeper
-        # route geometry and the update can stop here.
-        if self._constraints.is_nodes_orthogonally_aligned(
-                first_node=anchor_node,
-                second_node=first_neighbour,
-        ):
-            return True
-        elif first_neighbour.get_kind() != RoutingNodeKind.ELBOW and first_neighbour.get_kind() != RoutingNodeKind.STUB:
+        if first_neighbour.get_kind() != RoutingNodeKind.ELBOW and first_neighbour.get_kind() != RoutingNodeKind.STUB:
             return False
         elif len(ordered_nodes) < 4:
             return False
@@ -441,61 +471,82 @@ class RoutingEditor:
             else:
                 second_neighbour = ordered_nodes[-4]
 
+            second_segment: RoutingSegment | None = self._graph.find_segment_between_nodes(
+                first_neighbour.get_node_id(),
+                second_neighbour.get_node_id(),
+            )
+            if second_segment is None:
+                return False
+            else:
+                second_axis: RoutingAxis | None = self._graph.get_segment_axis(second_segment.get_segment_id())
+            if second_axis is None:
+                return False
+            else:
+                pass
+
+            # PORT, STUB and continuation form one rigid endpoint attachment.
+            # Keeping their relative coordinates prevents the continuation
+            # from remaining at the old block position and later becoming an
+            # artificial limit for manual central-segment movement.
+            first_neighbour.set_position(
+                RoutingPoint(
+                    first_neighbour.get_position().get_x() + delta_x,
+                    first_neighbour.get_position().get_y() + delta_y,
+                )
+            )
             return self._reposition_local_elbow(
-                port_node=anchor_node,
-                elbow_node=first_neighbour,
+                stub_node=anchor_node,
+                continuation_node=first_neighbour,
                 adjacent_node=second_neighbour,
+                second_axis=second_axis,
             )
 
     def _reposition_local_elbow(
             self,
-            port_node: RoutingNode,
-            elbow_node: RoutingNode,
+            stub_node: RoutingNode,
+            continuation_node: RoutingNode,
             adjacent_node: RoutingNode,
+            second_axis: RoutingAxis,
     ) -> bool:
         """
         Reposition one existing local elbow after simplification failed.
 
-        :param port_node: Edited port node.
-        :param elbow_node: First elbow next to the edited port.
-        :param adjacent_node: Node behind that elbow.
+        :param stub_node: Rebuilt stub next to the edited port.
+        :param continuation_node: Mandatory continuation next to the stub.
+        :param adjacent_node: First central-route node behind the continuation.
+        :param second_axis: Original axis from the continuation into the central route.
         :return: ``True`` when the local topology remains valid.
         """
-        second_segment: RoutingSegment | None = self._graph.find_segment_between_nodes(
-            elbow_node.get_node_id(),
-            adjacent_node.get_node_id(),
+        # Preserve the original central-entry axis after translating the rigid
+        # endpoint attachment. Only the adjacent elbow receives the transverse
+        # coordinate; its longitudinal coordinate and all deeper nodes remain
+        # untouched.
+        if second_axis == RoutingAxis.HORIZONTAL:
+            adjacent_node.set_position(
+                RoutingPoint(
+                    adjacent_node.get_position().get_x(),
+                    continuation_node.get_position().get_y(),
+                )
+            )
+        else:
+            adjacent_node.set_position(
+                RoutingPoint(
+                    continuation_node.get_position().get_x(),
+                    adjacent_node.get_position().get_y(),
+                )
+            )
+
+        stub_segment: RoutingSegment | None = self._graph.find_segment_between_nodes(
+            stub_node.get_node_id(),
+            continuation_node.get_node_id(),
         )
-        if second_segment is None:
+        if stub_segment is None:
             return False
-        else:
-            pass
-
-        second_axis: RoutingAxis | None = self._graph.get_segment_axis(second_segment.get_segment_id())
-        if second_axis is None:
+        elif not self._constraints.is_stub_continuation_valid_for_segment(segment=stub_segment):
             return False
-        else:
-            pass
-
-        # Repositioning keeps the same local topology and only slides the first
-        # interior bend along the axis allowed by the following segment.
-        if second_axis == RoutingAxis.VERTICAL:
-            elbow_node.set_position(
-                RoutingPoint(
-                    elbow_node.get_position().get_x(),
-                    port_node.get_position().get_y(),
-                )
-            )
-        else:
-            elbow_node.set_position(
-                RoutingPoint(
-                    port_node.get_position().get_x(),
-                    elbow_node.get_position().get_y(),
-                )
-            )
-
-        if self._constraints.is_nodes_orthogonally_aligned(
-                first_node=port_node,
-                second_node=elbow_node,
+        elif self._constraints.is_nodes_orthogonally_aligned(
+                first_node=continuation_node,
+                second_node=adjacent_node,
         ):
             return True
         else:
@@ -661,7 +712,7 @@ class RoutingEditor:
         else:
             return None
 
-    def _try_automatic_rebuild(self) -> bool:
+    def _try_automatic_rebuild(self, reference_graph: RoutingGraph | None = None) -> bool:
         """
         Replace the current conflicting interval with an automatic candidate.
 
@@ -670,6 +721,7 @@ class RoutingEditor:
         snapshot and therefore still performs the final rollback when no
         alternative can be found.
 
+        :param reference_graph: Manual route snapshot used to minimize changes.
         :return: ``True`` when an alternative graph replaced the temporary graph.
         """
         if self._connection_geometry is None:
@@ -678,6 +730,7 @@ class RoutingEditor:
             automatic_builder: AutomaticRouteBuilder = AutomaticRouteBuilder(
                 graph=self._graph,
                 connection_geometry=self._connection_geometry,
+                reference_graph=reference_graph,
             )
             alternative_graph: RoutingGraph | None = automatic_builder.build_alternative()
             if alternative_graph is None:

@@ -5822,15 +5822,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
         if self.supports_routing_graph_connection(item):
             if isinstance(item.source_port, graph.PortItem) and isinstance(item.target_port, graph.PortItem):
-                synchronized: bool = self._qt_routing_session.synchronize_connection_graph(
-                    connection_uid=item.con_uid,
-                    source_port=item.source_port,
-                    destination_port=item.target_port,
-                ) is not None
-                if synchronized:
-                    pass
-                else:
+                # The hit test already resolved this drag against the current
+                # registered graph. Re-synchronizing on every mouse event could
+                # rebuild its topology, invalidate the selected segment index
+                # and reset the route to RouteBuilder's midpoint geometry.
+                routing_graph: RoutingGraph | None = self._qt_routing_session.get_graph(item.con_uid)
+                if routing_graph is None:
                     return False
+                else:
+                    pass
                 ordered_segments = self._qt_routing_session.get_ordered_segments(item.con_uid)
                 if 0 <= segment_index < len(ordered_segments):
                     route_segment = ordered_segments[segment_index]
@@ -5838,9 +5838,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     return False
 
                 coordinate_offset: float
-                segment_axis = self._qt_routing_session.get_graph(item.con_uid).get_segment_axis(
-                    route_segment.get_segment_id()
-                ) if self._qt_routing_session.get_graph(item.con_uid) is not None else None
+                segment_axis = routing_graph.get_segment_axis(route_segment.get_segment_id())
                 if segment_axis is None:
                     return False
                 elif segment_axis == RoutingAxis.HORIZONTAL:
