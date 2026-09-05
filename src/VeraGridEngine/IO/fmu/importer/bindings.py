@@ -432,7 +432,7 @@ class FmiThreeFloat64ConfigurationValue:
 
     Values retain the FMI row-major serialization order. The declaration owns
     only user-provided data; runtime cardinality and native references remain
-    owned by :class:`FmiThreeFloat64Session` when a consumer is connected.
+    owned by :class:`FmiThreeNumericSession` when a consumer is connected.
 
     :param variable_name: Structural Float64 variable name in the FMU.
     :param values: Complete finite scalar or flattened array value vector.
@@ -1146,6 +1146,160 @@ def resolve_fmi_three_scalar_binding_references(
                 f"FMI 3 binding variable {readable_name!r} was not found"
             )
     return tuple(readable_references), tuple(writable_references)
+
+
+def resolve_fmi_three_scalar_int32_binding_references(
+    metadata: FmuModelDescription,
+    initialization_variable_names: tuple[str, ...],
+    readable_variable_names: tuple[str, ...],
+    writable_variable_names: tuple[str, ...],
+    float64_profile: FmiThreeWorkerFloat64Profile = (
+        FmiThreeWorkerFloat64Profile.SCALAR
+    ),
+    interface_mode: FmuInterfaceMode = FmuInterfaceMode.CO_SIMULATION,
+) -> tuple[tuple[int, ...], tuple[int, ...], tuple[int, ...]]:
+    """Resolve scalar Int32 bindings for one FMI 3 numeric session.
+
+    Names are resolved once while authoritative metadata is available. The
+    numerical runtime receives only bounded value-reference tuples afterward.
+
+    :param metadata: Authoritative FMI 3 model description.
+    :param initialization_variable_names: Ordered Int32 names written during
+        Initialization Mode.
+    :param readable_variable_names: Ordered Int32 names readable at runtime.
+    :param writable_variable_names: Ordered Int32 inputs or tunable parameters.
+    :param float64_profile: Float64 scalar or array profile sharing the worker.
+    :param interface_mode: Authenticated FMI interface owning the bindings.
+    :return: Initialization, readable, and writable Int32 reference tuples.
+    :raises FmuBindingError: If a name is missing, repeated, mistyped, an
+        array, or invalid for the requested write phase.
+    :raises FmuModeError: If the complete FMU is outside the worker profile.
+    """
+
+    _validate_fmi_three_binding_worker_profile(
+        metadata=metadata,
+        interface_mode=interface_mode,
+        float64_profile=float64_profile,
+    )
+    variables_by_name: dict[str, FmuVariableDescription] = dict()
+    declared_variable: FmuVariableDescription
+    for declared_variable in metadata.variables:
+        variables_by_name[declared_variable.name] = declared_variable
+
+    initialization_references: list[int] = [0] * len(
+        initialization_variable_names
+    )
+    initialization_names_seen: set[str] = set()
+    variable_index: int
+    for variable_index in range(len(initialization_variable_names)):
+        variable_name: str = initialization_variable_names[variable_index]
+        if variable_name in initialization_names_seen:
+            raise FmuBindingError(
+                f"Duplicate FMI 3 Int32 initialization binding {variable_name!r}"
+            )
+        else:
+            initialization_names_seen.add(variable_name)
+        variable: FmuVariableDescription | None = variables_by_name.get(
+            variable_name,
+            None,
+        )
+        if variable is not None:
+            pass
+        else:
+            raise FmuBindingError(
+                f"FMI 3 binding variable {variable_name!r} was not found"
+            )
+        if variable.variable_type == FmuVariableType.INT32:
+            pass
+        else:
+            raise FmuBindingError(
+                f"FMI 3 binding variable {variable_name!r} is not Int32"
+            )
+        if len(variable.dimensions) == 0:
+            pass
+        else:
+            raise FmuBindingError(
+                f"FMI 3 Int32 binding variable {variable_name!r} is not scalar"
+            )
+        if is_fmi_three_initialization_mode_writable(variable):
+            initialization_references[variable_index] = variable.value_reference
+        else:
+            raise FmuBindingError(
+                f"FMI 3 binding variable {variable_name!r} is not writable in "
+                "Initialization Mode"
+            )
+
+    readable_references: list[int] = [0] * len(readable_variable_names)
+    readable_names_seen: set[str] = set()
+    for variable_index in range(len(readable_variable_names)):
+        variable_name = readable_variable_names[variable_index]
+        if variable_name in readable_names_seen:
+            raise FmuBindingError(
+                f"Duplicate readable FMI 3 Int32 binding {variable_name!r}"
+            )
+        else:
+            readable_names_seen.add(variable_name)
+        variable = variables_by_name.get(variable_name, None)
+        if variable is not None:
+            pass
+        else:
+            raise FmuBindingError(
+                f"FMI 3 binding variable {variable_name!r} was not found"
+            )
+        if variable.variable_type == FmuVariableType.INT32:
+            pass
+        else:
+            raise FmuBindingError(
+                f"FMI 3 binding variable {variable_name!r} is not Int32"
+            )
+        if len(variable.dimensions) == 0:
+            readable_references[variable_index] = variable.value_reference
+        else:
+            raise FmuBindingError(
+                f"FMI 3 Int32 binding variable {variable_name!r} is not scalar"
+            )
+
+    writable_references: list[int] = [0] * len(writable_variable_names)
+    writable_names_seen: set[str] = set()
+    for variable_index in range(len(writable_variable_names)):
+        variable_name = writable_variable_names[variable_index]
+        if variable_name in writable_names_seen:
+            raise FmuBindingError(
+                f"Duplicate writable FMI 3 Int32 binding {variable_name!r}"
+            )
+        else:
+            writable_names_seen.add(variable_name)
+        variable = variables_by_name.get(variable_name, None)
+        if variable is not None:
+            pass
+        else:
+            raise FmuBindingError(
+                f"FMI 3 binding variable {variable_name!r} was not found"
+            )
+        if variable.variable_type == FmuVariableType.INT32:
+            pass
+        else:
+            raise FmuBindingError(
+                f"FMI 3 binding variable {variable_name!r} is not Int32"
+            )
+        if len(variable.dimensions) == 0:
+            pass
+        else:
+            raise FmuBindingError(
+                f"FMI 3 Int32 binding variable {variable_name!r} is not scalar"
+            )
+        if is_fmi_three_input_or_tunable_parameter(variable):
+            writable_references[variable_index] = variable.value_reference
+        else:
+            raise FmuBindingError(
+                f"FMI 3 binding variable {variable_name!r} is not writable in "
+                "Step Mode"
+            )
+    return (
+        tuple(initialization_references),
+        tuple(readable_references),
+        tuple(writable_references),
+    )
 
 
 def resolve_fmi_three_variable_serialized_value_count(

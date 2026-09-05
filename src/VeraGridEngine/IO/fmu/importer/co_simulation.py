@@ -51,8 +51,8 @@ from VeraGridEngine.IO.fmu.importer.runtime_protocol import (
     FmiThreeWorkerDoStepResult,
 )
 from VeraGridEngine.IO.fmu.importer.runtime_session import (
-    FmiThreeFloat64Session,
-    open_fmi_three_float64_session,
+    FmiThreeNumericSession,
+    open_fmi_three_numeric_session,
 )
 from VeraGridEngine.IO.fmu.importer.runtime_worker_host import (
     FmiThreeWorkerHostLimits,
@@ -199,7 +199,7 @@ class FmuCsDeviceAdapter:
         self.spec: FmuCsDeviceSpec = spec
         self.output_param_indices: dict[VarPowerFlowReferenceType, int] = output_param_indices
         self.runtime_host: FmuRuntimeHost | None = None
-        self.fmi_three_session: FmiThreeFloat64Session | None = None
+        self.fmi_three_session: FmiThreeNumericSession | None = None
         self.last_time: float = 0.0
         self.initialized: bool = False
         self.last_outputs: dict[VarPowerFlowReferenceType, float] = dict()
@@ -393,7 +393,7 @@ class FmuCsDeviceAdapter:
                     ),
                 )
 
-                session: FmiThreeFloat64Session = open_fmi_three_float64_session(
+                session: FmiThreeNumericSession = open_fmi_three_numeric_session(
                     config=self.spec.config,
                     instance_name="veragrid-fmi-three-cs-device",
                     readable_variable_names=readable_variable_names,

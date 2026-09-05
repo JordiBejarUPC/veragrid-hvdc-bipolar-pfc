@@ -1135,10 +1135,18 @@ def _parse_fmi3_variable_semantics(
                         path,
                     )
                 else:
-                    raise FmuArchiveError(
-                        f"Unsupported FMI 3 start type for variable "
-                        f"{variable_name!r} in {path}"
-                    )
+                    if variable_type == FmuVariableType.INT32:
+                        parse_fmi_int32(
+                            start_value_text,
+                            "start",
+                            f"FMI 3 variable {variable_name!r}",
+                            path,
+                        )
+                    else:
+                        raise FmuArchiveError(
+                            f"Unsupported FMI 3 start type for variable "
+                            f"{variable_name!r} in {path}"
+                        )
         if len(dimensions) == 0:
             if len(start_values) == 1:
                 pass
@@ -1300,7 +1308,7 @@ def _parse_fmi3_variables(
     model_variables: ET.Element,
     path: Path,
 ) -> tuple[FmuVariableDescription, ...]:
-    """Parse represented floating-point and UInt64 FMI 3 variables.
+    """Parse represented floating-point, Int32, and UInt64 FMI 3 variables.
 
     :param model_variables: Required FMI 3 ``ModelVariables`` element.
     :param path: FMU source path included in validation errors.
@@ -1316,6 +1324,7 @@ def _parse_fmi3_variables(
     supported_variable_types: tuple[FmuVariableType, ...] = (
         FmuVariableType.FLOAT32,
         FmuVariableType.FLOAT64,
+        FmuVariableType.INT32,
         FmuVariableType.UINT64,
     )
     allowed_variable_attributes: tuple[str, ...] = (
@@ -1342,7 +1351,7 @@ def _parse_fmi3_variables(
             else:
                 raise FmuArchiveError(
                     f"FMI 3 variable type {variable_element.tag!r} is outside "
-                    "the represented Float32, Float64, and UInt64 subset"
+                    "the represented Float32, Float64, Int32, and UInt64 subset"
                 )
         variable_name: str = read_required_attribute(
             variable_element, "name", variable_element.tag, path
@@ -1360,6 +1369,18 @@ def _parse_fmi3_variables(
                 path,
             )
         )
+        # The product runtime deliberately supports Int32 only as a scalar.
+        # Rejecting the shape while parsing keeps unsupported array metadata
+        # out of every later binding, staging, and native-access owner.
+        if variable_type == FmuVariableType.INT32:
+            if len(dimensions) == 0:
+                pass
+            else:
+                raise FmuArchiveError(
+                    f"FMI 3 Int32 variable {variable_name!r} in {path} must be scalar"
+                )
+        else:
+            pass
         if variable_name in variable_names:
             raise FmuArchiveError(f"FMI 3 variable name {variable_name!r} is duplicated in {path}")
         else:
@@ -1406,12 +1427,12 @@ def _parse_fmi3_variables(
                 f"FMI 3 variable {variable_name!r}",
                 path,
             )
-        if variable_type == FmuVariableType.UINT64:
+        if variable_type in (FmuVariableType.INT32, FmuVariableType.UINT64):
             if state_value_reference is None and causality != "independent":
                 pass
             else:
                 raise FmuArchiveError(
-                    f"FMI 3 UInt64 variable {variable_name!r} in {path} cannot "
+                    f"FMI 3 {variable_type.value} variable {variable_name!r} in {path} cannot "
                     "be independent or declare a derivative"
                 )
         else:

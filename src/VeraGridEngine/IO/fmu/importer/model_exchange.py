@@ -62,8 +62,8 @@ from VeraGridEngine.IO.fmu.importer.runtime_coordinator import (
     FmiThreeModelExchangeCoordinator,
 )
 from VeraGridEngine.IO.fmu.importer.runtime_session import (
-    FmiThreeFloat64Session,
-    open_fmi_three_float64_session,
+    FmiThreeNumericSession,
+    open_fmi_three_numeric_session,
 )
 from VeraGridEngine.IO.fmu.importer.runtime_worker_host import (
     FmiThreeWorkerHostLimits,
@@ -879,7 +879,7 @@ class FmuMeDeviceAdapter:
                     input_index
                 ]
             initial_writable_values: tuple[float, ...] = tuple(initial_values)
-            session: FmiThreeFloat64Session = open_fmi_three_float64_session(
+            session: FmiThreeNumericSession = open_fmi_three_numeric_session(
                 config=self.spec.config,
                 instance_name="veragrid-fmi-three-me-device",
                 readable_variable_names=readable_variable_names,

@@ -13,6 +13,7 @@ from VeraGridEngine.IO.fmu.importer.bindings import (
     resolve_fmi_three_configuration_float64_binding_layout,
     resolve_fmi_three_constant_float64_binding_layouts,
     resolve_fmi_three_scalar_binding_references,
+    resolve_fmi_three_scalar_int32_binding_references,
     resolve_fmi_three_variable_serialized_value_count,
 )
 from VeraGridEngine.IO.fmu.importer.errors import (
@@ -608,6 +609,9 @@ def test_fmi_three_constant_array_worker_acl_preserves_cardinality(
     initialization_value_counts: dict[int, int]
     configuration_value_counts: dict[int, int]
     configuration_uint64_references: frozenset[int]
+    readable_int32_references: frozenset[int]
+    writable_int32_references: frozenset[int]
+    initialization_int32_references: frozenset[int]
     cardinality_plans: dict[int, FmiThreeFloat64VariableCardinalityPlan]
     (
         readable_value_counts,
@@ -615,6 +619,9 @@ def test_fmi_three_constant_array_worker_acl_preserves_cardinality(
         initialization_value_counts,
         configuration_value_counts,
         configuration_uint64_references,
+        readable_int32_references,
+        writable_int32_references,
+        initialization_int32_references,
         cardinality_plans,
     ) = _resolve_fmi_three_worker_access_controls(
         metadata=metadata,
@@ -626,7 +633,189 @@ def test_fmi_three_constant_array_worker_acl_preserves_cardinality(
     assert initialization_value_counts == dict(((20, 6),))
     assert configuration_value_counts == dict()
     assert configuration_uint64_references == frozenset()
+    assert readable_int32_references == frozenset()
+    assert writable_int32_references == frozenset()
+    assert initialization_int32_references == frozenset()
     assert cardinality_plans[20].dimension_sizes == (3, 2)
+
+
+def test_fmi_three_int32_metadata_is_preserved(tmp_path: Path) -> None:
+    """Preserve scalar signed values and resolve ordered Int32 ACL bindings.
+
+    :param tmp_path: Isolated extracted-FMU directory provided by pytest.
+    :return: None.
+    """
+
+    fmu_path: Path = _write_extracted_fmi3_model_description(
+        tmp_path / "int32-metadata",
+        """<fmiModelDescription fmiVersion="3.0.2" modelName="Int32Model"
+            instantiationToken="int32-token">
+          <CoSimulation modelIdentifier="int32_model"
+              canHandleVariableCommunicationStepSize="false"/>
+          <ModelVariables>
+            <Int32 name="integer_input" valueReference="7" causality="input"
+                variability="discrete" initial="exact" start="-2"/>
+            <Int32 name="integer_output" valueReference="8" causality="output"
+                variability="discrete" initial="calculated"/>
+            <Float64 name="time" valueReference="9" causality="independent"
+                variability="continuous"/>
+          </ModelVariables>
+          <ModelStructure>
+            <Output valueReference="8"/>
+            <InitialUnknown valueReference="8"/>
+          </ModelStructure>
+        </fmiModelDescription>""",
+    )
+    metadata: FmuModelDescription = read_fmu_model_description(fmu_path)
+    integer_input: FmuVariableDescription = metadata.get_variable("integer_input")
+    integer_output: FmuVariableDescription = metadata.get_variable("integer_output")
+
+    assert integer_input.variable_type is FmuVariableType.INT32
+    assert integer_input.start == "-2"
+    assert integer_output.variable_type is FmuVariableType.INT32
+    initialization_references: tuple[int, ...]
+    readable_references: tuple[int, ...]
+    writable_references: tuple[int, ...]
+    (
+        initialization_references,
+        readable_references,
+        writable_references,
+    ) = resolve_fmi_three_scalar_int32_binding_references(
+        metadata=metadata,
+        initialization_variable_names=("integer_input",),
+        readable_variable_names=("integer_output", "integer_input"),
+        writable_variable_names=("integer_input",),
+    )
+    assert initialization_references == (7,)
+    assert readable_references == (8, 7)
+    assert writable_references == (7,)
+
+
+def test_fmi_three_worker_profile_accepts_scalar_int32_co_simulation(
+    tmp_path: Path,
+) -> None:
+    """Accept a scalar Int32 variable in every Float64 CS profile.
+
+    :param tmp_path: Isolated extracted-FMU directory provided by pytest.
+    :return: None.
+    """
+
+    scalar_int32_xml: str = _scalar_fmi3_worker_profile_fixture_xml().replace(
+        '        <Float64 name="time" valueReference="4" causality="independent"',
+        '        <Int32 name="counter" valueReference="5" causality="local"\n'
+        '            variability="discrete" initial="exact" start="-2"/>\n'
+        '        <Float64 name="time" valueReference="4" causality="independent"',
+        1,
+    )
+    fmu_path: Path = _write_extracted_fmi3_model_description(
+        tmp_path / "scalar-int32-cs-profile",
+        scalar_int32_xml,
+    )
+    metadata: FmuModelDescription = read_fmu_model_description(fmu_path)
+    float64_profile: FmiThreeWorkerFloat64Profile
+    for float64_profile in FmiThreeWorkerFloat64Profile:
+        validate_fmi_three_co_simulation_worker_profile(
+            metadata=metadata,
+            preferred_mode=FmuInterfaceMode.CO_SIMULATION,
+            float64_profile=float64_profile,
+        )
+
+
+def test_fmi_three_worker_profile_accepts_scalar_int32_model_exchange(
+    tmp_path: Path,
+) -> None:
+    """Accept a scalar Int32 variable in every Float64 ME profile.
+
+    :param tmp_path: Isolated extracted-FMU directory provided by pytest.
+    :return: None.
+    """
+
+    scalar_int32_xml: str = _fmi3_derivative_fixture_xml().replace(
+        '        <Float64 name="time" valueReference="3" causality="independent"',
+        '        <Int32 name="counter" valueReference="4" causality="local"\n'
+        '            variability="discrete" initial="exact" start="-2"/>\n'
+        '        <Float64 name="time" valueReference="3" causality="independent"',
+        1,
+    )
+    fmu_path: Path = _write_extracted_fmi3_model_description(
+        tmp_path / "scalar-int32-me-profile",
+        scalar_int32_xml,
+    )
+    metadata: FmuModelDescription = read_fmu_model_description(fmu_path)
+    float64_profile: FmiThreeWorkerFloat64Profile
+    for float64_profile in FmiThreeWorkerFloat64Profile:
+        validate_fmi_three_model_exchange_worker_profile(
+            metadata=metadata,
+            preferred_mode=FmuInterfaceMode.MODEL_EXCHANGE,
+            float64_profile=float64_profile,
+        )
+
+
+def test_fmi_three_worker_profile_rejects_int32_array(tmp_path: Path) -> None:
+    """Reject Int32 arrays at parsing and at both worker-profile boundaries.
+
+    :param tmp_path: Isolated extracted-FMU directory provided by pytest.
+    :return: None.
+    """
+
+    array_int32_xml: str = _scalar_fmi3_worker_profile_fixture_xml().replace(
+        '        <Float64 name="time" valueReference="4" causality="independent"',
+        '        <Int32 name="counter" valueReference="5" causality="input"\n'
+        '            variability="discrete" initial="exact" start="-2 3">\n'
+        '          <Dimension start="2"/>\n'
+        '        </Int32>\n'
+        '        <Float64 name="time" valueReference="4" causality="independent"',
+        1,
+    )
+    array_path: Path = _write_extracted_fmi3_model_description(
+        tmp_path / "array-int32-parser",
+        array_int32_xml,
+    )
+    with pytest.raises(FmuArchiveError, match="Int32 variable.*must be scalar"):
+        read_fmu_model_description(array_path)
+
+    cs_path: Path = _write_extracted_fmi3_model_description(
+        tmp_path / "array-int32-cs-defense",
+        _scalar_fmi3_worker_profile_fixture_xml().replace(
+            '        <Float64 name="time" valueReference="4" causality="independent"',
+            '        <Int32 name="counter" valueReference="5" causality="local"\n'
+            '            variability="discrete" initial="exact" start="-2"/>\n'
+            '        <Float64 name="time" valueReference="4" causality="independent"',
+            1,
+        ),
+    )
+    cs_metadata: FmuModelDescription = read_fmu_model_description(cs_path)
+    cs_counter: FmuVariableDescription = cs_metadata.get_variable("counter")
+    cs_counter.dimensions = (FmiThreeVariableDimension(2, None),)
+
+    me_path: Path = _write_extracted_fmi3_model_description(
+        tmp_path / "array-int32-me-defense",
+        _fmi3_derivative_fixture_xml().replace(
+            '        <Float64 name="time" valueReference="3" causality="independent"',
+            '        <Int32 name="counter" valueReference="4" causality="local"\n'
+            '            variability="discrete" initial="exact" start="-2"/>\n'
+            '        <Float64 name="time" valueReference="3" causality="independent"',
+            1,
+        ),
+    )
+    me_metadata: FmuModelDescription = read_fmu_model_description(me_path)
+    me_counter: FmuVariableDescription = me_metadata.get_variable("counter")
+    me_counter.dimensions = (FmiThreeVariableDimension(2, None),)
+
+    float64_profile: FmiThreeWorkerFloat64Profile
+    for float64_profile in FmiThreeWorkerFloat64Profile:
+        with pytest.raises(FmuModeError, match="arrays|scalar Int32"):
+            validate_fmi_three_co_simulation_worker_profile(
+                metadata=cs_metadata,
+                preferred_mode=FmuInterfaceMode.CO_SIMULATION,
+                float64_profile=float64_profile,
+            )
+        with pytest.raises(FmuModeError, match="arrays|scalar Int32"):
+            validate_fmi_three_model_exchange_worker_profile(
+                metadata=me_metadata,
+                preferred_mode=FmuInterfaceMode.MODEL_EXCHANGE,
+                float64_profile=float64_profile,
+            )
 
 
 def test_fmi_three_array_accepts_annotations_before_dimensions(tmp_path: Path) -> None:

@@ -125,6 +125,25 @@ def _create_fmi_three_scalar_model_description() -> ModelDescription:
         derivative=continuous_state_variable,
         description="Derivative equal to control_input minus continuous_state.",
     )
+    int32_input_variable: ModelVariable = ModelVariable(
+        name="integer_input",
+        valueReference=7,
+        type="Int32",
+        causality="input",
+        variability="discrete",
+        initial="exact",
+        start="-2",
+        description="Scalar signed input used to verify FMI 3 Int32 access.",
+    )
+    int32_output_variable: ModelVariable = ModelVariable(
+        name="integer_output",
+        valueReference=8,
+        type="Int32",
+        causality="output",
+        variability="discrete",
+        initial="calculated",
+        description="Integer input captured by the latest completed step.",
+    )
 
     # Build the final FMPy model directly. No parallel transfer object survives
     # beyond source generation, and all identity fields remain deterministic.
@@ -158,9 +177,16 @@ def _create_fmi_three_scalar_model_description() -> ModelDescription:
             structural_size_variable,
             continuous_state_variable,
             state_derivative_variable,
+            int32_input_variable,
+            int32_output_variable,
         )
     )
-    fmi_three_description.outputs = list((Unknown(variable=output_variable),))
+    fmi_three_description.outputs = list(
+        (
+            Unknown(variable=output_variable),
+            Unknown(variable=int32_output_variable),
+        )
+    )
     fmi_three_description.derivatives = list(
         (Unknown(variable=state_derivative_variable),)
     )
@@ -168,6 +194,7 @@ def _create_fmi_three_scalar_model_description() -> ModelDescription:
         (
             Unknown(variable=output_variable),
             Unknown(variable=state_derivative_variable),
+            Unknown(variable=int32_output_variable),
         )
     )
     return fmi_three_description
@@ -478,8 +505,8 @@ def _install_fmi_three_scalar_metadata(
 
     FMPy's C template respects ``ModelVariable.type`` but its XML template
     currently renders every variable as Float64 and omits FMI 3 derivative
-    metadata. The fixture corrects the UInt64 tag and declares the exact
-    state-derivative relationship represented by its native implementation.
+    metadata. The fixture corrects the UInt64 and Int32 tags and declares the
+    exact state-derivative relationship represented by its native implementation.
 
     :param staging_directory: Extracted scalar source FMU to update.
     :return: None.
@@ -523,6 +550,7 @@ def _install_fmi_three_scalar_metadata(
     structural_size_count: int = 0
     continuous_state_count: int = 0
     state_derivative_count: int = 0
+    int32_variable_count: int = 0
     variable_element: ET.Element
     for variable_element in model_variables:
         variable_name: str | None = variable_element.attrib.get("name", None)
@@ -535,20 +563,30 @@ def _install_fmi_three_scalar_metadata(
                     "Generated structural-size variable has an unexpected type"
                 )
         else:
-            if variable_name == "continuous_state":
-                variable_element.set("initial", "exact")
-                continuous_state_count += 1
-            else:
-                if variable_name == "state_derivative":
-                    variable_element.set("initial", "calculated")
-                    variable_element.set("derivative", "5")
-                    state_derivative_count += 1
+            if variable_name in ("integer_input", "integer_output"):
+                if variable_element.tag == "Float64":
+                    variable_element.tag = "Int32"
+                    int32_variable_count += 1
                 else:
-                    pass
+                    raise AssertionError(
+                        "Generated integer variable has an unexpected type"
+                    )
+            else:
+                if variable_name == "continuous_state":
+                    variable_element.set("initial", "exact")
+                    continuous_state_count += 1
+                else:
+                    if variable_name == "state_derivative":
+                        variable_element.set("initial", "calculated")
+                        variable_element.set("derivative", "5")
+                        state_derivative_count += 1
+                    else:
+                        pass
     if (
         structural_size_count == 1
         and continuous_state_count == 1
         and state_derivative_count == 1
+        and int32_variable_count == 2
     ):
         pass
     else:
@@ -571,7 +609,7 @@ def _install_fmi_three_scalar_metadata(
             output_count += 1
         else:
             pass
-    if output_count == 1:
+    if output_count == 2:
         continuous_state_derivative: ET.Element = ET.Element(
             "ContinuousStateDerivative"
         )
@@ -1117,6 +1155,8 @@ def _install_fmi_three_behavior(
     fmi3UInt64 structural_size;
     fmi3Float64 continuous_state;
     fmi3Float64 state_derivative;
+    fmi3Int32 integer_input;
+    fmi3Int32 integer_output;
     size_t discrete_state_iteration;
 
     fmi3InstanceEnvironment instanceEnvironment;
@@ -1131,7 +1171,7 @@ def _install_fmi_three_behavior(
             start_marker="typedef struct {\n\n    fmi3Float64 time;",
             end_marker="static void reset(Model* instance)",
             expected_sha256=(
-                "B5F6A594A1B69B4C72AD0B41808F976B3C325384CBF3FBFE13C9C61D9A76B4B6"
+                "1DCC672941957446B5ADFFEC68585A09BFC6D6AB53E0FFA24193BE7FD691EB24"
             ),
             replacement=scalar_storage_replacement,
             block_name="scalar storage",
@@ -1852,6 +1892,98 @@ fmi3Status fmi3ExitConfigurationMode(fmi3Instance instance) {
         pass
 
     if fixture_profile in (
+        FmiThreeCompiledFixtureProfile.SCALAR,
+        FmiThreeCompiledFixtureProfile.SCALAR_OBSERVABLE_STATE_LEAK,
+    ):
+        get_int32_replacement: str = """fmi3Status fmi3GetInt32(fmi3Instance instance,
+    const fmi3ValueReference valueReferences[],
+    size_t nValueReferences,
+    fmi3Int32 values[],
+    size_t nValues) {
+
+    BEGIN_FUNCTION();
+
+    if (!valueReferences || !values) {
+        ERROR("Int32 GET pointers are required.");
+    }
+
+    if (nValueReferences != nValues) {
+        ERROR("Int32 GET references and values must align.");
+    }
+
+    for (size_t valueIndex = 0; valueIndex < nValues; valueIndex++) {
+        const ValueReference valueReference = valueReferences[valueIndex];
+        switch (valueReference) {
+        case vr_integer_input:
+            values[valueIndex] = model->integer_input;
+            break;
+        case vr_integer_output:
+            values[valueIndex] = model->integer_output;
+            break;
+        default:
+            ERROR("Unknown value reference for variable type Int32.");
+        }
+    }
+
+    END_FUNCTION();
+}
+
+"""
+        normalized_source = _replace_verified_fmi_three_source_block(
+            source_text=normalized_source,
+            start_marker="fmi3Status fmi3GetInt32(",
+            end_marker="fmi3Status fmi3GetUInt32(",
+            expected_sha256=(
+                "23B89D853BF22183921A45DC0F4A7BE47CD81488A628C948A27A7519843EAF15"
+            ),
+            replacement=get_int32_replacement,
+            block_name="scalar getInt32",
+        )
+        set_int32_replacement: str = """fmi3Status fmi3SetInt32(fmi3Instance instance,
+    const fmi3ValueReference valueReferences[],
+    size_t nValueReferences,
+    const fmi3Int32 values[],
+    size_t nValues) {
+
+    BEGIN_FUNCTION();
+
+    if (!valueReferences || !values) {
+        ERROR("Int32 SET pointers are required.");
+    }
+
+    if (nValueReferences != nValues) {
+        ERROR("Int32 SET references and values must align.");
+    }
+
+    for (size_t valueIndex = 0; valueIndex < nValues; valueIndex++) {
+        const ValueReference valueReference = valueReferences[valueIndex];
+        switch (valueReference) {
+        case vr_integer_input:
+            model->integer_input = values[valueIndex];
+            break;
+        default:
+            ERROR("Unknown writable value reference for variable type Int32.");
+        }
+    }
+
+    END_FUNCTION();
+}
+
+"""
+        normalized_source = _replace_verified_fmi_three_source_block(
+            source_text=normalized_source,
+            start_marker="fmi3Status fmi3SetInt32(",
+            end_marker="fmi3Status fmi3SetUInt32(",
+            expected_sha256=(
+                "5D163892825BEC69CCD7849C44101DF5C953F1C5CA3B02AE6F19E3A166C29DDB"
+            ),
+            replacement=set_int32_replacement,
+            block_name="scalar setInt32",
+        )
+    else:
+        pass
+
+    if fixture_profile in (
         FmiThreeCompiledFixtureProfile.CONSTANT_ARRAY,
         FmiThreeCompiledFixtureProfile.CONFIGURABLE_ARRAY,
         FmiThreeCompiledFixtureProfile.PARAMETERIZED_CONFIGURABLE_ARRAY,
@@ -2208,6 +2340,7 @@ fmi3Status fmi3ExitConfigurationMode(fmi3Instance instance) {
 
     model->time = completedTime;
     model->observed_output = completedObservation;
+    model->integer_output = model->integer_input;
     *eventHandlingNeeded = fmi3False;
     /* The input value 9.0 deterministically exercises final-output handling. */
     *terminateSimulation = model->control_input == 9.0 ? fmi3True : fmi3False;
