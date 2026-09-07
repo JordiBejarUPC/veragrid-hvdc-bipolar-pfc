@@ -6,11 +6,11 @@ from typing import Dict, List
 
 from PySide6 import QtWidgets
 
-from VeraGrid.Gui.DynamicModelEditor.BlockProperties.dynamic_block_properties import (
+from VeraGrid.Gui.DynamicModelEditor.Editor.BlockProperties import (
     DynamicBlockPropertiesDialog,
     build_block_symbol_namespace,
 )
-from VeraGrid.Gui.DynamicModelEditor.BlockProperties.dynamic_procedural_logic import (
+from VeraGrid.Gui.DynamicModelEditor.Editor.BlockProperties import (
     ProceduralLogicDraft,
     RuntimeLogicDraftCollection,
     RuntimeLogicValidationResult,

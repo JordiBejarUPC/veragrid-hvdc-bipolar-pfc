@@ -11,8 +11,8 @@ import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_graphics as graph
 import VeraGridEngine.api as gce
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_editor import DynamicBlockEditorGUI
-from VeraGrid.Gui.DynamicModelEditor.BlockProperties.dynamic_block_properties import DynamicBlockPropertiesDialog
-from VeraGrid.Gui.DynamicModelEditor.DynamicLibrary.dynamic_editor_library import DynamicEditorLibrary
+from VeraGrid.Gui.DynamicModelEditor.Editor.BlockProperties import DynamicBlockPropertiesDialog
+from VeraGrid.Gui.DynamicModelEditor.Editor.DynamicLibrary.dynamic_editor_library import DynamicEditorLibrary
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Templates.BasicBlockCatalog import BasicBlockTemplateDescriptor
 from VeraGridEngine.Templates.BasicBlockCatalog import get_basic_block_catalog_descriptor_by_key

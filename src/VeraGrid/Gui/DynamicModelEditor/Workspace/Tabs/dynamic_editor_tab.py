@@ -15,8 +15,8 @@ from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_preparation import pre
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.fmu_template import FmuTemplate
-from VeraGrid.Gui.DynamicModelEditor.Tabs.dynamic_editor_breadcrumb import DynamicEditorBreadcrumb
-from VeraGrid.Gui.DynamicModelEditor.Tabs.dynamic_editor_navigation import DynamicEditorNavigation
+from VeraGrid.Gui.DynamicModelEditor.Workspace.Tabs.dynamic_editor_breadcrumb import DynamicEditorBreadcrumb
+from VeraGrid.Gui.DynamicModelEditor.Workspace.Tabs.dynamic_editor_navigation import DynamicEditorNavigation
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.enumerations import DynamicSimulationMode, BlockType, DynEditorGraphicsModes

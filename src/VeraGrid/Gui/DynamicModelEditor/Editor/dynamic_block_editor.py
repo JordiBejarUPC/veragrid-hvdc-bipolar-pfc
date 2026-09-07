@@ -54,20 +54,20 @@ from VeraGridEngine.Utils.Symbolic.block import (Block,
 from VeraGridEngine.Utils.Symbolic.dynamic_connection_intent import (DynamicConnectionIntent,
                                                                      DynamicConnectionIntentDirection,
                                                                      DynamicConnectionIntentOrigin)
-from VeraGrid.Gui.DynamicModelEditor.ui.block_editor import Ui_BlockEditorWindow
+from VeraGrid.Gui.DynamicModelEditor.Editor.block_editor import Ui_BlockEditorWindow
 import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_graphics as graph
 from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import DynamicEditorEntry
-from VeraGrid.Gui.DynamicModelEditor.DynamicLibrary.dynamic_editor_library import DynamicEditorLibrary, LibraryTreeFilterProxyModel
-from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.measurements_dialog import MeasurementsDialog
+from VeraGrid.Gui.DynamicModelEditor.Editor.DynamicLibrary.dynamic_editor_library import DynamicEditorLibrary, LibraryTreeFilterProxyModel
+from VeraGrid.Gui.DynamicModelEditor.Editor.ElementDialogues.measurements_dialog import MeasurementsDialog
 import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_models as dialog_models
-from VeraGrid.Gui.DynamicModelEditor.BlockProperties.dynamic_block_properties import (
+from VeraGrid.Gui.DynamicModelEditor.Editor.BlockProperties.dynamic_block_properties import (
     BlockStructuralEditRequest,
     BlockVariableRenameRequest,
     DynamicBlockPropertiesDialog,
     DynamicBlockPropertiesDockWidget,
 )
 import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_validation as valid
-from VeraGrid.Gui.DynamicModelEditor.DynamicLibrary.dynamic_editor_utilities import (
+from VeraGrid.Gui.DynamicModelEditor.Editor.DynamicLibrary.dynamic_editor_utilities import (
     create_block_of_type,
     create_default_template_builder,
     create_structural_template_builder,
@@ -104,15 +104,16 @@ from VeraGridEngine.Utils.SugiyamaLayered import (
 )
 from VeraGridEngine.Utils.SugiyamaLayered.engine import EngineResult
 from VeraGridEngine.Templates.template_definition import TemplateDefinition, TemplateProp
-from VeraGrid.Gui.DynamicModelEditor.RoutingQt import QtRoutingSession
-from VeraGrid.Gui.DynamicModelEditor.Routing.routing_graph import RoutingGraph
+from VeraGrid.Gui.DynamicModelEditor.Editor.RoutingQt import QtRoutingSession
+
+from VeraGrid.Gui.DynamicModelEditor.Editor.Routing.routing_graph import RoutingGraph
 from VeraGridEngine.enumerations import BlockType, RoutingAxis
 from VeraGridEngine.Devices.Diagrams.block_diagram import (
     BlockDiagram, BlockDiagramConnection, BlockDiagramNode,
 )
 
 if TYPE_CHECKING:
-    from VeraGrid.Gui.DynamicModelEditor.Tabs.dynamic_editor_tab import DynamicEditorDocument, DynamicEditorTab
+    from VeraGrid.Gui.DynamicModelEditor.Workspace.Tabs import DynamicEditorDocument, DynamicEditorTab
 else:
     pass
 
@@ -1723,7 +1724,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-        self.ui.deviceLabel.setText(api_object.name)
+        self.deviceLabel = QtWidgets.QLabel()
+        self.ui.toolBar.addWidget(self.deviceLabel)
+
+        self.deviceLabel.setText(api_object.name)
 
         self.block_role: int = int(QtCore.Qt.ItemDataRole.UserRole) + 300
         self.mime_type: str = "application/x-veragrid-dynamics-block"
@@ -1871,7 +1875,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.graphicsView.dropEvent = self.graphicsDropEvent
 
         # Button do it to save built scene
-        self.ui.doItButton.clicked.connect(self.apply_changes)
+        self.ui.actionSave.triggered.connect(self.apply_changes)
 
         # if self.mode == DynamicSimulationMode.EMT and self.is_root_editor:
         #     self._ensure_full_emt_editor_interface()
@@ -2100,6 +2104,14 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             pass
 
         self._initial_scene_fit_pending = True
+
+        self.ui.block_editor_actionCheckModel.triggered.connect(self.open_inspect_dialog)
+        self.ui.actionCenter.triggered.connect(self.center_view_on_items)
+        self.ui.actionZoom_in.triggered.connect(self.zoom_in_view)
+        self.ui.actionZoom_out.triggered.connect(self.zoom_out_view)
+        self.ui.action_delete_all.triggered.connect(self.delete_all_blocks_with_confirmation)
+        self.ui.actionValidate.triggered.connect(self.show_model_consistency_validation)
+
 
     def showEvent(self, event: QtGui.QShowEvent) -> None:
         """

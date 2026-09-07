@@ -13,7 +13,7 @@ from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_models import Dynamic
 from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_page import DynamicEventsPage
 from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_support import collect_dynamic_events_page_parameters
 from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_editor import DynamicBlockEditorGUI
-from VeraGrid.Gui.DynamicModelEditor.Tabs.dynamic_editor_tab import DynamicEditorTab
+from VeraGrid.Gui.DynamicModelEditor.Workspace.Tabs.dynamic_editor_tab import DynamicEditorTab
 from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import DynamicEditorEntry
 from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import build_dynamic_editor_entry
 from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import entry_supports_dynamic_events
