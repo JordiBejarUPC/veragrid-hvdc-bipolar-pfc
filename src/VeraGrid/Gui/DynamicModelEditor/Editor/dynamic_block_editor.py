@@ -2197,8 +2197,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             bus, block_type, inputs_list, outputs_list = dialogue.get_user_info()
             # The accepted configuration replaces the provisional graphics item,
             # so remove that exact item through the editor-owned scene first.
-            if source_item.scene() is self.scene:
-                self.scene.removeItem(source_item)
+            if source_item.scene() is self.scene and source_item.subsys is not None:
+                self.scene.remove_block_item(block_uid=source_item.subsys.uid, item=source_item)
             else:
                 pass
             self.create_measurements_block_item(
@@ -3044,7 +3044,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         block_item.position_changed_callback = self.build_position_changed_callback(block_model.uid)
         block_item.build_item()
         self.main_block.add(block_model)
-        self.scene.addItem(block_item)
+        self.scene.add_block_item(block_uid=block_model.uid, item=block_item)
         block_item.setPos(QtCore.QPointF(x_pos, y_pos))
         self.diagram.add_node(
             name=item_name,
@@ -3087,7 +3087,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         )
 
         item.setPos(QtCore.QPointF(x_pos, y_pos))
-        self.scene.addItem(item)
+        self.scene.add_block_item(block_uid=model.uid, item=item)
         self.diagram.add_node(
             name=name,
             x=x_pos,
@@ -3145,7 +3145,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             graph.RoundBaseArithmeticOpItem.position_changed_callback = self.build_position_changed_callback(
                 block_model.uid)
             self.main_block.add(block_model)
-            self.scene.addItem(round_base_op_item)
+            self.scene.add_block_item(block_uid=block_model.uid, item=round_base_op_item)
             round_base_op_item.setPos(QtCore.QPointF(x_pos, y_pos))
             self.diagram.add_node(
                 name=item_name,
@@ -3171,7 +3171,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             graph.RoundBaseArithmeticOpItem.position_changed_callback = self.build_position_changed_callback(
                 block_model.uid)
             self.main_block.add(block_model)
-            self.scene.addItem(rect_base_op_item)
+            self.scene.add_block_item(block_uid=block_model.uid, item=rect_base_op_item)
             rect_base_op_item.setPos(QtCore.QPointF(x_pos, y_pos))
             self.diagram.add_node(
                 name=item_name,
@@ -3236,7 +3236,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 )
 
             item.setPos(QtCore.QPointF(x_pos, y_pos))
-            self.scene.addItem(item)
+            self.scene.add_block_item(block_uid=block_model.uid, item=item)
 
             self.diagram.add_node(
                 name=block_model.name,
@@ -3287,7 +3287,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
             # The editor block is the authoritative model container for later save/rebuild steps.
             self.main_block.add(block_model)
-            self.scene.addItem(block_item)
+            self.scene.add_block_item(block_uid=block_model.uid, item=block_item)
             block_item.setPos(QtCore.QPointF(x_pos, y_pos))
 
             # Keep the diagram synchronized so later features can rebuild from the same data source.
@@ -3505,7 +3505,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         item.setPos(QtCore.QPointF(x_pos, y_pos))
         item.recolour()
-        self.scene.addItem(item)
+        self.scene.add_block_item(block_uid=block_model.uid, item=item)
         self.mark_unapplied_changes()
 
         return item
@@ -3534,7 +3534,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         item.setPos(QtCore.QPointF(x_pos, y_pos))
         item.recolour()
-        self.scene.addItem(item)
+        self.scene.add_block_item(block_uid=block_model.uid, item=item)
 
         # Keep the diagram synchronized so later features can rebuild from the same data source.
         block_type = self._get_layout_block_kind(block_model)
@@ -3849,7 +3849,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
             # The editor block is the authoritative model container for later save/rebuild steps.
             self.main_block.add(block_model)
-            self.scene.addItem(measurements_item)
+            self.scene.add_block_item(block_uid=block_model.uid, item=measurements_item)
 
             # Convert the visible viewport to scene coordinates so placement
             # follows the canvas area regardless of zoom, scrolling, or size.
@@ -4000,7 +4000,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
             # The editor block is the authoritative model container for later save/rebuild steps.
             self.main_block.add(block_model)
-            self.scene.addItem(measurements_item)
+            self.scene.add_block_item(block_uid=block_model.uid, item=measurements_item)
 
             # Place the configured graphics item at the same scene coordinates
             # that are persisted in the diagram model below.
@@ -4065,7 +4065,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
                 # The editor block is the authoritative model container for later save/rebuild steps.
                 self.main_block.add(block_model)
-                self.scene.addItem(block_item)
+                self.scene.add_block_item(block_uid=block_model.uid, item=block_item)
                 if blocks_list is not None:
                     blocks_list.append(block_item)
                 else:
@@ -4158,7 +4158,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             item_name = block_model.name
         item.setPos(QtCore.QPointF(x_pos, y_pos))
-        self.scene.addItem(item)
+        self.scene.add_block_item(block_uid=block_model.uid, item=item)
 
         if block_type is None:
             diagram_node_type: str = graph.EditorGraphicsCommonFeatures.TEMPLATE_NODE_TYPE
@@ -4706,7 +4706,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                                          blk_in.uid)
                                                      )
         item_in.setPos(QtCore.QPointF(x_pos - 50.0, y_pos))
-        self.scene.addItem(item_in)
+        self.scene.add_block_item(block_uid=blk_in.uid, item=item_in)
         self.diagram.add_node(
             name=blk_in.name,
             x=x_pos - 50.0,
@@ -4725,7 +4725,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                                           blk_out.uid)
                                                       )
         item_out.setPos(QtCore.QPointF(x_pos + 50.0, y_pos))
-        self.scene.addItem(item_out)
+        self.scene.add_block_item(block_uid=blk_out.uid, item=item_out)
         self.diagram.add_node(
             name=blk_out.name,
             x=x_pos + 50.0,
@@ -6221,8 +6221,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 else:
                     pass
 
-        # remove item from scene
-        self.scene.removeItem(item)
+        # Remove both the native graphics item and the explicit Python owner.
+        if item.subsys is not None:
+            self.scene.remove_block_item(block_uid=item.subsys.uid, item=item)
+        else:
+            pass
 
         # remove blocks and diagrams from main_block
         if item.subsys is not None:
@@ -7532,7 +7535,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         for scene_item in self.scene.items():
             if isinstance(scene_item, graph.ProtectedConnectionBlockItem):
                 if scene_item.subsys is not None and scene_item.subsys.uid == wrapper_uid:
-                    self.scene.removeItem(scene_item)
+                    self.scene.remove_block_item(block_uid=wrapper_uid, item=scene_item)
                 else:
                     pass
             else:
@@ -8214,7 +8217,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         block_item.position_changed_callback = self.build_position_changed_callback(node_uid)
                         block_item.build_item()
                         block_item.recolour()
-                        self.scene.addItem(block_item)
+                        self.scene.add_block_item(block_uid=block_model.uid, item=block_item)
                         block_item.setPos(QPointF(node.x, node.y))
                         uid_to_blockitem[node_uid] = block_item
 
@@ -10392,6 +10395,21 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param block_uid: Symbolic block UID represented in the current scene.
         :return: Matching graphics item or ``None``.
         """
+        registered_item: QGraphicsItem | None = self.scene.get_block_item(block_uid=block_uid)
+        matching_item: bool = isinstance(
+            registered_item,
+            (graph.BlockItem, graph.MeasurementsItem, graph.GenericBlockItem,
+             graph.RoundBaseArithmeticOpItem, graph.RectBaseArithmeticOpItem,
+             graph.UnOpItem, graph.PairedItem),
+        )
+        if matching_item:
+            return registered_item
+        else:
+            pass
+
+        # Retain the historical lookup as a compatibility fallback for any
+        # externally-created scene item that has not yet adopted the explicit
+        # block registration API.
         item: QGraphicsItem
 
         for item in self.scene.items():
@@ -11902,7 +11920,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         node: BlockDiagramNode
         con: BlockDiagramConnection
 
-        self.scene.clear()
+        self.scene.clear_block_items()
         if self.mode == DynamicSimulationMode.EMT:
             # EMT persists one protected wrapper per authoritative network
             # variable. Reconcile those individual identities before the
@@ -12006,7 +12024,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         protected_item.position_changed_callback = self.build_position_changed_callback(uid)
                         protected_item.build_item()
                         protected_item.recolour()
-                        self.scene.addItem(protected_item)
+                        self.scene.add_block_item(block_uid=block_model.uid, item=protected_item)
                         protected_item.setPos(QPointF(node.x, node.y))
                         uid_to_blockitem[uid] = protected_item
 
@@ -12029,7 +12047,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         measurements_item.position_changed_callback = self.build_position_changed_callback(uid)
                         measurements_item.build_item()
                         measurements_item.recolour()
-                        self.scene.addItem(measurements_item)
+                        self.scene.add_block_item(block_uid=block_model.uid, item=measurements_item)
                         measurements_item.setPos(QPointF(node.x, node.y))
                         uid_to_blockitem[node.device_uid] = measurements_item
 
@@ -12109,7 +12127,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 item.recolour()
 
             if item is not None:
-                self.scene.addItem(item)
+                self.scene.add_block_item(block_uid=block_model.uid, item=item)
                 item.setPos(QPointF(node.x, node.y))
                 uid_to_blockitem[uid] = item
             else:

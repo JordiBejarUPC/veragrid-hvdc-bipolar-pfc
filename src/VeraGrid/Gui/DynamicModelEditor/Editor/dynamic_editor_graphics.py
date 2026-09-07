@@ -157,7 +157,7 @@ def duplicate_paired_item(original: PairedItem) -> PairedItem | None:
     )
 
     new_item.setPos(original.pos() + QPointF(0.0, 80.0))
-    editor.scene.addItem(new_item)
+    editor.scene.add_block_item(block_uid=block_model.uid, item=new_item)
     editor.diagram.add_node(
         name=block_model.name,
         x=new_item.pos().x(),
@@ -4383,7 +4383,7 @@ class GraphicsView(QGraphicsView):
 class DiagramScene(QGraphicsScene):
     """Scene coordinating block selection, wiring, and context actions."""
 
-    __slots__ = ()
+    __slots__ = ("_block_items_by_uid",)
 
     def __init__(self, editor: "DynamicBlockEditorGUI") -> None:
         """Initialize the graphics object and its interaction state.
@@ -4396,6 +4396,58 @@ class DiagramScene(QGraphicsScene):
         self.temp_line: QGraphicsPathItem | None = None
         self.source_port: PortItem | BranchingItem | None = None
         self.context_item: BlockItem | GenericBlockItem | ConnectionItem | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem | PairedItem | None = None
+        # Qt owns the native scene items, while this index deliberately owns
+        # their Python wrappers.  Keeping both ownership paths explicit avoids
+        # collection of Python-defined QGraphicsItem subclasses while their
+        # native counterparts are still expected to be visible in the scene.
+        self._block_items_by_uid: Dict[int, QGraphicsItem] = dict()
+
+    def add_block_item(self, block_uid: int, item: QGraphicsItem) -> None:
+        """Add one root block item and retain its Python wrapper.
+
+        :param block_uid: Stable identifier of the represented symbolic block.
+        :param item: Root graphics item to add to this scene.
+        :return: None.
+        """
+        self.addItem(item)
+        self._block_items_by_uid[block_uid] = item
+
+    def remove_block_item(self, block_uid: int, item: QGraphicsItem) -> None:
+        """Remove one root block item from both ownership registries.
+
+        :param block_uid: Stable identifier of the represented symbolic block.
+        :param item: Root graphics item being removed.
+        :return: None.
+        """
+        registered_item: QGraphicsItem | None = self._block_items_by_uid.get(block_uid, None)
+        if registered_item is item:
+            del self._block_items_by_uid[block_uid]
+        else:
+            pass
+
+        if item.scene() is self:
+            self.removeItem(item)
+        else:
+            pass
+
+    def get_block_item(self, block_uid: int) -> QGraphicsItem | None:
+        """Return the retained graphics item for one symbolic block.
+
+        :param block_uid: Stable identifier of the represented symbolic block.
+        :return: Registered root item, or ``None`` when it is not materialized.
+        """
+        return self._block_items_by_uid.get(block_uid, None)
+
+    def clear_block_items(self) -> None:
+        """Clear native scene contents and every retained block wrapper.
+
+        :return: None.
+        """
+        # Release the explicit wrappers before Qt deletes their native items so
+        # both ownership registries describe the same empty scene throughout
+        # reconstruction and final disposal.
+        self._block_items_by_uid.clear()
+        self.clear()
 
     def prepare_to_delete(self) -> None:
         """
@@ -4465,7 +4517,7 @@ class DiagramScene(QGraphicsScene):
         self.source_port = None
         self.context_item = None
         self.editor = None
-        self.clear()
+        self.clear_block_items()
 
     def change_item_fill_color(self,
                                item: BlockItem | GenericBlockItem | ConnectionItem | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem | PairedItem) -> None:
