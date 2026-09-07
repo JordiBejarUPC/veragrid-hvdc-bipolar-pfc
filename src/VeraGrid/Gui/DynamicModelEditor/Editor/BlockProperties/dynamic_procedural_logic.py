@@ -44,7 +44,7 @@ from VeraGridEngine.Utils.procedural_logic import (
     TimeDelayLogic,
     ValveStateLogic,
 )
-from VeraGrid.Gui.DynamicModelEditor.BlockProperties.dae_code_linter import (
+from VeraGrid.Gui.DynamicModelEditor.Editor.BlockProperties.dae_code_linter import (
     normalize_algebraic_equality_syntax,
 )
 

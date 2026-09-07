@@ -6,7 +6,7 @@ from PySide6 import QtWidgets
 
 import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_graphics as graph
 from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_editor import DynamicBlockEditorGUI
-from VeraGrid.Gui.DynamicModelEditor.Tabs.dynamic_editor_tab import DynamicEditorTab
+from VeraGrid.Gui.DynamicModelEditor.Workspace.Tabs import DynamicEditorTab
 from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import (
     DynamicEditorEntry,
     build_dynamic_editor_entry,

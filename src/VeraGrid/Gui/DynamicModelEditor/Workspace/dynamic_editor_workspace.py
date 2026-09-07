@@ -3,24 +3,23 @@
 ################################################################################
 ## Form generated from reading UI file 'dynamic_editor_workspace.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.11.0
+## Created by: Qt User Interface Compiler version 6.10.1
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
 
 from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
-                            QMetaObject, QObject, QPoint, QRect,
-                            QSize, QTime, QUrl, Qt)
+    QMetaObject, QObject, QPoint, QRect,
+    QSize, QTime, QUrl, Qt)
 from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
-                           QCursor, QFont, QFontDatabase, QGradient,
-                           QIcon, QImage, QKeySequence, QLinearGradient,
-                           QPainter, QPalette, QPixmap, QRadialGradient,
-                           QTransform)
+    QCursor, QFont, QFontDatabase, QGradient,
+    QIcon, QImage, QKeySequence, QLinearGradient,
+    QPainter, QPalette, QPixmap, QRadialGradient,
+    QTransform)
 from PySide6.QtWidgets import (QApplication, QFrame, QHBoxLayout, QHeaderView,
-                               QLineEdit, QMainWindow, QSizePolicy, QSplitter,
-                               QToolBar, QTreeView, QVBoxLayout, QWidget)
+    QLineEdit, QMainWindow, QSizePolicy, QSplitter,
+    QToolBar, QTreeView, QVBoxLayout, QWidget)
 from VeraGrid.Gui.Icons.icons_rc import *
-
 
 class Ui_DynamicEditorWorkspaceWindow(object):
     def setupUi(self, DynamicEditorWorkspaceWindow):
@@ -70,6 +69,30 @@ class Ui_DynamicEditorWorkspaceWindow(object):
         icon6.addFile(u":/Icons/icons/tree.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.actionview_tree.setIcon(icon6)
         self.actionview_tree.setMenuRole(QAction.MenuRole.NoRole)
+        self.actionRMS_Editor = QAction(DynamicEditorWorkspaceWindow)
+        self.actionRMS_Editor.setObjectName(u"actionRMS_Editor")
+        icon7 = QIcon()
+        icon7.addFile(u":/Icons/icons/dyn.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.actionRMS_Editor.setIcon(icon7)
+        self.actionRMS_Editor.setMenuRole(QAction.MenuRole.NoRole)
+        self.actionEMT_Editor = QAction(DynamicEditorWorkspaceWindow)
+        self.actionEMT_Editor.setObjectName(u"actionEMT_Editor")
+        icon8 = QIcon()
+        icon8.addFile(u":/Icons/icons/dyn_emt.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.actionEMT_Editor.setIcon(icon8)
+        self.actionEMT_Editor.setMenuRole(QAction.MenuRole.NoRole)
+        self.actionRMS_Events = QAction(DynamicEditorWorkspaceWindow)
+        self.actionRMS_Events.setObjectName(u"actionRMS_Events")
+        icon9 = QIcon()
+        icon9.addFile(u":/Icons/icons/dyn_edit.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.actionRMS_Events.setIcon(icon9)
+        self.actionRMS_Events.setMenuRole(QAction.MenuRole.NoRole)
+        self.actionEMT_Events = QAction(DynamicEditorWorkspaceWindow)
+        self.actionEMT_Events.setObjectName(u"actionEMT_Events")
+        icon10 = QIcon()
+        icon10.addFile(u":/Icons/icons/dyn_emt_edit.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.actionEMT_Events.setIcon(icon10)
+        self.actionEMT_Events.setMenuRole(QAction.MenuRole.NoRole)
         self.centralwidget = QWidget(DynamicEditorWorkspaceWindow)
         self.centralwidget.setObjectName(u"centralwidget")
         self.verticalLayout = QVBoxLayout(self.centralwidget)
@@ -96,6 +119,7 @@ class Ui_DynamicEditorWorkspaceWindow(object):
         self.searchInTreeLineEdit.setObjectName(u"searchInTreeLineEdit")
 
         self.horizontalLayout_2.addWidget(self.searchInTreeLineEdit)
+
 
         self.verticalLayout_2.addWidget(self.frame_2)
 
@@ -126,8 +150,9 @@ class Ui_DynamicEditorWorkspaceWindow(object):
         self.toolBar = QToolBar(DynamicEditorWorkspaceWindow)
         self.toolBar.setObjectName(u"toolBar")
         self.toolBar.setMovable(False)
+        self.toolBar.setAllowedAreas(Qt.ToolBarArea.LeftToolBarArea)
         self.toolBar.setFloatable(False)
-        DynamicEditorWorkspaceWindow.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.toolBar)
+        DynamicEditorWorkspaceWindow.addToolBar(Qt.ToolBarArea.LeftToolBarArea, self.toolBar)
 
         self.toolBar.addAction(self.actionview_tree)
         self.toolBar.addSeparator()
@@ -139,34 +164,36 @@ class Ui_DynamicEditorWorkspaceWindow(object):
         self.toolBar.addAction(self.actionZoom_in)
         self.toolBar.addAction(self.actionCenter)
         self.toolBar.addSeparator()
+        self.toolBar.addAction(self.actionRMS_Editor)
+        self.toolBar.addAction(self.actionRMS_Events)
+        self.toolBar.addAction(self.actionEMT_Editor)
+        self.toolBar.addAction(self.actionEMT_Events)
 
         self.retranslateUi(DynamicEditorWorkspaceWindow)
 
         QMetaObject.connectSlotsByName(DynamicEditorWorkspaceWindow)
-
     # setupUi
 
     def retranslateUi(self, DynamicEditorWorkspaceWindow):
-        DynamicEditorWorkspaceWindow.setWindowTitle(
-            QCoreApplication.translate("DynamicEditorWorkspaceWindow", u"Dynamic Editor Workspace", None))
-        self.block_editor_actionCheckModel.setText(
-            QCoreApplication.translate("DynamicEditorWorkspaceWindow", u"CheckModel", None))
-        # if QT_CONFIG(tooltip)
-        self.block_editor_actionCheckModel.setToolTip(
-            QCoreApplication.translate("DynamicEditorWorkspaceWindow", u"Inspect model", None))
-        # endif // QT_CONFIG(tooltip)
+        DynamicEditorWorkspaceWindow.setWindowTitle(QCoreApplication.translate("DynamicEditorWorkspaceWindow", u"Dynamic Editor Workspace", None))
+        self.block_editor_actionCheckModel.setText(QCoreApplication.translate("DynamicEditorWorkspaceWindow", u"CheckModel", None))
+#if QT_CONFIG(tooltip)
+        self.block_editor_actionCheckModel.setToolTip(QCoreApplication.translate("DynamicEditorWorkspaceWindow", u"Inspect model", None))
+#endif // QT_CONFIG(tooltip)
         self.actionCenter.setText(QCoreApplication.translate("DynamicEditorWorkspaceWindow", u"Center", None))
         self.actionZoom_in.setText(QCoreApplication.translate("DynamicEditorWorkspaceWindow", u"Zoom in", None))
         self.actionZoom_out.setText(QCoreApplication.translate("DynamicEditorWorkspaceWindow", u"Zoom out", None))
         self.action_delete_all.setText(QCoreApplication.translate("DynamicEditorWorkspaceWindow", u"Delete all", None))
-        # if QT_CONFIG(tooltip)
-        self.action_delete_all.setToolTip(
-            QCoreApplication.translate("DynamicEditorWorkspaceWindow", u"Delete all blocks to start from scratch.",
-                                       None))
-        # endif // QT_CONFIG(tooltip)
+#if QT_CONFIG(tooltip)
+        self.action_delete_all.setToolTip(QCoreApplication.translate("DynamicEditorWorkspaceWindow", u"Delete all blocks to start from scratch.", None))
+#endif // QT_CONFIG(tooltip)
         self.actionValidate.setText(QCoreApplication.translate("DynamicEditorWorkspaceWindow", u"Validate", None))
         self.actionview_tree.setText(QCoreApplication.translate("DynamicEditorWorkspaceWindow", u"view tree", None))
-        self.searchInTreeLineEdit.setPlaceholderText(
-            QCoreApplication.translate("DynamicEditorWorkspaceWindow", u"Type to search the device", None))
+        self.actionRMS_Editor.setText(QCoreApplication.translate("DynamicEditorWorkspaceWindow", u"RMS Editor", None))
+        self.actionEMT_Editor.setText(QCoreApplication.translate("DynamicEditorWorkspaceWindow", u"EMT Editor", None))
+        self.actionRMS_Events.setText(QCoreApplication.translate("DynamicEditorWorkspaceWindow", u"RMS Events", None))
+        self.actionEMT_Events.setText(QCoreApplication.translate("DynamicEditorWorkspaceWindow", u"EMT Events", None))
+        self.searchInTreeLineEdit.setPlaceholderText(QCoreApplication.translate("DynamicEditorWorkspaceWindow", u"Type to search the device", None))
         self.toolBar.setWindowTitle(QCoreApplication.translate("DynamicEditorWorkspaceWindow", u"toolBar", None))
     # retranslateUi
+

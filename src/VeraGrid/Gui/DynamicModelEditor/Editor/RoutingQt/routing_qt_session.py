@@ -7,15 +7,15 @@ from __future__ import annotations
 
 from PySide6.QtGui import QPainterPath
 
-from VeraGrid.Gui.DynamicModelEditor.Routing.route_builder import RouteBuilder
-from VeraGrid.Gui.DynamicModelEditor.Routing.routing_editor import RoutingEditor
-from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingSegment
-from VeraGrid.Gui.DynamicModelEditor.Routing.routing_graph import RoutingGraph
-from VeraGrid.Gui.DynamicModelEditor.Routing.routing_serializer import RoutingGraphSerializer
-from VeraGrid.Gui.DynamicModelEditor.Routing.routing_serializer import RoutingSerializedGraph
-from VeraGrid.Gui.DynamicModelEditor.RoutingQt.routing_qt_adapter import QtRoutingGraphAdapter
-from VeraGrid.Gui.DynamicModelEditor.RoutingQt.routing_qt_port_snapshot import QtRoutingPortSnapshot
-from VeraGrid.Gui.DynamicModelEditor.RoutingQt.routing_qt_port_snapshot import build_qt_routing_port_snapshot
+from VeraGrid.Gui.DynamicModelEditor.Editor.Routing.route_builder import RouteBuilder
+from VeraGrid.Gui.DynamicModelEditor.Editor.Routing.routing_editor import RoutingEditor
+from VeraGrid.Gui.DynamicModelEditor.Editor.Routing.routing_elements import RoutingSegment
+from VeraGrid.Gui.DynamicModelEditor.Editor.Routing.routing_graph import RoutingGraph
+from VeraGrid.Gui.DynamicModelEditor.Editor.Routing.routing_serializer import RoutingGraphSerializer
+from VeraGrid.Gui.DynamicModelEditor.Editor.Routing.routing_serializer import RoutingSerializedGraph
+from VeraGrid.Gui.DynamicModelEditor.Editor.RoutingQt.routing_qt_adapter import QtRoutingGraphAdapter
+from VeraGrid.Gui.DynamicModelEditor.Editor.RoutingQt.routing_qt_port_snapshot import QtRoutingPortSnapshot
+from VeraGrid.Gui.DynamicModelEditor.Editor.RoutingQt.routing_qt_port_snapshot import build_qt_routing_port_snapshot
 from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_graphics import PortItem
 
 

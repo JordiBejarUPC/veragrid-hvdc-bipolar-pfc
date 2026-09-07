@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, List
 from VeraGridEngine.Utils.Symbolic.block import Block
 
 if TYPE_CHECKING:
-    from VeraGrid.Gui.DynamicModelEditor.Tabs.dynamic_editor_tab import DynamicEditorDocument
+    from VeraGrid.Gui.DynamicModelEditor.Workspace.Tabs.dynamic_editor_tab import DynamicEditorDocument
 else:
     pass
 

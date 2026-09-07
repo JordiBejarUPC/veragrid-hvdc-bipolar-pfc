@@ -14,7 +14,7 @@ from VeraGridEngine.Utils.Symbolic.symbolic import (
     get_symbolic_parser_function_names,
 )
 from VeraGridEngine.enumerations import ProceduralFieldType, ProceduralLogicType
-from VeraGrid.Gui.DynamicModelEditor.BlockProperties.dynamic_procedural_logic import (
+from VeraGrid.Gui.DynamicModelEditor.Editor.BlockProperties.dynamic_procedural_logic import (
     build_procedural_logic_call_lines,
     get_procedural_code_field_type,
     get_procedural_logic_help,
