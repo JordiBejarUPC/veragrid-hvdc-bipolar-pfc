@@ -2102,6 +2102,14 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         self._initial_scene_fit_pending = True
 
+        self.ui.block_editor_actionCheckModel.triggered.connect(self.open_inspect_dialog)
+        self.ui.actionCenter.triggered.connect(self.center_view_on_items)
+        self.ui.actionZoom_in.triggered.connect(self.zoom_in_view)
+        self.ui.actionZoom_out.triggered.connect(self.zoom_out_view)
+        self.ui.action_delete_all.triggered.connect(self.delete_all_blocks_with_confirmation)
+        self.ui.actionValidate.triggered.connect(self.show_model_consistency_validation)
+
+
     def showEvent(self, event: QtGui.QShowEvent) -> None:
         """
         Fit the complete diagram once the editor receives its first real viewport.

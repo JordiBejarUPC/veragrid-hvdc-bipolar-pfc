@@ -142,100 +142,11 @@
    </attribute>
    <addaction name="actionview_tree"/>
    <addaction name="separator"/>
-   <addaction name="action_delete_all"/>
-   <addaction name="block_editor_actionCheckModel"/>
-   <addaction name="actionValidate"/>
-   <addaction name="separator"/>
-   <addaction name="actionZoom_out"/>
-   <addaction name="actionZoom_in"/>
-   <addaction name="actionCenter"/>
-   <addaction name="separator"/>
    <addaction name="actionRMS_Editor"/>
    <addaction name="actionRMS_Events"/>
    <addaction name="actionEMT_Editor"/>
    <addaction name="actionEMT_Events"/>
   </widget>
-  <action name="block_editor_actionCheckModel">
-   <property name="icon">
-    <iconset resource="../../Icons/icons.qrc">
-     <normaloff>:/Icons/icons/magnifying_glass2.png</normaloff>:/Icons/icons/magnifying_glass2.png</iconset>
-   </property>
-   <property name="text">
-    <string>CheckModel</string>
-   </property>
-   <property name="toolTip">
-    <string>Inspect model</string>
-   </property>
-   <property name="menuRole">
-    <enum>QAction::MenuRole::NoRole</enum>
-   </property>
-  </action>
-  <action name="actionCenter">
-   <property name="icon">
-    <iconset resource="../../Icons/icons.qrc">
-     <normaloff>:/Icons/icons/resize.png</normaloff>:/Icons/icons/resize.png</iconset>
-   </property>
-   <property name="text">
-    <string>Center</string>
-   </property>
-   <property name="menuRole">
-    <enum>QAction::MenuRole::NoRole</enum>
-   </property>
-  </action>
-  <action name="actionZoom_in">
-   <property name="icon">
-    <iconset resource="../../Icons/icons.qrc">
-     <normaloff>:/Icons/icons/zoom_in.png</normaloff>:/Icons/icons/zoom_in.png</iconset>
-   </property>
-   <property name="text">
-    <string>Zoom in</string>
-   </property>
-   <property name="menuRole">
-    <enum>QAction::MenuRole::NoRole</enum>
-   </property>
-  </action>
-  <action name="actionZoom_out">
-   <property name="icon">
-    <iconset resource="../../Icons/icons.qrc">
-     <normaloff>:/Icons/icons/zoom_out.png</normaloff>:/Icons/icons/zoom_out.png</iconset>
-   </property>
-   <property name="text">
-    <string>Zoom out</string>
-   </property>
-   <property name="menuRole">
-    <enum>QAction::MenuRole::NoRole</enum>
-   </property>
-  </action>
-  <action name="action_delete_all">
-   <property name="enabled">
-    <bool>true</bool>
-   </property>
-   <property name="icon">
-    <iconset resource="../../Icons/icons.qrc">
-     <normaloff>:/Icons/icons/new.png</normaloff>:/Icons/icons/new.png</iconset>
-   </property>
-   <property name="text">
-    <string>Delete all</string>
-   </property>
-   <property name="toolTip">
-    <string>Delete all blocks to start from scratch.</string>
-   </property>
-   <property name="menuRole">
-    <enum>QAction::MenuRole::NoRole</enum>
-   </property>
-  </action>
-  <action name="actionValidate">
-   <property name="icon">
-    <iconset resource="../../Icons/icons.qrc">
-     <normaloff>:/Icons/icons/check_all.png</normaloff>:/Icons/icons/check_all.png</iconset>
-   </property>
-   <property name="text">
-    <string>Validate</string>
-   </property>
-   <property name="menuRole">
-    <enum>QAction::MenuRole::NoRole</enum>
-   </property>
-  </action>
   <action name="actionview_tree">
    <property name="icon">
     <iconset resource="../../Icons/icons.qrc">
