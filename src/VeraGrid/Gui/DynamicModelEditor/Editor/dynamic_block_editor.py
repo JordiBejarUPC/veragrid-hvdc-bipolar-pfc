@@ -6802,7 +6802,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         if self.mode == DynamicSimulationMode.RMS:
             self.add_connection_vars_rms_basic()
         elif self.mode == DynamicSimulationMode.EMT:
-            self.add_connection_vars_emt()
+            self.add_connection_vars_emt_basic()
 
 
         else:
