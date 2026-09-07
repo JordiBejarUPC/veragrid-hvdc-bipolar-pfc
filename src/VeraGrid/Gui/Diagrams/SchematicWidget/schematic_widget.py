@@ -2384,47 +2384,108 @@ class SchematicWidget(BaseDiagramWidget):
         # release this pointer after no terminal accepted the branch
         self.started_branch = None
 
-    def apply_expansion_factor(self, factor: float):
+    def apply_expansion_factor(self, factor: float) -> None:
         """
         separate or get closer the drawn elements
         :param factor: expansion factor (i.e 1.1 to expand, 0.9 to get closer)
+        :return: None.
         """
-        min_x = sys.maxsize
-        min_y = sys.maxsize
-        max_x = -sys.maxsize
-        max_y = -sys.maxsize
+        min_x: float = float(sys.maxsize)
+        min_y: float = float(sys.maxsize)
+        max_x: float = float(-sys.maxsize)
+        max_y: float = float(-sys.maxsize)
 
-        check_selected_only = len(self.diagram_scene.selectedItems()) > 0
+        check_selected_only: bool = len(self.diagram_scene.selectedItems()) > 0
 
-        for dev_tpe in [DeviceType.BusDevice,
+        bus_movement_by_idtag: Dict[str, QPointF] = dict()
+
+        for dev_tpe in (DeviceType.BusDevice,
                         DeviceType.BusBarDevice,
-                        DeviceType.FluidNodeDevice,
                         DeviceType.Transformer3WDevice,
-                        DeviceType.TransformerNwDevice]:
+                        DeviceType.TransformerNwDevice):
 
-            graphic_objects_dict = self.graphics_manager.graphic_dict.get(dev_tpe, dict())
+            node_graphic_objects_dict: Dict[str, GenericDiagramWidget] = self.graphics_manager.graphic_dict.get(
+                dev_tpe,
+                dict(),
+            )
 
-            for key, item in graphic_objects_dict.items():
-                x = item.pos().x() * factor
-                y = item.pos().y() * factor
-                item.setPos(QPointF(x, y))
+            for key, item in node_graphic_objects_dict.items():
+                if item.api_object.device_type == DeviceType.FluidNodeDevice:
+                    # The internal electrical bus of a fluid node can point to the same graphic item.
+                    # Move that item once in the fluid-node pass below.
+                    pass
+                else:
+                    old_x: float = float(item.pos().x())
+                    old_y: float = float(item.pos().y())
+                    x: float = old_x * factor
+                    y: float = old_y * factor
+                    item.setPos(QPointF(x, y))
 
-                if check_selected_only:
-                    if item.isSelected():
+                    if dev_tpe == DeviceType.BusDevice:
+                        bus_movement_by_idtag[key] = QPointF(x - old_x, y - old_y)
+                    else:
+                        pass
+
+                    if check_selected_only:
+                        if item.isSelected():
+                            max_x = max(max_x, x)
+                            min_x = min(min_x, x)
+                            max_y = max(max_y, y)
+                            min_y = min(min_y, y)
+                        else:
+                            pass
+                    else:
                         max_x = max(max_x, x)
                         min_x = min(min_x, x)
                         max_y = max(max_y, y)
                         min_y = min(min_y, y)
-                    else:
-                        pass
-                else:
+
+                    # apply changes to the diagram coordinates
+                    self.diagram.update_xy(api_object=item._api_object, x=x, y=y)
+
+        fluid_graphic_objects_dict: Dict[str, FluidNodeGraphicItem] = self.graphics_manager.graphic_dict.get(
+            DeviceType.FluidNodeDevice,
+            dict(),
+        )
+
+        for item in fluid_graphic_objects_dict.values():
+            old_x: float = float(item.pos().x())
+            old_y: float = float(item.pos().y())
+            fluid_node: FluidNode = item.api_object
+
+            if fluid_node.bus is not None:
+                bus_movement: QPointF | None = bus_movement_by_idtag.get(fluid_node.bus.idtag, None)
+            else:
+                bus_movement = None
+
+            x: float
+            y: float
+            if bus_movement is not None:
+                # Fluid nodes linked to a visible bus follow that bus so their visual offset is preserved.
+                x = old_x + bus_movement.x()
+                y = old_y + bus_movement.y()
+            else:
+                x = old_x * factor
+                y = old_y * factor
+
+            item.setPos(QPointF(x, y))
+
+            if check_selected_only:
+                if item.isSelected():
                     max_x = max(max_x, x)
                     min_x = min(min_x, x)
                     max_y = max(max_y, y)
                     min_y = min(min_y, y)
+                else:
+                    pass
+            else:
+                max_x = max(max_x, x)
+                min_x = min(min_x, x)
+                max_y = max(max_y, y)
+                min_y = min(min_y, y)
 
-                # apply changes to the diagram coordinates
-                self.diagram.update_xy(api_object=item._api_object, x=x, y=y)
+            # apply changes to the diagram coordinates
+            self.diagram.update_xy(api_object=item._api_object, x=x, y=y)
 
         # set the limits of the view
         self.set_limits(min_x, max_x, min_y, max_y)
