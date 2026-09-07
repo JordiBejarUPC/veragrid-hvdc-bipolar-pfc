@@ -662,19 +662,22 @@ class SimulationsMain(TimeEventsMain):
                     return True
         return False
 
-    def add_simulation(self, val: SimulationTypes):
+    def add_simulation(self, val: SimulationTypes) -> None:
         """
         Add a simulation to the simulations list
         :param val: simulation type
         """
-        self.stuff_running_now.append(val)
+        if val not in self.stuff_running_now:
+            self.stuff_running_now.append(val)
+        else:
+            pass
 
-    def remove_simulation(self, val: SimulationTypes):
+    def remove_simulation(self, val: SimulationTypes) -> None:
         """
         Remove a simulation from the simulations list
         :param val: simulation type
         """
-        if val in self.stuff_running_now:
+        while val in self.stuff_running_now:
             self.stuff_running_now.remove(val)
 
     def clear_results(self):
@@ -2888,7 +2891,7 @@ class SimulationsMain(TimeEventsMain):
 
         return options
 
-    def run_opf(self):
+    def run_opf(self) -> None:
         """
         Run OPF simulation
         """
@@ -2901,8 +2904,6 @@ class SimulationsMain(TimeEventsMain):
                 self.ui.progress_label.setText('Running optimal power flow...')
                 QtGui.QGuiApplication.processEvents()
 
-                self.LOCK()
-
                 options: sim.OptimalPowerFlowOptions | None = self.get_opf_options()
 
                 if options is not None:
@@ -2912,32 +2913,46 @@ class SimulationsMain(TimeEventsMain):
                     else:
                         pass
                 else:
-                    pass
+                    return None
 
                 # set power flow object instance
-                drv = sim.OptimalPowerFlowDriver(grid=self.circuit,
-                                                 options=options,
-                                                 engine=self.get_preferred_engine())
+                drv: sim.OptimalPowerFlowDriver = sim.OptimalPowerFlowDriver(
+                    grid=self.circuit,
+                    options=options,
+                    engine=self.get_preferred_engine()
+                )
 
-                self.session.run(drv,
-                                 post_func=self.post_opf,
-                                 prog_func=self.ui.progressBar.setValue,
-                                 text_func=self.ui.progress_label.setText)
+                self.add_simulation(SimulationTypes.OPF_run)
+                self.LOCK()
+
+                try:
+                    self.session.run(drv,
+                                     post_func=self.post_opf,
+                                     prog_func=self.ui.progressBar.setValue,
+                                     text_func=self.ui.progress_label.setText)
+                except Exception as e:
+                    error_message: str = str(e)
+                    self.remove_simulation(SimulationTypes.OPF_run)
+                    self.UNLOCK()
+                    self.show_error_toast(self.tr("Optimal power flow failed to start"), duration=4000)
+                    drv.logger.add_error(error_message)
+                    self.show_logs(logger=drv.logger, name=self.tr("Optimal power flow logs"))
 
             else:
                 self.show_warning_toast(self.tr('Another OPF is being run...'))
+                return None
         else:
-            pass
+            return None
 
-    def post_opf(self):
+    def post_opf(self) -> None:
         """
         Actions to run after the OPF simulation
         """
-        _, results = self.session.optimal_power_flow
+        drv, results = self.session.optimal_power_flow
+
+        self.remove_simulation(SimulationTypes.OPF_run)
 
         if results is not None:
-
-            self.remove_simulation(SimulationTypes.OPF_run)
 
             if results.converged:
                 self.show_info_toast(self.tr("Optimal power flow converged :)"))
@@ -2952,10 +2967,20 @@ class SimulationsMain(TimeEventsMain):
 
             self.colour_diagrams()
 
+        else:
+            self.show_error_toast(self.tr('Something went wrong, there are no OPF results.'), duration=4000)
+            if drv is not None:
+                if drv.logger.has_logs():
+                    self.show_logs(logger=drv.logger, name=self.tr("Optimal power flow logs"))
+                else:
+                    pass
+            else:
+                pass
+
         if not self.session.is_anything_running():
             self.UNLOCK()
 
-    def run_opf_time_series(self):
+    def run_opf_time_series(self) -> None:
         """
         OPF Time Series run
         """
@@ -2965,15 +2990,6 @@ class SimulationsMain(TimeEventsMain):
                 if not self.session.is_this_running(SimulationTypes.OPFTimeSeries_run):
 
                     if self.circuit.time_profile is not None:
-
-                        self.add_simulation(SimulationTypes.OPFTimeSeries_run)
-
-                        self.LOCK()
-
-                        # Compile the grid
-                        self.ui.progress_label.setText(
-                            QtCore.QCoreApplication.translate("SimulationsMain", "Compiling the grid..."))
-                        QtGui.QGuiApplication.processEvents()
 
                         # get the power flow options from the GUI
                         options: sim.OptimalPowerFlowOptions | None = self.get_opf_options()
@@ -2989,7 +3005,8 @@ class SimulationsMain(TimeEventsMain):
                                 else:
                                     pass
                             else:
-                                pass
+                                self.show_warning_toast(self.tr('There are no time series...'))
+                                return None
 
                             if (options.solver == SolverType.NONLINEAR_OPF
                                     and self.circuit.get_fluid_nodes_number() > 0):
@@ -2997,9 +3014,14 @@ class SimulationsMain(TimeEventsMain):
                             else:
                                 pass
 
+                            # Compile the grid in the worker after the launch state is registered.
+                            self.ui.progress_label.setText(
+                                QtCore.QCoreApplication.translate("SimulationsMain", "Compiling the grid..."))
+                            QtGui.QGuiApplication.processEvents()
+
                             # create the OPF time series instance
                             # if non_sequential:
-                            drv = sim.OptimalPowerFlowTimeSeriesDriver(
+                            drv: sim.OptimalPowerFlowTimeSeriesDriver = sim.OptimalPowerFlowTimeSeriesDriver(
                                 grid=self.circuit,
                                 options=options,
                                 time_indices=time_indices,
@@ -3008,10 +3030,23 @@ class SimulationsMain(TimeEventsMain):
 
                             drv.engine = self.get_preferred_engine()
 
-                            self.session.run(drv,
-                                             post_func=self.post_opf_time_series,
-                                             prog_func=self.ui.progressBar.setValue,
-                                             text_func=self.ui.progress_label.setText)
+                            self.add_simulation(SimulationTypes.OPFTimeSeries_run)
+                            self.LOCK()
+
+                            try:
+                                self.session.run(drv,
+                                                 post_func=self.post_opf_time_series,
+                                                 prog_func=self.ui.progressBar.setValue,
+                                                 text_func=self.ui.progress_label.setText)
+                            except Exception as e:
+                                error_message: str = str(e)
+                                self.remove_simulation(SimulationTypes.OPFTimeSeries_run)
+                                self.UNLOCK()
+                                self.show_error_toast(self.tr("OPF time series failed to start"), duration=4000)
+                                drv.logger.add_error(error_message)
+                                self.show_logs(logger=drv.logger, name=self.tr("OPF time series logs"))
+                        else:
+                            return None
 
                     else:
                         self.show_warning_toast(self.tr('There are no time series...'))
@@ -3023,28 +3058,35 @@ class SimulationsMain(TimeEventsMain):
         else:
             self.show_warning_toast(self.tr('Nothing to simulate...'))
 
-    def post_opf_time_series(self):
+    def post_opf_time_series(self) -> None:
         """
         Post OPF Time Series
         """
 
-        _, results = self.session.optimal_power_flow_ts
+        drv, results = self.session.optimal_power_flow_ts
+
+        # The worker sets ``results`` to ``None`` when it catches an exception.
+        # Always remove the GUI marker so a failed thread cannot leave stale state.
+        self.remove_simulation(SimulationTypes.OPFTimeSeries_run)
 
         if results is not None:
 
             # expand the clusters
             results.expand_clustered_results()
 
-            # delete from the current simulations
-            self.remove_simulation(SimulationTypes.OPFTimeSeries_run)
+            self.update_available_results()
 
-            if results is not None:
-                self.update_available_results()
-
-                self.colour_diagrams()
+            self.colour_diagrams()
 
         else:
-            pass
+            self.show_error_toast(self.tr('Something went wrong, there are no OPF time series results.'), duration=4000)
+            if drv is not None:
+                if drv.logger.has_logs():
+                    self.show_logs(logger=drv.logger, name=self.tr("OPF time series logs"))
+                else:
+                    pass
+            else:
+                pass
 
         if not self.session.is_anything_running():
             self.UNLOCK()

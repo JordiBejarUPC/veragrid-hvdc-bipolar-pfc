@@ -90,6 +90,22 @@ class FakeThread:
         self.started = True
 
 
+class FailingFakeThread(FakeThread):
+    """
+    Fake thread that raises during start to exercise launch rollback.
+    """
+
+    __slots__ = tuple()
+
+    def start(self) -> None:
+        """
+        Raise a deterministic start failure.
+
+        :return: None.
+        """
+        raise RuntimeError("thread start failed")
+
+
 class FakeDriver:
     """
     Minimal driver used to trigger session replacement code paths.
@@ -466,3 +482,47 @@ def test_session_run_replaces_existing_driver_without_registered_thread(monkeypa
     assert SimulationTypes.PowerFlow_run in session.threads
     assert isinstance(session.threads[SimulationTypes.PowerFlow_run], FakeThread)
     assert session.threads[SimulationTypes.PowerFlow_run].started is True
+
+
+def test_session_run_accepts_missing_callbacks(monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    Launching a study must not require GUI callbacks.
+
+    :param monkeypatch: Pytest monkeypatch fixture.
+    :return: None.
+    """
+    session = SimulationSession()
+    driver = FakeDriver(driver_tpe=SimulationTypes.PowerFlow_run)
+
+    monkeypatch.setattr("VeraGrid.Session.session.GcThread", FakeThread)
+
+    session.run(driver=driver)
+
+    thread = session.threads[SimulationTypes.PowerFlow_run]
+    assert thread.progress_signal.callbacks == list()
+    assert thread.progress_text.callbacks == list()
+    assert thread.done_signal.callbacks == list()
+    assert thread.started is True
+
+
+def test_session_run_restores_existing_completed_driver_when_start_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    A synchronous QThread start failure must not discard the previous completed result.
+
+    :param monkeypatch: Pytest monkeypatch fixture.
+    :return: None.
+    """
+    session = SimulationSession()
+    previous_driver = FakeDriver(driver_tpe=SimulationTypes.PowerFlow_run)
+    previous_thread = FakeThread(driver=previous_driver)
+    next_driver = FakeDriver(driver_tpe=SimulationTypes.PowerFlow_run)
+    session.drivers[SimulationTypes.PowerFlow_run] = previous_driver
+    session.threads[SimulationTypes.PowerFlow_run] = previous_thread
+
+    monkeypatch.setattr("VeraGrid.Session.session.GcThread", FailingFakeThread)
+
+    with pytest.raises(RuntimeError, match="thread start failed"):
+        session.run(driver=next_driver)
+
+    assert session.drivers[SimulationTypes.PowerFlow_run] is previous_driver
+    assert session.threads[SimulationTypes.PowerFlow_run] is previous_thread
