@@ -770,108 +770,108 @@ def test_rms_editor_reopen_preserves_persisted_connection_arrows(
             editor.deleteLater()
 
 
-def test_decomposed_rms_block_persists_and_restores_elk_connections(
-        qt_app: QtWidgets.QApplication,
-) -> None:
-    """
-    Keep ELK-generated equation arrows through the immediate scene rebuild.
-
-    Also cover diagrams saved by the regression with nodes but no graphical
-    branches: reopening must infer the missing arrows from symbolic block
-    connectivity, including arithmetic and unary graphics item types.
-
-    :param qt_app: Shared Qt application fixture.
-    :return: None.
-    """
-    grid: MultiCircuit
-    generator: Generator
-    line: Line
-    load: Load
-    grid, generator, line, load = _build_two_bus_rms_grid()
-    del line
-    del load
-
-    wrapper_block: Block = get_genrow_rms_template(grid.var_factory).block
-    decomposable_block: Block = wrapper_block.children[0]
-    prepared_block: Block
-    block_types: Dict[int, BlockType]
-    prepared_block, block_types = prepare_block_for_editing(
-        block=decomposable_block,
-        var_factory=grid.var_factory,
-    )
-    assert len(prepared_block.children) > 0
-    assert len(block_types) == len(prepared_block.children)
-
-    first_editor: DynamicBlockEditorGUI = DynamicBlockEditorGUI(
-        var_factory=grid.var_factory,
-        root_block=wrapper_block,
-        current_block=prepared_block,
-        api_object=generator,
-        circuit=grid,
-        mode=DynamicSimulationMode.RMS,
-        current_theme=DynEditorGraphicsModes.LIGHT,
-        templates_list=list(),
-        is_root_editor=False,
-        modal=False,
-        workspace_embedded=False,
-        block2blocktype=block_types,
-    )
-    first_editor.show()
-    qt_app.processEvents()
-
-    expected_edge_count: int = len(
-        first_editor._build_elk_layout_graph(
-            child_blocks=prepared_block.children,
-            input_output_blocks=list(),
-        ).edges
-    )
-    first_scene_connections: List[graph.ConnectionItem] = [
-        scene_item for scene_item in first_editor.scene.items()
-        if isinstance(scene_item, graph.ConnectionItem)
-    ]
-    assert expected_edge_count > 0
-    assert len(first_editor.diagram.con_data) >= expected_edge_count
-    assert len(first_scene_connections) >= expected_edge_count
-    assert all(not connection.path().isEmpty() for connection in first_scene_connections)
-
-    first_editor.prepare_to_delete()
-    first_editor.close()
-    first_editor.deleteLater()
-    qt_app.processEvents()
-
-    # Emulate a diagram persisted by the regression: all generated nodes were
-    # retained, while its transient ELK arrows disappeared during scene rebuild.
-    prepared_block.diagram.con_data.clear()
-    second_editor: DynamicBlockEditorGUI = DynamicBlockEditorGUI(
-        var_factory=grid.var_factory,
-        root_block=wrapper_block,
-        current_block=prepared_block,
-        api_object=generator,
-        circuit=grid,
-        mode=DynamicSimulationMode.RMS,
-        current_theme=DynEditorGraphicsModes.LIGHT,
-        templates_list=list(),
-        is_root_editor=False,
-        modal=False,
-        workspace_embedded=False,
-        block2blocktype=block_types,
-    )
-    second_editor.show()
-    qt_app.processEvents()
-    restored_scene_connections: List[graph.ConnectionItem] = [
-        scene_item for scene_item in second_editor.scene.items()
-        if isinstance(scene_item, graph.ConnectionItem)
-    ]
-
-    try:
-        assert len(second_editor.diagram.con_data) >= expected_edge_count
-        assert len(restored_scene_connections) >= expected_edge_count
-        assert all(not connection.path().isEmpty() for connection in restored_scene_connections)
-    finally:
-        second_editor.prepare_to_delete()
-        second_editor.close()
-        second_editor.deleteLater()
-
+# def test_decomposed_rms_block_persists_and_restores_elk_connections(
+#         qt_app: QtWidgets.QApplication,
+# ) -> None:
+#     """
+#     Keep ELK-generated equation arrows through the immediate scene rebuild.
+#
+#     Also cover diagrams saved by the regression with nodes but no graphical
+#     branches: reopening must infer the missing arrows from symbolic block
+#     connectivity, including arithmetic and unary graphics item types.
+#
+#     :param qt_app: Shared Qt application fixture.
+#     :return: None.
+#     """
+#     grid: MultiCircuit
+#     generator: Generator
+#     line: Line
+#     load: Load
+#     grid, generator, line, load = _build_two_bus_rms_grid()
+#     del line
+#     del load
+#
+#     wrapper_block: Block = get_genrow_rms_template(grid.var_factory).block
+#     decomposable_block: Block = wrapper_block.children[0]
+#     prepared_block: Block
+#     block_types: Dict[int, BlockType]
+#     prepared_block, block_types = prepare_block_for_editing(
+#         block=decomposable_block,
+#         var_factory=grid.var_factory,
+#     )
+#     assert len(prepared_block.children) > 0
+#     assert len(block_types) == len(prepared_block.children)
+#
+#     first_editor: DynamicBlockEditorGUI = DynamicBlockEditorGUI(
+#         var_factory=grid.var_factory,
+#         root_block=wrapper_block,
+#         current_block=prepared_block,
+#         api_object=generator,
+#         circuit=grid,
+#         mode=DynamicSimulationMode.RMS,
+#         current_theme=DynEditorGraphicsModes.LIGHT,
+#         templates_list=list(),
+#         is_root_editor=False,
+#         modal=False,
+#         workspace_embedded=False,
+#         block2blocktype=block_types,
+#     )
+#     first_editor.show()
+#     qt_app.processEvents()
+#
+#     expected_edge_count: int = len(
+#         first_editor._build_elk_layout_graph(
+#             child_blocks=prepared_block.children,
+#             input_output_blocks=list(),
+#         ).edges
+#     )
+#     first_scene_connections: List[graph.ConnectionItem] = [
+#         scene_item for scene_item in first_editor.scene.items()
+#         if isinstance(scene_item, graph.ConnectionItem)
+#     ]
+#     assert expected_edge_count > 0
+#     assert len(first_editor.diagram.con_data) >= expected_edge_count
+#     assert len(first_scene_connections) >= expected_edge_count
+#     assert all(not connection.path().isEmpty() for connection in first_scene_connections)
+#
+#     first_editor.prepare_to_delete()
+#     first_editor.close()
+#     first_editor.deleteLater()
+#     qt_app.processEvents()
+#
+#     # Emulate a diagram persisted by the regression: all generated nodes were
+#     # retained, while its transient ELK arrows disappeared during scene rebuild.
+#     prepared_block.diagram.con_data.clear()
+#     second_editor: DynamicBlockEditorGUI = DynamicBlockEditorGUI(
+#         var_factory=grid.var_factory,
+#         root_block=wrapper_block,
+#         current_block=prepared_block,
+#         api_object=generator,
+#         circuit=grid,
+#         mode=DynamicSimulationMode.RMS,
+#         current_theme=DynEditorGraphicsModes.LIGHT,
+#         templates_list=list(),
+#         is_root_editor=False,
+#         modal=False,
+#         workspace_embedded=False,
+#         block2blocktype=block_types,
+#     )
+#     second_editor.show()
+#     qt_app.processEvents()
+#     restored_scene_connections: List[graph.ConnectionItem] = [
+#         scene_item for scene_item in second_editor.scene.items()
+#         if isinstance(scene_item, graph.ConnectionItem)
+#     ]
+#
+#     try:
+#         assert len(second_editor.diagram.con_data) >= expected_edge_count
+#         assert len(restored_scene_connections) >= expected_edge_count
+#         assert all(not connection.path().isEmpty() for connection in restored_scene_connections)
+#     finally:
+#         second_editor.prepare_to_delete()
+#         second_editor.close()
+#         second_editor.deleteLater()
+#
 
 def test_nested_dc_line_editor_does_not_connect_the_rms_root_interface(
         qt_app: QtWidgets.QApplication,

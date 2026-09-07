@@ -6,7 +6,8 @@
 from __future__ import annotations
 
 from PySide6.QtCore import QPointF
-from PySide6.QtWidgets import QGraphicsRectItem
+from PySide6.QtCore import QRectF
+from PySide6.QtWidgets import QGraphicsItem
 
 from VeraGrid.Gui.DynamicModelEditor.Editor.Routing.routing_elements import RoutingPoint
 from VeraGridEngine.enumerations import RoutingPortSide
@@ -77,15 +78,16 @@ def _resolve_port_side(port_item: PortItem) -> RoutingPortSide:
     :return: Physical block side of the port.
     """
     parent_item: object = port_item.subsystem
-    if isinstance(parent_item, QGraphicsRectItem):
-        # When the parent is one plain block rectangle, the nearest rectangle
-        # side is the most direct and stable physical-side definition.
-        rect = parent_item.rect()
+    if isinstance(parent_item, QGraphicsItem):
+        # Every supported block exposes its complete local geometry through
+        # boundingRect(). Using that common contract also covers circular
+        # arithmetic blocks whose inputs may lie on their top or bottom edge.
+        parent_bounds: QRectF = parent_item.boundingRect()
         local_position: QPointF = port_item.pos()
-        left_distance: float = abs(local_position.x() - rect.left())
-        right_distance: float = abs(local_position.x() - rect.right())
-        top_distance: float = abs(local_position.y() - rect.top())
-        bottom_distance: float = abs(local_position.y() - rect.bottom())
+        left_distance: float = abs(local_position.x() - parent_bounds.left())
+        right_distance: float = abs(local_position.x() - parent_bounds.right())
+        top_distance: float = abs(local_position.y() - parent_bounds.top())
+        bottom_distance: float = abs(local_position.y() - parent_bounds.bottom())
         minimum_distance: float = min(left_distance, right_distance, top_distance, bottom_distance)
 
         if minimum_distance == left_distance:
