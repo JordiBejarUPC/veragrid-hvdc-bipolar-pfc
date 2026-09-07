@@ -3,6 +3,8 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 import numpy as np
+from typing import Callable
+
 from VeraGridEngine.basic_structures import Vec, IntVec
 
 
@@ -10,13 +12,15 @@ def random_trial(obj_func,
                  n_var: int,
                  lb: Vec | IntVec, ub: Vec | IntVec,
                  n_obj: int = 2,
-                 max_evals: int = 3000):
+                 max_evals: int = 3000,
+                 cancel_checker: Callable[[], bool] | None = None):
     """
 
     :param obj_func:
     :param n_var:
     :param n_obj:
     :param max_evals:
+    :param cancel_checker: Optional cancellation check.
     :return:
     """
 
@@ -34,11 +38,16 @@ def random_trial(obj_func,
     f = np.zeros((max_evals, n_obj))
 
     # Compute objectives for each x combination
+    actual_evals: int = 0
     for i, arr in enumerate(ones_into_array):
-        x[i, :] = arr
-        f[i, :] = obj_func(arr)
+        if cancel_checker is not None and cancel_checker():
+            break
+        else:
+            x[i, :] = arr
+            f[i, :] = obj_func(arr)
+            actual_evals += 1
 
     import pandas as pd
-    dff = pd.DataFrame(f)
+    dff = pd.DataFrame(f[:actual_evals, :])
     dff.to_excel('random_trial.xlsx')
-    return x, f
+    return x[:actual_evals, :], f[:actual_evals, :]
