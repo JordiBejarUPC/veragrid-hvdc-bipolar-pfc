@@ -14,13 +14,13 @@ from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import Routi
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingConnectionGeometry
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingSegmentObstacle
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingSceneGeometrySnapshot
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics import BlockItem
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics import GenericBlockItem
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics import MeasurementsItem
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics import PairedItem
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics import PortItem
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics import RectBaseArithmeticOpItem
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics import RoundBaseArithmeticOpItem
+from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_graphics import BlockItem
+from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_graphics import GenericBlockItem
+from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_graphics import MeasurementsItem
+from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_graphics import PairedItem
+from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_graphics import PortItem
+from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_graphics import RectBaseArithmeticOpItem
+from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_graphics import RoundBaseArithmeticOpItem
 
 
 class QtRoutingSceneGeometryAdapter:
