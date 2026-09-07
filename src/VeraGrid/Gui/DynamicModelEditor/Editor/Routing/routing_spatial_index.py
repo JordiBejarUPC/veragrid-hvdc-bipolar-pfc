@@ -7,11 +7,11 @@ from __future__ import annotations
 
 import math
 
-from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingPoint
-from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingBlockGeometry
-from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingBounds
-from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingConnectionGeometry
-from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingSegmentObstacle
+from VeraGrid.Gui.DynamicModelEditor.Editor.Routing.routing_elements import RoutingPoint
+from VeraGrid.Gui.DynamicModelEditor.Editor.Routing.routing_scene_geometry import RoutingBlockGeometry
+from VeraGrid.Gui.DynamicModelEditor.Editor.Routing.routing_scene_geometry import RoutingBounds
+from VeraGrid.Gui.DynamicModelEditor.Editor.Routing.routing_scene_geometry import RoutingConnectionGeometry
+from VeraGrid.Gui.DynamicModelEditor.Editor.Routing.routing_scene_geometry import RoutingSegmentObstacle
 
 
 class RoutingSpatialIndex:

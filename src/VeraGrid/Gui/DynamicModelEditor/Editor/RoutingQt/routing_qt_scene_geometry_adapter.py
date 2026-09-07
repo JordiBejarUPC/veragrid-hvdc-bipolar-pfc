@@ -9,11 +9,11 @@ from PySide6.QtCore import QRectF
 from PySide6.QtWidgets import QGraphicsItem
 from PySide6.QtWidgets import QGraphicsScene
 
-from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingBlockGeometry
-from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingBounds
-from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingConnectionGeometry
-from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingSegmentObstacle
-from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingSceneGeometrySnapshot
+from VeraGrid.Gui.DynamicModelEditor.Editor.Routing.routing_scene_geometry import RoutingBlockGeometry
+from VeraGrid.Gui.DynamicModelEditor.Editor.Routing.routing_scene_geometry import RoutingBounds
+from VeraGrid.Gui.DynamicModelEditor.Editor.Routing.routing_scene_geometry import RoutingConnectionGeometry
+from VeraGrid.Gui.DynamicModelEditor.Editor.Routing.routing_scene_geometry import RoutingSegmentObstacle
+from VeraGrid.Gui.DynamicModelEditor.Editor.Routing.routing_scene_geometry import RoutingSceneGeometrySnapshot
 from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_graphics import BlockItem
 from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_graphics import GenericBlockItem
 from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_graphics import MeasurementsItem

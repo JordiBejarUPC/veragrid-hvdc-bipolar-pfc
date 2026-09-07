@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingPoint
+from VeraGrid.Gui.DynamicModelEditor.Editor.Routing.routing_elements import RoutingPoint
 
 
 class RoutingBounds:

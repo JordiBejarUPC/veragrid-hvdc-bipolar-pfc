@@ -7,16 +7,16 @@ from __future__ import annotations
 
 import heapq
 
-from VeraGrid.Gui.DynamicModelEditor.Routing.routing_constraint_engine import RoutingConstraintEngine
-from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingNode
-from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingPoint
-from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingSegment
-from VeraGrid.Gui.DynamicModelEditor.Routing.routing_graph import RoutingGraph
-from VeraGrid.Gui.DynamicModelEditor.Routing.routing_policy import AutomaticRoutingPolicy
-from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingBlockGeometry
-from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingBounds
-from VeraGrid.Gui.DynamicModelEditor.Routing.routing_scene_geometry import RoutingConnectionGeometry
-from VeraGrid.Gui.DynamicModelEditor.Routing.routing_spatial_index import RoutingSpatialIndex
+from VeraGrid.Gui.DynamicModelEditor.Editor.Routing.routing_constraint_engine import RoutingConstraintEngine
+from VeraGrid.Gui.DynamicModelEditor.Editor.Routing.routing_elements import RoutingNode
+from VeraGrid.Gui.DynamicModelEditor.Editor.Routing.routing_elements import RoutingPoint
+from VeraGrid.Gui.DynamicModelEditor.Editor.Routing.routing_elements import RoutingSegment
+from VeraGrid.Gui.DynamicModelEditor.Editor.Routing.routing_graph import RoutingGraph
+from VeraGrid.Gui.DynamicModelEditor.Editor.Routing.routing_policy import AutomaticRoutingPolicy
+from VeraGrid.Gui.DynamicModelEditor.Editor.Routing.routing_scene_geometry import RoutingBlockGeometry
+from VeraGrid.Gui.DynamicModelEditor.Editor.Routing.routing_scene_geometry import RoutingBounds
+from VeraGrid.Gui.DynamicModelEditor.Editor.Routing.routing_scene_geometry import RoutingConnectionGeometry
+from VeraGrid.Gui.DynamicModelEditor.Editor.Routing.routing_spatial_index import RoutingSpatialIndex
 from VeraGridEngine.enumerations import RoutingAxis, RoutingNodeKind, RoutingPortSide
 
 

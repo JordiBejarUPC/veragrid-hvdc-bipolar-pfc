@@ -10,10 +10,10 @@ import pytest
 
 import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_graphics as graph
 from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_editor import DynamicBlockEditorGUI
+from VeraGridEngine.enumerations import BlockSymbolKind
 from VeraGrid.Gui.DynamicModelEditor.Editor.BlockProperties import (
     BlockParameterDraftModel,
     BlockSymbolDraftModel,
-    BlockSymbolKind,
     BlockSymbolDraftRow,
     BlockCodeBuffer,
     BlockEquationDraft,
@@ -32,7 +32,6 @@ from VeraGrid.Gui.DynamicModelEditor.Editor.BlockProperties import (
 from VeraGrid.Gui.DynamicModelEditor.Editor.BlockProperties import RuntimeModeDraft
 from VeraGrid.Gui.DynamicModelEditor.Editor.BlockProperties import (
     EquationExportEntry,
-    EquationExportSection,
     build_equation_pdf_suggested_name,
     build_latex_source,
     build_list_equation_entries,
@@ -64,6 +63,7 @@ from VeraGridEngine.enumerations import (
     BlockType,
     DeviceType,
     DynamicSimulationMode,
+    EquationExportSection,
     ParamPowerFlowReferenceType,
     ProceduralLogicType,
     VarPowerFlowReferenceType,

@@ -10,11 +10,11 @@ from VeraGridEngine.Devices.Branches.line import Line
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Injections.generator import Generator
+from VeraGridEngine.enumerations import BlockSymbolKind
 
 from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGrid.Gui.DynamicModelEditor.Editor.BlockProperties import (
     BlockStructuralEditRequest,
-    BlockSymbolKind,
     BlockSymbolDraftRow,
     DynamicBlockPropertiesDialog,
 )
