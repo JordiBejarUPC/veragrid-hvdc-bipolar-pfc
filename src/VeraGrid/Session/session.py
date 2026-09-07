@@ -82,7 +82,6 @@ class GcThread(QThread):
     """
     progress_signal = Signal(float)
     progress_text = Signal(str)
-    done_signal = Signal()
 
     def __init__(self, driver: DriverTemplate):
         QThread.__init__(self)
@@ -91,7 +90,6 @@ class GcThread(QThread):
         self.driver: DriverTemplate = driver
         self.driver.progress_signal = self.progress_signal
         self.driver.progress_text = self.progress_text
-        self.driver.done_signal = self.done_signal
         self.tpe = driver.tpe
 
         self.results = None
@@ -144,7 +142,6 @@ class GcThread(QThread):
                 self.progress_text.emit('Failed!')
             else:
                 self.progress_text.emit('Done!')
-        self.done_signal.emit()
 
     def has_failed(self) -> bool:
         """

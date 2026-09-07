@@ -3,7 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 import numpy as np
-from typing import Callable
+from typing import Callable, Tuple
 
 from VeraGridEngine.basic_structures import Vec, IntVec
 
@@ -13,7 +13,7 @@ def random_trial(obj_func,
                  lb: Vec | IntVec, ub: Vec | IntVec,
                  n_obj: int = 2,
                  max_evals: int = 3000,
-                 cancel_checker: Callable[[], bool] | None = None):
+                 cancel_checker: Callable[[], bool] | None = None) -> Tuple[np.ndarray, np.ndarray]:
     """
 
     :param obj_func:
@@ -21,7 +21,7 @@ def random_trial(obj_func,
     :param n_obj:
     :param max_evals:
     :param cancel_checker: Optional cancellation check.
-    :return:
+    :return: Evaluated decision vectors and objective values.
     """
 
     # Generate sampling rule
@@ -47,7 +47,4 @@ def random_trial(obj_func,
             f[i, :] = obj_func(arr)
             actual_evals += 1
 
-    import pandas as pd
-    dff = pd.DataFrame(f[:actual_evals, :])
-    dff.to_excel('random_trial.xlsx')
     return x[:actual_evals, :], f[:actual_evals, :]

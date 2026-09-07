@@ -41,6 +41,7 @@ from VeraGrid.Gui.messages import yes_no_question, warning_msg, info_msg, error_
 from VeraGrid.Gui.FileDialogues.LoadCatalogue.catalogue_dialogue import CatalogueGUI
 from VeraGrid.Gui.Main.MainWindow import Ui_mainWindow, QMainWindow
 from VeraGrid.Session.session import SimulationSession, GcThread
+from VeraGrid.Session.server_driver import RemoteJobDriver
 from VeraGrid.Gui.SigmaAnalysis.sigma_analysis_dialogue import SigmaAnalysisGUI
 from VeraGrid.Gui.SyncDialogue.sync_dialogue import SyncDialogueWindow
 from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_editor import DynamicBlockEditorGUI
@@ -592,6 +593,8 @@ class BaseMainGui(QMainWindow):
         for thread in self.get_all_threads():
             if thread is not None:
                 if isinstance(thread, GcThread):
+                    thread.cancel()
+                elif isinstance(thread, RemoteJobDriver):
                     thread.cancel()
                 else:
                     pass

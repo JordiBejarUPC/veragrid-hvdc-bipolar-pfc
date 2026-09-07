@@ -184,6 +184,8 @@ def NSGA_2(grid: MultiCircuit,
     res = minimize(problem=problem,
                    algorithm=algorithm,
                    termination=termination,
+                   copy_algorithm=False,
+                   copy_termination=False,
                    seed=1,
                    verbose=True,
                    save_history=False)

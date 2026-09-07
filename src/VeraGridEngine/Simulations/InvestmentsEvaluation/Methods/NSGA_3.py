@@ -388,6 +388,8 @@ def NSGA_3(obj_func,
     res = minimize(problem=problem,
                    algorithm=algorithm,
                    termination=termination,
+                   copy_algorithm=False,
+                   copy_termination=False,
                    seed=1,
                    verbose=True,
                    save_history=False)

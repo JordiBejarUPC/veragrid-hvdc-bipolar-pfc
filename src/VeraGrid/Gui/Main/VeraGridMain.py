@@ -8,7 +8,7 @@ import sys
 import faulthandler
 from datetime import datetime
 from pathlib import Path
-from typing import TextIO
+from typing import TextIO, Any
 
 from PySide6 import QtWidgets, QtGui, QtCore
 from PySide6.QtCore import Qt
@@ -101,6 +101,37 @@ def exception_hook(exception_type: type[BaseException],
             timestamp: str = datetime.now().isoformat(timespec="seconds")
             file_pointer.write(f"[{timestamp}] Uncaught Python exception\n")
             file_pointer.write(f"{exception_type.__name__}: {exception_value}\n")
+    except Exception:
+        pass
+
+
+def write_runtime_state_log(window: "VeraGridMainGUI", title: str) -> None:
+    """
+    Persist the GUI worker/session state around risky lifecycle transitions.
+
+    :param window: Main VeraGrid window.
+    :param title: Log section title.
+    :return: None.
+    """
+    try:
+        timestamp: str = datetime.now().isoformat(timespec="seconds")
+        with open(get_crash_log_path(), "a", encoding="utf-8") as file_pointer:
+            file_pointer.write(f"[{timestamp}] {title}\n")
+            file_pointer.write(f"lock_ui={window.lock_ui}\n")
+            file_pointer.write(f"stuff_running_now={list(window.stuff_running_now)}\n")
+            file_pointer.write(f"session_drivers={list(window.session.drivers.keys())}\n")
+            file_pointer.write(f"session_threads={list(window.session.threads.keys())}\n")
+
+            threads: list[Any] = window.get_all_threads()
+            thread_index: int
+            thread: Any
+            for thread_index, thread in enumerate(threads):
+                if thread is None:
+                    file_pointer.write(f"thread[{thread_index}]=None\n")
+                else:
+                    file_pointer.write(
+                        f"thread[{thread_index}]={type(thread).__name__} running={thread.isRunning()}\n"
+                    )
     except Exception:
         pass
 
@@ -258,6 +289,8 @@ class VeraGridMainGUI(ScriptingMain):
         :param event:
         :return:
         """
+        write_runtime_state_log(window=self, title="Close requested")
+
         if self.circuit.get_bus_number() > 0:
             quit_msg = self.tr("Are you sure that you want to exit VeraGrid?")
             reply = QtWidgets.QMessageBox.question(self, self.tr("Close"), quit_msg,

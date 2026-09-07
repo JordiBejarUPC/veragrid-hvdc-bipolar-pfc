@@ -22,6 +22,7 @@ from VeraGrid.Gui.SigmaAnalysis.sigma_analysis_dialogue import SigmaAnalysisGUI
 from VeraGrid.Gui.ProceduralGrid.procedural_grid import ProceduralGridWindow
 from VeraGrid.Gui.ProceduralGrid.map_warning import MapWarningDialog
 from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, is_dialog_available
+from VeraGrid.Session.session import GcThread
 from VeraGrid.Session.server_driver import RemoteJobDriver
 
 # Engine imports
@@ -3587,14 +3588,22 @@ class SimulationsMain(TimeEventsMain):
                         engine=self.get_preferred_engine()
                     )
 
-                    self.session.run(
-                        drv,
-                        post_func=self.post_investments_evaluation,
-                        prog_func=self.ui.progressBar.setValue,
-                        text_func=self.ui.progress_label.setText
-                    )
                     self.add_simulation(SimulationTypes.InvestmentsEvaluation_run)
                     self.LOCK()
+                    try:
+                        self.session.run(
+                            drv,
+                            post_func=self.post_investments_evaluation,
+                            prog_func=self.ui.progressBar.setValue,
+                            text_func=self.ui.progress_label.setText
+                        )
+                    except Exception:
+                        self.remove_simulation(SimulationTypes.InvestmentsEvaluation_run)
+                        if not self.session.is_anything_running():
+                            self.UNLOCK()
+                        else:
+                            pass
+                        raise
 
                 else:
                     self.show_warning_toast(self.tr('Another contingency analysis is being executed now...'))
@@ -3609,12 +3618,19 @@ class SimulationsMain(TimeEventsMain):
         """
         Post investments evaluation
         """
-        driver, results = self.session.investments_evaluation
+        sender: QtCore.QObject | None = self.sender()
+        if isinstance(sender, GcThread):
+            driver = sender.driver
+            results = driver.results
+            worker_failed: bool = sender.has_failed()
+        else:
+            driver, results = self.session.investments_evaluation
+            worker_failed = False
+
+        self.remove_simulation(SimulationTypes.InvestmentsEvaluation_run)
 
         # update the results in the circuit structures
-        if results is not None:
-            self.remove_simulation(SimulationTypes.InvestmentsEvaluation_run)
-
+        if results is not None and not worker_failed:
             self.ui.progress_label.setText('Colouring investments evaluation results in the grid...')
 
             self.update_available_results()
@@ -3676,7 +3692,15 @@ class SimulationsMain(TimeEventsMain):
             # apply result-based colouring after the baseline + best-Pareto state is set
             self.colour_diagrams()
         else:
-            self.show_error_toast(self.tr('Something went wrong, There are no investments evaluation results.'))
+            if driver is not None and driver.logger.has_logs():
+                self.show_logs(logger=driver.logger, name="Investments evaluation error")
+            else:
+                pass
+
+            if worker_failed:
+                self.show_error_toast(self.tr('Investments evaluation failed. Check the logs for details.'))
+            else:
+                self.show_warning_toast(self.tr('Investments evaluation finished without results.'))
 
         if not self.session.is_anything_running():
             self.UNLOCK()
@@ -4301,7 +4325,8 @@ class SimulationsMain(TimeEventsMain):
             driver = RemoteJobDriver(grid=self.circuit,
                                      instruction=instruction,
                                      base_url=self.server_driver.base_url(),
-                                     certificate_path=self.server_driver.get_certificate_path())
+                                     certificate_path=self.server_driver.get_certificate_path(),
+                                     request_timeout_s=self.server_driver.request_timeout_s)
             driver.result_driver_signal.connect(self.session.register_driver)
             driver.finished.connect(self.post_run_remote_finished)
 
