@@ -2062,8 +2062,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             else:
                 pass
                 # self.add_api_obj_mapping()
-
-            self.add_measurements_items()
+            if self.mode == DynamicSimulationMode.RMS:
+                self.add_measurements_items()
+            elif self.mode == DynamicSimulationMode.EMT:
+                self.add_connection_items()
+            else:
+                pass
         else:
             pass
         # A legacy or partially bootstrapped atomic DAE can already own its
