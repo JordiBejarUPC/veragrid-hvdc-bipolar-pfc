@@ -2529,31 +2529,44 @@ class SimulationsMain(TimeEventsMain):
                         # lock the UI
                         self.LOCK()
 
-                        self.ui.progress_label.setText(
-                            QtCore.QCoreApplication.translate("SimulationsMain", "Compiling the grid..."))
-                        QtGui.QGuiApplication.processEvents()
+                        drv: sim.ContinuationPowerFlowDriver | None = None
+                        try:
+                            self.ui.progress_label.setText(
+                                QtCore.QCoreApplication.translate("SimulationsMain", "Compiling the grid..."))
+                            QtGui.QGuiApplication.processEvents()
 
-                        #  compose the base power
-                        Sbase: CxVec = pf_results.Sbus / self.circuit.Sbase
+                            #  compose the base power
+                            Sbase: CxVec = pf_results.Sbus / self.circuit.Sbase
 
-                        base_overload_number = len(np.where(np.abs(pf_results.loading) > 1)[0])
+                            base_overload_number = len(np.where(np.abs(pf_results.loading) > 1)[0])
 
-                        vc_inputs = sim.ContinuationPowerFlowInput(Sbase=Sbase,
-                                                                   Vbase=pf_results.voltage,
-                                                                   Starget=Sbase * alpha,
-                                                                   base_overload_number=base_overload_number)
+                            vc_inputs = sim.ContinuationPowerFlowInput(Sbase=Sbase,
+                                                                       Vbase=pf_results.voltage,
+                                                                       Starget=Sbase * alpha,
+                                                                       base_overload_number=base_overload_number)
 
-                        pf_options = self.get_selected_power_flow_options()
+                            pf_options = self.get_selected_power_flow_options()
 
-                        # create object
-                        drv = sim.ContinuationPowerFlowDriver(grid=self.circuit,
-                                                              options=vc_options,
-                                                              inputs=vc_inputs,
-                                                              pf_options=pf_options)
-                        self.session.run(drv,
-                                         post_func=self.post_continuation_power_flow,
-                                         prog_func=self.ui.progressBar.setValue,
-                                         text_func=self.ui.progress_label.setText)
+                            # create object
+                            drv = sim.ContinuationPowerFlowDriver(grid=self.circuit,
+                                                                  options=vc_options,
+                                                                  inputs=vc_inputs,
+                                                                  pf_options=pf_options)
+                            self.add_simulation(SimulationTypes.ContinuationPowerFlow_run)
+                            self.session.run(drv,
+                                             post_func=self.post_continuation_power_flow,
+                                             prog_func=self.ui.progressBar.setValue,
+                                             text_func=self.ui.progress_label.setText)
+                        except Exception as e:
+                            error_message: str = str(e)
+                            self.remove_simulation(SimulationTypes.ContinuationPowerFlow_run)
+                            self.UNLOCK()
+                            self.show_error_toast(self.tr("Voltage stability failed to start"), duration=4000)
+                            if drv is not None:
+                                drv.logger.add_error(error_message)
+                                self.show_logs(logger=drv.logger, name=self.tr("Voltage stability logs"))
+                            else:
+                                pass
 
                     elif use_profiles:
                         """
@@ -2564,31 +2577,44 @@ class SimulationsMain(TimeEventsMain):
                             # lock the UI
                             self.LOCK()
 
-                            nc_start = compile_numerical_circuit_at(circuit=self.circuit, t_idx=start_idx)
-                            Sbus_init = nc_start.get_power_injections_pu()
+                            drv: sim.ContinuationPowerFlowDriver | None = None
+                            try:
+                                nc_start = compile_numerical_circuit_at(circuit=self.circuit, t_idx=start_idx)
+                                Sbus_init = nc_start.get_power_injections_pu()
 
-                            nc_end = compile_numerical_circuit_at(circuit=self.circuit, t_idx=start_idx)
-                            Sbus_end = nc_end.get_power_injections_pu()
+                                nc_end = compile_numerical_circuit_at(circuit=self.circuit, t_idx=end_idx)
+                                Sbus_end = nc_end.get_power_injections_pu()
 
-                            pf_drv_start = sim.PowerFlowDriver(grid=self.circuit, options=pf_options)
-                            pf_drv_start.run()
+                                pf_drv_start = sim.PowerFlowDriver(grid=self.circuit, options=pf_options)
+                                pf_drv_start.run()
 
-                            # get the power Injections array to get the initial and end points
-                            vc_inputs = sim.ContinuationPowerFlowInput(Sbase=Sbus_init,
-                                                                       Vbase=pf_drv_start.results.voltage,
-                                                                       Starget=Sbus_end)
+                                # get the power Injections array to get the initial and end points
+                                vc_inputs = sim.ContinuationPowerFlowInput(Sbase=Sbus_init,
+                                                                           Vbase=pf_drv_start.results.voltage,
+                                                                           Starget=Sbus_end)
 
-                            pf_options = self.get_selected_power_flow_options()
+                                pf_options = self.get_selected_power_flow_options()
 
-                            # create object
-                            drv = sim.ContinuationPowerFlowDriver(grid=self.circuit,
-                                                                  options=vc_options,
-                                                                  inputs=vc_inputs,
-                                                                  pf_options=pf_options)
-                            self.session.run(drv,
-                                             post_func=self.post_continuation_power_flow,
-                                             prog_func=self.ui.progressBar.setValue,
-                                             text_func=self.ui.progress_label.setText)
+                                # create object
+                                drv = sim.ContinuationPowerFlowDriver(grid=self.circuit,
+                                                                      options=vc_options,
+                                                                      inputs=vc_inputs,
+                                                                      pf_options=pf_options)
+                                self.add_simulation(SimulationTypes.ContinuationPowerFlow_run)
+                                self.session.run(drv,
+                                                 post_func=self.post_continuation_power_flow,
+                                                 prog_func=self.ui.progressBar.setValue,
+                                                 text_func=self.ui.progress_label.setText)
+                            except Exception as e:
+                                error_message: str = str(e)
+                                self.remove_simulation(SimulationTypes.ContinuationPowerFlow_run)
+                                self.UNLOCK()
+                                self.show_error_toast(self.tr("Voltage stability failed to start"), duration=4000)
+                                if drv is not None:
+                                    drv.logger.add_error(error_message)
+                                    self.show_logs(logger=drv.logger, name=self.tr("Voltage stability logs"))
+                                else:
+                                    pass
                         else:
                             self.show_warning_toast(self.tr('Check the selected start and finnish time series indices.'))
                 else:
@@ -2604,20 +2630,36 @@ class SimulationsMain(TimeEventsMain):
         Actions performed after the voltage stability. Launched by the thread after its execution
         :return:
         """
-        _, results = self.session.continuation_power_flow
+        drv, results = self.session.continuation_power_flow
+
+        self.remove_simulation(SimulationTypes.ContinuationPowerFlow_run)
 
         if results is not None:
 
-            self.remove_simulation(SimulationTypes.ContinuationPowerFlow_run)
-
-            if results.voltages is not None:
+            if results.voltages is not None and len(results.voltages) > 0:
                 self.update_available_results()
                 self.colour_diagrams()
             else:
+                self.session.delete_driver(SimulationTypes.ContinuationPowerFlow_run)
                 self.show_warning_toast(self.tr('The voltage stability did not converge.\n'
                                         'Is this case already at the collapse limit?'), 5000)
+                if drv is not None:
+                    if drv.logger.has_logs():
+                        self.show_logs(logger=drv.logger, name=self.tr("Voltage stability logs"))
+                    else:
+                        pass
+                else:
+                    pass
         else:
+            self.session.delete_driver(SimulationTypes.ContinuationPowerFlow_run)
             self.show_error_toast(self.tr('Something went wrong, There are no voltage stability results.'))
+            if drv is not None:
+                if drv.logger.has_logs():
+                    self.show_logs(logger=drv.logger, name=self.tr("Voltage stability logs"))
+                else:
+                    pass
+            else:
+                pass
 
         if not self.session.is_anything_running():
             self.UNLOCK()
@@ -3795,10 +3837,19 @@ class SimulationsMain(TimeEventsMain):
                                               options=options,
                                               engine=self.get_preferred_engine())
 
-                self.session.run(drv,
-                                 post_func=self.post_nodal_capacity,
-                                 prog_func=self.ui.progressBar.setValue,
-                                 text_func=self.ui.progress_label.setText)
+                self.add_simulation(SimulationTypes.NodalCapacity_run)
+                try:
+                    self.session.run(drv,
+                                     post_func=self.post_nodal_capacity,
+                                     prog_func=self.ui.progressBar.setValue,
+                                     text_func=self.ui.progress_label.setText)
+                except Exception as e:
+                    error_message: str = str(e)
+                    self.remove_simulation(SimulationTypes.NodalCapacity_run)
+                    self.UNLOCK()
+                    self.show_error_toast(self.tr("Nodal capacity failed to start"), duration=4000)
+                    drv.logger.add_error(error_message)
+                    self.show_logs(logger=drv.logger, name=self.tr("Nodal capacity logs"))
             else:
                 self.show_warning_toast(self.tr('Another nodal capacity study is being run...'))
 
@@ -3844,10 +3895,18 @@ class SimulationsMain(TimeEventsMain):
 
                     drv.engine = self.get_preferred_engine()
 
-                    self.session.run(drv,
-                                     post_func=self.post_nodal_capacity_time_series,
-                                     prog_func=self.ui.progressBar.setValue,
-                                     text_func=self.ui.progress_label.setText)
+                    try:
+                        self.session.run(drv,
+                                         post_func=self.post_nodal_capacity_time_series,
+                                         prog_func=self.ui.progressBar.setValue,
+                                         text_func=self.ui.progress_label.setText)
+                    except Exception as e:
+                        error_message: str = str(e)
+                        self.remove_simulation(SimulationTypes.NodalCapacityTimeSeries_run)
+                        self.UNLOCK()
+                        self.show_error_toast(self.tr("Nodal capacity time series failed to start"), duration=4000)
+                        drv.logger.add_error(error_message)
+                        self.show_logs(logger=drv.logger, name=self.tr("Nodal capacity time series logs"))
 
             else:
                 self.show_warning_toast(self.tr('Another OPF time series is running already...'))
@@ -3859,12 +3918,23 @@ class SimulationsMain(TimeEventsMain):
         """
         Post nodal capacity
         """
-        _, results = self.session.nodal_capacity_optimization
+        drv, results = self.session.nodal_capacity_optimization
+
+        self.remove_simulation(SimulationTypes.NodalCapacity_run)
 
         if results is not None:
-            self.remove_simulation(SimulationTypes.NodalCapacity_run)
             self.update_available_results()
             self.colour_diagrams()
+        else:
+            self.session.delete_driver(SimulationTypes.NodalCapacity_run)
+            self.show_error_toast(self.tr('Something went wrong, there are no nodal capacity results.'), duration=4000)
+            if drv is not None:
+                if drv.logger.has_logs():
+                    self.show_logs(logger=drv.logger, name=self.tr("Nodal capacity logs"))
+                else:
+                    pass
+            else:
+                pass
 
         if not self.session.is_anything_running():
             self.UNLOCK()
@@ -3874,22 +3944,30 @@ class SimulationsMain(TimeEventsMain):
         Post nodal capacity time series
         """
 
-        _, results = self.session.nodal_capacity_optimization_ts
+        drv, results = self.session.nodal_capacity_optimization_ts
+
+        self.remove_simulation(SimulationTypes.NodalCapacityTimeSeries_run)
 
         if results is not None:
             results.expand_clustered_results()
-            self.remove_simulation(SimulationTypes.NodalCapacityTimeSeries_run)
             self.update_available_results()
             self.colour_diagrams()
+        else:
+            self.session.delete_driver(SimulationTypes.NodalCapacityTimeSeries_run)
+            self.show_error_toast(self.tr('Something went wrong, there are no nodal capacity time series results.'),
+                                  duration=4000)
+            if drv is not None:
+                if drv.logger.has_logs():
+                    self.show_logs(logger=drv.logger, name=self.tr("Nodal capacity time series logs"))
+                else:
+                    pass
+            else:
+                pass
 
         if not self.session.is_anything_running():
             self.UNLOCK()
-
         else:
             pass
-
-        if not self.session.is_anything_running():
-            self.UNLOCK()
 
     def run_reliability(self):
         """
