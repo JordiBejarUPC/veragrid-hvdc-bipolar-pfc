@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-    <string>Block properties</string>
+   <string>Block properties</string>
   </property>
   <layout class="QVBoxLayout" name="main_layout">
    <property name="leftMargin">
@@ -41,11 +41,11 @@
      <property name="text">
       <string/>
      </property>
-     <property name="textInteractionFlags">
-      <set>Qt::TextInteractionFlag::TextSelectableByMouse</set>
-     </property>
      <property name="wordWrap">
       <bool>true</bool>
+     </property>
+     <property name="textInteractionFlags">
+      <set>Qt::TextInteractionFlag::TextSelectableByMouse</set>
      </property>
     </widget>
    </item>
@@ -70,7 +70,7 @@
         <string>Apply changes</string>
        </property>
        <property name="icon">
-        <iconset resource="../Icons/icons.qrc">
+        <iconset resource="../../../Icons/icons.qrc">
          <normaloff>:/Icons/icons/accept.png</normaloff>:/Icons/icons/accept.png</iconset>
        </property>
       </widget>
@@ -80,7 +80,7 @@
   </layout>
  </widget>
  <resources>
-  <include location="../Icons/icons.qrc"/>
+  <include location="../../../Icons/icons.qrc"/>
  </resources>
  <connections/>
 </ui>
