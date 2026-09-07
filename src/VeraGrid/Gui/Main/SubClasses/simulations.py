@@ -2903,9 +2903,20 @@ class SimulationsMain(TimeEventsMain):
 
                 self.LOCK()
 
+                options: sim.OptimalPowerFlowOptions | None = self.get_opf_options()
+
+                if options is not None:
+                    if (options.solver == SolverType.NONLINEAR_OPF
+                            and self.circuit.get_fluid_nodes_number() > 0):
+                        self.show_warning_toast(self.tr("Fluid nodes are ignored for nonlinear OPF"))
+                    else:
+                        pass
+                else:
+                    pass
+
                 # set power flow object instance
                 drv = sim.OptimalPowerFlowDriver(grid=self.circuit,
-                                                 options=self.get_opf_options(),
+                                                 options=options,
                                                  engine=self.get_preferred_engine())
 
                 self.session.run(drv,
@@ -2965,15 +2976,33 @@ class SimulationsMain(TimeEventsMain):
                         QtGui.QGuiApplication.processEvents()
 
                         # get the power flow options from the GUI
-                        options = self.get_opf_options()
+                        options: sim.OptimalPowerFlowOptions | None = self.get_opf_options()
 
                         if options is not None:
+                            time_indices: IntVec | None = self.get_time_indices()
+
+                            if time_indices is not None:
+                                if len(time_indices) <= 1:
+                                    self.show_warning_toast(
+                                        self.tr("Running OPF time series with only one time step in range")
+                                    )
+                                else:
+                                    pass
+                            else:
+                                pass
+
+                            if (options.solver == SolverType.NONLINEAR_OPF
+                                    and self.circuit.get_fluid_nodes_number() > 0):
+                                self.show_warning_toast(self.tr("Fluid nodes are ignored for this simulation"))
+                            else:
+                                pass
+
                             # create the OPF time series instance
                             # if non_sequential:
                             drv = sim.OptimalPowerFlowTimeSeriesDriver(
                                 grid=self.circuit,
                                 options=options,
-                                time_indices=self.get_time_indices(),
+                                time_indices=time_indices,
                                 clustering_results=self.get_clustering_results()
                             )
 
