@@ -11500,9 +11500,17 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         con: BlockDiagramConnection
 
         self.scene.clear()
-        # self._ensure_root_interface_wrapper_nodes_exist()
-        # self._remove_stale_root_interface_duplicate_children()
-        # self._refresh_interface_wrapper_scene_items()
+        if self.mode == DynamicSimulationMode.EMT:
+            # EMT persists one protected wrapper per authoritative network
+            # variable. Reconcile those individual identities before the
+            # diagram is materialized so every port retains its exact ref.
+            self._ensure_root_interface_wrapper_nodes_exist()
+            self._remove_stale_root_interface_duplicate_children()
+            self._refresh_interface_wrapper_scene_items()
+        else:
+            # RMS connection nodes can represent grouped measurement ports and
+            # must retain their current multi-variable block representation.
+            pass
 
         # Recreate every persisted node, repairing old wrapper identities in place.
         for uid, node in self.diagram.node_data.items():
@@ -11530,88 +11538,106 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                   graph.GenericBlockItem | None = None
 
             if block_type == BlockType.INPUT_CONN or block_type == BlockType.OUTPUT_CONN:
+                if self.mode == DynamicSimulationMode.EMT:
+                    # EMT interface nodes are individual protected views over
+                    # one authoritative root variable. Repair legacy identity
+                    # before building the corresponding graphical wrapper.
+                    repaired_wrapper: Block | None = self._build_root_interface_wrapper_block(
+                        block_type=block_type,
+                        fallback_block_model=block_model,
+                        interface_index=self._get_root_interface_index_from_expected_order(
+                            block_type=block_type,
+                            node_uid=uid,
+                        ),
+                        wrapper_uid=uid,
+                    )
 
-                # item_name: str = f"{block_type.name}"
-                # block_model: Block = Block(name= item_name)
-                # block_model.uid = uid
-                #
-                # var: Var
-                # if block_type == BlockType.INPUT_CONN:
-                #     for var in self.main_block.in_vars:
-                #         block_model.out_vars.append(var)
-                #
-                # elif block_type == BlockType.OUTPUT_CONN:
-                #     for var in self.main_block.out_vars:
-                #         block_model.in_vars.append(var)
-                #
-                # else:
-                #     pass
-                # repaired_wrapper: Block | None = self._build_root_interface_wrapper_block(
-                #     block_type=block_type,
-                #     fallback_block_model=block_model,
-                #     interface_index=self._get_root_interface_index_from_expected_order(block_type=block_type,
-                #                                                                       node_uid=uid),
-                #     wrapper_uid=uid,
-                # )
-                #
-                # if repaired_wrapper is not None:
-                #     block_model = repaired_wrapper
-                #     wrapper_is_registered: bool = False
-                #     child_block: Block
-                #     for child_block in self.main_block.children:
-                #         if child_block is block_model:
-                #             wrapper_is_registered = True
-                #         else:
-                #             pass
-                #
-                #     if wrapper_is_registered:
-                #         pass
-                #     else:
-                #         self.main_block.add(block_model)
+                    if repaired_wrapper is not None:
+                        block_model = repaired_wrapper
+                        wrapper_is_registered: bool = False
+                        child_block: Block
+                        for child_block in self.main_block.children:
+                            if child_block is block_model:
+                                wrapper_is_registered = True
+                            else:
+                                pass
 
-                # Diagram endpoints always reference the wrapper block UID.
-                # node.device_uid = uid
-                # node.name = block_model.name
-                # register_legacy_interface_uid_alias(
-                #     aliases=legacy_interface_uid_aliases,
-                #     old_uid=persisted_node_uid,
-                #     repaired_uid=uid,
-                # )
-                # register_legacy_interface_uid_alias(
-                #     aliases=legacy_interface_uid_aliases,
-                #     old_uid=persisted_block_uid,
-                #     repaired_uid=uid,
-                # )
-                #
-                # interface_var: Var | None = get_single_interface_var(block_model)
-                # if interface_var is not None:
-                #     register_legacy_interface_uid_alias(
-                #         aliases=legacy_interface_uid_aliases,
-                #         old_uid=interface_var.uid,
-                #         repaired_uid=uid,
-                #     )
-                # else:
-                #     pass
+                        if wrapper_is_registered:
+                            pass
+                        else:
+                            self.main_block.add(block_model)
 
-                block_item: graph.MeasurementsItem = graph.MeasurementsItem(
-                    editor=self,
-                    var_factory=self.var_factory,
-                    name=block_model.name,
-                    mode=self.mode,
-                    api_object=self.api_object,
-                )
-                block_item.set_subsystem(block_model)
-                block_item.position_changed_callback = self.build_position_changed_callback(uid)
-                block_item.build_item()
-                block_item.recolour()
-                self.scene.addItem(block_item)
-                block_item.setPos(QPointF(node.x, node.y))
-                uid_to_blockitem[node.device_uid] = block_item
+                        # Persisted endpoints and legacy aliases must resolve
+                        # to the repaired wrapper UID used by the scene item.
+                        node.device_uid = uid
+                        node.name = block_model.name
+                        register_legacy_interface_uid_alias(
+                            aliases=legacy_interface_uid_aliases,
+                            old_uid=persisted_node_uid,
+                            repaired_uid=uid,
+                        )
+                        register_legacy_interface_uid_alias(
+                            aliases=legacy_interface_uid_aliases,
+                            old_uid=persisted_block_uid,
+                            repaired_uid=uid,
+                        )
 
-                current_count: int = self.block_counters.get(block_type, 0) + 1
-                self.block_counters[block_type] = current_count
-                # else:
-                #     pass
+                        interface_var: Var | None = get_single_interface_var(block_model)
+                        if interface_var is not None:
+                            register_legacy_interface_uid_alias(
+                                aliases=legacy_interface_uid_aliases,
+                                old_uid=interface_var.uid,
+                                repaired_uid=uid,
+                            )
+                        else:
+                            pass
+
+                        protected_item: graph.ProtectedConnectionBlockItem = graph.ProtectedConnectionBlockItem(
+                            editor=self,
+                            var_factory=self.var_factory,
+                            name=block_model.name,
+                            mode=self.mode,
+                            api_object=self.api_object,
+                        )
+                        protected_item.set_subsystem(block_model)
+                        protected_item.position_changed_callback = self.build_position_changed_callback(uid)
+                        protected_item.build_item()
+                        protected_item.recolour()
+                        self.scene.addItem(protected_item)
+                        protected_item.setPos(QPointF(node.x, node.y))
+                        uid_to_blockitem[uid] = protected_item
+
+                        current_count: int = self.block_counters.get(block_type, 0) + 1
+                        self.block_counters[block_type] = current_count
+                    else:
+                        pass
+                elif self.mode == DynamicSimulationMode.RMS:
+                    # RMS retains its current grouped measurement container;
+                    # every variable in the block becomes one visible port.
+                    if block_model is not None:
+                        measurements_item: graph.MeasurementsItem = graph.MeasurementsItem(
+                            editor=self,
+                            var_factory=self.var_factory,
+                            name=block_model.name,
+                            mode=self.mode,
+                            api_object=self.api_object,
+                        )
+                        measurements_item.set_subsystem(block_model)
+                        measurements_item.position_changed_callback = self.build_position_changed_callback(uid)
+                        measurements_item.build_item()
+                        measurements_item.recolour()
+                        self.scene.addItem(measurements_item)
+                        measurements_item.setPos(QPointF(node.x, node.y))
+                        uid_to_blockitem[node.device_uid] = measurements_item
+
+                        current_count = self.block_counters.get(block_type, 0) + 1
+                        self.block_counters[block_type] = current_count
+                    else:
+                        # A malformed persisted RMS boundary cannot be rendered
+                        # safely because its grouped port model is unavailable.
+                        pass
+                else:
+                    pass
             elif block_model is None:
                 # Malformed non-interface nodes are skipped without aborting the rebuild.
                 pass
@@ -11689,7 +11715,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         # Restore From/To pairs before branches are replayed. Both graphical
         # tags are rebound to one stable symbolic identity, and any legacy
         # downstream VarFactory edges are migrated to that identity.
-        self._materialize_missing_root_interface_scene_items(uid_to_blockitem)
+        if self.mode == DynamicSimulationMode.EMT:
+            # Only EMT uses individual protected wrappers. RMS grouped
+            # MeasurementsItems are already materialized by the loop above.
+            self._materialize_missing_root_interface_scene_items(uid_to_blockitem)
+        else:
+            pass
 
         self._restore_signal_pair_relationships(
             signal_input_items=signal_in_items,
