@@ -5,11 +5,11 @@ from typing import Any, Dict, List, Tuple
 import numpy as np
 from PySide6 import QtCore, QtWidgets
 
-from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
-from VeraGrid.Gui.DynamicModelEditor.dynamic_block_preparation import prepare_block_for_editing
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_tab import resolve_navigation_content_block
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_utilities import create_generic_block
-import VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics as graph
+from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_editor import DynamicBlockEditorGUI
+from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_preparation import prepare_block_for_editing
+from VeraGrid.Gui.DynamicModelEditor.Tabs.dynamic_editor_tab import resolve_navigation_content_block
+from VeraGrid.Gui.DynamicModelEditor.DynamicLibrary.dynamic_editor_utilities import create_generic_block
+import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_graphics as graph
 from VeraGridEngine.Devices.Branches.dc_line import DcLine
 from VeraGridEngine.Devices.Branches.line import Line
 from VeraGridEngine.Devices.Branches.overhead_line_type import OverheadLineType

@@ -4,12 +4,9 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
-import ctypes
-import gc
 import json
 import os.path
 import sys
-import threading
 import webbrowser
 from typing import List, Union
 
@@ -22,6 +19,7 @@ from PySide6 import QtGui, QtWidgets, QtCore
 from VeraGrid.Gui.scenario_tree_model import ScenarioTreeModel
 # Engine imports
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Devices.multiverse import MultiVerse
 import VeraGridEngine.Simulations as sim
 from VeraGridEngine.enumerations import EngineType, DeviceType, SimulationTypes, DynamicSimulationMode
@@ -39,35 +37,24 @@ from VeraGrid.Gui.AboutDialogue.about_dialogue import AboutDialogueGuiGUI
 
 from VeraGrid.Gui.Analysis.AnalysisDialogue import GridAnalysisGUI
 from VeraGrid.Gui.ContingencyPlanner.contingency_planner_dialogue import ContingencyPlannerGUI
-from VeraGrid.Gui.FileDialogues.CoordinatesInput.coordinates_dialogue import CoordinatesInputGUI
-from VeraGrid.Gui.general_dialogues import CheckListDialogue, StartEndSelectionDialogue, FileTypeSelector, \
-    CgmesOptionsSelector
 from VeraGrid.Gui.messages import yes_no_question, warning_msg, info_msg, error_msg
-from VeraGrid.Gui.GridGenerator.grid_generator_dialogue import GridGeneratorGUI
 from VeraGrid.Gui.FileDialogues.LoadCatalogue.catalogue_dialogue import CatalogueGUI
 from VeraGrid.Gui.Main.MainWindow import Ui_mainWindow, QMainWindow
-from VeraGrid.Gui.Main.object_select_window import ObjectSelectWindow
-from VeraGrid.Gui.FileDialogues.ProfilesInput.models_dialogue import ModelsInputGUI
-from VeraGrid.Gui.FileDialogues.ProfilesInput.profile_dialogue import ProfileInputGUI
 from VeraGrid.Session.session import SimulationSession, GcThread
 from VeraGrid.Gui.SigmaAnalysis.sigma_analysis_dialogue import SigmaAnalysisGUI
 from VeraGrid.Gui.SyncDialogue.sync_dialogue import SyncDialogueWindow
-from VeraGrid.Gui.DeviceEditors.TowerBuilder.LineBuilderDialogue import TowerBuilderGUI
-from VeraGrid.Gui.GridReduce.grid_reduce import GridReduceDialogue
-from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_window import DynamicEditorWorkspaceWindow
-from VeraGrid.Session.dynamic_editor_workspace_session import DynamicEditorWorkspaceSession
-from VeraGrid.Gui.Diagrams.SchematicWidget.diagram_bus_selection_dialogue import DiagramBusSelectorDialogue
+from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_editor import DynamicBlockEditorGUI
+from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_page import DynamicEventsPage
+from VeraGrid.Gui.DynamicModelEditor.Tabs.dynamic_editor_tab import DynamicEditorTab
+from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_workspace_window import DynamicEditorWorkspaceWindow
+from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_workspace_session import DynamicEditorWorkspaceSession
 from VeraGrid.Gui.Diagrams.generic_graphics import is_dark_mode
 from VeraGrid.Gui.python_console import PythonConsole
 from VeraGrid.Gui.python_script_editor import ScriptingPythonEditor
 from VeraGrid.Gui.toast_widget import ToastManager
-from VeraGrid.Gui.FileDialogues.PsseDialogue.psse_import import PsseImportDialogue
-from VeraGrid.Gui.ProceduralGrid.procedural_grid import ProceduralGridWindow
 from VeraGrid.Gui.AiAgent.ai_chat_dialogue import AiChatDialogue, AiBackendState
 from VeraGrid.Gui.AiAgent.ai_backend import ProviderType
-from VeraGrid.Gui.FileDialogues.CGMESDialogue.cgmes_import import CgmesImportDialogue
-from VeraGrid.Gui.FileDialogues.DgsDialogue.dgs_import import DgsImportDialogue
+from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, is_dialog_available
 from VeraGrid.Gui.i18n import (
     ActionShortcutState,
     ApplicationTranslator,
@@ -76,30 +63,6 @@ from VeraGrid.Gui.i18n import (
 )
 from VeraGridEngine.IO.file_system import get_create_veragrid_folder
 from VeraGrid.Gui.general_dialogues import LogsDialogue
-
-
-def terminate_thread(thread):
-    """
-    Terminates a python thread from another thread.
-
-    :param thread: a threading.Thread instance
-    """
-    if not thread.is_alive():
-        return False
-
-    exc = ctypes.py_object(SystemExit)
-    res = ctypes.pythonapi.PyThreadState_SetAsyncExc(ctypes.c_long(thread.ident), exc)
-    if res == 0:
-        print("nonexistent thread id")
-        return True
-
-    elif res > 1:
-        # """if it returns a number greater than one, you're in trouble,
-        # and you should call it again with exc=NULL to revert the effect"""
-        ctypes.pythonapi.PyThreadState_SetAsyncExc(thread.ident, None)
-        raise SystemError("PyThreadState_SetAsyncExc failed")
-
-    return True
 
 
 def traverse_objects(name, obj, lst: list, i=0):
@@ -308,34 +271,14 @@ class BaseMainGui(QMainWindow):
         # window pointers ----------------------------------------------------------------------------------------------
         self.file_sync_window: Union[SyncDialogueWindow, None] = None
         self.sigma_dialogue: Union[SigmaAnalysisGUI, None] = None
-        self.grid_generator_dialogue: Union[GridGeneratorGUI, None] = None
         self.catalogue_dialogue: Union[CatalogueGUI, None] = None
-        self.contingency_planner_dialogue: Union[ContingencyPlannerGUI, None] = None
         self.analysis_dialogue: Union[GridAnalysisGUI, None] = None
-        self.profile_input_dialogue: Union[ProfileInputGUI, None] = None
-        self.models_input_dialogue: Union[ModelsInputGUI, None] = None
-        self.object_select_window: Union[ObjectSelectWindow, None] = None
-        self.coordinates_window: Union[CoordinatesInputGUI, None] = None
         self.about_msg_window: Union[AboutDialogueGuiGUI, None] = None
-        self.tower_builder_window: Union[TowerBuilderGUI, None] = None
         self.rms_model_Editor_window: Union[DynamicBlockEditorGUI, None] = None
-        self.investment_checks_diag: Union[CheckListDialogue, None] = None
-        self.new_se_dlg: Union[CheckListDialogue, None] = None
-        self.contingency_checks_diag: Union[CheckListDialogue, None] = None
-        self.ra_checks_diag: Union[CheckListDialogue, None] = None
-        self.start_end_dialogue_window: Union[StartEndSelectionDialogue, None] = None
-        self.grid_reduction_dialogue: GridReduceDialogue | None = None
-        self.select_bus_dlg: DiagramBusSelectorDialogue | None = None
-        self.file_selector: FileTypeSelector | None = None
-        self.cgmes_selector: CgmesOptionsSelector | None = None
-        self.psse_import_dialogue: PsseImportDialogue | None = None
-        self.procedural_grid_window: ProceduralGridWindow | None = None
         self.ai_chat_dialogue: AiChatDialogue | None = None
         self.ai_backend_state: AiBackendState = self.build_default_ai_backend_state()
         self.ai_restore_visible: bool = False
         self.translation_controller: ApplicationTranslator | None = None
-        self.cgmes_import_dialogue: CgmesImportDialogue | None = None
-        self.dgs_import_dialogue: DgsImportDialogue | None = None
 
         # available engines --------------------------------------------------------------------------------------------
         engine_lst = [EngineType.VeraGrid]
@@ -369,6 +312,7 @@ class BaseMainGui(QMainWindow):
         self.ui.actionLaunch_data_analysis_tool.triggered.connect(self.display_grid_analysis)
         self.ui.actionShow_dynamic_models_editor.triggered.connect(self.display_dynamic_models_editor)
         self.ui.actionOnline_documentation.triggered.connect(self.show_online_docs)
+        self.ui.actionCommunity_chat.triggered.connect(self.show_online_chat)
         self.ui.actionReport_a_bug.triggered.connect(self.report_a_bug)
 
         self.ui.actionFix_generators_active_based_on_the_power.triggered.connect(
@@ -510,14 +454,6 @@ class BaseMainGui(QMainWindow):
         else:
             self.ui.file_information_label.setText("")
 
-    @staticmethod
-    def collect_memory() -> None:
-        """
-        Collect memory
-        """
-        for i in (0, 1, 2):
-            gc.collect(generation=i)
-
     def create_dynamic_editor_workspace(self, show_tree: bool = False) -> DynamicEditorWorkspaceWindow:
         """
         Create one dynamic-editor workspace owned by this main GUI.
@@ -525,7 +461,9 @@ class BaseMainGui(QMainWindow):
         :param show_tree: Whether the workspace should show its device tree.
         :return: Newly created workspace window.
         """
-        workspace = DynamicEditorWorkspaceWindow(session=self.dynamic_editor_workspace_session)
+        workspace: DynamicEditorWorkspaceWindow = DynamicEditorWorkspaceWindow(
+            session=self.dynamic_editor_workspace_session,
+        )
         workspace.set_tree_visible(show_tree)
         workspace.show()
         workspace.raise_()
@@ -534,12 +472,12 @@ class BaseMainGui(QMainWindow):
 
     def open_dynamic_editor(
             self,
-            api_object,
-            circuit,
+            api_object: ALL_DEV_TYPES,
+            circuit: MultiCircuit,
             preferred_mode: DynamicSimulationMode | None = None,
             target_workspace: DynamicEditorWorkspaceWindow | None = None,
             show_tree: bool = False,
-    ) -> DynamicBlockEditorGUI | None:
+    ) -> DynamicEditorTab | None:
         """
         Open one dynamic editor in this main GUI workspace session.
 
@@ -550,7 +488,11 @@ class BaseMainGui(QMainWindow):
         :param show_tree: Whether the destination workspace should show its tree panel.
         :return: Open editor page or ``None`` when no dynamic editor exists.
         """
-        workspace = target_workspace if target_workspace is not None else self.dynamic_editor_workspace_session.get_last_active_workspace()
+        workspace: DynamicEditorWorkspaceWindow | None = (
+            target_workspace
+            if target_workspace is not None
+            else self.dynamic_editor_workspace_session.get_last_active_workspace()
+        )
         if workspace is None:
             workspace = self.create_dynamic_editor_workspace(show_tree=show_tree)
         else:
@@ -563,6 +505,42 @@ class BaseMainGui(QMainWindow):
             api_object=api_object,
             circuit=circuit,
             preferred_mode=preferred_mode,
+            target_workspace=workspace,
+        )
+
+    def open_dynamic_events(
+            self,
+            api_object: ALL_DEV_TYPES,
+            circuit: MultiCircuit,
+            mode: DynamicSimulationMode,
+            target_workspace: DynamicEditorWorkspaceWindow | None = None,
+            show_tree: bool = False,
+    ) -> DynamicEventsPage | None:
+        """Open a device event page in the shared dynamic workspace.
+
+        :param api_object: Device whose events will be edited.
+        :param circuit: Circuit that owns the device and event assets.
+        :param mode: RMS or EMT event family requested by the caller.
+        :param target_workspace: Preferred destination workspace.
+        :param show_tree: Whether the destination workspace must expose its device tree.
+        :return: Open events page, or ``None`` when the device is unsupported.
+        """
+        workspace: DynamicEditorWorkspaceWindow | None = target_workspace
+        if workspace is None:
+            workspace = self.dynamic_editor_workspace_session.get_last_active_workspace()
+        else:
+            pass
+        if workspace is None:
+            workspace = self.create_dynamic_editor_workspace(show_tree=show_tree)
+        else:
+            workspace.set_tree_visible(visible=show_tree)
+            workspace.show()
+            workspace.raise_()
+            workspace.activateWindow()
+        return workspace.open_dynamic_events_for(
+            api_object=api_object,
+            circuit=circuit,
+            mode=mode,
             target_workspace=workspace,
         )
 
@@ -599,33 +577,27 @@ class BaseMainGui(QMainWindow):
         all_threads = self.get_simulation_threads() + self.get_process_threads()
         return all_threads
 
-    def stop_all_threads(self):
+    def stop_all_threads(self) -> None:
         """
-        Stop all running threads
-        """
-        for thr in self.get_all_threads():
-            if thr is not None:
-                thr.quit()
+        Request all known GUI worker threads to stop without killing Python threads.
 
-        for thread in threading.enumerate():
-            print(thread.name, end="")
-            if "MainThread" not in thread.name:
-                stat = terminate_thread(thread)
-                if stat:
-                    print(" killed")
+        :return: None.
+        """
+        thread: GcThread | QtCore.QThread | None
+        for thread in self.get_all_threads():
+            if thread is not None:
+                if isinstance(thread, GcThread):
+                    thread.cancel()
                 else:
-                    print(" not killed")
-            else:
-                print(" Skipped")
+                    pass
 
-        # second pass, kill main too
-        for thread in threading.enumerate():
-            print(thread.name, end="")
-            stat = terminate_thread(thread)
-            if stat:
-                print(" killed")
+                if thread.isRunning():
+                    thread.quit()
+                    thread.wait(5000)
+                else:
+                    thread.wait(5000)
             else:
-                print(" not killed")
+                pass
 
     def any_thread_running(self) -> bool:
         """
@@ -808,8 +780,19 @@ class BaseMainGui(QMainWindow):
         :return:
         """
 
-        self.about_msg_window = AboutDialogueGuiGUI(self)
-        self.about_msg_window.setVisible(True)
+        dialog: AboutDialogueGuiGUI | None = self.about_msg_window
+        if is_dialog_available(dialog=dialog):
+            pass
+        else:
+            dialog = AboutDialogueGuiGUI(self)
+            self.about_msg_window = dialog
+
+        if dialog is not None:
+            dialog.setVisible(True)
+            dialog.raise_()
+            dialog.activateWindow()
+        else:
+            pass
 
     @staticmethod
     def ai_config_file_path() -> str:
@@ -1173,6 +1156,13 @@ class BaseMainGui(QMainWindow):
         webbrowser.open('https://veragrid.readthedocs.io/en/latest/', new=2)
 
     @staticmethod
+    def show_online_chat():
+        """
+        Open the online chat in a web browser
+        """
+        webbrowser.open('https://matrix.to/#/#veragrid:matrix.org', new=2)
+
+    @staticmethod
     def report_a_bug():
         """
         Open the online github issues in a web browser
@@ -1258,6 +1248,12 @@ class BaseMainGui(QMainWindow):
         Display the grid analysis GUI
         """
 
+        old_dialog: GridAnalysisGUI | None = self.analysis_dialogue
+        if is_dialog_available(dialog=old_dialog):
+            delete_dialog_safely(dialog=old_dialog)
+        else:
+            pass
+
         self.analysis_dialogue = GridAnalysisGUI(circuit=self.circuit,
                                                  power_flow_options=self.get_selected_power_flow_options(),
                                                  parent=self)
@@ -1265,13 +1261,15 @@ class BaseMainGui(QMainWindow):
         self.analysis_dialogue.resize(int(1.61 * 600.0), 600)
         self.analysis_dialogue.show()
 
-    def display_dynamic_models_editor(self):
+    def display_dynamic_models_editor(self) -> None:
         """
         Display the dynamic models editor workspace with the tree panel visible.
 
         :return: None.
         """
-        workspace = self.dynamic_editor_workspace_session.get_last_active_workspace()
+        workspace: DynamicEditorWorkspaceWindow | None = (
+            self.dynamic_editor_workspace_session.get_last_active_workspace()
+        )
         if workspace is None:
             workspace = self.create_dynamic_editor_workspace(show_tree=True)
         else:
@@ -1329,16 +1327,24 @@ class BaseMainGui(QMainWindow):
         Launch the contingency planner to initialize the contingencies
         :return:
         """
-        self.contingency_planner_dialogue = ContingencyPlannerGUI(parent=self, grid=self.circuit)
-        self.contingency_planner_dialogue.exec()
+        contingency_planner_dialogue: ContingencyPlannerGUI = ContingencyPlannerGUI(parent=self, grid=self.circuit)
+        try:
+            contingency_planner_dialogue.exec()
+            generated_results: bool = contingency_planner_dialogue.generated_results
+            contingency_groups: list[object] = list(contingency_planner_dialogue.contingency_groups)
+            contingencies: list[object] = list(contingency_planner_dialogue.contingencies)
+        finally:
+            delete_dialog_safely(dialog=contingency_planner_dialogue)
 
         # gather results
-        if self.contingency_planner_dialogue.generated_results:
-            if len(self.contingency_planner_dialogue.contingency_groups):
-                self.circuit.contingency_groups += self.contingency_planner_dialogue.contingency_groups
-                self.circuit.contingencies += self.contingency_planner_dialogue.contingencies
+        if generated_results:
+            if len(contingency_groups):
+                self.circuit.contingency_groups += contingency_groups
+                self.circuit.contingencies += contingencies
             else:
                 info_msg(text="No contingencies were generated :/", title="Contingency planner")
+        else:
+            pass
 
     def show_toast(self, message: str, duration: int = 2000):
         """

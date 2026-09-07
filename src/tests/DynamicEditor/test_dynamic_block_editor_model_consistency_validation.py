@@ -9,13 +9,12 @@ import sys
 import pytest
 from PySide6 import QtWidgets
 
-import VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor as dynamic_block_editor_module
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics import MeasurementsItem, PortItem, ProtectedConnectionBlockItem
-from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_validation import ValidationRow, ValidationSection
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_validation import add_validation_port_detail
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_validation import format_validation_block_label
-import VeraGridEngine.Templates.Emt as emt_templates
+import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_editor as dynamic_block_editor_module
+from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_graphics import MeasurementsItem, PortItem, ProtectedConnectionBlockItem
+from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_editor import DynamicBlockEditorGUI
+from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_validation import ValidationRow, ValidationSection
+from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_validation import add_validation_port_detail
+from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_validation import format_validation_block_label
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagramNode
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES

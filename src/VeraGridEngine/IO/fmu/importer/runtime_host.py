@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 from ctypes import c_double
+import math
 import os
 from pathlib import Path
 from typing import Any, Optional
@@ -24,6 +25,7 @@ from VeraGridEngine.IO.fmu.importer.staging import (
     revalidate_fmu_staging_area,
     stage_fmu_source,
 )
+from VeraGridEngine.enumerations import FmiVersion
 
 try:
     import fmpy
@@ -87,6 +89,54 @@ def _construct_fmi_two_runtime(
             pass
         raise
     return runtime
+
+
+class FmiTwoEventUpdate:
+    """Store one typed FMI 2 Event Mode iteration result.
+
+    :param discrete_states_need_update: Whether another event iteration is required.
+    :param terminate_simulation: Whether the FMU requested termination.
+    :param nominals_changed: Whether continuous-state nominals changed.
+    :param states_changed: Whether continuous state values changed.
+    :param next_event_time: Validated raw next event time when defined.
+    """
+
+    __slots__ = (
+        "discrete_states_need_update",
+        "terminate_simulation",
+        "nominals_changed",
+        "states_changed",
+        "next_event_time",
+    )
+
+    def __init__(
+        self,
+        discrete_states_need_update: bool,
+        terminate_simulation: bool,
+        nominals_changed: bool,
+        states_changed: bool,
+        next_event_time: float | None,
+    ) -> None:
+        """Store one normalized FMI 2 event update.
+
+        :param discrete_states_need_update: Native newDiscreteStatesNeeded flag.
+        :param terminate_simulation: Native terminateSimulation flag.
+        :param nominals_changed: Native nominalsOfContinuousStatesChanged flag.
+        :param states_changed: Native valuesOfContinuousStatesChanged flag.
+        :param next_event_time: Raw nextEventTime when its defined flag is true.
+        :return: None.
+        """
+
+        self.discrete_states_need_update: bool = bool(
+            discrete_states_need_update
+        )
+        self.terminate_simulation: bool = bool(terminate_simulation)
+        self.nominals_changed: bool = bool(nominals_changed)
+        self.states_changed: bool = bool(states_changed)
+        if next_event_time is None:
+            self.next_event_time: float | None = None
+        else:
+            self.next_event_time = float(next_event_time)
 
 
 class FmuRuntimeHost:
@@ -321,6 +371,57 @@ class FmuRuntimeHost:
         else:
             raise FmuModeError("get_derivatives() is only valid for Model Exchange FMUs")
 
+    def get_event_indicators(self) -> list[float]:
+        """Read the complete finite FMI 2 event-indicator vector.
+
+        :return: Indicators in model-description order.
+        :raises FmuModeError: If cardinality or finiteness is invalid.
+        """
+
+        if self.mode == FmuInterfaceMode.MODEL_EXCHANGE:
+            number_of_indicators: int = self.metadata.number_of_event_indicators
+            if number_of_indicators > 0:
+                indicator_buffer = (c_double * number_of_indicators)()
+                self.runtime.getEventIndicators(
+                    indicator_buffer,
+                    number_of_indicators,
+                )
+                indicator_values: list[float] = [0.0] * number_of_indicators
+                indicator_index: int
+                for indicator_index in range(number_of_indicators):
+                    indicator_value: float = float(
+                        indicator_buffer[indicator_index]
+                    )
+                    if math.isfinite(indicator_value):
+                        indicator_values[indicator_index] = indicator_value
+                    else:
+                        raise FmuModeError(
+                            "FMI 2 event indicators must be finite"
+                        )
+                return indicator_values
+            else:
+                return list()
+        else:
+            raise FmuModeError(
+                "get_event_indicators() is only valid for Model Exchange FMUs"
+            )
+
+    def needs_completed_integrator_step(self) -> bool:
+        """Return whether the FMI 2 model requires completed-step notification.
+
+        :return: Inverse of completedIntegratorStepNotNeeded.
+        """
+
+        if self.mode == FmuInterfaceMode.MODEL_EXCHANGE:
+            completed_step_not_needed: bool = bool(
+                self.model_description.modelExchange.completedIntegratorStepNotNeeded
+            )
+            return not completed_step_not_needed
+        else:
+            raise FmuModeError(
+                "needs_completed_integrator_step() is only valid for Model Exchange FMUs"
+            )
+
     def completed_integrator_step(self) -> tuple[bool, bool]:
         """Notify a Model Exchange FMU that one host integrator step completed.
 
@@ -346,14 +447,27 @@ class FmuRuntimeHost:
         else:
             raise FmuModeError("enter_event_mode() is only valid for Model Exchange FMUs")
 
-    def new_discrete_states(self) -> Any:
+    def new_discrete_states(self) -> FmiTwoEventUpdate:
         """Advance the discrete-event iteration of a Model Exchange FMU.
 
-        :return: Native FMPy event-info structure.
+        :return: Typed event information detached from the FMPy structure.
         """
 
         if self.mode == FmuInterfaceMode.MODEL_EXCHANGE:
-            return self.runtime.newDiscreteStates()
+            event_info: tuple[bool, bool, bool, bool, bool, float] = (
+                self.runtime.newDiscreteStates()
+            )
+            if event_info[4]:
+                next_event_time: float | None = float(event_info[5])
+            else:
+                next_event_time = None
+            return FmiTwoEventUpdate(
+                discrete_states_need_update=event_info[0],
+                terminate_simulation=event_info[1],
+                nominals_changed=event_info[2],
+                states_changed=event_info[3],
+                next_event_time=next_event_time,
+            )
         else:
             raise FmuModeError("new_discrete_states() is only valid for Model Exchange FMUs")
 
@@ -433,9 +547,19 @@ def open_fmu_runtime_host(config: FmuImportConfig) -> FmuRuntimeHost:
 
     :param config: Runtime configuration for the FMU host.
     :return: Open runtime host.
+    :raises FmuModeError: If the FMU is not an FMI 2 model.
     """
 
     metadata: FmuModelDescription = read_fmu_model_description(config.fmu_path)
+    # This in-process FMPy owner is intentionally limited to FMI 2. FMI 3 is
+    # executed only through the bounded worker session, so reject it before
+    # dependency checks, native validation, or private staging side effects.
+    if metadata.fmi_version_family == FmiVersion.FMI_2_0:
+        pass
+    else:
+        raise FmuModeError(
+            f"FmuRuntimeHost supports FMI 2 execution only, got FMI {metadata.fmi_version}"
+        )
     mode: FmuInterfaceMode = config.resolve_execution_mode(metadata)
     fmpy_module: Any = _require_fmpy_module()
     if metadata.inspection_receipt is None:

@@ -10,7 +10,7 @@ from PySide6.QtWidgets import QGraphicsRectItem
 
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingPoint
 from VeraGridEngine.enumerations import RoutingPortSide
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics import PortItem
+from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_graphics import PortItem
 
 
 class QtRoutingPortSnapshot:

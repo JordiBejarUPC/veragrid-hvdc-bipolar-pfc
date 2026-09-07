@@ -2995,6 +2995,7 @@ class ResultTypes(Enum):
 
     # Hydro OPF
     FluidCurrentLevel = 'Reservoir fluid level'
+    FluidValue = 'Fluid value'
     FluidFlowIn = 'Flow entering the node'
     FluidFlowOut = 'Flow exiting the node'
     FluidP2XFlow = 'Flow from the P2X'
@@ -4819,6 +4820,7 @@ class BlockType(Enum):
 
     # generic
     GENERIC = "Generic"
+    PROCEDURAL_LOGIC = "PROCEDURAL_LOGIC"
 
     # common basic maths
     CONST = "CONST"
@@ -4897,7 +4899,6 @@ class BlockType(Enum):
     VSC_VD_HAT_RMS = "VSC_VD_HAT_RMS"
     VSC_VQ_HAT_RMS = "VSC_VQ_HAT_RMS"
     VSC_DC_LINK_RMS = "VSC_DC_LINK_RMS"
-    VSC_TERMINAL_POWER_RMS = "VSC_TERMINAL_POWER_RMS"
     VOLTAGE_SOURCE_RMS = "Voltage_source_rms"
     TRANSFORMER_2W_RMS = "Transformer_2w_rms"
     DC_LINE_RMS = "DC_line_rms"
@@ -5081,8 +5082,10 @@ class BlockSymbolKind(Enum):
 class BlockSymbolCategory(Enum):
     """Visible symbol group used to filter dynamic-block symbol tables."""
 
+    GENERAL = "General structure"
     VARIABLES = "Variables"
     PARAMETERS = "Parameters"
+    RETAINED_MODES = "Retained modes"
 
 
 class DynamicEditorMimeType(Enum):
@@ -5197,6 +5200,92 @@ class ProceduralLogicType(Enum):
             return ProceduralLogicType[s]
         except KeyError:
             return s
+
+
+class InternationalStandardModel(Enum):
+    """Identify every supported international-standard dynamic model."""
+
+    AC1A = 'ac1a'
+    AC1C = 'ac1c'
+    AC6A = 'ac6a'
+    AC6C = 'ac6c'
+    AC7B = 'ac7b'
+    AC7C = 'ac7c'
+    AC8B = 'ac8b'
+    AC8C = 'ac8c'
+    BBSEX1 = 'bbsex1'
+    BESSCBCURRENTSOURCENOPLANTCONTROL = 'besscbcurrentsourcenoplantcontrol'
+    DC1A = 'dc1a'
+    DC1C = 'dc1c'
+    EXAC1 = 'exac1'
+    GOVHYDRO4 = 'govhydro4'
+    GOVSTEAM1 = 'govsteam1'
+    GOVSTEAMEU = 'govsteameu'
+    IEEEG1 = 'ieeeg1'
+    IEEEG2 = 'ieeeg2'
+    IEEET1 = 'ieeet1'
+    IEEEX2 = 'ieeex2'
+    IEEX2A = 'ieex2a'
+    MAXEX2 = 'maxex2'
+    OEL2C = 'oel2c'
+    OEL3C = 'oel3c'
+    OEL4C = 'oel4c'
+    OEL5C = 'oel5c'
+    PSS1AOMEGA = 'pss1aomega'
+    PSS1APGEN = 'pss1apgen'
+    PSS2A = 'pss2a'
+    PSS2B = 'pss2b'
+    PSS2C = 'pss2c'
+    PSS3B = 'pss3b'
+    PSS3C = 'pss3c'
+    PSS6C = 'pss6c'
+    PSSKUNDUR = 'psskundur'
+    PVCURRENTSOURCEBNOPLANTCONTROL = 'pvcurrentsourcebnoplantcontrol'
+    PVVOLTAGESOURCEANOPLANTCONTROL = 'pvvoltagesourceanoplantcontrol'
+    PVVOLTAGESOURCEBNOPLANTCONTROL = 'pvvoltagesourcebnoplantcontrol'
+    REECB = 'reecb'
+    REECC = 'reecc'
+    REGCBCS = 'regcbcs'
+    REPCA = 'repca'
+    SCL1C = 'scl1c'
+    SCL2C = 'scl2c'
+    SCRX = 'scrx'
+    SEXS = 'sexs'
+    ST1A = 'st1a'
+    ST1C = 'st1c'
+    ST4B = 'st4b'
+    ST4C = 'st4c'
+    ST5B = 'st5b'
+    ST5C = 'st5c'
+    ST6B = 'st6b'
+    ST6C = 'st6c'
+    ST7B = 'st7b'
+    ST7C = 'st7c'
+    ST9C = 'st9c'
+    TGOV3 = 'tgov3'
+    UEL1 = 'uel1'
+    UEL2C = 'uel2c'
+    VRKUNDUR = 'vrkundur'
+    WPP4BCURRENTSOURCE2020 = 'wpp4bcurrentsource2020'
+    WT4ACURRENTSOURCE = 'wt4acurrentsource'
+    WT4ACURRENTSOURCE2020 = 'wt4acurrentsource2020'
+    WT4BCURRENTSOURCE2020 = 'wt4bcurrentsource2020'
+    WT4BCURRENTSOURCE = 'wt4bcurrentsource'
+    WT4INJECTOR = 'wt4injector'
+    WTG4ACURRENTSOURCE = 'wtg4acurrentsource'
+    WTG4BCURRENTSOURCE = 'wtg4bcurrentsource'
+    IEEEVC_1981 = 'ieeevc_1981'
+    ESDC2A = 'esdc2a'
+    FRQTPA = 'frqtpa'
+    VTGTPA = 'vtgtpa'
+    CIMTR1 = 'cimtr1'
+    CIMW = 'cimw'
+    GENSAL = 'gensal'
+    GENROU = 'genrou'
+    GGOV1 = 'ggov1'
+    HYGOV = 'hygov'
+    IEEL = 'ieel'
+    TGOV1 = 'tgov1'
 
 
 class EmtInitializationStatus(Enum):
@@ -5400,3 +5489,10 @@ class MeasurementVarType(Enum):
 
     ID = "ID"
     IQ = "IQ"
+
+
+class DynamicEditorContentType(Enum):
+    """Identify the kind of content hosted by a dynamic workspace tab."""
+
+    MODEL = "Model"
+    EVENTS = "Events"

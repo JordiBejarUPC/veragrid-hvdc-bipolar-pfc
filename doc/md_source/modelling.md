@@ -103,7 +103,7 @@ Profile-enabled properties: none.
 |decommissioned_date|int                |    |False    |         |Decommissioned date of the asset                        |False      |       |
 |build_status       |enum BuildStatus   |    |False    |         |Device build status. Used in expansion planning.        |False      |       |
 |owners             |AssociationsList   |p.u.|False    |         |Owners associations to injections                       |False      |       |
-|voltage_level      |Bus                |    |False    |         |Voltage level of this BusBar                            |False      |       |
+|voltage_level      |Voltage level      |    |False    |         |Voltage level of this BusBar                            |False      |       |
 
 ## VoltageLevel
 
@@ -2057,7 +2057,7 @@ Profile-enabled properties: `active`, `rate`, `contingency_factor`, `protection_
 |length                  |float              |km   |False    |         |Length of the line (not used for calculation)                                                                                                                                                                                            |False      |       |
 |r_fault                 |float              |p.u. |False    |         |Resistance of the mid-line fault.Used in short circuit studies.                                                                                                                                                                          |False      |       |
 |fault_pos               |float              |p.u. |False    |         |Per-unit positioning of the fault:0 would be at the "from" side,1 would be at the "to" side,therefore 0.5 is at the middle.                                                                                                              |False      |       |
-|template                |Any line template  |     |False    |         |                                                                                                                                                                                                                                         |False      |       |
+|template                |DC cable type      |     |False    |         |Physical DC cable type applied to this line.                                                                                                                                                                                             |False      |       |
 |locations               |Line locations     |     |False    |         |                                                                                                                                                                                                                                         |False      |       |
 
 ## Winding

@@ -142,15 +142,12 @@ def _model_exchange_artifact() -> Path:
     :return: Absolute artifact path.
     """
 
-    source_root: Path = Path(__file__).resolve().parents[2]
+    tests_root: Path = Path(__file__).resolve().parents[1]
     return (
-        source_root
-        / "VeraGridEngine"
-        / "IO"
-        / "fmu"
-        / "importer"
-        / "reports"
-        / "examples"
+        tests_root
+        / "data"
+        / "fmi"
+        / "artifacts"
         / "ExampleRmsMeDevice.fmu"
     )
 
@@ -380,7 +377,7 @@ def test_fmi_three_nested_model_identifier_fails_closed(tmp_path: Path) -> None:
 def test_fmi_three_execution_gate_blocks_before_native_preflight_and_staging(
     tmp_path: Path,
 ) -> None:
-    """Verify FMI 3 remains metadata-only despite its native preflight support.
+    """Verify the FMI 2 host rejects FMI 3 before native preflight and staging.
 
     :param tmp_path: Isolated fixture directory provided by pytest.
     :return: None.
@@ -400,7 +397,7 @@ def test_fmi_three_execution_gate_blocks_before_native_preflight_and_staging(
         extraction_root=staging_parent,
     )
 
-    with pytest.raises(FmuModeError, match="worker execution is not connected yet"):
+    with pytest.raises(FmuModeError, match="supports FMI 2 execution only"):
         open_fmu_runtime_host(config)
     assert tuple(staging_parent.glob("veragrid_fmu_stage_*")) == tuple()
 

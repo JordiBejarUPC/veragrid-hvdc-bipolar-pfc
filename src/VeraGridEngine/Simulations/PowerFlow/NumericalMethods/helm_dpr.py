@@ -1031,7 +1031,7 @@ def helm_coefficients_dpr(Ybus: CscMat, Yseries: CscMat, V0: CxVec | None, Vset:
                           use_classical_germ: bool = False,
                           allow_dynamic_restart: bool = True,
                           verbose: bool = False, logger: Logger = None) -> tuple[np.ndarray, np.ndarray, np.ndarray,
-                                                                                  CxVec, int, bool]:
+CxVec, int, bool]:
     """
     Compute DPRHEM coefficients and final voltage state.
 
@@ -1124,6 +1124,10 @@ def helm_dpr_fixed_model(nc: NumericalCircuit,
     """
 
     start_time: float = time.time()
+
+    if logger is not None:
+        logger.add_info("HELM: use_classical_germ", value=use_classical_germ)
+
     Vset: CxVec = nc.bus_data.Vbus
 
     # Fixed-model solve: these bus sets and matrices must remain constant for the whole coefficient computation.
@@ -1269,11 +1273,14 @@ def helm_dpr_fixed_model(nc: NumericalCircuit,
 def helm_dpr(nc: NumericalCircuit,
              Ybus: CscMat, Yf: CscMat, Yt: CscMat, Yshunt_bus: CxVec,
              Yseries: CscMat, V0: CxVec | None, S0: CxVec, Ysh0: CxVec,
-             pq: IntVec, pv: IntVec, vd: IntVec, no_slack: IntVec,
-             tolerance: float = 1e-6, max_coefficients: int = 30, use_pade: bool = True,
-             restart_order: int = 6, max_restarts: int = 20,
+             pq: IntVec, pv: IntVec, vd: IntVec, no_slack: IntVec, pqv: IntVec | None = None, p: IntVec | None = None,
+             tolerance: float = 1e-6,
+             max_coefficients: int = 30,
+             use_pade: bool = True,
+             restart_order: int = 6,
+             max_restarts: int = 20,
              use_classical_germ: bool = False,
-             control_q: bool = False, pqv: IntVec | None = None, p: IntVec | None = None,
+             control_q: bool = False,
              Qmin: Vec | None = None, Qmax: Vec | None = None,
              control_discrete_shunts: bool = False, control_qv_droop: bool = False,
              distributed_slack: bool = False, bus_installed_power: Vec | None = None,

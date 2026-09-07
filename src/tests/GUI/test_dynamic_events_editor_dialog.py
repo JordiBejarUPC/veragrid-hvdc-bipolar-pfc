@@ -5,19 +5,165 @@ import sys
 from PySide6 import QtCore, QtWidgets
 
 import VeraGridEngine.api as vge
-from VeraGrid.Gui.DynamicEventsDialog.dynamic_events_editor import DynamicEventEditor
-from VeraGrid.Gui.DynamicEventsDialog.dynamic_events_editor_support import collect_block_runtime_event_parameters
-from VeraGrid.Gui.DynamicEventsDialog.dynamic_events_models import DynamicEventDraft
-from VeraGrid.Gui.DynamicEventsDialog.dynamic_events_models import DynamicEventGroupDraft
-from VeraGrid.Gui.DynamicEventsDialog.dynamic_events_tree import DynamicEventsPage
-from VeraGrid.Session.dynamic_editor_entries import DynamicEditorEntry
-from VeraGrid.Session.dynamic_editor_entries import build_dynamic_editor_entry
+from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_support import collect_block_runtime_event_parameters
+from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_models import DynamicEventDraft
+from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_models import DynamicEventGroupDraft
+from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_models import DynamicEventsDraftSession
+from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_page import DynamicEventsPage
+from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import DynamicEditorEntry
+from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import build_dynamic_editor_entry
+from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_workspace_session import DynamicEditorWorkspaceSession
+from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_workspace_window import DynamicEditorWorkspaceWindow
+from VeraGrid.Gui.toast_widget import ToastManager
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup
 from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var
 from VeraGridEngine.enumerations import DynamicEventTransitionType, DynamicSimulationMode
+
+
+class DynamicEventEditor:
+    """Test harness exposing event components through the unified workspace."""
+
+    __slots__ = (
+        "circuit",
+        "preferred_mode",
+        "workspace_session",
+        "workspace",
+    )
+
+    def __init__(self,
+                 circuit: vge.MultiCircuit,
+                 preferred_mode: DynamicSimulationMode,
+                 initial_device: vge.Load | None = None,
+                 parent: QtWidgets.QWidget | None = None) -> None:
+        """Create the unified workspace state used by the event component tests.
+
+        :param circuit: Circuit containing models and event assets.
+        :param preferred_mode: RMS or EMT family requested by the test.
+        :param initial_device: Optional device opened immediately.
+        :param parent: Optional owning widget.
+        :return: None.
+        """
+        self.circuit: vge.MultiCircuit = circuit
+        self.preferred_mode: DynamicSimulationMode = preferred_mode
+        self.workspace_session: DynamicEditorWorkspaceSession = DynamicEditorWorkspaceSession()
+        self.workspace: DynamicEditorWorkspaceWindow = DynamicEditorWorkspaceWindow(
+            session=self.workspace_session,
+            parent=parent,
+        )
+        self.workspace._set_workspace_circuit(circuit=circuit)
+        if initial_device is not None:
+            self.workspace.open_dynamic_events_for(
+                api_object=initial_device,
+                circuit=circuit,
+                mode=preferred_mode,
+                target_workspace=self.workspace,
+            )
+            self.workspace.set_tree_visible(visible=False)
+        else:
+            self.workspace.set_tree_visible(visible=True)
+
+    @property
+    def pages(self) -> list[DynamicEventsPage]:
+        """Return open event pages in registry order.
+
+        :return: Event pages opened by the unified workspace.
+        """
+        return list(self.workspace_session._event_pages)
+
+    @property
+    def session(self) -> DynamicEventsDraftSession:
+        """Return the shared event transaction, creating it when necessary.
+
+        :return: Shared event draft session.
+        """
+        return self.workspace_session._get_events_session(circuit=self.circuit)
+
+    @property
+    def ui(self) -> object:
+        """Return the unified workspace UI used by compatibility assertions.
+
+        :return: Generated workspace UI object.
+        """
+        return self.workspace.ui
+
+    @property
+    def toast_manager(self) -> ToastManager:
+        """Return the active event page toast manager.
+
+        :return: Toast manager owned by the active events page.
+        """
+        page: DynamicEventsPage | None = self._current_page()
+        if page is None:
+            raise RuntimeError("An event page is required for toast assertions")
+        else:
+            return page.toast_manager
+
+    def _current_page(self) -> DynamicEventsPage | None:
+        """Return the active events page.
+
+        :return: Active events page, or ``None``.
+        """
+        page: object = self.workspace.current_page()
+        if isinstance(page, DynamicEventsPage):
+            return page
+        else:
+            return None
+
+    def open_entry(
+            self,
+            entry: DynamicEditorEntry,
+            mode: DynamicSimulationMode,
+    ) -> DynamicEventsPage | None:
+        """Open one events page through the production workspace session.
+
+        :param entry: Device entry to open.
+        :param mode: RMS or EMT events family.
+        :return: Open events page, or ``None``.
+        """
+        return self.workspace_session.open_events_entry(
+            entry=entry,
+            mode=mode,
+            target_workspace=self.workspace,
+        )
+
+    def accept_changes(self) -> None:
+        """Save the shared transaction through the active page.
+
+        :return: None.
+        """
+        page: DynamicEventsPage | None = self._current_page()
+        if page is not None:
+            page.save_changes()
+        else:
+            pass
+
+    def reject(self) -> None:
+        """Discard the shared transaction and close the workspace.
+
+        :return: None.
+        """
+        if self.workspace_session._events_session is not None:
+            self.workspace_session._events_session.reload_from_circuit()
+        else:
+            pass
+        self.workspace.close()
+
+    def close(self) -> None:
+        """Close the harness without allowing fixture cleanup to prompt.
+
+        :return: None.
+        """
+        self.reject()
+
+    def result(self) -> QtWidgets.QDialog.DialogCode:
+        """Preserve the former dialog result assertion for saved checkpoints.
+
+        :return: Rejected, because saving an events page does not close the workspace.
+        """
+        return QtWidgets.QDialog.DialogCode.Rejected
 
 
 def get_qt_application() -> QtWidgets.QApplication:
@@ -83,7 +229,7 @@ def test_selected_device_opens_requested_page_with_tree_collapsed() -> None:
 
     :return: None.
     """
-    get_qt_application()
+    _unused_application: QtWidgets.QApplication = get_qt_application()
     circuit, load, _parameter, _group = build_dynamic_target(DynamicSimulationMode.RMS)
     dialog: DynamicEventEditor = DynamicEventEditor(
         circuit=circuit,
@@ -103,7 +249,7 @@ def test_no_selected_device_opens_general_tree() -> None:
 
     :return: None.
     """
-    get_qt_application()
+    _unused_application: QtWidgets.QApplication = get_qt_application()
     circuit, _load, _parameter, _group = build_dynamic_target(DynamicSimulationMode.EMT)
     dialog: DynamicEventEditor = DynamicEventEditor(
         circuit=circuit,
@@ -115,12 +261,12 @@ def test_no_selected_device_opens_general_tree() -> None:
     dialog.close()
 
 
-def test_empty_model_page_keeps_existing_events_visible_and_disables_add() -> None:
-    """An empty model page must remain useful for inspecting stale events.
+def test_empty_model_page_removes_stale_events_and_disables_add() -> None:
+    """An empty model page must discard events whose parameters disappeared.
 
     :return: None.
     """
-    get_qt_application()
+    _unused_application: QtWidgets.QApplication = get_qt_application()
     circuit, load, parameter, group = build_dynamic_target(
         DynamicSimulationMode.RMS,
         empty_model=True,
@@ -143,8 +289,9 @@ def test_empty_model_page_keeps_existing_events_visible_and_disables_add() -> No
     group_index: QtCore.QModelIndex = page.tree_model.index(0, 0)
 
     assert not page.empty_model_message.isHidden()
-    assert page.tree_model.rowCount(group_index) == 1
-    assert not page.add_event_button.isEnabled()
+    assert page.tree_model.rowCount(group_index) == 0
+    assert page.add_event_button.isEnabled()
+    assert page.session.has_unapplied_changes
     dialog.close()
 
 
@@ -153,7 +300,7 @@ def test_empty_model_message_is_page_specific_and_uses_block_empty_state() -> No
 
     :return: None.
     """
-    get_qt_application()
+    _unused_application: QtWidgets.QApplication = get_qt_application()
     circuit, load, _parameter, _group = build_dynamic_target(
         DynamicSimulationMode.RMS,
         empty_model=True,
@@ -173,7 +320,7 @@ def test_empty_model_message_is_page_specific_and_uses_block_empty_state() -> No
 
     assert not rms_page.empty_model_message.isHidden()
     assert opened_emt_page.empty_model_message.isHidden()
-    assert not opened_emt_page.add_event_button.isEnabled()
+    assert opened_emt_page.add_event_button.isEnabled()
     dialog.close()
 
 
@@ -182,7 +329,7 @@ def test_add_event_expands_group_selects_row_and_starts_editing() -> None:
 
     :return: None.
     """
-    get_qt_application()
+    _unused_application: QtWidgets.QApplication = get_qt_application()
     circuit, load, _parameter, _group = build_dynamic_target(DynamicSimulationMode.RMS)
     dialog: DynamicEventEditor = DynamicEventEditor(
         circuit=circuit,
@@ -207,7 +354,7 @@ def test_page_filters_events_by_device_but_displays_every_group() -> None:
 
     :return: None.
     """
-    get_qt_application()
+    _unused_application: QtWidgets.QApplication = get_qt_application()
     circuit, first_load, parameter, group = build_dynamic_target(DynamicSimulationMode.EMT)
     assert isinstance(group, EmtEventsGroup)
     second_bus: vge.Bus = vge.Bus(name="Second bus", Vnom=10.0)
@@ -233,12 +380,152 @@ def test_page_filters_events_by_device_but_displays_every_group() -> None:
     dialog.close()
 
 
+def test_dragging_event_to_another_group_moves_draft_and_save_persists_it() -> None:
+    """Dropping an event on a group must move it transactionally and preserve its identity.
+
+    :return: None.
+    """
+    _unused_application: QtWidgets.QApplication = get_qt_application()
+    circuit, load, parameter, source_group = build_dynamic_target(DynamicSimulationMode.RMS)
+    assert isinstance(source_group, RmsEventsGroup)
+    target_group: RmsEventsGroup = RmsEventsGroup(name="RMS target group", active=False)
+    circuit.add_rms_events_group(target_group)
+    original_event: vge.RmsEvent = vge.RmsEvent(
+        device=load,
+        parameter=parameter,
+        time=1.0,
+        value=2.0,
+        group=source_group,
+    )
+    circuit.add_rms_event(original_event)
+    dialog: DynamicEventEditor = DynamicEventEditor(
+        circuit=circuit,
+        preferred_mode=DynamicSimulationMode.RMS,
+        initial_device=load,
+    )
+    page: DynamicEventsPage = dialog.pages[0]
+    group_drafts: list[DynamicEventGroupDraft] = dialog.session.get_groups(DynamicSimulationMode.RMS)
+    source_group_draft: DynamicEventGroupDraft = group_drafts[0]
+    target_group_draft: DynamicEventGroupDraft = group_drafts[1]
+    event_draft: DynamicEventDraft = dialog.session.get_events_for_device(
+        load,
+        DynamicSimulationMode.RMS,
+    )[0]
+    event_index: QtCore.QModelIndex = page.tree_model.index_for_backing_object(event_draft)
+    target_parameter_index: QtCore.QModelIndex = page.tree_model.index_for_backing_object(target_group_draft)
+    target_index: QtCore.QModelIndex = target_parameter_index.siblingAtColumn(
+        page.tree_model.COLUMN_VALUE
+    )
+    event_mime_data: QtCore.QMimeData = page.tree_model.mimeData(list((event_index,)))
+
+    event_flags: QtCore.Qt.ItemFlag = page.tree_model.flags(event_index)
+    target_flags: QtCore.Qt.ItemFlag = page.tree_model.flags(target_index)
+    accepted: bool = page.tree_model.dropMimeData(
+        data=event_mime_data,
+        action=QtCore.Qt.DropAction.CopyAction,
+        row=-1,
+        column=-1,
+        parent=target_index,
+    )
+    moved_index: QtCore.QModelIndex = page.tree_model.index_for_backing_object(event_draft)
+
+    assert bool(event_flags & QtCore.Qt.ItemFlag.ItemIsDragEnabled)
+    assert bool(target_flags & QtCore.Qt.ItemFlag.ItemIsDropEnabled)
+    assert accepted
+    assert event_draft.group is target_group_draft
+    assert page.tree_model.rowCount(page.tree_model.index_for_backing_object(source_group_draft)) == 0
+    assert page.tree_model.rowCount(moved_index.parent()) == 1
+    assert page.tree_model.backing_object(page.tree_view.currentIndex()) is event_draft
+    assert page.tree_view.isExpanded(moved_index.parent())
+    assert original_event.group is source_group
+
+    dialog.accept_changes()
+
+    assert circuit.rms_events[0] is original_event
+    assert original_event.group is target_group
+    dialog.close()
+
+
+def test_event_drop_rejects_invalid_targets_and_close_discards_valid_move() -> None:
+    """Only another same-mode group may receive a drop and Close must roll it back.
+
+    :return: None.
+    """
+    _unused_application: QtWidgets.QApplication = get_qt_application()
+    circuit, load, parameter, source_group = build_dynamic_target(DynamicSimulationMode.EMT)
+    assert isinstance(source_group, EmtEventsGroup)
+    target_group: EmtEventsGroup = EmtEventsGroup(name="EMT target group")
+    circuit.add_emt_events_group(target_group)
+    foreign_group: RmsEventsGroup = RmsEventsGroup(name="RMS foreign group")
+    circuit.add_rms_events_group(foreign_group)
+    original_event: vge.EmtEvent = vge.EmtEvent(
+        device=load,
+        parameter=parameter,
+        time=1.0,
+        value=2.0,
+        group=source_group,
+    )
+    circuit.add_emt_event(original_event)
+    dialog: DynamicEventEditor = DynamicEventEditor(
+        circuit=circuit,
+        preferred_mode=DynamicSimulationMode.EMT,
+        initial_device=load,
+    )
+    page: DynamicEventsPage = dialog.pages[0]
+    event_draft: DynamicEventDraft = dialog.session.get_events_for_device(
+        load,
+        DynamicSimulationMode.EMT,
+    )[0]
+    emt_group_drafts: list[DynamicEventGroupDraft] = dialog.session.get_groups(DynamicSimulationMode.EMT)
+    rms_group_draft: DynamicEventGroupDraft = dialog.session.get_groups(DynamicSimulationMode.RMS)[0]
+    source_group_draft: DynamicEventGroupDraft = emt_group_drafts[0]
+    target_group_draft: DynamicEventGroupDraft = emt_group_drafts[1]
+    event_index: QtCore.QModelIndex = page.tree_model.index_for_backing_object(event_draft)
+    source_index: QtCore.QModelIndex = page.tree_model.index_for_backing_object(source_group_draft)
+    target_index: QtCore.QModelIndex = page.tree_model.index_for_backing_object(target_group_draft)
+    event_mime_data: QtCore.QMimeData = page.tree_model.mimeData(list((event_index,)))
+
+    same_group_accepted: bool = page.tree_model.canDropMimeData(
+        data=event_mime_data,
+        action=QtCore.Qt.DropAction.CopyAction,
+        row=-1,
+        column=-1,
+        parent=source_index,
+    )
+    event_row_accepted: bool = page.tree_model.canDropMimeData(
+        data=event_mime_data,
+        action=QtCore.Qt.DropAction.CopyAction,
+        row=-1,
+        column=-1,
+        parent=event_index,
+    )
+    different_mode_accepted: bool = dialog.session.move_event_to_group(event_draft, rms_group_draft)
+    valid_move_accepted: bool = page.tree_model.dropMimeData(
+        data=event_mime_data,
+        action=QtCore.Qt.DropAction.CopyAction,
+        row=-1,
+        column=-1,
+        parent=target_index,
+    )
+
+    assert not same_group_accepted
+    assert not event_row_accepted
+    assert not different_mode_accepted
+    assert valid_move_accepted
+    assert event_draft.group is target_group_draft
+    assert original_event.group is source_group
+
+    dialog.reject()
+
+    assert original_event.group is source_group
+
+
 def test_group_active_and_rename_are_transactional() -> None:
     """Group activity must toggle repeatedly and remain transactional.
 
     :return: None.
     """
-    get_qt_application()
+    _unused_application: QtWidgets.QApplication = get_qt_application()
     circuit, load, _parameter, group = build_dynamic_target(DynamicSimulationMode.RMS)
     assert isinstance(group, RmsEventsGroup)
     cancelled_dialog: DynamicEventEditor = DynamicEventEditor(
@@ -308,7 +595,7 @@ def test_group_removal_cascades_events_across_devices_on_save() -> None:
 
     :return: None.
     """
-    get_qt_application()
+    _unused_application: QtWidgets.QApplication = get_qt_application()
     circuit, load, parameter, group = build_dynamic_target(DynamicSimulationMode.EMT)
     assert isinstance(group, EmtEventsGroup)
     circuit.add_emt_event(vge.EmtEvent(device=load, parameter=parameter, time=1.0, value=1.0, group=group))
@@ -331,7 +618,7 @@ def test_align_step_checkbox_accepts_qt_check_state_enum() -> None:
 
     :return: None.
     """
-    get_qt_application()
+    _unused_application: QtWidgets.QApplication = get_qt_application()
     circuit, load, _parameter, group = build_dynamic_target(DynamicSimulationMode.EMT)
     assert isinstance(group, EmtEventsGroup)
     mode_parameter: Var = VarFactory().add_var("switch_closed_mode_test")
@@ -371,7 +658,7 @@ def test_tabs_are_unique_per_device_and_mode() -> None:
 
     :return: None.
     """
-    get_qt_application()
+    _unused_application: QtWidgets.QApplication = get_qt_application()
     circuit, load, _parameter, _group = build_dynamic_target(DynamicSimulationMode.RMS)
     emt_group: EmtEventsGroup = EmtEventsGroup(name="EMT group")
     circuit.add_emt_events_group(emt_group)
@@ -394,35 +681,59 @@ def test_tabs_are_unique_per_device_and_mode() -> None:
 
 
 def test_save_button_and_event_controls_use_new_workspace_contract() -> None:
-    """The workspace must expose icon-only Save, Close and Results-style controls.
+    """The events page must own save, group and event controls.
 
     :return: None.
     """
-    get_qt_application()
+    _unused_application: QtWidgets.QApplication = get_qt_application()
     circuit, load, _parameter, _group = build_dynamic_target(DynamicSimulationMode.RMS)
     dialog: DynamicEventEditor = DynamicEventEditor(
         circuit=circuit,
         preferred_mode=DynamicSimulationMode.RMS,
         initial_device=load,
     )
-    save_button: QtWidgets.QPushButton | None = dialog.ui.dialogButtonBox.button(
-        QtWidgets.QDialogButtonBox.StandardButton.Ok
-    )
-    close_button: QtWidgets.QPushButton | None = dialog.ui.dialogButtonBox.button(
-        QtWidgets.QDialogButtonBox.StandardButton.Cancel
-    )
     page: DynamicEventsPage = dialog.pages[0]
 
-    assert save_button is not None
-    assert save_button.text() == ""
-    assert save_button.toolTip() == "Save"
-    assert not save_button.icon().isNull()
-    assert close_button is not None
-    assert close_button.text() == "Close"
+    assert page.save_button.text() == ""
+    assert page.save_button.toolTip() == "Save events"
+    assert not page.save_button.icon().isNull()
+    assert page.new_group_button.text() != ""
     assert isinstance(page.add_event_button, QtWidgets.QPushButton)
     assert isinstance(page.remove_button, QtWidgets.QPushButton)
     assert page.add_event_button.toolTip() != ""
     assert page.remove_button.toolTip() != ""
+    dialog.close()
+
+
+def test_event_controls_show_guidance_toasts_without_a_selection() -> None:
+    """Add and remove must explain their required tree selections.
+
+    :return: None.
+    """
+    _unused_application: QtWidgets.QApplication = get_qt_application()
+    circuit, load, _parameter, _group = build_dynamic_target(DynamicSimulationMode.RMS)
+    dialog: DynamicEventEditor = DynamicEventEditor(
+        circuit=circuit,
+        preferred_mode=DynamicSimulationMode.RMS,
+        initial_device=load,
+    )
+    page: DynamicEventsPage = dialog.pages[0]
+    page.tree_view.clearSelection()
+    page.tree_view.setCurrentIndex(QtCore.QModelIndex())
+
+    page.add_event()
+    add_toast_label: QtWidgets.QLabel | None = page.toast_manager.active_toasts[0].findChild(
+        QtWidgets.QLabel
+    )
+    page.remove_selection()
+    remove_toast_label: QtWidgets.QLabel | None = page.toast_manager.active_toasts[1].findChild(
+        QtWidgets.QLabel
+    )
+
+    assert add_toast_label is not None
+    assert add_toast_label.text() == "Select the event group where you want to add the event."
+    assert remove_toast_label is not None
+    assert remove_toast_label.text() == "Select the event or event group you want to remove."
     dialog.close()
 
 
@@ -431,7 +742,7 @@ def test_draft_validation_rejects_overlapping_events() -> None:
 
     :return: None.
     """
-    get_qt_application()
+    _unused_application: QtWidgets.QApplication = get_qt_application()
     circuit, load, _parameter, _group = build_dynamic_target(DynamicSimulationMode.RMS)
     dialog: DynamicEventEditor = DynamicEventEditor(
         circuit=circuit,

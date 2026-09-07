@@ -4,15 +4,15 @@ import sys
 
 from PySide6 import QtWidgets
 
-import VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics as graph
-from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_tab import DynamicEditorTab
-from VeraGrid.Session.dynamic_editor_entries import (
+import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_graphics as graph
+from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_editor import DynamicBlockEditorGUI
+from VeraGrid.Gui.DynamicModelEditor.Tabs.dynamic_editor_tab import DynamicEditorTab
+from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import (
     DynamicEditorEntry,
     build_dynamic_editor_entry,
     get_templates_for_entry,
 )
-from VeraGrid.Session.dynamic_editor_workspace_session import DynamicEditorWorkspaceSession
+from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_workspace_session import DynamicEditorWorkspaceSession
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Parents.dynamic_parent import DynamicDevice

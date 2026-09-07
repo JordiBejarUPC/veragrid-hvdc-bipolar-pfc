@@ -136,7 +136,6 @@ class FmuMeDeviceConfigRecord:
     :param output_bindings: FMU-to-VeraGrid bindings.
     :param output_defaults: Default output values before the first ME predictor step.
     :param output_param_names: Runtime parameter variable names backing each output.
-    :param integration_method: Internal predictor method.
     :param extraction_root: Optional trusted extraction root.
     :param relative_tolerance: Optional FMI relative tolerance.
     :param debug_logging: Enable FMI debug logging.
@@ -154,7 +153,6 @@ class FmuMeDeviceConfigRecord:
         "output_bindings",
         "output_defaults",
         "output_param_names",
-        "integration_method",
         "extraction_root",
         "relative_tolerance",
         "debug_logging",
@@ -173,7 +171,6 @@ class FmuMeDeviceConfigRecord:
         output_bindings: tuple[Any, ...],
         output_defaults: dict[VarPowerFlowReferenceType, float],
         output_param_names: dict[VarPowerFlowReferenceType, str],
-        integration_method: str,
         extraction_root: str | None = None,
         relative_tolerance: float | None = None,
         debug_logging: bool = False,
@@ -195,7 +192,6 @@ class FmuMeDeviceConfigRecord:
         :param output_bindings: FMU-to-VeraGrid bindings.
         :param output_defaults: Default output values.
         :param output_param_names: Persisted output parameter names.
-        :param integration_method: Internal ME predictor method.
         :param extraction_root: Optional trusted extraction root.
         :param relative_tolerance: Optional FMI relative tolerance.
         :param debug_logging: Enable FMI debug logging.
@@ -213,7 +209,6 @@ class FmuMeDeviceConfigRecord:
         self.output_bindings: tuple[Any, ...] = output_bindings
         self.output_defaults: dict[VarPowerFlowReferenceType, float] = output_defaults
         self.output_param_names: dict[VarPowerFlowReferenceType, str] = output_param_names
-        self.integration_method: str = integration_method
         self.extraction_root: str | None = extraction_root
         self.relative_tolerance: float | None = relative_tolerance
         self.debug_logging: bool = debug_logging
@@ -600,7 +595,7 @@ def load_fmu_cs_device_config(data: str | None) -> FmuCsDeviceConfigRecord | Non
                 _load_fmi_three_worker_limits(worker_limits_payload)
             )
             if config_version in (1, 2, 3):
-                from VeraGridEngine.IO.fmu.importer.experimental_cs import FmuCsDomain, FmuRefBinding
+                from VeraGridEngine.IO.fmu.importer.co_simulation import FmuCsDomain
 
                 input_bindings: list[Any] = list()
                 output_bindings: list[Any] = list()
@@ -789,7 +784,7 @@ def restore_fmu_cs_spec_from_record(record: FmuCsDeviceConfigRecord, block: Bloc
     :return: Runtime FMU device specification.
     """
 
-    from VeraGridEngine.IO.fmu.importer.experimental_cs import build_fmu_cs_device_spec
+    from VeraGridEngine.IO.fmu.importer.co_simulation import build_fmu_cs_device_spec
 
     event_params_by_name: dict[str, Any] = dict()
     event_parameter: Any
@@ -882,7 +877,9 @@ def dump_fmu_me_device_config(record: FmuMeDeviceConfigRecord) -> str:
     payload["output_bindings"] = output_bindings_payload
     payload["output_defaults"] = output_defaults_payload
     payload["output_param_names"] = output_param_names_payload
-    payload["integration_method"] = record.integration_method
+    # Keep the historical field as inert downgrade metadata.  Current
+    # simulation options, never persisted attachment data, own the solver.
+    payload["integration_method"] = "explicit_euler"
     payload["extraction_root"] = record.extraction_root
     payload["relative_tolerance"] = record.relative_tolerance
     payload["debug_logging"] = record.debug_logging
@@ -916,8 +913,27 @@ def load_fmu_me_device_config(data: str | None) -> FmuMeDeviceConfigRecord | Non
             )
 
             if config_version in (1, 2, 3, 4):
-                from VeraGridEngine.IO.fmu.importer.experimental_cs import FmuRefBinding
-                from VeraGridEngine.IO.fmu.importer.experimental_me import FmuMeDomain
+                from VeraGridEngine.IO.fmu.importer.model_exchange import FmuMeDomain
+
+                if "integration_method" in payload:
+                    integration_method_payload: object = payload[
+                        "integration_method"
+                    ]
+                else:
+                    raise ValueError(
+                        "FMI ME device config requires integration_method "
+                        "compatibility metadata"
+                    )
+                if (
+                    isinstance(integration_method_payload, str)
+                    and integration_method_payload == "explicit_euler"
+                ):
+                    pass
+                else:
+                    raise ValueError(
+                        "FMI ME integration_method compatibility metadata must "
+                        "be the exact string 'explicit_euler'"
+                    )
 
                 input_bindings: list[Any] = list()
                 output_bindings: list[Any] = list()
@@ -1015,7 +1031,6 @@ def load_fmu_me_device_config(data: str | None) -> FmuMeDeviceConfigRecord | Non
                     output_bindings=tuple(output_bindings),
                     output_defaults=output_defaults,
                     output_param_names=output_param_names,
-                    integration_method=str(payload["integration_method"]),
                     extraction_root=payload.get("extraction_root", None),
                     relative_tolerance=payload.get("relative_tolerance", None),
                     debug_logging=bool(payload.get("debug_logging", False)),
@@ -1037,7 +1052,6 @@ def build_me_record_from_device_arguments(
     input_bindings: tuple[Any, ...],
     output_bindings: tuple[Any, ...],
     output_defaults: dict[VarPowerFlowReferenceType, float],
-    integration_method: str,
     block: Block,
     worker_limits: FmiThreeWorkerHostLimits | None = None,
     maximum_event_iterations: int = 32,
@@ -1055,7 +1069,6 @@ def build_me_record_from_device_arguments(
     :param input_bindings: VeraGrid-to-FMU bindings.
     :param output_bindings: FMU-to-VeraGrid bindings.
     :param output_defaults: Default output values.
-    :param integration_method: Internal ME predictor method.
     :param block: Device block carrying the output parameter variables.
     :param worker_limits: Explicit FMI 3 worker supervision policy, when used.
     :param maximum_event_iterations: Positive Event Mode convergence bound.
@@ -1091,7 +1104,6 @@ def build_me_record_from_device_arguments(
         output_bindings=output_bindings,
         output_defaults=dict(output_defaults),
         output_param_names=output_param_names,
-        integration_method=integration_method,
         extraction_root=extraction_root_text,
         relative_tolerance=config.relative_tolerance,
         debug_logging=config.debug_logging,
@@ -1111,11 +1123,7 @@ def restore_fmu_me_spec_from_record(record: FmuMeDeviceConfigRecord, block: Bloc
     :return: Runtime FMU ME device specification.
     """
 
-    from VeraGridEngine.IO.fmu.importer.experimental_me import FmuMeDomain, FmuMeIntegrationMethod, build_fmu_me_device_spec
-
-    integration_method: FmuMeIntegrationMethod = FmuMeIntegrationMethod(
-        record.integration_method
-    )
+    from VeraGridEngine.IO.fmu.importer.model_exchange import FmuMeDomain, build_fmu_me_device_spec
     event_params_by_name: dict[str, Var] = dict()
     event_parameter: Var
     for event_parameter in block.event_dict.keys():
@@ -1165,7 +1173,6 @@ def restore_fmu_me_spec_from_record(record: FmuMeDeviceConfigRecord, block: Bloc
         device_tpe=device_tpe,
         input_variable_names=tuple(input_variable_names),
         output_variable_names=tuple(output_variable_names),
-        integration_method=integration_method,
         worker_limits=record.worker_limits,
         maximum_event_iterations=record.maximum_event_iterations,
         input_bindings=record.input_bindings,

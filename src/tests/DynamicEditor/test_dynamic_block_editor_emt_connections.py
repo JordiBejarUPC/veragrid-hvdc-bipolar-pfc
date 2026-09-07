@@ -11,22 +11,22 @@ from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Injections.generator import Generator
 
-from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
-from VeraGrid.Gui.DynamicModelEditor.dynamic_block_properties import (
+from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_editor import DynamicBlockEditorGUI
+from VeraGrid.Gui.DynamicModelEditor.BlockProperties.dynamic_block_properties import (
     BlockStructuralEditRequest,
     BlockSymbolKind,
     BlockSymbolDraftRow,
     DynamicBlockPropertiesDialog,
 )
-import VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor as dynamic_block_editor
-import VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics as graph
-import VeraGrid.Gui.DynamicModelEditor.dynamic_editor_models as dialog_models
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_window import DynamicEditorWorkspaceWindow
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_utilities import (
+import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_editor as dynamic_block_editor
+import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_graphics as graph
+import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_models as dialog_models
+from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_workspace_window import DynamicEditorWorkspaceWindow
+from VeraGrid.Gui.DynamicModelEditor.DynamicLibrary.dynamic_editor_utilities import (
     create_default_template_builder,
     initialize_template_builder_from_block,
 )
-from VeraGrid.Session.dynamic_editor_workspace_session import DynamicEditorWorkspaceSession
+from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_workspace_session import DynamicEditorWorkspaceSession
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
@@ -1139,6 +1139,135 @@ def test_adding_input_from_properties_rebuilds_the_visible_block_port() -> None:
         assert isinstance(restored_item, graph.GenericBlockItem)
         assert len(restored_item.inputs) == initial_input_count
         assert added_variable not in generic_block.in_vars
+    finally:
+        if dialogue is not None:
+            dialogue.close()
+        else:
+            pass
+        _dispose_editor(editor)
+
+
+def test_deleting_generic_input_removes_only_its_direct_nested_wrapper() -> None:
+    """Deleting a parent input must remove its direct wrapper and saved wire.
+
+    :return: None.
+    """
+    editor: DynamicBlockEditorGUI
+    load: Load
+    circuit: MultiCircuit
+    remote_bus: object
+    editor, load, circuit, remote_bus = _build_connected_injection_editor(
+        active_phases=list([1, 2, 3])
+    )
+    _unused_load: Load = load
+    _unused_circuit: MultiCircuit = circuit
+    _unused_remote_bus: object = remote_bus
+    dialogue: DynamicBlockPropertiesDialog | None = None
+    try:
+        generic_item: graph.GenericBlockItem | None = editor.create_block_item_from_blocktype(
+            BlockType.GENERIC,
+            260.0,
+            180.0,
+        )
+        assert isinstance(generic_item, graph.GenericBlockItem)
+        assert generic_item.subsys is not None
+        generic_block: Block = generic_item.subsys
+        removed_input: Var = generic_block.in_vars[0]
+        retained_input: Var = editor.var_factory.add_var("retained_input")
+        generic_block.in_vars.append(retained_input)
+
+        removed_wrapper: Block = _build_root_wrapper(removed_input, True, 8101)
+        retained_wrapper: Block = _build_root_wrapper(retained_input, True, 8102)
+        internal_input: Var = editor.var_factory.add_var("internal_input")
+        internal_input_uid: int = internal_input.uid
+        internal_block: Block = Block(name="Internal", uid=8103, in_vars=list([internal_input]))
+
+        # A deeper wrapper using the same identity proves that synchronization
+        # is deliberately limited to the edited block's immediate children.
+        nested_wrapper: Block = _build_root_wrapper(removed_input, True, 8201)
+        internal_block.children.append(nested_wrapper)
+        _add_diagram_wrapper_node(
+            block=nested_wrapper,
+            x=15.0,
+            y=15.0,
+            diagram_tpe=BlockType.INPUT_CONN.name,
+            root=internal_block,
+        )
+
+        generic_block.children.extend(list([removed_wrapper, retained_wrapper, internal_block]))
+        _add_diagram_wrapper_node(
+            block=removed_wrapper,
+            x=15.0,
+            y=100.0,
+            diagram_tpe=BlockType.INPUT_CONN.name,
+            root=generic_block,
+        )
+        _add_diagram_wrapper_node(
+            block=retained_wrapper,
+            x=15.0,
+            y=180.0,
+            diagram_tpe=BlockType.INPUT_CONN.name,
+            root=generic_block,
+        )
+        generic_block.diagram.add_node(
+            name=internal_block.name,
+            x=240.0,
+            y=100.0,
+            tpe=BlockType.GENERIC.name,
+            device_uid=internal_block.uid,
+        )
+        removed_connection_uid: int = 8301
+        generic_block.diagram.add_branch(
+            connectionitem_uid=removed_connection_uid,
+            device_uid_from=removed_wrapper.uid,
+            device_uid_to=internal_block.uid,
+            port_number_from=0,
+            port_number_to=0,
+        )
+        editor.var_factory.add_connection(internal_input, removed_input)
+
+        dialogue = DynamicBlockPropertiesDialog(
+            block=generic_block,
+            block_type_name=BlockType.GENERIC.name,
+            var_factory=editor.var_factory,
+        )
+        dialogue.symbolRemovalsRequested.connect(editor.on_symbol_removals_requested)
+        dialogue.blockApplied.connect(editor.on_block_properties_applied)
+
+        removed_row_index: int = -1
+        row_index: int
+        for row_index in range(dialogue._symbol_model.rowCount()):
+            candidate_row: BlockSymbolDraftRow | None = dialogue._symbol_model.get_row(row_index)
+            if (
+                    candidate_row is not None
+                    and candidate_row.get_owner() is generic_block
+                    and candidate_row.get_variable() is removed_input
+            ):
+                removed_row_index = row_index
+            else:
+                pass
+        assert removed_row_index >= 0
+        assert dialogue._symbol_model.remove_symbol(removed_row_index)
+
+        dialogue.apply_changes()
+
+        direct_child_uids: set[int] = set(child.uid for child in generic_block.children)
+        assert removed_input not in generic_block.in_vars
+        assert retained_input in generic_block.in_vars
+        assert removed_wrapper.uid not in direct_child_uids
+        assert retained_wrapper.uid in direct_child_uids
+        assert internal_block.uid in direct_child_uids
+        assert removed_wrapper.uid not in generic_block.diagram.node_data
+        assert retained_wrapper.uid in generic_block.diagram.node_data
+        assert removed_connection_uid not in generic_block.diagram.con_data
+        assert nested_wrapper in internal_block.children
+        assert nested_wrapper.uid in internal_block.diagram.node_data
+        assert internal_input.uid == internal_input_uid
+        assert internal_input.name == "internal_input"
+        assert editor._find_var_factory_connection(
+            incoming_non_mutable_uid=removed_input.non_mutable_uid,
+            substituted_non_mutable_uid=internal_input.non_mutable_uid,
+        ) is None
     finally:
         if dialogue is not None:
             dialogue.close()
