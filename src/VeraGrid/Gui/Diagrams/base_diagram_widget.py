@@ -41,6 +41,7 @@ from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
 from VeraGrid.Gui.general_dialogues import DeleteDialogue
 from VeraGrid.Gui.messages import yes_no_question, info_msg
 from VeraGrid.Gui.object_model import ObjectsModel
+from VeraGrid.Gui.matplotlib_dialog import show_matplotlib_figure
 import VeraGrid.Gui.gui_functions as gf
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
 
@@ -751,7 +752,10 @@ class BaseDiagramWidget(QSplitter):
 
         if any_plot:
             plt.legend()
-            plt.show()
+            show_matplotlib_figure(figure=fig,
+                                   parent=self.gui,
+                                   open_dialogs=self.gui._open_plot_dialogs,
+                                   title=self.tr("{device_name} results plot").format(device_name=api_object.name))
         else:
             info_msg(self.tr("No time series results to plot, run some time series results. Even partial results are fine"),
                      self.tr("{device_name} results plot").format(device_name=api_object.name))
@@ -801,7 +805,10 @@ class BaseDiagramWidget(QSplitter):
 
         if any_plot:
             plt.legend()
-            plt.show()
+            show_matplotlib_figure(figure=fig,
+                                   parent=self.gui,
+                                   open_dialogs=self.gui._open_plot_dialogs,
+                                   title=self.tr("{device_name} results plot").format(device_name=api_object.name))
         else:
             info_msg(self.tr("No time series results to plot, run some time series results. Even partial results are fine"),
                      self.tr("{device_name} results plot").format(device_name=api_object.name))

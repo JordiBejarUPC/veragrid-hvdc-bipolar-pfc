@@ -49,7 +49,7 @@ class FakeThread:
     Minimal thread used to exercise session replacement logic.
     """
 
-    __slots__ = ("driver", "progress_signal", "progress_text", "done_signal", "started", "terminated")
+    __slots__ = ("driver", "progress_signal", "progress_text", "done_signal", "finished", "started", "terminated")
 
     def __init__(self, driver: object) -> None:
         """
@@ -62,6 +62,7 @@ class FakeThread:
         self.progress_signal: FakeSignal = FakeSignal()
         self.progress_text: FakeSignal = FakeSignal()
         self.done_signal: FakeSignal = FakeSignal()
+        self.finished: FakeSignal = FakeSignal()
         self.started: bool = False
         self.terminated: bool = False
 

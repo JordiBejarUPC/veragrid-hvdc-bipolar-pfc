@@ -9,10 +9,12 @@ from typing import List, Sequence, Tuple, Union
 import numpy as np
 import pandas as pd
 import requests
+from matplotlib.axes import Axes
 from matplotlib import pyplot as plt
 from PySide6 import QtCore, QtWidgets
 
 from VeraGrid.Gui.DeviceEditors.GeneratorEditor.WindPowerWizard.wind_power_wizard_gui import Ui_MainWindow
+from VeraGrid.Gui.matplotlib_dialog import show_matplotlib_figure
 from VeraGrid.Gui.messages import error_msg
 from VeraGrid.Gui.pandas_model import PandasModel
 
@@ -693,6 +695,7 @@ class WindFarmWizard(QtWidgets.QDialog):
         self.ok: bool = False
         self.template_df: pd.DataFrame = pd.DataFrame()
         self.parameter_model: Union[WindTurbineParameterModel, None] = None
+        self._open_plot_dialogs: List[QtWidgets.QDialog] = list()
 
         self.ui.powerSpinBox.setValue(peak_power)
         self.ui.latitudeSpinBox.setValue(latitude)
@@ -925,7 +928,10 @@ class WindFarmWizard(QtWidgets.QDialog):
                 power_axis.tick_params(axis="y", labelcolor="tab:red")
                 figure.suptitle("Wind turbine design curves")
                 figure.tight_layout()
-                plt.show()
+                show_matplotlib_figure(figure=figure,
+                                       parent=self,
+                                       open_dialogs=self._open_plot_dialogs,
+                                       title=self.tr("Wind turbine design curves"))
             else:
                 error_msg(self.tr("The selected turbine has no design curves"))
         else:
@@ -971,8 +977,11 @@ class WindFarmWizard(QtWidgets.QDialog):
         :return: Nothing.
         """
         df: pd.DataFrame = pd.DataFrame(data=self.P, index=self.time_array, columns=["P (MW)"])
-        df.plot()
-        plt.show()
+        axis: Axes = df.plot()
+        show_matplotlib_figure(figure=axis.figure,
+                               parent=self,
+                               open_dialogs=self._open_plot_dialogs,
+                               title=self.tr("Wind power profile"))
 
     def accept_click(self) -> None:
         """

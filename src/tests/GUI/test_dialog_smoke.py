@@ -1094,6 +1094,7 @@ def get_deferred_dialog_class_names() -> Set[str]:
     names: Set[str] = set()
     names.add("BaseMainGui")
     names.add("CenteredDialog")
+    names.add("MatplotlibFigureDialog")
     return names
 
 

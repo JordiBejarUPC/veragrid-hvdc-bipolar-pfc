@@ -4972,7 +4972,6 @@ class AiChatDialogue(QtWidgets.QDialog):
     turn_execution_requested = QtCore.Signal(object)
     direct_simulation_analysis_requested = QtCore.Signal(object)
     reset_cached_provider_requested = QtCore.Signal()
-    cancel_turn_requested = QtCore.Signal()
     dialogue_visibility_changed = QtCore.Signal(bool)
     _GOLDEN_RATIO: float = (1.0 + (5.0 ** 0.5)) / 2.0
 
@@ -5064,7 +5063,6 @@ class AiChatDialogue(QtWidgets.QDialog):
             self._turn_worker.run_direct_simulation_analysis
         )
         self.reset_cached_provider_requested.connect(self._turn_worker.reset_cached_provider)
-        self.cancel_turn_requested.connect(self._turn_worker.request_cancellation)
         self._turn_worker.completed.connect(self._handle_turn_execution_response)
         self._turn_worker.partial_text_received.connect(self._handle_partial_text_received)
         self._turn_worker.direct_simulation_analysis_completed.connect(
@@ -6028,7 +6026,7 @@ class AiChatDialogue(QtWidgets.QDialog):
                 pass
             else:
                 self._turn_cancel_requested = True
-                self.cancel_turn_requested.emit()
+                self._turn_worker.request_cancellation()
                 self.ui.send_button.setEnabled(False)
                 self._set_status_message(self.tr("Stopping AI turn..."))
         else:
@@ -6539,17 +6537,21 @@ class AiChatDialogue(QtWidgets.QDialog):
         self._active_turn_base_history = list()
         self._active_turn_user_message = ""
 
-    def shutdown_turn_thread(self) -> None:
+    def shutdown_turn_thread(self) -> bool:
         """
         Stop the background AI worker thread.
 
-        :returns: Nothing.
+        :returns: ``True`` when the worker thread has stopped.
         """
         if self._turn_thread.isRunning():
-            self._turn_thread.quit()
-            self._turn_thread.wait(2000)
+            self._turn_worker.request_cancellation()
+            if self._turn_running:
+                return False
+            else:
+                self._turn_thread.quit()
+                return self._turn_thread.wait(2000)
         else:
-            pass
+            return True
 
     def prepare_for_shutdown(self) -> None:
         """

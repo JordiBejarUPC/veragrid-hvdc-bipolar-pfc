@@ -983,8 +983,11 @@ class SystemScaler(QtWidgets.QDialog):
             pass
         else:
             self._plot_disposed = True
+            self.plot_canvas._draw_pending = False
             self.plot_figure.clear()
             plt.close(self.plot_figure)
+            self.plot_toolbar.close()
+            self.plot_canvas.close()
             self.plot_toolbar.setParent(None)
             self.plot_toolbar.deleteLater()
             self.plot_canvas.setParent(None)

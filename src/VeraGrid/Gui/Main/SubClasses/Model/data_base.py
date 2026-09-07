@@ -9,6 +9,7 @@ from typing import Union, List, Set, Tuple, Dict
 from PySide6 import QtGui, QtCore, QtWidgets
 from matplotlib import pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.figure import Figure
 
 from VeraGrid.Gui.associations_model import AssociationsModel
 from VeraGrid.Gui.table_view_header_wrap import HeaderViewWithWordWrap, VerticalHeaderWidthResizer
@@ -32,6 +33,7 @@ from VeraGrid.Gui.messages import yes_no_question, warning_msg, info_msg
 from VeraGrid.Gui.Main.SubClasses.Model.diagrams import DiagramsMain
 from VeraGrid.Gui.DeviceEditors.TowerBuilder.LineBuilderDialogue import TowerBuilderGUI
 from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, exec_dialog_safely, is_dialog_available
+from VeraGrid.Gui.matplotlib_dialog import show_matplotlib_figure
 from VeraGrid.Gui.FmuTemplateEditor.fmu_template_editor import FmuTemplateEditorDialog
 from VeraGrid.Gui.SystemScaler.system_scaler import SystemScaler
 from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import GridMapWidget, generate_map_diagram
@@ -2154,11 +2156,15 @@ class DataBaseTableMain(DiagramsMain):
 
         if elm_type is not None:
             if len(self.circuit.get_elements_by_type(device_type=elm_type)):
+                fig: Figure = plt.figure(figsize=(12, 6))
                 object_histogram_analysis(circuit=self.circuit,
                                           object_type=elm_type.value,
                                           t_idx=self.get_db_slider_index(),
-                                          fig=None)
-                plt.show()
+                                          fig=fig)
+                show_matplotlib_figure(figure=fig,
+                                       parent=self,
+                                       open_dialogs=self._open_plot_dialogs,
+                                       title=self.tr("Object histogram"))
             else:
                 pass
         else:

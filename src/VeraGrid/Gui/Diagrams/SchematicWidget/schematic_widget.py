@@ -80,6 +80,7 @@ from VeraGrid.Gui.Diagrams.generic_graphics import ACTIVE, GenericDiagramWidget
 from VeraGrid.Gui.Diagrams.graphics_manager import ALL_GRAPHICS
 from VeraGrid.Gui.Diagrams.base_diagram_widget import BaseDiagramWidget
 from VeraGrid.Gui.general_dialogues import InputNumberDialogue
+from VeraGrid.Gui.matplotlib_dialog import show_matplotlib_figure
 import VeraGrid.Gui.Visualization.visualization as viz
 from VeraGrid.Gui.messages import error_msg, warning_msg, yes_no_question
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem
@@ -6280,7 +6281,10 @@ class SchematicWidget(BaseDiagramWidget):
                 fig.suptitle(api_object.name, fontsize=20)
 
                 # plot the profiles
-                plt.show()
+                show_matplotlib_figure(figure=fig,
+                                       parent=self.gui,
+                                       open_dialogs=self.gui._open_plot_dialogs,
+                                       title=self.tr("{device_name} profiles plot").format(device_name=api_object.name))
         else:
             self.gui.show_error_toast("There are no time series, so nothing to plot :/")
 
@@ -6335,7 +6339,10 @@ class SchematicWidget(BaseDiagramWidget):
                 fig.suptitle(api_object.name, fontsize=20)
 
                 # plot the profiles
-                plt.show()
+                show_matplotlib_figure(figure=fig,
+                                       parent=self.gui,
+                                       open_dialogs=self.gui._open_plot_dialogs,
+                                       title=self.tr("{device_name} profiles plot").format(device_name=api_object.name))
         else:
             self.gui.show_error_toast("There are no time series, so nothing to plot :/")
 
@@ -7033,10 +7040,6 @@ class SchematicWidget(BaseDiagramWidget):
                 new_bus_graphic = self._query_bus_graphic(new_bus)
                 if new_bus_graphic is not None:
                     new_bus_graphic.setSelected(True)
-
-            # Process events to ensure updates are applied immediately
-            from PySide6.QtWidgets import QApplication
-            QApplication.processEvents()
 
         else:
             self.gui.show_warning_toast("No conversion made...")

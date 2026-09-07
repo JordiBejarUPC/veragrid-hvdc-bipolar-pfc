@@ -46,8 +46,8 @@ class JobsModel(QtCore.QAbstractTableModel):
         :param data:
         :return:
         """
-        self.jobs.clear()
         self.beginResetModel()
+        self.jobs.clear()
         for job_data in data:
             job = RemoteJob(data=job_data)
             self.jobs.append(job)
@@ -144,6 +144,8 @@ class ServerDriver(QThread):
     progress_text = Signal(str)
     done_signal = Signal()
     connected_signal = Signal()
+    status_signal = Signal(str)
+    jobs_data_signal = Signal(object)
     sync_event = Signal()
     items_processed_event = Signal()
 
@@ -206,8 +208,7 @@ class ServerDriver(QThread):
         :param txt:
         :return:
         """
-        if self.status_func is not None:
-            self.status_func(txt)
+        self.status_signal.emit(txt)
 
     def base_url(self):
         """
@@ -459,7 +460,7 @@ class ServerDriver(QThread):
             # Check if the request was successful
             if response.status_code == 200:
                 # Parse the response body
-                self.data_model.parse_data(data=response.json())
+                self.jobs_data_signal.emit(response.json())
                 return True
             else:
                 # Print error message
@@ -660,6 +661,7 @@ class RemoteJobDriver(QThread):
     progress_signal = Signal(float)
     progress_text = Signal(str)
     done_signal = Signal(str)
+    result_driver_signal = Signal(object)
     sync_event = Signal()
     items_processed_event = Signal()
 
@@ -667,8 +669,7 @@ class RemoteJobDriver(QThread):
                  grid: MultiCircuit,
                  instruction: RemoteInstruction,
                  base_url: str,
-                 certificate_path: str,
-                 register_driver_func) -> None:
+                 certificate_path: str) -> None:
         """
 
         :param grid:
@@ -684,8 +685,6 @@ class RemoteJobDriver(QThread):
         self.instruction = instruction
         self.base_url = base_url
         self.certificate_path = certificate_path
-
-        self.register_driver_func = register_driver_func
 
         self.logger = Logger()
 
@@ -727,7 +726,9 @@ class RemoteJobDriver(QThread):
 
                 if driver is not None:
                     driver.results.parse_data(data=results_data)
-                    self.register_driver_func(driver=driver)
+                    self.result_driver_signal.emit(driver)
+                else:
+                    pass
             else:
                 self.logger.add_error(msg=response.get("msg", "No message"))
 

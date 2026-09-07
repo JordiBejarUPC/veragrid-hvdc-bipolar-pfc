@@ -196,7 +196,6 @@ class DriverTemplate:
         Cancel the simulation
         """
         self.__cancel__ = True
-        self.report_done("Cancelled!")
 
     def is_cancel(self) -> bool:
         """

@@ -252,7 +252,7 @@ class SimulationSession:
             pass
 
         if post_func is not None:
-            thr.done_signal.connect(post_func)
+            thr.finished.connect(post_func)
         else:
             pass
 
@@ -260,26 +260,32 @@ class SimulationSession:
         previous_thread: GcThread | None = self.threads.get(driver.tpe, None)
         restore_previous_state: bool = False
 
-        # check and kill
+        # check previous state without killing live Python/native work
         if previous_driver is not None:
-            del self.drivers[driver.tpe]
-
             # Loaded sessions or reset flows can leave a stored driver without a
             # matching live thread entry. Re-runs must tolerate that state and
             # only stop a thread when one is actually registered.
             if previous_thread is not None:
                 if previous_thread.isRunning():
-                    previous_thread.terminate()
-                    restore_previous_state = False
+                    if text_func is not None:
+                        text_func("A simulation of this type is still finishing. Try again after it stops.")
+                    else:
+                        pass
+                    return
                 else:
                     restore_previous_state = True
                 del self.threads[driver.tpe]
             else:
                 restore_previous_state = True
+            del self.drivers[driver.tpe]
         else:
             if previous_thread is not None:
                 if previous_thread.isRunning():
-                    previous_thread.terminate()
+                    if text_func is not None:
+                        text_func("A simulation of this type is still finishing. Try again after it stops.")
+                    else:
+                        pass
+                    return
                 else:
                     pass
                 del self.threads[driver.tpe]

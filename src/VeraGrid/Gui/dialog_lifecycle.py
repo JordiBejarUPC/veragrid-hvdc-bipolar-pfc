@@ -34,12 +34,7 @@ def delete_dialog_safely(dialog: object) -> None:
     if isinstance(dialog, QtWidgets.QWidget):
         if shiboken6.isValid(dialog):
             dialog.deleteLater()
-            app: QtWidgets.QApplication | None = QtWidgets.QApplication.instance()
-            if app is not None:
-                QtCore.QCoreApplication.sendPostedEvents(dialog, QtCore.QEvent.Type.DeferredDelete)
-                app.processEvents()
-            else:
-                pass
+            QtCore.QCoreApplication.sendPostedEvents(dialog, QtCore.QEvent.Type.DeferredDelete)
         else:
             pass
     else:

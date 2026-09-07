@@ -684,6 +684,12 @@ class SimulationsMain(TimeEventsMain):
         """
         Clear the results tab
         """
+        if self.session.is_anything_running():
+            self.show_warning_toast(self.tr("Wait until the running simulations finish before clearing results."))
+            return
+        else:
+            pass
+
         self.session.clear()
 
         self.buses_for_storage = list()
@@ -1527,7 +1533,6 @@ class SimulationsMain(TimeEventsMain):
 
                 self.ui.progress_label.setText(
                     QtCore.QCoreApplication.translate("SimulationsMain", "Compiling the grid..."))
-                QtGui.QGuiApplication.processEvents()
 
                 # get the power flow options from the GUI
                 options = self.get_selected_power_flow_options()
@@ -1536,7 +1541,6 @@ class SimulationsMain(TimeEventsMain):
 
                 self.ui.progress_label.setText(
                     QtCore.QCoreApplication.translate("SimulationsMain", "Running power flow..."))
-                QtGui.QGuiApplication.processEvents()
 
                 # set power flow object instance
                 engine = self.get_preferred_engine()
@@ -1570,7 +1574,6 @@ class SimulationsMain(TimeEventsMain):
 
                 self.ui.progress_label.setText(
                     QtCore.QCoreApplication.translate("SimulationsMain", "Compiling the grid..."))
-                QtGui.QGuiApplication.processEvents()
 
                 # get the power flow options from the GUI
                 options = self.get_selected_power_flow_options()
@@ -1579,7 +1582,6 @@ class SimulationsMain(TimeEventsMain):
 
                 self.ui.progress_label.setText(
                     QtCore.QCoreApplication.translate("SimulationsMain", "Running power flow..."))
-                QtGui.QGuiApplication.processEvents()
 
                 # set power flow object instance
                 engine = self.get_preferred_engine()
@@ -1640,7 +1642,6 @@ class SimulationsMain(TimeEventsMain):
 
                 self.ui.progress_label.setText(
                     QtCore.QCoreApplication.translate("SimulationsMain", "Compiling the grid..."))
-                QtGui.QGuiApplication.processEvents()
 
                 # get the power flow options from the GUI
                 options = self.get_selected_power_flow_options()
@@ -1649,7 +1650,6 @@ class SimulationsMain(TimeEventsMain):
 
                 self.ui.progress_label.setText(
                     QtCore.QCoreApplication.translate("SimulationsMain", "Running power flow..."))
-                QtGui.QGuiApplication.processEvents()
 
                 # set power flow object instance
                 engine = self.get_preferred_engine()
@@ -1711,7 +1711,6 @@ class SimulationsMain(TimeEventsMain):
 
                     self.ui.progress_label.setText(
                         QtCore.QCoreApplication.translate("SimulationsMain", "Compiling the grid..."))
-                    QtGui.QGuiApplication.processEvents()
 
                     opf_time_series_results = self.get_opf_ts_results(
                         use_opf=self.ui.actionOpf_to_Power_flow.isChecked()
@@ -1794,13 +1793,11 @@ class SimulationsMain(TimeEventsMain):
 
                 self.ui.progress_label.setText(
                     QtCore.QCoreApplication.translate("SimulationsMain", "Compiling the grid..."))
-                QtGui.QGuiApplication.processEvents()
 
                 # get the power flow options from the GUI
                 options = self.get_se_options()
 
                 self.ui.progress_label.setText('Running state estimation...')
-                QtGui.QGuiApplication.processEvents()
 
                 drv = sim.StateEstimationDriver(self.circuit, options)
 
@@ -1986,7 +1983,6 @@ class SimulationsMain(TimeEventsMain):
         if results is not None:
 
             self.ui.progress_label.setText('Colouring PTDF results in the grid...')
-            QtGui.QGuiApplication.processEvents()
 
             self.update_available_results()
             self.colour_diagrams()
@@ -2042,7 +2038,6 @@ class SimulationsMain(TimeEventsMain):
             results.expand_clustered_results()
 
             self.ui.progress_label.setText('Colouring PTDF results in the grid...')
-            QtGui.QGuiApplication.processEvents()
 
             self.update_available_results()
 
@@ -2128,7 +2123,6 @@ class SimulationsMain(TimeEventsMain):
         if results is not None:
 
             self.ui.progress_label.setText('Colouring contingency analysis results in the grid...')
-            QtGui.QGuiApplication.processEvents()
 
             self.update_available_results()
 
@@ -2195,7 +2189,6 @@ class SimulationsMain(TimeEventsMain):
             results.expand_clustered_results()
 
             self.ui.progress_label.setText('Colouring results in the grid...')
-            QtGui.QGuiApplication.processEvents()
 
             self.update_available_results()
 
@@ -2307,7 +2300,6 @@ class SimulationsMain(TimeEventsMain):
         if results is not None:
 
             self.ui.progress_label.setText('Colouring ATC results in the grid...')
-            QtGui.QGuiApplication.processEvents()
 
             self.update_available_results()
             self.colour_diagrams()
@@ -2431,7 +2423,6 @@ class SimulationsMain(TimeEventsMain):
             results.expand_clustered_results()
 
             self.ui.progress_label.setText('Colouring ATC time series results in the grid...')
-            QtGui.QGuiApplication.processEvents()
 
             self.update_available_results()
             self.colour_diagrams()
@@ -2533,7 +2524,6 @@ class SimulationsMain(TimeEventsMain):
                         try:
                             self.ui.progress_label.setText(
                                 QtCore.QCoreApplication.translate("SimulationsMain", "Compiling the grid..."))
-                            QtGui.QGuiApplication.processEvents()
 
                             #  compose the base power
                             Sbase: CxVec = pf_results.Sbus / self.circuit.Sbase
@@ -2678,7 +2668,6 @@ class SimulationsMain(TimeEventsMain):
 
                     self.ui.progress_label.setText(
                         QtCore.QCoreApplication.translate("SimulationsMain", "Compiling the grid..."))
-                    QtGui.QGuiApplication.processEvents()
 
                     opf_time_series_results = self.get_opf_ts_results(
                         use_opf=self.ui.actionOpf_to_Power_flow.isChecked()
@@ -2748,7 +2737,6 @@ class SimulationsMain(TimeEventsMain):
 
                     self.ui.progress_label.setText(
                         QtCore.QCoreApplication.translate("SimulationsMain", "Compiling the grid..."))
-                    QtGui.QGuiApplication.processEvents()
 
                     pf_options = self.get_selected_power_flow_options()
 
@@ -2944,7 +2932,6 @@ class SimulationsMain(TimeEventsMain):
                 self.remove_simulation(SimulationTypes.OPF_run)
 
                 self.ui.progress_label.setText('Running optimal power flow...')
-                QtGui.QGuiApplication.processEvents()
 
                 options: sim.OptimalPowerFlowOptions | None = self.get_opf_options()
 
@@ -3059,7 +3046,6 @@ class SimulationsMain(TimeEventsMain):
                             # Compile the grid in the worker after the launch state is registered.
                             self.ui.progress_label.setText(
                                 QtCore.QCoreApplication.translate("SimulationsMain", "Compiling the grid..."))
-                            QtGui.QGuiApplication.processEvents()
 
                             # create the OPF time series instance
                             # if non_sequential:
@@ -3202,7 +3188,6 @@ class SimulationsMain(TimeEventsMain):
 
                 else:
                     self.ui.progress_label.setText('Running optimal net transfer capacity...')
-                    QtGui.QGuiApplication.processEvents()
 
                     # set power flow object instance
                     drv = sim.OptimalNetTransferCapacityDriver(grid=self.circuit, options=options)
@@ -3264,7 +3249,6 @@ class SimulationsMain(TimeEventsMain):
                     else:
 
                         self.ui.progress_label.setText('Running optimal net transfer capacity time series...')
-                        QtGui.QGuiApplication.processEvents()
 
                         # set optimal net transfer capacity driver instance
                         drv = sim.OptimalNetTransferCapacityTimeSeriesDriver(
@@ -3632,7 +3616,6 @@ class SimulationsMain(TimeEventsMain):
             self.remove_simulation(SimulationTypes.InvestmentsEvaluation_run)
 
             self.ui.progress_label.setText('Colouring investments evaluation results in the grid...')
-            QtGui.QGuiApplication.processEvents()
 
             self.update_available_results()
 
@@ -3830,7 +3813,6 @@ class SimulationsMain(TimeEventsMain):
 
                 self.remove_simulation(SimulationTypes.NodalCapacity_run)
                 self.ui.progress_label.setText('Running nodal hosting capacity...')
-                QtGui.QGuiApplication.processEvents()
                 self.LOCK()
 
                 drv = sim.NodalCapacityDriver(grid=self.circuit,
@@ -3883,7 +3865,6 @@ class SimulationsMain(TimeEventsMain):
 
                 # Compile the grid
                 self.ui.progress_label.setText(self.tr("Compiling the grid..."))
-                QtGui.QGuiApplication.processEvents()
 
                 if options is not None:
                     # create the OPF time series instance
@@ -3987,7 +3968,6 @@ class SimulationsMain(TimeEventsMain):
                     # Compile the grid
                     self.ui.progress_label.setText(
                         QtCore.QCoreApplication.translate("SimulationsMain", "Compiling the grid..."))
-                    QtGui.QGuiApplication.processEvents()
 
                     pf_options = self.get_selected_power_flow_options()
 
@@ -4054,7 +4034,6 @@ class SimulationsMain(TimeEventsMain):
 
                     # self.add_simulation(SimulationTypes.RmsDynamic_run)
                     self.ui.progress_label.setText('Running rms simulation...')
-                    QtGui.QGuiApplication.processEvents()
                     self.LOCK()
 
                     drv = sim.RmsSimulationDriver(grid=self.circuit,
@@ -4171,7 +4150,6 @@ class SimulationsMain(TimeEventsMain):
 
                 self.add_simulation(SimulationTypes.EmtDynamic_run)
                 self.ui.progress_label.setText('Running EMT simulation...')
-                QtGui.QGuiApplication.processEvents()
                 self.LOCK()
 
                 drv = sim.EmtSimulationDriver(grid=self.circuit,
@@ -4189,7 +4167,6 @@ class SimulationsMain(TimeEventsMain):
                 # self.add_simulation(SimulationTypes.RmsDynamic_run)
                 self.ui.progress_label.setText(
                     'Running EMT simulation from balanced power flow results ...')
-                QtGui.QGuiApplication.processEvents()
                 self.LOCK()
 
                 drv = sim.EmtSimulationDriver(grid=self.circuit,
@@ -4324,13 +4301,25 @@ class SimulationsMain(TimeEventsMain):
             driver = RemoteJobDriver(grid=self.circuit,
                                      instruction=instruction,
                                      base_url=self.server_driver.base_url(),
-                                     certificate_path=self.server_driver.get_certificate_path(),
-                                     register_driver_func=self.session.register_driver)
-            driver.done_signal.connect(self.post_run_remote)
+                                     certificate_path=self.server_driver.get_certificate_path())
+            driver.result_driver_signal.connect(self.session.register_driver)
+            driver.finished.connect(self.post_run_remote_finished)
 
             self._remote_jobs[driver.idtag] = driver
 
             driver.start()
+
+    def post_run_remote_finished(self) -> None:
+        """
+        Process one remote job only after its QThread has actually finished.
+
+        :return: None.
+        """
+        sender: QtCore.QObject | None = self.sender()
+        if isinstance(sender, RemoteJobDriver):
+            self.post_run_remote(driver_idtag=sender.idtag)
+        else:
+            pass
 
     def post_run_remote(self, driver_idtag: str):
         """
@@ -4383,7 +4372,6 @@ class SimulationsMain(TimeEventsMain):
                         # Compile the grid
                         self.ui.progress_label.setText(
                             QtCore.QCoreApplication.translate("SimulationsMain", "Compiling the grid..."))
-                        QtGui.QGuiApplication.processEvents()
 
                         # get the small signal stability analysis simulation options from the GUI
                         options = self.get_selected_rms_small_signal_stability_options()
@@ -4470,7 +4458,6 @@ class SimulationsMain(TimeEventsMain):
                         # Compile the grid
                         self.ui.progress_label.setText(
                             QtCore.QCoreApplication.translate("SimulationsMain", "Compiling the grid..."))
-                        QtGui.QGuiApplication.processEvents()
 
                         # get the small-signal stability analysis simulation options from the GUI
                         sss_options = self.get_selected_emt_small_signal_stability_options()
@@ -4681,7 +4668,6 @@ class SimulationsMain(TimeEventsMain):
             self.remove_simulation(SimulationTypes.CatalogueOptimization_run)
 
             self.ui.progress_label.setText('Colouring catalogue optimization results in the grid...')
-            QtGui.QGuiApplication.processEvents()
 
             self.update_available_results()
 
