@@ -15,8 +15,8 @@ Workflow
    three-phase power flow.
 4. Attach three-wire EMT transformer/load models because the original Kundur
    benchmark does not define a neutral or zero-sequence grounding network.
-5. Run the three-phase power flow.
-6. Build EmtProblemDae from the PF3 operating point.
+5. Run the balanced positive-sequence power flow.
+6. Build EmtProblemDae from the converged balanced operating point.
 7. Run the selected EMT solver.
 8. Plot representative bus voltages, generator speeds, and tie-line currents.
 """
@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import os
 import sys
+from pathlib import Path
 from time import perf_counter
 from typing import Any, cast
 
@@ -54,11 +55,11 @@ from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import St
 from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver
 from VeraGridEngine.Simulations.EMT.solvers.solver_AD import JitAdSolver
 from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import StructuralCompiledSolver
-from VeraGridEngine.Simulations.PowerFlow3ph.power_flow_driver_3ph import PowerFlowDriver3Ph
+from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
 from VeraGridEngine.Templates.Emt.generator_emt_type_template import get_complete_generator_template_emt
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_rlc_combo_emt_template
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
-from VeraGridEngine.Templates.Emt.transformer_emt_template import get_transformer_emt_template
+from VeraGridEngine.Templates.Emt.transformer_emt_template import get_series_transformer_emt_template
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
@@ -70,10 +71,29 @@ from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_mod
 # ==============================================================================
 
 CHOSEN_SOLVER = "SYMBOLIC"  # "SYMBOLIC", "AD", "VECTORIZED", "COMPILED"
-TIME_STEP = 5e-6
-SIMULATION_TIME = 1.2
+TIME_STEP = float(os.environ.get("VERAGRID_KUNDUR_EMT_TIME_STEP", "5e-6"))
+SIMULATION_TIME = float(os.environ.get("VERAGRID_KUNDUR_EMT_SIMULATION_TIME", "1.2"))
+INITIALIZATION_METHOD_NAME = os.environ.get(
+    "VERAGRID_KUNDUR_EMT_INITIALIZATION_METHOD", "Explicit"
+)
+FIX_PF_BUS_VOLTAGES_DURING_INITIALIZATION = os.environ.get(
+    "VERAGRID_KUNDUR_EMT_FIX_PF_BUS_VOLTAGES", "0"
+) == "1"
+try:
+    INITIALIZATION_METHOD = EmtInitializationMethod[INITIALIZATION_METHOD_NAME]
+except KeyError as exc:
+    valid_initialization_methods = ", ".join(method.name for method in EmtInitializationMethod)
+    raise ValueError(
+        f"Unknown initialization method '{INITIALIZATION_METHOD_NAME}'. "
+        f"Use one of: {valid_initialization_methods}."
+    ) from exc
 EMT_TOLERANCE = 1e-6
-ENABLE_PLOTS = True
+ENABLE_PLOTS = os.environ.get("VERAGRID_KUNDUR_EMT_PLOTS", "1") != "0"
+SHOW_PLOTS = os.environ.get("VERAGRID_KUNDUR_EMT_SHOW_PLOTS", "0") == "1"
+PLOT_DIRECTORY = Path(os.environ.get(
+    "VERAGRID_KUNDUR_EMT_PLOT_DIR",
+    str(Path(__file__).with_name("kundur_emt_plots")),
+))
 SOLVER_VERBOSE = True
 DENSE_THRESHOLD = 0
 
@@ -477,8 +497,8 @@ for transformer in transformers:
 #                    Loads and generators
 #####################################################################################
 
-load_p = 9.999999
-load_q = 0.999999
+load_p = float(os.environ.get("VERAGRID_KUNDUR_LOAD_P", "9.999999"))
+load_q = float(os.environ.get("VERAGRID_KUNDUR_LOAD_Q", "0.999999"))
 
 load1 = gce.Load(
     name="load1",
@@ -556,21 +576,18 @@ for line_idx, line in enumerate(transmission_lines):
         phB=True,
         phC=True,
         name=f"Pi_kundur_line_{line_idx}",
+        numerical_damping_conductance=0.0,
     ).block
     set_emt_model(device=line, model=line_emt_model, var_factory=grid.var_factory)
 
 for transformer_idx, transformer in enumerate(transformers):
-    # Deliberately decouple the EMT terminal interface from the PF3 winding
-    # connection.  PF3 needs GroundedStar to stamp Transformer2W correctly,
-    # whereas the Kundur benchmark provides no neutral/zero-sequence network.
-    # Passing FloatingStar here makes get_transformer_emt_template expose only
-    # vf_A/B/C, vt_A/B/C and their phase currents, which is the intended
-    # three-wire EMT interface for this balanced Kundur EMT simulation.
-    transformer_emt_model = get_transformer_emt_template(
+    # Kundur's step-up transformers contain only series R/X and a fixed tap.
+    transformer_emt_model = get_series_transformer_emt_template(
         vf=grid.var_factory,
-        conn_f=WindingType.FloatingStar,
-        conn_t=WindingType.FloatingStar,
         name=f"Kundur_transformer_{transformer_idx}_emt",
+        r=transformer.R,
+        x=transformer.X,
+        tap_module=transformer.tap_module,
     ).block
     set_emt_model(device=transformer, model=transformer_emt_model, var_factory=grid.var_factory)
 
@@ -578,7 +595,7 @@ for load in loads:
     load_emt_model = get_shunt_rlc_combo_emt_template(
         vf=grid.var_factory,
         include_r=True,
-        include_l=True,
+        include_l=abs(load_q) > 1.0e-15,
         include_c=False,
         phA=True,
         phB=True,
@@ -664,23 +681,12 @@ pf_options = gce.PowerFlowOptions(
     generate_report=False,
 )
 
-power_flow_3ph = PowerFlowDriver3Ph(grid, pf_options)
-power_flow_3ph.run()
-pf3_results = power_flow_3ph.results
-
-print(f"3-phase PF converged: {pf3_results.converged}")
-print(f"PF3 buses: {pf3_results.n}")
-print(f"PF3 branches: {pf3_results.m}")
-print(pf3_results.get_bus_df())
-print(pf3_results.get_branch_df())
-
-expected_passive_branches = len(transmission_lines) + len(transformers)
-if pf3_results.m != expected_passive_branches:
-    raise RuntimeError(
-        "Unexpected PF3 branch count: "
-        f"results.m={pf3_results.m}, expected={expected_passive_branches} "
-        f"({len(transmission_lines)} lines + {len(transformers)} transformers)."
-    )
+power_flow = PowerFlowDriver(grid, pf_options)
+power_flow.run()
+pf_results = power_flow.results
+if not bool(pf_results.converged):
+    raise RuntimeError("Kundur balanced power flow did not converge")
+print("Balanced PF converged: True")
 
 
 # ==============================================================================
@@ -693,18 +699,19 @@ emt_options = EmtOptions(
     tolerance=EMT_TOLERANCE,
     solver_type=SOLVER_TYPE_MAP[CHOSEN_SOLVER],
     integration_method=DynamicIntegrationMethod.DaeTrapezoidal,
-    initialization_method=EmtInitializationMethod.Explicit,
+    initialization_method=INITIALIZATION_METHOD,
+    init_fix_pf_bus_voltages=FIX_PF_BUS_VOLTAGES_DURING_INITIALIZATION,
     verbose=1,
 )
 
 
 def create_problem() -> EmtProblemDae:
-    """Build the EMT DAE from the Kundur PF3 operating point."""
+    """Build the balanced Kundur EMT DAE from its positive-sequence PF."""
     return EmtProblemDae(
         grid=grid,
         options=emt_options,
-        pf_results_3ph=pf3_results,
-        pf_results=None,
+        pf_results_3ph=None,
+        pf_results=pf_results,
     )
 
 
@@ -793,6 +800,17 @@ print(f"  states: {problem.get_states_number()}")
 print(f"  algebraic vars: {problem.get_algebraic_var_number()}")
 print(f"  differential vars: {problem.get_diff_var_number()}")
 print(f"  runtime parameters: {problem.get_variable_parameter_number()}")
+if problem.initialization_report is not None:
+    initialization_report = problem.initialization_report
+    print("  initialization:")
+    print(f"    requested: {initialization_report.method_requested}")
+    print(f"    used: {initialization_report.method_used}")
+    print(f"    status: {initialization_report.status}")
+    print(f"    unknown variables: {initialization_report.unknown_var_count}")
+    print(f"    initial residual inf: {initialization_report.initial_residual_inf:.12e}")
+    print(f"    final residual inf: {initialization_report.final_residual_inf:.12e}")
+    print(f"    Newton iterations: {initialization_report.newton_iterations}")
+    print(f"    message: {initialization_report.message}")
 
 init_info = problem.get_init_guess_info()
 print(f"\nEMT initialization guesses\n{init_info}")
@@ -824,11 +842,106 @@ print(f"  time samples: {len(t)}")
 print(f"  solution shape: {y.shape}")
 print(f"  derivative shape: {dy.shape}")
 
+if not well_initialized or not converged:
+    raise RuntimeError(
+        "Kundur EMT steady-state validation failed: "
+        f"well_initialized={well_initialized}, converged={converged}"
+    )
+
 build_stats = solver.get_backend_build_stats()
 if build_stats:
     print("\nBackend build stats")
     for key, value in build_stats.items():
         print(f"  {key}: {value:.6f} s")
+
+
+def get_initial_derivative(block: Block, variable_name: str) -> float | None:
+    """Return the stored t=0 derivative of a state in one device model."""
+    variable = find_name_in_block(variable_name, block)
+    if variable is None:
+        return None
+    problem_variable = next(
+        (candidate for candidate in problem.get_state_vars() if candidate.uid == variable.uid),
+        None,
+    )
+    if problem_variable is None:
+        return None
+    differential = next(
+        (candidate for candidate in problem.get_diff_vars()
+         if candidate.base_var is not None and candidate.base_var.uid == problem_variable.uid),
+        None,
+    )
+    if differential is None:
+        return None
+    return float(dy[0, problem.get_diff_var_idx(differential)])
+
+
+print("\nInitial derivative audit")
+stationary_state_names = (
+    "omega_", "psi_d_", "psi_q_", "psi_0_", "e_qp_", "e_dp_",
+    "psi_pp_d_", "psi_pp_q_", "y_gov0", "y2_3_gov", "Vf",
+    "y_exciter1", "y_exciter2", "y_exciter3", "y_exciter4",
+)
+for generator in generators:
+    stationary_derivatives = []
+    for state_name in stationary_state_names:
+        derivative = get_initial_derivative(generator.emt_model, state_name)
+        if derivative is not None:
+            stationary_derivatives.append((abs(derivative), state_name, derivative))
+    stationary_derivatives.sort(reverse=True)
+    magnitude, state_name, derivative = stationary_derivatives[0]
+    print(
+        f"  {generator.name} largest nominally-zero derivative: "
+        f"{state_name}={derivative:+.12e}"
+    )
+
+omega_base = 2.0 * np.pi * grid.fBase
+rotating_residuals = []
+for device in list(transmission_lines) + list(transformers) + list(loads):
+    if device in loads:
+        phase_names = ("iL_A", "iL_B", "iL_C")
+    else:
+        phase_names = ("i_ser_A", "i_ser_B", "i_ser_C")
+    phase_vars = [find_name_in_block(name, device.emt_model) for name in phase_names]
+    if any(variable is None for variable in phase_vars):
+        continue
+    problem_phase_vars = [next(
+        (candidate for candidate in problem.get_state_vars() if candidate.uid == variable.uid),
+        None,
+    ) for variable in phase_vars]
+    if any(variable is None for variable in problem_phase_vars):
+        continue
+    phase_diff_vars = [next(
+        (candidate for candidate in problem.get_diff_vars()
+         if candidate.base_var is not None and candidate.base_var.uid == variable.uid),
+        None,
+    ) for variable in problem_phase_vars]
+    if any(variable is None for variable in phase_diff_vars):
+        continue
+    values = np.asarray([y[0, problem.get_var_idx(variable)] for variable in phase_vars])
+    derivatives = np.asarray([
+        dy[0, problem.get_diff_var_idx(variable)] for variable in phase_diff_vars
+    ])
+    expected = (omega_base / np.sqrt(3.0)) * np.asarray([
+        values[2] - values[1],
+        values[0] - values[2],
+        values[1] - values[0],
+    ])
+    for phase_index, phase_name in enumerate(phase_names):
+        rotating_residuals.append((
+            abs(float(derivatives[phase_index] - expected[phase_index])),
+            device.name,
+            phase_name,
+            float(derivatives[phase_index]),
+            float(expected[phase_index]),
+        ))
+rotating_residuals.sort(reverse=True)
+print("  Largest rotating-ABC derivative residuals:")
+for residual, device_name, state_name, derivative, expected in rotating_residuals[:12]:
+    print(
+        f"    {device_name}.{state_name}: residual={residual:.12e}, "
+        f"stored={derivative:+.12e}, expected={expected:+.12e}"
+    )
 
 if not ENABLE_PLOTS:
     raise SystemExit(0)
@@ -867,22 +980,74 @@ for ax, bus in zip(axes, selected_buses):
 
 axes[-1].set_xlabel("Time [s]")
 fig.tight_layout()
+PLOT_DIRECTORY.mkdir(parents=True, exist_ok=True)
+bus_voltage_plot = PLOT_DIRECTORY / "kundur_bus_voltages.png"
+fig.savefig(bus_voltage_plot, dpi=180, bbox_inches="tight")
+plt.close(fig)
 
 
-# Generator electrical speeds.
-fig, ax = plt.subplots(figsize=(12, 5))
-
-for generator in generators:
-    omega = get_series(problem, y, generator.emt_model, "omega")
-    if omega is not None:
-        ax.plot(t, omega, label=generator.name)
-
-ax.set_title("Kundur generator electrical speed")
-ax.set_xlabel("Time [s]")
-ax.set_ylabel("Omega [rad/s]")
-ax.grid(True)
-ax.legend()
+# Representative synchronous-machine states and outputs.
+fig, axes = plt.subplots(2, 2, figsize=(14, 9), sharex=True)
+generator_signals = (
+    ("omega_", "Rotor speed", "Speed [p.u.]"),
+    ("theta_abs_", "Rotor electrical angle", "Angle [rad]"),
+    ("psi_d_", "Direct-axis stator flux", "Flux [p.u.]"),
+    ("psi_q_", "Quadrature-axis stator flux", "Flux [p.u.]"),
+)
+for ax, (variable_name, title, ylabel) in zip(axes.flat, generator_signals):
+    for generator in generators:
+        values = get_series(problem, y, generator.emt_model, variable_name)
+        if values is not None:
+            ax.plot(t, values, label=generator.name)
+    ax.set_title(title)
+    ax.set_ylabel(ylabel)
+    ax.grid(True)
+    ax.legend()
+for ax in axes[-1, :]:
+    ax.set_xlabel("Time [s]")
 fig.tight_layout()
+generator_state_plot = PLOT_DIRECTORY / "kundur_generator_states.png"
+fig.savefig(generator_state_plot, dpi=180, bbox_inches="tight")
+plt.close(fig)
+
+# Steady-state diagnostics: speed deviation and accelerating torque.
+fig, axes = plt.subplots(2, 1, figsize=(13, 9), sharex=True)
+print("\nGenerator steady-state diagnostics")
+for generator in generators:
+    omega = get_series(problem, y, generator.emt_model, "omega_")
+    mechanical_torque = get_series(problem, y, generator.emt_model, "Tm")
+    electrical_torque = get_series(problem, y, generator.emt_model, "Te")
+    if omega is None or mechanical_torque is None or electrical_torque is None:
+        raise KeyError(f"Missing speed or torque trajectory for {generator.name}")
+    speed_deviation = omega - 1.0
+    accelerating_torque = mechanical_torque - electrical_torque
+    axes[0].plot(t, 1.0e6 * speed_deviation, label=generator.name)
+    axes[1].plot(t, accelerating_torque, label=generator.name)
+    print(
+        f"  {generator.name}: "
+        f"dw0={speed_deviation[0]:+.12e}, "
+        f"dw_end={speed_deviation[-1]:+.12e}, "
+        f"max|dw|={np.max(np.abs(speed_deviation)):.12e}, "
+        f"Tm0={mechanical_torque[0]:+.12e}, "
+        f"Tm_end={mechanical_torque[-1]:+.12e}, "
+        f"Te0={electrical_torque[0]:+.12e}, "
+        f"Te_end={electrical_torque[-1]:+.12e}, "
+        f"dT0={accelerating_torque[0]:+.12e}, "
+        f"dT_end={accelerating_torque[-1]:+.12e}, "
+        f"max|dT|={np.max(np.abs(accelerating_torque)):.12e}"
+    )
+axes[0].set_title("Generator speed deviation from synchronous speed")
+axes[0].set_ylabel(r"$10^6(\omega-1)$ [p.u.]")
+axes[1].set_title("Generator accelerating torque")
+axes[1].set_ylabel(r"$T_m-T_e$ [p.u.]")
+axes[1].set_xlabel("Time [s]")
+for ax in axes:
+    ax.grid(True)
+    ax.legend()
+fig.tight_layout()
+generator_balance_plot = PLOT_DIRECTORY / "kundur_generator_balance_diagnostics.png"
+fig.savefig(generator_balance_plot, dpi=180, bbox_inches="tight")
+plt.close(fig)
 
 
 # Tie-line current: use one of the two 7-8 circuits.
@@ -903,6 +1068,14 @@ ax.set_ylabel("Current [p.u.]")
 ax.grid(True)
 ax.legend()
 fig.tight_layout()
+tie_line_current_plot = PLOT_DIRECTORY / "kundur_tie_line_currents.png"
+fig.savefig(tie_line_current_plot, dpi=180, bbox_inches="tight")
+plt.close(fig)
 
-print("Generating EMT plots...")
-plt.show()
+print("Saved EMT plots:")
+print(f"  {bus_voltage_plot.resolve()}")
+print(f"  {generator_state_plot.resolve()}")
+print(f"  {generator_balance_plot.resolve()}")
+print(f"  {tie_line_current_plot.resolve()}")
+if SHOW_PLOTS:
+    plt.show()
