@@ -35,7 +35,6 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         "device_tree_widget",
         "ui",
         "editor_tabs",
-        "_model_toolbar_actions",
     )
 
     def __init__(
@@ -76,8 +75,6 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         self.editor_tabs: DetachableEditorTabWidget = DetachableEditorTabWidget(self)
         self.ui.editorFrameLayout.addWidget(self.editor_tabs)
         self.ui.editorTabs = self.editor_tabs
-        toolbar_actions: list[QtGui.QAction] = self.ui.toolBar.actions()
-        self._model_toolbar_actions: tuple[QtGui.QAction, ...] = tuple(toolbar_actions[1:])
 
         self.editor_tabs.tabCloseRequested.connect(self.close_tab_at)
         self.editor_tabs.currentChanged.connect(self._on_current_tab_changed)
@@ -89,9 +86,12 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         self._refresh_window_title()
 
         self.ui.actionview_tree.triggered.connect(self.show_hide_tree)
+        self.ui.actionRMS_Editor.triggered.connect(self.open_rms_editor_entry)
+        self.ui.actionRMS_Events.triggered.connect(self.open_rms_events_entry)
+        self.ui.actionEMT_Editor.triggered.connect(self.open_emt_editor_entry)
+        self.ui.actionEMT_Events.triggered.connect(self.open_emt_events_entry)
 
         self.device_tree_widget.entryPageRequested.connect(self._open_device_tree_entry)
-        self._update_toolbar_for_page(page=None)
 
     def changeEvent(self, event: QtCore.QEvent) -> None:
         """
@@ -381,6 +381,78 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         else:
             pass
 
+    def open_emt_editor_entry(self, _checked: bool = False) -> None:
+        """Open the EMT model editor for the currently active device.
+
+        :param _checked: QAction checked state supplied by Qt.
+        :return: None.
+        """
+        page: DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage | None = self.current_page()
+
+        if page is not None:
+            entry: DynamicEditorEntry | None = page.get_dynamic_editor_entry()
+        else:
+            entry = None
+
+        if entry is not None:
+            self.open_entry(entry, preferred_mode=DynamicSimulationMode.EMT, target_workspace=self)
+        else:
+            pass
+
+    def open_rms_editor_entry(self, _checked: bool = False) -> None:
+        """Open the RMS model editor for the currently active device.
+
+        :param _checked: QAction checked state supplied by Qt.
+        :return: None.
+        """
+        page: DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage | None = self.current_page()
+
+        if page is not None:
+            entry: DynamicEditorEntry | None = page.get_dynamic_editor_entry()
+        else:
+            entry = None
+
+        if entry is not None:
+            self.open_entry(entry, preferred_mode=DynamicSimulationMode.RMS, target_workspace=self)
+        else:
+            pass
+
+    def open_emt_events_entry(self, _checked: bool = False) -> None:
+        """Open the EMT events editor for the currently active device.
+
+        :param _checked: QAction checked state supplied by Qt.
+        :return: None.
+        """
+        page: DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage | None = self.current_page()
+
+        if page is not None:
+            entry: DynamicEditorEntry | None = page.get_dynamic_editor_entry()
+        else:
+            entry = None
+
+        if entry is not None:
+            self.session.open_events_entry(entry, mode=DynamicSimulationMode.EMT, target_workspace=self)
+        else:
+            pass
+
+    def open_rms_events_entry(self, _checked: bool = False) -> None:
+        """Open the RMS events editor for the currently active device.
+
+        :param _checked: QAction checked state supplied by Qt.
+        :return: None.
+        """
+        page: DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage | None = self.current_page()
+
+        if page is not None:
+            entry: DynamicEditorEntry | None = page.get_dynamic_editor_entry()
+        else:
+            entry = None
+
+        if entry is not None:
+            self.session.open_events_entry(entry, mode=DynamicSimulationMode.RMS, target_workspace=self)
+        else:
+            pass
+
     def _on_tree_double_clicked(self, index: QtCore.QModelIndex) -> None:
         """
         Open the double-clicked tree entry in RMS mode.
@@ -476,25 +548,7 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
             self.note_page_activated(page)
         else:
             pass
-        self._update_toolbar_for_page(page=page)
         self._refresh_window_title()
-
-    def _update_toolbar_for_page(
-            self,
-            page: DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage | None,
-    ) -> None:
-        """Show model actions only while a block-model page is active.
-
-        The tree action remains visible for every page type. Event creation,
-        removal, group management and saving live inside each events page.
-
-        :param page: Newly active workspace page, or ``None`` for an empty workspace.
-        :return: None.
-        """
-        model_page_active: bool = isinstance(page, (DynamicBlockEditorGUI, DynamicEditorTab))
-        action: QtGui.QAction
-        for action in self._model_toolbar_actions:
-            action.setVisible(model_page_active)
 
     def add_editor_page(
             self,
