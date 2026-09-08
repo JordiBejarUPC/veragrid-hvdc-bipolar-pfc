@@ -22,6 +22,7 @@ from VeraGrid.Gui.SigmaAnalysis.sigma_analysis_dialogue import SigmaAnalysisGUI
 from VeraGrid.Gui.ProceduralGrid.procedural_grid import ProceduralGridWindow
 from VeraGrid.Gui.ProceduralGrid.map_warning import MapWarningDialog
 from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, is_dialog_available
+from VeraGrid.Session.session import GcThread
 from VeraGrid.Session.server_driver import RemoteJobDriver
 
 # Engine imports
@@ -662,25 +663,34 @@ class SimulationsMain(TimeEventsMain):
                     return True
         return False
 
-    def add_simulation(self, val: SimulationTypes):
+    def add_simulation(self, val: SimulationTypes) -> None:
         """
         Add a simulation to the simulations list
         :param val: simulation type
         """
-        self.stuff_running_now.append(val)
+        if val not in self.stuff_running_now:
+            self.stuff_running_now.append(val)
+        else:
+            pass
 
-    def remove_simulation(self, val: SimulationTypes):
+    def remove_simulation(self, val: SimulationTypes) -> None:
         """
         Remove a simulation from the simulations list
         :param val: simulation type
         """
-        if val in self.stuff_running_now:
+        while val in self.stuff_running_now:
             self.stuff_running_now.remove(val)
 
     def clear_results(self):
         """
         Clear the results tab
         """
+        if self.session.is_anything_running():
+            self.show_warning_toast(self.tr("Wait until the running simulations finish before clearing results."))
+            return
+        else:
+            pass
+
         self.session.clear()
 
         self.buses_for_storage = list()
@@ -1524,7 +1534,6 @@ class SimulationsMain(TimeEventsMain):
 
                 self.ui.progress_label.setText(
                     QtCore.QCoreApplication.translate("SimulationsMain", "Compiling the grid..."))
-                QtGui.QGuiApplication.processEvents()
 
                 # get the power flow options from the GUI
                 options = self.get_selected_power_flow_options()
@@ -1533,7 +1542,6 @@ class SimulationsMain(TimeEventsMain):
 
                 self.ui.progress_label.setText(
                     QtCore.QCoreApplication.translate("SimulationsMain", "Running power flow..."))
-                QtGui.QGuiApplication.processEvents()
 
                 # set power flow object instance
                 engine = self.get_preferred_engine()
@@ -1567,7 +1575,6 @@ class SimulationsMain(TimeEventsMain):
 
                 self.ui.progress_label.setText(
                     QtCore.QCoreApplication.translate("SimulationsMain", "Compiling the grid..."))
-                QtGui.QGuiApplication.processEvents()
 
                 # get the power flow options from the GUI
                 options = self.get_selected_power_flow_options()
@@ -1576,7 +1583,6 @@ class SimulationsMain(TimeEventsMain):
 
                 self.ui.progress_label.setText(
                     QtCore.QCoreApplication.translate("SimulationsMain", "Running power flow..."))
-                QtGui.QGuiApplication.processEvents()
 
                 # set power flow object instance
                 engine = self.get_preferred_engine()
@@ -1637,7 +1643,6 @@ class SimulationsMain(TimeEventsMain):
 
                 self.ui.progress_label.setText(
                     QtCore.QCoreApplication.translate("SimulationsMain", "Compiling the grid..."))
-                QtGui.QGuiApplication.processEvents()
 
                 # get the power flow options from the GUI
                 options = self.get_selected_power_flow_options()
@@ -1646,7 +1651,6 @@ class SimulationsMain(TimeEventsMain):
 
                 self.ui.progress_label.setText(
                     QtCore.QCoreApplication.translate("SimulationsMain", "Running power flow..."))
-                QtGui.QGuiApplication.processEvents()
 
                 # set power flow object instance
                 engine = self.get_preferred_engine()
@@ -1708,7 +1712,6 @@ class SimulationsMain(TimeEventsMain):
 
                     self.ui.progress_label.setText(
                         QtCore.QCoreApplication.translate("SimulationsMain", "Compiling the grid..."))
-                    QtGui.QGuiApplication.processEvents()
 
                     opf_time_series_results = self.get_opf_ts_results(
                         use_opf=self.ui.actionOpf_to_Power_flow.isChecked()
@@ -1791,13 +1794,11 @@ class SimulationsMain(TimeEventsMain):
 
                 self.ui.progress_label.setText(
                     QtCore.QCoreApplication.translate("SimulationsMain", "Compiling the grid..."))
-                QtGui.QGuiApplication.processEvents()
 
                 # get the power flow options from the GUI
                 options = self.get_se_options()
 
                 self.ui.progress_label.setText('Running state estimation...')
-                QtGui.QGuiApplication.processEvents()
 
                 drv = sim.StateEstimationDriver(self.circuit, options)
 
@@ -1983,7 +1984,6 @@ class SimulationsMain(TimeEventsMain):
         if results is not None:
 
             self.ui.progress_label.setText('Colouring PTDF results in the grid...')
-            QtGui.QGuiApplication.processEvents()
 
             self.update_available_results()
             self.colour_diagrams()
@@ -2039,7 +2039,6 @@ class SimulationsMain(TimeEventsMain):
             results.expand_clustered_results()
 
             self.ui.progress_label.setText('Colouring PTDF results in the grid...')
-            QtGui.QGuiApplication.processEvents()
 
             self.update_available_results()
 
@@ -2125,7 +2124,6 @@ class SimulationsMain(TimeEventsMain):
         if results is not None:
 
             self.ui.progress_label.setText('Colouring contingency analysis results in the grid...')
-            QtGui.QGuiApplication.processEvents()
 
             self.update_available_results()
 
@@ -2192,7 +2190,6 @@ class SimulationsMain(TimeEventsMain):
             results.expand_clustered_results()
 
             self.ui.progress_label.setText('Colouring results in the grid...')
-            QtGui.QGuiApplication.processEvents()
 
             self.update_available_results()
 
@@ -2304,7 +2301,6 @@ class SimulationsMain(TimeEventsMain):
         if results is not None:
 
             self.ui.progress_label.setText('Colouring ATC results in the grid...')
-            QtGui.QGuiApplication.processEvents()
 
             self.update_available_results()
             self.colour_diagrams()
@@ -2428,7 +2424,6 @@ class SimulationsMain(TimeEventsMain):
             results.expand_clustered_results()
 
             self.ui.progress_label.setText('Colouring ATC time series results in the grid...')
-            QtGui.QGuiApplication.processEvents()
 
             self.update_available_results()
             self.colour_diagrams()
@@ -2526,31 +2521,43 @@ class SimulationsMain(TimeEventsMain):
                         # lock the UI
                         self.LOCK()
 
-                        self.ui.progress_label.setText(
-                            QtCore.QCoreApplication.translate("SimulationsMain", "Compiling the grid..."))
-                        QtGui.QGuiApplication.processEvents()
+                        drv: sim.ContinuationPowerFlowDriver | None = None
+                        try:
+                            self.ui.progress_label.setText(
+                                QtCore.QCoreApplication.translate("SimulationsMain", "Compiling the grid..."))
 
-                        #  compose the base power
-                        Sbase: CxVec = pf_results.Sbus / self.circuit.Sbase
+                            #  compose the base power
+                            Sbase: CxVec = pf_results.Sbus / self.circuit.Sbase
 
-                        base_overload_number = len(np.where(np.abs(pf_results.loading) > 1)[0])
+                            base_overload_number = len(np.where(np.abs(pf_results.loading) > 1)[0])
 
-                        vc_inputs = sim.ContinuationPowerFlowInput(Sbase=Sbase,
-                                                                   Vbase=pf_results.voltage,
-                                                                   Starget=Sbase * alpha,
-                                                                   base_overload_number=base_overload_number)
+                            vc_inputs = sim.ContinuationPowerFlowInput(Sbase=Sbase,
+                                                                       Vbase=pf_results.voltage,
+                                                                       Starget=Sbase * alpha,
+                                                                       base_overload_number=base_overload_number)
 
-                        pf_options = self.get_selected_power_flow_options()
+                            pf_options = self.get_selected_power_flow_options()
 
-                        # create object
-                        drv = sim.ContinuationPowerFlowDriver(grid=self.circuit,
-                                                              options=vc_options,
-                                                              inputs=vc_inputs,
-                                                              pf_options=pf_options)
-                        self.session.run(drv,
-                                         post_func=self.post_continuation_power_flow,
-                                         prog_func=self.ui.progressBar.setValue,
-                                         text_func=self.ui.progress_label.setText)
+                            # create object
+                            drv = sim.ContinuationPowerFlowDriver(grid=self.circuit,
+                                                                  options=vc_options,
+                                                                  inputs=vc_inputs,
+                                                                  pf_options=pf_options)
+                            self.add_simulation(SimulationTypes.ContinuationPowerFlow_run)
+                            self.session.run(drv,
+                                             post_func=self.post_continuation_power_flow,
+                                             prog_func=self.ui.progressBar.setValue,
+                                             text_func=self.ui.progress_label.setText)
+                        except Exception as e:
+                            error_message: str = str(e)
+                            self.remove_simulation(SimulationTypes.ContinuationPowerFlow_run)
+                            self.UNLOCK()
+                            self.show_error_toast(self.tr("Voltage stability failed to start"), duration=4000)
+                            if drv is not None:
+                                drv.logger.add_error(error_message)
+                                self.show_logs(logger=drv.logger, name=self.tr("Voltage stability logs"))
+                            else:
+                                pass
 
                     elif use_profiles:
                         """
@@ -2561,31 +2568,44 @@ class SimulationsMain(TimeEventsMain):
                             # lock the UI
                             self.LOCK()
 
-                            nc_start = compile_numerical_circuit_at(circuit=self.circuit, t_idx=start_idx)
-                            Sbus_init = nc_start.get_power_injections_pu()
+                            drv: sim.ContinuationPowerFlowDriver | None = None
+                            try:
+                                nc_start = compile_numerical_circuit_at(circuit=self.circuit, t_idx=start_idx)
+                                Sbus_init = nc_start.get_power_injections_pu()
 
-                            nc_end = compile_numerical_circuit_at(circuit=self.circuit, t_idx=start_idx)
-                            Sbus_end = nc_end.get_power_injections_pu()
+                                nc_end = compile_numerical_circuit_at(circuit=self.circuit, t_idx=end_idx)
+                                Sbus_end = nc_end.get_power_injections_pu()
 
-                            pf_drv_start = sim.PowerFlowDriver(grid=self.circuit, options=pf_options)
-                            pf_drv_start.run()
+                                pf_drv_start = sim.PowerFlowDriver(grid=self.circuit, options=pf_options)
+                                pf_drv_start.run()
 
-                            # get the power Injections array to get the initial and end points
-                            vc_inputs = sim.ContinuationPowerFlowInput(Sbase=Sbus_init,
-                                                                       Vbase=pf_drv_start.results.voltage,
-                                                                       Starget=Sbus_end)
+                                # get the power Injections array to get the initial and end points
+                                vc_inputs = sim.ContinuationPowerFlowInput(Sbase=Sbus_init,
+                                                                           Vbase=pf_drv_start.results.voltage,
+                                                                           Starget=Sbus_end)
 
-                            pf_options = self.get_selected_power_flow_options()
+                                pf_options = self.get_selected_power_flow_options()
 
-                            # create object
-                            drv = sim.ContinuationPowerFlowDriver(grid=self.circuit,
-                                                                  options=vc_options,
-                                                                  inputs=vc_inputs,
-                                                                  pf_options=pf_options)
-                            self.session.run(drv,
-                                             post_func=self.post_continuation_power_flow,
-                                             prog_func=self.ui.progressBar.setValue,
-                                             text_func=self.ui.progress_label.setText)
+                                # create object
+                                drv = sim.ContinuationPowerFlowDriver(grid=self.circuit,
+                                                                      options=vc_options,
+                                                                      inputs=vc_inputs,
+                                                                      pf_options=pf_options)
+                                self.add_simulation(SimulationTypes.ContinuationPowerFlow_run)
+                                self.session.run(drv,
+                                                 post_func=self.post_continuation_power_flow,
+                                                 prog_func=self.ui.progressBar.setValue,
+                                                 text_func=self.ui.progress_label.setText)
+                            except Exception as e:
+                                error_message: str = str(e)
+                                self.remove_simulation(SimulationTypes.ContinuationPowerFlow_run)
+                                self.UNLOCK()
+                                self.show_error_toast(self.tr("Voltage stability failed to start"), duration=4000)
+                                if drv is not None:
+                                    drv.logger.add_error(error_message)
+                                    self.show_logs(logger=drv.logger, name=self.tr("Voltage stability logs"))
+                                else:
+                                    pass
                         else:
                             self.show_warning_toast(self.tr('Check the selected start and finnish time series indices.'))
                 else:
@@ -2601,20 +2621,36 @@ class SimulationsMain(TimeEventsMain):
         Actions performed after the voltage stability. Launched by the thread after its execution
         :return:
         """
-        _, results = self.session.continuation_power_flow
+        drv, results = self.session.continuation_power_flow
+
+        self.remove_simulation(SimulationTypes.ContinuationPowerFlow_run)
 
         if results is not None:
 
-            self.remove_simulation(SimulationTypes.ContinuationPowerFlow_run)
-
-            if results.voltages is not None:
+            if results.voltages is not None and len(results.voltages) > 0:
                 self.update_available_results()
                 self.colour_diagrams()
             else:
+                self.session.delete_driver(SimulationTypes.ContinuationPowerFlow_run)
                 self.show_warning_toast(self.tr('The voltage stability did not converge.\n'
                                         'Is this case already at the collapse limit?'), 5000)
+                if drv is not None:
+                    if drv.logger.has_logs():
+                        self.show_logs(logger=drv.logger, name=self.tr("Voltage stability logs"))
+                    else:
+                        pass
+                else:
+                    pass
         else:
+            self.session.delete_driver(SimulationTypes.ContinuationPowerFlow_run)
             self.show_error_toast(self.tr('Something went wrong, There are no voltage stability results.'))
+            if drv is not None:
+                if drv.logger.has_logs():
+                    self.show_logs(logger=drv.logger, name=self.tr("Voltage stability logs"))
+                else:
+                    pass
+            else:
+                pass
 
         if not self.session.is_anything_running():
             self.UNLOCK()
@@ -2633,7 +2669,6 @@ class SimulationsMain(TimeEventsMain):
 
                     self.ui.progress_label.setText(
                         QtCore.QCoreApplication.translate("SimulationsMain", "Compiling the grid..."))
-                    QtGui.QGuiApplication.processEvents()
 
                     opf_time_series_results = self.get_opf_ts_results(
                         use_opf=self.ui.actionOpf_to_Power_flow.isChecked()
@@ -2703,7 +2738,6 @@ class SimulationsMain(TimeEventsMain):
 
                     self.ui.progress_label.setText(
                         QtCore.QCoreApplication.translate("SimulationsMain", "Compiling the grid..."))
-                    QtGui.QGuiApplication.processEvents()
 
                     pf_options = self.get_selected_power_flow_options()
 
@@ -2888,7 +2922,7 @@ class SimulationsMain(TimeEventsMain):
 
         return options
 
-    def run_opf(self):
+    def run_opf(self) -> None:
         """
         Run OPF simulation
         """
@@ -2899,34 +2933,56 @@ class SimulationsMain(TimeEventsMain):
                 self.remove_simulation(SimulationTypes.OPF_run)
 
                 self.ui.progress_label.setText('Running optimal power flow...')
-                QtGui.QGuiApplication.processEvents()
 
-                self.LOCK()
+                options: sim.OptimalPowerFlowOptions | None = self.get_opf_options()
+
+                if options is not None:
+                    if (options.solver == SolverType.NONLINEAR_OPF
+                            and self.circuit.get_fluid_nodes_number() > 0):
+                        self.show_warning_toast(self.tr("Fluid nodes are ignored for nonlinear OPF"))
+                    else:
+                        pass
+                else:
+                    return None
 
                 # set power flow object instance
-                drv = sim.OptimalPowerFlowDriver(grid=self.circuit,
-                                                 options=self.get_opf_options(),
-                                                 engine=self.get_preferred_engine())
+                drv: sim.OptimalPowerFlowDriver = sim.OptimalPowerFlowDriver(
+                    grid=self.circuit,
+                    options=options,
+                    engine=self.get_preferred_engine()
+                )
 
-                self.session.run(drv,
-                                 post_func=self.post_opf,
-                                 prog_func=self.ui.progressBar.setValue,
-                                 text_func=self.ui.progress_label.setText)
+                self.add_simulation(SimulationTypes.OPF_run)
+                self.LOCK()
+
+                try:
+                    self.session.run(drv,
+                                     post_func=self.post_opf,
+                                     prog_func=self.ui.progressBar.setValue,
+                                     text_func=self.ui.progress_label.setText)
+                except Exception as e:
+                    error_message: str = str(e)
+                    self.remove_simulation(SimulationTypes.OPF_run)
+                    self.UNLOCK()
+                    self.show_error_toast(self.tr("Optimal power flow failed to start"), duration=4000)
+                    drv.logger.add_error(error_message)
+                    self.show_logs(logger=drv.logger, name=self.tr("Optimal power flow logs"))
 
             else:
                 self.show_warning_toast(self.tr('Another OPF is being run...'))
+                return None
         else:
-            pass
+            return None
 
-    def post_opf(self):
+    def post_opf(self) -> None:
         """
         Actions to run after the OPF simulation
         """
-        _, results = self.session.optimal_power_flow
+        drv, results = self.session.optimal_power_flow
+
+        self.remove_simulation(SimulationTypes.OPF_run)
 
         if results is not None:
-
-            self.remove_simulation(SimulationTypes.OPF_run)
 
             if results.converged:
                 self.show_info_toast(self.tr("Optimal power flow converged :)"))
@@ -2941,10 +2997,20 @@ class SimulationsMain(TimeEventsMain):
 
             self.colour_diagrams()
 
+        else:
+            self.show_error_toast(self.tr('Something went wrong, there are no OPF results.'), duration=4000)
+            if drv is not None:
+                if drv.logger.has_logs():
+                    self.show_logs(logger=drv.logger, name=self.tr("Optimal power flow logs"))
+                else:
+                    pass
+            else:
+                pass
+
         if not self.session.is_anything_running():
             self.UNLOCK()
 
-    def run_opf_time_series(self):
+    def run_opf_time_series(self) -> None:
         """
         OPF Time Series run
         """
@@ -2955,34 +3021,61 @@ class SimulationsMain(TimeEventsMain):
 
                     if self.circuit.time_profile is not None:
 
-                        self.add_simulation(SimulationTypes.OPFTimeSeries_run)
-
-                        self.LOCK()
-
-                        # Compile the grid
-                        self.ui.progress_label.setText(
-                            QtCore.QCoreApplication.translate("SimulationsMain", "Compiling the grid..."))
-                        QtGui.QGuiApplication.processEvents()
-
                         # get the power flow options from the GUI
-                        options = self.get_opf_options()
+                        options: sim.OptimalPowerFlowOptions | None = self.get_opf_options()
 
                         if options is not None:
+                            time_indices: IntVec | None = self.get_time_indices()
+
+                            if time_indices is not None:
+                                if len(time_indices) <= 1:
+                                    self.show_warning_toast(
+                                        self.tr("Running OPF time series with only one time step in range")
+                                    )
+                                else:
+                                    pass
+                            else:
+                                self.show_warning_toast(self.tr('There are no time series...'))
+                                return None
+
+                            if (options.solver == SolverType.NONLINEAR_OPF
+                                    and self.circuit.get_fluid_nodes_number() > 0):
+                                self.show_warning_toast(self.tr("Fluid nodes are ignored for this simulation"))
+                            else:
+                                pass
+
+                            # Compile the grid in the worker after the launch state is registered.
+                            self.ui.progress_label.setText(
+                                QtCore.QCoreApplication.translate("SimulationsMain", "Compiling the grid..."))
+
                             # create the OPF time series instance
                             # if non_sequential:
-                            drv = sim.OptimalPowerFlowTimeSeriesDriver(
+                            drv: sim.OptimalPowerFlowTimeSeriesDriver = sim.OptimalPowerFlowTimeSeriesDriver(
                                 grid=self.circuit,
                                 options=options,
-                                time_indices=self.get_time_indices(),
+                                time_indices=time_indices,
                                 clustering_results=self.get_clustering_results()
                             )
 
                             drv.engine = self.get_preferred_engine()
 
-                            self.session.run(drv,
-                                             post_func=self.post_opf_time_series,
-                                             prog_func=self.ui.progressBar.setValue,
-                                             text_func=self.ui.progress_label.setText)
+                            self.add_simulation(SimulationTypes.OPFTimeSeries_run)
+                            self.LOCK()
+
+                            try:
+                                self.session.run(drv,
+                                                 post_func=self.post_opf_time_series,
+                                                 prog_func=self.ui.progressBar.setValue,
+                                                 text_func=self.ui.progress_label.setText)
+                            except Exception as e:
+                                error_message: str = str(e)
+                                self.remove_simulation(SimulationTypes.OPFTimeSeries_run)
+                                self.UNLOCK()
+                                self.show_error_toast(self.tr("OPF time series failed to start"), duration=4000)
+                                drv.logger.add_error(error_message)
+                                self.show_logs(logger=drv.logger, name=self.tr("OPF time series logs"))
+                        else:
+                            return None
 
                     else:
                         self.show_warning_toast(self.tr('There are no time series...'))
@@ -2994,28 +3087,35 @@ class SimulationsMain(TimeEventsMain):
         else:
             self.show_warning_toast(self.tr('Nothing to simulate...'))
 
-    def post_opf_time_series(self):
+    def post_opf_time_series(self) -> None:
         """
         Post OPF Time Series
         """
 
-        _, results = self.session.optimal_power_flow_ts
+        drv, results = self.session.optimal_power_flow_ts
+
+        # The worker sets ``results`` to ``None`` when it catches an exception.
+        # Always remove the GUI marker so a failed thread cannot leave stale state.
+        self.remove_simulation(SimulationTypes.OPFTimeSeries_run)
 
         if results is not None:
 
             # expand the clusters
             results.expand_clustered_results()
 
-            # delete from the current simulations
-            self.remove_simulation(SimulationTypes.OPFTimeSeries_run)
+            self.update_available_results()
 
-            if results is not None:
-                self.update_available_results()
-
-                self.colour_diagrams()
+            self.colour_diagrams()
 
         else:
-            pass
+            self.show_error_toast(self.tr('Something went wrong, there are no OPF time series results.'), duration=4000)
+            if drv is not None:
+                if drv.logger.has_logs():
+                    self.show_logs(logger=drv.logger, name=self.tr("OPF time series logs"))
+                else:
+                    pass
+            else:
+                pass
 
         if not self.session.is_anything_running():
             self.UNLOCK()
@@ -3089,7 +3189,6 @@ class SimulationsMain(TimeEventsMain):
 
                 else:
                     self.ui.progress_label.setText('Running optimal net transfer capacity...')
-                    QtGui.QGuiApplication.processEvents()
 
                     # set power flow object instance
                     drv = sim.OptimalNetTransferCapacityDriver(grid=self.circuit, options=options)
@@ -3151,7 +3250,6 @@ class SimulationsMain(TimeEventsMain):
                     else:
 
                         self.ui.progress_label.setText('Running optimal net transfer capacity time series...')
-                        QtGui.QGuiApplication.processEvents()
 
                         # set optimal net transfer capacity driver instance
                         drv = sim.OptimalNetTransferCapacityTimeSeriesDriver(
@@ -3490,14 +3588,22 @@ class SimulationsMain(TimeEventsMain):
                         engine=self.get_preferred_engine()
                     )
 
-                    self.session.run(
-                        drv,
-                        post_func=self.post_investments_evaluation,
-                        prog_func=self.ui.progressBar.setValue,
-                        text_func=self.ui.progress_label.setText
-                    )
                     self.add_simulation(SimulationTypes.InvestmentsEvaluation_run)
                     self.LOCK()
+                    try:
+                        self.session.run(
+                            drv,
+                            post_func=self.post_investments_evaluation,
+                            prog_func=self.ui.progressBar.setValue,
+                            text_func=self.ui.progress_label.setText
+                        )
+                    except Exception:
+                        self.remove_simulation(SimulationTypes.InvestmentsEvaluation_run)
+                        if not self.session.is_anything_running():
+                            self.UNLOCK()
+                        else:
+                            pass
+                        raise
 
                 else:
                     self.show_warning_toast(self.tr('Another contingency analysis is being executed now...'))
@@ -3512,14 +3618,20 @@ class SimulationsMain(TimeEventsMain):
         """
         Post investments evaluation
         """
-        driver, results = self.session.investments_evaluation
+        sender: QtCore.QObject | None = self.sender()
+        if isinstance(sender, GcThread):
+            driver = sender.driver
+            results = driver.results
+            worker_failed: bool = sender.has_failed()
+        else:
+            driver, results = self.session.investments_evaluation
+            worker_failed = False
+
+        self.remove_simulation(SimulationTypes.InvestmentsEvaluation_run)
 
         # update the results in the circuit structures
-        if results is not None:
-            self.remove_simulation(SimulationTypes.InvestmentsEvaluation_run)
-
+        if results is not None and not worker_failed:
             self.ui.progress_label.setText('Colouring investments evaluation results in the grid...')
-            QtGui.QGuiApplication.processEvents()
 
             self.update_available_results()
 
@@ -3580,7 +3692,15 @@ class SimulationsMain(TimeEventsMain):
             # apply result-based colouring after the baseline + best-Pareto state is set
             self.colour_diagrams()
         else:
-            self.show_error_toast(self.tr('Something went wrong, There are no investments evaluation results.'))
+            if driver is not None and driver.logger.has_logs():
+                self.show_logs(logger=driver.logger, name="Investments evaluation error")
+            else:
+                pass
+
+            if worker_failed:
+                self.show_error_toast(self.tr('Investments evaluation failed. Check the logs for details.'))
+            else:
+                self.show_warning_toast(self.tr('Investments evaluation finished without results.'))
 
         if not self.session.is_anything_running():
             self.UNLOCK()
@@ -3717,17 +3837,25 @@ class SimulationsMain(TimeEventsMain):
 
                 self.remove_simulation(SimulationTypes.NodalCapacity_run)
                 self.ui.progress_label.setText('Running nodal hosting capacity...')
-                QtGui.QGuiApplication.processEvents()
                 self.LOCK()
 
                 drv = sim.NodalCapacityDriver(grid=self.circuit,
                                               options=options,
                                               engine=self.get_preferred_engine())
 
-                self.session.run(drv,
-                                 post_func=self.post_nodal_capacity,
-                                 prog_func=self.ui.progressBar.setValue,
-                                 text_func=self.ui.progress_label.setText)
+                self.add_simulation(SimulationTypes.NodalCapacity_run)
+                try:
+                    self.session.run(drv,
+                                     post_func=self.post_nodal_capacity,
+                                     prog_func=self.ui.progressBar.setValue,
+                                     text_func=self.ui.progress_label.setText)
+                except Exception as e:
+                    error_message: str = str(e)
+                    self.remove_simulation(SimulationTypes.NodalCapacity_run)
+                    self.UNLOCK()
+                    self.show_error_toast(self.tr("Nodal capacity failed to start"), duration=4000)
+                    drv.logger.add_error(error_message)
+                    self.show_logs(logger=drv.logger, name=self.tr("Nodal capacity logs"))
             else:
                 self.show_warning_toast(self.tr('Another nodal capacity study is being run...'))
 
@@ -3761,7 +3889,6 @@ class SimulationsMain(TimeEventsMain):
 
                 # Compile the grid
                 self.ui.progress_label.setText(self.tr("Compiling the grid..."))
-                QtGui.QGuiApplication.processEvents()
 
                 if options is not None:
                     # create the OPF time series instance
@@ -3773,10 +3900,18 @@ class SimulationsMain(TimeEventsMain):
 
                     drv.engine = self.get_preferred_engine()
 
-                    self.session.run(drv,
-                                     post_func=self.post_nodal_capacity_time_series,
-                                     prog_func=self.ui.progressBar.setValue,
-                                     text_func=self.ui.progress_label.setText)
+                    try:
+                        self.session.run(drv,
+                                         post_func=self.post_nodal_capacity_time_series,
+                                         prog_func=self.ui.progressBar.setValue,
+                                         text_func=self.ui.progress_label.setText)
+                    except Exception as e:
+                        error_message: str = str(e)
+                        self.remove_simulation(SimulationTypes.NodalCapacityTimeSeries_run)
+                        self.UNLOCK()
+                        self.show_error_toast(self.tr("Nodal capacity time series failed to start"), duration=4000)
+                        drv.logger.add_error(error_message)
+                        self.show_logs(logger=drv.logger, name=self.tr("Nodal capacity time series logs"))
 
             else:
                 self.show_warning_toast(self.tr('Another OPF time series is running already...'))
@@ -3788,12 +3923,23 @@ class SimulationsMain(TimeEventsMain):
         """
         Post nodal capacity
         """
-        _, results = self.session.nodal_capacity_optimization
+        drv, results = self.session.nodal_capacity_optimization
+
+        self.remove_simulation(SimulationTypes.NodalCapacity_run)
 
         if results is not None:
-            self.remove_simulation(SimulationTypes.NodalCapacity_run)
             self.update_available_results()
             self.colour_diagrams()
+        else:
+            self.session.delete_driver(SimulationTypes.NodalCapacity_run)
+            self.show_error_toast(self.tr('Something went wrong, there are no nodal capacity results.'), duration=4000)
+            if drv is not None:
+                if drv.logger.has_logs():
+                    self.show_logs(logger=drv.logger, name=self.tr("Nodal capacity logs"))
+                else:
+                    pass
+            else:
+                pass
 
         if not self.session.is_anything_running():
             self.UNLOCK()
@@ -3803,22 +3949,30 @@ class SimulationsMain(TimeEventsMain):
         Post nodal capacity time series
         """
 
-        _, results = self.session.nodal_capacity_optimization_ts
+        drv, results = self.session.nodal_capacity_optimization_ts
+
+        self.remove_simulation(SimulationTypes.NodalCapacityTimeSeries_run)
 
         if results is not None:
             results.expand_clustered_results()
-            self.remove_simulation(SimulationTypes.NodalCapacityTimeSeries_run)
             self.update_available_results()
             self.colour_diagrams()
+        else:
+            self.session.delete_driver(SimulationTypes.NodalCapacityTimeSeries_run)
+            self.show_error_toast(self.tr('Something went wrong, there are no nodal capacity time series results.'),
+                                  duration=4000)
+            if drv is not None:
+                if drv.logger.has_logs():
+                    self.show_logs(logger=drv.logger, name=self.tr("Nodal capacity time series logs"))
+                else:
+                    pass
+            else:
+                pass
 
         if not self.session.is_anything_running():
             self.UNLOCK()
-
         else:
             pass
-
-        if not self.session.is_anything_running():
-            self.UNLOCK()
 
     def run_reliability(self):
         """
@@ -3838,7 +3992,6 @@ class SimulationsMain(TimeEventsMain):
                     # Compile the grid
                     self.ui.progress_label.setText(
                         QtCore.QCoreApplication.translate("SimulationsMain", "Compiling the grid..."))
-                    QtGui.QGuiApplication.processEvents()
 
                     pf_options = self.get_selected_power_flow_options()
 
@@ -3905,7 +4058,6 @@ class SimulationsMain(TimeEventsMain):
 
                     # self.add_simulation(SimulationTypes.RmsDynamic_run)
                     self.ui.progress_label.setText('Running rms simulation...')
-                    QtGui.QGuiApplication.processEvents()
                     self.LOCK()
 
                     drv = sim.RmsSimulationDriver(grid=self.circuit,
@@ -4022,7 +4174,6 @@ class SimulationsMain(TimeEventsMain):
 
                 self.add_simulation(SimulationTypes.EmtDynamic_run)
                 self.ui.progress_label.setText('Running EMT simulation...')
-                QtGui.QGuiApplication.processEvents()
                 self.LOCK()
 
                 drv = sim.EmtSimulationDriver(grid=self.circuit,
@@ -4040,7 +4191,6 @@ class SimulationsMain(TimeEventsMain):
                 # self.add_simulation(SimulationTypes.RmsDynamic_run)
                 self.ui.progress_label.setText(
                     'Running EMT simulation from balanced power flow results ...')
-                QtGui.QGuiApplication.processEvents()
                 self.LOCK()
 
                 drv = sim.EmtSimulationDriver(grid=self.circuit,
@@ -4176,12 +4326,25 @@ class SimulationsMain(TimeEventsMain):
                                      instruction=instruction,
                                      base_url=self.server_driver.base_url(),
                                      certificate_path=self.server_driver.get_certificate_path(),
-                                     register_driver_func=self.session.register_driver)
-            driver.done_signal.connect(self.post_run_remote)
+                                     request_timeout_s=self.server_driver.request_timeout_s)
+            driver.result_driver_signal.connect(self.session.register_driver)
+            driver.finished.connect(self.post_run_remote_finished)
 
             self._remote_jobs[driver.idtag] = driver
 
             driver.start()
+
+    def post_run_remote_finished(self) -> None:
+        """
+        Process one remote job only after its QThread has actually finished.
+
+        :return: None.
+        """
+        sender: QtCore.QObject | None = self.sender()
+        if isinstance(sender, RemoteJobDriver):
+            self.post_run_remote(driver_idtag=sender.idtag)
+        else:
+            pass
 
     def post_run_remote(self, driver_idtag: str):
         """
@@ -4234,7 +4397,6 @@ class SimulationsMain(TimeEventsMain):
                         # Compile the grid
                         self.ui.progress_label.setText(
                             QtCore.QCoreApplication.translate("SimulationsMain", "Compiling the grid..."))
-                        QtGui.QGuiApplication.processEvents()
 
                         # get the small signal stability analysis simulation options from the GUI
                         options = self.get_selected_rms_small_signal_stability_options()
@@ -4321,7 +4483,6 @@ class SimulationsMain(TimeEventsMain):
                         # Compile the grid
                         self.ui.progress_label.setText(
                             QtCore.QCoreApplication.translate("SimulationsMain", "Compiling the grid..."))
-                        QtGui.QGuiApplication.processEvents()
 
                         # get the small-signal stability analysis simulation options from the GUI
                         sss_options = self.get_selected_emt_small_signal_stability_options()
@@ -4532,7 +4693,6 @@ class SimulationsMain(TimeEventsMain):
             self.remove_simulation(SimulationTypes.CatalogueOptimization_run)
 
             self.ui.progress_label.setText('Colouring catalogue optimization results in the grid...')
-            QtGui.QGuiApplication.processEvents()
 
             self.update_available_results()
 

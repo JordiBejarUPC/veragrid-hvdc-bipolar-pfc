@@ -8,7 +8,7 @@ import json
 import os.path
 import sys
 import webbrowser
-from typing import List, Union
+from typing import Dict, List, Union
 
 import numpy as np
 import pandas as pd
@@ -41,6 +41,7 @@ from VeraGrid.Gui.messages import yes_no_question, warning_msg, info_msg, error_
 from VeraGrid.Gui.FileDialogues.LoadCatalogue.catalogue_dialogue import CatalogueGUI
 from VeraGrid.Gui.Main.MainWindow import Ui_mainWindow, QMainWindow
 from VeraGrid.Session.session import SimulationSession, GcThread
+from VeraGrid.Session.server_driver import RemoteJobDriver
 from VeraGrid.Gui.SigmaAnalysis.sigma_analysis_dialogue import SigmaAnalysisGUI
 from VeraGrid.Gui.SyncDialogue.sync_dialogue import SyncDialogueWindow
 from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_editor import DynamicBlockEditorGUI
@@ -181,6 +182,8 @@ class BaseMainGui(QMainWindow):
         self.stuff_running_now: List[SimulationTypes] = list()
 
         self.session: SimulationSession = SimulationSession(name='GUI session')
+        self.server_driver: QtCore.QThread | None = None
+        self._remote_jobs: Dict[str, QtCore.QThread] = dict()
 
         self.dynamic_editor_workspace_session: DynamicEditorWorkspaceSession = DynamicEditorWorkspaceSession()
 
@@ -192,6 +195,7 @@ class BaseMainGui(QMainWindow):
 
         # toast manager
         self.toast_manager = ToastManager(parent=self, position_top=False)
+        self._open_plot_dialogs: List[QtWidgets.QDialog] = list()
 
         # threads ------------------------------------------------------------------------------------------------------
         self.painter = None
@@ -386,7 +390,6 @@ class BaseMainGui(QMainWindow):
         """
         self.lock_ui = val
         self.ui.progress_frame.setVisible(self.lock_ui)
-        QtGui.QGuiApplication.processEvents()
 
     def UNLOCK(self) -> None:
         """
@@ -554,50 +557,62 @@ class BaseMainGui(QMainWindow):
 
         return all_threads
 
-    def get_process_threads(self) -> List[GcThread]:
+    def get_process_threads(self) -> List[QtCore.QThread | None]:
         """
         Get all threads that has to do with processing
         :return: list of process threads
         """
-        all_threads = [self.open_file_thread_object,
-                       self.save_file_thread_object,
-                       self.painter,
-                       self.delete_and_reduce_driver,
-                       self.export_all_thread_object,
-                       self.find_node_groups_driver,
-                       self.file_sync_thread,
-                       ]
+        all_threads: List[QtCore.QThread | None] = [self.open_file_thread_object,
+                                                    self.save_file_thread_object,
+                                                    self.painter,
+                                                    self.delete_and_reduce_driver,
+                                                    self.export_all_thread_object,
+                                                    self.find_node_groups_driver,
+                                                    self.file_sync_thread,
+                                                    self.server_driver,
+                                                    ]
+        all_threads += list(self._remote_jobs.values())
         return all_threads
 
-    def get_all_threads(self) -> List[GcThread]:
+    def get_all_threads(self) -> List[QtCore.QThread | None]:
         """
         Get all threads
         :return: list of all threads
         """
-        all_threads = self.get_simulation_threads() + self.get_process_threads()
+        all_threads: List[QtCore.QThread | None] = self.get_simulation_threads() + self.get_process_threads()
         return all_threads
 
-    def stop_all_threads(self) -> None:
+    def stop_all_threads(self) -> bool:
         """
         Request all known GUI worker threads to stop without killing Python threads.
 
-        :return: None.
+        :return: ``True`` when every known worker has stopped.
         """
+        all_stopped: bool = True
         thread: GcThread | QtCore.QThread | None
         for thread in self.get_all_threads():
             if thread is not None:
                 if isinstance(thread, GcThread):
+                    thread.cancel()
+                elif isinstance(thread, RemoteJobDriver):
                     thread.cancel()
                 else:
                     pass
 
                 if thread.isRunning():
                     thread.quit()
-                    thread.wait(5000)
+                    stopped: bool = thread.wait(5000)
                 else:
-                    thread.wait(5000)
+                    stopped = thread.wait(5000)
+
+                if stopped:
+                    pass
+                else:
+                    all_stopped = False
             else:
                 pass
+
+        return all_stopped
 
     def any_thread_running(self) -> bool:
         """
@@ -1084,17 +1099,17 @@ class BaseMainGui(QMainWindow):
         """
         self.sync_ai_dialogue_action_state(visible)
 
-    def shutdown_ai_dialogue_if_available(self) -> None:
+    def shutdown_ai_dialogue_if_available(self) -> bool:
         """
         Stop the AI worker thread when the dialogue exists.
 
-        :returns: Nothing.
+        :returns: ``True`` when the AI dialogue has no live worker.
         """
         if self.ai_chat_dialogue is None:
-            pass
+            return True
         else:
             self.ai_chat_dialogue.prepare_for_shutdown()
-            self.ai_chat_dialogue.shutdown_turn_thread()
+            return self.ai_chat_dialogue.shutdown_turn_thread()
 
     def set_ai_dialogue_visible(self, visible: bool) -> None:
         """

@@ -4,11 +4,10 @@
 # SPDX-License-Identifier: MPL-2.0
 
 
-from PySide6 import QtWidgets
-import matplotlib
+from PySide6 import QtCore, QtGui, QtWidgets
 
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigationtoolbar
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as Navigationtoolbar
 from matplotlib.axes import Axes
 from matplotlib.backend_bases import MouseEvent
 from matplotlib.figure import Figure
@@ -58,6 +57,14 @@ class MplCanvas(FigureCanvas):
         # Connect events and callbacks
         # self.fig.canvas.mpl_connect("pick_event", self.on_pick_event)
         # self.fig.canvas.mpl_connect("button_release_event", self.on_release_event)
+
+    def cancel_pending_draw(self) -> None:
+        """
+        Cancel Matplotlib idle draws before Qt deletes this canvas.
+
+        :return: None.
+        """
+        self._draw_pending = False
 
     def setTitle(self, text):
         """
@@ -205,6 +212,30 @@ class MatplotlibWidget(QtWidgets.QWidget):
 
         self.mpltoolbar.toggleViewAction()
 
+    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
+        """
+        Release Matplotlib resources before Qt closes the widget.
+
+        :param event: Qt close event.
+        :return: None.
+        """
+        self.dispose()
+        QtWidgets.QWidget.closeEvent(self, event)
+
+    def event(self, event: QtCore.QEvent) -> bool:
+        """
+        Release Matplotlib resources before deferred Qt deletion.
+
+        :param event: Qt event.
+        :return: Base widget event result.
+        """
+        if event.type() == QtCore.QEvent.Type.DeferredDelete:
+            self.dispose()
+        else:
+            pass
+
+        return QtWidgets.QWidget.event(self, event)
+
     def setTitle(self, text):
         """
         Sets the figure title
@@ -227,9 +258,11 @@ class MatplotlibWidget(QtWidgets.QWidget):
 
         """
         if force:
+            self.canvas.disconnect_callbacks()
             self.canvas.fig.clear()
             self.canvas.ax = self.canvas.fig.add_subplot(111)
-            self.canvas.zoom_axis = self.canvas.ax
+            self.canvas.zoom_callback_id = self.canvas.zoom_factory(self.canvas.ax,
+                                                                    base_scale=self.canvas.zoom_base_scale)
             # self.canvas.ax.clear()
             # self.canvas = MplCanvas()
         else:
@@ -250,9 +283,12 @@ class MatplotlibWidget(QtWidgets.QWidget):
         :return: None.
         """
         if not self._disposed:
+            self.canvas.cancel_pending_draw()
             self.canvas.disconnect_callbacks()
             self.canvas.fig.clear()
             plt.close(self.canvas.fig)
+            self.mpltoolbar.close()
+            self.canvas.close()
             self.mpltoolbar.setParent(None)
             self.mpltoolbar.deleteLater()
             self.canvas.setParent(None)

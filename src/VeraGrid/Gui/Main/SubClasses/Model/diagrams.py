@@ -375,31 +375,43 @@ class DiagramsMain(CompiledArraysMain):
         self.ui.diagramsListView.setContextMenuPolicy(QtGui.Qt.ContextMenuPolicy.CustomContextMenu)
         self.ui.diagramsListView.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
 
-    def shutdown_tile_sources(self) -> None:
+    def shutdown_tile_sources(self) -> bool:
         """
         Stop the map tile provider workers owned by the diagrams layer.
 
-        :return: Nothing.
+        :return: ``True`` when every tile worker has stopped.
         """
+        all_stopped: bool = True
         diagram_widget: SchematicWidget | GridMapWidget
         for diagram_widget in self.diagram_widgets_list:
             if isinstance(diagram_widget, GridMapWidget):
-                diagram_widget.map.tile_src.shutdown()
+                stopped: bool = diagram_widget.map.tile_src.shutdown()
+                if stopped:
+                    pass
+                else:
+                    all_stopped = False
             else:
                 pass
 
         tile_source: CartoDbTiles
         for tile_source in self.tile_sources:
-            tile_source.shutdown()
+            stopped = tile_source.shutdown()
+            if stopped:
+                pass
+            else:
+                all_stopped = False
 
-    def stop_all_threads(self) -> None:
+        return all_stopped
+
+    def stop_all_threads(self) -> bool:
         """
         Stop GUI worker threads, including the tile workers owned by diagrams.
 
-        :return: Nothing.
+        :return: ``True`` when every known worker has stopped.
         """
-        self.shutdown_tile_sources()
-        CompiledArraysMain.stop_all_threads(self)
+        tile_sources_stopped: bool = self.shutdown_tile_sources()
+        threads_stopped: bool = CompiledArraysMain.stop_all_threads(self)
+        return tile_sources_stopped and threads_stopped
 
     def get_current_objects_model_view(self) -> ObjectModelFilterProxy | None:
         """

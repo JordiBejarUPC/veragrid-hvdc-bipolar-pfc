@@ -5,9 +5,12 @@
 
 import os.path
 import sys
+import faulthandler
+from datetime import datetime
 from pathlib import Path
+from typing import TextIO, Any
 
-from PySide6 import QtWidgets, QtGui
+from PySide6 import QtWidgets, QtGui, QtCore
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
 from VeraGrid.Gui.Main.MainWindow import QApplication
@@ -18,6 +21,7 @@ from VeraGrid.Gui.update_gui_all import update_all_icons
 from VeraGrid.Gui.Main.SubClasses.Scripting.scripting import ScriptingMain
 import VeraGrid.ThirdParty.qdarktheme as qdarktheme
 from VeraGrid.__version__ import __VeraGrid_VERSION__
+from VeraGridEngine.IO.file_system import get_create_veragrid_folder
 from VeraGridEngine.Utils.cache import clean_pycache_folders
 
 __author__ = 'Santiago Peñate Vera'
@@ -25,6 +29,111 @@ __author__ = 'Santiago Peñate Vera'
 """
 This class is the handler of the main gui of VeraGrid.
 """
+
+
+def get_crash_log_path() -> str:
+    """
+    Return the persistent GUI crash log path.
+
+    :return: Crash log path.
+    """
+    return os.path.join(get_create_veragrid_folder(), "veragrid_crash.log")
+
+
+def get_qt_log_path() -> str:
+    """
+    Return the persistent Qt message log path.
+
+    :return: Qt message log path.
+    """
+    return os.path.join(get_create_veragrid_folder(), "veragrid_qt.log")
+
+
+def write_log_header(file_path: str, title: str) -> None:
+    """
+    Append one process-start header to a diagnostic log.
+
+    :param file_path: Log file path.
+    :param title: Header title.
+    :return: None.
+    """
+    timestamp: str = datetime.now().isoformat(timespec="seconds")
+    with open(file_path, "a", encoding="utf-8") as file_pointer:
+        file_pointer.write(f"\n[{timestamp}] {title} VeraGrid {__VeraGrid_VERSION__}\n")
+
+
+def qt_message_handler(mode: QtCore.QtMsgType,
+                       context: QtCore.QMessageLogContext,
+                       message: str) -> None:
+    """
+    Persist Qt warnings and fatal messages that desktop launchers hide.
+
+    :param mode: Qt message severity.
+    :param context: Qt message context.
+    :param message: Message text.
+    :return: None.
+    """
+    try:
+        timestamp: str = datetime.now().isoformat(timespec="seconds")
+        mode_name: str = mode.name
+        source_file: str = context.file if context.file is not None else ""
+        function_name: str = context.function if context.function is not None else ""
+        line_number: int = context.line
+        with open(get_qt_log_path(), "a", encoding="utf-8") as file_pointer:
+            file_pointer.write(f"[{timestamp}] {mode_name} {source_file}:{line_number} {function_name}: {message}\n")
+    except Exception:
+        pass
+
+
+def exception_hook(exception_type: type[BaseException],
+                   exception_value: BaseException,
+                   exception_traceback) -> None:
+    """
+    Persist uncaught Python exceptions before delegating to Python's default hook.
+
+    :param exception_type: Exception class.
+    :param exception_value: Exception instance.
+    :param exception_traceback: Traceback object.
+    :return: None.
+    """
+    try:
+        with open(get_crash_log_path(), "a", encoding="utf-8") as file_pointer:
+            timestamp: str = datetime.now().isoformat(timespec="seconds")
+            file_pointer.write(f"[{timestamp}] Uncaught Python exception\n")
+            file_pointer.write(f"{exception_type.__name__}: {exception_value}\n")
+    except Exception:
+        pass
+
+
+def write_runtime_state_log(window: "VeraGridMainGUI", title: str) -> None:
+    """
+    Persist the GUI worker/session state around risky lifecycle transitions.
+
+    :param window: Main VeraGrid window.
+    :param title: Log section title.
+    :return: None.
+    """
+    try:
+        timestamp: str = datetime.now().isoformat(timespec="seconds")
+        with open(get_crash_log_path(), "a", encoding="utf-8") as file_pointer:
+            file_pointer.write(f"[{timestamp}] {title}\n")
+            file_pointer.write(f"lock_ui={window.lock_ui}\n")
+            file_pointer.write(f"stuff_running_now={list(window.stuff_running_now)}\n")
+            file_pointer.write(f"session_drivers={list(window.session.drivers.keys())}\n")
+            file_pointer.write(f"session_threads={list(window.session.threads.keys())}\n")
+
+            threads: list[Any] = window.get_all_threads()
+            thread_index: int
+            thread: Any
+            for thread_index, thread in enumerate(threads):
+                if thread is None:
+                    file_pointer.write(f"thread[{thread_index}]=None\n")
+                else:
+                    file_pointer.write(
+                        f"thread[{thread_index}]={type(thread).__name__} running={thread.isRunning()}\n"
+                    )
+    except Exception:
+        pass
 
 
 ########################################################################################################################
@@ -180,6 +289,8 @@ class VeraGridMainGUI(ScriptingMain):
         :param event:
         :return:
         """
+        write_runtime_state_log(window=self, title="Close requested")
+
         if self.circuit.get_bus_number() > 0:
             quit_msg = self.tr("Are you sure that you want to exit VeraGrid?")
             reply = QtWidgets.QMessageBox.question(self, self.tr("Close"), quit_msg,
@@ -189,9 +300,13 @@ class VeraGridMainGUI(ScriptingMain):
             if reply == QtWidgets.QMessageBox.StandardButton.Yes:
                 # save config regardless
                 self.save_all_config()
-                self.shutdown_ai_dialogue_if_available()
-                self.stop_all_threads()
-                event.accept()
+                ai_stopped: bool = self.shutdown_ai_dialogue_if_available()
+                threads_stopped: bool = self.stop_all_threads()
+                if ai_stopped and threads_stopped:
+                    event.accept()
+                else:
+                    self.show_warning_toast(self.tr("Some operations are still stopping. Close again after they finish."))
+                    event.ignore()
             else:
                 # save config regardless
                 self.save_all_config()
@@ -200,9 +315,13 @@ class VeraGridMainGUI(ScriptingMain):
             # no buses so exit
             # save config regardless
             self.save_all_config()
-            self.shutdown_ai_dialogue_if_available()
-            self.stop_all_threads()
-            event.accept()
+            ai_stopped = self.shutdown_ai_dialogue_if_available()
+            threads_stopped = self.stop_all_threads()
+            if ai_stopped and threads_stopped:
+                event.accept()
+            else:
+                self.show_warning_toast(self.tr("Some operations are still stopping. Close again after they finish."))
+                event.ignore()
 
 
 def create_linux_desktop_entry(app_name: str, qrc_icon_path: str):
@@ -302,6 +421,14 @@ def runVeraGrid() -> None:
     Main function to run the GUI
     :return:
     """
+    crash_log_path: str = get_crash_log_path()
+    qt_log_path: str = get_qt_log_path()
+    write_log_header(file_path=crash_log_path, title="Starting")
+    write_log_header(file_path=qt_log_path, title="Starting")
+    crash_log_file: TextIO = open(crash_log_path, "a", encoding="utf-8")
+    faulthandler.enable(file=crash_log_file, all_threads=True)
+    sys.excepthook = exception_hook
+    QtCore.qInstallMessageHandler(qt_message_handler)
 
     # if hasattr(qdarktheme, 'enable_hi_dpi'):
     qdarktheme.enable_hi_dpi()

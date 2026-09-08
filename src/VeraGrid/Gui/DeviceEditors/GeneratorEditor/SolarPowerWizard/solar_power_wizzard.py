@@ -9,10 +9,12 @@ from datetime import datetime, timedelta
 import pandas as pd
 import requests
 import pvlib
+from matplotlib.axes import Axes
 from matplotlib import pyplot as plt
 from PySide6 import QtCore, QtWidgets
 from VeraGrid.Gui.messages import error_msg
 from VeraGrid.Gui.DeviceEditors.GeneratorEditor.SolarPowerWizard.solar_power_wizard_gui import Ui_MainWindow
+from VeraGrid.Gui.matplotlib_dialog import show_matplotlib_figure
 from VeraGrid.Gui.pandas_model import PandasModel
 
 
@@ -262,6 +264,7 @@ class SolarPvWizard(QtWidgets.QDialog):
         self.temperature: Union[np.ndarray, None] = None
         self.wind_speed: Union[np.ndarray, None] = None
         self.irradiation: Union[np.ndarray, None] = None
+        self._open_plot_dialogs: List[QtWidgets.QDialog] = list()
 
         # accept button
         self.ui.acceptButton.clicked.connect(self.accept_click)
@@ -311,8 +314,11 @@ class SolarPvWizard(QtWidgets.QDialog):
     def plot(self) -> None:
 
         df: pd.DataFrame = pd.DataFrame(data=self.P, index=self.time_array, columns=['P (MW)'])
-        df.plot()
-        plt.show()
+        axis: Axes = df.plot()
+        show_matplotlib_figure(figure=axis.figure,
+                               parent=self,
+                               open_dialogs=self._open_plot_dialogs,
+                               title=self.tr("Solar power profile"))
 
     def accept_click(self) -> None:
         """
