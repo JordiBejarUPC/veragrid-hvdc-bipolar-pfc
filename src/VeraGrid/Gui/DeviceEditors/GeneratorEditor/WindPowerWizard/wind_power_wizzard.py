@@ -3,7 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Sequence, Tuple, Union
 
 import numpy as np
@@ -210,22 +210,44 @@ def build_mapped_wind_time_index(time_index: pd.DatetimeIndex, base_year: int) -
     return pd.DatetimeIndex(pd.to_datetime(mapped_timestamps))
 
 
+def get_longitude_time_offset(longitude: float) -> timedelta:
+    """
+    Get the local solar time offset from longitude.
+
+    :param longitude: Site longitude in degrees.
+    :type longitude: float
+    :return: Offset to add to UTC timestamps to obtain local solar time.
+    :rtype: timedelta
+    """
+    offset_hours: float = float(longitude) / 15.0
+
+    return timedelta(hours=offset_hours)
+
+
 def get_open_meteo_wind_weather_df(time_index: pd.DatetimeIndex,
                                    latitude: float,
-                                   longitude: float) -> Tuple[bool, pd.DataFrame]:
+                                   longitude: float,
+                                   use_local_time: bool = False) -> Tuple[bool, pd.DataFrame]:
     """
     Download hourly wind weather data from the free Open-Meteo historical weather API.
 
     :param time_index: Mapped historical weather time index.
     :param latitude: Site latitude in degrees.
     :param longitude: Site longitude in degrees.
+    :param use_local_time: Interpret circuit timestamps as local solar time at the site.
     :return: Success flag and weather data frame indexed by timestamp.
     """
     url: str = "https://archive-api.open-meteo.com/v1/archive"
+
+    if use_local_time:
+        query_time_index: pd.DatetimeIndex = time_index - get_longitude_time_offset(longitude=longitude)
+    else:
+        query_time_index = time_index
+
     params: dict = dict(latitude=latitude,
                         longitude=longitude,
-                        start_date=time_index[0].strftime("%Y-%m-%d"),
-                        end_date=time_index[-1].strftime("%Y-%m-%d"),
+                        start_date=query_time_index[0].strftime("%Y-%m-%d"),
+                        end_date=query_time_index[-1].strftime("%Y-%m-%d"),
                         hourly="wind_speed_100m,temperature_2m,surface_pressure",
                         wind_speed_unit="ms",
                         timezone="GMT")
@@ -238,6 +260,12 @@ def get_open_meteo_wind_weather_df(time_index: pd.DatetimeIndex,
 
         if isinstance(hourly, dict):
             weather_index: pd.DatetimeIndex = pd.DatetimeIndex(pd.to_datetime(hourly["time"], errors="coerce"))
+
+            if use_local_time:
+                weather_index = weather_index + get_longitude_time_offset(longitude=longitude)
+            else:
+                pass
+
             weather_df: pd.DataFrame = pd.DataFrame(index=weather_index)
             weather_df["wind_speed_100m"] = np.asarray(hourly["wind_speed_100m"], dtype=float)
             weather_df["temperature_2m"] = np.asarray(hourly["temperature_2m"], dtype=float)
@@ -526,7 +554,8 @@ def get_wind_power_df(time_array: Sequence[Union[str, datetime, pd.Timestamp]],
                       peak_power: float,
                       hub_height: float,
                       roughness_length: float,
-                      turbine_type: Union[str, None]) -> Tuple[bool, pd.DataFrame]:
+                      turbine_type: Union[str, None],
+                      use_local_time: bool = False) -> Tuple[bool, pd.DataFrame]:
     """
     Download Open-Meteo wind weather data and calculate wind generator active power.
 
@@ -537,6 +566,7 @@ def get_wind_power_df(time_array: Sequence[Union[str, datetime, pd.Timestamp]],
     :param hub_height: Turbine hub height in m.
     :param roughness_length: Surface roughness length in m.
     :param turbine_type: windpowerlib turbine type or None for the generic turbine.
+    :param use_local_time: Interpret circuit timestamps as local solar time at the site.
     :return: Success flag and wind active power data aligned to the requested time profile.
     """
     ok: bool
@@ -584,7 +614,8 @@ def get_wind_power_df(time_array: Sequence[Union[str, datetime, pd.Timestamp]],
                 weather_df: pd.DataFrame
                 weather_ok, weather_df = get_open_meteo_wind_weather_df(time_index=mapped_time_index,
                                                                         latitude=latitude,
-                                                                        longitude=longitude)
+                                                                        longitude=longitude,
+                                                                        use_local_time=use_local_time)
 
                 if weather_ok:
                     power_ok: bool
@@ -700,6 +731,7 @@ class WindFarmWizard(QtWidgets.QDialog):
         self.ui.powerSpinBox.setValue(peak_power)
         self.ui.latitudeSpinBox.setValue(latitude)
         self.ui.longitudeSpinBox.setValue(longitude)
+        self.ui.localTimeCheckBox.setChecked(False)
         self.ui.label_3.setText(f"Wind turbine data - Generator {gen_name} / Bus {bus_name}")
 
         self.ui.acceptButton.clicked.connect(self.accept_click)
@@ -959,7 +991,8 @@ class WindFarmWizard(QtWidgets.QDialog):
                                              peak_power=self.get_selected_plant_power(),
                                              hub_height=self.get_selected_hub_height(),
                                              roughness_length=self.ui.roughnessLengthSpinBox.value(),
-                                             turbine_type=self.get_selected_turbine_type())
+                                             turbine_type=self.get_selected_turbine_type(),
+                                             use_local_time=self.ui.localTimeCheckBox.isChecked())
         if self.ok:
             self.P = self.df["P"].to_numpy(dtype=float) / 1e6
             self.temperature = self.df["temperature"].to_numpy(dtype=float)
