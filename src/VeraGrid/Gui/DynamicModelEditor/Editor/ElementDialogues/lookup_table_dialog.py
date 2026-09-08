@@ -9,11 +9,11 @@ import re
 from typing import Sequence
 
 from matplotlib.axes import Axes
-from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
-from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
+
+from VeraGrid.Gui.matplotlib_dialog import show_matplotlib_figure
 
 
 def sort_pair_by_x(point: tuple[float, float] | tuple[float, int]) -> float:
@@ -526,21 +526,8 @@ class LookupArrayLinearDialog(QtWidgets.QDialog):
         else:
             pass
 
-        # The preview lives in a separate dialog so the user can keep editing the
-        # lookup points while visually checking the resulting curve shape.
-        preview_dialog: QtWidgets.QDialog = QtWidgets.QDialog(self)
-        preview_dialog.setWindowTitle(self._preview_title)
-        preview_dialog.resize(720, 440)
-        preview_dialog.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose, True)
-        preview_dialog.destroyed.connect(self._clear_preview_dialog_reference)
-
-        layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(preview_dialog)
         figure: Figure = Figure(figsize=(7, 4))
         axis: Axes = figure.add_subplot(111)
-        canvas: FigureCanvas = FigureCanvas(figure)
-        toolbar: NavigationToolbar = NavigationToolbar(canvas, preview_dialog)
-        layout.addWidget(toolbar)
-        layout.addWidget(canvas)
 
         # The preview intentionally plots the sorted point sequence because the
         # effective lookup law always depends on the monotonic x-axis ordering.
@@ -552,10 +539,14 @@ class LookupArrayLinearDialog(QtWidgets.QDialog):
         axis.set_ylabel(self._y_label)
         axis.set_title(self._preview_title)
         figure.tight_layout()
-        canvas.draw()
 
+        open_dialogs: list[QtWidgets.QDialog] = list()
+        preview_dialog: QtWidgets.QDialog = show_matplotlib_figure(figure=figure,
+                                                                    parent=self,
+                                                                    open_dialogs=open_dialogs,
+                                                                    title=self._preview_title)
+        preview_dialog.destroyed.connect(self._clear_preview_dialog_reference)
         self._preview_dialog = preview_dialog
-        preview_dialog.show()
         preview_dialog.raise_()
         preview_dialog.activateWindow()
 
