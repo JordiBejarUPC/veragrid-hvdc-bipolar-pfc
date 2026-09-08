@@ -3571,7 +3571,8 @@ class SimulationsMain(TimeEventsMain):
                                 n_monte_carlo_sim=self.ui.max_iterations_reliability_spinBox.value(),
                                 use_monte_carlo=True,
                                 save_file=False,
-                                time_indices=self.get_time_indices()
+                                time_indices=self.get_time_indices(),
+                                clustering_results=self.get_clustering_results()
                             )
                         else:
                             self.show_warning_toast(self.tr('Adequacy studies need time data...'))
@@ -3587,7 +3588,8 @@ class SimulationsMain(TimeEventsMain):
                                 minimum_firm_share=self.ui.firmCapacityShareSpinBox.value() / 100.0,
                                 use_monte_carlo=False,
                                 save_file=False,
-                                time_indices=self.get_time_indices()
+                                time_indices=self.get_time_indices(),
+                                clustering_results=self.get_clustering_results()
                             )
                         else:
                             self.show_warning_toast(self.tr('Adequacy studies need time data...'))
