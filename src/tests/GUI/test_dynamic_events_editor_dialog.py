@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sys
 
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 import VeraGridEngine.api as vge
 from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_support import collect_block_runtime_event_parameters
@@ -10,6 +10,10 @@ from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_models import Dynamic
 from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_models import DynamicEventGroupDraft
 from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_models import DynamicEventsDraftSession
 from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_page import DynamicEventsPage
+from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_page import DynamicEventsFilterHeader
+from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_page import DynamicEventsFilterPopup
+from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_page import DynamicEventsFilterProxyModel
+from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_page import DynamicEventsTreeModel
 from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import DynamicEditorEntry
 from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import build_dynamic_editor_entry
 from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_workspace_session import DynamicEditorWorkspaceSession
@@ -338,7 +342,8 @@ def test_add_event_without_selection_opens_event_group_editor() -> None:
     page.tree_view.setCurrentIndex(QtCore.QModelIndex())
     page.add_event()
     current_index: QtCore.QModelIndex = page.tree_view.currentIndex()
-    current_backing: object | None = page.tree_model.backing_object(current_index)
+    source_index: QtCore.QModelIndex = page.filter_model.mapToSource(current_index)
+    current_backing: object | None = page.tree_model.backing_object(source_index)
     editor: QtWidgets.QWidget | None = page.tree_view.indexWidget(current_index)
 
     assert isinstance(current_backing, DynamicEventDraft)
@@ -378,6 +383,141 @@ def test_page_table_filters_events_by_device() -> None:
     assert event_draft.device is first_load
     assert page.tree_model.headerData(0, QtCore.Qt.Orientation.Horizontal) == "Event Group"
     dialog.close()
+
+
+def test_event_filters_combine_multiple_values_and_columns() -> None:
+    """Column values must use OR while different filters combine with AND.
+
+    :return: None.
+    """
+    _unused_application: QtWidgets.QApplication = get_qt_application()
+    circuit, load, first_parameter, first_group = build_dynamic_target(
+        DynamicSimulationMode.RMS
+    )
+    assert isinstance(first_group, RmsEventsGroup)
+    second_parameter: Var = VarFactory().add_var("second_parameter")
+    event_values: dict[Var, Const] = dict()
+    event_values[first_parameter] = Const(0.0)
+    event_values[second_parameter] = Const(0.0)
+    load.rms_model = Block(event_dict=event_values)
+    second_group: RmsEventsGroup = RmsEventsGroup(name="Second group")
+    circuit.add_rms_events_group(second_group)
+    circuit.add_rms_event(vge.RmsEvent(
+        device=load,
+        parameter=first_parameter,
+        time=1.0,
+        value=1.0,
+        group=first_group,
+        transition_type=DynamicEventTransitionType.Step,
+    ))
+    circuit.add_rms_event(vge.RmsEvent(
+        device=load,
+        parameter=second_parameter,
+        time=2.0,
+        end_time=3.0,
+        value=2.0,
+        group=first_group,
+        transition_type=DynamicEventTransitionType.Ramp,
+    ))
+    circuit.add_rms_event(vge.RmsEvent(
+        device=load,
+        parameter=first_parameter,
+        time=4.0,
+        value=3.0,
+        group=second_group,
+        transition_type=DynamicEventTransitionType.Step,
+    ))
+    dialog: DynamicEventEditor = DynamicEventEditor(
+        circuit=circuit,
+        preferred_mode=DynamicSimulationMode.RMS,
+        initial_device=load,
+    )
+    page: DynamicEventsPage = dialog.pages[0]
+
+    assert page.filter_model.rowCount() == 3
+    assert isinstance(page.filter_header, DynamicEventsFilterHeader)
+    filter_indicator: QtWidgets.QLabel
+    for filter_indicator in (
+        page.filter_header.event_group_indicator,
+        page.filter_header.parameter_indicator,
+        page.filter_header.transition_indicator,
+    ):
+        assert filter_indicator.text() == "\N{BLACK DOWN-POINTING SMALL TRIANGLE}"
+        assert not filter_indicator.isHidden()
+        assert filter_indicator.parent() is page.filter_header.viewport()
+    assert set(page.filter_model.available_values(page.tree_model.COLUMN_EVENT_GROUP)) == {
+        "RMS group",
+        "Second group",
+    }
+
+    page.filter_model.set_selected_values(
+        page.tree_model.COLUMN_EVENT_GROUP,
+        {"RMS group", "Second group"},
+    )
+    assert page.filter_model.rowCount() == 3
+
+    page.filter_model.set_selected_values(
+        page.tree_model.COLUMN_PARAMETER,
+        {first_parameter.name},
+    )
+    assert page.filter_model.rowCount() == 2
+
+    page.filter_model.set_selected_values(
+        page.tree_model.COLUMN_TRANSITION,
+        {DynamicEventTransitionType.Step.name},
+    )
+    assert page.filter_model.rowCount() == 2
+
+    page.filter_model.set_selected_values(
+        page.tree_model.COLUMN_EVENT_GROUP,
+        {first_group.name},
+    )
+    assert page.filter_model.rowCount() == 1
+
+    page.filter_model.set_selected_values(page.tree_model.COLUMN_PARAMETER, set())
+    assert page.filter_model.rowCount() == 1
+    page.filter_model.clear_filters()
+    assert page.filter_model.rowCount() == 3
+    assert not page.filter_model.is_filter_active(page.tree_model.COLUMN_EVENT_GROUP)
+    dialog.close()
+
+
+def test_filter_popup_keeps_multiple_values_selected_and_all_clears_them() -> None:
+    """The header popup must retain highlighted choices until All is selected.
+
+    :return: None.
+    """
+    _unused_application: QtWidgets.QApplication = get_qt_application()
+    filter_model: DynamicEventsFilterProxyModel = DynamicEventsFilterProxyModel()
+    popup: DynamicEventsFilterPopup = DynamicEventsFilterPopup(
+        column=DynamicEventsTreeModel.COLUMN_EVENT_GROUP,
+        available_values=list(("Group one", "Group two")),
+        selected_values=set(),
+    )
+    popup.filterSelectionChanged.connect(filter_model.set_selected_values)
+    first_group_item: QtWidgets.QListWidgetItem = popup.values_list.item(1)
+    second_group_item: QtWidgets.QListWidgetItem = popup.values_list.item(2)
+
+    first_group_item.setSelected(True)
+    popup._on_item_clicked(first_group_item)
+    second_group_item.setSelected(True)
+    popup._on_item_clicked(second_group_item)
+
+    assert filter_model.selected_values(DynamicEventsTreeModel.COLUMN_EVENT_GROUP) == {
+        "Group one",
+        "Group two",
+    }
+    assert first_group_item.isSelected()
+    assert second_group_item.isSelected()
+    assert not popup.all_item.isSelected()
+
+    popup._on_item_clicked(popup.all_item)
+
+    assert filter_model.selected_values(DynamicEventsTreeModel.COLUMN_EVENT_GROUP) == set()
+    assert popup.all_item.isSelected()
+    assert not first_group_item.isSelected()
+    assert not second_group_item.isSelected()
+    popup.close()
 
 
 def test_event_group_cell_moves_draft_and_save_persists_it() -> None:
@@ -502,12 +642,13 @@ def test_group_active_and_rename_are_transactional() -> None:
     cancelled_group: DynamicEventGroupDraft = cancelled_dialog.session.get_groups(
         DynamicSimulationMode.RMS
     )[0]
+    cancelled_page: DynamicEventsPage = cancelled_dialog.pages[0]
     cancelled_dialog.session.rename_group(cancelled_group, "Cancelled name")
     cancelled_dialog.session.set_group_active(cancelled_group, False)
     cancelled_dialog.reject()
 
     assert not cancelled_group.active
-    assert cancelled_dialog.pages[0].tree_model.rowCount() == 0
+    assert cancelled_page.tree_model.rowCount() == 0
     assert group.name == "RMS group"
     assert group.active
 
@@ -697,6 +838,8 @@ def test_event_controls_add_without_selection_and_explain_missing_remove_selecti
     page.tree_view.setCurrentIndex(QtCore.QModelIndex())
 
     page.add_event()
+    page.tree_view.clearSelection()
+    page.tree_view.setCurrentIndex(QtCore.QModelIndex())
     page.remove_selection()
     remove_toast_label: QtWidgets.QLabel | None = page.toast_manager.active_toasts[0].findChild(
         QtWidgets.QLabel

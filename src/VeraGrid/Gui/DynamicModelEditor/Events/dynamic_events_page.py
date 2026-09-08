@@ -465,10 +465,470 @@ class DynamicEventsTreeModel(QtGui.QStandardItemModel):
             return False
 
 
+class DynamicEventsFilterProxyModel(QtCore.QSortFilterProxyModel):
+    """Filter event rows by group, parameter and transition selections."""
+
+    filterChanged = QtCore.Signal()
+
+    __slots__ = ("_selected_values",)
+
+    FILTER_COLUMNS: tuple[int, ...] = (
+        DynamicEventsTreeModel.COLUMN_EVENT_GROUP,
+        DynamicEventsTreeModel.COLUMN_PARAMETER,
+        DynamicEventsTreeModel.COLUMN_TRANSITION,
+    )
+    NO_GROUP_TEXT: str = "No Event Group"
+    INVALID_PARAMETER_TEXT: str = "Invalid parameter"
+
+    def __init__(self, parent: QtCore.QObject | None = None) -> None:
+        """Create an initially unrestricted event filter.
+
+        :param parent: Optional Qt owner.
+        :return: None.
+        """
+        QtCore.QSortFilterProxyModel.__init__(self, parent)
+        self._selected_values: dict[int, set[str]] = dict()
+        column: int
+        for column in self.FILTER_COLUMNS:
+            self._selected_values[column] = set()
+        self.setDynamicSortFilter(True)
+
+    def selected_values(self, column: int) -> set[str]:
+        """Return a copy of the active values for one filter column.
+
+        :param column: Source-model column whose filter is requested.
+        :return: Selected display values, or an empty set for All.
+        """
+        values: set[str] | None = self._selected_values.get(column, None)
+        if values is None:
+            return set()
+        else:
+            return set(values)
+
+    def set_selected_values(self, column: int, values: set[str]) -> None:
+        """Replace one column filter and refresh the visible rows.
+
+        :param column: Source-model column to filter.
+        :param values: Accepted display values; empty means All.
+        :return: None.
+        """
+        if column in self.FILTER_COLUMNS:
+            self._selected_values[column] = set(values)
+            self.invalidateRowsFilter()
+            self.filterChanged.emit()
+        else:
+            pass
+
+    def clear_filters(self) -> None:
+        """Restore All for every filterable column.
+
+        :return: None.
+        """
+        changed: bool = False
+        column: int
+        for column in self.FILTER_COLUMNS:
+            if len(self._selected_values[column]) > 0:
+                self._selected_values[column] = set()
+                changed = True
+            else:
+                pass
+        if changed:
+            self.invalidateRowsFilter()
+            self.filterChanged.emit()
+        else:
+            pass
+
+    def available_values(self, column: int) -> list[str]:
+        """Collect sorted unique values from every source event row.
+
+        Values come from the unfiltered source model so filters in other
+        columns never hide choices from the popup.
+
+        :param column: Filterable source-model column.
+        :return: Alphabetically sorted unique display values.
+        """
+        source_model: QtCore.QAbstractItemModel | None = self.sourceModel()
+        values: set[str] = set()
+        if isinstance(source_model, DynamicEventsTreeModel) and column in self.FILTER_COLUMNS:
+            row: int
+            for row in range(source_model.rowCount()):
+                event_index: QtCore.QModelIndex = source_model.index(
+                    row,
+                    DynamicEventsTreeModel.COLUMN_EVENT_GROUP,
+                )
+                event: object | None = source_model.backing_object(event_index)
+                if isinstance(event, DynamicEventDraft):
+                    values.add(self._event_filter_value(event, column))
+                else:
+                    pass
+        else:
+            pass
+        return sorted(values, key=str.casefold)
+
+    def reconcile_selected_values(self) -> None:
+        """Remove selected values that no longer exist in the source model.
+
+        :return: None.
+        """
+        changed: bool = False
+        column: int
+        for column in self.FILTER_COLUMNS:
+            selected: set[str] = self._selected_values[column]
+            if len(selected) > 0:
+                available: set[str] = set(self.available_values(column))
+                reconciled: set[str] = selected.intersection(available)
+                if reconciled != selected:
+                    self._selected_values[column] = reconciled
+                    changed = True
+                else:
+                    pass
+            else:
+                pass
+        if changed:
+            self.invalidateRowsFilter()
+            self.filterChanged.emit()
+        else:
+            pass
+
+    def is_filter_active(self, column: int) -> bool:
+        """Return whether a column currently restricts visible rows.
+
+        :param column: Source-model column to inspect.
+        :return: ``True`` when at least one explicit value is selected.
+        """
+        return len(self.selected_values(column)) > 0
+
+    def filterAcceptsRow(self,
+                         source_row: int,
+                         source_parent: QtCore.QModelIndex) -> bool:
+        """Apply OR within each column and AND across filter columns.
+
+        :param source_row: Candidate source-model row.
+        :param source_parent: Candidate source parent index.
+        :return: Whether the event satisfies every active column filter.
+        """
+        source_model: QtCore.QAbstractItemModel | None = self.sourceModel()
+        if not isinstance(source_model, DynamicEventsTreeModel):
+            return True
+        else:
+            event_index: QtCore.QModelIndex = source_model.index(
+                source_row,
+                DynamicEventsTreeModel.COLUMN_EVENT_GROUP,
+                source_parent,
+            )
+            event: object | None = source_model.backing_object(event_index)
+        if not isinstance(event, DynamicEventDraft):
+            return False
+        else:
+            pass
+        column: int
+        for column in self.FILTER_COLUMNS:
+            selected: set[str] = self._selected_values[column]
+            if len(selected) > 0 and self._event_filter_value(event, column) not in selected:
+                return False
+            else:
+                pass
+        return True
+
+    def _event_filter_value(self, event: DynamicEventDraft, column: int) -> str:
+        """Return the stable displayed filter value for one event column.
+
+        :param event: Event draft represented by a source row.
+        :param column: Filterable source-model column.
+        :return: Group, parameter or transition label.
+        """
+        if column == DynamicEventsTreeModel.COLUMN_EVENT_GROUP:
+            if event.group is None:
+                return self.tr(self.NO_GROUP_TEXT)
+            else:
+                return event.group.name
+        elif column == DynamicEventsTreeModel.COLUMN_PARAMETER:
+            if event.parameter is None:
+                return self.tr(self.INVALID_PARAMETER_TEXT)
+            else:
+                return event.parameter.name
+        elif column == DynamicEventsTreeModel.COLUMN_TRANSITION:
+            return event.transition_type.name
+        else:
+            return ""
+
+
+class DynamicEventsFilterPopup(QtWidgets.QMenu):
+    """Display persistent multi-selection choices for one header column."""
+
+    filterSelectionChanged = QtCore.Signal(int, object)
+
+    __slots__ = ("column", "all_item", "values_list")
+
+    def __init__(self,
+                 column: int,
+                 available_values: list[str],
+                 selected_values: set[str],
+                 parent: QtWidgets.QWidget | None = None) -> None:
+        """Build a popup whose selected rows remain visibly highlighted.
+
+        :param column: Filterable model column represented by the popup.
+        :param available_values: Values present in the complete source model.
+        :param selected_values: Values currently accepted by the filter.
+        :param parent: Optional owning widget.
+        :return: None.
+        """
+        QtWidgets.QMenu.__init__(self, parent)
+        self.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose, True)
+        self.column: int = column
+        self.values_list: QtWidgets.QListWidget = QtWidgets.QListWidget(self)
+        self.values_list.setSelectionMode(
+            QtWidgets.QAbstractItemView.SelectionMode.MultiSelection
+        )
+        self.all_item: QtWidgets.QListWidgetItem = QtWidgets.QListWidgetItem(
+            self.tr("All"),
+            self.values_list,
+        )
+        value: str
+        for value in available_values:
+            item: QtWidgets.QListWidgetItem = QtWidgets.QListWidgetItem(value, self.values_list)
+            item.setData(QtCore.Qt.ItemDataRole.UserRole, value)
+            item.setSelected(value in selected_values)
+        if len(selected_values) == 0:
+            self.all_item.setSelected(True)
+        else:
+            self.all_item.setSelected(False)
+        row_height: int = self.values_list.sizeHintForRow(0)
+        visible_rows: int = min(self.values_list.count(), 10)
+        self.values_list.setMinimumWidth(190)
+        self.values_list.setFixedHeight(max(row_height, 22) * visible_rows + 6)
+        widget_action: QtWidgets.QWidgetAction = QtWidgets.QWidgetAction(self)
+        widget_action.setDefaultWidget(self.values_list)
+        self.addAction(widget_action)
+        self.values_list.itemClicked.connect(self._on_item_clicked)
+
+    @QtCore.Slot(QtWidgets.QListWidgetItem)
+    def _on_item_clicked(self, clicked_item: QtWidgets.QListWidgetItem) -> None:
+        """Enforce All semantics and publish the current explicit values.
+
+        :param clicked_item: List entry whose selection was toggled by Qt.
+        :return: None.
+        """
+        if clicked_item is self.all_item:
+            self.values_list.clearSelection()
+            self.all_item.setSelected(True)
+        else:
+            self.all_item.setSelected(False)
+            selected_specific_items: list[QtWidgets.QListWidgetItem] = list()
+            selected_item: QtWidgets.QListWidgetItem
+            for selected_item in self.values_list.selectedItems():
+                if selected_item is not self.all_item:
+                    selected_specific_items.append(selected_item)
+                else:
+                    pass
+            if len(selected_specific_items) == 0:
+                self.all_item.setSelected(True)
+            else:
+                pass
+        selected_values: set[str] = set()
+        item: QtWidgets.QListWidgetItem
+        for item in self.values_list.selectedItems():
+            value: object | None = item.data(QtCore.Qt.ItemDataRole.UserRole)
+            if item is not self.all_item and isinstance(value, str):
+                selected_values.add(value)
+            else:
+                pass
+        self.filterSelectionChanged.emit(self.column, selected_values)
+
+
+class DynamicEventsFilterHeader(QtWidgets.QHeaderView):
+    """Show filter indicators and open multi-selection popups on header clicks."""
+
+    __slots__ = (
+        "filter_model",
+        "event_group_indicator",
+        "parameter_indicator",
+        "transition_indicator",
+    )
+
+    def __init__(self,
+                 filter_model: DynamicEventsFilterProxyModel,
+                 parent: QtWidgets.QWidget | None = None) -> None:
+        """Create a horizontal header attached to an event filter proxy.
+
+        :param filter_model: Proxy receiving popup selections.
+        :param parent: Optional owning widget.
+        :return: None.
+        """
+        QtWidgets.QHeaderView.__init__(self, QtCore.Qt.Orientation.Horizontal, parent)
+        self.filter_model: DynamicEventsFilterProxyModel = filter_model
+        self.setSectionsClickable(True)
+        self.event_group_indicator: QtWidgets.QLabel = self._create_filter_indicator()
+        self.parameter_indicator: QtWidgets.QLabel = self._create_filter_indicator()
+        self.transition_indicator: QtWidgets.QLabel = self._create_filter_indicator()
+        self.sectionResized.connect(self._position_filter_indicators)
+        self.sectionMoved.connect(self._position_filter_indicators)
+        self.geometriesChanged.connect(self._position_filter_indicators)
+        self._position_filter_indicators()
+
+    def _create_filter_indicator(self) -> QtWidgets.QLabel:
+        """Create one mouse-transparent downward filter marker.
+
+        :return: Label owned by the header viewport.
+        """
+        indicator: QtWidgets.QLabel = QtWidgets.QLabel("\N{BLACK DOWN-POINTING SMALL TRIANGLE}", self.viewport())
+        indicator.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        indicator.setAttribute(QtCore.Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        indicator.setFixedWidth(16)
+        indicator.setStyleSheet("background: transparent; font-size: 11px;")
+        indicator.show()
+        indicator.raise_()
+        return indicator
+
+    def _indicator_for_column(self, column: int) -> QtWidgets.QLabel | None:
+        """Return the visible marker assigned to a filterable column.
+
+        :param column: Logical event-table column.
+        :return: Matching marker, or ``None`` for a non-filterable column.
+        """
+        if column == DynamicEventsTreeModel.COLUMN_EVENT_GROUP:
+            return self.event_group_indicator
+        elif column == DynamicEventsTreeModel.COLUMN_PARAMETER:
+            return self.parameter_indicator
+        elif column == DynamicEventsTreeModel.COLUMN_TRANSITION:
+            return self.transition_indicator
+        else:
+            return None
+
+    @QtCore.Slot()
+    @QtCore.Slot(int, int, int)
+    def _position_filter_indicators(self,
+                                    _logical_index: int = -1,
+                                    _old_size: int = 0,
+                                    _new_size: int = 0) -> None:
+        """Anchor every marker to the right edge of its current section.
+
+        :param _logical_index: Optional resized or moved logical section.
+        :param _old_size: Optional previous section size.
+        :param _new_size: Optional new section size or visual index.
+        :return: None.
+        """
+        column: int
+        for column in DynamicEventsFilterProxyModel.FILTER_COLUMNS:
+            indicator: QtWidgets.QLabel | None = self._indicator_for_column(column)
+            if indicator is not None:
+                section_left: int = self.sectionViewportPosition(column)
+                section_width: int = self.sectionSize(column)
+                indicator.move(
+                    section_left + section_width - indicator.width() - 3,
+                    0,
+                )
+                indicator.setFixedHeight(self.height())
+                if self.filter_model.is_filter_active(column):
+                    indicator_color: QtGui.QColor = self.palette().color(
+                        QtGui.QPalette.ColorRole.Highlight
+                    )
+                else:
+                    indicator_color = self.palette().color(
+                        QtGui.QPalette.ColorRole.ButtonText
+                    )
+                indicator_palette: QtGui.QPalette = indicator.palette()
+                indicator_palette.setColor(
+                    QtGui.QPalette.ColorRole.WindowText,
+                    indicator_color,
+                )
+                indicator.setPalette(indicator_palette)
+                indicator.raise_()
+            else:
+                pass
+
+    def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
+        """Keep markers aligned when the complete header changes size.
+
+        :param event: Header resize event.
+        :return: None.
+        """
+        QtWidgets.QHeaderView.resizeEvent(self, event)
+        self._position_filter_indicators()
+
+    def scrollContentsBy(self, dx: int, dy: int) -> None:
+        """Keep markers aligned while the table scrolls horizontally.
+
+        :param dx: Horizontal scroll delta.
+        :param dy: Vertical scroll delta.
+        :return: None.
+        """
+        QtWidgets.QHeaderView.scrollContentsBy(self, dx, dy)
+        self._position_filter_indicators()
+
+    def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
+        """Open the clicked filter column popup.
+
+        :param event: Header mouse press event.
+        :return: None.
+        """
+        logical_index: int = self.logicalIndexAt(event.position().toPoint())
+        if (
+            event.button() == QtCore.Qt.MouseButton.LeftButton
+            and logical_index in DynamicEventsFilterProxyModel.FILTER_COLUMNS
+        ):
+            popup: DynamicEventsFilterPopup = DynamicEventsFilterPopup(
+                column=logical_index,
+                available_values=self.filter_model.available_values(logical_index),
+                selected_values=self.filter_model.selected_values(logical_index),
+                parent=self,
+            )
+            popup.filterSelectionChanged.connect(self._apply_filter_selection)
+            section_left: int = self.sectionViewportPosition(logical_index)
+            popup_position: QtCore.QPoint = self.viewport().mapToGlobal(
+                QtCore.QPoint(section_left, self.height())
+            )
+            popup.popup(popup_position)
+        else:
+            QtWidgets.QHeaderView.mousePressEvent(self, event)
+
+    @QtCore.Slot(int, object)
+    def _apply_filter_selection(self, column: int, values_object: object) -> None:
+        """Apply a typed popup selection and repaint its header section.
+
+        :param column: Filterable model column.
+        :param values_object: Set of selected string values emitted by the popup.
+        :return: None.
+        """
+        if isinstance(values_object, set):
+            values: set[str] = set()
+            value: object
+            for value in values_object:
+                if isinstance(value, str):
+                    values.add(value)
+                else:
+                    pass
+            self.filter_model.set_selected_values(column, values)
+            self._position_filter_indicators()
+            self.viewport().update()
+        else:
+            pass
+
+
 class DynamicEventsItemDelegate(QtWidgets.QStyledItemDelegate):
     """Provide typed editors for dynamic-event table cells."""
 
     __slots__ = ()
+
+    def _source_context(self,
+                        index: QtCore.QModelIndex) -> tuple[DynamicEventsTreeModel | None,
+                                                            QtCore.QModelIndex]:
+        """Resolve a view index to the editable source event model.
+
+        :param index: Direct-source or filter-proxy model index.
+        :return: Source model and mapped source index, or an invalid context.
+        """
+        model: QtCore.QAbstractItemModel | None = index.model()
+        if isinstance(model, DynamicEventsTreeModel):
+            return model, index
+        elif isinstance(model, DynamicEventsFilterProxyModel):
+            source_model: QtCore.QAbstractItemModel | None = model.sourceModel()
+            if isinstance(source_model, DynamicEventsTreeModel):
+                return source_model, model.mapToSource(index)
+            else:
+                return None, QtCore.QModelIndex()
+        else:
+            return None, QtCore.QModelIndex()
 
     def createEditor(self,
                      parent: QtWidgets.QWidget,
@@ -482,11 +942,13 @@ class DynamicEventsItemDelegate(QtWidgets.QStyledItemDelegate):
         :return: Typed editor widget, or ``None`` for check-state cells.
         """
         del option
-        model: QtCore.QAbstractItemModel | None = index.model()
-        if not isinstance(model, DynamicEventsTreeModel):
+        model: DynamicEventsTreeModel | None
+        source_index: QtCore.QModelIndex
+        model, source_index = self._source_context(index)
+        if model is None:
             return None
         else:
-            backing: object | None = model.backing_object(index)
+            backing: object | None = model.backing_object(source_index)
         if not isinstance(backing, DynamicEventDraft):
             return None
         elif index.column() == model.COLUMN_EVENT_GROUP:
@@ -547,11 +1009,13 @@ class DynamicEventsItemDelegate(QtWidgets.QStyledItemDelegate):
         :param index: Edited table cell.
         :return: None.
         """
-        model: QtCore.QAbstractItemModel | None = index.model()
-        if not isinstance(model, DynamicEventsTreeModel):
+        model: DynamicEventsTreeModel | None
+        source_index: QtCore.QModelIndex
+        model, source_index = self._source_context(index)
+        if model is None:
             return
         else:
-            backing: object | None = model.backing_object(index)
+            backing: object | None = model.backing_object(source_index)
         if isinstance(backing, DynamicEventDraft):
             self._set_event_editor_data(editor, index.column(), backing)
         else:
@@ -600,15 +1064,26 @@ class DynamicEventsItemDelegate(QtWidgets.QStyledItemDelegate):
         :param index: Edited table cell.
         :return: None.
         """
-        if not isinstance(model, DynamicEventsTreeModel):
+        source_model: DynamicEventsTreeModel | None
+        source_index: QtCore.QModelIndex
+        source_model, source_index = self._source_context(index)
+        if source_model is None:
             return
         else:
-            backing: object | None = model.backing_object(index)
+            backing: object | None = source_model.backing_object(source_index)
         if isinstance(backing, DynamicEventDraft):
             if isinstance(editor, QtWidgets.QComboBox):
-                model.setData(index, editor.currentData(), QtCore.Qt.ItemDataRole.EditRole)
+                source_model.setData(
+                    source_index,
+                    editor.currentData(),
+                    QtCore.Qt.ItemDataRole.EditRole,
+                )
             elif isinstance(editor, QtWidgets.QDoubleSpinBox):
-                model.setData(index, editor.value(), QtCore.Qt.ItemDataRole.EditRole)
+                source_model.setData(
+                    source_index,
+                    editor.value(),
+                    QtCore.Qt.ItemDataRole.EditRole,
+                )
             else:
                 pass
         else:
@@ -631,6 +1106,8 @@ class DynamicEventsPage(QtWidgets.QWidget):
         "ui",
         "empty_model_message",
         "tree_model",
+        "filter_model",
+        "filter_header",
         "tree_view",
         "switch_sequence_action",
         "add_event_action",
@@ -703,14 +1180,21 @@ class DynamicEventsPage(QtWidgets.QWidget):
             mode_parameter_uids=self.mode_parameter_uids,
             parent=self,
         )
-        self.tree_view.setModel(self.tree_model)
+        self.filter_model: DynamicEventsFilterProxyModel = DynamicEventsFilterProxyModel(self)
+        self.filter_model.setSourceModel(self.tree_model)
+        self.tree_view.setModel(self.filter_model)
         self.tree_view.setItemDelegate(DynamicEventsItemDelegate(self.tree_view))
         self.tree_view.setEditTriggers(
             QtWidgets.QAbstractItemView.EditTrigger.DoubleClicked
             | QtWidgets.QAbstractItemView.EditTrigger.EditKeyPressed
         )
         self.tree_view.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
-        header: QtWidgets.QHeaderView = self.tree_view.horizontalHeader()
+        self.filter_header: DynamicEventsFilterHeader = DynamicEventsFilterHeader(
+            filter_model=self.filter_model,
+            parent=self.tree_view,
+        )
+        self.tree_view.setHorizontalHeader(self.filter_header)
+        header: QtWidgets.QHeaderView = self.filter_header
         header.setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Interactive)
         header.setStretchLastSection(True)
         header.resizeSection(DynamicEventsTreeModel.COLUMN_EVENT_GROUP, 180)
@@ -726,7 +1210,8 @@ class DynamicEventsPage(QtWidgets.QWidget):
         self.save_button.clicked.connect(self.save_changes)
         self.switch_sequence_action.triggered.connect(self.open_switch_sequence)
         self.tree_view.customContextMenuRequested.connect(self.show_context_menu)
-        self.tree_model.rebuilt.connect(self._open_event_group_editors)
+        self.tree_model.rebuilt.connect(self._on_event_model_rebuilt)
+        self.filter_model.filterChanged.connect(self._on_filter_changed)
         selection_model: QtCore.QItemSelectionModel | None = self.tree_view.selectionModel()
         if selection_model is not None:
             selection_model.selectionChanged.connect(self.update_actions)
@@ -796,7 +1281,11 @@ class DynamicEventsPage(QtWidgets.QWidget):
         except (RuntimeError, TypeError):
             pass
         try:
-            self.tree_model.rebuilt.disconnect(self._open_event_group_editors)
+            self.tree_model.rebuilt.disconnect(self._on_event_model_rebuilt)
+        except (RuntimeError, TypeError):
+            pass
+        try:
+            self.filter_model.filterChanged.disconnect(self._on_filter_changed)
         except (RuntimeError, TypeError):
             pass
 
@@ -910,7 +1399,31 @@ class DynamicEventsPage(QtWidgets.QWidget):
 
         :return: Selected event or ``None``.
         """
-        return self.tree_model.backing_object(self.tree_view.currentIndex())
+        proxy_index: QtCore.QModelIndex = self.tree_view.currentIndex()
+        if proxy_index.isValid():
+            source_index: QtCore.QModelIndex = self.filter_model.mapToSource(proxy_index)
+            return self.tree_model.backing_object(source_index)
+        else:
+            return None
+
+    @QtCore.Slot()
+    def _on_event_model_rebuilt(self) -> None:
+        """Reconcile active filters and restore visible group editors.
+
+        :return: None.
+        """
+        self.filter_model.reconcile_selected_values()
+        self.filter_header.viewport().update()
+        self._open_event_group_editors()
+
+    @QtCore.Slot()
+    def _on_filter_changed(self) -> None:
+        """Refresh the header state and editors after filtering rows.
+
+        :return: None.
+        """
+        self.filter_header.viewport().update()
+        self._open_event_group_editors()
 
     @QtCore.Slot()
     def _open_event_group_editors(self) -> None:
@@ -919,8 +1432,8 @@ class DynamicEventsPage(QtWidgets.QWidget):
         :return: None.
         """
         row_index: int
-        for row_index in range(self.tree_model.rowCount()):
-            group_index: QtCore.QModelIndex = self.tree_model.index(
+        for row_index in range(self.filter_model.rowCount()):
+            group_index: QtCore.QModelIndex = self.filter_model.index(
                 row_index,
                 DynamicEventsTreeModel.COLUMN_EVENT_GROUP,
             )
@@ -966,6 +1479,9 @@ class DynamicEventsPage(QtWidgets.QWidget):
                 self.tr("Create an event group before adding an event.")
             )
         else:
+            # A new unassigned event may not satisfy the current selections.
+            # Restore All so its mandatory Event Group editor is always visible.
+            self.filter_model.clear_filters()
             created_event: DynamicEventDraft | None = self.session.add_event(
                 device=self.device,
                 mode=self.mode,
@@ -993,12 +1509,13 @@ class DynamicEventsPage(QtWidgets.QWidget):
         :param start_editing: Whether to open its Event Group editor immediately.
         :return: None.
         """
-        event_index: QtCore.QModelIndex = self.tree_model.index_for_backing_object(event)
-        if event_index.isValid():
-            self.tree_view.setCurrentIndex(event_index)
-            self.tree_view.scrollTo(event_index)
+        source_index: QtCore.QModelIndex = self.tree_model.index_for_backing_object(event)
+        proxy_index: QtCore.QModelIndex = self.filter_model.mapFromSource(source_index)
+        if proxy_index.isValid():
+            self.tree_view.setCurrentIndex(proxy_index)
+            self.tree_view.scrollTo(proxy_index)
             if start_editing:
-                self.tree_view.edit(event_index)
+                self.tree_view.edit(proxy_index)
             else:
                 pass
         else:
@@ -1056,7 +1573,8 @@ class DynamicEventsPage(QtWidgets.QWidget):
             return
         else:
             self.tree_view.setCurrentIndex(index)
-        selected: object | None = self.tree_model.backing_object(index)
+        source_index: QtCore.QModelIndex = self.filter_model.mapToSource(index)
+        selected: object | None = self.tree_model.backing_object(source_index)
         menu: QtWidgets.QMenu = QtWidgets.QMenu(self.tree_view)
         if isinstance(selected, DynamicEventDraft):
             remove_action: QtGui.QAction | None = menu.addAction(self.tr("Remove"))
