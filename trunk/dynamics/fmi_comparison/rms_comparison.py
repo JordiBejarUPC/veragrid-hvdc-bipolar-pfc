@@ -2078,12 +2078,6 @@ def _write_staged_manifest(
     :return: Written manifest path.
     """
 
-    scenario_identity_is_valid: bool = bool(scenario is config.get_scenario())
-    if scenario_identity_is_valid:
-        pass
-    else:
-        raise RuntimeError("Manifest scenario must be the config-owned instance")
-
     modes_are_valid: bool = bool(
         len(mode_evidence) == 2
         and mode_evidence[0].get_execution().get_mode()
@@ -3485,8 +3479,8 @@ def generate_rms_fmi_comparison(config: RmsFmiComparisonConfig) -> Path:
     :return: Published package directory.
     """
 
-    # Resolve the single config-owned scenario before any filesystem effect;
-    # every producer below receives this same immutable object identity.
+    # Resolve one validated scenario copy before any filesystem effect;
+    # every producer below receives the same local scenario value.
     scenario: RmsLoadPowerStepScenario = config.get_scenario()
     expected_time_seconds: np.ndarray = scenario.build_time_lattice()
     final_dir: Path = config.get_output_dir()
