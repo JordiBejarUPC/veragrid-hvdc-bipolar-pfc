@@ -12263,8 +12263,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         reply = QtWidgets.QMessageBox.question(
             parent if parent is not None else self,
-            "Unsaved changes",
-            "There are unapplied changes. Do you want to close without applying them?",
+            self.tr("Unsaved changes"),
+            self.tr("There are unapplied changes. Do you want to close without applying them?"),
             QtWidgets.QMessageBox.StandardButton.Yes,
             QtWidgets.QMessageBox.StandardButton.No,
         )

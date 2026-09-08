@@ -555,19 +555,74 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
 <context>
     <name>BlockEditorWindow</name>
     <message>
-        <location filename="../DynamicModelEditor/ui/block_editor.ui" line="14"/>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="14"/>
         <source>BlockEditorWindow</source>
         <translation>BlockEditorWindow</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/block_editor.ui" line="116"/>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="116"/>
         <source>Library</source>
         <translation>Βιβλιοθήκη</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/block_editor.ui" line="155"/>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="155"/>
         <source>Search basic blocks</source>
         <translation>Αναζήτηση βασικών μπλοκ</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="208"/>
+        <source>toolBar</source>
+        <translation>toolBar</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="237"/>
+        <source>CheckModel</source>
+        <translation>CheckModel</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="240"/>
+        <source>Inspect model</source>
+        <translation>Επιθεωρήστε το μοντέλο</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="252"/>
+        <source>Center</source>
+        <translation>Κέντρο</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="264"/>
+        <source>Zoom in</source>
+        <translation>Μεγέθυνση</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="276"/>
+        <source>Zoom out</source>
+        <translation>Σμίκρυνση</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="291"/>
+        <source>Delete all</source>
+        <translation>Διαγραφή όλων</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="294"/>
+        <source>Delete all blocks to start from scratch.</source>
+        <translation>Διαγράψτε όλα τα μπλοκ για να ξεκινήσετε από την αρχή.</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="306"/>
+        <source>Validate</source>
+        <translation>Επικυρώνω</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="318"/>
+        <source>Save</source>
+        <translation>Εκτός</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="321"/>
+        <source>Ctrl+S</source>
+        <translation>Ctrl+S</translation>
     </message>
     <message>
         <source>Variables</source>
@@ -603,6 +658,44 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
     <message>
         <source>Value</source>
         <translation>Τιμή</translation>
+    </message>
+</context>
+<context>
+    <name>BlockPropertyTreeModel</name>
+    <message>
+        <source>Missing PF mapping</source>
+        <translation>Απώλεια χαρτογράφησης PF</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>Ονομα</translation>
+    </message>
+    <message>
+        <source>Output</source>
+        <translation>Εξόδους</translation>
+    </message>
+    <message>
+        <source>Power-flow reference; variable mappings are used for initialization.</source>
+        <translation>Αναφορά ροής ισχύος: χρησιμοποιούνται χαρτογραφήσεις μεταβλητών για την αρχικοποίηση.</translation>
+    </message>
+    <message>
+        <source>Template issue: static parameters require api_obj_mapping. An independently editable parameter should be in event_dict. This refactor does not migrate templates automatically.</source>
+        <translation>Πρόβλημα με το πρότυπο: οι στατικές παράμετροι απαιτούν api_obj_mapping. Μια ανεξάρτητα επεξεργάσιμη παράμετρος πρέπει να βρίσκεται στο event_dict. Αυτή η αναδιάρθρωση δεν μετακινεί τα πρότυπα αυτόματα.</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>Τύπος</translation>
+    </message>
+    <message>
+        <source>Value / PF reference</source>
+        <translation>Αναφορά Τιμής / PF</translation>
+    </message>
+</context>
+<context>
+    <name>BlockPropertyValueDelegate</name>
+    <message>
+        <source>None</source>
+        <translation>Κανένα</translation>
     </message>
 </context>
 <context>
@@ -1822,6 +1915,10 @@ Are you sure?</translation>
         <source>Width in pixels</source>
         <translation>Πλάτος σε pixels</translation>
     </message>
+    <message>
+        <source>Object histogram</source>
+        <translation>Ιστογράμμα των αντικειμένων</translation>
+    </message>
 </context>
 <context>
     <name>DcLineDeviceEditor</name>
@@ -2735,11 +2832,11 @@ Are you sure?</translation>
     </message>
     <message>
         <source>There are unapplied changes. Do you want to close without applying them?</source>
-        <translation type="vanished">There are unapplied changes. Do you want to close without applying them?</translation>
+        <translation>There are unapplied changes. Do you want to close without applying them?</translation>
     </message>
     <message>
         <source>Unsaved changes</source>
-        <translation type="vanished">Unsaved changes</translation>
+        <translation>Unsaved changes</translation>
     </message>
     <message>
         <source>You are going to delete the complete model and start from scratch. Are you sure?</source>
@@ -2749,12 +2846,12 @@ Are you sure?</translation>
 <context>
     <name>DynamicBlockPropertiesDialog</name>
     <message>
-        <location filename="../DynamicModelEditor/BlockProperties/dynamic_block_properties.ui" line="14"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="14"/>
         <source>Block properties</source>
         <translation>Ιδιότητες μπλοκ</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/BlockProperties/dynamic_block_properties.ui" line="70"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="70"/>
         <source>Apply changes</source>
         <translation>Εφαρμογή αλλαγών</translation>
     </message>
@@ -3071,7 +3168,7 @@ Are you sure?</translation>
         <translation>+ Προσθήκη διαδικαστικής λογικής</translation>
     </message>
     <message>
-        <source>Add one procedural behavior to the active equation owner's Python code.</source>
+        <source>Add one procedural behavior to the active equation owner&apos;s Python code.</source>
         <translation>Προσθήκη μιας διαδικαστικής συμπεριφοράς στον κώδικα Python του ενεργού ιδιοκτήτη εξίσωσης.</translation>
     </message>
     <message>
@@ -3125,6 +3222,40 @@ Are you sure?</translation>
     <message>
         <source>Validate model</source>
         <translation>Επαλήθευση μοντέλου</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicBlockPropertiesDockWidget</name>
+    <message>
+        <source>Block Properties contains changes that have not been applied. Discard those changes and close the editor?</source>
+        <translation>Οι Ιδιότητες Μπλοκ περιέχουν αλλαγές που δεν έχουν εφαρμοστεί. Θέλετε να απορρίψετε αυτές τις αλλαγές και να κλείσετε τον επεξεργαστή;</translation>
+    </message>
+    <message>
+        <source>Unsaved Block Properties changes</source>
+        <translation>Αποθηκευμένες αλλαγές Ιδιοτήτων Μπλοκ</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicDeviceTreeWidget</name>
+    <message>
+        <source>EMT editor</source>
+        <translation>Επεξεργαστής EMT</translation>
+    </message>
+    <message>
+        <source>EMT events</source>
+        <translation>Γεγονότα EMT</translation>
+    </message>
+    <message>
+        <source>RMS editor</source>
+        <translation>Επεξεργαστής RMS</translation>
+    </message>
+    <message>
+        <source>RMS events</source>
+        <translation>Γεγονότα RMS</translation>
+    </message>
+    <message>
+        <source>Type to search the device</source>
+        <translation>Πληκτρολογήστε για αναζήτηση στη συσκευή</translation>
     </message>
 </context>
 <context>
@@ -3185,64 +3316,95 @@ Are you sure?</translation>
     </message>
 </context>
 <context>
+    <name>DynamicEditorWorkspaceSession</name>
+    <message>
+        <source>Invalid dynamic events</source>
+        <translation>Ακίνητα δυναμικά γεγονότα</translation>
+    </message>
+    <message>
+        <source>Save the changes before closing the last events tab?</source>
+        <translation>Θέλετε να αποθηκεύσετε τις αλλαγές πριν κλείσετε την τελευταία καρτέλα γεγονότων;</translation>
+    </message>
+    <message>
+        <source>The dynamic events contain unsaved changes.</source>
+        <translation>Τα δυναμικά γεγονότα περιέχουν αποθηκευμένες αλλαγές.</translation>
+    </message>
+    <message>
+        <source>Unsaved dynamic events</source>
+        <translation>Αποθηκευμένα δυναμικά γεγονότα</translation>
+    </message>
+</context>
+<context>
     <name>DynamicEditorWorkspaceWindow</name>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="14"/>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="14"/>
         <source>Dynamic Editor Workspace</source>
         <translation>Χώρος εργασίας Dynamic Editor</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="79"/>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="79"/>
         <source>Type to search the device</source>
         <translation>Πληκτρολογήστε για αναζήτηση στη συσκευή</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="126"/>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="126"/>
         <source>toolBar</source>
         <translation>toolBar</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="157"/>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="168"/>
+        <source>RMS Editor</source>
+        <translation>RMS Επεξεργαστής</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="180"/>
+        <source>EMT Editor</source>
+        <translation>EMT Επεξεργαστής</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="192"/>
+        <source>RMS Events</source>
+        <translation>Γεγονότα RMS</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="204"/>
+        <source>EMT Events</source>
+        <translation>Γεγονότα EMT</translation>
+    </message>
+    <message>
         <source>CheckModel</source>
-        <translation>CheckModel</translation>
+        <translation type="vanished">CheckModel</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="160"/>
         <source>Inspect model</source>
-        <translation>Επιθεωρήστε το μοντέλο</translation>
+        <translation type="vanished">Επιθεωρήστε το μοντέλο</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="172"/>
         <source>Center</source>
-        <translation>Κέντρο</translation>
+        <translation type="vanished">Κέντρο</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="184"/>
         <source>Zoom in</source>
-        <translation>Μεγέθυνση</translation>
+        <translation type="vanished">Μεγέθυνση</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="196"/>
         <source>Zoom out</source>
-        <translation>Σμίκρυνση</translation>
+        <translation type="vanished">Σμίκρυνση</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="211"/>
         <source>Delete all</source>
-        <translation>Διαγραφή όλων</translation>
+        <translation type="vanished">Διαγραφή όλων</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="214"/>
         <source>Delete all blocks to start from scratch.</source>
-        <translation>Διαγράψτε όλα τα μπλοκ για να ξεκινήσετε από την αρχή.</translation>
+        <translation type="vanished">Διαγράψτε όλα τα μπλοκ για να ξεκινήσετε από την αρχή.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="226"/>
         <source>Validate</source>
-        <translation>Επικυρώνω</translation>
+        <translation type="vanished">Επικυρώνω</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="238"/>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="156"/>
         <source>view tree</source>
         <translation>θέα δέντρο</translation>
     </message>
@@ -3474,6 +3636,41 @@ Are you sure?</translation>
     </message>
 </context>
 <context>
+    <name>DynamicEventsDraftSession</name>
+    <message>
+        <source>An event and its events group use different simulation modes.</source>
+        <translation>Ένα γεγονός και η ομάδα γεγονότων του χρησιμοποιούν διαφορετικούς τρόπουςจำλοποίησης.</translation>
+    </message>
+    <message>
+        <source>An event has no target device.</source>
+        <translation>Ένα γεγονός δεν έχει στόχο συσκευή.</translation>
+    </message>
+    <message>
+        <source>An event in device &apos;{device}&apos; has no valid events group.</source>
+        <translation>Ένα γεγονός στη συσκευή &apos;{device}&apos; δεν έχει έγκυρη ομάδα γεγονότων.</translation>
+    </message>
+    <message>
+        <source>An event in device &apos;{device}&apos; has no valid parameter.</source>
+        <translation>Ένα γεγονός στη συσκευή &apos;{device}&apos; δεν έχει έγκυρη παράμετρο.</translation>
+    </message>
+    <message>
+        <source>An events group has an empty name.</source>
+        <translation>Μια ομάδα γεγονότων έχει κενό όνομα.</translation>
+    </message>
+    <message>
+        <source>Events for parameter &apos;{parameter}&apos; overlap in group &apos;{group}&apos; and device &apos;{device}&apos;.</source>
+        <translation>Τα γεγονότα για τη παράμετρο &apos;{parameter}&apos; επικαλύπτονται στην ομάδα &apos;{group}&apos; και τη συσκευή &apos;{device}&apos;.</translation>
+    </message>
+    <message>
+        <source>The events group name &apos;{name}&apos; is duplicated.</source>
+        <translation>Το όνομα της ομάδας γεγονότων &apos;{name}&apos; είναι διπλότυπο.</translation>
+    </message>
+    <message>
+        <source>The ramp event for parameter &apos;{parameter}&apos; has an invalid end time.</source>
+        <translation>Το γεγονός ράμπης για τη παράμετρο &apos;{parameter}&apos; έχει μη έγκυρο χρόνο λήξης.</translation>
+    </message>
+</context>
+<context>
     <name>DynamicEventsGroupsDialog</name>
     <message>
         <source>Create EMT Events Group</source>
@@ -3498,6 +3695,155 @@ Are you sure?</translation>
     <message>
         <source>The name cannot be empty.</source>
         <translation>Το όνομα δεν μπορεί να είναι κενό.</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventsItemDelegate</name>
+    <message>
+        <source>Ramp</source>
+        <translation>Ράμπη</translation>
+    </message>
+    <message>
+        <source>Step</source>
+        <translation>Βήμα</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventsPage</name>
+    <message>
+        <source>Add an event to the selected event group</source>
+        <translation>Προσθήκη γεγονότος στην επιλεγμένη ομάδα γεγονότων</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to remove group &apos;{group}&apos;? This will remove {events} events from {devices} devices.</source>
+        <translation>Είστε βέβαιοι ότι θέλετε να αφαιρέσετε την ομάδα &apos;{group}&apos;%; Αυτό θα αφαιρέσει {events} γεγονότα από {devices} συσκευές.</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to remove the event for &apos;{parameter}&apos; at {time:.4f} s?</source>
+        <translation>Είστε βέβαιοι ότι θέλετε να αφαιρέσετε το γεγονός για το &apos;{parameter}&apos; στα {time:.4f} s;</translation>
+    </message>
+    <message>
+        <source>Create an EMT switch opening and reclosing event sequence</source>
+        <translation>Δημιουργία ακολουθίας γεγονότος άνοιγμα και επανακλείσιμο διακόπτη EMT</translation>
+    </message>
+    <message>
+        <source>Create an event group for this simulation mode</source>
+        <translation>Δημιουργία ομάδας γεγονότων για αυτή τη λειτουργία môδελου</translation>
+    </message>
+    <message>
+        <source>Empty dynamic model</source>
+        <translation>Κενό δυναμικό μοντέλο</translation>
+    </message>
+    <message>
+        <source>Events cannot be added because this dynamic model has no event parameters.</source>
+        <translation>Δεν μπορούν να προστεθούν γεγονότα επειδή αυτό το δυναμικό μοντέλο δεν έχει παραμέτρους γεγονότων.</translation>
+    </message>
+    <message>
+        <source>Events saved</source>
+        <translation>Γεγονότα αποθηκευμένα.</translation>
+    </message>
+    <message>
+        <source>Invalid dynamic events</source>
+        <translation>Ακίνητα δυναμικά γεγονότα</translation>
+    </message>
+    <message>
+        <source>Invalid event group</source>
+        <translation>Μη έγκυρη ομάδα γεγονότων.</translation>
+    </message>
+    <message>
+        <source>Invalid parameter</source>
+        <translation>Μη έγκυρος παράμετρος.</translation>
+    </message>
+    <message>
+        <source>No events can be added because the dynamic model has no event parameters.</source>
+        <translation>Δεν μπορούν να προστεθούν γεγονότα επειδή το δυναμικό μοντέλο δεν έχει παραμέτρους γεγονότων.</translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation>Αφαιρώ</translation>
+    </message>
+    <message>
+        <source>Remove event</source>
+        <translation>Αφαίρεση γεγονότος.</translation>
+    </message>
+    <message>
+        <source>Remove events group</source>
+        <translation>Αφαίρεση ομάδας γεγονότων.</translation>
+    </message>
+    <message>
+        <source>Remove the selected event or event group</source>
+        <translation>Αφαίρεση του επιλεγμένου γεγονότος ή της ομάδας γεγονότων.</translation>
+    </message>
+    <message>
+        <source>Rename</source>
+        <translation>Μετονομασία</translation>
+    </message>
+    <message>
+        <source>Save events</source>
+        <translation>Αποθήκευση γεγονότων.</translation>
+    </message>
+    <message>
+        <source>Select the event group where you want to add the event.</source>
+        <translation>Επιλέξτε την ομάδα γεγονότων όπου θέλετε να προσθέσετε το γεγονός.</translation>
+    </message>
+    <message>
+        <source>Select the event or event group you want to remove.</source>
+        <translation>Επιλέξτε το γεγονός ή την ομάδα γεγονότων που θέλετε να αφαιρέσετε.</translation>
+    </message>
+    <message>
+        <source>Switch Sequence Wizard</source>
+        <translation>Εναλλαγή Εργασιακού Βοηθήματος Ακολουθίας</translation>
+    </message>
+    <message>
+        <source>The event group name must be non-empty and unique in this simulation mode.</source>
+        <translation>Το όνομα της ομάδας γεγονότων πρέπει να είναι μη κενό και μοναδικό σε αυτή τη λειτουργία môδελου.</translation>
+    </message>
+    <message>
+        <source>This dynamic model is empty. New events cannot be added until the model is built.</source>
+        <translation>Αυτό το δυναμικό μοντέλο είναι κενό. Δεν μπορούν να προστεθούν νέα γεγονότα μέχρι να κατασκευαστεί το μοντέλο.</translation>
+    </message>
+    <message>
+        <source>➕ New Event Group</source>
+        <translation>➕ Νέα Ομάδα Γεγονότων.</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventsTreeModel</name>
+    <message>
+        <source>Align Step</source>
+        <translation>Ευθυγράμμιση Βήματος</translation>
+    </message>
+    <message>
+        <source>End Time</source>
+        <translation>Τελικός Χρόνος</translation>
+    </message>
+    <message>
+        <source>Invalid / Ungrouped Events</source>
+        <translation>Μη έγκυρα / Μη Ομαδοποιημένα Γεγονότα</translation>
+    </message>
+    <message>
+        <source>Invalid parameter</source>
+        <translation>Μη έγκυρος παράμετρος.</translation>
+    </message>
+    <message>
+        <source>New Value</source>
+        <translation>Νέα Τιμή</translation>
+    </message>
+    <message>
+        <source>Parameter</source>
+        <translation>Παράμετρος</translation>
+    </message>
+    <message>
+        <source>These persisted events do not reference a valid events group and can only be removed.</source>
+        <translation>Αυτά τα διατηρημένα γεγονότα δεν αναφέρονται σε μια έγκυρη ομάδα γεγονότων και μπορούν να αφαιρεθούν μόνο.</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>Χρόνος</translation>
+    </message>
+    <message>
+        <source>Transition</source>
+        <translation>Μετάβαση</translation>
     </message>
 </context>
 <context>
@@ -3933,6 +4279,10 @@ IMPORTANT: This will take into account every movement of substation and line loc
         <source>create substation diagram</source>
         <translation>create substation diagram</translation>
     </message>
+    <message>
+        <source>{device_name} profiles plot</source>
+        <translation>Γραφήματα προφίλ {device_name}</translation>
+    </message>
 </context>
 <context>
     <name>GridMergeDialogue</name>
@@ -4364,6 +4714,14 @@ Cancel and retry?</source>
     <message>
         <source>The file was loaded but the current project was kept because closing a dynamic editor was cancelled.</source>
         <translation>Το αρχείο φορτώθηκε, αλλά το τρέχον έργο διατηρήθηκε επειδή η κλείσιμο ενός δυναμικού επεξεργαστή ακυρώθηκε.</translation>
+    </message>
+    <message>
+        <source>Some operations are still stopping. Try again after they finish.</source>
+        <translation>Ορισμένες λειτουργίες σταματούν ακόμα. Προσπαθήστε ξανά αφού ολοκληρωθούν.</translation>
+    </message>
+    <message>
+        <source>The current save is still finishing. Please retry when it is done.</source>
+        <translation>Η τρέχουσα αποθήκευση ολοκληρώνεται ακόμα. Παρακαλώ δοκιμάστε ξανά όταν ολοκληρωθεί.</translation>
     </message>
 </context>
 <context>
@@ -6359,6 +6717,13 @@ Cancel it and close the window?</translation>
     </message>
 </context>
 <context>
+    <name>PopupResizeGrip</name>
+    <message>
+        <source>Resize</source>
+        <translation>Μεγεθώνευση</translation>
+    </message>
+</context>
+<context>
     <name>ProceduralGridWindow</name>
     <message>
         <source>Procedural grid expansion</source>
@@ -6412,6 +6777,10 @@ Consider loading a valid source of data.</translation>
 {file_name}</source>
         <translation>Δεν βρέθηκε το αρχείο:
 {file_name}</translation>
+    </message>
+    <message>
+        <source>Profile plot</source>
+        <translation>Γραφήματα προφίλ</translation>
     </message>
 </context>
 <context>
@@ -6720,12 +7089,27 @@ Are you ok with potentially waiting a lot?</source>
         <source>{file_name} is not valid :(</source>
         <translation>Το {file_name} δεν είναι έγκυρο :(</translation>
     </message>
+    <message>
+        <source>Results plot</source>
+        <translation>Γραφήματα αποτελεσμάτων</translation>
+    </message>
 </context>
 <context>
     <name>ResultsModel</name>
     <message>
         <source>Plotting error</source>
         <translation>Plotting error</translation>
+    </message>
+</context>
+<context>
+    <name>RetainedModeDraftTableModel</name>
+    <message>
+        <source>Retained mode</source>
+        <translation>Κατάσταση διατήρησης</translation>
+    </message>
+    <message>
+        <source>Select one retained mode.</source>
+        <translation>Επιλέξτε μία διατηρούμενη λειτουργία.</translation>
     </message>
 </context>
 <context>
@@ -7070,6 +7454,10 @@ This will remove the direct child scenarios after their changes are applied.</so
 
 Αυτό θα αφαιρέσει τα άμεσα παιδικά σενάρια αφού εφαρμοστούν οι αλλαγές τους.</translation>
     </message>
+    <message>
+        <source>Wait until the running operations finish before changing scenario.</source>
+        <translation>Περιμένετε μέχρι να ολοκληρωθούν οι τρέχουσες λειτουργίες πριν αλλάξετε το σενάριο.</translation>
+    </message>
 </context>
 <context>
     <name>SchematicLibraryModel</name>
@@ -7225,6 +7613,10 @@ Did you change the number of devices? If so, re-run the simulation.</translation
     <message>
         <source>{bus_name} was not found in the graphics manager</source>
         <translation>Το {bus_name} δεν βρέθηκε στο graphics manager</translation>
+    </message>
+    <message>
+        <source>{device_name} profiles plot</source>
+        <translation>Γραφήματα προφίλ {device_name}</translation>
     </message>
 </context>
 <context>
@@ -8571,6 +8963,86 @@ Modify the number of clusters in the ML settings.</source>
         <source>An RMS simulation cannot run without an RMS Events Group. Go to Events -&gt; Add RMS event and add a group, even if it contains no events.</source>
         <translation>Μια προσομοίωση RMS δεν μπορεί να εκτελεστεί χωρίς μια Ομάδα Συμβάντων RMS. Πηγαίνετε σε Events -&gt; Add RMS event και προσθέστε μια ομάδα, ακόμα κι αν δεν περιέχει κανένα συμβάν.</translation>
     </message>
+    <message>
+        <source>Fluid nodes are ignored for nonlinear OPF</source>
+        <translation>Οι ρευστοί κόμβοι αγνοούνται για μη γραμμικό OPF</translation>
+    </message>
+    <message>
+        <source>Fluid nodes are ignored for this simulation</source>
+        <translation>Οι ρευστοί κόμβοι αγνοούνται για αυτή τηจำλοποίηση</translation>
+    </message>
+    <message>
+        <source>Investments evaluation failed. Check the logs for details.</source>
+        <translation>Η αξιολόγηση επενδύσεων απέτυχε. Ελέγξτε τα αρχεία καταγραφής για λεπτομέρειες.</translation>
+    </message>
+    <message>
+        <source>Investments evaluation finished without results.</source>
+        <translation>Η αξιολόγηση επενδύσεων ολοκληρώθηκε χωρίς αποτελέσματα.</translation>
+    </message>
+    <message>
+        <source>Nodal capacity failed to start</source>
+        <translation>Η χωρητικότητα κόμβου απέτυχε να ξεκινήσει</translation>
+    </message>
+    <message>
+        <source>Nodal capacity logs</source>
+        <translation>Αρχεία καταγραφής χωρητικότητας κόμβου</translation>
+    </message>
+    <message>
+        <source>Nodal capacity time series failed to start</source>
+        <translation>Η χρονοσειρά χωρητικότητας κόμβου απέτυχε να ξεκινήσει</translation>
+    </message>
+    <message>
+        <source>Nodal capacity time series logs</source>
+        <translation>Αρχεία καταγραφής χρονοσειράς χωρητικότητας κόμβου</translation>
+    </message>
+    <message>
+        <source>OPF time series failed to start</source>
+        <translation>Η χρονοσειρά OPF απέτυχε να ξεκινήσει</translation>
+    </message>
+    <message>
+        <source>OPF time series logs</source>
+        <translation>Αρχεία καταγραφής χρονοσειράς OPF</translation>
+    </message>
+    <message>
+        <source>Optimal power flow failed to start</source>
+        <translation>Η βέλτιστη ροή ισχύος απέτυχε να ξεκινήσει</translation>
+    </message>
+    <message>
+        <source>Optimal power flow logs</source>
+        <translation>Αρχεία καταγραφής βέλτιστης ροής ισχύος</translation>
+    </message>
+    <message>
+        <source>Running OPF time series with only one time step in range</source>
+        <translation>Εκτέλεση χρονοσειράς OPF με μόνο ένα βήμα χρόνου στο εύρος</translation>
+    </message>
+    <message>
+        <source>Something went wrong, there are no OPF results.</source>
+        <translation>Παρουσιάστηκε κάποιο σφάλμα, δεν υπάρχουν αποτελέσματα OPF.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, there are no OPF time series results.</source>
+        <translation>Παρουσιάστηκε κάποιο σφάλμα, δεν υπάρχουν αποτελέσματα χρονοσειράς OPF.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, there are no nodal capacity results.</source>
+        <translation>Παρουσιάστηκε κάποιο σφάλμα, δεν υπάρχουν αποτελέσματα χωρητικότητας κόμβου.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, there are no nodal capacity time series results.</source>
+        <translation>Παρουσιάστηκε κάποιο σφάλμα, δεν υπάρχουν αποτελέσματα χρονοσειράς χωρητικότητας κόμβου.</translation>
+    </message>
+    <message>
+        <source>Voltage stability failed to start</source>
+        <translation>Η σταθερότητα τάσης απέτυχε να ξεκινήσει</translation>
+    </message>
+    <message>
+        <source>Voltage stability logs</source>
+        <translation>Αρχεία καταγραφής σταθερότητας τάσης</translation>
+    </message>
+    <message>
+        <source>Wait until the running simulations finish before clearing results.</source>
+        <translation>Περιμένετε μέχρι να ολοκληρωθούν οι τρέχουσες προσομοιώσεις πριν καθαρίσετε τα αποτελέσματα.</translation>
+    </message>
 </context>
 <context>
     <name>SubstationDesigner</name>
@@ -8881,6 +9353,10 @@ You need to load or create a grid!</source>
     <message>
         <source>There is no profile displayed, please display one</source>
         <translation>Δεν εμφανίζεται κανένα προφίλ, εμφανίστε ένα</translation>
+    </message>
+    <message>
+        <source>Profiles plot</source>
+        <translation>Γραφήματα προφίλ</translation>
     </message>
 </context>
 <context>
@@ -9332,6 +9808,10 @@ You need to load or create a grid!</source>
     <message>
         <source>Removed {count} __pycache__ folders</source>
         <translation>Διαγράφηκαν {count} φακέλους __pycache__</translation>
+    </message>
+    <message>
+        <source>Some operations are still stopping. Close again after they finish.</source>
+        <translation>Ορισμένες λειτουργίες σταματούν ακόμα. Κλείστε ξανά αφού ολοκληρωθούν.</translation>
     </message>
 </context>
 <context>
@@ -11554,6 +12034,13 @@ You need to load or create a grid!</source>
     </message>
 </context>
 <context>
+    <name>VerticalHeaderWidthResizer</name>
+    <message>
+        <source>Resize index column</source>
+        <translation>Μεγεθώνευση στήλης ευρετηρίου</translation>
+    </message>
+</context>
+<context>
     <name>VoltageLevelConversionWizard</name>
     <message>
         <source>+ Add spare position</source>
@@ -11706,6 +12193,14 @@ You need to load or create a grid!</source>
 {error_text}</source>
         <translation>Το επιλεγμένο αεροτροχόμ δεν μπορούσε να δημιουργηθεί:
 {error_text}</translation>
+    </message>
+    <message>
+        <source>Wind power profile</source>
+        <translation>Προφίλ ανέγερσης</translation>
+    </message>
+    <message>
+        <source>Wind turbine design curves</source>
+        <translation>Καμπύλες σχεδιασμού αετοκινητήρων</translation>
     </message>
 </context>
 <context>
@@ -12315,7 +12810,7 @@ You need to load or create a grid!</source>
     <message>
         <location filename="../Main/MainWindow.ui" line="12737"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Add RMS event&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Open the Dynamic events editor preferring RMS events&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Προσθήκη συμβάντος RMS&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Ανοίξτε τον επεξεργαστή δυναμικών συμβάντων προτιμώντας τα συμβάντα RMS&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Προσθήκη συμβάντος RMS&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Ανοίξτε τον επεξεργαστή δυναμικών συμβάντων προτιμώντας τα συμβάντα RMS&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="13068"/>
@@ -12325,7 +12820,7 @@ You need to load or create a grid!</source>
     <message>
         <location filename="../Main/MainWindow.ui" line="13071"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Add EMT event&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Open the Dynamic events editor preferring EMT events&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Προσθήκη συμβάντος EMT&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Ανοίξτε τον επεξεργαστή δυναμικών συμβάντων προτιμώντας τα συμβάντα EMT&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Προσθήκη συμβάντος EMT&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Ανοίξτε τον επεξεργαστή δυναμικών συμβάντων προτιμώντας τα συμβάντα EMT&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="13143"/>
@@ -15129,303 +15624,17 @@ You need to load or create a grid!</source>
     </message>
 </context>
 <context>
-    <name>BlockPropertyTreeModel</name>
+    <name>CompiledArraysMain</name>
     <message>
-        <source>Missing PF mapping</source>
-        <translation>Απώλεια χαρτογράφησης PF</translation>
-    </message>
-    <message>
-        <source>Name</source>
-        <translation>Ονομα</translation>
-    </message>
-    <message>
-        <source>Output</source>
-        <translation>Εξόδους</translation>
-    </message>
-    <message>
-        <source>Power-flow reference; variable mappings are used for initialization.</source>
-        <translation>Αναφορά ροής ισχύος: χρησιμοποιούνται χαρτογραφήσεις μεταβλητών για την αρχικοποίηση.</translation>
-    </message>
-    <message>
-        <source>Template issue: static parameters require api_obj_mapping. An independently editable parameter should be in event_dict. This refactor does not migrate templates automatically.</source>
-        <translation>Πρόβλημα με το πρότυπο: οι στατικές παράμετροι απαιτούν api_obj_mapping. Μια ανεξάρτητα επεξεργάσιμη παράμετρος πρέπει να βρίσκεται στο event_dict. Αυτή η αναδιάρθρωση δεν μετακινεί τα πρότυπα αυτόματα.</translation>
-    </message>
-    <message>
-        <source>Type</source>
-        <translation>Τύπος</translation>
-    </message>
-    <message>
-        <source>Value / PF reference</source>
-        <translation>Αναφορά Τιμής / PF</translation>
+        <source>Array plot</source>
+        <translation>Γραφήματα πλέγματος</translation>
     </message>
 </context>
 <context>
-    <name>BlockPropertyValueDelegate</name>
+    <name>SolarPvWizard</name>
     <message>
-        <source>None</source>
-        <translation>Κανένα</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicBlockPropertiesDockWidget</name>
-    <message>
-        <source>Block Properties contains changes that have not been applied. Discard those changes and close the editor?</source>
-        <translation>Οι Ιδιότητες Μπλοκ περιέχουν αλλαγές που δεν έχουν εφαρμοστεί. Θέλετε να απορρίψετε αυτές τις αλλαγές και να κλείσετε τον επεξεργαστή;</translation>
-    </message>
-    <message>
-        <source>Unsaved Block Properties changes</source>
-        <translation>Αποθηκευμένες αλλαγές Ιδιοτήτων Μπλοκ</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicDeviceTreeWidget</name>
-    <message>
-        <source>EMT editor</source>
-        <translation>Επεξεργαστής EMT</translation>
-    </message>
-    <message>
-        <source>EMT events</source>
-        <translation>Γεγονότα EMT</translation>
-    </message>
-    <message>
-        <source>RMS editor</source>
-        <translation>Επεξεργαστής RMS</translation>
-    </message>
-    <message>
-        <source>RMS events</source>
-        <translation>Γεγονότα RMS</translation>
-    </message>
-    <message>
-        <source>Type to search the device</source>
-        <translation>Πληκτρολογήστε για αναζήτηση στη συσκευή</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEditorWorkspaceSession</name>
-    <message>
-        <source>Invalid dynamic events</source>
-        <translation>Ακίνητα δυναμικά γεγονότα</translation>
-    </message>
-    <message>
-        <source>Save the changes before closing the last events tab?</source>
-        <translation>Θέλετε να αποθηκεύσετε τις αλλαγές πριν κλείσετε την τελευταία καρτέλα γεγονότων;</translation>
-    </message>
-    <message>
-        <source>The dynamic events contain unsaved changes.</source>
-        <translation>Τα δυναμικά γεγονότα περιέχουν αποθηκευμένες αλλαγές.</translation>
-    </message>
-    <message>
-        <source>Unsaved dynamic events</source>
-        <translation>Αποθηκευμένα δυναμικά γεγονότα</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEventsDraftSession</name>
-    <message>
-        <source>An event and its events group use different simulation modes.</source>
-        <translation>Ένα γεγονός και η ομάδα γεγονότων του χρησιμοποιούν διαφορετικούς τρόπουςจำλοποίησης.</translation>
-    </message>
-    <message>
-        <source>An event has no target device.</source>
-        <translation>Ένα γεγονός δεν έχει στόχο συσκευή.</translation>
-    </message>
-    <message>
-        <source>An event in device '{device}' has no valid events group.</source>
-        <translation>Ένα γεγονός στη συσκευή '{device}' δεν έχει έγκυρη ομάδα γεγονότων.</translation>
-    </message>
-    <message>
-        <source>An event in device '{device}' has no valid parameter.</source>
-        <translation>Ένα γεγονός στη συσκευή '{device}' δεν έχει έγκυρη παράμετρο.</translation>
-    </message>
-    <message>
-        <source>An events group has an empty name.</source>
-        <translation>Μια ομάδα γεγονότων έχει κενό όνομα.</translation>
-    </message>
-    <message>
-        <source>Events for parameter '{parameter}' overlap in group '{group}' and device '{device}'.</source>
-        <translation>Τα γεγονότα για τη παράμετρο '{parameter}' επικαλύπτονται στην ομάδα '{group}' και τη συσκευή '{device}'.</translation>
-    </message>
-    <message>
-        <source>The events group name '{name}' is duplicated.</source>
-        <translation>Το όνομα της ομάδας γεγονότων '{name}' είναι διπλότυπο.</translation>
-    </message>
-    <message>
-        <source>The ramp event for parameter '{parameter}' has an invalid end time.</source>
-        <translation>Το γεγονός ράμπης για τη παράμετρο '{parameter}' έχει μη έγκυρο χρόνο λήξης.</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEventsItemDelegate</name>
-    <message>
-        <source>Ramp</source>
-        <translation>Ράμπη</translation>
-    </message>
-    <message>
-        <source>Step</source>
-        <translation>Βήμα</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEventsPage</name>
-    <message>
-        <source>Add an event to the selected event group</source>
-        <translation>Προσθήκη γεγονότος στην επιλεγμένη ομάδα γεγονότων</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to remove group '{group}'? This will remove {events} events from {devices} devices.</source>
-        <translation>Είστε βέβαιοι ότι θέλετε να αφαιρέσετε την ομάδα '{group}'%; Αυτό θα αφαιρέσει {events} γεγονότα από {devices} συσκευές.</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to remove the event for '{parameter}' at {time:.4f} s?</source>
-        <translation>Είστε βέβαιοι ότι θέλετε να αφαιρέσετε το γεγονός για το '{parameter}' στα {time:.4f} s;</translation>
-    </message>
-    <message>
-        <source>Create an EMT switch opening and reclosing event sequence</source>
-        <translation>Δημιουργία ακολουθίας γεγονότος άνοιγμα και επανακλείσιμο διακόπτη EMT</translation>
-    </message>
-    <message>
-        <source>Create an event group for this simulation mode</source>
-        <translation>Δημιουργία ομάδας γεγονότων για αυτή τη λειτουργία môδελου</translation>
-    </message>
-    <message>
-        <source>Empty dynamic model</source>
-        <translation>Κενό δυναμικό μοντέλο</translation>
-    </message>
-    <message>
-        <source>Events cannot be added because this dynamic model has no event parameters.</source>
-        <translation>Δεν μπορούν να προστεθούν γεγονότα επειδή αυτό το δυναμικό μοντέλο δεν έχει παραμέτρους γεγονότων.</translation>
-    </message>
-    <message>
-        <source>Events saved</source>
-        <translation>Γεγονότα αποθηκευμένα.</translation>
-    </message>
-    <message>
-        <source>Invalid dynamic events</source>
-        <translation>Ακίνητα δυναμικά γεγονότα</translation>
-    </message>
-    <message>
-        <source>Invalid event group</source>
-        <translation>Μη έγκυρη ομάδα γεγονότων.</translation>
-    </message>
-    <message>
-        <source>Invalid parameter</source>
-        <translation>Μη έγκυρος παράμετρος.</translation>
-    </message>
-    <message>
-        <source>No events can be added because the dynamic model has no event parameters.</source>
-        <translation>Δεν μπορούν να προστεθούν γεγονότα επειδή το δυναμικό μοντέλο δεν έχει παραμέτρους γεγονότων.</translation>
-    </message>
-    <message>
-        <source>Remove</source>
-        <translation>Αφαιρώ</translation>
-    </message>
-    <message>
-        <source>Remove event</source>
-        <translation>Αφαίρεση γεγονότος.</translation>
-    </message>
-    <message>
-        <source>Remove events group</source>
-        <translation>Αφαίρεση ομάδας γεγονότων.</translation>
-    </message>
-    <message>
-        <source>Remove the selected event or event group</source>
-        <translation>Αφαίρεση του επιλεγμένου γεγονότος ή της ομάδας γεγονότων.</translation>
-    </message>
-    <message>
-        <source>Rename</source>
-        <translation>Μετονομασία</translation>
-    </message>
-    <message>
-        <source>Save events</source>
-        <translation>Αποθήκευση γεγονότων.</translation>
-    </message>
-    <message>
-        <source>Select the event group where you want to add the event.</source>
-        <translation>Επιλέξτε την ομάδα γεγονότων όπου θέλετε να προσθέσετε το γεγονός.</translation>
-    </message>
-    <message>
-        <source>Select the event or event group you want to remove.</source>
-        <translation>Επιλέξτε το γεγονός ή την ομάδα γεγονότων που θέλετε να αφαιρέσετε.</translation>
-    </message>
-    <message>
-        <source>Switch Sequence Wizard</source>
-        <translation>Εναλλαγή Εργασιακού Βοηθήματος Ακολουθίας</translation>
-    </message>
-    <message>
-        <source>The event group name must be non-empty and unique in this simulation mode.</source>
-        <translation>Το όνομα της ομάδας γεγονότων πρέπει να είναι μη κενό και μοναδικό σε αυτή τη λειτουργία môδελου.</translation>
-    </message>
-    <message>
-        <source>This dynamic model is empty. New events cannot be added until the model is built.</source>
-        <translation>Αυτό το δυναμικό μοντέλο είναι κενό. Δεν μπορούν να προστεθούν νέα γεγονότα μέχρι να κατασκευαστεί το μοντέλο.</translation>
-    </message>
-    <message>
-        <source>➕ New Event Group</source>
-        <translation>➕ Νέα Ομάδα Γεγονότων.</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEventsTreeModel</name>
-    <message>
-        <source>Align Step</source>
-        <translation>Ευθυγράμμιση Βήματος</translation>
-    </message>
-    <message>
-        <source>End Time</source>
-        <translation>Τελικός Χρόνος</translation>
-    </message>
-    <message>
-        <source>Invalid / Ungrouped Events</source>
-        <translation>Μη έγκυρα / Μη Ομαδοποιημένα Γεγονότα</translation>
-    </message>
-    <message>
-        <source>Invalid parameter</source>
-        <translation>Μη έγκυρος παράμετρος.</translation>
-    </message>
-    <message>
-        <source>New Value</source>
-        <translation>Νέα Τιμή</translation>
-    </message>
-    <message>
-        <source>Parameter</source>
-        <translation>Παράμετρος</translation>
-    </message>
-    <message>
-        <source>These persisted events do not reference a valid events group and can only be removed.</source>
-        <translation>Αυτά τα διατηρημένα γεγονότα δεν αναφέρονται σε μια έγκυρη ομάδα γεγονότων και μπορούν να αφαιρεθούν μόνο.</translation>
-    </message>
-    <message>
-        <source>Time</source>
-        <translation>Χρόνος</translation>
-    </message>
-    <message>
-        <source>Transition</source>
-        <translation>Μετάβαση</translation>
-    </message>
-</context>
-<context>
-    <name>PopupResizeGrip</name>
-    <message>
-        <source>Resize</source>
-        <translation>Μεγεθώνευση</translation>
-    </message>
-</context>
-<context>
-    <name>RetainedModeDraftTableModel</name>
-    <message>
-        <source>Retained mode</source>
-        <translation>Κατάσταση διατήρησης</translation>
-    </message>
-    <message>
-        <source>Select one retained mode.</source>
-        <translation>Επιλέξτε μία διατηρούμενη λειτουργία.</translation>
-    </message>
-</context>
-<context>
-    <name>VerticalHeaderWidthResizer</name>
-    <message>
-        <source>Resize index column</source>
-        <translation>Μεγεθώνευση στήλης ευρετηρίου</translation>
+        <source>Solar power profile</source>
+        <translation>Προφίλ ηλιακής ενέργειας</translation>
     </message>
 </context>
 </TS>

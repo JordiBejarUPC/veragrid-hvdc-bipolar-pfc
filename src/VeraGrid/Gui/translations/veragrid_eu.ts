@@ -557,19 +557,74 @@ li.checked::marker { content: &quot;\2612&quot;; }
 <context>
     <name>BlockEditorWindow</name>
     <message>
-        <location filename="../DynamicModelEditor/ui/block_editor.ui" line="14"/>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="14"/>
         <source>BlockEditorWindow</source>
         <translation>BlockEditorWindow</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/block_editor.ui" line="116"/>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="116"/>
         <source>Library</source>
         <translation>Liburutegia</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/block_editor.ui" line="155"/>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="155"/>
         <source>Search basic blocks</source>
         <translation>Bilatu oinarrizko blokeak</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="208"/>
+        <source>toolBar</source>
+        <translation>toolBar</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="237"/>
+        <source>CheckModel</source>
+        <translation>CheckModel</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="240"/>
+        <source>Inspect model</source>
+        <translation>Ikuskatu eredua</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="252"/>
+        <source>Center</source>
+        <translation>Zentroa</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="264"/>
+        <source>Zoom in</source>
+        <translation>Handitu</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="276"/>
+        <source>Zoom out</source>
+        <translation>Txikiagotu</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="291"/>
+        <source>Delete all</source>
+        <translation>Ezabatu guztiak</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="294"/>
+        <source>Delete all blocks to start from scratch.</source>
+        <translation>Ezabatu bloke guztiak hutsetik hasteko.</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="306"/>
+        <source>Validate</source>
+        <translation>Baliozkotu</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="318"/>
+        <source>Save</source>
+        <translation>Gorde</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="321"/>
+        <source>Ctrl+S</source>
+        <translation>Ktrl+S</translation>
     </message>
     <message>
         <source>Variables</source>
@@ -605,6 +660,44 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <source>Value</source>
         <translation>Balioa</translation>
+    </message>
+</context>
+<context>
+    <name>BlockPropertyTreeModel</name>
+    <message>
+        <source>Missing PF mapping</source>
+        <translation>PF mapeo falta</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>Izena</translation>
+    </message>
+    <message>
+        <source>Output</source>
+        <translation>Irau</translation>
+    </message>
+    <message>
+        <source>Power-flow reference; variable mappings are used for initialization.</source>
+        <translation>Power-flow referentzia; variable mapeoak inicializazioa dela urdan erabiltzen dira.</translation>
+    </message>
+    <message>
+        <source>Template issue: static parameters require api_obj_mapping. An independently editable parameter should be in event_dict. This refactor does not migrate templates automatically.</source>
+        <translation>Template-ko problema: parametro statikoak api_obj_mapping behar dute. Parametro independentean itxiko da event_dict-ean. Refactorizazio honek templateak automatikoki migratatzen ez du.</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>Tipoa</translation>
+    </message>
+    <message>
+        <source>Value / PF reference</source>
+        <translation>Balorrak / PF referentzia</translation>
+    </message>
+</context>
+<context>
+    <name>BlockPropertyValueDelegate</name>
+    <message>
+        <source>None</source>
+        <translation>Ninguno</translation>
     </message>
 </context>
 <context>
@@ -1824,6 +1917,10 @@ Are you sure?</translation>
         <source>Width in pixels</source>
         <translation>Altuera pikselean</translation>
     </message>
+    <message>
+        <source>Object histogram</source>
+        <translation>Objektu histograma</translation>
+    </message>
 </context>
 <context>
     <name>DcLineDeviceEditor</name>
@@ -2737,11 +2834,11 @@ Are you sure?</translation>
     </message>
     <message>
         <source>There are unapplied changes. Do you want to close without applying them?</source>
-        <translation type="vanished">Aldaketak aplikatu ez dira. Aldaketak aplikatu gabe itxiteko nahi duzu?</translation>
+        <translation>Aldaketak aplikatu ez dira. Aldaketak aplikatu gabe itxiteko nahi duzu?</translation>
     </message>
     <message>
         <source>Unsaved changes</source>
-        <translation type="vanished">Aldaketak ez dira taldeatu</translation>
+        <translation>Aldaketak ez dira taldeatu</translation>
     </message>
     <message>
         <source>You are going to delete the complete model and start from scratch. Are you sure?</source>
@@ -2751,12 +2848,12 @@ Are you sure?</translation>
 <context>
     <name>DynamicBlockPropertiesDialog</name>
     <message>
-        <location filename="../DynamicModelEditor/BlockProperties/dynamic_block_properties.ui" line="14"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="14"/>
         <source>Block properties</source>
         <translation>Blokatzeko propietatak</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/BlockProperties/dynamic_block_properties.ui" line="70"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="70"/>
         <source>Apply changes</source>
         <translation>Kirolak aplikatu</translation>
     </message>
@@ -3073,7 +3170,7 @@ Are you sure?</translation>
         <translation>+ Prozedural logika gehitu</translation>
     </message>
     <message>
-        <source>Add one procedural behavior to the active equation owner's Python code.</source>
+        <source>Add one procedural behavior to the active equation owner&apos;s Python code.</source>
         <translation>Prozedurala ziurtatu bat aktiboa dagoen iruzainaren Python kodean gehitu.</translation>
     </message>
     <message>
@@ -3127,6 +3224,40 @@ Are you sure?</translation>
     <message>
         <source>Validate model</source>
         <translation>Modeloa baliatu</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicBlockPropertiesDockWidget</name>
+    <message>
+        <source>Block Properties contains changes that have not been applied. Discard those changes and close the editor?</source>
+        <translation>Block Properties-ean ez dago aplikatuak den dirudiak. Ez dago dirudiak eta editorea xutetzea?</translation>
+    </message>
+    <message>
+        <source>Unsaved Block Properties changes</source>
+        <translation>Block Properties-ko dirudiak ez dago jartuak</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicDeviceTreeWidget</name>
+    <message>
+        <source>EMT editor</source>
+        <translation>EMT editorea</translation>
+    </message>
+    <message>
+        <source>EMT events</source>
+        <translation>EMT ekitateak</translation>
+    </message>
+    <message>
+        <source>RMS editor</source>
+        <translation>RMS editorea</translation>
+    </message>
+    <message>
+        <source>RMS events</source>
+        <translation>RMS ekitateak</translation>
+    </message>
+    <message>
+        <source>Type to search the device</source>
+        <translation>Idatzi gailua bilatzeko</translation>
     </message>
 </context>
 <context>
@@ -3187,64 +3318,95 @@ Are you sure?</translation>
     </message>
 </context>
 <context>
+    <name>DynamicEditorWorkspaceSession</name>
+    <message>
+        <source>Invalid dynamic events</source>
+        <translation>Ekitate dinamikoak balio batean dauden</translation>
+    </message>
+    <message>
+        <source>Save the changes before closing the last events tab?</source>
+        <translation>Dirudiak jartu baino lehen ekitate ekitateak xutetzea?</translation>
+    </message>
+    <message>
+        <source>The dynamic events contain unsaved changes.</source>
+        <translation>Ekitate dinamikoak dirudiak ez dago jartuak dituzte.</translation>
+    </message>
+    <message>
+        <source>Unsaved dynamic events</source>
+        <translation>Ekitate dinamikoak ez dago jartuak</translation>
+    </message>
+</context>
+<context>
     <name>DynamicEditorWorkspaceWindow</name>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="14"/>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="14"/>
         <source>Dynamic Editor Workspace</source>
         <translation>Editore dinamikoaren lan-eremua</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="79"/>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="79"/>
         <source>Type to search the device</source>
         <translation>Idatzi gailua bilatzeko</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="126"/>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="126"/>
         <source>toolBar</source>
         <translation>toolBar</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="157"/>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="168"/>
+        <source>RMS Editor</source>
+        <translation>RMS Editorea</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="180"/>
+        <source>EMT Editor</source>
+        <translation>EMT Editorea</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="192"/>
+        <source>RMS Events</source>
+        <translation>RMS Gandereaak</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="204"/>
+        <source>EMT Events</source>
+        <translation>EMT Gandereaak</translation>
+    </message>
+    <message>
         <source>CheckModel</source>
-        <translation>CheckModel</translation>
+        <translation type="vanished">CheckModel</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="160"/>
         <source>Inspect model</source>
-        <translation>Ikuskatu eredua</translation>
+        <translation type="vanished">Ikuskatu eredua</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="172"/>
         <source>Center</source>
-        <translation>Zentroa</translation>
+        <translation type="vanished">Zentroa</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="184"/>
         <source>Zoom in</source>
-        <translation>Handitu</translation>
+        <translation type="vanished">Handitu</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="196"/>
         <source>Zoom out</source>
-        <translation>Txikiagotu</translation>
+        <translation type="vanished">Txikiagotu</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="211"/>
         <source>Delete all</source>
-        <translation>Ezabatu guztiak</translation>
+        <translation type="vanished">Ezabatu guztiak</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="214"/>
         <source>Delete all blocks to start from scratch.</source>
-        <translation>Ezabatu bloke guztiak hutsetik hasteko.</translation>
+        <translation type="vanished">Ezabatu bloke guztiak hutsetik hasteko.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="226"/>
         <source>Validate</source>
-        <translation>Baliozkotu</translation>
+        <translation type="vanished">Baliozkotu</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="238"/>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="156"/>
         <source>view tree</source>
         <translation>zuhaitza ikusi</translation>
     </message>
@@ -3476,6 +3638,41 @@ Are you sure?</translation>
     </message>
 </context>
 <context>
+    <name>DynamicEventsDraftSession</name>
+    <message>
+        <source>An event and its events group use different simulation modes.</source>
+        <translation>Ekitate batek eta bere ekitate grupoak simulazio modu ezberdinak erabiltzen dituzte.</translation>
+    </message>
+    <message>
+        <source>An event has no target device.</source>
+        <translation>Ekitate batek oinarrizko gailu batek ez du.</translation>
+    </message>
+    <message>
+        <source>An event in device &apos;{device}&apos; has no valid events group.</source>
+        <translation>Ekitate batek &apos;{device}&apos; gailuan balio batean dagoen ekitate grupo batek ez du.</translation>
+    </message>
+    <message>
+        <source>An event in device &apos;{device}&apos; has no valid parameter.</source>
+        <translation>Ekitate batek &apos;{device}&apos; gailuan balio batean dagoen parametro batek ez du.</translation>
+    </message>
+    <message>
+        <source>An events group has an empty name.</source>
+        <translation>Ekitate grupo batek izen kosong batek gotuz.</translation>
+    </message>
+    <message>
+        <source>Events for parameter &apos;{parameter}&apos; overlap in group &apos;{group}&apos; and device &apos;{device}&apos;.</source>
+        <translation>Parametro &apos;{parameter}&apos;ko ekitateak grupo &apos;{group}&apos; eta gailu &apos;{device}&apos; batean isekarteko da.</translation>
+    </message>
+    <message>
+        <source>The events group name &apos;{name}&apos; is duplicated.</source>
+        <translation>Ekitate grupoaren izena &apos;{name}&apos; errepikatua da.</translation>
+    </message>
+    <message>
+        <source>The ramp event for parameter &apos;{parameter}&apos; has an invalid end time.</source>
+        <translation>Parametro &apos;{parameter}&apos;ko ramp event-ak amaitzeko denbora balio batean dagoen.</translation>
+    </message>
+</context>
+<context>
     <name>DynamicEventsGroupsDialog</name>
     <message>
         <source>Create EMT Events Group</source>
@@ -3500,6 +3697,155 @@ Are you sure?</translation>
     <message>
         <source>The name cannot be empty.</source>
         <translation>Izena ez da joan.</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventsItemDelegate</name>
+    <message>
+        <source>Ramp</source>
+        <translation>Rampa</translation>
+    </message>
+    <message>
+        <source>Step</source>
+        <translation>Zututak</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventsPage</name>
+    <message>
+        <source>Add an event to the selected event group</source>
+        <translation>Ego-grupari hautsaitako egoera gehitzea</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to remove group &apos;{group}&apos;? This will remove {events} events from {devices} devices.</source>
+        <translation>Zure ego-grupo &apos;{group}&apos; apurtu nahi duzun ziurtatu? Honek {devices} gai-jaietako {events} egoerak beteko.</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to remove the event for &apos;{parameter}&apos; at {time:.4f} s?</source>
+        <translation>Zure &apos;{parameter}&apos; egoera apurtu nahi duzun ziurtatu {time:.4f} s-an?</translation>
+    </message>
+    <message>
+        <source>Create an EMT switch opening and reclosing event sequence</source>
+        <translation>EMT altzola ireketa eta bardutze egoera-silsilak sortu</translation>
+    </message>
+    <message>
+        <source>Create an event group for this simulation mode</source>
+        <translation>Simulazio-modo honeko ego-grupo bat sortu</translation>
+    </message>
+    <message>
+        <source>Empty dynamic model</source>
+        <translation>Modelo dinamiko joan</translation>
+    </message>
+    <message>
+        <source>Events cannot be added because this dynamic model has no event parameters.</source>
+        <translation>Egoerak gehi nahi ez dira, modelo dinamiko honek egoera parametroak ez du.</translation>
+    </message>
+    <message>
+        <source>Events saved</source>
+        <translation>Egoerak taldeatu</translation>
+    </message>
+    <message>
+        <source>Invalid dynamic events</source>
+        <translation>Ekitate dinamikoak balio batean dauden</translation>
+    </message>
+    <message>
+        <source>Invalid event group</source>
+        <translation>Ego-grupo ez baliozkoa</translation>
+    </message>
+    <message>
+        <source>Invalid parameter</source>
+        <translation>Parametru ez baliozkoa</translation>
+    </message>
+    <message>
+        <source>No events can be added because the dynamic model has no event parameters.</source>
+        <translation>Egoerak gehi nahi ez dira, modelo dinamikoak egoera parametroak ez du.</translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation>Kendu</translation>
+    </message>
+    <message>
+        <source>Remove event</source>
+        <translation>Egoera bete</translation>
+    </message>
+    <message>
+        <source>Remove events group</source>
+        <translation>Egoerak grupo bete</translation>
+    </message>
+    <message>
+        <source>Remove the selected event or event group</source>
+        <translation>Hautsaitako egoera edo ego-grupoa bete</translation>
+    </message>
+    <message>
+        <source>Rename</source>
+        <translation>Izena daida</translation>
+    </message>
+    <message>
+        <source>Save events</source>
+        <translation>Egoerak taldeatu</translation>
+    </message>
+    <message>
+        <source>Select the event group where you want to add the event.</source>
+        <translation>Egoera gehitu nahi duzun ego-grupoa hautatu.</translation>
+    </message>
+    <message>
+        <source>Select the event or event group you want to remove.</source>
+        <translation>Apurtu nahi duzun egoera edo ego-grupoa hautatu.</translation>
+    </message>
+    <message>
+        <source>Switch Sequence Wizard</source>
+        <translation>Zigurutuzko Sukegiak Aldatzeko Zirkuitu-Zirkuitua</translation>
+    </message>
+    <message>
+        <source>The event group name must be non-empty and unique in this simulation mode.</source>
+        <translation>Ego-grupoaren izenak ez izan behar ezik eta uniko izan behar simulazio-modo honean.</translation>
+    </message>
+    <message>
+        <source>This dynamic model is empty. New events cannot be added until the model is built.</source>
+        <translation>Modelo dinamiko hau joan dago. Modeloa sortu arte, egoerak berriak gehi nahi da ez.</translation>
+    </message>
+    <message>
+        <source>➕ New Event Group</source>
+        <translation>➕ Ego-grupo berria</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventsTreeModel</name>
+    <message>
+        <source>Align Step</source>
+        <translation>Zuzendarata</translation>
+    </message>
+    <message>
+        <source>End Time</source>
+        <translation>Amaitzeko Oroa</translation>
+    </message>
+    <message>
+        <source>Invalid / Ungrouped Events</source>
+        <translation>Egoerak ez baliozkoak / Ego-grupari ez dagoen</translation>
+    </message>
+    <message>
+        <source>Invalid parameter</source>
+        <translation>Parametru ez baliozkoa</translation>
+    </message>
+    <message>
+        <source>New Value</source>
+        <translation>Balio berria</translation>
+    </message>
+    <message>
+        <source>Parameter</source>
+        <translation>Parametru</translation>
+    </message>
+    <message>
+        <source>These persisted events do not reference a valid events group and can only be removed.</source>
+        <translation>Egoerak taldeatu hauek ego-grupo baliozko bat ez adierazten dituz eta beteak ezin da.</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>Egutegia</translation>
+    </message>
+    <message>
+        <source>Transition</source>
+        <translation>Trantzisio</translation>
     </message>
 </context>
 <context>
@@ -3935,6 +4281,10 @@ MAIKOA: Honek altibildaritza eta linea pozizioen bakoitzako mugimenduari kontu d
         <source>create substation diagram</source>
         <translation>altibildaritza diagrama sortu</translation>
     </message>
+    <message>
+        <source>{device_name} profiles plot</source>
+        <translation>{device_name} profila-plota</translation>
+    </message>
 </context>
 <context>
     <name>GridMergeDialogue</name>
@@ -4366,6 +4716,14 @@ Utzi eta berriro saiatu?</translation>
     <message>
         <source>The file was loaded but the current project was kept because closing a dynamic editor was cancelled.</source>
         <translation>Arkiboa sakatu da, baina proiektu kopuratu zen, roisko dinamiko editorea itxurkarizkoa kitatu zela.</translation>
+    </message>
+    <message>
+        <source>Some operations are still stopping. Try again after they finish.</source>
+        <translation>Jelantza batzuk ordezkarizko daude. Amaitzera gero berriro saiatu.</translation>
+    </message>
+    <message>
+        <source>The current save is still finishing. Please retry when it is done.</source>
+        <translation>Jarduera inguruko jartzea ordezkarizko da. Meseduren, amaituta dagoenean berriro saiatu.</translation>
     </message>
 </context>
 <context>
@@ -6360,6 +6718,13 @@ Tixatu eta ingurukoak xijutatu?</translation>
     </message>
 </context>
 <context>
+    <name>PopupResizeGrip</name>
+    <message>
+        <source>Resize</source>
+        <translation>Dimentsionatzea</translation>
+    </message>
+</context>
+<context>
     <name>ProceduralGridWindow</name>
     <message>
         <source>Procedural grid expansion</source>
@@ -6413,6 +6778,10 @@ Ezaretatu balio datuaren urratzaile bat.</translation>
 {file_name}</source>
         <translation>Could not open:
 {file_name}</translation>
+    </message>
+    <message>
+        <source>Profile plot</source>
+        <translation>Profila-plota</translation>
     </message>
 </context>
 <context>
@@ -6721,12 +7090,27 @@ Ondo al zaude potentzialki asko itxarotea?</translation>
         <source>{file_name} is not valid :(</source>
         <translation>{file_name} is not valid :(</translation>
     </message>
+    <message>
+        <source>Results plot</source>
+        <translation>Egutzak plota</translation>
+    </message>
 </context>
 <context>
     <name>ResultsModel</name>
     <message>
         <source>Plotting error</source>
         <translation>Plotatzeko arazioa</translation>
+    </message>
+</context>
+<context>
+    <name>RetainedModeDraftTableModel</name>
+    <message>
+        <source>Retained mode</source>
+        <translation>Modeu mantendu</translation>
+    </message>
+    <message>
+        <source>Select one retained mode.</source>
+        <translation>Mode mantentzeko bat hautatu.</translation>
     </message>
 </context>
 <context>
@@ -7071,6 +7455,10 @@ This will remove the direct child scenarios after their changes are applied.</so
 
 This will remove the direct child scenarios after their changes are applied.</translation>
     </message>
+    <message>
+        <source>Wait until the running operations finish before changing scenario.</source>
+        <translation>Senarioa aldatu baino lehen, ordezkarizko jarduerak amaitzera itxoteko.</translation>
+    </message>
 </context>
 <context>
     <name>SchematicLibraryModel</name>
@@ -7226,6 +7614,10 @@ Zutabeak (devices) askoagoak geratu zituen? Bai, simulazioa berriro jarri.</tran
     <message>
         <source>{bus_name} was not found in the graphics manager</source>
         <translation>{bus_name} was not found in the graphics manager</translation>
+    </message>
+    <message>
+        <source>{device_name} profiles plot</source>
+        <translation>{device_name} profila-plota</translation>
     </message>
 </context>
 <context>
@@ -8591,6 +8983,86 @@ Modifikatzi klasterrak ML ingurukoan.</translation>
         <source>An RMS simulation cannot run without an RMS Events Group. Go to Events -&gt; Add RMS event and add a group, even if it contains no events.</source>
         <translation>RMS simulazio batek RMS Events Group batearekin ez dago zurekaraz. Events -&gt; RMS event gehitu eta grupo bat gehitu, gabe ere gabe ekitateak dituela.</translation>
     </message>
+    <message>
+        <source>Fluid nodes are ignored for nonlinear OPF</source>
+        <translation>Fluid noduak OPF nonlinearraren kasuan ez dira kontuan.</translation>
+    </message>
+    <message>
+        <source>Fluid nodes are ignored for this simulation</source>
+        <translation>Fluid noduak honek simulazioaren kasuan ez dira kontuan.</translation>
+    </message>
+    <message>
+        <source>Investments evaluation failed. Check the logs for details.</source>
+        <translation>Inbertsioen batezordeak ezin izan. Detaldetak logekin egiaztatu.</translation>
+    </message>
+    <message>
+        <source>Investments evaluation finished without results.</source>
+        <translation>Inbertsioen batezordeak emaitzutxuloan amaitu.</translation>
+    </message>
+    <message>
+        <source>Nodal capacity failed to start</source>
+        <translation>Nodal kapasitatea hasizko da</translation>
+    </message>
+    <message>
+        <source>Nodal capacity logs</source>
+        <translation>Nodal kapasitatearen logak</translation>
+    </message>
+    <message>
+        <source>Nodal capacity time series failed to start</source>
+        <translation>Nodal kapasitatearen eboluzio-seriea hasizko da</translation>
+    </message>
+    <message>
+        <source>Nodal capacity time series logs</source>
+        <translation>Nodal kapasitatearen eboluzio-seriearen logak</translation>
+    </message>
+    <message>
+        <source>OPF time series failed to start</source>
+        <translation>OPF eboluzio-seriea hasizko da</translation>
+    </message>
+    <message>
+        <source>OPF time series logs</source>
+        <translation>OPF eboluzio-seriearen logak</translation>
+    </message>
+    <message>
+        <source>Optimal power flow failed to start</source>
+        <translation>Potentzia bestalde optimala hasizko da</translation>
+    </message>
+    <message>
+        <source>Optimal power flow logs</source>
+        <translation>Potentzia bestalde optimalaren logak</translation>
+    </message>
+    <message>
+        <source>Running OPF time series with only one time step in range</source>
+        <translation>OPF eboluzio-seriea eboluzio-egune batekin funtsean jarri da</translation>
+    </message>
+    <message>
+        <source>Something went wrong, there are no OPF results.</source>
+        <translation>Zerbait saihestu da, OPF emaitzak ez dira.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, there are no OPF time series results.</source>
+        <translation>Zerbait saihestu da, OPF eboluzio-seriearen emaitzak ez dira.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, there are no nodal capacity results.</source>
+        <translation>Zerbait saihestu da, nodal kapasitatearen emaitzak ez dira.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, there are no nodal capacity time series results.</source>
+        <translation>Zerbait saihestu da, nodal kapasitatearen eboluzio-seriearen emaitzak ez dira.</translation>
+    </message>
+    <message>
+        <source>Voltage stability failed to start</source>
+        <translation>Toldo-estabilitatea hasizko da</translation>
+    </message>
+    <message>
+        <source>Voltage stability logs</source>
+        <translation>Toldo-estabilitatearen logak</translation>
+    </message>
+    <message>
+        <source>Wait until the running simulations finish before clearing results.</source>
+        <translation>Egutzak borrotzeko, simulazioak amaitzera itxoteko.</translation>
+    </message>
 </context>
 <context>
     <name>SubstationDesigner</name>
@@ -8901,6 +9373,10 @@ Ekarri edo sortu ekarri-erakunde bat!</translation>
     <message>
         <source>There is no profile displayed, please display one</source>
         <translation>Ez dago profilik bistaratzen, mesedez bistaratu bat</translation>
+    </message>
+    <message>
+        <source>Profiles plot</source>
+        <translation>Profila-plota</translation>
     </message>
 </context>
 <context>
@@ -9352,6 +9828,10 @@ Ekarri edo sortu ekarri-erakunde bat!</translation>
     <message>
         <source>Removed {count} __pycache__ folders</source>
         <translation>{count} __pycache__ dosiak ezabatuak</translation>
+    </message>
+    <message>
+        <source>Some operations are still stopping. Close again after they finish.</source>
+        <translation>Jelantza batzuk ordezkarizko daude. Amaitzera gero berriro itxoteko.</translation>
     </message>
 </context>
 <context>
@@ -11574,6 +12054,13 @@ Ekarri edo sortu ekarri-erakunde bat!</translation>
     </message>
 </context>
 <context>
+    <name>VerticalHeaderWidthResizer</name>
+    <message>
+        <source>Resize index column</source>
+        <translation>Indekse kolumnaa biruztu</translation>
+    </message>
+</context>
+<context>
     <name>VoltageLevelConversionWizard</name>
     <message>
         <source>+ Add spare position</source>
@@ -11726,6 +12213,14 @@ Ekarri edo sortu ekarri-erakunde bat!</translation>
 {error_text}</source>
         <translation>The selected wind turbine could not be created:
 {error_text}</translation>
+    </message>
+    <message>
+        <source>Wind power profile</source>
+        <translation>Eolinen potentziaren profila</translation>
+    </message>
+    <message>
+        <source>Wind turbine design curves</source>
+        <translation>Eolako turbina diseinu-kurbakak</translation>
     </message>
 </context>
 <context>
@@ -12335,7 +12830,7 @@ Ekarri edo sortu ekarri-erakunde bat!</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="12737"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Add RMS event&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Open the Dynamic events editor preferring RMS events&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;RMS event gehitu&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Ireki editorea dinamikoak, RMS eventak preferitzen dituela&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;RMS event gehitu&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Ireki editorea dinamikoak, RMS eventak preferitzen dituela&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="13068"/>
@@ -12345,7 +12840,7 @@ Ekarri edo sortu ekarri-erakunde bat!</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="13071"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Add EMT event&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Open the Dynamic events editor preferring EMT events&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;EMT event gehitu&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Ireki editorea dinamikoak, EMT eventak preferitzen dituela&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;EMT event gehitu&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Ireki editorea dinamikoak, EMT eventak preferitzen dituela&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="13143"/>
@@ -15149,303 +15644,17 @@ Ekarri edo sortu ekarri-erakunde bat!</translation>
     </message>
 </context>
 <context>
-    <name>BlockPropertyTreeModel</name>
+    <name>CompiledArraysMain</name>
     <message>
-        <source>Missing PF mapping</source>
-        <translation>PF mapeo falta</translation>
-    </message>
-    <message>
-        <source>Name</source>
-        <translation>Izena</translation>
-    </message>
-    <message>
-        <source>Output</source>
-        <translation>Irau</translation>
-    </message>
-    <message>
-        <source>Power-flow reference; variable mappings are used for initialization.</source>
-        <translation>Power-flow referentzia; variable mapeoak inicializazioa dela urdan erabiltzen dira.</translation>
-    </message>
-    <message>
-        <source>Template issue: static parameters require api_obj_mapping. An independently editable parameter should be in event_dict. This refactor does not migrate templates automatically.</source>
-        <translation>Template-ko problema: parametro statikoak api_obj_mapping behar dute. Parametro independentean itxiko da event_dict-ean. Refactorizazio honek templateak automatikoki migratatzen ez du.</translation>
-    </message>
-    <message>
-        <source>Type</source>
-        <translation>Tipoa</translation>
-    </message>
-    <message>
-        <source>Value / PF reference</source>
-        <translation>Balorrak / PF referentzia</translation>
+        <source>Array plot</source>
+        <translation>Arrain plota</translation>
     </message>
 </context>
 <context>
-    <name>BlockPropertyValueDelegate</name>
+    <name>SolarPvWizard</name>
     <message>
-        <source>None</source>
-        <translation>Ninguno</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicBlockPropertiesDockWidget</name>
-    <message>
-        <source>Block Properties contains changes that have not been applied. Discard those changes and close the editor?</source>
-        <translation>Block Properties-ean ez dago aplikatuak den dirudiak. Ez dago dirudiak eta editorea xutetzea?</translation>
-    </message>
-    <message>
-        <source>Unsaved Block Properties changes</source>
-        <translation>Block Properties-ko dirudiak ez dago jartuak</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicDeviceTreeWidget</name>
-    <message>
-        <source>EMT editor</source>
-        <translation>EMT editorea</translation>
-    </message>
-    <message>
-        <source>EMT events</source>
-        <translation>EMT ekitateak</translation>
-    </message>
-    <message>
-        <source>RMS editor</source>
-        <translation>RMS editorea</translation>
-    </message>
-    <message>
-        <source>RMS events</source>
-        <translation>RMS ekitateak</translation>
-    </message>
-    <message>
-        <source>Type to search the device</source>
-        <translation>Idatzi gailua bilatzeko</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEditorWorkspaceSession</name>
-    <message>
-        <source>Invalid dynamic events</source>
-        <translation>Ekitate dinamikoak balio batean dauden</translation>
-    </message>
-    <message>
-        <source>Save the changes before closing the last events tab?</source>
-        <translation>Dirudiak jartu baino lehen ekitate ekitateak xutetzea?</translation>
-    </message>
-    <message>
-        <source>The dynamic events contain unsaved changes.</source>
-        <translation>Ekitate dinamikoak dirudiak ez dago jartuak dituzte.</translation>
-    </message>
-    <message>
-        <source>Unsaved dynamic events</source>
-        <translation>Ekitate dinamikoak ez dago jartuak</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEventsDraftSession</name>
-    <message>
-        <source>An event and its events group use different simulation modes.</source>
-        <translation>Ekitate batek eta bere ekitate grupoak simulazio modu ezberdinak erabiltzen dituzte.</translation>
-    </message>
-    <message>
-        <source>An event has no target device.</source>
-        <translation>Ekitate batek oinarrizko gailu batek ez du.</translation>
-    </message>
-    <message>
-        <source>An event in device '{device}' has no valid events group.</source>
-        <translation>Ekitate batek '{device}' gailuan balio batean dagoen ekitate grupo batek ez du.</translation>
-    </message>
-    <message>
-        <source>An event in device '{device}' has no valid parameter.</source>
-        <translation>Ekitate batek '{device}' gailuan balio batean dagoen parametro batek ez du.</translation>
-    </message>
-    <message>
-        <source>An events group has an empty name.</source>
-        <translation>Ekitate grupo batek izen kosong batek gotuz.</translation>
-    </message>
-    <message>
-        <source>Events for parameter '{parameter}' overlap in group '{group}' and device '{device}'.</source>
-        <translation>Parametro '{parameter}'ko ekitateak grupo '{group}' eta gailu '{device}' batean isekarteko da.</translation>
-    </message>
-    <message>
-        <source>The events group name '{name}' is duplicated.</source>
-        <translation>Ekitate grupoaren izena '{name}' errepikatua da.</translation>
-    </message>
-    <message>
-        <source>The ramp event for parameter '{parameter}' has an invalid end time.</source>
-        <translation>Parametro '{parameter}'ko ramp event-ak amaitzeko denbora balio batean dagoen.</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEventsItemDelegate</name>
-    <message>
-        <source>Ramp</source>
-        <translation>Rampa</translation>
-    </message>
-    <message>
-        <source>Step</source>
-        <translation>Zututak</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEventsPage</name>
-    <message>
-        <source>Add an event to the selected event group</source>
-        <translation>Ego-grupari hautsaitako egoera gehitzea</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to remove group '{group}'? This will remove {events} events from {devices} devices.</source>
-        <translation>Zure ego-grupo '{group}' apurtu nahi duzun ziurtatu? Honek {devices} gai-jaietako {events} egoerak beteko.</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to remove the event for '{parameter}' at {time:.4f} s?</source>
-        <translation>Zure '{parameter}' egoera apurtu nahi duzun ziurtatu {time:.4f} s-an?</translation>
-    </message>
-    <message>
-        <source>Create an EMT switch opening and reclosing event sequence</source>
-        <translation>EMT altzola ireketa eta bardutze egoera-silsilak sortu</translation>
-    </message>
-    <message>
-        <source>Create an event group for this simulation mode</source>
-        <translation>Simulazio-modo honeko ego-grupo bat sortu</translation>
-    </message>
-    <message>
-        <source>Empty dynamic model</source>
-        <translation>Modelo dinamiko joan</translation>
-    </message>
-    <message>
-        <source>Events cannot be added because this dynamic model has no event parameters.</source>
-        <translation>Egoerak gehi nahi ez dira, modelo dinamiko honek egoera parametroak ez du.</translation>
-    </message>
-    <message>
-        <source>Events saved</source>
-        <translation>Egoerak taldeatu</translation>
-    </message>
-    <message>
-        <source>Invalid dynamic events</source>
-        <translation>Ekitate dinamikoak balio batean dauden</translation>
-    </message>
-    <message>
-        <source>Invalid event group</source>
-        <translation>Ego-grupo ez baliozkoa</translation>
-    </message>
-    <message>
-        <source>Invalid parameter</source>
-        <translation>Parametru ez baliozkoa</translation>
-    </message>
-    <message>
-        <source>No events can be added because the dynamic model has no event parameters.</source>
-        <translation>Egoerak gehi nahi ez dira, modelo dinamikoak egoera parametroak ez du.</translation>
-    </message>
-    <message>
-        <source>Remove</source>
-        <translation>Kendu</translation>
-    </message>
-    <message>
-        <source>Remove event</source>
-        <translation>Egoera bete</translation>
-    </message>
-    <message>
-        <source>Remove events group</source>
-        <translation>Egoerak grupo bete</translation>
-    </message>
-    <message>
-        <source>Remove the selected event or event group</source>
-        <translation>Hautsaitako egoera edo ego-grupoa bete</translation>
-    </message>
-    <message>
-        <source>Rename</source>
-        <translation>Izena daida</translation>
-    </message>
-    <message>
-        <source>Save events</source>
-        <translation>Egoerak taldeatu</translation>
-    </message>
-    <message>
-        <source>Select the event group where you want to add the event.</source>
-        <translation>Egoera gehitu nahi duzun ego-grupoa hautatu.</translation>
-    </message>
-    <message>
-        <source>Select the event or event group you want to remove.</source>
-        <translation>Apurtu nahi duzun egoera edo ego-grupoa hautatu.</translation>
-    </message>
-    <message>
-        <source>Switch Sequence Wizard</source>
-        <translation>Zigurutuzko Sukegiak Aldatzeko Zirkuitu-Zirkuitua</translation>
-    </message>
-    <message>
-        <source>The event group name must be non-empty and unique in this simulation mode.</source>
-        <translation>Ego-grupoaren izenak ez izan behar ezik eta uniko izan behar simulazio-modo honean.</translation>
-    </message>
-    <message>
-        <source>This dynamic model is empty. New events cannot be added until the model is built.</source>
-        <translation>Modelo dinamiko hau joan dago. Modeloa sortu arte, egoerak berriak gehi nahi da ez.</translation>
-    </message>
-    <message>
-        <source>➕ New Event Group</source>
-        <translation>➕ Ego-grupo berria</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEventsTreeModel</name>
-    <message>
-        <source>Align Step</source>
-        <translation>Zuzendarata</translation>
-    </message>
-    <message>
-        <source>End Time</source>
-        <translation>Amaitzeko Oroa</translation>
-    </message>
-    <message>
-        <source>Invalid / Ungrouped Events</source>
-        <translation>Egoerak ez baliozkoak / Ego-grupari ez dagoen</translation>
-    </message>
-    <message>
-        <source>Invalid parameter</source>
-        <translation>Parametru ez baliozkoa</translation>
-    </message>
-    <message>
-        <source>New Value</source>
-        <translation>Balio berria</translation>
-    </message>
-    <message>
-        <source>Parameter</source>
-        <translation>Parametru</translation>
-    </message>
-    <message>
-        <source>These persisted events do not reference a valid events group and can only be removed.</source>
-        <translation>Egoerak taldeatu hauek ego-grupo baliozko bat ez adierazten dituz eta beteak ezin da.</translation>
-    </message>
-    <message>
-        <source>Time</source>
-        <translation>Egutegia</translation>
-    </message>
-    <message>
-        <source>Transition</source>
-        <translation>Trantzisio</translation>
-    </message>
-</context>
-<context>
-    <name>PopupResizeGrip</name>
-    <message>
-        <source>Resize</source>
-        <translation>Dimentsionatzea</translation>
-    </message>
-</context>
-<context>
-    <name>RetainedModeDraftTableModel</name>
-    <message>
-        <source>Retained mode</source>
-        <translation>Modeu mantendu</translation>
-    </message>
-    <message>
-        <source>Select one retained mode.</source>
-        <translation>Mode mantentzeko bat hautatu.</translation>
-    </message>
-</context>
-<context>
-    <name>VerticalHeaderWidthResizer</name>
-    <message>
-        <source>Resize index column</source>
-        <translation>Indekse kolumnaa biruztu</translation>
+        <source>Solar power profile</source>
+        <translation>Solar potentziaren profila</translation>
     </message>
 </context>
 </TS>

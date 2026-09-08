@@ -557,19 +557,74 @@ li.checked::标记 { content: &quot;\2612&quot;; }
 <context>
     <name>BlockEditorWindow</name>
     <message>
-        <location filename="../DynamicModelEditor/ui/block_editor.ui" line="14"/>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="14"/>
         <source>BlockEditorWindow</source>
         <translation>BlockEditorWindow</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/block_editor.ui" line="116"/>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="116"/>
         <source>Library</source>
         <translation>图书馆</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/block_editor.ui" line="155"/>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="155"/>
         <source>Search basic blocks</source>
         <translation>搜索基本块</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="208"/>
+        <source>toolBar</source>
+        <translation>toolBar</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="237"/>
+        <source>CheckModel</source>
+        <translation>CheckModel</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="240"/>
+        <source>Inspect model</source>
+        <translation>检查模型</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="252"/>
+        <source>Center</source>
+        <translation>中心</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="264"/>
+        <source>Zoom in</source>
+        <translation>放大</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="276"/>
+        <source>Zoom out</source>
+        <translation>缩小</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="291"/>
+        <source>Delete all</source>
+        <translation>全部删除</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="294"/>
+        <source>Delete all blocks to start from scratch.</source>
+        <translation>删除所有块以从头开始。</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="306"/>
+        <source>Validate</source>
+        <translation>验证</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="318"/>
+        <source>Save</source>
+        <translation>保存</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="321"/>
+        <source>Ctrl+S</source>
+        <translation>Ctrl+S</translation>
     </message>
     <message>
         <source>Variables</source>
@@ -605,6 +660,44 @@ li.checked::标记 { content: &quot;\2612&quot;; }
     <message>
         <source>Value</source>
         <translation>值</translation>
+    </message>
+</context>
+<context>
+    <name>BlockPropertyTreeModel</name>
+    <message>
+        <source>Missing PF mapping</source>
+        <translation>缺少 PF 映射</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>名称</translation>
+    </message>
+    <message>
+        <source>Output</source>
+        <translation>输出</translation>
+    </message>
+    <message>
+        <source>Power-flow reference; variable mappings are used for initialization.</source>
+        <translation>潮流参考；使用变量映射进行初始化。</translation>
+    </message>
+    <message>
+        <source>Template issue: static parameters require api_obj_mapping. An independently editable parameter should be in event_dict. This refactor does not migrate templates automatically.</source>
+        <translation>模板问题：静态参数需要 api_obj_mapping。独立可编辑的参数应在 event_dict 中。此重构不会自动迁移模板。</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>类型</translation>
+    </message>
+    <message>
+        <source>Value / PF reference</source>
+        <translation>值 / PF 参考</translation>
+    </message>
+</context>
+<context>
+    <name>BlockPropertyValueDelegate</name>
+    <message>
+        <source>None</source>
+        <translation>无</translation>
     </message>
 </context>
 <context>
@@ -1832,6 +1925,10 @@ Are you sure?</source>
         <source>Width in pixels</source>
         <translation>像素宽度</translation>
     </message>
+    <message>
+        <source>Object histogram</source>
+        <translation>对象直方图</translation>
+    </message>
 </context>
 <context>
     <name>DcLineDeviceEditor</name>
@@ -2745,11 +2842,11 @@ Are you sure?</source>
     </message>
     <message>
         <source>There are unapplied changes. Do you want to close without applying them?</source>
-        <translation type="vanished">有未应用的更改。是否不应用更改直接关闭？</translation>
+        <translation>有未应用的更改。是否不应用更改直接关闭？</translation>
     </message>
     <message>
         <source>Unsaved changes</source>
-        <translation type="vanished">未保存的更改</translation>
+        <translation>未保存的更改</translation>
     </message>
     <message>
         <source>You are going to delete the complete model and start from scratch. Are you sure?</source>
@@ -2759,12 +2856,12 @@ Are you sure?</source>
 <context>
     <name>DynamicBlockPropertiesDialog</name>
     <message>
-        <location filename="../DynamicModelEditor/BlockProperties/dynamic_block_properties.ui" line="14"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="14"/>
         <source>Block properties</source>
         <translation>块属性</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/BlockProperties/dynamic_block_properties.ui" line="70"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="70"/>
         <source>Apply changes</source>
         <translation>应用更改</translation>
     </message>
@@ -3081,7 +3178,7 @@ Are you sure?</source>
         <translation>+ 添加过程逻辑</translation>
     </message>
     <message>
-        <source>Add one procedural behavior to the active equation owner's Python code.</source>
+        <source>Add one procedural behavior to the active equation owner&apos;s Python code.</source>
         <translation>向活动方程所有者的 Python 代码添加一个过程行为。</translation>
     </message>
     <message>
@@ -3135,6 +3232,40 @@ Are you sure?</source>
     <message>
         <source>Validate model</source>
         <translation>验证模型</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicBlockPropertiesDockWidget</name>
+    <message>
+        <source>Block Properties contains changes that have not been applied. Discard those changes and close the editor?</source>
+        <translation>块属性包含尚未应用的更改。是否丢弃这些更改并关闭编辑器？</translation>
+    </message>
+    <message>
+        <source>Unsaved Block Properties changes</source>
+        <translation>未保存的块属性更改</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicDeviceTreeWidget</name>
+    <message>
+        <source>EMT editor</source>
+        <translation>EMT 编辑器</translation>
+    </message>
+    <message>
+        <source>EMT events</source>
+        <translation>EMT 事件</translation>
+    </message>
+    <message>
+        <source>RMS editor</source>
+        <translation>RMS 编辑器</translation>
+    </message>
+    <message>
+        <source>RMS events</source>
+        <translation>RMS 事件</translation>
+    </message>
+    <message>
+        <source>Type to search the device</source>
+        <translation>输入搜索设备</translation>
     </message>
 </context>
 <context>
@@ -3195,64 +3326,95 @@ Are you sure?</source>
     </message>
 </context>
 <context>
+    <name>DynamicEditorWorkspaceSession</name>
+    <message>
+        <source>Invalid dynamic events</source>
+        <translation>无效的动态事件</translation>
+    </message>
+    <message>
+        <source>Save the changes before closing the last events tab?</source>
+        <translation>关闭最后一个事件标签页前是否保存更改？</translation>
+    </message>
+    <message>
+        <source>The dynamic events contain unsaved changes.</source>
+        <translation>动态事件包含未保存的更改。</translation>
+    </message>
+    <message>
+        <source>Unsaved dynamic events</source>
+        <translation>未保存的动态事件</translation>
+    </message>
+</context>
+<context>
     <name>DynamicEditorWorkspaceWindow</name>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="14"/>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="14"/>
         <source>Dynamic Editor Workspace</source>
         <translation>动态编辑器工作区</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="79"/>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="79"/>
         <source>Type to search the device</source>
         <translation>输入搜索设备</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="126"/>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="126"/>
         <source>toolBar</source>
         <translation>toolBar</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="157"/>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="168"/>
+        <source>RMS Editor</source>
+        <translation>RMS编辑器</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="180"/>
+        <source>EMT Editor</source>
+        <translation>EMT编辑器</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="192"/>
+        <source>RMS Events</source>
+        <translation>RMS 事件</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="204"/>
+        <source>EMT Events</source>
+        <translation>EMT 事件</translation>
+    </message>
+    <message>
         <source>CheckModel</source>
-        <translation>CheckModel</translation>
+        <translation type="vanished">CheckModel</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="160"/>
         <source>Inspect model</source>
-        <translation>检查模型</translation>
+        <translation type="vanished">检查模型</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="172"/>
         <source>Center</source>
-        <translation>中心</translation>
+        <translation type="vanished">中心</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="184"/>
         <source>Zoom in</source>
-        <translation>放大</translation>
+        <translation type="vanished">放大</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="196"/>
         <source>Zoom out</source>
-        <translation>缩小</translation>
+        <translation type="vanished">缩小</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="211"/>
         <source>Delete all</source>
-        <translation>全部删除</translation>
+        <translation type="vanished">全部删除</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="214"/>
         <source>Delete all blocks to start from scratch.</source>
-        <translation>删除所有块以从头开始。</translation>
+        <translation type="vanished">删除所有块以从头开始。</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="226"/>
         <source>Validate</source>
-        <translation>验证</translation>
+        <translation type="vanished">验证</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="238"/>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="156"/>
         <source>view tree</source>
         <translation>查看树</translation>
     </message>
@@ -3484,6 +3646,41 @@ Are you sure?</source>
     </message>
 </context>
 <context>
+    <name>DynamicEventsDraftSession</name>
+    <message>
+        <source>An event and its events group use different simulation modes.</source>
+        <translation>一个事件及其事件组使用了不同的仿真模式。</translation>
+    </message>
+    <message>
+        <source>An event has no target device.</source>
+        <translation>一个事件没有目标设备。</translation>
+    </message>
+    <message>
+        <source>An event in device &apos;{device}&apos; has no valid events group.</source>
+        <translation>设备 &apos;{device}&apos; 中的事件没有有效的事件组。</translation>
+    </message>
+    <message>
+        <source>An event in device &apos;{device}&apos; has no valid parameter.</source>
+        <translation>设备 &apos;{device}&apos; 中的事件没有有效的参数。</translation>
+    </message>
+    <message>
+        <source>An events group has an empty name.</source>
+        <translation>一个事件组名称为空。</translation>
+    </message>
+    <message>
+        <source>Events for parameter &apos;{parameter}&apos; overlap in group &apos;{group}&apos; and device &apos;{device}&apos;.</source>
+        <translation>参数 &apos;{parameter}&apos; 的事件在组 &apos;{group}&apos; 和设备 &apos;{device}&apos; 中重叠。</translation>
+    </message>
+    <message>
+        <source>The events group name &apos;{name}&apos; is duplicated.</source>
+        <translation>事件组名称 &apos;{name}&apos; 重复。</translation>
+    </message>
+    <message>
+        <source>The ramp event for parameter &apos;{parameter}&apos; has an invalid end time.</source>
+        <translation>参数 &apos;{parameter}&apos; 的斜坡事件具有无效的结束时间。</translation>
+    </message>
+</context>
+<context>
     <name>DynamicEventsGroupsDialog</name>
     <message>
         <source>Create EMT Events Group</source>
@@ -3508,6 +3705,155 @@ Are you sure?</source>
     <message>
         <source>The name cannot be empty.</source>
         <translation>名称不能为空。</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventsItemDelegate</name>
+    <message>
+        <source>Ramp</source>
+        <translation>斜坡</translation>
+    </message>
+    <message>
+        <source>Step</source>
+        <translation>阶跃</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventsPage</name>
+    <message>
+        <source>Add an event to the selected event group</source>
+        <translation>向选定的事件组添加事件</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to remove group &apos;{group}&apos;? This will remove {events} events from {devices} devices.</source>
+        <translation>您确定要移除组 &apos;{group}&apos; 吗？这将从 {devices} 个设备中移除 {events} 个事件。</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to remove the event for &apos;{parameter}&apos; at {time:.4f} s?</source>
+        <translation>您确定要移除 &apos;{parameter}&apos; 在 {time:.4f} s 的事件吗？</translation>
+    </message>
+    <message>
+        <source>Create an EMT switch opening and reclosing event sequence</source>
+        <translation>创建 EMT 开断合闸事件序列</translation>
+    </message>
+    <message>
+        <source>Create an event group for this simulation mode</source>
+        <translation>为此仿真模式创建事件组</translation>
+    </message>
+    <message>
+        <source>Empty dynamic model</source>
+        <translation>清空动态模型</translation>
+    </message>
+    <message>
+        <source>Events cannot be added because this dynamic model has no event parameters.</source>
+        <translation>由于此动态模型没有事件参数，无法添加事件。</translation>
+    </message>
+    <message>
+        <source>Events saved</source>
+        <translation>事件已保存</translation>
+    </message>
+    <message>
+        <source>Invalid dynamic events</source>
+        <translation>无效的动态事件</translation>
+    </message>
+    <message>
+        <source>Invalid event group</source>
+        <translation>无效的事件组</translation>
+    </message>
+    <message>
+        <source>Invalid parameter</source>
+        <translation>无效的参数</translation>
+    </message>
+    <message>
+        <source>No events can be added because the dynamic model has no event parameters.</source>
+        <translation>由于动态模型没有事件参数，无法添加事件。</translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation>消除</translation>
+    </message>
+    <message>
+        <source>Remove event</source>
+        <translation>移除事件</translation>
+    </message>
+    <message>
+        <source>Remove events group</source>
+        <translation>移除事件组</translation>
+    </message>
+    <message>
+        <source>Remove the selected event or event group</source>
+        <translation>移除选定的事件或事件组</translation>
+    </message>
+    <message>
+        <source>Rename</source>
+        <translation>重命名</translation>
+    </message>
+    <message>
+        <source>Save events</source>
+        <translation>保存事件</translation>
+    </message>
+    <message>
+        <source>Select the event group where you want to add the event.</source>
+        <translation>选择您要添加事件的事件组。</translation>
+    </message>
+    <message>
+        <source>Select the event or event group you want to remove.</source>
+        <translation>选择您要移除的事件或事件组。</translation>
+    </message>
+    <message>
+        <source>Switch Sequence Wizard</source>
+        <translation>开关序列向导</translation>
+    </message>
+    <message>
+        <source>The event group name must be non-empty and unique in this simulation mode.</source>
+        <translation>事件组名称必须在此仿真模式下非空且唯一。</translation>
+    </message>
+    <message>
+        <source>This dynamic model is empty. New events cannot be added until the model is built.</source>
+        <translation>此动态模型为空。在模型构建之前无法添加新事件。</translation>
+    </message>
+    <message>
+        <source>➕ New Event Group</source>
+        <translation>➕ 新事件组</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventsTreeModel</name>
+    <message>
+        <source>Align Step</source>
+        <translation>对齐步长</translation>
+    </message>
+    <message>
+        <source>End Time</source>
+        <translation>结束时间</translation>
+    </message>
+    <message>
+        <source>Invalid / Ungrouped Events</source>
+        <translation>无效/未分组事件</translation>
+    </message>
+    <message>
+        <source>Invalid parameter</source>
+        <translation>无效的参数</translation>
+    </message>
+    <message>
+        <source>New Value</source>
+        <translation>新值</translation>
+    </message>
+    <message>
+        <source>Parameter</source>
+        <translation>参数</translation>
+    </message>
+    <message>
+        <source>These persisted events do not reference a valid events group and can only be removed.</source>
+        <translation>这些持久化事件未引用有效的事件组，只能移除。</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>时间</translation>
+    </message>
+    <message>
+        <source>Transition</source>
+        <translation>过渡</translation>
     </message>
 </context>
 <context>
@@ -3943,6 +4289,10 @@ IMPORTANT: This will take into account every movement of substation and line loc
         <source>create substation diagram</source>
         <translation>创建变电站原理图</translation>
     </message>
+    <message>
+        <source>{device_name} profiles plot</source>
+        <translation>{device_name} 曲线图</translation>
+    </message>
 </context>
 <context>
     <name>GridMergeDialogue</name>
@@ -4374,6 +4724,14 @@ Cancel and retry?</source>
     <message>
         <source>The file was loaded but the current project was kept because closing a dynamic editor was cancelled.</source>
         <translation>文件已加载，但由于取消关闭动态编辑器，当前项目已保留。</translation>
+    </message>
+    <message>
+        <source>Some operations are still stopping. Try again after they finish.</source>
+        <translation>有些操作仍在停止中。请等待它们完成后再重试。</translation>
+    </message>
+    <message>
+        <source>The current save is still finishing. Please retry when it is done.</source>
+        <translation>当前保存仍在完成中。请在完成后重试。</translation>
     </message>
 </context>
 <context>
@@ -6369,6 +6727,13 @@ Cancel it and close the window?</source>
     </message>
 </context>
 <context>
+    <name>PopupResizeGrip</name>
+    <message>
+        <source>Resize</source>
+        <translation>调整大小</translation>
+    </message>
+</context>
+<context>
     <name>ProceduralGridWindow</name>
     <message>
         <source>Procedural grid expansion</source>
@@ -6422,6 +6787,10 @@ Consider loading a valid source of data.</source>
     <message>
         <source>Value error loading CSV file</source>
         <translation>加载 CSV 文件时发生值错误</translation>
+    </message>
+    <message>
+        <source>Profile plot</source>
+        <translation>曲线图</translation>
     </message>
 </context>
 <context>
@@ -6730,12 +7099,27 @@ Are you ok with potentially waiting a lot?</source>
         <source>{file_name} is not valid :(</source>
         <translation>{file_name} 无效 :(</translation>
     </message>
+    <message>
+        <source>Results plot</source>
+        <translation>结果图</translation>
+    </message>
 </context>
 <context>
     <name>ResultsModel</name>
     <message>
         <source>Plotting error</source>
         <translation>绘图错误</translation>
+    </message>
+</context>
+<context>
+    <name>RetainedModeDraftTableModel</name>
+    <message>
+        <source>Retained mode</source>
+        <translation>保留模式</translation>
+    </message>
+    <message>
+        <source>Select one retained mode.</source>
+        <translation>选择一个保留模式。</translation>
     </message>
 </context>
 <context>
@@ -7080,6 +7464,10 @@ This will remove the direct child scenarios after their changes are applied.</so
         <source>Set Current Scenario</source>
         <translation>设置当前场景</translation>
     </message>
+    <message>
+        <source>Wait until the running operations finish before changing scenario.</source>
+        <translation>在更改场景之前，请等待正在运行的操作完成。</translation>
+    </message>
 </context>
 <context>
     <name>SchematicLibraryModel</name>
@@ -7234,6 +7622,10 @@ Did you change the number of devices? If so, re-run the simulation.</source>
     <message>
         <source>{bus_name} was not found in the graphics manager</source>
         <translation>在图形管理器中未找到 {bus_name}</translation>
+    </message>
+    <message>
+        <source>{device_name} profiles plot</source>
+        <translation>{device_name} 曲线图</translation>
     </message>
 </context>
 <context>
@@ -8598,6 +8990,86 @@ Modify the number of clusters in the ML settings.</source>
         <source>An RMS simulation cannot run without an RMS Events Group. Go to Events -&gt; Add RMS event and add a group, even if it contains no events.</source>
         <translation>没有 RMS 事件组，无法运行 RMS 仿真。转到 Events -&gt; Add RMS event 并添加一个组，即使该组不包含任何事件。</translation>
     </message>
+    <message>
+        <source>Fluid nodes are ignored for nonlinear OPF</source>
+        <translation>非线性 OPF 会忽略流体节点</translation>
+    </message>
+    <message>
+        <source>Fluid nodes are ignored for this simulation</source>
+        <translation>本次仿真会忽略流体节点</translation>
+    </message>
+    <message>
+        <source>Investments evaluation failed. Check the logs for details.</source>
+        <translation>投资评估失败。请查看日志了解详情。</translation>
+    </message>
+    <message>
+        <source>Investments evaluation finished without results.</source>
+        <translation>投资评估完成，但没有结果。</translation>
+    </message>
+    <message>
+        <source>Nodal capacity failed to start</source>
+        <translation>节点容量启动失败</translation>
+    </message>
+    <message>
+        <source>Nodal capacity logs</source>
+        <translation>节点容量日志</translation>
+    </message>
+    <message>
+        <source>Nodal capacity time series failed to start</source>
+        <translation>节点容量时间序列启动失败</translation>
+    </message>
+    <message>
+        <source>Nodal capacity time series logs</source>
+        <translation>节点容量时间序列日志</translation>
+    </message>
+    <message>
+        <source>OPF time series failed to start</source>
+        <translation>OPF 时间序列启动失败</translation>
+    </message>
+    <message>
+        <source>OPF time series logs</source>
+        <translation>OPF 时间序列日志</translation>
+    </message>
+    <message>
+        <source>Optimal power flow failed to start</source>
+        <translation>最优潮流启动失败</translation>
+    </message>
+    <message>
+        <source>Optimal power flow logs</source>
+        <translation>最优潮流日志</translation>
+    </message>
+    <message>
+        <source>Running OPF time series with only one time step in range</source>
+        <translation>正在使用范围内的单个时间步运行 OPF 时间序列</translation>
+    </message>
+    <message>
+        <source>Something went wrong, there are no OPF results.</source>
+        <translation>发生错误，没有 OPF 结果。</translation>
+    </message>
+    <message>
+        <source>Something went wrong, there are no OPF time series results.</source>
+        <translation>发生错误，没有 OPF 时间序列结果。</translation>
+    </message>
+    <message>
+        <source>Something went wrong, there are no nodal capacity results.</source>
+        <translation>发生错误，没有节点容量结果。</translation>
+    </message>
+    <message>
+        <source>Something went wrong, there are no nodal capacity time series results.</source>
+        <translation>发生错误，没有节点容量时间序列结果。</translation>
+    </message>
+    <message>
+        <source>Voltage stability failed to start</source>
+        <translation>电压稳定启动失败</translation>
+    </message>
+    <message>
+        <source>Voltage stability logs</source>
+        <translation>电压稳定日志</translation>
+    </message>
+    <message>
+        <source>Wait until the running simulations finish before clearing results.</source>
+        <translation>在清除结果之前，请等待正在运行的仿真完成。</translation>
+    </message>
 </context>
 <context>
     <name>SubstationDesigner</name>
@@ -8908,6 +9380,10 @@ You need to load or create a grid!</source>
     <message>
         <source>There is no profile displayed, please display one</source>
         <translation>没有显示个人资料，请显示一个</translation>
+    </message>
+    <message>
+        <source>Profiles plot</source>
+        <translation>曲线图</translation>
     </message>
 </context>
 <context>
@@ -9359,6 +9835,10 @@ You need to load or create a grid!</source>
     <message>
         <source>Removed {count} __pycache__ folders</source>
         <translation>已删除 {count} 个 __pycache__ 文件夹</translation>
+    </message>
+    <message>
+        <source>Some operations are still stopping. Close again after they finish.</source>
+        <translation>有些操作仍在停止中。请等待它们完成后再关闭。</translation>
     </message>
 </context>
 <context>
@@ -11581,6 +12061,13 @@ You need to load or create a grid!</source>
     </message>
 </context>
 <context>
+    <name>VerticalHeaderWidthResizer</name>
+    <message>
+        <source>Resize index column</source>
+        <translation>调整索引列大小</translation>
+    </message>
+</context>
+<context>
     <name>VoltageLevelConversionWizard</name>
     <message>
         <source>+ Add spare position</source>
@@ -11733,6 +12220,14 @@ You need to load or create a grid!</source>
 {error_text}</source>
         <translation>无法创建所选风力涡轮机：
 {error_text}</translation>
+    </message>
+    <message>
+        <source>Wind power profile</source>
+        <translation>风电曲线</translation>
+    </message>
+    <message>
+        <source>Wind turbine design curves</source>
+        <translation>风力发电机设计曲线</translation>
     </message>
 </context>
 <context>
@@ -12342,7 +12837,7 @@ You need to load or create a grid!</source>
     <message>
         <location filename="../Main/MainWindow.ui" line="12737"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Add RMS event&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Open the Dynamic events editor preferring RMS events&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;添加 RMS 事件&lt;/span&gt;&lt;/p&gt;&lt;p&gt;打开偏好 RMS 事件的动态事件编辑器&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;添加 RMS 事件&lt;/span&gt;&lt;/p&gt;&lt;p&gt;打开偏好 RMS 事件的动态事件编辑器&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="13068"/>
@@ -12352,7 +12847,7 @@ You need to load or create a grid!</source>
     <message>
         <location filename="../Main/MainWindow.ui" line="13071"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Add EMT event&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Open the Dynamic events editor preferring EMT events&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;添加 EMT 事件&lt;/span&gt;&lt;/p&gt;&lt;p&gt;打开偏好 EMT 事件的动态事件编辑器&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;添加 EMT 事件&lt;/span&gt;&lt;/p&gt;&lt;p&gt;打开偏好 EMT 事件的动态事件编辑器&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="13143"/>
@@ -15156,303 +15651,17 @@ You need to load or create a grid!</source>
     </message>
 </context>
 <context>
-    <name>BlockPropertyTreeModel</name>
+    <name>CompiledArraysMain</name>
     <message>
-        <source>Missing PF mapping</source>
-        <translation>缺少 PF 映射</translation>
-    </message>
-    <message>
-        <source>Name</source>
-        <translation>名称</translation>
-    </message>
-    <message>
-        <source>Output</source>
-        <translation>输出</translation>
-    </message>
-    <message>
-        <source>Power-flow reference; variable mappings are used for initialization.</source>
-        <translation>潮流参考；使用变量映射进行初始化。</translation>
-    </message>
-    <message>
-        <source>Template issue: static parameters require api_obj_mapping. An independently editable parameter should be in event_dict. This refactor does not migrate templates automatically.</source>
-        <translation>模板问题：静态参数需要 api_obj_mapping。独立可编辑的参数应在 event_dict 中。此重构不会自动迁移模板。</translation>
-    </message>
-    <message>
-        <source>Type</source>
-        <translation>类型</translation>
-    </message>
-    <message>
-        <source>Value / PF reference</source>
-        <translation>值 / PF 参考</translation>
+        <source>Array plot</source>
+        <translation>阵列图</translation>
     </message>
 </context>
 <context>
-    <name>BlockPropertyValueDelegate</name>
+    <name>SolarPvWizard</name>
     <message>
-        <source>None</source>
-        <translation>无</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicBlockPropertiesDockWidget</name>
-    <message>
-        <source>Block Properties contains changes that have not been applied. Discard those changes and close the editor?</source>
-        <translation>块属性包含尚未应用的更改。是否丢弃这些更改并关闭编辑器？</translation>
-    </message>
-    <message>
-        <source>Unsaved Block Properties changes</source>
-        <translation>未保存的块属性更改</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicDeviceTreeWidget</name>
-    <message>
-        <source>EMT editor</source>
-        <translation>EMT 编辑器</translation>
-    </message>
-    <message>
-        <source>EMT events</source>
-        <translation>EMT 事件</translation>
-    </message>
-    <message>
-        <source>RMS editor</source>
-        <translation>RMS 编辑器</translation>
-    </message>
-    <message>
-        <source>RMS events</source>
-        <translation>RMS 事件</translation>
-    </message>
-    <message>
-        <source>Type to search the device</source>
-        <translation>输入搜索设备</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEditorWorkspaceSession</name>
-    <message>
-        <source>Invalid dynamic events</source>
-        <translation>无效的动态事件</translation>
-    </message>
-    <message>
-        <source>Save the changes before closing the last events tab?</source>
-        <translation>关闭最后一个事件标签页前是否保存更改？</translation>
-    </message>
-    <message>
-        <source>The dynamic events contain unsaved changes.</source>
-        <translation>动态事件包含未保存的更改。</translation>
-    </message>
-    <message>
-        <source>Unsaved dynamic events</source>
-        <translation>未保存的动态事件</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEventsDraftSession</name>
-    <message>
-        <source>An event and its events group use different simulation modes.</source>
-        <translation>一个事件及其事件组使用了不同的仿真模式。</translation>
-    </message>
-    <message>
-        <source>An event has no target device.</source>
-        <translation>一个事件没有目标设备。</translation>
-    </message>
-    <message>
-        <source>An event in device '{device}' has no valid events group.</source>
-        <translation>设备 '{device}' 中的事件没有有效的事件组。</translation>
-    </message>
-    <message>
-        <source>An event in device '{device}' has no valid parameter.</source>
-        <translation>设备 '{device}' 中的事件没有有效的参数。</translation>
-    </message>
-    <message>
-        <source>An events group has an empty name.</source>
-        <translation>一个事件组名称为空。</translation>
-    </message>
-    <message>
-        <source>Events for parameter '{parameter}' overlap in group '{group}' and device '{device}'.</source>
-        <translation>参数 '{parameter}' 的事件在组 '{group}' 和设备 '{device}' 中重叠。</translation>
-    </message>
-    <message>
-        <source>The events group name '{name}' is duplicated.</source>
-        <translation>事件组名称 '{name}' 重复。</translation>
-    </message>
-    <message>
-        <source>The ramp event for parameter '{parameter}' has an invalid end time.</source>
-        <translation>参数 '{parameter}' 的斜坡事件具有无效的结束时间。</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEventsItemDelegate</name>
-    <message>
-        <source>Ramp</source>
-        <translation>斜坡</translation>
-    </message>
-    <message>
-        <source>Step</source>
-        <translation>阶跃</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEventsPage</name>
-    <message>
-        <source>Add an event to the selected event group</source>
-        <translation>向选定的事件组添加事件</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to remove group '{group}'? This will remove {events} events from {devices} devices.</source>
-        <translation>您确定要移除组 '{group}' 吗？这将从 {devices} 个设备中移除 {events} 个事件。</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to remove the event for '{parameter}' at {time:.4f} s?</source>
-        <translation>您确定要移除 '{parameter}' 在 {time:.4f} s 的事件吗？</translation>
-    </message>
-    <message>
-        <source>Create an EMT switch opening and reclosing event sequence</source>
-        <translation>创建 EMT 开断合闸事件序列</translation>
-    </message>
-    <message>
-        <source>Create an event group for this simulation mode</source>
-        <translation>为此仿真模式创建事件组</translation>
-    </message>
-    <message>
-        <source>Empty dynamic model</source>
-        <translation>清空动态模型</translation>
-    </message>
-    <message>
-        <source>Events cannot be added because this dynamic model has no event parameters.</source>
-        <translation>由于此动态模型没有事件参数，无法添加事件。</translation>
-    </message>
-    <message>
-        <source>Events saved</source>
-        <translation>事件已保存</translation>
-    </message>
-    <message>
-        <source>Invalid dynamic events</source>
-        <translation>无效的动态事件</translation>
-    </message>
-    <message>
-        <source>Invalid event group</source>
-        <translation>无效的事件组</translation>
-    </message>
-    <message>
-        <source>Invalid parameter</source>
-        <translation>无效的参数</translation>
-    </message>
-    <message>
-        <source>No events can be added because the dynamic model has no event parameters.</source>
-        <translation>由于动态模型没有事件参数，无法添加事件。</translation>
-    </message>
-    <message>
-        <source>Remove</source>
-        <translation>消除</translation>
-    </message>
-    <message>
-        <source>Remove event</source>
-        <translation>移除事件</translation>
-    </message>
-    <message>
-        <source>Remove events group</source>
-        <translation>移除事件组</translation>
-    </message>
-    <message>
-        <source>Remove the selected event or event group</source>
-        <translation>移除选定的事件或事件组</translation>
-    </message>
-    <message>
-        <source>Rename</source>
-        <translation>重命名</translation>
-    </message>
-    <message>
-        <source>Save events</source>
-        <translation>保存事件</translation>
-    </message>
-    <message>
-        <source>Select the event group where you want to add the event.</source>
-        <translation>选择您要添加事件的事件组。</translation>
-    </message>
-    <message>
-        <source>Select the event or event group you want to remove.</source>
-        <translation>选择您要移除的事件或事件组。</translation>
-    </message>
-    <message>
-        <source>Switch Sequence Wizard</source>
-        <translation>开关序列向导</translation>
-    </message>
-    <message>
-        <source>The event group name must be non-empty and unique in this simulation mode.</source>
-        <translation>事件组名称必须在此仿真模式下非空且唯一。</translation>
-    </message>
-    <message>
-        <source>This dynamic model is empty. New events cannot be added until the model is built.</source>
-        <translation>此动态模型为空。在模型构建之前无法添加新事件。</translation>
-    </message>
-    <message>
-        <source>➕ New Event Group</source>
-        <translation>➕ 新事件组</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEventsTreeModel</name>
-    <message>
-        <source>Align Step</source>
-        <translation>对齐步长</translation>
-    </message>
-    <message>
-        <source>End Time</source>
-        <translation>结束时间</translation>
-    </message>
-    <message>
-        <source>Invalid / Ungrouped Events</source>
-        <translation>无效/未分组事件</translation>
-    </message>
-    <message>
-        <source>Invalid parameter</source>
-        <translation>无效的参数</translation>
-    </message>
-    <message>
-        <source>New Value</source>
-        <translation>新值</translation>
-    </message>
-    <message>
-        <source>Parameter</source>
-        <translation>参数</translation>
-    </message>
-    <message>
-        <source>These persisted events do not reference a valid events group and can only be removed.</source>
-        <translation>这些持久化事件未引用有效的事件组，只能移除。</translation>
-    </message>
-    <message>
-        <source>Time</source>
-        <translation>时间</translation>
-    </message>
-    <message>
-        <source>Transition</source>
-        <translation>过渡</translation>
-    </message>
-</context>
-<context>
-    <name>PopupResizeGrip</name>
-    <message>
-        <source>Resize</source>
-        <translation>调整大小</translation>
-    </message>
-</context>
-<context>
-    <name>RetainedModeDraftTableModel</name>
-    <message>
-        <source>Retained mode</source>
-        <translation>保留模式</translation>
-    </message>
-    <message>
-        <source>Select one retained mode.</source>
-        <translation>选择一个保留模式。</translation>
-    </message>
-</context>
-<context>
-    <name>VerticalHeaderWidthResizer</name>
-    <message>
-        <source>Resize index column</source>
-        <translation>调整索引列大小</translation>
+        <source>Solar power profile</source>
+        <translation>太阳能曲线</translation>
     </message>
 </context>
 </TS>
