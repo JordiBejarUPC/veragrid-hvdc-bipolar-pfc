@@ -290,7 +290,7 @@ def test_empty_model_page_removes_stale_events_and_disables_add() -> None:
 
     assert not page.empty_model_message.isHidden()
     assert page.tree_model.rowCount(group_index) == 0
-    assert page.add_event_button.isEnabled()
+    assert page.add_event_action.isEnabled()
     assert page.session.has_unapplied_changes
     dialog.close()
 
@@ -320,7 +320,7 @@ def test_empty_model_message_is_page_specific_and_uses_block_empty_state() -> No
 
     assert not rms_page.empty_model_message.isHidden()
     assert opened_emt_page.empty_model_message.isHidden()
-    assert opened_emt_page.add_event_button.isEnabled()
+    assert opened_emt_page.add_event_action.isEnabled()
     dialog.close()
 
 
@@ -675,13 +675,13 @@ def test_tabs_are_unique_per_device_and_mode() -> None:
     assert first_page is repeated_page
     assert emt_page is not None
     assert len(dialog.pages) == 2
-    assert first_page.switch_sequence_button.isHidden()
-    assert not emt_page.switch_sequence_button.isHidden()
+    assert first_page.switch_sequence_action.isVisible() is False
+    assert emt_page.switch_sequence_action.isVisible()
     dialog.close()
 
 
-def test_save_button_and_event_controls_use_new_workspace_contract() -> None:
-    """The events page must own save, group and event controls.
+def test_save_button_and_event_actions_use_ui_toolbar_contract() -> None:
+    """The events page must expose its save button and UI-defined toolbar actions.
 
     :return: None.
     """
@@ -697,11 +697,17 @@ def test_save_button_and_event_controls_use_new_workspace_contract() -> None:
     assert page.save_button.text() == ""
     assert page.save_button.toolTip() == "Save events"
     assert not page.save_button.icon().isNull()
-    assert page.new_group_button.text() != ""
-    assert isinstance(page.add_event_button, QtWidgets.QPushButton)
-    assert isinstance(page.remove_button, QtWidgets.QPushButton)
-    assert page.add_event_button.toolTip() != ""
-    assert page.remove_button.toolTip() != ""
+    toolbar_actions: list[QtGui.QAction] = page.ui.eventsToolBar.actions()
+    assert page.switch_sequence_action in toolbar_actions
+    assert page.add_event_action in toolbar_actions
+    assert page.remove_action in toolbar_actions
+    assert page.new_group_action in toolbar_actions
+    assert isinstance(page.new_group_action, QtGui.QAction)
+    assert isinstance(page.add_event_action, QtGui.QAction)
+    assert isinstance(page.remove_action, QtGui.QAction)
+    assert page.new_group_action.text() != ""
+    assert page.add_event_action.toolTip() != ""
+    assert page.remove_action.toolTip() != ""
     dialog.close()
 
 

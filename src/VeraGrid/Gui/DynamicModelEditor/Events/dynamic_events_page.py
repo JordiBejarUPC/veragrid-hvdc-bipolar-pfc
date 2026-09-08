@@ -11,6 +11,7 @@ from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_support import Dynami
 from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_support import collect_dynamic_events_page_parameters
 from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_support import SwitchSequenceData
 from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_support import SwitchSequenceDialog
+from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_page_ui import Ui_DynamicEventsPage
 from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_models import (
     DynamicEventDraft,
     DynamicEventGroupDraft,
@@ -901,13 +902,14 @@ class DynamicEventsPage(QtWidgets.QWidget):
         "parameters",
         "mode_parameter_uids",
         "model_is_empty",
+        "ui",
         "empty_model_message",
         "tree_model",
         "tree_view",
-        "switch_sequence_button",
-        "add_event_button",
-        "remove_button",
-        "new_group_button",
+        "switch_sequence_action",
+        "add_event_action",
+        "remove_action",
+        "new_group_action",
         "save_button",
         "toast_manager",
         "_prepared_to_delete",
@@ -944,62 +946,28 @@ class DynamicEventsPage(QtWidgets.QWidget):
         self.model_is_empty: bool = bool(model_is_empty)
         self._prepared_to_delete: bool = False
         self.toast_manager: ToastManager = ToastManager(parent=self, position_top=False)
+        self.ui: Ui_DynamicEventsPage = Ui_DynamicEventsPage()
+        self.ui.setupUi(self)
 
-        main_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self)
-        main_layout.setContentsMargins(0, 0, 0, 0)
+        # Keep explicit typed aliases for the page behavior while the generated
+        # UI object remains the declarative owner of widget construction.
+        self.empty_model_message: QtWidgets.QLabel = self.ui.emptyModelMessage
+        self.tree_view: QtWidgets.QTreeView = self.ui.eventsTreeView
+        self.switch_sequence_action: QtGui.QAction = self.ui.actionSwitchSequence
+        self.add_event_action: QtGui.QAction = self.ui.actionAddEvent
+        self.remove_action: QtGui.QAction = self.ui.actionRemove
+        self.new_group_action: QtGui.QAction = self.ui.actionNewGroup
+        self.save_button: QtWidgets.QPushButton = self.ui.saveButton
 
-        # An empty model still receives a functional page so groups and any
-        # surviving drafts remain visible. This notice explains why creation
-        # is disabled without blocking group management or saving removals.
-        # It is overlaid at the center of the tree area without a panel frame,
-        # matching the general workspace empty-state presentation.
-        self.empty_model_message: QtWidgets.QLabel = QtWidgets.QLabel(self)
-        self.empty_model_message.setWordWrap(True)
-        self.empty_model_message.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        # The empty-state label overlays the tree without intercepting input,
+        # so existing rows remain interactive while the message is visible.
         self.empty_model_message.setAttribute(
             QtCore.Qt.WidgetAttribute.WA_TransparentForMouseEvents,
             True,
         )
-        self.empty_model_message.setText(
-            self.tr(
-                "This dynamic model is empty. New events cannot be added until the model is built."
-            )
-        )
         self.empty_model_message.setVisible(self.model_is_empty)
-
-        action_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout()
-        self.switch_sequence_button: QtWidgets.QPushButton = QtWidgets.QPushButton(
-            self.tr("Switch Sequence Wizard"),
-            self,
-        )
-        self.switch_sequence_button.setToolTip(
-            self.tr("Create an EMT switch opening and reclosing event sequence")
-        )
-        self.switch_sequence_button.setVisible(self.mode == DynamicSimulationMode.EMT)
-        action_layout.addWidget(self.switch_sequence_button)
-        action_layout.addStretch(1)
-
-        self.add_event_button: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
-        self.add_event_button.setText("")
-        self.add_event_button.setIcon(QtGui.QIcon(":/Icons/icons/plus (gray).png"))
-        self.add_event_button.setToolTip(self.tr("Add an event to the selected event group"))
-        action_layout.addWidget(self.add_event_button)
-        self.remove_button: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
-        self.remove_button.setText("")
-        self.remove_button.setIcon(QtGui.QIcon(":/Icons/icons/minus (gray).png"))
-        self.remove_button.setToolTip(self.tr("Remove the selected event or event group"))
-        action_layout.addWidget(self.remove_button)
-        self.new_group_button: QtWidgets.QPushButton = QtWidgets.QPushButton(
-            self.tr("➕ New Event Group"),
-            self,
-        )
-        self.new_group_button.setToolTip(self.tr("Create an event group for this simulation mode"))
-        action_layout.addWidget(self.new_group_button)
-        self.save_button: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
-        self.save_button.setText("")
-        self.save_button.setIcon(QtGui.QIcon(":/Icons/icons/accept.png"))
-        self.save_button.setToolTip(self.tr("Save events"))
-        main_layout.addLayout(action_layout)
+        self.empty_model_message.raise_()
+        self.switch_sequence_action.setVisible(self.mode == DynamicSimulationMode.EMT)
 
         self.tree_model: DynamicEventsTreeModel = DynamicEventsTreeModel(
             session=session,
@@ -1009,15 +977,8 @@ class DynamicEventsPage(QtWidgets.QWidget):
             mode_parameter_uids=self.mode_parameter_uids,
             parent=self,
         )
-        self.tree_view: QtWidgets.QTreeView = QtWidgets.QTreeView(self)
         self.tree_view.setModel(self.tree_model)
         self.tree_view.setItemDelegate(DynamicEventsItemDelegate(self.tree_view))
-        self.tree_view.setItemsExpandable(True)
-        self.tree_view.setRootIsDecorated(True)
-        self.tree_view.setAlternatingRowColors(True)
-        self.tree_view.setUniformRowHeights(True)
-        self.tree_view.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
-        self.tree_view.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
         # The tree is a projection of the transaction, so drops are routed to
         # the model instead of letting QTreeView rearrange QStandardItems.
         self.tree_view.setDragEnabled(True)
@@ -1041,29 +1002,11 @@ class DynamicEventsPage(QtWidgets.QWidget):
         header.resizeSection(DynamicEventsTreeModel.COLUMN_TRANSITION, 105)
         header.resizeSection(DynamicEventsTreeModel.COLUMN_END_TIME, 105)
 
-        # Both widgets occupy the same grid cell: the centered empty-model text
-        # floats over otherwise unused tree space, while transparent mouse
-        # handling leaves any existing event rows fully interactive.
-        content_layout: QtWidgets.QGridLayout = QtWidgets.QGridLayout()
-        content_layout.setContentsMargins(0, 0, 0, 0)
-        content_layout.addWidget(self.tree_view, 0, 0)
-        content_layout.addWidget(self.empty_model_message, 0, 0)
-        main_layout.addLayout(content_layout, 1)
-        self.empty_model_message.raise_()
-
-        # Match the model editor action placement: saving is a page-level
-        # operation and therefore lives in its own footer at the bottom-right,
-        # while event and group editing controls remain above the tree.
-        save_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout()
-        save_layout.addStretch(1)
-        save_layout.addWidget(self.save_button)
-        main_layout.addLayout(save_layout)
-
-        self.add_event_button.clicked.connect(self.add_event)
-        self.remove_button.clicked.connect(self.remove_selection)
-        self.new_group_button.clicked.connect(self.create_event_group)
+        self.add_event_action.triggered.connect(self.add_event)
+        self.remove_action.triggered.connect(self.remove_selection)
+        self.new_group_action.triggered.connect(self.create_event_group)
         self.save_button.clicked.connect(self.save_changes)
-        self.switch_sequence_button.clicked.connect(self.open_switch_sequence)
+        self.switch_sequence_action.triggered.connect(self.open_switch_sequence)
         self.tree_view.customContextMenuRequested.connect(self.show_context_menu)
         self.tree_model.modelReset.connect(self.tree_view.expandAll)
         self.tree_model.event_moved.connect(self._show_moved_event)
@@ -1194,10 +1137,11 @@ class DynamicEventsPage(QtWidgets.QWidget):
         self.update_actions()
         return removed_count
 
-    @QtCore.Slot()
-    def create_event_group(self) -> None:
+    @QtCore.Slot(bool)
+    def create_event_group(self, _checked: bool = False) -> None:
         """Ask for and create one draft event group for this page mode.
 
+        :param _checked: QAction checked state supplied by Qt.
         :return: None.
         """
         group_dialog: DynamicEventsGroupsDialog = DynamicEventsGroupsDialog(
@@ -1272,8 +1216,8 @@ class DynamicEventsPage(QtWidgets.QWidget):
         :return: None.
         """
         selected: object | None = self._selected_backing_object()
-        self.add_event_button.setEnabled(True)
-        self.remove_button.setEnabled(True)
+        self.add_event_action.setEnabled(True)
+        self.remove_action.setEnabled(True)
 
         mode_parameters: list[Var] = self._get_switch_mode_parameters()
         can_open_switch_sequence: bool = (
@@ -1281,18 +1225,19 @@ class DynamicEventsPage(QtWidgets.QWidget):
             and isinstance(selected, DynamicEventGroupDraft)
             and len(mode_parameters) > 0
         )
-        self.switch_sequence_button.setEnabled(can_open_switch_sequence)
+        self.switch_sequence_action.setEnabled(can_open_switch_sequence)
         if self.has_runtime_parameters():
-            self.add_event_button.setToolTip(self.tr("Add an event to the selected event group"))
+            self.add_event_action.setToolTip(self.tr("Add an event to the selected event group"))
         else:
-            self.add_event_button.setToolTip(
+            self.add_event_action.setToolTip(
                 self.tr("No events can be added because the dynamic model has no event parameters.")
             )
 
-    @QtCore.Slot()
-    def add_event(self) -> None:
+    @QtCore.Slot(bool)
+    def add_event(self, _checked: bool = False) -> None:
         """Add one event under the selected group.
 
+        :param _checked: QAction checked state supplied by Qt.
         :return: None.
         """
         selected: object | None = self._selected_backing_object()
@@ -1343,10 +1288,11 @@ class DynamicEventsPage(QtWidgets.QWidget):
         else:
             pass
 
-    @QtCore.Slot()
-    def remove_selection(self) -> None:
+    @QtCore.Slot(bool)
+    def remove_selection(self, _checked: bool = False) -> None:
         """Remove the selected event or global event group after confirmation.
 
+        :param _checked: QAction checked state supplied by Qt.
         :return: None.
         """
         selected: object | None = self._selected_backing_object()
@@ -1459,10 +1405,11 @@ class DynamicEventsPage(QtWidgets.QWidget):
                 pass
         return mode_parameters
 
-    @QtCore.Slot()
-    def open_switch_sequence(self) -> None:
+    @QtCore.Slot(bool)
+    def open_switch_sequence(self, _checked: bool = False) -> None:
         """Create EMT switch events under the selected transaction group.
 
+        :param _checked: QAction checked state supplied by Qt.
         :return: None.
         """
         selected: object | None = self._selected_backing_object()
