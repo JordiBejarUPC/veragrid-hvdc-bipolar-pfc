@@ -157,7 +157,7 @@ def duplicate_paired_item(original: PairedItem) -> PairedItem | None:
     )
 
     new_item.setPos(original.pos() + QPointF(0.0, 80.0))
-    editor.scene.addItem(new_item)
+    editor.scene.add_block_item(block_uid=block_model.uid, item=new_item)
     editor.diagram.add_node(
         name=block_model.name,
         x=new_item.pos().x(),
@@ -231,7 +231,7 @@ def _is_dynamic_block_item(item: QGraphicsItem) -> bool:
     :param item: Graphics item being inspected.
     :return: Value produced by the graphics operation.
     """
-    return item.__class__.__name__ in set(("GenericBlockItem", "PairedItem", "BlockItem", "ProtectedConnectionBlockItem", "UnOpItem", "RoundBaseArithmeticOpItem", "RectBaseArithmeticOpItem",))
+    return item.__class__.__name__ in set(("GenericBlockItem", "PairedItem", "BlockItem", "ProtectedConnectionBlockItem", "UnOpItem", "RoundBaseArithmeticOpItem", "RectBaseArithmeticOpItem", "MeasurementsItem",))
 
 
 def _expanded_item_scene_rect(item: QGraphicsItem, pos: QPointF, margin: float) -> QtCore.QRectF:
@@ -246,13 +246,87 @@ def _expanded_item_scene_rect(item: QGraphicsItem, pos: QPointF, margin: float) 
     return item.sceneBoundingRect().translated(delta).adjusted(-margin, -margin, margin, margin)
 
 
+def _connection_is_incident_to_block(connection: ConnectionItem, item: QGraphicsItem) -> bool:
+    """Return whether one connection terminates at the moving block.
+
+    Incident connections must remain allowed to touch their owner at a port.
+    Treating them as foreign obstacles would reject every connected block at
+    its valid attachment point.
+
+    :param connection: Scene connection being classified.
+    :param item: Moving root block item.
+    :return: ``True`` when either endpoint belongs to the moving block.
+    """
+    source_owner: QGraphicsItem | None
+    target_owner: QGraphicsItem | None
+    if isinstance(connection.source_port, PortItem):
+        source_owner = connection.source_port.parentItem()
+    elif isinstance(connection.source_port, BranchingItem):
+        source_owner = connection.source_port.subsystem
+    else:
+        source_owner = None
+
+    if isinstance(connection.target_port, PortItem):
+        target_owner = connection.target_port.parentItem()
+    elif isinstance(connection.target_port, BranchingItem):
+        target_owner = connection.target_port.subsystem
+    else:
+        target_owner = None
+
+    return source_owner is item or target_owner is item
+
+
+def _connection_collides_with_block_position(
+        connection: ConnectionItem,
+        item: QGraphicsItem,
+        pos: QPointF,
+        margin: float,
+) -> bool:
+    """Return whether a foreign connection violates the block clearance.
+
+    The connection path is transformed to scene coordinates and widened by
+    the requested clearance. This preserves the real routed shape instead of
+    treating its potentially large bounding rectangle as a solid obstacle.
+
+    :param connection: Foreign connection represented by a painter path.
+    :param item: Moving root block item.
+    :param pos: Proposed block position.
+    :param margin: Minimum distance required from the connection.
+    :return: ``True`` when the block intersects the widened connection path.
+    """
+    if _connection_is_incident_to_block(connection=connection, item=item):
+        return False
+    else:
+        connection_path: QPainterPath = connection.path()
+
+    if connection_path.isEmpty():
+        return False
+    else:
+        scene_connection_path: QPainterPath = connection.sceneTransform().map(connection_path)
+
+    # The full requested clearance is represented by half of the stroker width
+    # on each side of the route centreline. Include the visible pen width so
+    # the distance starts at the rendered edge rather than its centreline.
+    path_stroker: QtGui.QPainterPathStroker = QtGui.QPainterPathStroker()
+    visible_pen_width: float = max(connection.pen().widthF(), 1.0)
+    path_stroker.setWidth(2.0 * margin + visible_pen_width)
+    path_stroker.setCapStyle(Qt.PenCapStyle.RoundCap)
+    path_stroker.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+    connection_obstacle_path: QPainterPath = path_stroker.createStroke(scene_connection_path)
+
+    candidate_rect: QtCore.QRectF = _expanded_item_scene_rect(item=item, pos=pos, margin=0.0)
+    candidate_path: QPainterPath = QPainterPath()
+    candidate_path.addRect(candidate_rect)
+    return candidate_path.intersects(connection_obstacle_path)
+
+
 def _position_collides_with_blocks(item: QGraphicsItem, pos: QPointF, margin: float) -> bool:
-    """Return whether a proposed item rectangle overlaps another root block.
+    """Return whether a proposed item overlaps a block or foreign connection.
 
     :param item: Item being positioned.
     :param pos: Proposed scene position.
-    :param margin: Additional collision clearance around both blocks.
-    :return: ``True`` when another root block intersects the candidate rectangle.
+    :param margin: Minimum clearance required between both block rectangles.
+    :return: ``True`` when any scene obstacle violates the required clearance.
     """
     scene = item.scene()
     if scene is None:
@@ -260,7 +334,10 @@ def _position_collides_with_blocks(item: QGraphicsItem, pos: QPointF, margin: fl
     else:
         pass
 
-    candidate_rect = _expanded_item_scene_rect(item, pos, margin)
+    # Expanding only the moving rectangle makes ``margin`` equal to the real
+    # minimum distance between items. Expanding both rectangles would silently
+    # double the configured clearance.
+    candidate_rect: QtCore.QRectF = _expanded_item_scene_rect(item, pos, margin)
     other: QGraphicsItem
     for other in scene.items(candidate_rect):
         is_distinct_root_block: bool = (
@@ -269,7 +346,17 @@ def _position_collides_with_blocks(item: QGraphicsItem, pos: QPointF, margin: fl
             and other.parentItem() is None
         )
         if is_distinct_root_block:
-            if candidate_rect.intersects(other.sceneBoundingRect().adjusted(-margin, -margin, margin, margin)):
+            if candidate_rect.intersects(other.sceneBoundingRect()):
+                return True
+            else:
+                pass
+        elif isinstance(other, ConnectionItem):
+            if _connection_collides_with_block_position(
+                    connection=other,
+                    item=item,
+                    pos=pos,
+                    margin=margin,
+            ):
                 return True
             else:
                 pass
@@ -279,34 +366,44 @@ def _position_collides_with_blocks(item: QGraphicsItem, pos: QPointF, margin: fl
 
 
 def _resolve_non_overlapping_position(item: GenericBlockItem | PairedItem | BlockItem
-                                      | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem,
+                                      | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem | MeasurementsItem,
                                       proposed_pos: QPointF,
-                                      margin: float = 6.0) -> QPointF:
-    """Resolve a collision-free position while preserving the last valid point.
+                                      reference_pos: QPointF,
+                                      margin: float = 30.0) -> QPointF:
+    """Resolve a collision-free final position from one drag transaction.
 
     :param item: Movable dynamic block item.
     :param proposed_pos: Position requested by the drag operation.
+    :param reference_pos: Authoritative position captured before the drag.
     :param margin: Clearance maintained between block rectangles.
-    :return: Accepted proposal, an axis-only alternative, or the previous point.
+    :return: Accepted proposal, an axis-only alternative, or the drag origin.
     """
     if item.scene() is None:
         return proposed_pos
     else:
         pass
 
-    current_pos = item.pos()
     if not _position_collides_with_blocks(item, proposed_pos, margin):
         return proposed_pos
     else:
         pass
 
-    dx = proposed_pos.x() - current_pos.x()
-    dy = proposed_pos.y() - current_pos.y()
+    # Axis-only alternatives must combine the requested coordinate with the
+    # transaction origin. Using ``item.pos()`` here would compare the released
+    # position with itself and reduce both alternatives to the collision.
+    dx: float = proposed_pos.x() - reference_pos.x()
+    dy: float = proposed_pos.y() - reference_pos.y()
     axis_candidates: List[QPointF]
     if abs(dx) >= abs(dy):
-        axis_candidates = list((QPointF(proposed_pos.x(), current_pos.y()), QPointF(current_pos.x(), proposed_pos.y()),))
+        axis_candidates = list((
+            QPointF(proposed_pos.x(), reference_pos.y()),
+            QPointF(reference_pos.x(), proposed_pos.y()),
+        ))
     else:
-        axis_candidates = list((QPointF(current_pos.x(), proposed_pos.y()), QPointF(proposed_pos.x(), current_pos.y()),))
+        axis_candidates = list((
+            QPointF(reference_pos.x(), proposed_pos.y()),
+            QPointF(proposed_pos.x(), reference_pos.y()),
+        ))
 
     candidate: QPointF
     for candidate in axis_candidates:
@@ -315,16 +412,14 @@ def _resolve_non_overlapping_position(item: GenericBlockItem | PairedItem | Bloc
         else:
             pass
 
-    last_valid: QPointF = item._last_valid_pos
-    if isinstance(last_valid, QPointF) and not _position_collides_with_blocks(item, last_valid, margin):
-        return QPointF(last_valid)
-    else:
-        pass
-    return current_pos
+    # The drag origin and its routing snapshot form one atomic committed state.
+    # Never retain the known colliding release position when no alternative is
+    # available, even if current scene geometry now reports an obstacle there.
+    return QPointF(reference_pos)
 
 
 def _handle_block_item_change(item: GenericBlockItem | PairedItem | BlockItem
-                              | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem,
+                              | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem | MeasurementsItem,
                               change: QGraphicsItem.GraphicsItemChange,
                               value: object) -> object:
     """Persist the latest collision-free position reported by Qt.
@@ -335,7 +430,7 @@ def _handle_block_item_change(item: GenericBlockItem | PairedItem | BlockItem
     :return: Original Qt change payload.
     """
     if change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged:
-        if not _position_collides_with_blocks(item, item.pos(), 6.0):
+        if not _position_collides_with_blocks(item, item.pos(), 30.0):
             item._last_valid_pos = QPointF(item.pos())
         else:
             pass
@@ -345,7 +440,7 @@ def _handle_block_item_change(item: GenericBlockItem | PairedItem | BlockItem
 
 
 def _refresh_block_item_connections(item: GenericBlockItem | PairedItem | BlockItem
-                                    | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem) -> None:
+                                    | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem | MeasurementsItem) -> None:
     """Recompute every graphical connection attached to one block.
 
     :param item: Dynamic block whose incident paths must be refreshed.
@@ -353,19 +448,24 @@ def _refresh_block_item_connections(item: GenericBlockItem | PairedItem | BlockI
     """
     ports: List[PortItem] = list(item.inputs)
     ports.extend(item.outputs)
+    refreshed_connection_uids: set[int] = set()
     port: PortItem
     for port in ports:
         connections: List[ConnectionItem] | None = port.connections
         if connections is not None:
             connection: ConnectionItem
             for connection in connections:
-                connection.update_path()
+                if connection.con_uid not in refreshed_connection_uids:
+                    refreshed_connection_uids.add(connection.con_uid)
+                    connection.update_path()
+                else:
+                    pass
         else:
             pass
 
 
 def _notify_block_item_manual_route_drag(item: GenericBlockItem | PairedItem | BlockItem
-                                         | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem,
+                                         | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem | MeasurementsItem,
                                          started: bool) -> None:
     """Notify incident connections that a manual endpoint drag changed state.
 
@@ -373,6 +473,11 @@ def _notify_block_item_manual_route_drag(item: GenericBlockItem | PairedItem | B
     :param started: Whether the endpoint drag is starting or ending.
     :return: None.
     """
+    if started:
+        item.editor.begin_block_routing_drag(item=item)
+    else:
+        pass
+
     ports: List[PortItem] = list(item.inputs)
     ports.extend(item.outputs)
     port: PortItem
@@ -391,11 +496,13 @@ def _notify_block_item_manual_route_drag(item: GenericBlockItem | PairedItem | B
 
 
 def _finalize_block_drop(item: GenericBlockItem | PairedItem | BlockItem
-                         | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem,
-                         margin: float = 6.0) -> None:
+                         | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem | MeasurementsItem,
+                         reference_pos: QPointF,
+                         margin: float = 30.0) -> None:
     """Resolve a final block position and update its incident paths.
 
     :param item: Dynamic block completing a drag operation.
+    :param reference_pos: Authoritative item position captured before the drag.
     :param margin: Minimum clearance maintained from neighbouring blocks.
     :return: None.
     """
@@ -403,8 +510,13 @@ def _finalize_block_drop(item: GenericBlockItem | PairedItem | BlockItem
         return
     else:
         pass
-    current_pos = item.pos()
-    corrected_pos = _resolve_non_overlapping_position(item, current_pos, margin)
+    current_pos: QPointF = QPointF(item.pos())
+    corrected_pos: QPointF = _resolve_non_overlapping_position(
+        item=item,
+        proposed_pos=current_pos,
+        reference_pos=reference_pos,
+        margin=margin,
+    )
     if corrected_pos != current_pos:
         item.setPos(corrected_pos)
         position_changed_callback: BlockPositionChangedCallback | None = item.position_changed_callback
@@ -414,7 +526,42 @@ def _finalize_block_drop(item: GenericBlockItem | PairedItem | BlockItem
             pass
     else:
         pass
-    _refresh_block_item_connections(item)
+
+
+def _complete_block_drag(item: GenericBlockItem | PairedItem | BlockItem
+                         | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem | MeasurementsItem) -> None:
+    """Finalize one block drag and preserve atomic rollback on exceptions.
+
+    :param item: Dynamic block completing its position transaction.
+    :return: None.
+    """
+    try:
+        drag_start_position: QPointF = item.editor.get_block_routing_drag_start_position(item=item)
+
+        # Discard preview geometry before collision resolution. The block's
+        # committed position and the committed routes must be evaluated as one
+        # coherent snapshot rather than against temporary automatic paths.
+        item.editor.prepare_block_routing_drag_finalization()
+
+        # Resolve only the released position. Movement remains unrestricted
+        # during the drag, while an invalid drop returns to the authoritative
+        # transaction origin when neither axis-only alternative is available.
+        _finalize_block_drop(item=item, reference_pos=drag_start_position)
+        _notify_block_item_manual_route_drag(item, started=False)
+
+        # Every connection is synchronized exactly once at the final endpoint
+        # positions. Automatic routing is therefore excluded from mouse-move
+        # events but remains available for the committed drop candidate.
+        _refresh_block_item_connections(item)
+        item.editor.finish_block_routing_drag(item=item)
+    except Exception:
+        item.editor.finish_block_routing_drag(
+            item=item,
+            commit_requested=False,
+        )
+        raise
+    else:
+        pass
 
 
 class EditorGraphicsDefaultsDark:
@@ -994,6 +1141,7 @@ class ConnectionItem(QGraphicsPathItem):
         self.setAcceptedMouseButtons(Qt.MouseButton.LeftButton)
         self._dragging_segment: int = -1
         self._drag_start_scene_pos: QPointF | None = None
+        self._manual_block_drag_active: bool = False
         self.update_path()
 
     def recolour_mode(self) -> None:
@@ -1039,7 +1187,16 @@ class ConnectionItem(QGraphicsPathItem):
 
         :return: None.
         """
-        if self._uses_routing_graph():
+        if self._manual_block_drag_active:
+            # Preview updates only endpoint-local graph geometry. Obstacle
+            # capture, automatic search and persistence remain deferred until
+            # the owner block is released.
+            if self.editor is not None:
+                self.editor.preview_connection_with_routing_graph(item=self)
+            else:
+                pass
+            return
+        elif self._uses_routing_graph():
             if self.editor is not None:
                 if self.editor.sync_connection_with_routing_graph(self):
                     return
@@ -1052,21 +1209,23 @@ class ConnectionItem(QGraphicsPathItem):
 
     def begin_manual_block_drag(self, port: PortItem | BranchingItem) -> None:
         """
-        Legacy manual-route dragging no longer exists.
+        Suppress routing reconstruction while an endpoint owner is moving.
 
         :param port: Port whose owning block has started moving.
         :return: None.
         """
         del port
+        self._manual_block_drag_active = True
 
     def end_manual_block_drag(self, port: PortItem | BranchingItem) -> None:
         """
-        Legacy manual-route dragging no longer exists.
+        Re-enable routing before the final block-drop synchronization.
 
         :param port: Port whose owning block has finished moving.
         :return: None.
         """
         del port
+        self._manual_block_drag_active = False
 
     def on_elbow_moved(self, index: int, new_pos: QPointF) -> None:
         """Persist one moved elbow and refresh the connection path.
@@ -1753,8 +1912,7 @@ class GenericBlockItem(QGraphicsRectItem):
         :return: None.
         """
         super().mouseReleaseEvent(event)
-        _notify_block_item_manual_route_drag(self, started=False)
-        _finalize_block_drop(self)
+        _complete_block_drag(self)
 
     def mouseDoubleClickEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
         """
@@ -2404,8 +2562,7 @@ class PairedItem(QGraphicsPolygonItem):
         :return: None.
         """
         super().mouseReleaseEvent(event)
-        _notify_block_item_manual_route_drag(self, started=False)
-        _finalize_block_drop(self)
+        _complete_block_drag(self)
 
     def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: object) -> object:
         """Process one Qt graphics-item state change and propagate dependent geometry.
@@ -2804,8 +2961,7 @@ class BlockItem(QGraphicsRectItem):
         :return: None.
         """
         super().mouseReleaseEvent(event)
-        _notify_block_item_manual_route_drag(self, started=False)
-        _finalize_block_drop(self)
+        _complete_block_drag(self)
 
     def mouseDoubleClickEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
         """
@@ -3206,8 +3362,7 @@ class MeasurementsItem(QGraphicsRectItem):
         :return: None.
         """
         super().mouseReleaseEvent(event)
-        _notify_block_item_manual_route_drag(self, started=False)
-        _finalize_block_drop(self)
+        _complete_block_drag(self)
 
     def mouseDoubleClickEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
         """
@@ -3757,8 +3912,7 @@ class RoundBaseArithmeticOpItem(QGraphicsEllipseItem):
         :return: None.
         """
         super().mouseReleaseEvent(event)
-        _notify_block_item_manual_route_drag(self, started=False)
-        _finalize_block_drop(self)
+        _complete_block_drag(self)
 
     def mouseDoubleClickEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
         """
@@ -4056,8 +4210,7 @@ class RectBaseArithmeticOpItem(QGraphicsRectItem):
         :return: None.
         """
         super().mouseReleaseEvent(event)
-        _notify_block_item_manual_route_drag(self, started=False)
-        _finalize_block_drop(self)
+        _complete_block_drag(self)
 
     def mouseDoubleClickEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
         """
@@ -4230,7 +4383,7 @@ class GraphicsView(QGraphicsView):
 class DiagramScene(QGraphicsScene):
     """Scene coordinating block selection, wiring, and context actions."""
 
-    __slots__ = ()
+    __slots__ = ("_block_items_by_uid",)
 
     def __init__(self, editor: "DynamicBlockEditorGUI") -> None:
         """Initialize the graphics object and its interaction state.
@@ -4243,6 +4396,58 @@ class DiagramScene(QGraphicsScene):
         self.temp_line: QGraphicsPathItem | None = None
         self.source_port: PortItem | BranchingItem | None = None
         self.context_item: BlockItem | GenericBlockItem | ConnectionItem | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem | PairedItem | None = None
+        # Qt owns the native scene items, while this index deliberately owns
+        # their Python wrappers.  Keeping both ownership paths explicit avoids
+        # collection of Python-defined QGraphicsItem subclasses while their
+        # native counterparts are still expected to be visible in the scene.
+        self._block_items_by_uid: Dict[int, QGraphicsItem] = dict()
+
+    def add_block_item(self, block_uid: int, item: QGraphicsItem) -> None:
+        """Add one root block item and retain its Python wrapper.
+
+        :param block_uid: Stable identifier of the represented symbolic block.
+        :param item: Root graphics item to add to this scene.
+        :return: None.
+        """
+        self.addItem(item)
+        self._block_items_by_uid[block_uid] = item
+
+    def remove_block_item(self, block_uid: int, item: QGraphicsItem) -> None:
+        """Remove one root block item from both ownership registries.
+
+        :param block_uid: Stable identifier of the represented symbolic block.
+        :param item: Root graphics item being removed.
+        :return: None.
+        """
+        registered_item: QGraphicsItem | None = self._block_items_by_uid.get(block_uid, None)
+        if registered_item is item:
+            del self._block_items_by_uid[block_uid]
+        else:
+            pass
+
+        if item.scene() is self:
+            self.removeItem(item)
+        else:
+            pass
+
+    def get_block_item(self, block_uid: int) -> QGraphicsItem | None:
+        """Return the retained graphics item for one symbolic block.
+
+        :param block_uid: Stable identifier of the represented symbolic block.
+        :return: Registered root item, or ``None`` when it is not materialized.
+        """
+        return self._block_items_by_uid.get(block_uid, None)
+
+    def clear_block_items(self) -> None:
+        """Clear native scene contents and every retained block wrapper.
+
+        :return: None.
+        """
+        # Release the explicit wrappers before Qt deletes their native items so
+        # both ownership registries describe the same empty scene throughout
+        # reconstruction and final disposal.
+        self._block_items_by_uid.clear()
+        self.clear()
 
     def prepare_to_delete(self) -> None:
         """
@@ -4312,7 +4517,7 @@ class DiagramScene(QGraphicsScene):
         self.source_port = None
         self.context_item = None
         self.editor = None
-        self.clear()
+        self.clear_block_items()
 
     def change_item_fill_color(self,
                                item: BlockItem | GenericBlockItem | ConnectionItem | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem | PairedItem) -> None:

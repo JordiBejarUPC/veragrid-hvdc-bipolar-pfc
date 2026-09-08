@@ -555,19 +555,74 @@ li.checked::markering { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;
 <context>
     <name>BlockEditorWindow</name>
     <message>
-        <location filename="../DynamicModelEditor/ui/block_editor.ui" line="14"/>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="14"/>
         <source>BlockEditorWindow</source>
         <translation>BlockEditorWindow</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/block_editor.ui" line="116"/>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="116"/>
         <source>Library</source>
         <translation>Bibliotheek</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/block_editor.ui" line="155"/>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="155"/>
         <source>Search basic blocks</source>
         <translation>Zoek basisblokken</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="208"/>
+        <source>toolBar</source>
+        <translation>toolBar</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="237"/>
+        <source>CheckModel</source>
+        <translation>CheckModel</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="240"/>
+        <source>Inspect model</source>
+        <translation>Model inspecteren</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="252"/>
+        <source>Center</source>
+        <translation>Centrum</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="264"/>
+        <source>Zoom in</source>
+        <translation>Zoom in</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="276"/>
+        <source>Zoom out</source>
+        <translation>Uitzoomen</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="291"/>
+        <source>Delete all</source>
+        <translation>Alles verwijderen</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="294"/>
+        <source>Delete all blocks to start from scratch.</source>
+        <translation>Verwijder alle blokken om helemaal opnieuw te beginnen.</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="306"/>
+        <source>Validate</source>
+        <translation>Valideer</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="318"/>
+        <source>Save</source>
+        <translation>Redden</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="321"/>
+        <source>Ctrl+S</source>
+        <translation>Ctrl+S</translation>
     </message>
     <message>
         <source>Variables</source>
@@ -603,6 +658,44 @@ li.checked::markering { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;
     <message>
         <source>Value</source>
         <translation>Waarde</translation>
+    </message>
+</context>
+<context>
+    <name>BlockPropertyTreeModel</name>
+    <message>
+        <source>Missing PF mapping</source>
+        <translation>Ontbrekende PF-mapping</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>Naam</translation>
+    </message>
+    <message>
+        <source>Output</source>
+        <translation>Uitgang</translation>
+    </message>
+    <message>
+        <source>Power-flow reference; variable mappings are used for initialization.</source>
+        <translation>Power-flow referentie; variabele mappings worden gebruikt voor initialisatie.</translation>
+    </message>
+    <message>
+        <source>Template issue: static parameters require api_obj_mapping. An independently editable parameter should be in event_dict. This refactor does not migrate templates automatically.</source>
+        <translation>Templateprobleem: statische parameters vereisen api_obj_mapping. Een onafhankelijk bewerkbare parameter moet in event_dict staan. Deze refactor migreert templates niet automatisch.</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>Type</translation>
+    </message>
+    <message>
+        <source>Value / PF reference</source>
+        <translation>Waarde / PF-referentie</translation>
+    </message>
+</context>
+<context>
+    <name>BlockPropertyValueDelegate</name>
+    <message>
+        <source>None</source>
+        <translation>Geen</translation>
     </message>
 </context>
 <context>
@@ -851,6 +944,13 @@ li.checked::markering { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;
     <message>
         <source>Select the CGMES options</source>
         <translation>Selecteer de CGMES-opties</translation>
+    </message>
+</context>
+<context>
+    <name>CompiledArraysMain</name>
+    <message>
+        <source>Array plot</source>
+        <translation>Arrayplot</translation>
     </message>
 </context>
 <context>
@@ -1822,6 +1922,10 @@ Weet u zeker?</translation>
         <source>Width in pixels</source>
         <translation>Breedte in pixels</translation>
     </message>
+    <message>
+        <source>Object histogram</source>
+        <translation>Object histogram</translation>
+    </message>
 </context>
 <context>
     <name>DcLineDeviceEditor</name>
@@ -2735,11 +2839,11 @@ Weet u zeker?</translation>
     </message>
     <message>
         <source>There are unapplied changes. Do you want to close without applying them?</source>
-        <translation type="vanished">Er zijn onopgepaste wijzigingen. Wilt u sluiten zonder deze toe te passen?</translation>
+        <translation>Er zijn onopgepaste wijzigingen. Wilt u sluiten zonder deze toe te passen?</translation>
     </message>
     <message>
         <source>Unsaved changes</source>
-        <translation type="vanished">Ongeslagen wijzigingen</translation>
+        <translation>Ongeslagen wijzigingen</translation>
     </message>
     <message>
         <source>You are going to delete the complete model and start from scratch. Are you sure?</source>
@@ -2749,12 +2853,12 @@ Weet u zeker?</translation>
 <context>
     <name>DynamicBlockPropertiesDialog</name>
     <message>
-        <location filename="../DynamicModelEditor/BlockProperties/dynamic_block_properties.ui" line="14"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="14"/>
         <source>Block properties</source>
         <translation>Blokken eigenschappen</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/BlockProperties/dynamic_block_properties.ui" line="70"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="70"/>
         <source>Apply changes</source>
         <translation>Wijzigingen toepassen</translation>
     </message>
@@ -3071,7 +3175,7 @@ Weet u zeker?</translation>
         <translation>+ Procedurele logica toevoegen</translation>
     </message>
     <message>
-        <source>Add one procedural behavior to the active equation owner's Python code.</source>
+        <source>Add one procedural behavior to the active equation owner&apos;s Python code.</source>
         <translation>Voeg een procedureel gedrag toe aan de Python-code van de actieve vergelijkingseigenaar.</translation>
     </message>
     <message>
@@ -3125,6 +3229,40 @@ Weet u zeker?</translation>
     <message>
         <source>Validate model</source>
         <translation>Model valideren</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicBlockPropertiesDockWidget</name>
+    <message>
+        <source>Block Properties contains changes that have not been applied. Discard those changes and close the editor?</source>
+        <translation>Block Properties bevat wijzigingen die niet zijn toegepast. Deze wijzigingen negeren en de editor sluiten?</translation>
+    </message>
+    <message>
+        <source>Unsaved Block Properties changes</source>
+        <translation>Ongeslagen wijzigingen in Block Properties</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicDeviceTreeWidget</name>
+    <message>
+        <source>EMT editor</source>
+        <translation>EMT-editor</translation>
+    </message>
+    <message>
+        <source>EMT events</source>
+        <translation>EMT-gebeurtenissen</translation>
+    </message>
+    <message>
+        <source>RMS editor</source>
+        <translation>RMS-editor</translation>
+    </message>
+    <message>
+        <source>RMS events</source>
+        <translation>RMS-gebeurtenissen</translation>
+    </message>
+    <message>
+        <source>Type to search the device</source>
+        <translation>Typ om het apparaat te zoeken</translation>
     </message>
 </context>
 <context>
@@ -3185,64 +3323,95 @@ Weet u zeker?</translation>
     </message>
 </context>
 <context>
+    <name>DynamicEditorWorkspaceSession</name>
+    <message>
+        <source>Invalid dynamic events</source>
+        <translation>Ongeldige dynamische gebeurtenissen</translation>
+    </message>
+    <message>
+        <source>Save the changes before closing the last events tab?</source>
+        <translation>Wijzigingen opslaan voordat de laatste gebeurtenissen tab wordt gesloten?</translation>
+    </message>
+    <message>
+        <source>The dynamic events contain unsaved changes.</source>
+        <translation>De dynamische gebeurtenissen bevatten onopgeslagen wijzigingen.</translation>
+    </message>
+    <message>
+        <source>Unsaved dynamic events</source>
+        <translation>Ongeslagen dynamische gebeurtenissen</translation>
+    </message>
+</context>
+<context>
     <name>DynamicEditorWorkspaceWindow</name>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="14"/>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="14"/>
         <source>Dynamic Editor Workspace</source>
         <translation>Dynamische Editor-werkruimte</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="79"/>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="79"/>
         <source>Type to search the device</source>
         <translation>Typ om het apparaat te zoeken</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="126"/>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="126"/>
         <source>toolBar</source>
         <translation>toolBar</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="157"/>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="168"/>
+        <source>RMS Editor</source>
+        <translation>RMS Editor</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="180"/>
+        <source>EMT Editor</source>
+        <translation>EMT Editor</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="192"/>
+        <source>RMS Events</source>
+        <translation>RMS Gebeurtenissen</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="204"/>
+        <source>EMT Events</source>
+        <translation>EMT Gebeurtenissen</translation>
+    </message>
+    <message>
         <source>CheckModel</source>
-        <translation>CheckModel</translation>
+        <translation type="vanished">CheckModel</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="160"/>
         <source>Inspect model</source>
-        <translation>Model inspecteren</translation>
+        <translation type="vanished">Model inspecteren</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="172"/>
         <source>Center</source>
-        <translation>Centrum</translation>
+        <translation type="vanished">Centrum</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="184"/>
         <source>Zoom in</source>
-        <translation>Zoom in</translation>
+        <translation type="vanished">Zoom in</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="196"/>
         <source>Zoom out</source>
-        <translation>Uitzoomen</translation>
+        <translation type="vanished">Uitzoomen</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="211"/>
         <source>Delete all</source>
-        <translation>Alles verwijderen</translation>
+        <translation type="vanished">Alles verwijderen</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="214"/>
         <source>Delete all blocks to start from scratch.</source>
-        <translation>Verwijder alle blokken om helemaal opnieuw te beginnen.</translation>
+        <translation type="vanished">Verwijder alle blokken om helemaal opnieuw te beginnen.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="226"/>
         <source>Validate</source>
-        <translation>Valideer</translation>
+        <translation type="vanished">Valideer</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="238"/>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="156"/>
         <source>view tree</source>
         <translation>boom bekijken</translation>
     </message>
@@ -3474,6 +3643,41 @@ Weet u zeker?</translation>
     </message>
 </context>
 <context>
+    <name>DynamicEventsDraftSession</name>
+    <message>
+        <source>An event and its events group use different simulation modes.</source>
+        <translation>Een gebeurtenis en de gebeurtenisgroep gebruiken verschillende simulatiemodi.</translation>
+    </message>
+    <message>
+        <source>An event has no target device.</source>
+        <translation>Een gebeurtenis heeft geen doelapparaat.</translation>
+    </message>
+    <message>
+        <source>An event in device &apos;{device}&apos; has no valid events group.</source>
+        <translation>Een gebeurtenis in apparaat &apos;{device}&apos; heeft geen geldige gebeurtenisgroep.</translation>
+    </message>
+    <message>
+        <source>An event in device &apos;{device}&apos; has no valid parameter.</source>
+        <translation>Een gebeurtenis in apparaat &apos;{device}&apos; heeft geen geldige parameter.</translation>
+    </message>
+    <message>
+        <source>An events group has an empty name.</source>
+        <translation>Een gebeurtenisgroep heeft een lege naam.</translation>
+    </message>
+    <message>
+        <source>Events for parameter &apos;{parameter}&apos; overlap in group &apos;{group}&apos; and device &apos;{device}&apos;.</source>
+        <translation>Gebeurtenissen voor parameter &apos;{parameter}&apos; overlappen in groep &apos;{group}&apos; en apparaat &apos;{device}&apos;.</translation>
+    </message>
+    <message>
+        <source>The events group name &apos;{name}&apos; is duplicated.</source>
+        <translation>De naam van de gebeurtenisgroep &apos;{name}&apos; is gedupliceerd.</translation>
+    </message>
+    <message>
+        <source>The ramp event for parameter &apos;{parameter}&apos; has an invalid end time.</source>
+        <translation>De rampgebeurtenis voor parameter &apos;{parameter}&apos; heeft een ongeldige eindtijd.</translation>
+    </message>
+</context>
+<context>
     <name>DynamicEventsGroupsDialog</name>
     <message>
         <source>Create EMT Events Group</source>
@@ -3498,6 +3702,155 @@ Weet u zeker?</translation>
     <message>
         <source>The name cannot be empty.</source>
         <translation>De naam kan niet leeg zijn.</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventsItemDelegate</name>
+    <message>
+        <source>Ramp</source>
+        <translation>Ramp</translation>
+    </message>
+    <message>
+        <source>Step</source>
+        <translation>Stap</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventsPage</name>
+    <message>
+        <source>Add an event to the selected event group</source>
+        <translation>Voeg een gebeurtenis toe aan de geselecteerde gebeurtenisgroep</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to remove group &apos;{group}&apos;? This will remove {events} events from {devices} devices.</source>
+        <translation>Weet u zeker dat u de groep &apos;{group}&apos; wilt verwijderen? Dit verwijdert {events} gebeurtenissen van {devices} apparaten.</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to remove the event for &apos;{parameter}&apos; at {time:.4f} s?</source>
+        <translation>Weet u zeker dat u de gebeurtenis voor &apos;{parameter}&apos; op {time:.4f} s wilt verwijderen?</translation>
+    </message>
+    <message>
+        <source>Create an EMT switch opening and reclosing event sequence</source>
+        <translation>Creëer een EMT-schakelaar open- en sluitingsgebeurtenisreeks</translation>
+    </message>
+    <message>
+        <source>Create an event group for this simulation mode</source>
+        <translation>Creëer een gebeurtenisgroep voor deze simulatiemodus</translation>
+    </message>
+    <message>
+        <source>Empty dynamic model</source>
+        <translation>Leeg dynamisch model</translation>
+    </message>
+    <message>
+        <source>Events cannot be added because this dynamic model has no event parameters.</source>
+        <translation>Gebeurtenissen kunnen niet worden toegevoegd omdat dit dynamische model geen gebeurtenisparameters heeft.</translation>
+    </message>
+    <message>
+        <source>Events saved</source>
+        <translation>Gebeurtenissen opgeslagen</translation>
+    </message>
+    <message>
+        <source>Invalid dynamic events</source>
+        <translation>Ongeldige dynamische gebeurtenissen</translation>
+    </message>
+    <message>
+        <source>Invalid event group</source>
+        <translation>Ongeldige gebeurtenisgroep</translation>
+    </message>
+    <message>
+        <source>Invalid parameter</source>
+        <translation>Ongeldige parameter</translation>
+    </message>
+    <message>
+        <source>No events can be added because the dynamic model has no event parameters.</source>
+        <translation>Er kunnen geen gebeurtenissen worden toegevoegd omdat het dynamische model geen gebeurtenisparameters heeft.</translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation>Verwijderen</translation>
+    </message>
+    <message>
+        <source>Remove event</source>
+        <translation>Gebeurtenis verwijderen</translation>
+    </message>
+    <message>
+        <source>Remove events group</source>
+        <translation>Gebeurtenisgroep verwijderen</translation>
+    </message>
+    <message>
+        <source>Remove the selected event or event group</source>
+        <translation>De geselecteerde gebeurtenis of gebeurtenisgroep verwijderen</translation>
+    </message>
+    <message>
+        <source>Rename</source>
+        <translation>Hernoemen</translation>
+    </message>
+    <message>
+        <source>Save events</source>
+        <translation>Gebeurtenissen opslaan</translation>
+    </message>
+    <message>
+        <source>Select the event group where you want to add the event.</source>
+        <translation>Selecteer de gebeurtenisgroep waar u de gebeurtenis wilt toevoegen.</translation>
+    </message>
+    <message>
+        <source>Select the event or event group you want to remove.</source>
+        <translation>Selecteer de gebeurtenis of gebeurtenisgroep die u wilt verwijderen.</translation>
+    </message>
+    <message>
+        <source>Switch Sequence Wizard</source>
+        <translation>Sequentie Wizard schakelen</translation>
+    </message>
+    <message>
+        <source>The event group name must be non-empty and unique in this simulation mode.</source>
+        <translation>De naam van de gebeurtenisgroep moet niet leeg zijn en uniek zijn in deze simulatiemodus.</translation>
+    </message>
+    <message>
+        <source>This dynamic model is empty. New events cannot be added until the model is built.</source>
+        <translation>Dit dynamische model is leeg. Nieuwe gebeurtenissen kunnen niet worden toegevoegd totdat het model is opgebouwd.</translation>
+    </message>
+    <message>
+        <source>➕ New Event Group</source>
+        <translation>➕ Nieuwe Gebeurtenisgroep</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventsTreeModel</name>
+    <message>
+        <source>Align Step</source>
+        <translation>Stap uitlijnen</translation>
+    </message>
+    <message>
+        <source>End Time</source>
+        <translation>Eindtijd</translation>
+    </message>
+    <message>
+        <source>Invalid / Ungrouped Events</source>
+        <translation>Ongeldige / Ongroepde Gebeurtenissen</translation>
+    </message>
+    <message>
+        <source>Invalid parameter</source>
+        <translation>Ongeldige parameter</translation>
+    </message>
+    <message>
+        <source>New Value</source>
+        <translation>Nieuwe Waarde</translation>
+    </message>
+    <message>
+        <source>Parameter</source>
+        <translation>Parameter</translation>
+    </message>
+    <message>
+        <source>These persisted events do not reference a valid events group and can only be removed.</source>
+        <translation>Deze opgeslagen gebeurtenissen verwijzen niet naar een geldige gebeurtenisgroep en kunnen alleen worden verwijderd.</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>Tijd</translation>
+    </message>
+    <message>
+        <source>Transition</source>
+        <translation>Transitie</translation>
     </message>
 </context>
 <context>
@@ -3933,6 +4286,10 @@ BELANGRIJK: Dit houdt rekening met elke verplaatsing van de locatie van het tran
         <source>create substation diagram</source>
         <translation>Transformatorstationschema aanmaken</translation>
     </message>
+    <message>
+        <source>{device_name} profiles plot</source>
+        <translation>{device_name} profielplot</translation>
+    </message>
 </context>
 <context>
     <name>GridMergeDialogue</name>
@@ -4364,6 +4721,14 @@ Annuleren en opnieuw proberen?</translation>
     <message>
         <source>The file was loaded but the current project was kept because closing a dynamic editor was cancelled.</source>
         <translation>Het bestand werd geladen, maar het huidige project werd behouden omdat het sluiten van een dynamische editor werd geannuleerd.</translation>
+    </message>
+    <message>
+        <source>Some operations are still stopping. Try again after they finish.</source>
+        <translation>Sommige operaties stoppen nog. Probeer het opnieuw nadat ze zijn voltooid.</translation>
+    </message>
+    <message>
+        <source>The current save is still finishing. Please retry when it is done.</source>
+        <translation>De huidige opslag is nog bezig. Probeer het opnieuw wanneer deze voltooid is.</translation>
     </message>
 </context>
 <context>
@@ -6359,6 +6724,13 @@ Annuleren en het venster sluiten?</translation>
     </message>
 </context>
 <context>
+    <name>PopupResizeGrip</name>
+    <message>
+        <source>Resize</source>
+        <translation>Herdimensioneren</translation>
+    </message>
+</context>
+<context>
     <name>ProceduralGridWindow</name>
     <message>
         <source>Procedural grid expansion</source>
@@ -6412,6 +6784,10 @@ Overweeg een geldige databron te laden.</translation>
     <message>
         <source>Value error loading CSV file</source>
         <translation>Waardafout bij laden CSV-bestand</translation>
+    </message>
+    <message>
+        <source>Profile plot</source>
+        <translation>Profielplot</translation>
     </message>
 </context>
 <context>
@@ -6720,12 +7096,27 @@ Vindt u het goed dat u mogelijk veel moet wachten?</translation>
         <source>{file_name} is not valid :(</source>
         <translation>{file_name} is niet geldig :(</translation>
     </message>
+    <message>
+        <source>Results plot</source>
+        <translation>Resultatenplot</translation>
+    </message>
 </context>
 <context>
     <name>ResultsModel</name>
     <message>
         <source>Plotting error</source>
         <translation>Plotfout</translation>
+    </message>
+</context>
+<context>
+    <name>RetainedModeDraftTableModel</name>
+    <message>
+        <source>Retained mode</source>
+        <translation>Behouden modus</translation>
+    </message>
+    <message>
+        <source>Select one retained mode.</source>
+        <translation>Selecteer één behouden modus.</translation>
     </message>
 </context>
 <context>
@@ -7070,6 +7461,10 @@ Dit verwijdert de directe kindscenario&apos;s nadat hun wijzigingen zijn toegepa
         <source>Set Current Scenario</source>
         <translation>Huidig scenario instellen</translation>
     </message>
+    <message>
+        <source>Wait until the running operations finish before changing scenario.</source>
+        <translation>Wacht tot de lopende operaties zijn voltooid voordat je het scenario wijzigt.</translation>
+    </message>
 </context>
 <context>
     <name>SchematicLibraryModel</name>
@@ -7225,6 +7620,10 @@ Heeft u het aantal apparaten gewijzigd? Zo ja, voer de simulatie opnieuw uit.</t
     <message>
         <source>{bus_name} was not found in the graphics manager</source>
         <translation>{bus_name} werd niet gevonden in het grafiekbeheer</translation>
+    </message>
+    <message>
+        <source>{device_name} profiles plot</source>
+        <translation>{device_name} profielplot</translation>
     </message>
 </context>
 <context>
@@ -8571,6 +8970,93 @@ Pas het aantal clusters aan in de ML-instellingen.</translation>
         <source>An RMS simulation cannot run without an RMS Events Group. Go to Events -&gt; Add RMS event and add a group, even if it contains no events.</source>
         <translation>Een RMS-simulatie kan niet draaien zonder een RMS Events Group. Ga naar Events -&gt; Voeg RMS-gebeurtenis toe en voeg een groep toe, zelfs als deze geen gebeurtenissen bevat.</translation>
     </message>
+    <message>
+        <source>Fluid nodes are ignored for nonlinear OPF</source>
+        <translation>Vloeistofknooppunten worden genegeerd voor niet-lineaire OPF</translation>
+    </message>
+    <message>
+        <source>Fluid nodes are ignored for this simulation</source>
+        <translation>Vloeistofknooppunten worden genegeerd voor deze simulatie</translation>
+    </message>
+    <message>
+        <source>Investments evaluation failed. Check the logs for details.</source>
+        <translation>Investeringsbeoordeling mislukt. Controleer de logs voor details.</translation>
+    </message>
+    <message>
+        <source>Investments evaluation finished without results.</source>
+        <translation>Investeringsbeoordeling is voltooid zonder resultaten.</translation>
+    </message>
+    <message>
+        <source>Nodal capacity failed to start</source>
+        <translation>Knooppuntcapaciteit kon niet starten</translation>
+    </message>
+    <message>
+        <source>Nodal capacity logs</source>
+        <translation>Knooppuntcapaciteit logs</translation>
+    </message>
+    <message>
+        <source>Nodal capacity time series failed to start</source>
+        <translation>Knooppuntcapaciteit tijdreeks kon niet starten</translation>
+    </message>
+    <message>
+        <source>Nodal capacity time series logs</source>
+        <translation>Knooppuntcapaciteit tijdreeks logs</translation>
+    </message>
+    <message>
+        <source>OPF time series failed to start</source>
+        <translation>OPF tijdreeks kon niet starten</translation>
+    </message>
+    <message>
+        <source>OPF time series logs</source>
+        <translation>OPF tijdreeks logs</translation>
+    </message>
+    <message>
+        <source>Optimal power flow failed to start</source>
+        <translation>Optimale stroomoverdracht kon niet starten</translation>
+    </message>
+    <message>
+        <source>Optimal power flow logs</source>
+        <translation>Optimale stroomoverdracht logs</translation>
+    </message>
+    <message>
+        <source>Running OPF time series with only one time step in range</source>
+        <translation>Draaiende OPF tijdreeks met slechts één tijdstap in het bereik</translation>
+    </message>
+    <message>
+        <source>Something went wrong, there are no OPF results.</source>
+        <translation>Er is iets misgegaan, er zijn geen OPF resultaten.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, there are no OPF time series results.</source>
+        <translation>Er is iets misgegaan, er zijn geen OPF tijdreeksresultaten.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, there are no nodal capacity results.</source>
+        <translation>Er is iets misgegaan, er zijn geen knooppuntcapaciteitsresultaten.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, there are no nodal capacity time series results.</source>
+        <translation>Er is iets misgegaan, er zijn geen knooppuntcapaciteit tijdreeksresultaten.</translation>
+    </message>
+    <message>
+        <source>Voltage stability failed to start</source>
+        <translation>Spanningstabiliteit kon niet starten</translation>
+    </message>
+    <message>
+        <source>Voltage stability logs</source>
+        <translation>Spanningstabiliteit logs</translation>
+    </message>
+    <message>
+        <source>Wait until the running simulations finish before clearing results.</source>
+        <translation>Wacht tot de lopende simulaties zijn voltooid voordat je de resultaten wist.</translation>
+    </message>
+</context>
+<context>
+    <name>SolarPvWizard</name>
+    <message>
+        <source>Solar power profile</source>
+        <translation>Zonne-energieprofiel</translation>
+    </message>
 </context>
 <context>
     <name>SubstationDesigner</name>
@@ -8881,6 +9367,10 @@ U moet een net laden of aanmaken!</translation>
     <message>
         <source>There is no profile displayed, please display one</source>
         <translation>Er wordt geen profiel weergegeven. Geef er alstublieft één weer</translation>
+    </message>
+    <message>
+        <source>Profiles plot</source>
+        <translation>Profielplot</translation>
     </message>
 </context>
 <context>
@@ -9332,6 +9822,10 @@ U moet een net laden of aanmaken!</translation>
     <message>
         <source>Removed {count} __pycache__ folders</source>
         <translation>Verwijderde {count} __pycache__ mappen</translation>
+    </message>
+    <message>
+        <source>Some operations are still stopping. Close again after they finish.</source>
+        <translation>Sommige operaties stoppen nog. Sluit opnieuw nadat ze zijn voltooid.</translation>
     </message>
 </context>
 <context>
@@ -11554,6 +12048,13 @@ U moet een net laden of aanmaken!</translation>
     </message>
 </context>
 <context>
+    <name>VerticalHeaderWidthResizer</name>
+    <message>
+        <source>Resize index column</source>
+        <translation>Indexkolom herdimensioneren</translation>
+    </message>
+</context>
+<context>
     <name>VoltageLevelConversionWizard</name>
     <message>
         <source>+ Add spare position</source>
@@ -11706,6 +12207,14 @@ U moet een net laden of aanmaken!</translation>
 {error_text}</source>
         <translation>De geselecteerde windturbine kon niet worden aangemaakt:
 {error_text}</translation>
+    </message>
+    <message>
+        <source>Wind power profile</source>
+        <translation>Windenergieprofiel</translation>
+    </message>
+    <message>
+        <source>Wind turbine design curves</source>
+        <translation>Windturbinedesigncurves</translation>
     </message>
 </context>
 <context>
@@ -12315,7 +12824,7 @@ U moet een net laden of aanmaken!</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="12737"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Add RMS event&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Open the Dynamic events editor preferring RMS events&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;RMS-gebeurtenis toevoegen&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Open de Dynamic events editor met voorkeur voor RMS-gebeurtenissen&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;RMS-gebeurtenis toevoegen&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Open de Dynamic events editor met voorkeur voor RMS-gebeurtenissen&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="13068"/>
@@ -12325,7 +12834,7 @@ U moet een net laden of aanmaken!</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="13071"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Add EMT event&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Open the Dynamic events editor preferring EMT events&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;EMT-gebeurtenis toevoegen&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Open de Dynamic events editor met voorkeur voor EMT-gebeurtenissen&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;EMT-gebeurtenis toevoegen&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Open de Dynamic events editor met voorkeur voor EMT-gebeurtenissen&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="13143"/>
@@ -15126,306 +15635,6 @@ U moet een net laden of aanmaken!</translation>
     <message>
         <source>Question</source>
         <translation>Vraag</translation>
-    </message>
-</context>
-<context>
-    <name>BlockPropertyTreeModel</name>
-    <message>
-        <source>Missing PF mapping</source>
-        <translation>Ontbrekende PF-mapping</translation>
-    </message>
-    <message>
-        <source>Name</source>
-        <translation>Naam</translation>
-    </message>
-    <message>
-        <source>Output</source>
-        <translation>Uitgang</translation>
-    </message>
-    <message>
-        <source>Power-flow reference; variable mappings are used for initialization.</source>
-        <translation>Power-flow referentie; variabele mappings worden gebruikt voor initialisatie.</translation>
-    </message>
-    <message>
-        <source>Template issue: static parameters require api_obj_mapping. An independently editable parameter should be in event_dict. This refactor does not migrate templates automatically.</source>
-        <translation>Templateprobleem: statische parameters vereisen api_obj_mapping. Een onafhankelijk bewerkbare parameter moet in event_dict staan. Deze refactor migreert templates niet automatisch.</translation>
-    </message>
-    <message>
-        <source>Type</source>
-        <translation>Type</translation>
-    </message>
-    <message>
-        <source>Value / PF reference</source>
-        <translation>Waarde / PF-referentie</translation>
-    </message>
-</context>
-<context>
-    <name>BlockPropertyValueDelegate</name>
-    <message>
-        <source>None</source>
-        <translation>Geen</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicBlockPropertiesDockWidget</name>
-    <message>
-        <source>Block Properties contains changes that have not been applied. Discard those changes and close the editor?</source>
-        <translation>Block Properties bevat wijzigingen die niet zijn toegepast. Deze wijzigingen negeren en de editor sluiten?</translation>
-    </message>
-    <message>
-        <source>Unsaved Block Properties changes</source>
-        <translation>Ongeslagen wijzigingen in Block Properties</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicDeviceTreeWidget</name>
-    <message>
-        <source>EMT editor</source>
-        <translation>EMT-editor</translation>
-    </message>
-    <message>
-        <source>EMT events</source>
-        <translation>EMT-gebeurtenissen</translation>
-    </message>
-    <message>
-        <source>RMS editor</source>
-        <translation>RMS-editor</translation>
-    </message>
-    <message>
-        <source>RMS events</source>
-        <translation>RMS-gebeurtenissen</translation>
-    </message>
-    <message>
-        <source>Type to search the device</source>
-        <translation>Typ om het apparaat te zoeken</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEditorWorkspaceSession</name>
-    <message>
-        <source>Invalid dynamic events</source>
-        <translation>Ongeldige dynamische gebeurtenissen</translation>
-    </message>
-    <message>
-        <source>Save the changes before closing the last events tab?</source>
-        <translation>Wijzigingen opslaan voordat de laatste gebeurtenissen tab wordt gesloten?</translation>
-    </message>
-    <message>
-        <source>The dynamic events contain unsaved changes.</source>
-        <translation>De dynamische gebeurtenissen bevatten onopgeslagen wijzigingen.</translation>
-    </message>
-    <message>
-        <source>Unsaved dynamic events</source>
-        <translation>Ongeslagen dynamische gebeurtenissen</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEventsDraftSession</name>
-    <message>
-        <source>An event and its events group use different simulation modes.</source>
-        <translation>Een gebeurtenis en de gebeurtenisgroep gebruiken verschillende simulatiemodi.</translation>
-    </message>
-    <message>
-        <source>An event has no target device.</source>
-        <translation>Een gebeurtenis heeft geen doelapparaat.</translation>
-    </message>
-    <message>
-        <source>An event in device '{device}' has no valid events group.</source>
-        <translation>Een gebeurtenis in apparaat '{device}' heeft geen geldige gebeurtenisgroep.</translation>
-    </message>
-    <message>
-        <source>An event in device '{device}' has no valid parameter.</source>
-        <translation>Een gebeurtenis in apparaat '{device}' heeft geen geldige parameter.</translation>
-    </message>
-    <message>
-        <source>An events group has an empty name.</source>
-        <translation>Een gebeurtenisgroep heeft een lege naam.</translation>
-    </message>
-    <message>
-        <source>Events for parameter '{parameter}' overlap in group '{group}' and device '{device}'.</source>
-        <translation>Gebeurtenissen voor parameter '{parameter}' overlappen in groep '{group}' en apparaat '{device}'.</translation>
-    </message>
-    <message>
-        <source>The events group name '{name}' is duplicated.</source>
-        <translation>De naam van de gebeurtenisgroep '{name}' is gedupliceerd.</translation>
-    </message>
-    <message>
-        <source>The ramp event for parameter '{parameter}' has an invalid end time.</source>
-        <translation>De rampgebeurtenis voor parameter '{parameter}' heeft een ongeldige eindtijd.</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEventsItemDelegate</name>
-    <message>
-        <source>Ramp</source>
-        <translation>Ramp</translation>
-    </message>
-    <message>
-        <source>Step</source>
-        <translation>Stap</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEventsPage</name>
-    <message>
-        <source>Add an event to the selected event group</source>
-        <translation>Voeg een gebeurtenis toe aan de geselecteerde gebeurtenisgroep</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to remove group '{group}'? This will remove {events} events from {devices} devices.</source>
-        <translation>Weet u zeker dat u de groep '{group}' wilt verwijderen? Dit verwijdert {events} gebeurtenissen van {devices} apparaten.</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to remove the event for '{parameter}' at {time:.4f} s?</source>
-        <translation>Weet u zeker dat u de gebeurtenis voor '{parameter}' op {time:.4f} s wilt verwijderen?</translation>
-    </message>
-    <message>
-        <source>Create an EMT switch opening and reclosing event sequence</source>
-        <translation>Creëer een EMT-schakelaar open- en sluitingsgebeurtenisreeks</translation>
-    </message>
-    <message>
-        <source>Create an event group for this simulation mode</source>
-        <translation>Creëer een gebeurtenisgroep voor deze simulatiemodus</translation>
-    </message>
-    <message>
-        <source>Empty dynamic model</source>
-        <translation>Leeg dynamisch model</translation>
-    </message>
-    <message>
-        <source>Events cannot be added because this dynamic model has no event parameters.</source>
-        <translation>Gebeurtenissen kunnen niet worden toegevoegd omdat dit dynamische model geen gebeurtenisparameters heeft.</translation>
-    </message>
-    <message>
-        <source>Events saved</source>
-        <translation>Gebeurtenissen opgeslagen</translation>
-    </message>
-    <message>
-        <source>Invalid dynamic events</source>
-        <translation>Ongeldige dynamische gebeurtenissen</translation>
-    </message>
-    <message>
-        <source>Invalid event group</source>
-        <translation>Ongeldige gebeurtenisgroep</translation>
-    </message>
-    <message>
-        <source>Invalid parameter</source>
-        <translation>Ongeldige parameter</translation>
-    </message>
-    <message>
-        <source>No events can be added because the dynamic model has no event parameters.</source>
-        <translation>Er kunnen geen gebeurtenissen worden toegevoegd omdat het dynamische model geen gebeurtenisparameters heeft.</translation>
-    </message>
-    <message>
-        <source>Remove</source>
-        <translation>Verwijderen</translation>
-    </message>
-    <message>
-        <source>Remove event</source>
-        <translation>Gebeurtenis verwijderen</translation>
-    </message>
-    <message>
-        <source>Remove events group</source>
-        <translation>Gebeurtenisgroep verwijderen</translation>
-    </message>
-    <message>
-        <source>Remove the selected event or event group</source>
-        <translation>De geselecteerde gebeurtenis of gebeurtenisgroep verwijderen</translation>
-    </message>
-    <message>
-        <source>Rename</source>
-        <translation>Hernoemen</translation>
-    </message>
-    <message>
-        <source>Save events</source>
-        <translation>Gebeurtenissen opslaan</translation>
-    </message>
-    <message>
-        <source>Select the event group where you want to add the event.</source>
-        <translation>Selecteer de gebeurtenisgroep waar u de gebeurtenis wilt toevoegen.</translation>
-    </message>
-    <message>
-        <source>Select the event or event group you want to remove.</source>
-        <translation>Selecteer de gebeurtenis of gebeurtenisgroep die u wilt verwijderen.</translation>
-    </message>
-    <message>
-        <source>Switch Sequence Wizard</source>
-        <translation>Sequentie Wizard schakelen</translation>
-    </message>
-    <message>
-        <source>The event group name must be non-empty and unique in this simulation mode.</source>
-        <translation>De naam van de gebeurtenisgroep moet niet leeg zijn en uniek zijn in deze simulatiemodus.</translation>
-    </message>
-    <message>
-        <source>This dynamic model is empty. New events cannot be added until the model is built.</source>
-        <translation>Dit dynamische model is leeg. Nieuwe gebeurtenissen kunnen niet worden toegevoegd totdat het model is opgebouwd.</translation>
-    </message>
-    <message>
-        <source>➕ New Event Group</source>
-        <translation>➕ Nieuwe Gebeurtenisgroep</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEventsTreeModel</name>
-    <message>
-        <source>Align Step</source>
-        <translation>Stap uitlijnen</translation>
-    </message>
-    <message>
-        <source>End Time</source>
-        <translation>Eindtijd</translation>
-    </message>
-    <message>
-        <source>Invalid / Ungrouped Events</source>
-        <translation>Ongeldige / Ongroepde Gebeurtenissen</translation>
-    </message>
-    <message>
-        <source>Invalid parameter</source>
-        <translation>Ongeldige parameter</translation>
-    </message>
-    <message>
-        <source>New Value</source>
-        <translation>Nieuwe Waarde</translation>
-    </message>
-    <message>
-        <source>Parameter</source>
-        <translation>Parameter</translation>
-    </message>
-    <message>
-        <source>These persisted events do not reference a valid events group and can only be removed.</source>
-        <translation>Deze opgeslagen gebeurtenissen verwijzen niet naar een geldige gebeurtenisgroep en kunnen alleen worden verwijderd.</translation>
-    </message>
-    <message>
-        <source>Time</source>
-        <translation>Tijd</translation>
-    </message>
-    <message>
-        <source>Transition</source>
-        <translation>Transitie</translation>
-    </message>
-</context>
-<context>
-    <name>PopupResizeGrip</name>
-    <message>
-        <source>Resize</source>
-        <translation>Herdimensioneren</translation>
-    </message>
-</context>
-<context>
-    <name>RetainedModeDraftTableModel</name>
-    <message>
-        <source>Retained mode</source>
-        <translation>Behouden modus</translation>
-    </message>
-    <message>
-        <source>Select one retained mode.</source>
-        <translation>Selecteer één behouden modus.</translation>
-    </message>
-</context>
-<context>
-    <name>VerticalHeaderWidthResizer</name>
-    <message>
-        <source>Resize index column</source>
-        <translation>Indexkolom herdimensioneren</translation>
     </message>
 </context>
 </TS>

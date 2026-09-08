@@ -10,10 +10,10 @@ import pytest
 
 import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_graphics as graph
 from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_editor import DynamicBlockEditorGUI
-from VeraGrid.Gui.DynamicModelEditor.BlockProperties.dynamic_block_properties import (
+from VeraGridEngine.enumerations import BlockSymbolKind
+from VeraGrid.Gui.DynamicModelEditor.Editor.BlockProperties import (
     BlockParameterDraftModel,
     BlockSymbolDraftModel,
-    BlockSymbolKind,
     BlockSymbolDraftRow,
     BlockCodeBuffer,
     BlockEquationDraft,
@@ -29,10 +29,9 @@ from VeraGrid.Gui.DynamicModelEditor.BlockProperties.dynamic_block_properties im
     serialize_dae_expression,
     synchronize_dae_variable_declarations,
 )
-from VeraGrid.Gui.DynamicModelEditor.BlockProperties.dynamic_procedural_logic import RuntimeModeDraft
-from VeraGrid.Gui.DynamicModelEditor.BlockProperties.dynamic_equation_pdf import (
+from VeraGrid.Gui.DynamicModelEditor.Editor.BlockProperties import RuntimeModeDraft
+from VeraGrid.Gui.DynamicModelEditor.Editor.BlockProperties import (
     EquationExportEntry,
-    EquationExportSection,
     build_equation_pdf_suggested_name,
     build_latex_source,
     build_list_equation_entries,
@@ -43,13 +42,13 @@ from VeraGrid.Gui.DynamicModelEditor.BlockProperties.dynamic_equation_pdf import
     render_wrapped_equation,
     write_equation_pdf,
 )
-from VeraGrid.Gui.DynamicModelEditor.DynamicLibrary.dynamic_editor_utilities import create_block_of_type
-from VeraGrid.Gui.DynamicModelEditor.DynamicLibrary.dynamic_editor_utilities import (
+from VeraGrid.Gui.DynamicModelEditor.Editor.DynamicLibrary.dynamic_editor_utilities import create_block_of_type
+from VeraGrid.Gui.DynamicModelEditor.Editor.DynamicLibrary.dynamic_editor_utilities import (
     create_default_template_builder,
     get_blocktype2template_builder_dict,
     initialize_template_builder_from_block,
 )
-from VeraGrid.Gui.DynamicModelEditor.BlockProperties.dynamic_latex_renderer import (
+from VeraGrid.Gui.DynamicModelEditor.Editor.BlockProperties.dynamic_latex_renderer import (
     LatexRenderer,
     RenderedEquation,
     RenderedSvgEquation,
@@ -64,6 +63,7 @@ from VeraGridEngine.enumerations import (
     BlockType,
     DeviceType,
     DynamicSimulationMode,
+    EquationExportSection,
     ParamPowerFlowReferenceType,
     ProceduralLogicType,
     VarPowerFlowReferenceType,

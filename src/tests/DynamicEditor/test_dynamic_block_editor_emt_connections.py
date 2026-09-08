@@ -10,11 +10,11 @@ from VeraGridEngine.Devices.Branches.line import Line
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Injections.generator import Generator
+from VeraGridEngine.enumerations import BlockSymbolKind
 
 from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_editor import DynamicBlockEditorGUI
-from VeraGrid.Gui.DynamicModelEditor.BlockProperties.dynamic_block_properties import (
+from VeraGrid.Gui.DynamicModelEditor.Editor.BlockProperties import (
     BlockStructuralEditRequest,
-    BlockSymbolKind,
     BlockSymbolDraftRow,
     DynamicBlockPropertiesDialog,
 )
@@ -22,7 +22,7 @@ import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_editor as dynamic_bl
 import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_graphics as graph
 import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_models as dialog_models
 from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_workspace_window import DynamicEditorWorkspaceWindow
-from VeraGrid.Gui.DynamicModelEditor.DynamicLibrary.dynamic_editor_utilities import (
+from VeraGrid.Gui.DynamicModelEditor.Editor.DynamicLibrary.dynamic_editor_utilities import (
     create_default_template_builder,
     initialize_template_builder_from_block,
 )
@@ -2672,25 +2672,9 @@ def _assert_branch_template_root_wires(editor: DynamicBlockEditorGUI,
     """
     visible_pairs: set[tuple[VarPowerFlowReferenceType, VarPowerFlowReferenceType]] = _collect_graphical_connection_refs(editor)
     expected_pair: tuple[VarPowerFlowReferenceType, VarPowerFlowReferenceType]
-    expected_source_ref: VarPowerFlowReferenceType
-    expected_target_ref: VarPowerFlowReferenceType
-    mapped_source_var: Var | None
-    visible_expected_pair: tuple[VarPowerFlowReferenceType, VarPowerFlowReferenceType]
-    root_input_refs: set[VarPowerFlowReferenceType] = set(
-        var.ref for var in editor.main_block.in_vars
-        if isinstance(var.ref, VarPowerFlowReferenceType)
-    )
 
     for expected_pair in expected_connection_pairs:
-        expected_source_ref, expected_target_ref = expected_pair
-        mapped_source_var = editor.main_block.external_mapping.get(expected_source_ref, None)
-        if (expected_source_ref in root_input_refs
-                and mapped_source_var is not None
-                and isinstance(mapped_source_var.ref, VarPowerFlowReferenceType)):
-            visible_expected_pair = mapped_source_var.ref, expected_target_ref
-        else:
-            visible_expected_pair = expected_pair
-        assert visible_expected_pair in visible_pairs
+        assert expected_pair in visible_pairs
 
 
 def _collect_scene_wrapper_refs(editor: DynamicBlockEditorGUI) -> tuple[list[VarPowerFlowReferenceType], list[VarPowerFlowReferenceType]]:

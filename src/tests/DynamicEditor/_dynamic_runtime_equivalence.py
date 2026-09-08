@@ -6,7 +6,7 @@ from PySide6 import QtWidgets
 
 import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_graphics as graph
 from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_editor import DynamicBlockEditorGUI
-from VeraGrid.Gui.DynamicModelEditor.Tabs.dynamic_editor_tab import DynamicEditorTab
+from VeraGrid.Gui.DynamicModelEditor.Workspace.Tabs.dynamic_editor_tab import DynamicEditorTab
 from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import (
     DynamicEditorEntry,
     build_dynamic_editor_entry,
@@ -270,6 +270,13 @@ def build_dynamic_model_with_editor(application: QtWidgets.QApplication,
         template_block
     )
 
+    # A fresh root editor initially lays out only its interface wrappers. Once
+    # the catalog block exists, reproduce the current GUI workflow by placing
+    # those wrappers around the definitive content before routing any wires.
+    layout_updated: bool = editor._layout_root_interface_items_around_content()
+    assert layout_updated is True
+    application.processEvents()
+
     expected_connection_count: int = len(template_block.in_vars) + len(template_block.out_vars)
     variable: Var
 
@@ -307,6 +314,10 @@ def build_dynamic_model_with_editor(application: QtWidgets.QApplication,
 
     assert page.has_unapplied_changes
     assert len(editor.diagram.con_data) == expected_connection_count
+    assert all(
+        connection_record.routing_payload is not None
+        for connection_record in editor.diagram.con_data.values()
+    )
     editor.apply_changes()
     application.processEvents()
     assert page.has_unapplied_changes is False

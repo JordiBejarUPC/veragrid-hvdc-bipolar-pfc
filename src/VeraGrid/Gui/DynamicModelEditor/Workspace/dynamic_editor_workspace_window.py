@@ -12,8 +12,8 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_page import DynamicEventsPage
 from VeraGrid.Gui.DynamicModelEditor.Workspace.detachable_editor_tabs_widget import DetachableEditorTabWidget
 from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_editor import DynamicBlockEditorGUI
-from VeraGrid.Gui.DynamicModelEditor.Tabs.dynamic_editor_tab import DynamicEditorTab
-from VeraGrid.Gui.DynamicModelEditor.ui.dynamic_editor_workspace import Ui_DynamicEditorWorkspaceWindow
+from VeraGrid.Gui.DynamicModelEditor.Workspace.Tabs.dynamic_editor_tab import DynamicEditorTab
+from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_workspace import Ui_DynamicEditorWorkspaceWindow
 from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_device_tree import DynamicDeviceTreeWidget
 from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import DynamicEditorEntry
 from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import build_dynamic_editor_entry
@@ -89,12 +89,7 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         self._refresh_window_title()
 
         self.ui.actionview_tree.triggered.connect(self.show_hide_tree)
-        self.ui.block_editor_actionCheckModel.triggered.connect(self.open_inspect_dialog)
-        self.ui.actionCenter.triggered.connect(self.center_view_on_items)
-        self.ui.actionZoom_in.triggered.connect(self.zoom_in_view)
-        self.ui.actionZoom_out.triggered.connect(self.zoom_out_view)
-        self.ui.action_delete_all.triggered.connect(self.delete_all_blocks_with_confirmation)
-        self.ui.actionValidate.triggered.connect(self.show_model_consistency_validation)
+
         self.device_tree_widget.entryPageRequested.connect(self._open_device_tree_entry)
         self._update_toolbar_for_page(page=None)
 
@@ -289,77 +284,7 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
             pass
         return None
 
-    def open_inspect_dialog(self) -> None:
-        """
-        Open the inspect dialog on the active block editor.
 
-        :return: None.
-        """
-        editor = self.get_current_block_editor()
-        if editor is not None:
-            editor.open_inspect_dialog()
-        else:
-            pass
-
-    def center_view_on_items(self) -> None:
-        """
-        Center the active block editor view on its scene items.
-
-        :return: None.
-        """
-        editor = self.get_current_block_editor()
-        if editor is not None:
-            editor.center_view_on_items()
-        else:
-            pass
-
-    def zoom_in_view(self) -> None:
-        """
-        Zoom in the active block editor view.
-
-        :return: None.
-        """
-        editor = self.get_current_block_editor()
-        if editor is not None:
-            editor.zoom_in_view()
-        else:
-            pass
-
-    def zoom_out_view(self) -> None:
-        """
-        Zoom out the active block editor view.
-
-        :return: None.
-        """
-        editor = self.get_current_block_editor()
-        if editor is not None:
-            editor.zoom_out_view()
-        else:
-            pass
-
-    def delete_all_blocks_with_confirmation(self) -> None:
-        """
-        Delete all blocks from the active editor after confirmation.
-
-        :return: None.
-        """
-        editor = self.get_current_block_editor()
-        if editor is not None:
-            editor.delete_all_blocks_with_confirmation()
-        else:
-            pass
-
-    def show_model_consistency_validation(self) -> None:
-        """
-        Run the model-consistency validation on the active editor.
-
-        :return: None.
-        """
-        editor = self.get_current_block_editor()
-        if editor is not None:
-            editor.show_model_consistency_validation()
-        else:
-            pass
 
     def _set_workspace_circuit(self, circuit: MultiCircuit) -> None:
         """

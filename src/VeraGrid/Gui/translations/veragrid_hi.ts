@@ -557,19 +557,74 @@ li.checked::marker { content: &quot;\2612&quot;; }
 <context>
     <name>BlockEditorWindow</name>
     <message>
-        <location filename="../DynamicModelEditor/ui/block_editor.ui" line="14"/>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="14"/>
         <source>BlockEditorWindow</source>
         <translation>ब्लॉकएडिटरविंडो</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/block_editor.ui" line="116"/>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="116"/>
         <source>Library</source>
         <translation>लाइब्रेरी</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/block_editor.ui" line="155"/>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="155"/>
         <source>Search basic blocks</source>
         <translation>मूल ब्लॉक खोजें</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="208"/>
+        <source>toolBar</source>
+        <translation>उपकरण पट्टी</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="237"/>
+        <source>CheckModel</source>
+        <translation>चेकमॉडल</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="240"/>
+        <source>Inspect model</source>
+        <translation>मॉडल निरीक्षण करें</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="252"/>
+        <source>Center</source>
+        <translation>केंद्र</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="264"/>
+        <source>Zoom in</source>
+        <translation>ज़ूम इन</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="276"/>
+        <source>Zoom out</source>
+        <translation>ज़ूम आउट</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="291"/>
+        <source>Delete all</source>
+        <translation>सभी हटाएँ</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="294"/>
+        <source>Delete all blocks to start from scratch.</source>
+        <translation>शुरू से काम शुरू करने के लिए सभी ब्लॉक हटाएँ।</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="306"/>
+        <source>Validate</source>
+        <translation>सत्यापित करें</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="318"/>
+        <source>Save</source>
+        <translation>सहेजें</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="321"/>
+        <source>Ctrl+S</source>
+        <translation>Ctrl+S</translation>
     </message>
     <message>
         <source>Variables</source>
@@ -605,6 +660,44 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <source>Value</source>
         <translation>मान</translation>
+    </message>
+</context>
+<context>
+    <name>BlockPropertyTreeModel</name>
+    <message>
+        <source>Missing PF mapping</source>
+        <translation>PF मैपिंग गुम है</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>नाम</translation>
+    </message>
+    <message>
+        <source>Output</source>
+        <translation>आउटपुट</translation>
+    </message>
+    <message>
+        <source>Power-flow reference; variable mappings are used for initialization.</source>
+        <translation>पावर-फ्लो संदर्भ; चर मैपिंग का उपयोग आरंभीकरण के लिए किया जाता है।</translation>
+    </message>
+    <message>
+        <source>Template issue: static parameters require api_obj_mapping. An independently editable parameter should be in event_dict. This refactor does not migrate templates automatically.</source>
+        <translation>टेम्पलेट समस्या: स्थिर मापदंडों को api_obj_mapping की आवश्यकता होती है। एक स्वतंत्र रूप से संपादन योग्य पैरामीटर event_dict में होना चाहिए। यह रीफैक्टर टेम्पलेट्स को स्वचालित रूप से माइग्रेट नहीं करता है।</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>प्रकार</translation>
+    </message>
+    <message>
+        <source>Value / PF reference</source>
+        <translation>मान / PF संदर्भ</translation>
+    </message>
+</context>
+<context>
+    <name>BlockPropertyValueDelegate</name>
+    <message>
+        <source>None</source>
+        <translation>कोई नहीं</translation>
     </message>
 </context>
 <context>
@@ -853,6 +946,13 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <source>Select the CGMES options</source>
         <translation>CGMES विकल्प चुनें</translation>
+    </message>
+</context>
+<context>
+    <name>CompiledArraysMain</name>
+    <message>
+        <source>Array plot</source>
+        <translation>ऐरे प्लॉट</translation>
     </message>
 </context>
 <context>
@@ -1261,6 +1361,10 @@ Are you sure?</source>
     <message>
         <source>Width in pixels</source>
         <translation>पिक्सल में चौड़ाई</translation>
+    </message>
+    <message>
+        <source>Object histogram</source>
+        <translation>ऑब्जेक्ट हिस्टोग्राम</translation>
     </message>
 </context>
 <context>
@@ -2175,11 +2279,11 @@ Are you sure?</source>
     </message>
     <message>
         <source>There are unapplied changes. Do you want to close without applying them?</source>
-        <translation type="vanished">लागू नहीं किए गए परिवर्तन हैं। क्या आप उन्हें लागू किए बिना बंद करना चाहते हैं?</translation>
+        <translation>लागू नहीं किए गए परिवर्तन हैं। क्या आप उन्हें लागू किए बिना बंद करना चाहते हैं?</translation>
     </message>
     <message>
         <source>Unsaved changes</source>
-        <translation type="vanished">सहेजे बिना परिवर्तन</translation>
+        <translation>सहेजे बिना परिवर्तन</translation>
     </message>
     <message>
         <source>You are going to delete the complete model and start from scratch. Are you sure?</source>
@@ -2189,12 +2293,12 @@ Are you sure?</source>
 <context>
     <name>DynamicBlockPropertiesDialog</name>
     <message>
-        <location filename="../DynamicModelEditor/BlockProperties/dynamic_block_properties.ui" line="14"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="14"/>
         <source>Block properties</source>
         <translation>गुण ब्लॉक करें</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/BlockProperties/dynamic_block_properties.ui" line="70"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="70"/>
         <source>Apply changes</source>
         <translation>परिवर्तन लागू करें</translation>
     </message>
@@ -2507,7 +2611,7 @@ Are you sure?</source>
         <translation>+ प्रक्रियात्मक तर्क जोड़ें</translation>
     </message>
     <message>
-        <source>Add one procedural behavior to the active equation owner's Python code.</source>
+        <source>Add one procedural behavior to the active equation owner&apos;s Python code.</source>
         <translation>सक्रिय समीकरण मालिक के पायथन कोड में एक प्रक्रियात्मक व्यवहार जोड़ें।</translation>
     </message>
     <message>
@@ -2561,6 +2665,40 @@ Are you sure?</source>
     <message>
         <source>Validate model</source>
         <translation>मॉडल मान्य करें</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicBlockPropertiesDockWidget</name>
+    <message>
+        <source>Block Properties contains changes that have not been applied. Discard those changes and close the editor?</source>
+        <translation>ब्लॉक गुण में ऐसे परिवर्तन हैं जिन्हें लागू नहीं किया गया है। क्या आप उन परिवर्तनों को त्यागना और संपादक बंद करना चाहते हैं?</translation>
+    </message>
+    <message>
+        <source>Unsaved Block Properties changes</source>
+        <translation>सहेजे बिना ब्लॉक गुण परिवर्तन</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicDeviceTreeWidget</name>
+    <message>
+        <source>EMT editor</source>
+        <translation>EMT संपादक</translation>
+    </message>
+    <message>
+        <source>EMT events</source>
+        <translation>EMT इवेंट्स</translation>
+    </message>
+    <message>
+        <source>RMS editor</source>
+        <translation>RMS संपादक</translation>
+    </message>
+    <message>
+        <source>RMS events</source>
+        <translation>RMS इवेंट्स</translation>
+    </message>
+    <message>
+        <source>Type to search the device</source>
+        <translation>डिवाइस खोजने के लिए टाइप करें</translation>
     </message>
 </context>
 <context>
@@ -2621,64 +2759,95 @@ Are you sure?</source>
     </message>
 </context>
 <context>
+    <name>DynamicEditorWorkspaceSession</name>
+    <message>
+        <source>Invalid dynamic events</source>
+        <translation>अमान्य गतिशील इवेंट्स</translation>
+    </message>
+    <message>
+        <source>Save the changes before closing the last events tab?</source>
+        <translation>अंतिम इवेंट्स टैब बंद करने से पहले परिवर्तन सहेजें?</translation>
+    </message>
+    <message>
+        <source>The dynamic events contain unsaved changes.</source>
+        <translation>गतिशील इवेंट्स में सहेजे बिना परिवर्तन हैं।</translation>
+    </message>
+    <message>
+        <source>Unsaved dynamic events</source>
+        <translation>सहेजे बिना गतिशील इवेंट्स</translation>
+    </message>
+</context>
+<context>
     <name>DynamicEditorWorkspaceWindow</name>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="14"/>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="14"/>
         <source>Dynamic Editor Workspace</source>
         <translation>डायनेमिक संपादक कार्यक्षेत्र</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="79"/>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="79"/>
         <source>Type to search the device</source>
         <translation>डिवाइस खोजने के लिए टाइप करें</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="126"/>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="126"/>
         <source>toolBar</source>
         <translation>उपकरण पट्टी</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="157"/>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="168"/>
+        <source>RMS Editor</source>
+        <translation>RMS एडिटर</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="180"/>
+        <source>EMT Editor</source>
+        <translation>EMT एडिटर</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="192"/>
+        <source>RMS Events</source>
+        <translation>RMS इवेंट्स</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="204"/>
+        <source>EMT Events</source>
+        <translation>EMT इवेंट्स</translation>
+    </message>
+    <message>
         <source>CheckModel</source>
-        <translation>चेकमॉडल</translation>
+        <translation type="vanished">चेकमॉडल</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="160"/>
         <source>Inspect model</source>
-        <translation>मॉडल निरीक्षण करें</translation>
+        <translation type="vanished">मॉडल निरीक्षण करें</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="172"/>
         <source>Center</source>
-        <translation>केंद्र</translation>
+        <translation type="vanished">केंद्र</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="184"/>
         <source>Zoom in</source>
-        <translation>ज़ूम इन</translation>
+        <translation type="vanished">ज़ूम इन</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="196"/>
         <source>Zoom out</source>
-        <translation>ज़ूम आउट</translation>
+        <translation type="vanished">ज़ूम आउट</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="211"/>
         <source>Delete all</source>
-        <translation>सभी हटाएँ</translation>
+        <translation type="vanished">सभी हटाएँ</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="214"/>
         <source>Delete all blocks to start from scratch.</source>
-        <translation>शुरू से काम शुरू करने के लिए सभी ब्लॉक हटाएँ।</translation>
+        <translation type="vanished">शुरू से काम शुरू करने के लिए सभी ब्लॉक हटाएँ।</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="226"/>
         <source>Validate</source>
-        <translation>सत्यापित करें</translation>
+        <translation type="vanished">सत्यापित करें</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="238"/>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="156"/>
         <source>view tree</source>
         <translation>पेड़ देखें</translation>
     </message>
@@ -2910,6 +3079,41 @@ Are you sure?</source>
     </message>
 </context>
 <context>
+    <name>DynamicEventsDraftSession</name>
+    <message>
+        <source>An event and its events group use different simulation modes.</source>
+        <translation>एक इवेंट और उसका इवेंट्स ग्रुप अलग-अलग सिमुलेशन मोड का उपयोग करते हैं।</translation>
+    </message>
+    <message>
+        <source>An event has no target device.</source>
+        <translation>इवेंट का कोई लक्ष्य उपकरण नहीं है।</translation>
+    </message>
+    <message>
+        <source>An event in device &apos;{device}&apos; has no valid events group.</source>
+        <translation>उपकरण &apos;{device}&apos; में इवेंट का कोई वैध इवेंट्स ग्रुप नहीं है।</translation>
+    </message>
+    <message>
+        <source>An event in device &apos;{device}&apos; has no valid parameter.</source>
+        <translation>उपकरण &apos;{device}&apos; में इवेंट का कोई वैध पैरामीटर नहीं है।</translation>
+    </message>
+    <message>
+        <source>An events group has an empty name.</source>
+        <translation>इवेंट्स ग्रुप का नाम खाली है।</translation>
+    </message>
+    <message>
+        <source>Events for parameter &apos;{parameter}&apos; overlap in group &apos;{group}&apos; and device &apos;{device}&apos;.</source>
+        <translation>पैरामीटर &apos;{parameter}&apos; के इवेंट्स ग्रुप &apos;{group}&apos; और उपकरण &apos;{device}&apos; में ओवरलैप होते हैं।</translation>
+    </message>
+    <message>
+        <source>The events group name &apos;{name}&apos; is duplicated.</source>
+        <translation>इवेंट्स ग्रुप का नाम &apos;{name}&apos; दोहराया गया है।</translation>
+    </message>
+    <message>
+        <source>The ramp event for parameter &apos;{parameter}&apos; has an invalid end time.</source>
+        <translation>पैरामीटर &apos;{parameter}&apos; के रैंप इवेंट का समाप्ति समय अमान्य है।</translation>
+    </message>
+</context>
+<context>
     <name>DynamicEventsGroupsDialog</name>
     <message>
         <source>Create EMT Events Group</source>
@@ -2934,6 +3138,155 @@ Are you sure?</source>
     <message>
         <source>The name cannot be empty.</source>
         <translation>नाम खाली नहीं हो सकता।</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventsItemDelegate</name>
+    <message>
+        <source>Ramp</source>
+        <translation>रैंप</translation>
+    </message>
+    <message>
+        <source>Step</source>
+        <translation>चरण</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventsPage</name>
+    <message>
+        <source>Add an event to the selected event group</source>
+        <translation>चयनित इवेंट समूह में एक इवेंट जोड़ें।</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to remove group &apos;{group}&apos;? This will remove {events} events from {devices} devices.</source>
+        <translation>क्या आप समूह &apos;{group}&apos; हटाना चाहते हैं? इससे {devices} उपकरणों से {events} इवेंट हट जाएंगे।</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to remove the event for &apos;{parameter}&apos; at {time:.4f} s?</source>
+        <translation>क्या आप &apos;{parameter}&apos; के लिए {time:.4f} सेकंड पर इवेंट हटाना चाहते हैं?</translation>
+    </message>
+    <message>
+        <source>Create an EMT switch opening and reclosing event sequence</source>
+        <translation>एक EMT स्विच ओपनिंग और रीक्लोजिंग इवेंट सीक्वेंस बनाएं।</translation>
+    </message>
+    <message>
+        <source>Create an event group for this simulation mode</source>
+        <translation>इस सिमुलेशन मोड के लिए एक इवेंट समूह बनाएं।</translation>
+    </message>
+    <message>
+        <source>Empty dynamic model</source>
+        <translation>खाली गतिशील मॉडल</translation>
+    </message>
+    <message>
+        <source>Events cannot be added because this dynamic model has no event parameters.</source>
+        <translation>इवेंट्स नहीं जोड़े जा सकते क्योंकि इस गतिशील मॉडल में कोई इवेंट पैरामीटर नहीं है।</translation>
+    </message>
+    <message>
+        <source>Events saved</source>
+        <translation>इवेंट्स सहेजे गए।</translation>
+    </message>
+    <message>
+        <source>Invalid dynamic events</source>
+        <translation>अमान्य गतिशील इवेंट्स</translation>
+    </message>
+    <message>
+        <source>Invalid event group</source>
+        <translation>अमान्य इवेंट समूह</translation>
+    </message>
+    <message>
+        <source>Invalid parameter</source>
+        <translation>अमान्य पैरामीटर</translation>
+    </message>
+    <message>
+        <source>No events can be added because the dynamic model has no event parameters.</source>
+        <translation>इवेंट्स नहीं जोड़े जा सकते क्योंकि गतिशील मॉडल में कोई इवेंट पैरामीटर नहीं है।</translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation>हटाएँ</translation>
+    </message>
+    <message>
+        <source>Remove event</source>
+        <translation>इवेंट हटाएं।</translation>
+    </message>
+    <message>
+        <source>Remove events group</source>
+        <translation>इवेंट समूह हटाएं।</translation>
+    </message>
+    <message>
+        <source>Remove the selected event or event group</source>
+        <translation>चयनित इवेंट या इवेंट समूह हटाएं।</translation>
+    </message>
+    <message>
+        <source>Rename</source>
+        <translation>नाम बदलें</translation>
+    </message>
+    <message>
+        <source>Save events</source>
+        <translation>इवेंट्स सहेजें।</translation>
+    </message>
+    <message>
+        <source>Select the event group where you want to add the event.</source>
+        <translation>वह इवेंट समूह चुनें जहां आप इवेंट जोड़ना चाहते हैं।</translation>
+    </message>
+    <message>
+        <source>Select the event or event group you want to remove.</source>
+        <translation>वह इवेंट या इवेंट समूह चुनें जिसे आप हटाना चाहते हैं।</translation>
+    </message>
+    <message>
+        <source>Switch Sequence Wizard</source>
+        <translation>स्विच सीक्वेंस विज़ार्ड</translation>
+    </message>
+    <message>
+        <source>The event group name must be non-empty and unique in this simulation mode.</source>
+        <translation>इवेंट समूह का नाम इस सिमुलेशन मोड में खाली नहीं और अद्वितीय होना चाहिए।</translation>
+    </message>
+    <message>
+        <source>This dynamic model is empty. New events cannot be added until the model is built.</source>
+        <translation>यह गतिशील मॉडल खाली है। मॉडल बनने तक नए इवेंट नहीं जोड़े जा सकते।</translation>
+    </message>
+    <message>
+        <source>➕ New Event Group</source>
+        <translation>➕ नया इवेंट समूह</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventsTreeModel</name>
+    <message>
+        <source>Align Step</source>
+        <translation>स्टेप संरेखित करें</translation>
+    </message>
+    <message>
+        <source>End Time</source>
+        <translation>समाप्ति समय</translation>
+    </message>
+    <message>
+        <source>Invalid / Ungrouped Events</source>
+        <translation>अमान्य / बिना समूह वाले इवेंट्स</translation>
+    </message>
+    <message>
+        <source>Invalid parameter</source>
+        <translation>अमान्य पैरामीटर</translation>
+    </message>
+    <message>
+        <source>New Value</source>
+        <translation>नया मान</translation>
+    </message>
+    <message>
+        <source>Parameter</source>
+        <translation>पैरामीटर</translation>
+    </message>
+    <message>
+        <source>These persisted events do not reference a valid events group and can only be removed.</source>
+        <translation>ये स्थायी इवेंट्स किसी वैध इवेंट समूह का संदर्भ नहीं देते हैं और इन्हें केवल हटाया जा सकता है।</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>समय</translation>
+    </message>
+    <message>
+        <source>Transition</source>
+        <translation>संक्रमण</translation>
     </message>
 </context>
 <context>
@@ -3369,6 +3722,10 @@ IMPORTANT: This will take into account every movement of substation and line loc
         <source>create substation diagram</source>
         <translation>सबस्टेशन आरेख बनाएं</translation>
     </message>
+    <message>
+        <source>{device_name} profiles plot</source>
+        <translation>{device_name} प्रोफाइल प्लॉट</translation>
+    </message>
 </context>
 <context>
     <name>GridMergeDialogue</name>
@@ -3796,6 +4153,14 @@ Cancel and retry?</source>
     <message>
         <source>{name} {version} requires VeraGrid {veragrid_version}</source>
         <translation>{name} {version} के लिए VeraGrid {veragrid_version} आवश्यक है</translation>
+    </message>
+    <message>
+        <source>Some operations are still stopping. Try again after they finish.</source>
+        <translation>कुछ ऑपरेशन अभी भी रुक रहे हैं। कृपया समाप्त होने के बाद पुनः प्रयास करें।</translation>
+    </message>
+    <message>
+        <source>The current save is still finishing. Please retry when it is done.</source>
+        <translation>वर्तमान सेव अभी भी समाप्त हो रहा है। कृपया जब यह पूरा हो जाए तो पुनः प्रयास करें।</translation>
     </message>
 </context>
 <context>
@@ -5791,6 +6156,13 @@ Cancel it and close the window?</source>
     </message>
 </context>
 <context>
+    <name>PopupResizeGrip</name>
+    <message>
+        <source>Resize</source>
+        <translation>आकार बदलें</translation>
+    </message>
+</context>
+<context>
     <name>ProceduralGridWindow</name>
     <message>
         <source>Procedural grid expansion</source>
@@ -5844,6 +6216,10 @@ Consider loading a valid source of data.</source>
 {file_name}</source>
         <translation>नहीं खोल सका:
 {file_name}</translation>
+    </message>
+    <message>
+        <source>Profile plot</source>
+        <translation>प्रोफाइल प्लॉट</translation>
     </message>
 </context>
 <context>
@@ -6152,12 +6528,27 @@ Are you ok with potentially waiting a lot?</source>
         <source>{file_name} is not valid :(</source>
         <translation>{file_name} मान्य नहीं है :(</translation>
     </message>
+    <message>
+        <source>Results plot</source>
+        <translation>परिणाम प्लॉट</translation>
+    </message>
 </context>
 <context>
     <name>ResultsModel</name>
     <message>
         <source>Plotting error</source>
         <translation>प्लॉटिंग त्रुटि</translation>
+    </message>
+</context>
+<context>
+    <name>RetainedModeDraftTableModel</name>
+    <message>
+        <source>Retained mode</source>
+        <translation>बरकरार मोड</translation>
+    </message>
+    <message>
+        <source>Select one retained mode.</source>
+        <translation>एक रिटेन्ड मोड चुनें।</translation>
     </message>
 </context>
 <context>
@@ -6502,6 +6893,10 @@ This will remove the direct child scenarios after their changes are applied.</so
 
 ऐसा करने से उनके परिवर्तन लागू होने के बाद सीधे चाइल्ड परिदृश्य हटा दिए जाएंगे।</translation>
     </message>
+    <message>
+        <source>Wait until the running operations finish before changing scenario.</source>
+        <translation>परिदृश्य बदलने से पहले चल रहे ऑपरेशनों के समाप्त होने का इंतजार करें।</translation>
+    </message>
 </context>
 <context>
     <name>SchematicLibraryModel</name>
@@ -6656,6 +7051,10 @@ Did you change the number of devices? If so, re-run the simulation.</source>
     <message>
         <source>{bus_name} was not found in the graphics manager</source>
         <translation>{bus_name} ग्राफ़िक्स प्रबंधक में नहीं मिला</translation>
+    </message>
+    <message>
+        <source>{device_name} profiles plot</source>
+        <translation>{device_name} प्रोफाइल प्लॉट</translation>
     </message>
 </context>
 <context>
@@ -7831,6 +8230,93 @@ Modify the number of clusters in the ML settings.</source>
         <source>An RMS simulation cannot run without an RMS Events Group. Go to Events -&gt; Add RMS event and add a group, even if it contains no events.</source>
         <translation>RMS इवेंट ग्रुप के बिना RMS सिमुलेशन नहीं चल सकता। इवेंट्स -&gt; RMS इवेंट जोड़ें पर जाएं और एक समूह जोड़ें, भले ही इसमें कोई इवेंट न हो।</translation>
     </message>
+    <message>
+        <source>Fluid nodes are ignored for nonlinear OPF</source>
+        <translation>नॉनलीनियर OPF के लिए फ्लुइड नोड्स को अनदेखा किया जाता है</translation>
+    </message>
+    <message>
+        <source>Fluid nodes are ignored for this simulation</source>
+        <translation>इस सिमुलेशन के लिए फ्लुइड नोड्स को अनदेखा किया जाता है</translation>
+    </message>
+    <message>
+        <source>Investments evaluation failed. Check the logs for details.</source>
+        <translation>निवेश मूल्यांकन विफल रहा। विवरण के लिए लॉग जांचें।</translation>
+    </message>
+    <message>
+        <source>Investments evaluation finished without results.</source>
+        <translation>निवेश मूल्यांकन बिना परिणामों के समाप्त हुआ।</translation>
+    </message>
+    <message>
+        <source>Nodal capacity failed to start</source>
+        <translation>नोडल क्षमता शुरू नहीं हो सकी</translation>
+    </message>
+    <message>
+        <source>Nodal capacity logs</source>
+        <translation>नोडल क्षमता लॉग</translation>
+    </message>
+    <message>
+        <source>Nodal capacity time series failed to start</source>
+        <translation>नोडल क्षमता टाइम सीरीज़ शुरू नहीं हो सकी</translation>
+    </message>
+    <message>
+        <source>Nodal capacity time series logs</source>
+        <translation>नोडल क्षमता टाइम सीरीज़ लॉग</translation>
+    </message>
+    <message>
+        <source>OPF time series failed to start</source>
+        <translation>OPF टाइम सीरीज़ शुरू नहीं हो सकी</translation>
+    </message>
+    <message>
+        <source>OPF time series logs</source>
+        <translation>OPF टाइम सीरीज़ लॉग</translation>
+    </message>
+    <message>
+        <source>Optimal power flow failed to start</source>
+        <translation>ऑप्टिमल पावर फ्लो शुरू नहीं हो सका</translation>
+    </message>
+    <message>
+        <source>Optimal power flow logs</source>
+        <translation>ऑप्टिमल पावर फ्लो लॉग</translation>
+    </message>
+    <message>
+        <source>Running OPF time series with only one time step in range</source>
+        <translation>रेंज में केवल एक टाइम स्टेप के साथ OPF टाइम सीरीज़ चल रही है</translation>
+    </message>
+    <message>
+        <source>Something went wrong, there are no OPF results.</source>
+        <translation>कुछ गलत हो गया, कोई OPF परिणाम नहीं हैं।</translation>
+    </message>
+    <message>
+        <source>Something went wrong, there are no OPF time series results.</source>
+        <translation>कुछ गलत हो गया, कोई OPF टाइम सीरीज़ परिणाम नहीं हैं।</translation>
+    </message>
+    <message>
+        <source>Something went wrong, there are no nodal capacity results.</source>
+        <translation>कुछ गलत हो गया, कोई नोडल क्षमता परिणाम नहीं हैं।</translation>
+    </message>
+    <message>
+        <source>Something went wrong, there are no nodal capacity time series results.</source>
+        <translation>कुछ गलत हो गया, कोई नोडल क्षमता टाइम सीरीज़ परिणाम नहीं हैं।</translation>
+    </message>
+    <message>
+        <source>Voltage stability failed to start</source>
+        <translation>वोल्टेज स्थिरता शुरू नहीं हो सकी</translation>
+    </message>
+    <message>
+        <source>Voltage stability logs</source>
+        <translation>वोल्टेज स्थिरता लॉग</translation>
+    </message>
+    <message>
+        <source>Wait until the running simulations finish before clearing results.</source>
+        <translation>परिणाम साफ़ करने से पहले चल रहे सिमुलेशन के समाप्त होने का इंतजार करें।</translation>
+    </message>
+</context>
+<context>
+    <name>SolarPvWizard</name>
+    <message>
+        <source>Solar power profile</source>
+        <translation>सौर ऊर्जा प्रोफाइल</translation>
+    </message>
 </context>
 <context>
     <name>SubstationDesigner</name>
@@ -8140,6 +8626,10 @@ You need to load or create a grid!</source>
     <message>
         <source>There are no profiles</source>
         <translation>कोई प्रोफाइल नहीं है</translation>
+    </message>
+    <message>
+        <source>Profiles plot</source>
+        <translation>प्रोफाइल प्लॉट</translation>
     </message>
 </context>
 <context>
@@ -8591,6 +9081,10 @@ You need to load or create a grid!</source>
     <message>
         <source>Removed {count} __pycache__ folders</source>
         <translation>{count} __pycache__ फ़ोल्डर हटा दिए गए</translation>
+    </message>
+    <message>
+        <source>Some operations are still stopping. Close again after they finish.</source>
+        <translation>कुछ ऑपरेशन अभी भी रुक रहे हैं। कृपया समाप्त होने के बाद फिर से बंद करें।</translation>
     </message>
 </context>
 <context>
@@ -10813,6 +11307,13 @@ You need to load or create a grid!</source>
     </message>
 </context>
 <context>
+    <name>VerticalHeaderWidthResizer</name>
+    <message>
+        <source>Resize index column</source>
+        <translation>इंडेक्स कॉलम का आकार बदलें</translation>
+    </message>
+</context>
+<context>
     <name>VoltageLevelConversionWizard</name>
     <message>
         <source>Cancel</source>
@@ -10965,6 +11466,14 @@ You need to load or create a grid!</source>
 {error_text}</source>
         <translation>चयनित पवन टरबाइन नहीं बनाया जा सका:
 {error_text}</translation>
+    </message>
+    <message>
+        <source>Wind power profile</source>
+        <translation>पवन ऊर्जा प्रोफाइल</translation>
+    </message>
+    <message>
+        <source>Wind turbine design curves</source>
+        <translation>पवन टरबाइन डिज़ाइन कर्व्स</translation>
     </message>
 </context>
 <context>
@@ -11574,7 +12083,7 @@ You need to load or create a grid!</source>
     <message>
         <location filename="../Main/MainWindow.ui" line="12737"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Add RMS event&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Open the Dynamic events editor preferring RMS events&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;RMS इवेंट जोड़ें&lt;/span&gt;&lt;/p&gt;&lt;p&gt;RMS इवेंट को प्राथमिकता देते हुए डायनेमिक इवेंट्स संपादक खोलें&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;RMS इवेंट जोड़ें&lt;/span&gt;&lt;/p&gt;&lt;p&gt;RMS इवेंट को प्राथमिकता देते हुए डायनेमिक इवेंट्स संपादक खोलें&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="13068"/>
@@ -11584,7 +12093,7 @@ You need to load or create a grid!</source>
     <message>
         <location filename="../Main/MainWindow.ui" line="13071"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Add EMT event&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Open the Dynamic events editor preferring EMT events&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;EMT इवेंट जोड़ें&lt;/span&gt;&lt;/p&gt;&lt;p&gt;EMT इवेंट को प्राथमिकता देते हुए डायनेमिक इवेंट्स संपादक खोलें&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;EMT इवेंट जोड़ें&lt;/span&gt;&lt;/p&gt;&lt;p&gt;EMT इवेंट को प्राथमिकता देते हुए डायनेमिक इवेंट्स संपादक खोलें&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="13143"/>
@@ -14381,306 +14890,6 @@ You need to load or create a grid!</source>
     <message>
         <source>Question</source>
         <translation>प्रश्न</translation>
-    </message>
-</context>
-<context>
-    <name>BlockPropertyTreeModel</name>
-    <message>
-        <source>Missing PF mapping</source>
-        <translation>PF मैपिंग गुम है</translation>
-    </message>
-    <message>
-        <source>Name</source>
-        <translation>नाम</translation>
-    </message>
-    <message>
-        <source>Output</source>
-        <translation>आउटपुट</translation>
-    </message>
-    <message>
-        <source>Power-flow reference; variable mappings are used for initialization.</source>
-        <translation>पावर-फ्लो संदर्भ; चर मैपिंग का उपयोग आरंभीकरण के लिए किया जाता है।</translation>
-    </message>
-    <message>
-        <source>Template issue: static parameters require api_obj_mapping. An independently editable parameter should be in event_dict. This refactor does not migrate templates automatically.</source>
-        <translation>टेम्पलेट समस्या: स्थिर मापदंडों को api_obj_mapping की आवश्यकता होती है। एक स्वतंत्र रूप से संपादन योग्य पैरामीटर event_dict में होना चाहिए। यह रीफैक्टर टेम्पलेट्स को स्वचालित रूप से माइग्रेट नहीं करता है।</translation>
-    </message>
-    <message>
-        <source>Type</source>
-        <translation>प्रकार</translation>
-    </message>
-    <message>
-        <source>Value / PF reference</source>
-        <translation>मान / PF संदर्भ</translation>
-    </message>
-</context>
-<context>
-    <name>BlockPropertyValueDelegate</name>
-    <message>
-        <source>None</source>
-        <translation>कोई नहीं</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicBlockPropertiesDockWidget</name>
-    <message>
-        <source>Block Properties contains changes that have not been applied. Discard those changes and close the editor?</source>
-        <translation>ब्लॉक गुण में ऐसे परिवर्तन हैं जिन्हें लागू नहीं किया गया है। क्या आप उन परिवर्तनों को त्यागना और संपादक बंद करना चाहते हैं?</translation>
-    </message>
-    <message>
-        <source>Unsaved Block Properties changes</source>
-        <translation>सहेजे बिना ब्लॉक गुण परिवर्तन</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicDeviceTreeWidget</name>
-    <message>
-        <source>EMT editor</source>
-        <translation>EMT संपादक</translation>
-    </message>
-    <message>
-        <source>EMT events</source>
-        <translation>EMT इवेंट्स</translation>
-    </message>
-    <message>
-        <source>RMS editor</source>
-        <translation>RMS संपादक</translation>
-    </message>
-    <message>
-        <source>RMS events</source>
-        <translation>RMS इवेंट्स</translation>
-    </message>
-    <message>
-        <source>Type to search the device</source>
-        <translation>डिवाइस खोजने के लिए टाइप करें</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEditorWorkspaceSession</name>
-    <message>
-        <source>Invalid dynamic events</source>
-        <translation>अमान्य गतिशील इवेंट्स</translation>
-    </message>
-    <message>
-        <source>Save the changes before closing the last events tab?</source>
-        <translation>अंतिम इवेंट्स टैब बंद करने से पहले परिवर्तन सहेजें?</translation>
-    </message>
-    <message>
-        <source>The dynamic events contain unsaved changes.</source>
-        <translation>गतिशील इवेंट्स में सहेजे बिना परिवर्तन हैं।</translation>
-    </message>
-    <message>
-        <source>Unsaved dynamic events</source>
-        <translation>सहेजे बिना गतिशील इवेंट्स</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEventsDraftSession</name>
-    <message>
-        <source>An event and its events group use different simulation modes.</source>
-        <translation>एक इवेंट और उसका इवेंट्स ग्रुप अलग-अलग सिमुलेशन मोड का उपयोग करते हैं।</translation>
-    </message>
-    <message>
-        <source>An event has no target device.</source>
-        <translation>इवेंट का कोई लक्ष्य उपकरण नहीं है।</translation>
-    </message>
-    <message>
-        <source>An event in device '{device}' has no valid events group.</source>
-        <translation>उपकरण '{device}' में इवेंट का कोई वैध इवेंट्स ग्रुप नहीं है।</translation>
-    </message>
-    <message>
-        <source>An event in device '{device}' has no valid parameter.</source>
-        <translation>उपकरण '{device}' में इवेंट का कोई वैध पैरामीटर नहीं है।</translation>
-    </message>
-    <message>
-        <source>An events group has an empty name.</source>
-        <translation>इवेंट्स ग्रुप का नाम खाली है।</translation>
-    </message>
-    <message>
-        <source>Events for parameter '{parameter}' overlap in group '{group}' and device '{device}'.</source>
-        <translation>पैरामीटर '{parameter}' के इवेंट्स ग्रुप '{group}' और उपकरण '{device}' में ओवरलैप होते हैं।</translation>
-    </message>
-    <message>
-        <source>The events group name '{name}' is duplicated.</source>
-        <translation>इवेंट्स ग्रुप का नाम '{name}' दोहराया गया है।</translation>
-    </message>
-    <message>
-        <source>The ramp event for parameter '{parameter}' has an invalid end time.</source>
-        <translation>पैरामीटर '{parameter}' के रैंप इवेंट का समाप्ति समय अमान्य है।</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEventsItemDelegate</name>
-    <message>
-        <source>Ramp</source>
-        <translation>रैंप</translation>
-    </message>
-    <message>
-        <source>Step</source>
-        <translation>चरण</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEventsPage</name>
-    <message>
-        <source>Add an event to the selected event group</source>
-        <translation>चयनित इवेंट समूह में एक इवेंट जोड़ें।</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to remove group '{group}'? This will remove {events} events from {devices} devices.</source>
-        <translation>क्या आप समूह '{group}' हटाना चाहते हैं? इससे {devices} उपकरणों से {events} इवेंट हट जाएंगे।</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to remove the event for '{parameter}' at {time:.4f} s?</source>
-        <translation>क्या आप '{parameter}' के लिए {time:.4f} सेकंड पर इवेंट हटाना चाहते हैं?</translation>
-    </message>
-    <message>
-        <source>Create an EMT switch opening and reclosing event sequence</source>
-        <translation>एक EMT स्विच ओपनिंग और रीक्लोजिंग इवेंट सीक्वेंस बनाएं।</translation>
-    </message>
-    <message>
-        <source>Create an event group for this simulation mode</source>
-        <translation>इस सिमुलेशन मोड के लिए एक इवेंट समूह बनाएं।</translation>
-    </message>
-    <message>
-        <source>Empty dynamic model</source>
-        <translation>खाली गतिशील मॉडल</translation>
-    </message>
-    <message>
-        <source>Events cannot be added because this dynamic model has no event parameters.</source>
-        <translation>इवेंट्स नहीं जोड़े जा सकते क्योंकि इस गतिशील मॉडल में कोई इवेंट पैरामीटर नहीं है।</translation>
-    </message>
-    <message>
-        <source>Events saved</source>
-        <translation>इवेंट्स सहेजे गए।</translation>
-    </message>
-    <message>
-        <source>Invalid dynamic events</source>
-        <translation>अमान्य गतिशील इवेंट्स</translation>
-    </message>
-    <message>
-        <source>Invalid event group</source>
-        <translation>अमान्य इवेंट समूह</translation>
-    </message>
-    <message>
-        <source>Invalid parameter</source>
-        <translation>अमान्य पैरामीटर</translation>
-    </message>
-    <message>
-        <source>No events can be added because the dynamic model has no event parameters.</source>
-        <translation>इवेंट्स नहीं जोड़े जा सकते क्योंकि गतिशील मॉडल में कोई इवेंट पैरामीटर नहीं है।</translation>
-    </message>
-    <message>
-        <source>Remove</source>
-        <translation>हटाएँ</translation>
-    </message>
-    <message>
-        <source>Remove event</source>
-        <translation>इवेंट हटाएं।</translation>
-    </message>
-    <message>
-        <source>Remove events group</source>
-        <translation>इवेंट समूह हटाएं।</translation>
-    </message>
-    <message>
-        <source>Remove the selected event or event group</source>
-        <translation>चयनित इवेंट या इवेंट समूह हटाएं।</translation>
-    </message>
-    <message>
-        <source>Rename</source>
-        <translation>नाम बदलें</translation>
-    </message>
-    <message>
-        <source>Save events</source>
-        <translation>इवेंट्स सहेजें।</translation>
-    </message>
-    <message>
-        <source>Select the event group where you want to add the event.</source>
-        <translation>वह इवेंट समूह चुनें जहां आप इवेंट जोड़ना चाहते हैं।</translation>
-    </message>
-    <message>
-        <source>Select the event or event group you want to remove.</source>
-        <translation>वह इवेंट या इवेंट समूह चुनें जिसे आप हटाना चाहते हैं।</translation>
-    </message>
-    <message>
-        <source>Switch Sequence Wizard</source>
-        <translation>स्विच सीक्वेंस विज़ार्ड</translation>
-    </message>
-    <message>
-        <source>The event group name must be non-empty and unique in this simulation mode.</source>
-        <translation>इवेंट समूह का नाम इस सिमुलेशन मोड में खाली नहीं और अद्वितीय होना चाहिए।</translation>
-    </message>
-    <message>
-        <source>This dynamic model is empty. New events cannot be added until the model is built.</source>
-        <translation>यह गतिशील मॉडल खाली है। मॉडल बनने तक नए इवेंट नहीं जोड़े जा सकते।</translation>
-    </message>
-    <message>
-        <source>➕ New Event Group</source>
-        <translation>➕ नया इवेंट समूह</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEventsTreeModel</name>
-    <message>
-        <source>Align Step</source>
-        <translation>स्टेप संरेखित करें</translation>
-    </message>
-    <message>
-        <source>End Time</source>
-        <translation>समाप्ति समय</translation>
-    </message>
-    <message>
-        <source>Invalid / Ungrouped Events</source>
-        <translation>अमान्य / बिना समूह वाले इवेंट्स</translation>
-    </message>
-    <message>
-        <source>Invalid parameter</source>
-        <translation>अमान्य पैरामीटर</translation>
-    </message>
-    <message>
-        <source>New Value</source>
-        <translation>नया मान</translation>
-    </message>
-    <message>
-        <source>Parameter</source>
-        <translation>पैरामीटर</translation>
-    </message>
-    <message>
-        <source>These persisted events do not reference a valid events group and can only be removed.</source>
-        <translation>ये स्थायी इवेंट्स किसी वैध इवेंट समूह का संदर्भ नहीं देते हैं और इन्हें केवल हटाया जा सकता है।</translation>
-    </message>
-    <message>
-        <source>Time</source>
-        <translation>समय</translation>
-    </message>
-    <message>
-        <source>Transition</source>
-        <translation>संक्रमण</translation>
-    </message>
-</context>
-<context>
-    <name>PopupResizeGrip</name>
-    <message>
-        <source>Resize</source>
-        <translation>आकार बदलें</translation>
-    </message>
-</context>
-<context>
-    <name>RetainedModeDraftTableModel</name>
-    <message>
-        <source>Retained mode</source>
-        <translation>बरकरार मोड</translation>
-    </message>
-    <message>
-        <source>Select one retained mode.</source>
-        <translation>एक रिटेन्ड मोड चुनें।</translation>
-    </message>
-</context>
-<context>
-    <name>VerticalHeaderWidthResizer</name>
-    <message>
-        <source>Resize index column</source>
-        <translation>इंडेक्स कॉलम का आकार बदलें</translation>
     </message>
 </context>
 </TS>

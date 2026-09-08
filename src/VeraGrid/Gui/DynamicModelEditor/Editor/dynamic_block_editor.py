@@ -54,20 +54,20 @@ from VeraGridEngine.Utils.Symbolic.block import (Block,
 from VeraGridEngine.Utils.Symbolic.dynamic_connection_intent import (DynamicConnectionIntent,
                                                                      DynamicConnectionIntentDirection,
                                                                      DynamicConnectionIntentOrigin)
-from VeraGrid.Gui.DynamicModelEditor.ui.block_editor import Ui_BlockEditorWindow
+from VeraGrid.Gui.DynamicModelEditor.Editor.block_editor import Ui_BlockEditorWindow
 import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_graphics as graph
 from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import DynamicEditorEntry
-from VeraGrid.Gui.DynamicModelEditor.DynamicLibrary.dynamic_editor_library import DynamicEditorLibrary, LibraryTreeFilterProxyModel
-from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.measurements_dialog import MeasurementsDialog
+from VeraGrid.Gui.DynamicModelEditor.Editor.DynamicLibrary.dynamic_editor_library import DynamicEditorLibrary, LibraryTreeFilterProxyModel
+from VeraGrid.Gui.DynamicModelEditor.Editor.ElementDialogues.measurements_dialog import MeasurementsDialog
 import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_models as dialog_models
-from VeraGrid.Gui.DynamicModelEditor.BlockProperties.dynamic_block_properties import (
+from VeraGrid.Gui.DynamicModelEditor.Editor.BlockProperties.dynamic_block_properties import (
     BlockStructuralEditRequest,
     BlockVariableRenameRequest,
     DynamicBlockPropertiesDialog,
     DynamicBlockPropertiesDockWidget,
 )
 import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_validation as valid
-from VeraGrid.Gui.DynamicModelEditor.DynamicLibrary.dynamic_editor_utilities import (
+from VeraGrid.Gui.DynamicModelEditor.Editor.DynamicLibrary.dynamic_editor_utilities import (
     create_block_of_type,
     create_default_template_builder,
     create_structural_template_builder,
@@ -104,14 +104,16 @@ from VeraGridEngine.Utils.SugiyamaLayered import (
 )
 from VeraGridEngine.Utils.SugiyamaLayered.engine import EngineResult
 from VeraGridEngine.Templates.template_definition import TemplateDefinition, TemplateProp
-from VeraGrid.Gui.DynamicModelEditor.RoutingQt import QtRoutingSession
+from VeraGrid.Gui.DynamicModelEditor.Editor.RoutingQt import QtRoutingSession
+
+from VeraGrid.Gui.DynamicModelEditor.Editor.Routing.routing_graph import RoutingGraph
 from VeraGridEngine.enumerations import BlockType, RoutingAxis
 from VeraGridEngine.Devices.Diagrams.block_diagram import (
     BlockDiagram, BlockDiagramConnection, BlockDiagramNode,
 )
 
 if TYPE_CHECKING:
-    from VeraGrid.Gui.DynamicModelEditor.Tabs.dynamic_editor_tab import DynamicEditorDocument, DynamicEditorTab
+    from VeraGrid.Gui.DynamicModelEditor.Workspace.Tabs import DynamicEditorDocument, DynamicEditorTab
 else:
     pass
 
@@ -1722,7 +1724,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-        self.ui.deviceLabel.setText(api_object.name)
+        self.deviceLabel = QtWidgets.QLabel()
+        self.ui.toolBar.addWidget(self.deviceLabel)
+
+        self.deviceLabel.setText(api_object.name)
 
         self.block_role: int = int(QtCore.Qt.ItemDataRole.UserRole) + 300
         self.mime_type: str = "application/x-veragrid-dynamics-block"
@@ -1759,6 +1764,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.dynamic_editor_entry: DynamicEditorEntry | None = None
         self._prepared_to_delete: bool = False
         self._qt_routing_session: QtRoutingSession = QtRoutingSession()
+        self._block_drag_start_positions: Dict[int, QtCore.QPointF] = dict()
         self.colors_palet: graph.EditorGraphicsDefaultsDark | graph.EditorGraphicsDefaultsLight = graph.EditorGraphicsDefaultsDark()
         self.current_theme: DynEditorGraphicsModes = current_theme
         self.set_colors_palet()
@@ -1869,7 +1875,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.graphicsView.dropEvent = self.graphicsDropEvent
 
         # Button do it to save built scene
-        self.ui.doItButton.clicked.connect(self.apply_changes)
+        self.ui.actionSave.triggered.connect(self.apply_changes)
 
         # if self.mode == DynamicSimulationMode.EMT and self.is_root_editor:
         #     self._ensure_full_emt_editor_interface()
@@ -2056,8 +2062,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             else:
                 pass
                 # self.add_api_obj_mapping()
-
-            self.add_measurements_items()
+            if self.mode == DynamicSimulationMode.RMS:
+                self.add_measurements_items()
+            elif self.mode == DynamicSimulationMode.EMT:
+                self.add_connection_items()
+            else:
+                pass
         else:
             pass
         # A legacy or partially bootstrapped atomic DAE can already own its
@@ -2098,6 +2108,14 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             pass
 
         self._initial_scene_fit_pending = True
+
+        self.ui.block_editor_actionCheckModel.triggered.connect(self.open_inspect_dialog)
+        self.ui.actionCenter.triggered.connect(self.center_view_on_items)
+        self.ui.actionZoom_in.triggered.connect(self.zoom_in_view)
+        self.ui.actionZoom_out.triggered.connect(self.zoom_out_view)
+        self.ui.action_delete_all.triggered.connect(self.delete_all_blocks_with_confirmation)
+        self.ui.actionValidate.triggered.connect(self.show_model_consistency_validation)
+
 
     def showEvent(self, event: QtGui.QShowEvent) -> None:
         """
@@ -2179,8 +2197,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             bus, block_type, inputs_list, outputs_list = dialogue.get_user_info()
             # The accepted configuration replaces the provisional graphics item,
             # so remove that exact item through the editor-owned scene first.
-            if source_item.scene() is self.scene:
-                self.scene.removeItem(source_item)
+            if source_item.scene() is self.scene and source_item.subsys is not None:
+                self.scene.remove_block_item(block_uid=source_item.subsys.uid, item=source_item)
             else:
                 pass
             self.create_measurements_block_item(
@@ -2798,6 +2816,188 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         return graph.BlockPositionChangedCallback(self, block_uid)
 
+    def begin_block_routing_drag(
+            self,
+            item: graph.GenericBlockItem | graph.PairedItem | graph.BlockItem
+            | graph.RoundBaseArithmeticOpItem | graph.RectBaseArithmeticOpItem | graph.MeasurementsItem,
+    ) -> None:
+        """Start one atomic position-and-routing transaction for a block drag.
+
+        :param item: Block item whose drag is starting.
+        :return: None.
+        """
+        item_identifier: int = id(item)
+        self._block_drag_start_positions[item_identifier] = QtCore.QPointF(item.pos())
+        connection_uids: List[int] = list()
+        seen_connection_uids: set[int] = set()
+        port: graph.PortItem
+        connection: graph.ConnectionItem
+
+        # A block may expose the same connection through more than one
+        # collection, so identifiers are deduplicated before graph snapshots.
+        for port in item.inputs:
+            if port.connections is not None:
+                for connection in port.connections:
+                    if connection.con_uid not in seen_connection_uids:
+                        seen_connection_uids.add(connection.con_uid)
+                        connection_uids.append(connection.con_uid)
+                    else:
+                        pass
+            else:
+                pass
+        for port in item.outputs:
+            if port.connections is not None:
+                for connection in port.connections:
+                    if connection.con_uid not in seen_connection_uids:
+                        seen_connection_uids.add(connection.con_uid)
+                        connection_uids.append(connection.con_uid)
+                    else:
+                        pass
+            else:
+                pass
+
+        self._qt_routing_session.begin_drag_transaction(connection_uids=connection_uids)
+
+    def finish_block_routing_drag(
+            self,
+            item: graph.GenericBlockItem | graph.PairedItem | graph.BlockItem
+            | graph.RoundBaseArithmeticOpItem | graph.RectBaseArithmeticOpItem | graph.MeasurementsItem,
+            commit_requested: bool = True,
+    ) -> bool:
+        """Commit a complete block drag or restore its position and all routes.
+
+        :param item: Block item whose drag is ending.
+        :param commit_requested: Whether the graphical drag completed normally.
+        :return: ``True`` when every incident route remained synchronized.
+        """
+        item_identifier: int = id(item)
+        start_position: QtCore.QPointF | None = self._block_drag_start_positions.get(item_identifier, None)
+        transaction_succeeded: bool = self._qt_routing_session.finish_drag_transaction(
+            commit_requested=commit_requested,
+        )
+        if transaction_succeeded:
+            pass
+        elif start_position is not None:
+            # Graphs are restored first, then the Qt owner returns to the exact
+            # endpoint geometry represented by those committed snapshots.
+            item.setPos(QtCore.QPointF(start_position))
+            item._last_valid_pos = QtCore.QPointF(start_position)
+            self._render_committed_block_routes(item=item)
+        else:
+            pass
+
+        if item_identifier in self._block_drag_start_positions:
+            del self._block_drag_start_positions[item_identifier]
+        else:
+            pass
+        return transaction_succeeded
+
+    def get_block_routing_drag_start_position(
+            self,
+            item: graph.GenericBlockItem | graph.PairedItem | graph.BlockItem
+            | graph.RoundBaseArithmeticOpItem | graph.RectBaseArithmeticOpItem | graph.MeasurementsItem,
+    ) -> QtCore.QPointF:
+        """Return the authoritative block position captured before its drag.
+
+        :param item: Block item participating in the active drag transaction.
+        :return: Snapshot position, or the current position when no drag exists.
+        """
+        item_identifier: int = id(item)
+        start_position: QtCore.QPointF | None = self._block_drag_start_positions.get(item_identifier, None)
+        if start_position is not None:
+            return QtCore.QPointF(start_position)
+        else:
+            # Programmatic or synthetic releases can lack a mouse-press
+            # transaction. Their current position is the only coherent origin.
+            return QtCore.QPointF(item.pos())
+
+    def prepare_block_routing_drag_finalization(self) -> None:
+        """Restore committed route geometry before final block-drop routing.
+
+        :return: None.
+        """
+        self._qt_routing_session.prepare_drag_finalization()
+
+    def preview_connection_with_routing_graph(self, item: graph.ConnectionItem) -> bool:
+        """Render one lightweight endpoint-following route during block drag.
+
+        :param item: Connection whose endpoint owner is moving.
+        :return: ``True`` when a preview graph was rendered.
+        """
+        if isinstance(item.source_port, graph.PortItem) and isinstance(item.target_port, graph.PortItem):
+            routing_graph: RoutingGraph | None = self._qt_routing_session.preview_connection_graph(
+                connection_uid=item.con_uid,
+                source_port=item.source_port,
+                destination_port=item.target_port,
+            )
+            if routing_graph is None:
+                return False
+            else:
+                painter_path: QtGui.QPainterPath | None = self._qt_routing_session.build_connection_path(
+                    connection_uid=item.con_uid,
+                )
+                if painter_path is not None:
+                    item.setPath(painter_path)
+                    item._sync_elbow_items()
+                    return True
+                else:
+                    return False
+        else:
+            return False
+
+    def _render_committed_block_routes(
+            self,
+            item: graph.GenericBlockItem | graph.PairedItem | graph.BlockItem
+            | graph.RoundBaseArithmeticOpItem | graph.RectBaseArithmeticOpItem | graph.MeasurementsItem,
+    ) -> None:
+        """Render and persist restored graphs without recalculating their routes.
+
+        :param item: Block whose incident committed routes were restored.
+        :return: None.
+        """
+        rendered_connection_uids: set[int] = set()
+        port: graph.PortItem
+        connection: graph.ConnectionItem
+
+        # Read paths directly from the restored source-of-truth graphs. Calling
+        # synchronization here would start a new edit after rollback.
+        for port in item.inputs:
+            if port.connections is not None:
+                for connection in port.connections:
+                    if connection.con_uid not in rendered_connection_uids:
+                        rendered_connection_uids.add(connection.con_uid)
+                        painter_path: QtGui.QPainterPath | None = self._qt_routing_session.build_connection_path(
+                            connection_uid=connection.con_uid,
+                        )
+                        if painter_path is not None:
+                            connection.setPath(painter_path)
+                            self.persist_connection_routing_graph_payload(connection)
+                            connection._sync_elbow_items()
+                        else:
+                            pass
+                    else:
+                        pass
+            else:
+                pass
+        for port in item.outputs:
+            if port.connections is not None:
+                for connection in port.connections:
+                    if connection.con_uid not in rendered_connection_uids:
+                        rendered_connection_uids.add(connection.con_uid)
+                        painter_path = self._qt_routing_session.build_connection_path(
+                            connection_uid=connection.con_uid,
+                        )
+                        if painter_path is not None:
+                            connection.setPath(painter_path)
+                            self.persist_connection_routing_graph_payload(connection)
+                            connection._sync_elbow_items()
+                        else:
+                            pass
+                    else:
+                        pass
+            else:
+                pass
+
     def create_item_using_blocktype_wizard(self,
                                            blocktype: BlockType,
                                            x_pos: float,
@@ -2844,7 +3044,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         block_item.position_changed_callback = self.build_position_changed_callback(block_model.uid)
         block_item.build_item()
         self.main_block.add(block_model)
-        self.scene.addItem(block_item)
+        self.scene.add_block_item(block_uid=block_model.uid, item=block_item)
         block_item.setPos(QtCore.QPointF(x_pos, y_pos))
         self.diagram.add_node(
             name=item_name,
@@ -2887,7 +3087,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         )
 
         item.setPos(QtCore.QPointF(x_pos, y_pos))
-        self.scene.addItem(item)
+        self.scene.add_block_item(block_uid=model.uid, item=item)
         self.diagram.add_node(
             name=name,
             x=x_pos,
@@ -2945,7 +3145,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             graph.RoundBaseArithmeticOpItem.position_changed_callback = self.build_position_changed_callback(
                 block_model.uid)
             self.main_block.add(block_model)
-            self.scene.addItem(round_base_op_item)
+            self.scene.add_block_item(block_uid=block_model.uid, item=round_base_op_item)
             round_base_op_item.setPos(QtCore.QPointF(x_pos, y_pos))
             self.diagram.add_node(
                 name=item_name,
@@ -2971,7 +3171,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             graph.RoundBaseArithmeticOpItem.position_changed_callback = self.build_position_changed_callback(
                 block_model.uid)
             self.main_block.add(block_model)
-            self.scene.addItem(rect_base_op_item)
+            self.scene.add_block_item(block_uid=block_model.uid, item=rect_base_op_item)
             rect_base_op_item.setPos(QtCore.QPointF(x_pos, y_pos))
             self.diagram.add_node(
                 name=item_name,
@@ -3036,7 +3236,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 )
 
             item.setPos(QtCore.QPointF(x_pos, y_pos))
-            self.scene.addItem(item)
+            self.scene.add_block_item(block_uid=block_model.uid, item=item)
 
             self.diagram.add_node(
                 name=block_model.name,
@@ -3087,7 +3287,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
             # The editor block is the authoritative model container for later save/rebuild steps.
             self.main_block.add(block_model)
-            self.scene.addItem(block_item)
+            self.scene.add_block_item(block_uid=block_model.uid, item=block_item)
             block_item.setPos(QtCore.QPointF(x_pos, y_pos))
 
             # Keep the diagram synchronized so later features can rebuild from the same data source.
@@ -3305,7 +3505,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         item.setPos(QtCore.QPointF(x_pos, y_pos))
         item.recolour()
-        self.scene.addItem(item)
+        self.scene.add_block_item(block_uid=block_model.uid, item=item)
         self.mark_unapplied_changes()
 
         return item
@@ -3334,7 +3534,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         item.setPos(QtCore.QPointF(x_pos, y_pos))
         item.recolour()
-        self.scene.addItem(item)
+        self.scene.add_block_item(block_uid=block_model.uid, item=item)
 
         # Keep the diagram synchronized so later features can rebuild from the same data source.
         block_type = self._get_layout_block_kind(block_model)
@@ -3649,7 +3849,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
             # The editor block is the authoritative model container for later save/rebuild steps.
             self.main_block.add(block_model)
-            self.scene.addItem(measurements_item)
+            self.scene.add_block_item(block_uid=block_model.uid, item=measurements_item)
 
             # Convert the visible viewport to scene coordinates so placement
             # follows the canvas area regardless of zoom, scrolling, or size.
@@ -3800,7 +4000,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
             # The editor block is the authoritative model container for later save/rebuild steps.
             self.main_block.add(block_model)
-            self.scene.addItem(measurements_item)
+            self.scene.add_block_item(block_uid=block_model.uid, item=measurements_item)
 
             # Place the configured graphics item at the same scene coordinates
             # that are persisted in the diagram model below.
@@ -3865,7 +4065,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
                 # The editor block is the authoritative model container for later save/rebuild steps.
                 self.main_block.add(block_model)
-                self.scene.addItem(block_item)
+                self.scene.add_block_item(block_uid=block_model.uid, item=block_item)
                 if blocks_list is not None:
                     blocks_list.append(block_item)
                 else:
@@ -3958,7 +4158,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             item_name = block_model.name
         item.setPos(QtCore.QPointF(x_pos, y_pos))
-        self.scene.addItem(item)
+        self.scene.add_block_item(block_uid=block_model.uid, item=item)
 
         if block_type is None:
             diagram_node_type: str = graph.EditorGraphicsCommonFeatures.TEMPLATE_NODE_TYPE
@@ -4506,7 +4706,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                                          blk_in.uid)
                                                      )
         item_in.setPos(QtCore.QPointF(x_pos - 50.0, y_pos))
-        self.scene.addItem(item_in)
+        self.scene.add_block_item(block_uid=blk_in.uid, item=item_in)
         self.diagram.add_node(
             name=blk_in.name,
             x=x_pos - 50.0,
@@ -4525,7 +4725,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                                           blk_out.uid)
                                                       )
         item_out.setPos(QtCore.QPointF(x_pos + 50.0, y_pos))
-        self.scene.addItem(item_out)
+        self.scene.add_block_item(block_uid=blk_out.uid, item=item_out)
         self.diagram.add_node(
             name=blk_out.name,
             x=x_pos + 50.0,
@@ -5735,12 +5935,18 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         payload=dict(connection_record.routing_payload),
                     )
                     if imported:
-                        self._qt_routing_session.synchronize_connection_graph(
+                        synchronized: bool = self._qt_routing_session.synchronize_connection_graph(
                             connection_uid=item.con_uid,
                             source_port=item.source_port,
                             destination_port=item.target_port,
-                        )
-                        painter_path = self._qt_routing_session.build_connection_path(item.con_uid)
+                        ) is not None
+                        if not synchronized:
+                            # Keep the last committed painter path when a
+                            # recoverable routing attempt cannot produce a
+                            # complete replacement.
+                            return False
+                        else:
+                            painter_path = self._qt_routing_session.build_connection_path(item.con_uid)
                         if painter_path is None:
                             return False
                         else:
@@ -5753,12 +5959,17 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 else:
                     pass
 
-                self._qt_routing_session.synchronize_connection_graph(
+                synchronized = self._qt_routing_session.synchronize_connection_graph(
                     connection_uid=item.con_uid,
                     source_port=item.source_port,
                     destination_port=item.target_port,
-                )
-                painter_path = self._qt_routing_session.build_connection_path(item.con_uid)
+                ) is not None
+                if not synchronized:
+                    # Rendering remains derived from the last committed graph;
+                    # failed candidates must not erase the visible connection.
+                    return False
+                else:
+                    painter_path = self._qt_routing_session.build_connection_path(item.con_uid)
                 if painter_path is None:
                     return False
                 else:
@@ -5789,11 +6000,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
         if self.supports_routing_graph_connection(item):
             if isinstance(item.source_port, graph.PortItem) and isinstance(item.target_port, graph.PortItem):
-                self._qt_routing_session.synchronize_connection_graph(
-                    connection_uid=item.con_uid,
-                    source_port=item.source_port,
-                    destination_port=item.target_port,
-                )
+                # The hit test already resolved this drag against the current
+                # registered graph. Re-synchronizing on every mouse event could
+                # rebuild its topology, invalidate the selected segment index
+                # and reset the route to RouteBuilder's midpoint geometry.
+                routing_graph: RoutingGraph | None = self._qt_routing_session.get_graph(item.con_uid)
+                if routing_graph is None:
+                    return False
+                else:
+                    pass
                 ordered_segments = self._qt_routing_session.get_ordered_segments(item.con_uid)
                 if 0 <= segment_index < len(ordered_segments):
                     route_segment = ordered_segments[segment_index]
@@ -5801,9 +6016,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     return False
 
                 coordinate_offset: float
-                segment_axis = self._qt_routing_session.get_graph(item.con_uid).get_segment_axis(
-                    route_segment.get_segment_id()
-                ) if self._qt_routing_session.get_graph(item.con_uid) is not None else None
+                segment_axis = routing_graph.get_segment_axis(route_segment.get_segment_id())
                 if segment_axis is None:
                     return False
                 elif segment_axis == RoutingAxis.HORIZONTAL:
@@ -5815,6 +6028,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     connection_uid=item.con_uid,
                     segment_id=route_segment.get_segment_id(),
                     coordinate_offset=coordinate_offset,
+                    source_port=item.source_port,
+                    destination_port=item.target_port,
                 )
                 if moved:
                     painter_path = self._qt_routing_session.build_connection_path(item.con_uid)
@@ -6006,8 +6221,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 else:
                     pass
 
-        # remove item from scene
-        self.scene.removeItem(item)
+        # Remove both the native graphics item and the explicit Python owner.
+        if item.subsys is not None:
+            self.scene.remove_block_item(block_uid=item.subsys.uid, item=item)
+        else:
+            pass
 
         # remove blocks and diagrams from main_block
         if item.subsys is not None:
@@ -7317,7 +7535,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         for scene_item in self.scene.items():
             if isinstance(scene_item, graph.ProtectedConnectionBlockItem):
                 if scene_item.subsys is not None and scene_item.subsys.uid == wrapper_uid:
-                    self.scene.removeItem(scene_item)
+                    self.scene.remove_block_item(block_uid=wrapper_uid, item=scene_item)
                 else:
                     pass
             else:
@@ -7999,7 +8217,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         block_item.position_changed_callback = self.build_position_changed_callback(node_uid)
                         block_item.build_item()
                         block_item.recolour()
-                        self.scene.addItem(block_item)
+                        self.scene.add_block_item(block_uid=block_model.uid, item=block_item)
                         block_item.setPos(QPointF(node.x, node.y))
                         uid_to_blockitem[node_uid] = block_item
 
@@ -10177,6 +10395,21 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param block_uid: Symbolic block UID represented in the current scene.
         :return: Matching graphics item or ``None``.
         """
+        registered_item: QGraphicsItem | None = self.scene.get_block_item(block_uid=block_uid)
+        matching_item: bool = isinstance(
+            registered_item,
+            (graph.BlockItem, graph.MeasurementsItem, graph.GenericBlockItem,
+             graph.RoundBaseArithmeticOpItem, graph.RectBaseArithmeticOpItem,
+             graph.UnOpItem, graph.PairedItem),
+        )
+        if matching_item:
+            return registered_item
+        else:
+            pass
+
+        # Retain the historical lookup as a compatibility fallback for any
+        # externally-created scene item that has not yet adopted the explicit
+        # block registration API.
         item: QGraphicsItem
 
         for item in self.scene.items():
@@ -11678,7 +11911,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         uid_to_blockitem: Dict[
             int,
             graph.BlockItem | graph.GenericBlockItem | graph.RoundBaseArithmeticOpItem |
-            graph.RectBaseArithmeticOpItem | graph.UnOpItem | graph.PairedItem,
+            graph.RectBaseArithmeticOpItem | graph.UnOpItem | graph.PairedItem | graph.MeasurementsItem,
         ] = dict()
         signal_in_items: List[graph.PairedItem] = list()
         signal_out_items: List[graph.PairedItem] = list()
@@ -11687,10 +11920,18 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         node: BlockDiagramNode
         con: BlockDiagramConnection
 
-        self.scene.clear()
-        # self._ensure_root_interface_wrapper_nodes_exist()
-        # self._remove_stale_root_interface_duplicate_children()
-        # self._refresh_interface_wrapper_scene_items()
+        self.scene.clear_block_items()
+        if self.mode == DynamicSimulationMode.EMT:
+            # EMT persists one protected wrapper per authoritative network
+            # variable. Reconcile those individual identities before the
+            # diagram is materialized so every port retains its exact ref.
+            self._ensure_root_interface_wrapper_nodes_exist()
+            self._remove_stale_root_interface_duplicate_children()
+            self._refresh_interface_wrapper_scene_items()
+        else:
+            # RMS connection nodes can represent grouped measurement ports and
+            # must retain their current multi-variable block representation.
+            pass
 
         # Recreate every persisted node, repairing old wrapper identities in place.
         for uid, node in self.diagram.node_data.items():
@@ -11718,72 +11959,106 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                   graph.GenericBlockItem | None = None
 
             if block_type == BlockType.INPUT_CONN or block_type == BlockType.OUTPUT_CONN:
-                # repaired_wrapper: Block | None = self._build_root_interface_wrapper_block(
-                #     block_type=block_type,
-                #     fallback_block_model=block_model,
-                #     interface_index=self._get_root_interface_index_from_expected_order(block_type=block_type,
-                #                                                                       node_uid=uid),
-                #     wrapper_uid=uid,
-                # )
-                #
-                # if repaired_wrapper is not None:
-                #     block_model = repaired_wrapper
-                #     wrapper_is_registered: bool = False
-                #     child_block: Block
-                #     for child_block in self.main_block.children:
-                #         if child_block is block_model:
-                #             wrapper_is_registered = True
-                #         else:
-                #             pass
-                #
-                #     if wrapper_is_registered:
-                #         pass
-                #     else:
-                #         self.main_block.add(block_model)
-
-                # Diagram endpoints always reference the wrapper block UID.
-                node.device_uid = uid
-                node.name = block_model.name
-                register_legacy_interface_uid_alias(
-                    aliases=legacy_interface_uid_aliases,
-                    old_uid=persisted_node_uid,
-                    repaired_uid=uid,
-                )
-                register_legacy_interface_uid_alias(
-                    aliases=legacy_interface_uid_aliases,
-                    old_uid=persisted_block_uid,
-                    repaired_uid=uid,
-                )
-
-                interface_var: Var | None = get_single_interface_var(block_model)
-                if interface_var is not None:
-                    register_legacy_interface_uid_alias(
-                        aliases=legacy_interface_uid_aliases,
-                        old_uid=interface_var.uid,
-                        repaired_uid=uid,
+                if self.mode == DynamicSimulationMode.EMT:
+                    # EMT interface nodes are individual protected views over
+                    # one authoritative root variable. Repair legacy identity
+                    # before building the corresponding graphical wrapper.
+                    repaired_wrapper: Block | None = self._build_root_interface_wrapper_block(
+                        block_type=block_type,
+                        fallback_block_model=block_model,
+                        interface_index=self._get_root_interface_index_from_expected_order(
+                            block_type=block_type,
+                            node_uid=uid,
+                        ),
+                        wrapper_uid=uid,
                     )
+
+                    if repaired_wrapper is not None:
+                        block_model = repaired_wrapper
+                        wrapper_is_registered: bool = False
+                        child_block: Block
+                        for child_block in self.main_block.children:
+                            if child_block is block_model:
+                                wrapper_is_registered = True
+                            else:
+                                pass
+
+                        if wrapper_is_registered:
+                            pass
+                        else:
+                            self.main_block.add(block_model)
+
+                        # Persisted endpoints and legacy aliases must resolve
+                        # to the repaired wrapper UID used by the scene item.
+                        node.device_uid = uid
+                        node.name = block_model.name
+                        register_legacy_interface_uid_alias(
+                            aliases=legacy_interface_uid_aliases,
+                            old_uid=persisted_node_uid,
+                            repaired_uid=uid,
+                        )
+                        register_legacy_interface_uid_alias(
+                            aliases=legacy_interface_uid_aliases,
+                            old_uid=persisted_block_uid,
+                            repaired_uid=uid,
+                        )
+
+                        interface_var: Var | None = get_single_interface_var(block_model)
+                        if interface_var is not None:
+                            register_legacy_interface_uid_alias(
+                                aliases=legacy_interface_uid_aliases,
+                                old_uid=interface_var.uid,
+                                repaired_uid=uid,
+                            )
+                        else:
+                            pass
+
+                        protected_item: graph.ProtectedConnectionBlockItem = graph.ProtectedConnectionBlockItem(
+                            editor=self,
+                            var_factory=self.var_factory,
+                            name=block_model.name,
+                            mode=self.mode,
+                            api_object=self.api_object,
+                        )
+                        protected_item.set_subsystem(block_model)
+                        protected_item.position_changed_callback = self.build_position_changed_callback(uid)
+                        protected_item.build_item()
+                        protected_item.recolour()
+                        self.scene.add_block_item(block_uid=block_model.uid, item=protected_item)
+                        protected_item.setPos(QPointF(node.x, node.y))
+                        uid_to_blockitem[uid] = protected_item
+
+                        current_count: int = self.block_counters.get(block_type, 0) + 1
+                        self.block_counters[block_type] = current_count
+                    else:
+                        pass
+                elif self.mode == DynamicSimulationMode.RMS:
+                    # RMS retains its current grouped measurement container;
+                    # every variable in the block becomes one visible port.
+                    if block_model is not None:
+                        measurements_item: graph.MeasurementsItem = graph.MeasurementsItem(
+                            editor=self,
+                            var_factory=self.var_factory,
+                            name=block_model.name,
+                            mode=self.mode,
+                            api_object=self.api_object,
+                        )
+                        measurements_item.set_subsystem(block_model)
+                        measurements_item.position_changed_callback = self.build_position_changed_callback(uid)
+                        measurements_item.build_item()
+                        measurements_item.recolour()
+                        self.scene.add_block_item(block_uid=block_model.uid, item=measurements_item)
+                        measurements_item.setPos(QPointF(node.x, node.y))
+                        uid_to_blockitem[node.device_uid] = measurements_item
+
+                        current_count = self.block_counters.get(block_type, 0) + 1
+                        self.block_counters[block_type] = current_count
+                    else:
+                        # A malformed persisted RMS boundary cannot be rendered
+                        # safely because its grouped port model is unavailable.
+                        pass
                 else:
                     pass
-
-                block_item: graph.MeasurementsItem = graph.MeasurementsItem(
-                    editor=self,
-                    var_factory=self.var_factory,
-                    name=block_model.name,
-                    mode=self.mode,
-                    api_object=self.api_object,
-                )
-                block_item.set_subsystem(block_model)
-                block_item.position_changed_callback = self.build_position_changed_callback(uid)
-                block_item.build_item()
-                block_item.recolour()
-                self.scene.addItem(block_item)
-                block_item.setPos(QPointF(node.x, node.y))
-                uid_to_blockitem[uid] = block_item
-
-                current_count: int = self.block_counters.get(block_type, 0) + 1
-                self.block_counters[block_type] = current_count
-                # else:
-                #     pass
             elif block_model is None:
                 # Malformed non-interface nodes are skipped without aborting the rebuild.
                 pass
@@ -11852,7 +12127,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 item.recolour()
 
             if item is not None:
-                self.scene.addItem(item)
+                self.scene.add_block_item(block_uid=block_model.uid, item=item)
                 item.setPos(QPointF(node.x, node.y))
                 uid_to_blockitem[uid] = item
             else:
@@ -11861,7 +12136,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         # Restore From/To pairs before branches are replayed. Both graphical
         # tags are rebound to one stable symbolic identity, and any legacy
         # downstream VarFactory edges are migrated to that identity.
-        self._materialize_missing_root_interface_scene_items(uid_to_blockitem)
+        if self.mode == DynamicSimulationMode.EMT:
+            # Only EMT uses individual protected wrappers. RMS grouped
+            # MeasurementsItems are already materialized by the loop above.
+            self._materialize_missing_root_interface_scene_items(uid_to_blockitem)
+        else:
+            pass
 
         self._restore_signal_pair_relationships(
             signal_input_items=signal_in_items,
@@ -11983,8 +12263,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         reply = QtWidgets.QMessageBox.question(
             parent if parent is not None else self,
-            "Unsaved changes",
-            "There are unapplied changes. Do you want to close without applying them?",
+            self.tr("Unsaved changes"),
+            self.tr("There are unapplied changes. Do you want to close without applying them?"),
             QtWidgets.QMessageBox.StandardButton.Yes,
             QtWidgets.QMessageBox.StandardButton.No,
         )

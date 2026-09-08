@@ -557,19 +557,74 @@ li.checked::마커 { content: &quot;\2612&quot;; }
 <context>
     <name>BlockEditorWindow</name>
     <message>
-        <location filename="../DynamicModelEditor/ui/block_editor.ui" line="14"/>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="14"/>
         <source>BlockEditorWindow</source>
         <translation>블록편집기창</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/block_editor.ui" line="116"/>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="116"/>
         <source>Library</source>
         <translation>도서관</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/block_editor.ui" line="155"/>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="155"/>
         <source>Search basic blocks</source>
         <translation>기본블록 검색</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="208"/>
+        <source>toolBar</source>
+        <translation>도구 모음</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="237"/>
+        <source>CheckModel</source>
+        <translation>CheckModel</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="240"/>
+        <source>Inspect model</source>
+        <translation>모델 검사</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="252"/>
+        <source>Center</source>
+        <translation>센터</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="264"/>
+        <source>Zoom in</source>
+        <translation>확대</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="276"/>
+        <source>Zoom out</source>
+        <translation>축소</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="291"/>
+        <source>Delete all</source>
+        <translation>모두 삭제</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="294"/>
+        <source>Delete all blocks to start from scratch.</source>
+        <translation>처음부터 시작하려면 모든 블록을 삭제하세요.</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="306"/>
+        <source>Validate</source>
+        <translation>검증</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="318"/>
+        <source>Save</source>
+        <translation>구하다</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="321"/>
+        <source>Ctrl+S</source>
+        <translation>Ctrl+S</translation>
     </message>
     <message>
         <source>Variables</source>
@@ -605,6 +660,44 @@ li.checked::마커 { content: &quot;\2612&quot;; }
     <message>
         <source>Value</source>
         <translation>값</translation>
+    </message>
+</context>
+<context>
+    <name>BlockPropertyTreeModel</name>
+    <message>
+        <source>Missing PF mapping</source>
+        <translation>PF 매핑 누락</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>이름</translation>
+    </message>
+    <message>
+        <source>Output</source>
+        <translation>출력</translation>
+    </message>
+    <message>
+        <source>Power-flow reference; variable mappings are used for initialization.</source>
+        <translation>전력 흐름 참조; 변수 매핑은 초기화에 사용됩니다.</translation>
+    </message>
+    <message>
+        <source>Template issue: static parameters require api_obj_mapping. An independently editable parameter should be in event_dict. This refactor does not migrate templates automatically.</source>
+        <translation>템플릿 문제: 정적 매개변수는 api_obj_mapping을 필요로 합니다. 독립적으로 편집 가능한 매개변수는 event_dict에 있어야 합니다. 이 리팩토링은 템플릿을 자동으로 마이그레이션하지 않습니다.</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>유형</translation>
+    </message>
+    <message>
+        <source>Value / PF reference</source>
+        <translation>값 / PF 참조</translation>
+    </message>
+</context>
+<context>
+    <name>BlockPropertyValueDelegate</name>
+    <message>
+        <source>None</source>
+        <translation>없음</translation>
     </message>
 </context>
 <context>
@@ -853,6 +946,13 @@ li.checked::마커 { content: &quot;\2612&quot;; }
     <message>
         <source>Select the CGMES options</source>
         <translation>CGMES 옵션 선택</translation>
+    </message>
+</context>
+<context>
+    <name>CompiledArraysMain</name>
+    <message>
+        <source>Array plot</source>
+        <translation>배열 플롯</translation>
     </message>
 </context>
 <context>
@@ -1832,6 +1932,10 @@ Are you sure?</source>
         <source>Width in pixels</source>
         <translation>픽셀 단위 너비</translation>
     </message>
+    <message>
+        <source>Object histogram</source>
+        <translation>객체 히스토그램</translation>
+    </message>
 </context>
 <context>
     <name>DcLineDeviceEditor</name>
@@ -2745,11 +2849,11 @@ Are you sure?</source>
     </message>
     <message>
         <source>There are unapplied changes. Do you want to close without applying them?</source>
-        <translation type="vanished">적용되지 않은 변경 사항이 있습니다. 적용하지 않고 닫으시겠습니까?</translation>
+        <translation>적용되지 않은 변경 사항이 있습니다. 적용하지 않고 닫으시겠습니까?</translation>
     </message>
     <message>
         <source>Unsaved changes</source>
-        <translation type="vanished">저장되지 않은 변경 사항</translation>
+        <translation>저장되지 않은 변경 사항</translation>
     </message>
     <message>
         <source>You are going to delete the complete model and start from scratch. Are you sure?</source>
@@ -2759,12 +2863,12 @@ Are you sure?</source>
 <context>
     <name>DynamicBlockPropertiesDialog</name>
     <message>
-        <location filename="../DynamicModelEditor/BlockProperties/dynamic_block_properties.ui" line="14"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="14"/>
         <source>Block properties</source>
         <translation>블록 속성</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/BlockProperties/dynamic_block_properties.ui" line="70"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="70"/>
         <source>Apply changes</source>
         <translation>변경 사항 적용</translation>
     </message>
@@ -3081,7 +3185,7 @@ Are you sure?</source>
         <translation>+ 절차 로직 추가</translation>
     </message>
     <message>
-        <source>Add one procedural behavior to the active equation owner's Python code.</source>
+        <source>Add one procedural behavior to the active equation owner&apos;s Python code.</source>
         <translation>활성 방정식 소유자의 Python 코드에 절차적 동작 추가.</translation>
     </message>
     <message>
@@ -3135,6 +3239,40 @@ Are you sure?</source>
     <message>
         <source>Validate model</source>
         <translation>모델 유효성 검사</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicBlockPropertiesDockWidget</name>
+    <message>
+        <source>Block Properties contains changes that have not been applied. Discard those changes and close the editor?</source>
+        <translation>블록 속성에 적용되지 않은 변경 사항이 포함되어 있습니다. 해당 변경 사항을 폐기하고 편집기를 닫으시겠습니까?</translation>
+    </message>
+    <message>
+        <source>Unsaved Block Properties changes</source>
+        <translation>저장되지 않은 블록 속성 변경 사항</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicDeviceTreeWidget</name>
+    <message>
+        <source>EMT editor</source>
+        <translation>EMT 에디터</translation>
+    </message>
+    <message>
+        <source>EMT events</source>
+        <translation>EMT 이벤트</translation>
+    </message>
+    <message>
+        <source>RMS editor</source>
+        <translation>RMS 에디터</translation>
+    </message>
+    <message>
+        <source>RMS events</source>
+        <translation>RMS 이벤트</translation>
+    </message>
+    <message>
+        <source>Type to search the device</source>
+        <translation>장치를 검색하려면 입력하세요.</translation>
     </message>
 </context>
 <context>
@@ -3195,64 +3333,95 @@ Are you sure?</source>
     </message>
 </context>
 <context>
+    <name>DynamicEditorWorkspaceSession</name>
+    <message>
+        <source>Invalid dynamic events</source>
+        <translation>유효하지 않은 동적 이벤트</translation>
+    </message>
+    <message>
+        <source>Save the changes before closing the last events tab?</source>
+        <translation>마지막 이벤트 탭을 닫기 전에 변경 사항을 저장하시겠습니까?</translation>
+    </message>
+    <message>
+        <source>The dynamic events contain unsaved changes.</source>
+        <translation>동적 이벤트에 저장되지 않은 변경 사항이 있습니다.</translation>
+    </message>
+    <message>
+        <source>Unsaved dynamic events</source>
+        <translation>저장되지 않은 동적 이벤트</translation>
+    </message>
+</context>
+<context>
     <name>DynamicEditorWorkspaceWindow</name>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="14"/>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="14"/>
         <source>Dynamic Editor Workspace</source>
         <translation>동적 편집기 작업공간</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="79"/>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="79"/>
         <source>Type to search the device</source>
         <translation>장치를 검색하려면 입력하세요.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="126"/>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="126"/>
         <source>toolBar</source>
         <translation>도구 모음</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="157"/>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="168"/>
+        <source>RMS Editor</source>
+        <translation>RMS 편집기</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="180"/>
+        <source>EMT Editor</source>
+        <translation>EMT 편집자</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="192"/>
+        <source>RMS Events</source>
+        <translation>RMS 이벤트</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="204"/>
+        <source>EMT Events</source>
+        <translation>EMT 이벤트</translation>
+    </message>
+    <message>
         <source>CheckModel</source>
-        <translation>CheckModel</translation>
+        <translation type="vanished">CheckModel</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="160"/>
         <source>Inspect model</source>
-        <translation>모델 검사</translation>
+        <translation type="vanished">모델 검사</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="172"/>
         <source>Center</source>
-        <translation>센터</translation>
+        <translation type="vanished">센터</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="184"/>
         <source>Zoom in</source>
-        <translation>확대</translation>
+        <translation type="vanished">확대</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="196"/>
         <source>Zoom out</source>
-        <translation>축소</translation>
+        <translation type="vanished">축소</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="211"/>
         <source>Delete all</source>
-        <translation>모두 삭제</translation>
+        <translation type="vanished">모두 삭제</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="214"/>
         <source>Delete all blocks to start from scratch.</source>
-        <translation>처음부터 시작하려면 모든 블록을 삭제하세요.</translation>
+        <translation type="vanished">처음부터 시작하려면 모든 블록을 삭제하세요.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="226"/>
         <source>Validate</source>
-        <translation>검증</translation>
+        <translation type="vanished">검증</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="238"/>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="156"/>
         <source>view tree</source>
         <translation>보기 트리</translation>
     </message>
@@ -3484,6 +3653,41 @@ Are you sure?</source>
     </message>
 </context>
 <context>
+    <name>DynamicEventsDraftSession</name>
+    <message>
+        <source>An event and its events group use different simulation modes.</source>
+        <translation>이벤트와 해당 이벤트 그룹이 다른 시뮬레이션 모드를 사용합니다.</translation>
+    </message>
+    <message>
+        <source>An event has no target device.</source>
+        <translation>이벤트에 대상 장치가 없습니다.</translation>
+    </message>
+    <message>
+        <source>An event in device &apos;{device}&apos; has no valid events group.</source>
+        <translation>장치 &apos;{device}&apos;의 이벤트에 유효한 이벤트 그룹이 없습니다.</translation>
+    </message>
+    <message>
+        <source>An event in device &apos;{device}&apos; has no valid parameter.</source>
+        <translation>장치 &apos;{device}&apos;의 이벤트에 유효한 매개변수가 없습니다.</translation>
+    </message>
+    <message>
+        <source>An events group has an empty name.</source>
+        <translation>이벤트 그룹에 이름이 비어 있습니다.</translation>
+    </message>
+    <message>
+        <source>Events for parameter &apos;{parameter}&apos; overlap in group &apos;{group}&apos; and device &apos;{device}&apos;.</source>
+        <translation>매개변수 &apos;{parameter}&apos;의 이벤트가 그룹 &apos;{group}&apos; 및 장치 &apos;{device}&apos;에서 중복됩니다.</translation>
+    </message>
+    <message>
+        <source>The events group name &apos;{name}&apos; is duplicated.</source>
+        <translation>이벤트 그룹 이름 &apos;{name}&apos;이 중복됩니다.</translation>
+    </message>
+    <message>
+        <source>The ramp event for parameter &apos;{parameter}&apos; has an invalid end time.</source>
+        <translation>매개변수 &apos;{parameter}&apos;의 램프 이벤트에 유효하지 않은 종료 시간이 있습니다.</translation>
+    </message>
+</context>
+<context>
     <name>DynamicEventsGroupsDialog</name>
     <message>
         <source>Create EMT Events Group</source>
@@ -3508,6 +3712,155 @@ Are you sure?</source>
     <message>
         <source>The name cannot be empty.</source>
         <translation>이름은 비어 있을 수 없습니다.</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventsItemDelegate</name>
+    <message>
+        <source>Ramp</source>
+        <translation>램프</translation>
+    </message>
+    <message>
+        <source>Step</source>
+        <translation>계단</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventsPage</name>
+    <message>
+        <source>Add an event to the selected event group</source>
+        <translation>선택된 이벤트 그룹에 이벤트 추가</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to remove group &apos;{group}&apos;? This will remove {events} events from {devices} devices.</source>
+        <translation>그룹 &apos;{group}&apos;을 제거하시겠습니까? 이 작업은 {devices} 장치에서 {events}개의 이벤트를 제거합니다.</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to remove the event for &apos;{parameter}&apos; at {time:.4f} s?</source>
+        <translation>&apos;{parameter}&apos;에 대한 {time:.4f} s의 이벤트를 제거하시겠습니까?</translation>
+    </message>
+    <message>
+        <source>Create an EMT switch opening and reclosing event sequence</source>
+        <translation>EMT 스위치 개폐 및 재투입 이벤트 시퀀스 생성</translation>
+    </message>
+    <message>
+        <source>Create an event group for this simulation mode</source>
+        <translation>이 시뮬레이션 모드에 이벤트 그룹 생성</translation>
+    </message>
+    <message>
+        <source>Empty dynamic model</source>
+        <translation>동적 모델 비우기</translation>
+    </message>
+    <message>
+        <source>Events cannot be added because this dynamic model has no event parameters.</source>
+        <translation>이 동적 모델에 이벤트 파라미터가 없으므로 이벤트를 추가할 수 없습니다.</translation>
+    </message>
+    <message>
+        <source>Events saved</source>
+        <translation>이벤트 저장됨</translation>
+    </message>
+    <message>
+        <source>Invalid dynamic events</source>
+        <translation>유효하지 않은 동적 이벤트</translation>
+    </message>
+    <message>
+        <source>Invalid event group</source>
+        <translation>유효하지 않은 이벤트 그룹</translation>
+    </message>
+    <message>
+        <source>Invalid parameter</source>
+        <translation>유효하지 않은 파라미터</translation>
+    </message>
+    <message>
+        <source>No events can be added because the dynamic model has no event parameters.</source>
+        <translation>동적 모델에 이벤트 파라미터가 없으므로 이벤트를 추가할 수 없습니다.</translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation>제거하다</translation>
+    </message>
+    <message>
+        <source>Remove event</source>
+        <translation>이벤트 제거</translation>
+    </message>
+    <message>
+        <source>Remove events group</source>
+        <translation>이벤트 그룹 제거</translation>
+    </message>
+    <message>
+        <source>Remove the selected event or event group</source>
+        <translation>선택된 이벤트 또는 이벤트 그룹 제거</translation>
+    </message>
+    <message>
+        <source>Rename</source>
+        <translation>이름 바꾸기</translation>
+    </message>
+    <message>
+        <source>Save events</source>
+        <translation>이벤트 저장</translation>
+    </message>
+    <message>
+        <source>Select the event group where you want to add the event.</source>
+        <translation>이벤트를 추가하려는 이벤트 그룹을 선택하십시오.</translation>
+    </message>
+    <message>
+        <source>Select the event or event group you want to remove.</source>
+        <translation>제거하려는 이벤트 또는 이벤트 그룹을 선택하십시오.</translation>
+    </message>
+    <message>
+        <source>Switch Sequence Wizard</source>
+        <translation>스위치 시퀀스 마법사</translation>
+    </message>
+    <message>
+        <source>The event group name must be non-empty and unique in this simulation mode.</source>
+        <translation>이벤트 그룹 이름은 비어 있지 않아야 하며 이 시뮬레이션 모드에서 고유해야 합니다.</translation>
+    </message>
+    <message>
+        <source>This dynamic model is empty. New events cannot be added until the model is built.</source>
+        <translation>이 동적 모델은 비어 있습니다. 모델이 구축될 때까지 새 이벤트를 추가할 수 없습니다.</translation>
+    </message>
+    <message>
+        <source>➕ New Event Group</source>
+        <translation>➕ 새 이벤트 그룹</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventsTreeModel</name>
+    <message>
+        <source>Align Step</source>
+        <translation>스텝 정렬</translation>
+    </message>
+    <message>
+        <source>End Time</source>
+        <translation>종료 시간</translation>
+    </message>
+    <message>
+        <source>Invalid / Ungrouped Events</source>
+        <translation>유효하지 않거나 그룹화되지 않은 이벤트</translation>
+    </message>
+    <message>
+        <source>Invalid parameter</source>
+        <translation>유효하지 않은 파라미터</translation>
+    </message>
+    <message>
+        <source>New Value</source>
+        <translation>새 값</translation>
+    </message>
+    <message>
+        <source>Parameter</source>
+        <translation>파라미터</translation>
+    </message>
+    <message>
+        <source>These persisted events do not reference a valid events group and can only be removed.</source>
+        <translation>이 영구 이벤트들은 유효한 이벤트 그룹을 참조하지 않으며 제거만 가능합니다.</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>시간</translation>
+    </message>
+    <message>
+        <source>Transition</source>
+        <translation>전환</translation>
     </message>
 </context>
 <context>
@@ -3943,6 +4296,10 @@ IMPORTANT: This will take into account every movement of substation and line loc
         <source>create substation diagram</source>
         <translation>변전소 다이어그램 생성</translation>
     </message>
+    <message>
+        <source>{device_name} profiles plot</source>
+        <translation>{device_name} 프로파일 플롯</translation>
+    </message>
 </context>
 <context>
     <name>GridMergeDialogue</name>
@@ -4374,6 +4731,14 @@ Cancel and retry?</source>
     <message>
         <source>The file was loaded but the current project was kept because closing a dynamic editor was cancelled.</source>
         <translation>파일은 로드되었지만, 동적 에디터 닫기가 취소되어 현재 프로젝트가 유지되었습니다.</translation>
+    </message>
+    <message>
+        <source>Some operations are still stopping. Try again after they finish.</source>
+        <translation>일부 작업이 아직 중지 중입니다. 완료된 후 다시 시도하십시오.</translation>
+    </message>
+    <message>
+        <source>The current save is still finishing. Please retry when it is done.</source>
+        <translation>현재 저장 중이므로 아직 완료되지 않았습니다. 완료되면 다시 시도하십시오.</translation>
     </message>
 </context>
 <context>
@@ -6369,6 +6734,13 @@ Cancel it and close the window?</source>
     </message>
 </context>
 <context>
+    <name>PopupResizeGrip</name>
+    <message>
+        <source>Resize</source>
+        <translation>크기 조정</translation>
+    </message>
+</context>
+<context>
     <name>ProceduralGridWindow</name>
     <message>
         <source>Procedural grid expansion</source>
@@ -6422,6 +6794,10 @@ Consider loading a valid source of data.</source>
     <message>
         <source>Value error loading CSV file</source>
         <translation>CSV 파일 로드 중 값 오류</translation>
+    </message>
+    <message>
+        <source>Profile plot</source>
+        <translation>프로파일 플롯</translation>
     </message>
 </context>
 <context>
@@ -6730,12 +7106,27 @@ Are you ok with potentially waiting a lot?</source>
         <source>{file_name} is not valid :(</source>
         <translation>{file_name}이 유효하지 않습니다 :(</translation>
     </message>
+    <message>
+        <source>Results plot</source>
+        <translation>결과 플롯</translation>
+    </message>
 </context>
 <context>
     <name>ResultsModel</name>
     <message>
         <source>Plotting error</source>
         <translation>플로팅 오류</translation>
+    </message>
+</context>
+<context>
+    <name>RetainedModeDraftTableModel</name>
+    <message>
+        <source>Retained mode</source>
+        <translation>유지 모드</translation>
+    </message>
+    <message>
+        <source>Select one retained mode.</source>
+        <translation>유지할 모드를 하나 선택하십시오.</translation>
     </message>
 </context>
 <context>
@@ -7080,6 +7471,10 @@ This will remove the direct child scenarios after their changes are applied.</so
         <source>Set Current Scenario</source>
         <translation>현재 시나리오 설정</translation>
     </message>
+    <message>
+        <source>Wait until the running operations finish before changing scenario.</source>
+        <translation>시나리오를 변경하기 전에 실행 중인 작업이 완료될 때까지 기다려 주십시오.</translation>
+    </message>
 </context>
 <context>
     <name>SchematicLibraryModel</name>
@@ -7234,6 +7629,10 @@ Did you change the number of devices? If so, re-run the simulation.</source>
     <message>
         <source>{bus_name} was not found in the graphics manager</source>
         <translation>그래픽 관리자에서 {bus_name}을 찾을 수 없습니다</translation>
+    </message>
+    <message>
+        <source>{device_name} profiles plot</source>
+        <translation>{device_name} 프로파일 플롯</translation>
     </message>
 </context>
 <context>
@@ -8580,6 +8979,93 @@ ML 설정에서 클러스터 수를 수정하십시오.</translation>
         <source>An RMS simulation cannot run without an RMS Events Group. Go to Events -&gt; Add RMS event and add a group, even if it contains no events.</source>
         <translation>RMS 이벤트 그룹 없이는 RMS 시뮬레이션을 실행할 수 없습니다. 이벤트 -&gt; RMS 이벤트 추가로 이동하여 그룹을 추가하십시오. 이벤트가 없더라도 그룹을 추가해야 합니다.</translation>
     </message>
+    <message>
+        <source>Fluid nodes are ignored for nonlinear OPF</source>
+        <translation>비선형 OPF의 경우 유체 노드는 무시됩니다.</translation>
+    </message>
+    <message>
+        <source>Fluid nodes are ignored for this simulation</source>
+        <translation>이 시뮬레이션의 경우 유체 노드는 무시됩니다.</translation>
+    </message>
+    <message>
+        <source>Investments evaluation failed. Check the logs for details.</source>
+        <translation>투자 평가에 실패했습니다. 자세한 내용은 로그를 확인하십시오.</translation>
+    </message>
+    <message>
+        <source>Investments evaluation finished without results.</source>
+        <translation>투자 평가가 결과 없이 완료되었습니다.</translation>
+    </message>
+    <message>
+        <source>Nodal capacity failed to start</source>
+        <translation>노드 용량 시작 실패</translation>
+    </message>
+    <message>
+        <source>Nodal capacity logs</source>
+        <translation>노드 용량 로그</translation>
+    </message>
+    <message>
+        <source>Nodal capacity time series failed to start</source>
+        <translation>노드 용량 시계열 시작 실패</translation>
+    </message>
+    <message>
+        <source>Nodal capacity time series logs</source>
+        <translation>노드 용량 시계열 로그</translation>
+    </message>
+    <message>
+        <source>OPF time series failed to start</source>
+        <translation>OPF 시계열 시작 실패</translation>
+    </message>
+    <message>
+        <source>OPF time series logs</source>
+        <translation>OPF 시계열 로그</translation>
+    </message>
+    <message>
+        <source>Optimal power flow failed to start</source>
+        <translation>최적 전력 흐름 시작 실패</translation>
+    </message>
+    <message>
+        <source>Optimal power flow logs</source>
+        <translation>최적 전력 흐름 로그</translation>
+    </message>
+    <message>
+        <source>Running OPF time series with only one time step in range</source>
+        <translation>범위 내에 시간 단계가 하나만 있는 OPF 시계열 실행 중</translation>
+    </message>
+    <message>
+        <source>Something went wrong, there are no OPF results.</source>
+        <translation>오류가 발생했습니다. OPF 결과가 없습니다.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, there are no OPF time series results.</source>
+        <translation>오류가 발생했습니다. OPF 시계열 결과가 없습니다.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, there are no nodal capacity results.</source>
+        <translation>오류가 발생했습니다. 노드 용량 결과가 없습니다.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, there are no nodal capacity time series results.</source>
+        <translation>오류가 발생했습니다. 노드 용량 시계열 결과가 없습니다.</translation>
+    </message>
+    <message>
+        <source>Voltage stability failed to start</source>
+        <translation>전압 안정도 시작 실패</translation>
+    </message>
+    <message>
+        <source>Voltage stability logs</source>
+        <translation>전압 안정도 로그</translation>
+    </message>
+    <message>
+        <source>Wait until the running simulations finish before clearing results.</source>
+        <translation>결과를 지우기 전에 실행 중인 시뮬레이션이 완료될 때까지 기다려 주십시오.</translation>
+    </message>
+</context>
+<context>
+    <name>SolarPvWizard</name>
+    <message>
+        <source>Solar power profile</source>
+        <translation>태양광 전력 프로파일</translation>
+    </message>
 </context>
 <context>
     <name>SubstationDesigner</name>
@@ -8890,6 +9376,10 @@ You need to load or create a grid!</source>
     <message>
         <source>There is no profile displayed, please display one</source>
         <translation>표시된 프로필이 없습니다. 프로필을 표시해 주세요.</translation>
+    </message>
+    <message>
+        <source>Profiles plot</source>
+        <translation>프로파일 플롯</translation>
     </message>
 </context>
 <context>
@@ -9341,6 +9831,10 @@ You need to load or create a grid!</source>
     <message>
         <source>Removed {count} __pycache__ folders</source>
         <translation>{count} 개의 __pycache__ 폴더를 제거했습니다.</translation>
+    </message>
+    <message>
+        <source>Some operations are still stopping. Close again after they finish.</source>
+        <translation>일부 작업이 아직 중지 중입니다. 완료된 후 다시 닫으십시오.</translation>
     </message>
 </context>
 <context>
@@ -11563,6 +12057,13 @@ You need to load or create a grid!</source>
     </message>
 </context>
 <context>
+    <name>VerticalHeaderWidthResizer</name>
+    <message>
+        <source>Resize index column</source>
+        <translation>인덱스 열 크기 조정</translation>
+    </message>
+</context>
+<context>
     <name>VoltageLevelConversionWizard</name>
     <message>
         <source>+ Add spare position</source>
@@ -11715,6 +12216,14 @@ You need to load or create a grid!</source>
 {error_text}</source>
         <translation>선택한 풍력 터빈을 생성할 수 없습니다:
 {error_text}</translation>
+    </message>
+    <message>
+        <source>Wind power profile</source>
+        <translation>풍력 전력 프로파일</translation>
+    </message>
+    <message>
+        <source>Wind turbine design curves</source>
+        <translation>풍력 터빈 설계 곡선</translation>
     </message>
 </context>
 <context>
@@ -12324,7 +12833,7 @@ You need to load or create a grid!</source>
     <message>
         <location filename="../Main/MainWindow.ui" line="12737"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Add RMS event&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Open the Dynamic events editor preferring RMS events&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;RMS 이벤트 추가&lt;/span&gt;&lt;/p&gt;&lt;p&gt;RMS 이벤트를 선호하는 동적 이벤트 에디터를 엽니다&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;RMS 이벤트 추가&lt;/span&gt;&lt;/p&gt;&lt;p&gt;RMS 이벤트를 선호하는 동적 이벤트 에디터를 엽니다&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="13068"/>
@@ -12334,7 +12843,7 @@ You need to load or create a grid!</source>
     <message>
         <location filename="../Main/MainWindow.ui" line="13071"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Add EMT event&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Open the Dynamic events editor preferring EMT events&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;EMT 이벤트 추가&lt;/span&gt;&lt;/p&gt;&lt;p&gt;EMT 이벤트를 선호하는 동적 이벤트 에디터를 엽니다&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;EMT 이벤트 추가&lt;/span&gt;&lt;/p&gt;&lt;p&gt;EMT 이벤트를 선호하는 동적 이벤트 에디터를 엽니다&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="13143"/>
@@ -15135,306 +15644,6 @@ You need to load or create a grid!</source>
     <message>
         <source>Question</source>
         <translation>질문</translation>
-    </message>
-</context>
-<context>
-    <name>BlockPropertyTreeModel</name>
-    <message>
-        <source>Missing PF mapping</source>
-        <translation>PF 매핑 누락</translation>
-    </message>
-    <message>
-        <source>Name</source>
-        <translation>이름</translation>
-    </message>
-    <message>
-        <source>Output</source>
-        <translation>출력</translation>
-    </message>
-    <message>
-        <source>Power-flow reference; variable mappings are used for initialization.</source>
-        <translation>전력 흐름 참조; 변수 매핑은 초기화에 사용됩니다.</translation>
-    </message>
-    <message>
-        <source>Template issue: static parameters require api_obj_mapping. An independently editable parameter should be in event_dict. This refactor does not migrate templates automatically.</source>
-        <translation>템플릿 문제: 정적 매개변수는 api_obj_mapping을 필요로 합니다. 독립적으로 편집 가능한 매개변수는 event_dict에 있어야 합니다. 이 리팩토링은 템플릿을 자동으로 마이그레이션하지 않습니다.</translation>
-    </message>
-    <message>
-        <source>Type</source>
-        <translation>유형</translation>
-    </message>
-    <message>
-        <source>Value / PF reference</source>
-        <translation>값 / PF 참조</translation>
-    </message>
-</context>
-<context>
-    <name>BlockPropertyValueDelegate</name>
-    <message>
-        <source>None</source>
-        <translation>없음</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicBlockPropertiesDockWidget</name>
-    <message>
-        <source>Block Properties contains changes that have not been applied. Discard those changes and close the editor?</source>
-        <translation>블록 속성에 적용되지 않은 변경 사항이 포함되어 있습니다. 해당 변경 사항을 폐기하고 편집기를 닫으시겠습니까?</translation>
-    </message>
-    <message>
-        <source>Unsaved Block Properties changes</source>
-        <translation>저장되지 않은 블록 속성 변경 사항</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicDeviceTreeWidget</name>
-    <message>
-        <source>EMT editor</source>
-        <translation>EMT 에디터</translation>
-    </message>
-    <message>
-        <source>EMT events</source>
-        <translation>EMT 이벤트</translation>
-    </message>
-    <message>
-        <source>RMS editor</source>
-        <translation>RMS 에디터</translation>
-    </message>
-    <message>
-        <source>RMS events</source>
-        <translation>RMS 이벤트</translation>
-    </message>
-    <message>
-        <source>Type to search the device</source>
-        <translation>장치를 검색하려면 입력하세요.</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEditorWorkspaceSession</name>
-    <message>
-        <source>Invalid dynamic events</source>
-        <translation>유효하지 않은 동적 이벤트</translation>
-    </message>
-    <message>
-        <source>Save the changes before closing the last events tab?</source>
-        <translation>마지막 이벤트 탭을 닫기 전에 변경 사항을 저장하시겠습니까?</translation>
-    </message>
-    <message>
-        <source>The dynamic events contain unsaved changes.</source>
-        <translation>동적 이벤트에 저장되지 않은 변경 사항이 있습니다.</translation>
-    </message>
-    <message>
-        <source>Unsaved dynamic events</source>
-        <translation>저장되지 않은 동적 이벤트</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEventsDraftSession</name>
-    <message>
-        <source>An event and its events group use different simulation modes.</source>
-        <translation>이벤트와 해당 이벤트 그룹이 다른 시뮬레이션 모드를 사용합니다.</translation>
-    </message>
-    <message>
-        <source>An event has no target device.</source>
-        <translation>이벤트에 대상 장치가 없습니다.</translation>
-    </message>
-    <message>
-        <source>An event in device '{device}' has no valid events group.</source>
-        <translation>장치 '{device}'의 이벤트에 유효한 이벤트 그룹이 없습니다.</translation>
-    </message>
-    <message>
-        <source>An event in device '{device}' has no valid parameter.</source>
-        <translation>장치 '{device}'의 이벤트에 유효한 매개변수가 없습니다.</translation>
-    </message>
-    <message>
-        <source>An events group has an empty name.</source>
-        <translation>이벤트 그룹에 이름이 비어 있습니다.</translation>
-    </message>
-    <message>
-        <source>Events for parameter '{parameter}' overlap in group '{group}' and device '{device}'.</source>
-        <translation>매개변수 '{parameter}'의 이벤트가 그룹 '{group}' 및 장치 '{device}'에서 중복됩니다.</translation>
-    </message>
-    <message>
-        <source>The events group name '{name}' is duplicated.</source>
-        <translation>이벤트 그룹 이름 '{name}'이 중복됩니다.</translation>
-    </message>
-    <message>
-        <source>The ramp event for parameter '{parameter}' has an invalid end time.</source>
-        <translation>매개변수 '{parameter}'의 램프 이벤트에 유효하지 않은 종료 시간이 있습니다.</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEventsItemDelegate</name>
-    <message>
-        <source>Ramp</source>
-        <translation>램프</translation>
-    </message>
-    <message>
-        <source>Step</source>
-        <translation>계단</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEventsPage</name>
-    <message>
-        <source>Add an event to the selected event group</source>
-        <translation>선택된 이벤트 그룹에 이벤트 추가</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to remove group '{group}'? This will remove {events} events from {devices} devices.</source>
-        <translation>그룹 '{group}'을 제거하시겠습니까? 이 작업은 {devices} 장치에서 {events}개의 이벤트를 제거합니다.</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to remove the event for '{parameter}' at {time:.4f} s?</source>
-        <translation>'{parameter}'에 대한 {time:.4f} s의 이벤트를 제거하시겠습니까?</translation>
-    </message>
-    <message>
-        <source>Create an EMT switch opening and reclosing event sequence</source>
-        <translation>EMT 스위치 개폐 및 재투입 이벤트 시퀀스 생성</translation>
-    </message>
-    <message>
-        <source>Create an event group for this simulation mode</source>
-        <translation>이 시뮬레이션 모드에 이벤트 그룹 생성</translation>
-    </message>
-    <message>
-        <source>Empty dynamic model</source>
-        <translation>동적 모델 비우기</translation>
-    </message>
-    <message>
-        <source>Events cannot be added because this dynamic model has no event parameters.</source>
-        <translation>이 동적 모델에 이벤트 파라미터가 없으므로 이벤트를 추가할 수 없습니다.</translation>
-    </message>
-    <message>
-        <source>Events saved</source>
-        <translation>이벤트 저장됨</translation>
-    </message>
-    <message>
-        <source>Invalid dynamic events</source>
-        <translation>유효하지 않은 동적 이벤트</translation>
-    </message>
-    <message>
-        <source>Invalid event group</source>
-        <translation>유효하지 않은 이벤트 그룹</translation>
-    </message>
-    <message>
-        <source>Invalid parameter</source>
-        <translation>유효하지 않은 파라미터</translation>
-    </message>
-    <message>
-        <source>No events can be added because the dynamic model has no event parameters.</source>
-        <translation>동적 모델에 이벤트 파라미터가 없으므로 이벤트를 추가할 수 없습니다.</translation>
-    </message>
-    <message>
-        <source>Remove</source>
-        <translation>제거하다</translation>
-    </message>
-    <message>
-        <source>Remove event</source>
-        <translation>이벤트 제거</translation>
-    </message>
-    <message>
-        <source>Remove events group</source>
-        <translation>이벤트 그룹 제거</translation>
-    </message>
-    <message>
-        <source>Remove the selected event or event group</source>
-        <translation>선택된 이벤트 또는 이벤트 그룹 제거</translation>
-    </message>
-    <message>
-        <source>Rename</source>
-        <translation>이름 바꾸기</translation>
-    </message>
-    <message>
-        <source>Save events</source>
-        <translation>이벤트 저장</translation>
-    </message>
-    <message>
-        <source>Select the event group where you want to add the event.</source>
-        <translation>이벤트를 추가하려는 이벤트 그룹을 선택하십시오.</translation>
-    </message>
-    <message>
-        <source>Select the event or event group you want to remove.</source>
-        <translation>제거하려는 이벤트 또는 이벤트 그룹을 선택하십시오.</translation>
-    </message>
-    <message>
-        <source>Switch Sequence Wizard</source>
-        <translation>스위치 시퀀스 마법사</translation>
-    </message>
-    <message>
-        <source>The event group name must be non-empty and unique in this simulation mode.</source>
-        <translation>이벤트 그룹 이름은 비어 있지 않아야 하며 이 시뮬레이션 모드에서 고유해야 합니다.</translation>
-    </message>
-    <message>
-        <source>This dynamic model is empty. New events cannot be added until the model is built.</source>
-        <translation>이 동적 모델은 비어 있습니다. 모델이 구축될 때까지 새 이벤트를 추가할 수 없습니다.</translation>
-    </message>
-    <message>
-        <source>➕ New Event Group</source>
-        <translation>➕ 새 이벤트 그룹</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEventsTreeModel</name>
-    <message>
-        <source>Align Step</source>
-        <translation>스텝 정렬</translation>
-    </message>
-    <message>
-        <source>End Time</source>
-        <translation>종료 시간</translation>
-    </message>
-    <message>
-        <source>Invalid / Ungrouped Events</source>
-        <translation>유효하지 않거나 그룹화되지 않은 이벤트</translation>
-    </message>
-    <message>
-        <source>Invalid parameter</source>
-        <translation>유효하지 않은 파라미터</translation>
-    </message>
-    <message>
-        <source>New Value</source>
-        <translation>새 값</translation>
-    </message>
-    <message>
-        <source>Parameter</source>
-        <translation>파라미터</translation>
-    </message>
-    <message>
-        <source>These persisted events do not reference a valid events group and can only be removed.</source>
-        <translation>이 영구 이벤트들은 유효한 이벤트 그룹을 참조하지 않으며 제거만 가능합니다.</translation>
-    </message>
-    <message>
-        <source>Time</source>
-        <translation>시간</translation>
-    </message>
-    <message>
-        <source>Transition</source>
-        <translation>전환</translation>
-    </message>
-</context>
-<context>
-    <name>PopupResizeGrip</name>
-    <message>
-        <source>Resize</source>
-        <translation>크기 조정</translation>
-    </message>
-</context>
-<context>
-    <name>RetainedModeDraftTableModel</name>
-    <message>
-        <source>Retained mode</source>
-        <translation>유지 모드</translation>
-    </message>
-    <message>
-        <source>Select one retained mode.</source>
-        <translation>유지할 모드를 하나 선택하십시오.</translation>
-    </message>
-</context>
-<context>
-    <name>VerticalHeaderWidthResizer</name>
-    <message>
-        <source>Resize index column</source>
-        <translation>인덱스 열 크기 조정</translation>
     </message>
 </context>
 </TS>

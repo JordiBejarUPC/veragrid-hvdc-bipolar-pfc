@@ -557,19 +557,74 @@ li.checked::marker { content: &quot;\2612&quot;; }
 <context>
     <name>BlockEditorWindow</name>
     <message>
-        <location filename="../DynamicModelEditor/ui/block_editor.ui" line="14"/>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="14"/>
         <source>BlockEditorWindow</source>
         <translation>BlockEditorWindow</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/block_editor.ui" line="116"/>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="116"/>
         <source>Library</source>
         <translation>Bibliothek</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/block_editor.ui" line="155"/>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="155"/>
         <source>Search basic blocks</source>
         <translation>Durchsuchen Sie grundlegende Blöcke</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="208"/>
+        <source>toolBar</source>
+        <translation>toolBar</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="237"/>
+        <source>CheckModel</source>
+        <translation>CheckModel</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="240"/>
+        <source>Inspect model</source>
+        <translation>Modell prüfen</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="252"/>
+        <source>Center</source>
+        <translation>Mitte</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="264"/>
+        <source>Zoom in</source>
+        <translation>Vergrößern</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="276"/>
+        <source>Zoom out</source>
+        <translation>Herauszoomen</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="291"/>
+        <source>Delete all</source>
+        <translation>Alles löschen</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="294"/>
+        <source>Delete all blocks to start from scratch.</source>
+        <translation>Löschen Sie alle Blöcke, um von vorne zu beginnen.</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="306"/>
+        <source>Validate</source>
+        <translation>Validieren</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="318"/>
+        <source>Save</source>
+        <translation>Speichern</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="321"/>
+        <source>Ctrl+S</source>
+        <translation>Strg+S</translation>
     </message>
     <message>
         <source>Variables</source>
@@ -605,6 +660,44 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <source>Value</source>
         <translation>Wert</translation>
+    </message>
+</context>
+<context>
+    <name>BlockPropertyTreeModel</name>
+    <message>
+        <source>Missing PF mapping</source>
+        <translation>Fehlende PF-Zuordnung</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>Name</translation>
+    </message>
+    <message>
+        <source>Output</source>
+        <translation>Ausgang</translation>
+    </message>
+    <message>
+        <source>Power-flow reference; variable mappings are used for initialization.</source>
+        <translation>Stromflussreferenz; Variablenzuordnungen werden zur Initialisierung verwendet.</translation>
+    </message>
+    <message>
+        <source>Template issue: static parameters require api_obj_mapping. An independently editable parameter should be in event_dict. This refactor does not migrate templates automatically.</source>
+        <translation>Template-Problem: Statische Parameter erfordern api_obj_mapping. Ein unabhängig bearbeitbarer Parameter sollte in event_dict enthalten sein. Dieses Refactoring migriert Templates nicht automatisch.</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>Typ</translation>
+    </message>
+    <message>
+        <source>Value / PF reference</source>
+        <translation>Wert / PF-Referenz</translation>
+    </message>
+</context>
+<context>
+    <name>BlockPropertyValueDelegate</name>
+    <message>
+        <source>None</source>
+        <translation>Keine</translation>
     </message>
 </context>
 <context>
@@ -853,6 +946,13 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <source>Select the CGMES options</source>
         <translation>CGMES-Optionen auswählen</translation>
+    </message>
+</context>
+<context>
+    <name>CompiledArraysMain</name>
+    <message>
+        <source>Array plot</source>
+        <translation>Array-Plot</translation>
     </message>
 </context>
 <context>
@@ -1824,6 +1924,10 @@ Sind Sie sicher?</translation>
         <source>Width in pixels</source>
         <translation>Breite in Pixeln</translation>
     </message>
+    <message>
+        <source>Object histogram</source>
+        <translation>Histogramm der Objekte</translation>
+    </message>
 </context>
 <context>
     <name>DcLineDeviceEditor</name>
@@ -2737,11 +2841,11 @@ Sind Sie sicher?</translation>
     </message>
     <message>
         <source>There are unapplied changes. Do you want to close without applying them?</source>
-        <translation type="vanished">Es gibt nicht angewendete Änderungen. Möchten Sie ohne Anwendung schließen?</translation>
+        <translation>Es gibt nicht angewendete Änderungen. Möchten Sie ohne Anwendung schließen?</translation>
     </message>
     <message>
         <source>Unsaved changes</source>
-        <translation type="vanished">Nicht gespeicherte Änderungen</translation>
+        <translation>Nicht gespeicherte Änderungen</translation>
     </message>
     <message>
         <source>You are going to delete the complete model and start from scratch. Are you sure?</source>
@@ -2751,12 +2855,12 @@ Sind Sie sicher?</translation>
 <context>
     <name>DynamicBlockPropertiesDialog</name>
     <message>
-        <location filename="../DynamicModelEditor/BlockProperties/dynamic_block_properties.ui" line="14"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="14"/>
         <source>Block properties</source>
         <translation>Blockeigenschaften</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/BlockProperties/dynamic_block_properties.ui" line="70"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="70"/>
         <source>Apply changes</source>
         <translation>Änderungen anwenden</translation>
     </message>
@@ -3073,7 +3177,7 @@ Sind Sie sicher?</translation>
         <translation>+ Prozedurale Logik hinzufügen</translation>
     </message>
     <message>
-        <source>Add one procedural behavior to the active equation owner's Python code.</source>
+        <source>Add one procedural behavior to the active equation owner&apos;s Python code.</source>
         <translation>Ein prozedurales Verhalten zum Python-Code des aktiven Gleichungsbesitzers hinzufügen.</translation>
     </message>
     <message>
@@ -3127,6 +3231,40 @@ Sind Sie sicher?</translation>
     <message>
         <source>Validate model</source>
         <translation>Modell validieren</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicBlockPropertiesDockWidget</name>
+    <message>
+        <source>Block Properties contains changes that have not been applied. Discard those changes and close the editor?</source>
+        <translation>Die Blockeigenschaften enthalten Änderungen, die nicht angewendet wurden. Diese Änderungen verwerfen und den Editor schließen?</translation>
+    </message>
+    <message>
+        <source>Unsaved Block Properties changes</source>
+        <translation>Nicht gespeicherte Änderungen der Blockeigenschaften</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicDeviceTreeWidget</name>
+    <message>
+        <source>EMT editor</source>
+        <translation>EMT-Editor</translation>
+    </message>
+    <message>
+        <source>EMT events</source>
+        <translation>EMT-Ereignisse</translation>
+    </message>
+    <message>
+        <source>RMS editor</source>
+        <translation>RMS-Editor</translation>
+    </message>
+    <message>
+        <source>RMS events</source>
+        <translation>RMS-Ereignisse</translation>
+    </message>
+    <message>
+        <source>Type to search the device</source>
+        <translation>Geben Sie ein, um das Gerät zu durchsuchen</translation>
     </message>
 </context>
 <context>
@@ -3187,64 +3325,95 @@ Sind Sie sicher?</translation>
     </message>
 </context>
 <context>
+    <name>DynamicEditorWorkspaceSession</name>
+    <message>
+        <source>Invalid dynamic events</source>
+        <translation>Ungültige dynamische Ereignisse</translation>
+    </message>
+    <message>
+        <source>Save the changes before closing the last events tab?</source>
+        <translation>Änderungen speichern, bevor Sie den letzten Ereignis-Tab schließen?</translation>
+    </message>
+    <message>
+        <source>The dynamic events contain unsaved changes.</source>
+        <translation>Die dynamischen Ereignisse enthalten nicht gespeicherte Änderungen.</translation>
+    </message>
+    <message>
+        <source>Unsaved dynamic events</source>
+        <translation>Nicht gespeicherte dynamische Ereignisse</translation>
+    </message>
+</context>
+<context>
     <name>DynamicEditorWorkspaceWindow</name>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="14"/>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="14"/>
         <source>Dynamic Editor Workspace</source>
         <translation>Dynamischer Editor-Arbeitsbereich</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="79"/>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="79"/>
         <source>Type to search the device</source>
         <translation>Geben Sie ein, um das Gerät zu durchsuchen</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="126"/>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="126"/>
         <source>toolBar</source>
         <translation>toolBar</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="157"/>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="168"/>
+        <source>RMS Editor</source>
+        <translation>RMS-Editor</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="180"/>
+        <source>EMT Editor</source>
+        <translation>EMT-Editor</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="192"/>
+        <source>RMS Events</source>
+        <translation>RMS-Ereignisse</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="204"/>
+        <source>EMT Events</source>
+        <translation>EMT-Ereignisse</translation>
+    </message>
+    <message>
         <source>CheckModel</source>
-        <translation>CheckModel</translation>
+        <translation type="vanished">CheckModel</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="160"/>
         <source>Inspect model</source>
-        <translation>Modell prüfen</translation>
+        <translation type="vanished">Modell prüfen</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="172"/>
         <source>Center</source>
-        <translation>Mitte</translation>
+        <translation type="vanished">Mitte</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="184"/>
         <source>Zoom in</source>
-        <translation>Vergrößern</translation>
+        <translation type="vanished">Vergrößern</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="196"/>
         <source>Zoom out</source>
-        <translation>Herauszoomen</translation>
+        <translation type="vanished">Herauszoomen</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="211"/>
         <source>Delete all</source>
-        <translation>Alles löschen</translation>
+        <translation type="vanished">Alles löschen</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="214"/>
         <source>Delete all blocks to start from scratch.</source>
-        <translation>Löschen Sie alle Blöcke, um von vorne zu beginnen.</translation>
+        <translation type="vanished">Löschen Sie alle Blöcke, um von vorne zu beginnen.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="226"/>
         <source>Validate</source>
-        <translation>Validieren</translation>
+        <translation type="vanished">Validieren</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="238"/>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="156"/>
         <source>view tree</source>
         <translation>Baum anzeigen</translation>
     </message>
@@ -3476,6 +3645,41 @@ Sind Sie sicher?</translation>
     </message>
 </context>
 <context>
+    <name>DynamicEventsDraftSession</name>
+    <message>
+        <source>An event and its events group use different simulation modes.</source>
+        <translation>Ein Ereignis und seine Ereignisgruppe verwenden unterschiedliche Simulationsmodi.</translation>
+    </message>
+    <message>
+        <source>An event has no target device.</source>
+        <translation>Ein Ereignis hat kein Zielgerät.</translation>
+    </message>
+    <message>
+        <source>An event in device &apos;{device}&apos; has no valid events group.</source>
+        <translation>Ein Ereignis im Gerät &apos;{device}&apos; hat keine gültige Ereignisgruppe.</translation>
+    </message>
+    <message>
+        <source>An event in device &apos;{device}&apos; has no valid parameter.</source>
+        <translation>Ein Ereignis im Gerät &apos;{device}&apos; hat keinen gültigen Parameter.</translation>
+    </message>
+    <message>
+        <source>An events group has an empty name.</source>
+        <translation>Eine Ereignisgruppe hat einen leeren Namen.</translation>
+    </message>
+    <message>
+        <source>Events for parameter &apos;{parameter}&apos; overlap in group &apos;{group}&apos; and device &apos;{device}&apos;.</source>
+        <translation>Ereignisse für den Parameter &apos;{parameter}&apos; überschneiden sich in der Gruppe &apos;{group}&apos; und dem Gerät &apos;{device}&apos;.</translation>
+    </message>
+    <message>
+        <source>The events group name &apos;{name}&apos; is duplicated.</source>
+        <translation>Der Name der Ereignisgruppe &apos;{name}&apos; ist doppelt vorhanden.</translation>
+    </message>
+    <message>
+        <source>The ramp event for parameter &apos;{parameter}&apos; has an invalid end time.</source>
+        <translation>Das Rampe-Ereignis für den Parameter &apos;{parameter}&apos; hat eine ungültige Endzeit.</translation>
+    </message>
+</context>
+<context>
     <name>DynamicEventsGroupsDialog</name>
     <message>
         <source>Create EMT Events Group</source>
@@ -3500,6 +3704,155 @@ Sind Sie sicher?</translation>
     <message>
         <source>The name cannot be empty.</source>
         <translation>Der Name darf nicht leer sein.</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventsItemDelegate</name>
+    <message>
+        <source>Ramp</source>
+        <translation>Rampe</translation>
+    </message>
+    <message>
+        <source>Step</source>
+        <translation>Stufe</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventsPage</name>
+    <message>
+        <source>Add an event to the selected event group</source>
+        <translation>Ereignis zur ausgewählten Ereignisgruppe hinzufügen</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to remove group &apos;{group}&apos;? This will remove {events} events from {devices} devices.</source>
+        <translation>Sind Sie sicher, dass Sie die Gruppe &apos;{group}&apos; entfernen möchten? Dadurch werden {events} Ereignisse von {devices} Geräten entfernt.</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to remove the event for &apos;{parameter}&apos; at {time:.4f} s?</source>
+        <translation>Sind Sie sicher, dass Sie das Ereignis für &apos;{parameter}&apos; bei {time:.4f} s entfernen möchten?</translation>
+    </message>
+    <message>
+        <source>Create an EMT switch opening and reclosing event sequence</source>
+        <translation>EMT-Schaltöffnungs- und Wiederzuschaltereignissequenz erstellen</translation>
+    </message>
+    <message>
+        <source>Create an event group for this simulation mode</source>
+        <translation>Eine Ereignisgruppe für diesen Simulationsmodus erstellen</translation>
+    </message>
+    <message>
+        <source>Empty dynamic model</source>
+        <translation>Dynamisches Modell leer</translation>
+    </message>
+    <message>
+        <source>Events cannot be added because this dynamic model has no event parameters.</source>
+        <translation>Ereignisse können nicht hinzugefügt werden, da dieses dynamische Modell keine Ereignisparameter hat.</translation>
+    </message>
+    <message>
+        <source>Events saved</source>
+        <translation>Ereignisse gespeichert</translation>
+    </message>
+    <message>
+        <source>Invalid dynamic events</source>
+        <translation>Ungültige dynamische Ereignisse</translation>
+    </message>
+    <message>
+        <source>Invalid event group</source>
+        <translation>Ungültige Ereignisgruppe</translation>
+    </message>
+    <message>
+        <source>Invalid parameter</source>
+        <translation>Ungültiger Parameter</translation>
+    </message>
+    <message>
+        <source>No events can be added because the dynamic model has no event parameters.</source>
+        <translation>Ereignisse können nicht hinzugefügt werden, da das dynamische Modell keine Ereignisparameter hat.</translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation>Entfernen</translation>
+    </message>
+    <message>
+        <source>Remove event</source>
+        <translation>Ereignis entfernen</translation>
+    </message>
+    <message>
+        <source>Remove events group</source>
+        <translation>Ereignisgruppe entfernen</translation>
+    </message>
+    <message>
+        <source>Remove the selected event or event group</source>
+        <translation>Das ausgewählte Ereignis oder die Ereignisgruppe entfernen</translation>
+    </message>
+    <message>
+        <source>Rename</source>
+        <translation>Umbenennen</translation>
+    </message>
+    <message>
+        <source>Save events</source>
+        <translation>Ereignisse speichern</translation>
+    </message>
+    <message>
+        <source>Select the event group where you want to add the event.</source>
+        <translation>Wählen Sie die Ereignisgruppe, zu der Sie das Ereignis hinzufügen möchten.</translation>
+    </message>
+    <message>
+        <source>Select the event or event group you want to remove.</source>
+        <translation>Wählen Sie das Ereignis oder die Ereignisgruppe, die Sie entfernen möchten.</translation>
+    </message>
+    <message>
+        <source>Switch Sequence Wizard</source>
+        <translation>Schalten-Sequenz-Assistent</translation>
+    </message>
+    <message>
+        <source>The event group name must be non-empty and unique in this simulation mode.</source>
+        <translation>Der Name der Ereignisgruppe muss in diesem Simulationsmodus nicht leer und eindeutig sein.</translation>
+    </message>
+    <message>
+        <source>This dynamic model is empty. New events cannot be added until the model is built.</source>
+        <translation>Dieses dynamische Modell ist leer. Neue Ereignisse können erst hinzugefügt werden, wenn das Modell erstellt wurde.</translation>
+    </message>
+    <message>
+        <source>➕ New Event Group</source>
+        <translation>➕ Neue Ereignisgruppe</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventsTreeModel</name>
+    <message>
+        <source>Align Step</source>
+        <translation>Schritt ausrichten</translation>
+    </message>
+    <message>
+        <source>End Time</source>
+        <translation>Endzeit</translation>
+    </message>
+    <message>
+        <source>Invalid / Ungrouped Events</source>
+        <translation>Ungültige / Nicht gruppierte Ereignisse</translation>
+    </message>
+    <message>
+        <source>Invalid parameter</source>
+        <translation>Ungültiger Parameter</translation>
+    </message>
+    <message>
+        <source>New Value</source>
+        <translation>Neuer Wert</translation>
+    </message>
+    <message>
+        <source>Parameter</source>
+        <translation>Parameter</translation>
+    </message>
+    <message>
+        <source>These persisted events do not reference a valid events group and can only be removed.</source>
+        <translation>Diese persistenten Ereignisse beziehen sich nicht auf eine gültige Ereignisgruppe und können nur entfernt werden.</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>Zeit</translation>
+    </message>
+    <message>
+        <source>Transition</source>
+        <translation>Übergang</translation>
     </message>
 </context>
 <context>
@@ -3935,6 +4288,10 @@ WICHTIG: Dies berücksichtigt jede Bewegung der Umspannstations- und Leitungssta
         <source>create substation diagram</source>
         <translation>Umspannstationsschema erstellen</translation>
     </message>
+    <message>
+        <source>{device_name} profiles plot</source>
+        <translation>Profilplot für {device_name}</translation>
+    </message>
 </context>
 <context>
     <name>GridMergeDialogue</name>
@@ -4366,6 +4723,14 @@ Abbrechen und erneut versuchen?</translation>
     <message>
         <source>The file was loaded but the current project was kept because closing a dynamic editor was cancelled.</source>
         <translation>Die Datei wurde geladen, aber das aktuelle Projekt wurde beibehalten, da das Schließen eines dynamischen Editors abgebrochen wurde.</translation>
+    </message>
+    <message>
+        <source>Some operations are still stopping. Try again after they finish.</source>
+        <translation>Einige Vorgänge stoppen noch. Bitte versuchen Sie es erneut, nachdem sie abgeschlossen sind.</translation>
+    </message>
+    <message>
+        <source>The current save is still finishing. Please retry when it is done.</source>
+        <translation>Der aktuelle Speichervorgang wird noch abgeschlossen. Bitte versuchen Sie es erneut, wenn er fertig ist.</translation>
     </message>
 </context>
 <context>
@@ -6361,6 +6726,13 @@ Soll dieser abgebrochen und das Fenster geschlossen werden?</translation>
     </message>
 </context>
 <context>
+    <name>PopupResizeGrip</name>
+    <message>
+        <source>Resize</source>
+        <translation>Größe ändern</translation>
+    </message>
+</context>
+<context>
     <name>ProceduralGridWindow</name>
     <message>
         <source>Procedural grid expansion</source>
@@ -6414,6 +6786,10 @@ Ziehen Sie in Betracht, eine gültige Datenquelle zu laden.</translation>
 {file_name}</source>
         <translation>Konnte nicht öffnen:
 {file_name}</translation>
+    </message>
+    <message>
+        <source>Profile plot</source>
+        <translation>Profilplot</translation>
     </message>
 </context>
 <context>
@@ -6722,12 +7098,27 @@ Ist es für Sie in Ordnung, möglicherweise lange zu warten?</translation>
         <source>{file_name} is not valid :(</source>
         <translation>{file_name} ist ungültig :(</translation>
     </message>
+    <message>
+        <source>Results plot</source>
+        <translation>Ergebnisplot</translation>
+    </message>
 </context>
 <context>
     <name>ResultsModel</name>
     <message>
         <source>Plotting error</source>
         <translation>Plotfähler</translation>
+    </message>
+</context>
+<context>
+    <name>RetainedModeDraftTableModel</name>
+    <message>
+        <source>Retained mode</source>
+        <translation>Behaltenen Modus</translation>
+    </message>
+    <message>
+        <source>Select one retained mode.</source>
+        <translation>Einen beibehaltenen Modus auswählen.</translation>
     </message>
 </context>
 <context>
@@ -7072,6 +7463,10 @@ This will remove the direct child scenarios after their changes are applied.</so
 
 Dies entfernt die direkten Kind-Szenarien, nachdem ihre Änderungen angewendet wurden.</translation>
     </message>
+    <message>
+        <source>Wait until the running operations finish before changing scenario.</source>
+        <translation>Warten Sie, bis die laufenden Vorgänge abgeschlossen sind, bevor Sie das Szenario ändern.</translation>
+    </message>
 </context>
 <context>
     <name>SchematicLibraryModel</name>
@@ -7227,6 +7622,10 @@ Haben Sie die Anzahl der Geräte geändert? Falls ja, führen Sie die Simulation
     <message>
         <source>{bus_name} was not found in the graphics manager</source>
         <translation>{bus_name} wurde im Grafikmanager nicht gefunden.</translation>
+    </message>
+    <message>
+        <source>{device_name} profiles plot</source>
+        <translation>Profilplot für {device_name}</translation>
     </message>
 </context>
 <context>
@@ -8592,6 +8991,93 @@ Passen Sie die Anzahl der Cluster in den ML-Einstellungen an.</translation>
         <source>An RMS simulation cannot run without an RMS Events Group. Go to Events -&gt; Add RMS event and add a group, even if it contains no events.</source>
         <translation>Eine RMS-Simulation kann nicht ohne eine RMS-Ereignisgruppe ausgeführt werden. Gehen Sie zu Ereignisse -&gt; RMS-Ereignis hinzufügen und fügen Sie eine Gruppe hinzu, auch wenn diese keine Ereignisse enthält.</translation>
     </message>
+    <message>
+        <source>Fluid nodes are ignored for nonlinear OPF</source>
+        <translation>Flüssigkeitsknoten werden für nichtlineares OPF ignoriert</translation>
+    </message>
+    <message>
+        <source>Fluid nodes are ignored for this simulation</source>
+        <translation>Flüssigkeitsknoten werden für diese Simulation ignoriert</translation>
+    </message>
+    <message>
+        <source>Investments evaluation failed. Check the logs for details.</source>
+        <translation>Bewertung der Investitionen fehlgeschlagen. Überprüfen Sie die Protokolle auf Details.</translation>
+    </message>
+    <message>
+        <source>Investments evaluation finished without results.</source>
+        <translation>Bewertung der Investitionen ohne Ergebnisse abgeschlossen.</translation>
+    </message>
+    <message>
+        <source>Nodal capacity failed to start</source>
+        <translation>Knotenkapazität konnte nicht gestartet werden</translation>
+    </message>
+    <message>
+        <source>Nodal capacity logs</source>
+        <translation>Knotenkapazitäts-Protokolle</translation>
+    </message>
+    <message>
+        <source>Nodal capacity time series failed to start</source>
+        <translation>Zeitreihe der Knotenkapazität konnte nicht gestartet werden</translation>
+    </message>
+    <message>
+        <source>Nodal capacity time series logs</source>
+        <translation>Protokolle der Zeitreihe der Knotenkapazität</translation>
+    </message>
+    <message>
+        <source>OPF time series failed to start</source>
+        <translation>Zeitreihe des OPF konnte nicht gestartet werden</translation>
+    </message>
+    <message>
+        <source>OPF time series logs</source>
+        <translation>Protokolle der OPF-Zeitreihe</translation>
+    </message>
+    <message>
+        <source>Optimal power flow failed to start</source>
+        <translation>Optimaler Leistungsfluss konnte nicht gestartet werden</translation>
+    </message>
+    <message>
+        <source>Optimal power flow logs</source>
+        <translation>Protokolle des optimalen Leistungsflusses</translation>
+    </message>
+    <message>
+        <source>Running OPF time series with only one time step in range</source>
+        <translation>OPF-Zeitreihe wird mit nur einem Zeitschritt im Bereich ausgeführt</translation>
+    </message>
+    <message>
+        <source>Something went wrong, there are no OPF results.</source>
+        <translation>Es ist etwas schiefgelaufen, es gibt keine OPF-Ergebnisse.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, there are no OPF time series results.</source>
+        <translation>Es ist etwas schiefgelaufen, es gibt keine OPF-Zeitreihenergebnisse.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, there are no nodal capacity results.</source>
+        <translation>Es ist etwas schiefgelaufen, es gibt keine Knotenkapazitäts-Ergebnisse.</translation>
+    </message>
+    <message>
+        <source>Something went wrong, there are no nodal capacity time series results.</source>
+        <translation>Es ist etwas schiefgelaufen, es gibt keine Knotenkapazitäts-Zeitreihenergebnisse.</translation>
+    </message>
+    <message>
+        <source>Voltage stability failed to start</source>
+        <translation>Spannungsstabilität konnte nicht gestartet werden</translation>
+    </message>
+    <message>
+        <source>Voltage stability logs</source>
+        <translation>Protokolle der Spannungsstabilität</translation>
+    </message>
+    <message>
+        <source>Wait until the running simulations finish before clearing results.</source>
+        <translation>Warten Sie, bis die laufenden Simulationen abgeschlossen sind, bevor Sie die Ergebnisse löschen.</translation>
+    </message>
+</context>
+<context>
+    <name>SolarPvWizard</name>
+    <message>
+        <source>Solar power profile</source>
+        <translation>Solarenergieprofil</translation>
+    </message>
 </context>
 <context>
     <name>SubstationDesigner</name>
@@ -8902,6 +9388,10 @@ Sie müssen ein Netz laden oder erstellen!</translation>
     <message>
         <source>There is no profile displayed, please display one</source>
         <translation>Es wird kein Profil angezeigt. Bitte zeigen Sie eines an</translation>
+    </message>
+    <message>
+        <source>Profiles plot</source>
+        <translation>Profilplot</translation>
     </message>
 </context>
 <context>
@@ -9353,6 +9843,10 @@ Sie müssen ein Netz laden oder erstellen!</translation>
     <message>
         <source>Removed {count} __pycache__ folders</source>
         <translation>Gelöscht {count} __pycache__ Ordner</translation>
+    </message>
+    <message>
+        <source>Some operations are still stopping. Close again after they finish.</source>
+        <translation>Einige Vorgänge stoppen noch. Bitte schließen Sie die Anwendung erneut, nachdem sie abgeschlossen sind.</translation>
     </message>
 </context>
 <context>
@@ -11575,6 +12069,13 @@ Sie müssen ein Netz laden oder erstellen!</translation>
     </message>
 </context>
 <context>
+    <name>VerticalHeaderWidthResizer</name>
+    <message>
+        <source>Resize index column</source>
+        <translation>Indexspalte Größe ändern</translation>
+    </message>
+</context>
+<context>
     <name>VoltageLevelConversionWizard</name>
     <message>
         <source>+ Add spare position</source>
@@ -11727,6 +12228,14 @@ Sie müssen ein Netz laden oder erstellen!</translation>
 {error_text}</source>
         <translation>Die ausgewählte Windturbine konnte nicht erstellt werden:
 {error_text}</translation>
+    </message>
+    <message>
+        <source>Wind power profile</source>
+        <translation>Windstromprofil</translation>
+    </message>
+    <message>
+        <source>Wind turbine design curves</source>
+        <translation>Windturbinendesignkurven</translation>
     </message>
 </context>
 <context>
@@ -12336,7 +12845,7 @@ Sie müssen ein Netz laden oder erstellen!</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="12737"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Add RMS event&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Open the Dynamic events editor preferring RMS events&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;RMS-Ereignis hinzufügen&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Öffnen Sie den Editor für dynamische Ereignisse mit Vorzug für RMS-Ereignisse&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;RMS-Ereignis hinzufügen&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Öffnen Sie den Editor für dynamische Ereignisse mit Vorzug für RMS-Ereignisse&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="13068"/>
@@ -12346,7 +12855,7 @@ Sie müssen ein Netz laden oder erstellen!</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="13071"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Add EMT event&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Open the Dynamic events editor preferring EMT events&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;EMT-Ereignis hinzufügen&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Öffnen Sie den Editor für dynamische Ereignisse mit Vorzug für EMT-Ereignisse&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;EMT-Ereignis hinzufügen&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Öffnen Sie den Editor für dynamische Ereignisse mit Vorzug für EMT-Ereignisse&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="13143"/>
@@ -15147,306 +15656,6 @@ Sie müssen ein Netz laden oder erstellen!</translation>
     <message>
         <source>Question</source>
         <translation>Frage</translation>
-    </message>
-</context>
-<context>
-    <name>BlockPropertyTreeModel</name>
-    <message>
-        <source>Missing PF mapping</source>
-        <translation>Fehlende PF-Zuordnung</translation>
-    </message>
-    <message>
-        <source>Name</source>
-        <translation>Name</translation>
-    </message>
-    <message>
-        <source>Output</source>
-        <translation>Ausgang</translation>
-    </message>
-    <message>
-        <source>Power-flow reference; variable mappings are used for initialization.</source>
-        <translation>Stromflussreferenz; Variablenzuordnungen werden zur Initialisierung verwendet.</translation>
-    </message>
-    <message>
-        <source>Template issue: static parameters require api_obj_mapping. An independently editable parameter should be in event_dict. This refactor does not migrate templates automatically.</source>
-        <translation>Template-Problem: Statische Parameter erfordern api_obj_mapping. Ein unabhängig bearbeitbarer Parameter sollte in event_dict enthalten sein. Dieses Refactoring migriert Templates nicht automatisch.</translation>
-    </message>
-    <message>
-        <source>Type</source>
-        <translation>Typ</translation>
-    </message>
-    <message>
-        <source>Value / PF reference</source>
-        <translation>Wert / PF-Referenz</translation>
-    </message>
-</context>
-<context>
-    <name>BlockPropertyValueDelegate</name>
-    <message>
-        <source>None</source>
-        <translation>Keine</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicBlockPropertiesDockWidget</name>
-    <message>
-        <source>Block Properties contains changes that have not been applied. Discard those changes and close the editor?</source>
-        <translation>Die Blockeigenschaften enthalten Änderungen, die nicht angewendet wurden. Diese Änderungen verwerfen und den Editor schließen?</translation>
-    </message>
-    <message>
-        <source>Unsaved Block Properties changes</source>
-        <translation>Nicht gespeicherte Änderungen der Blockeigenschaften</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicDeviceTreeWidget</name>
-    <message>
-        <source>EMT editor</source>
-        <translation>EMT-Editor</translation>
-    </message>
-    <message>
-        <source>EMT events</source>
-        <translation>EMT-Ereignisse</translation>
-    </message>
-    <message>
-        <source>RMS editor</source>
-        <translation>RMS-Editor</translation>
-    </message>
-    <message>
-        <source>RMS events</source>
-        <translation>RMS-Ereignisse</translation>
-    </message>
-    <message>
-        <source>Type to search the device</source>
-        <translation>Geben Sie ein, um das Gerät zu durchsuchen</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEditorWorkspaceSession</name>
-    <message>
-        <source>Invalid dynamic events</source>
-        <translation>Ungültige dynamische Ereignisse</translation>
-    </message>
-    <message>
-        <source>Save the changes before closing the last events tab?</source>
-        <translation>Änderungen speichern, bevor Sie den letzten Ereignis-Tab schließen?</translation>
-    </message>
-    <message>
-        <source>The dynamic events contain unsaved changes.</source>
-        <translation>Die dynamischen Ereignisse enthalten nicht gespeicherte Änderungen.</translation>
-    </message>
-    <message>
-        <source>Unsaved dynamic events</source>
-        <translation>Nicht gespeicherte dynamische Ereignisse</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEventsDraftSession</name>
-    <message>
-        <source>An event and its events group use different simulation modes.</source>
-        <translation>Ein Ereignis und seine Ereignisgruppe verwenden unterschiedliche Simulationsmodi.</translation>
-    </message>
-    <message>
-        <source>An event has no target device.</source>
-        <translation>Ein Ereignis hat kein Zielgerät.</translation>
-    </message>
-    <message>
-        <source>An event in device '{device}' has no valid events group.</source>
-        <translation>Ein Ereignis im Gerät '{device}' hat keine gültige Ereignisgruppe.</translation>
-    </message>
-    <message>
-        <source>An event in device '{device}' has no valid parameter.</source>
-        <translation>Ein Ereignis im Gerät '{device}' hat keinen gültigen Parameter.</translation>
-    </message>
-    <message>
-        <source>An events group has an empty name.</source>
-        <translation>Eine Ereignisgruppe hat einen leeren Namen.</translation>
-    </message>
-    <message>
-        <source>Events for parameter '{parameter}' overlap in group '{group}' and device '{device}'.</source>
-        <translation>Ereignisse für den Parameter '{parameter}' überschneiden sich in der Gruppe '{group}' und dem Gerät '{device}'.</translation>
-    </message>
-    <message>
-        <source>The events group name '{name}' is duplicated.</source>
-        <translation>Der Name der Ereignisgruppe '{name}' ist doppelt vorhanden.</translation>
-    </message>
-    <message>
-        <source>The ramp event for parameter '{parameter}' has an invalid end time.</source>
-        <translation>Das Rampe-Ereignis für den Parameter '{parameter}' hat eine ungültige Endzeit.</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEventsItemDelegate</name>
-    <message>
-        <source>Ramp</source>
-        <translation>Rampe</translation>
-    </message>
-    <message>
-        <source>Step</source>
-        <translation>Stufe</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEventsPage</name>
-    <message>
-        <source>Add an event to the selected event group</source>
-        <translation>Ereignis zur ausgewählten Ereignisgruppe hinzufügen</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to remove group '{group}'? This will remove {events} events from {devices} devices.</source>
-        <translation>Sind Sie sicher, dass Sie die Gruppe '{group}' entfernen möchten? Dadurch werden {events} Ereignisse von {devices} Geräten entfernt.</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to remove the event for '{parameter}' at {time:.4f} s?</source>
-        <translation>Sind Sie sicher, dass Sie das Ereignis für '{parameter}' bei {time:.4f} s entfernen möchten?</translation>
-    </message>
-    <message>
-        <source>Create an EMT switch opening and reclosing event sequence</source>
-        <translation>EMT-Schaltöffnungs- und Wiederzuschaltereignissequenz erstellen</translation>
-    </message>
-    <message>
-        <source>Create an event group for this simulation mode</source>
-        <translation>Eine Ereignisgruppe für diesen Simulationsmodus erstellen</translation>
-    </message>
-    <message>
-        <source>Empty dynamic model</source>
-        <translation>Dynamisches Modell leer</translation>
-    </message>
-    <message>
-        <source>Events cannot be added because this dynamic model has no event parameters.</source>
-        <translation>Ereignisse können nicht hinzugefügt werden, da dieses dynamische Modell keine Ereignisparameter hat.</translation>
-    </message>
-    <message>
-        <source>Events saved</source>
-        <translation>Ereignisse gespeichert</translation>
-    </message>
-    <message>
-        <source>Invalid dynamic events</source>
-        <translation>Ungültige dynamische Ereignisse</translation>
-    </message>
-    <message>
-        <source>Invalid event group</source>
-        <translation>Ungültige Ereignisgruppe</translation>
-    </message>
-    <message>
-        <source>Invalid parameter</source>
-        <translation>Ungültiger Parameter</translation>
-    </message>
-    <message>
-        <source>No events can be added because the dynamic model has no event parameters.</source>
-        <translation>Ereignisse können nicht hinzugefügt werden, da das dynamische Modell keine Ereignisparameter hat.</translation>
-    </message>
-    <message>
-        <source>Remove</source>
-        <translation>Entfernen</translation>
-    </message>
-    <message>
-        <source>Remove event</source>
-        <translation>Ereignis entfernen</translation>
-    </message>
-    <message>
-        <source>Remove events group</source>
-        <translation>Ereignisgruppe entfernen</translation>
-    </message>
-    <message>
-        <source>Remove the selected event or event group</source>
-        <translation>Das ausgewählte Ereignis oder die Ereignisgruppe entfernen</translation>
-    </message>
-    <message>
-        <source>Rename</source>
-        <translation>Umbenennen</translation>
-    </message>
-    <message>
-        <source>Save events</source>
-        <translation>Ereignisse speichern</translation>
-    </message>
-    <message>
-        <source>Select the event group where you want to add the event.</source>
-        <translation>Wählen Sie die Ereignisgruppe, zu der Sie das Ereignis hinzufügen möchten.</translation>
-    </message>
-    <message>
-        <source>Select the event or event group you want to remove.</source>
-        <translation>Wählen Sie das Ereignis oder die Ereignisgruppe, die Sie entfernen möchten.</translation>
-    </message>
-    <message>
-        <source>Switch Sequence Wizard</source>
-        <translation>Schalten-Sequenz-Assistent</translation>
-    </message>
-    <message>
-        <source>The event group name must be non-empty and unique in this simulation mode.</source>
-        <translation>Der Name der Ereignisgruppe muss in diesem Simulationsmodus nicht leer und eindeutig sein.</translation>
-    </message>
-    <message>
-        <source>This dynamic model is empty. New events cannot be added until the model is built.</source>
-        <translation>Dieses dynamische Modell ist leer. Neue Ereignisse können erst hinzugefügt werden, wenn das Modell erstellt wurde.</translation>
-    </message>
-    <message>
-        <source>➕ New Event Group</source>
-        <translation>➕ Neue Ereignisgruppe</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEventsTreeModel</name>
-    <message>
-        <source>Align Step</source>
-        <translation>Schritt ausrichten</translation>
-    </message>
-    <message>
-        <source>End Time</source>
-        <translation>Endzeit</translation>
-    </message>
-    <message>
-        <source>Invalid / Ungrouped Events</source>
-        <translation>Ungültige / Nicht gruppierte Ereignisse</translation>
-    </message>
-    <message>
-        <source>Invalid parameter</source>
-        <translation>Ungültiger Parameter</translation>
-    </message>
-    <message>
-        <source>New Value</source>
-        <translation>Neuer Wert</translation>
-    </message>
-    <message>
-        <source>Parameter</source>
-        <translation>Parameter</translation>
-    </message>
-    <message>
-        <source>These persisted events do not reference a valid events group and can only be removed.</source>
-        <translation>Diese persistenten Ereignisse beziehen sich nicht auf eine gültige Ereignisgruppe und können nur entfernt werden.</translation>
-    </message>
-    <message>
-        <source>Time</source>
-        <translation>Zeit</translation>
-    </message>
-    <message>
-        <source>Transition</source>
-        <translation>Übergang</translation>
-    </message>
-</context>
-<context>
-    <name>PopupResizeGrip</name>
-    <message>
-        <source>Resize</source>
-        <translation>Größe ändern</translation>
-    </message>
-</context>
-<context>
-    <name>RetainedModeDraftTableModel</name>
-    <message>
-        <source>Retained mode</source>
-        <translation>Behaltenen Modus</translation>
-    </message>
-    <message>
-        <source>Select one retained mode.</source>
-        <translation>Einen beibehaltenen Modus auswählen.</translation>
-    </message>
-</context>
-<context>
-    <name>VerticalHeaderWidthResizer</name>
-    <message>
-        <source>Resize index column</source>
-        <translation>Indexspalte Größe ändern</translation>
     </message>
 </context>
 </TS>

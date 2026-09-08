@@ -555,19 +555,74 @@ li.checked::マーカー { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&
 <context>
     <name>BlockEditorWindow</name>
     <message>
-        <location filename="../DynamicModelEditor/ui/block_editor.ui" line="14"/>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="14"/>
         <source>BlockEditorWindow</source>
         <translation>BlockEditorWindow</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/block_editor.ui" line="116"/>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="116"/>
         <source>Library</source>
         <translation>図書館</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/block_editor.ui" line="155"/>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="155"/>
         <source>Search basic blocks</source>
         <translation>基本ブロックを検索する</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="208"/>
+        <source>toolBar</source>
+        <translation>toolBar</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="237"/>
+        <source>CheckModel</source>
+        <translation>CheckModel</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="240"/>
+        <source>Inspect model</source>
+        <translation>モデルの検査</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="252"/>
+        <source>Center</source>
+        <translation>中心</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="264"/>
+        <source>Zoom in</source>
+        <translation>ズームイン</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="276"/>
+        <source>Zoom out</source>
+        <translation>ズームアウト</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="291"/>
+        <source>Delete all</source>
+        <translation>すべて削除</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="294"/>
+        <source>Delete all blocks to start from scratch.</source>
+        <translation>すべてのブロックを削除して最初から始めます。</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="306"/>
+        <source>Validate</source>
+        <translation>検証する</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="318"/>
+        <source>Save</source>
+        <translation>保存</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="321"/>
+        <source>Ctrl+S</source>
+        <translation>Ctrl+S</translation>
     </message>
     <message>
         <source>Variables</source>
@@ -603,6 +658,44 @@ li.checked::マーカー { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&
     <message>
         <source>Value</source>
         <translation>値</translation>
+    </message>
+</context>
+<context>
+    <name>BlockPropertyTreeModel</name>
+    <message>
+        <source>Missing PF mapping</source>
+        <translation>PFマッピングが不足しています</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>名前</translation>
+    </message>
+    <message>
+        <source>Output</source>
+        <translation>出力</translation>
+    </message>
+    <message>
+        <source>Power-flow reference; variable mappings are used for initialization.</source>
+        <translation>電力潮流参照；変数マッピングは初期化に使用されます。</translation>
+    </message>
+    <message>
+        <source>Template issue: static parameters require api_obj_mapping. An independently editable parameter should be in event_dict. This refactor does not migrate templates automatically.</source>
+        <translation>テンプレートの問題：静的パラメータはapi_obj_mappingが必要です。独立して編集可能なパラメータはevent_dictに含まれている必要があります。このリファクタリングではテンプレートは自動的に移行されません。</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>種類</translation>
+    </message>
+    <message>
+        <source>Value / PF reference</source>
+        <translation>値 / PF参照</translation>
+    </message>
+</context>
+<context>
+    <name>BlockPropertyValueDelegate</name>
+    <message>
+        <source>None</source>
+        <translation>なし</translation>
     </message>
 </context>
 <context>
@@ -851,6 +944,13 @@ li.checked::マーカー { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&
     <message>
         <source>Select the CGMES options</source>
         <translation>CGMESオプションを選択</translation>
+    </message>
+</context>
+<context>
+    <name>CompiledArraysMain</name>
+    <message>
+        <source>Array plot</source>
+        <translation>配列プロット</translation>
     </message>
 </context>
 <context>
@@ -1822,6 +1922,10 @@ Are you sure?</source>
         <source>Width in pixels</source>
         <translation>ピクセル単位の幅</translation>
     </message>
+    <message>
+        <source>Object histogram</source>
+        <translation>オブジェクトヒストグラム</translation>
+    </message>
 </context>
 <context>
     <name>DcLineDeviceEditor</name>
@@ -2735,11 +2839,11 @@ Are you sure?</source>
     </message>
     <message>
         <source>There are unapplied changes. Do you want to close without applying them?</source>
-        <translation type="vanished">未適用に変更があります。適用せずに閉じますか？</translation>
+        <translation>未適用に変更があります。適用せずに閉じますか？</translation>
     </message>
     <message>
         <source>Unsaved changes</source>
-        <translation type="vanished">未保存の変更</translation>
+        <translation>未保存の変更</translation>
     </message>
     <message>
         <source>You are going to delete the complete model and start from scratch. Are you sure?</source>
@@ -2749,12 +2853,12 @@ Are you sure?</source>
 <context>
     <name>DynamicBlockPropertiesDialog</name>
     <message>
-        <location filename="../DynamicModelEditor/BlockProperties/dynamic_block_properties.ui" line="14"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="14"/>
         <source>Block properties</source>
         <translation>ブロックプロパティ</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/BlockProperties/dynamic_block_properties.ui" line="70"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="70"/>
         <source>Apply changes</source>
         <translation>変更を適用</translation>
     </message>
@@ -3071,7 +3175,7 @@ Are you sure?</source>
         <translation>+ 手続きロジックの追加</translation>
     </message>
     <message>
-        <source>Add one procedural behavior to the active equation owner's Python code.</source>
+        <source>Add one procedural behavior to the active equation owner&apos;s Python code.</source>
         <translation>アクティブな方程式所有者のPythonコードに手続き的な動作を追加します。</translation>
     </message>
     <message>
@@ -3125,6 +3229,40 @@ Are you sure?</source>
     <message>
         <source>Validate model</source>
         <translation>モデルを検証</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicBlockPropertiesDockWidget</name>
+    <message>
+        <source>Block Properties contains changes that have not been applied. Discard those changes and close the editor?</source>
+        <translation>ブロックプロパティには適用されていない変更が含まれています。これらの変更を破棄してエディタを閉じますか？</translation>
+    </message>
+    <message>
+        <source>Unsaved Block Properties changes</source>
+        <translation>未保存のブロックプロパティの変更</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicDeviceTreeWidget</name>
+    <message>
+        <source>EMT editor</source>
+        <translation>EMTエディタ</translation>
+    </message>
+    <message>
+        <source>EMT events</source>
+        <translation>EMTイベント</translation>
+    </message>
+    <message>
+        <source>RMS editor</source>
+        <translation>RMSエディタ</translation>
+    </message>
+    <message>
+        <source>RMS events</source>
+        <translation>RMSイベント</translation>
+    </message>
+    <message>
+        <source>Type to search the device</source>
+        <translation>入力してデバイスを検索します</translation>
     </message>
 </context>
 <context>
@@ -3185,64 +3323,95 @@ Are you sure?</source>
     </message>
 </context>
 <context>
+    <name>DynamicEditorWorkspaceSession</name>
+    <message>
+        <source>Invalid dynamic events</source>
+        <translation>無効な動的イベント</translation>
+    </message>
+    <message>
+        <source>Save the changes before closing the last events tab?</source>
+        <translation>最後のイベントタブを閉じる前に変更を保存しますか？</translation>
+    </message>
+    <message>
+        <source>The dynamic events contain unsaved changes.</source>
+        <translation>動的イベントに未保存の変更があります。</translation>
+    </message>
+    <message>
+        <source>Unsaved dynamic events</source>
+        <translation>未保存の動的イベント</translation>
+    </message>
+</context>
+<context>
     <name>DynamicEditorWorkspaceWindow</name>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="14"/>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="14"/>
         <source>Dynamic Editor Workspace</source>
         <translation>動的エディターのワークスペース</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="79"/>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="79"/>
         <source>Type to search the device</source>
         <translation>入力してデバイスを検索します</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="126"/>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="126"/>
         <source>toolBar</source>
         <translation>toolBar</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="157"/>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="168"/>
+        <source>RMS Editor</source>
+        <translation>RMS エディター</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="180"/>
+        <source>EMT Editor</source>
+        <translation>EMT 編集者</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="192"/>
+        <source>RMS Events</source>
+        <translation>RMSイベント</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="204"/>
+        <source>EMT Events</source>
+        <translation>EMTイベント</translation>
+    </message>
+    <message>
         <source>CheckModel</source>
-        <translation>CheckModel</translation>
+        <translation type="vanished">CheckModel</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="160"/>
         <source>Inspect model</source>
-        <translation>モデルの検査</translation>
+        <translation type="vanished">モデルの検査</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="172"/>
         <source>Center</source>
-        <translation>中心</translation>
+        <translation type="vanished">中心</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="184"/>
         <source>Zoom in</source>
-        <translation>ズームイン</translation>
+        <translation type="vanished">ズームイン</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="196"/>
         <source>Zoom out</source>
-        <translation>ズームアウト</translation>
+        <translation type="vanished">ズームアウト</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="211"/>
         <source>Delete all</source>
-        <translation>すべて削除</translation>
+        <translation type="vanished">すべて削除</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="214"/>
         <source>Delete all blocks to start from scratch.</source>
-        <translation>すべてのブロックを削除して最初から始めます。</translation>
+        <translation type="vanished">すべてのブロックを削除して最初から始めます。</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="226"/>
         <source>Validate</source>
-        <translation>検証する</translation>
+        <translation type="vanished">検証する</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/ui/dynamic_editor_workspace.ui" line="238"/>
+        <location filename="../DynamicModelEditor/Workspace/dynamic_editor_workspace.ui" line="156"/>
         <source>view tree</source>
         <translation>ビューツリー</translation>
     </message>
@@ -3474,6 +3643,41 @@ Are you sure?</source>
     </message>
 </context>
 <context>
+    <name>DynamicEventsDraftSession</name>
+    <message>
+        <source>An event and its events group use different simulation modes.</source>
+        <translation>イベントとそのイベントグループが異なるシミュレーションモードを使用しています。</translation>
+    </message>
+    <message>
+        <source>An event has no target device.</source>
+        <translation>イベントにターゲットデバイスがありません。</translation>
+    </message>
+    <message>
+        <source>An event in device &apos;{device}&apos; has no valid events group.</source>
+        <translation>デバイス &apos;{device}&apos; のイベントに有効なイベントグループがありません。</translation>
+    </message>
+    <message>
+        <source>An event in device &apos;{device}&apos; has no valid parameter.</source>
+        <translation>デバイス &apos;{device}&apos; のイベントに有効なパラメータがありません。</translation>
+    </message>
+    <message>
+        <source>An events group has an empty name.</source>
+        <translation>イベントグループに空の名前があります。</translation>
+    </message>
+    <message>
+        <source>Events for parameter &apos;{parameter}&apos; overlap in group &apos;{group}&apos; and device &apos;{device}&apos;.</source>
+        <translation>パラメータ &apos;{parameter}&apos; のイベントがグループ &apos;{group}&apos; およびデバイス &apos;{device}&apos; で重複しています。</translation>
+    </message>
+    <message>
+        <source>The events group name &apos;{name}&apos; is duplicated.</source>
+        <translation>イベントグループ名 &apos;{name}&apos; が重複しています。</translation>
+    </message>
+    <message>
+        <source>The ramp event for parameter &apos;{parameter}&apos; has an invalid end time.</source>
+        <translation>パラメータ &apos;{parameter}&apos; のランプイベントの終了時刻が無効です。</translation>
+    </message>
+</context>
+<context>
     <name>DynamicEventsGroupsDialog</name>
     <message>
         <source>Create EMT Events Group</source>
@@ -3498,6 +3702,155 @@ Are you sure?</source>
     <message>
         <source>The name cannot be empty.</source>
         <translation>名前は空にできません。</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventsItemDelegate</name>
+    <message>
+        <source>Ramp</source>
+        <translation>ランプ</translation>
+    </message>
+    <message>
+        <source>Step</source>
+        <translation>ステップ</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventsPage</name>
+    <message>
+        <source>Add an event to the selected event group</source>
+        <translation>選択されたイベントグループにイベントを追加</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to remove group &apos;{group}&apos;? This will remove {events} events from {devices} devices.</source>
+        <translation>グループ「{group}」を削除しますか？これにより、{devices}のデバイスから{events}個のイベントが削除されます。</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to remove the event for &apos;{parameter}&apos; at {time:.4f} s?</source>
+        <translation>「{parameter}」の{time:.4f} sのイベントを削除しますか？</translation>
+    </message>
+    <message>
+        <source>Create an EMT switch opening and reclosing event sequence</source>
+        <translation>EMT開閉および再閉路イベントシーケンスを作成</translation>
+    </message>
+    <message>
+        <source>Create an event group for this simulation mode</source>
+        <translation>このシミュレーションモードのイベントグループを作成</translation>
+    </message>
+    <message>
+        <source>Empty dynamic model</source>
+        <translation>動的モデルを空にする</translation>
+    </message>
+    <message>
+        <source>Events cannot be added because this dynamic model has no event parameters.</source>
+        <translation>この動的モデルにはイベントパラメータがないため、イベントを追加できません。</translation>
+    </message>
+    <message>
+        <source>Events saved</source>
+        <translation>イベントを保存しました</translation>
+    </message>
+    <message>
+        <source>Invalid dynamic events</source>
+        <translation>無効な動的イベント</translation>
+    </message>
+    <message>
+        <source>Invalid event group</source>
+        <translation>無効なイベントグループ</translation>
+    </message>
+    <message>
+        <source>Invalid parameter</source>
+        <translation>無効なパラメータ</translation>
+    </message>
+    <message>
+        <source>No events can be added because the dynamic model has no event parameters.</source>
+        <translation>動的モデルにイベントパラメータがないため、イベントを追加できません。</translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation>取り除く</translation>
+    </message>
+    <message>
+        <source>Remove event</source>
+        <translation>イベントを削除</translation>
+    </message>
+    <message>
+        <source>Remove events group</source>
+        <translation>イベントグループを削除</translation>
+    </message>
+    <message>
+        <source>Remove the selected event or event group</source>
+        <translation>選択したイベントまたはイベントグループを削除</translation>
+    </message>
+    <message>
+        <source>Rename</source>
+        <translation>名前変更</translation>
+    </message>
+    <message>
+        <source>Save events</source>
+        <translation>イベントを保存</translation>
+    </message>
+    <message>
+        <source>Select the event group where you want to add the event.</source>
+        <translation>イベントを追加したいイベントグループを選択してください。</translation>
+    </message>
+    <message>
+        <source>Select the event or event group you want to remove.</source>
+        <translation>削除したいイベントまたはイベントグループを選択してください。</translation>
+    </message>
+    <message>
+        <source>Switch Sequence Wizard</source>
+        <translation>シーケンスウィザードの切り替え</translation>
+    </message>
+    <message>
+        <source>The event group name must be non-empty and unique in this simulation mode.</source>
+        <translation>イベントグループ名は、このシミュレーションモードで空ではなく、一意である必要があります。</translation>
+    </message>
+    <message>
+        <source>This dynamic model is empty. New events cannot be added until the model is built.</source>
+        <translation>この動的モデルは空です。モデルが構築されるまで、新しいイベントを追加することはできません。</translation>
+    </message>
+    <message>
+        <source>➕ New Event Group</source>
+        <translation>➕ 新しいイベントグループ</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventsTreeModel</name>
+    <message>
+        <source>Align Step</source>
+        <translation>ステップを整列</translation>
+    </message>
+    <message>
+        <source>End Time</source>
+        <translation>終了時間</translation>
+    </message>
+    <message>
+        <source>Invalid / Ungrouped Events</source>
+        <translation>無効な / グループ化されていないイベント</translation>
+    </message>
+    <message>
+        <source>Invalid parameter</source>
+        <translation>無効なパラメータ</translation>
+    </message>
+    <message>
+        <source>New Value</source>
+        <translation>新しい値</translation>
+    </message>
+    <message>
+        <source>Parameter</source>
+        <translation>パラメータ</translation>
+    </message>
+    <message>
+        <source>These persisted events do not reference a valid events group and can only be removed.</source>
+        <translation>これらの永続イベントは有効なイベントグループを参照していないため、削除のみが可能です。</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>時間</translation>
+    </message>
+    <message>
+        <source>Transition</source>
+        <translation>遷移</translation>
     </message>
 </context>
 <context>
@@ -3933,6 +4286,10 @@ IMPORTANT: This will take into account every movement of substation and line loc
         <source>create substation diagram</source>
         <translation>変電所スキーム図を作成</translation>
     </message>
+    <message>
+        <source>{device_name} profiles plot</source>
+        <translation>{device_name}プロファイルプロット</translation>
+    </message>
 </context>
 <context>
     <name>GridMergeDialogue</name>
@@ -4364,6 +4721,14 @@ Cancel and retry?</source>
     <message>
         <source>The file was loaded but the current project was kept because closing a dynamic editor was cancelled.</source>
         <translation>ファイルは読み込まれましたが、動的エディタを閉じる操作がキャンセルされたため、現在のプロジェクトが保持されました。</translation>
+    </message>
+    <message>
+        <source>Some operations are still stopping. Try again after they finish.</source>
+        <translation>いくつかの操作がまだ停止中です。完了後に再試行してください。</translation>
+    </message>
+    <message>
+        <source>The current save is still finishing. Please retry when it is done.</source>
+        <translation>現在の保存がまだ完了していません。完了後に再試行してください。</translation>
     </message>
 </context>
 <context>
@@ -6359,6 +6724,13 @@ Cancel it and close the window?</source>
     </message>
 </context>
 <context>
+    <name>PopupResizeGrip</name>
+    <message>
+        <source>Resize</source>
+        <translation>サイズ変更</translation>
+    </message>
+</context>
+<context>
     <name>ProceduralGridWindow</name>
     <message>
         <source>Procedural grid expansion</source>
@@ -6412,6 +6784,10 @@ Consider loading a valid source of data.</source>
     <message>
         <source>Value error loading CSV file</source>
         <translation>CSVファイルの読み込み中に値エラーが発生しました</translation>
+    </message>
+    <message>
+        <source>Profile plot</source>
+        <translation>プロファイルプロット</translation>
     </message>
 </context>
 <context>
@@ -6720,12 +7096,27 @@ Are you ok with potentially waiting a lot?</source>
         <source>{file_name} is not valid :(</source>
         <translation>{file_name} は無効です :(</translation>
     </message>
+    <message>
+        <source>Results plot</source>
+        <translation>結果プロット</translation>
+    </message>
 </context>
 <context>
     <name>ResultsModel</name>
     <message>
         <source>Plotting error</source>
         <translation>プロットエラー</translation>
+    </message>
+</context>
+<context>
+    <name>RetainedModeDraftTableModel</name>
+    <message>
+        <source>Retained mode</source>
+        <translation>保持モード</translation>
+    </message>
+    <message>
+        <source>Select one retained mode.</source>
+        <translation>保持モードを一つ選択してください。</translation>
     </message>
 </context>
 <context>
@@ -7070,6 +7461,10 @@ This will remove the direct child scenarios after their changes are applied.</so
         <source>Set Current Scenario</source>
         <translation>現在のシナリオとして設定</translation>
     </message>
+    <message>
+        <source>Wait until the running operations finish before changing scenario.</source>
+        <translation>シナリオを変更する前に、実行中の操作が完了するまで待ってください。</translation>
+    </message>
 </context>
 <context>
     <name>SchematicLibraryModel</name>
@@ -7224,6 +7619,10 @@ Did you change the number of devices? If so, re-run the simulation.</source>
     <message>
         <source>{bus_name} was not found in the graphics manager</source>
         <translation>グラフィックスマネージャー内に{bus_name}が見つかりませんでした</translation>
+    </message>
+    <message>
+        <source>{device_name} profiles plot</source>
+        <translation>{device_name}プロファイルプロット</translation>
     </message>
 </context>
 <context>
@@ -8569,6 +8968,93 @@ ML設定でクラスター数を変更してください。</translation>
         <source>An RMS simulation cannot run without an RMS Events Group. Go to Events -&gt; Add RMS event and add a group, even if it contains no events.</source>
         <translation>RMSイベントグループなしではRMSシミュレーションを実行できません。イベント -&gt; RMSイベントを追加し、イベントが含まれていなくてもグループを追加してください。</translation>
     </message>
+    <message>
+        <source>Fluid nodes are ignored for nonlinear OPF</source>
+        <translation>非線形OPFでは流体ノードは無視されます</translation>
+    </message>
+    <message>
+        <source>Fluid nodes are ignored for this simulation</source>
+        <translation>このシミュレーションでは流体ノードは無視されます</translation>
+    </message>
+    <message>
+        <source>Investments evaluation failed. Check the logs for details.</source>
+        <translation>設備投資評価に失敗しました。詳細はログを確認してください。</translation>
+    </message>
+    <message>
+        <source>Investments evaluation finished without results.</source>
+        <translation>設備投資評価は結果なしで完了しました。</translation>
+    </message>
+    <message>
+        <source>Nodal capacity failed to start</source>
+        <translation>ノード容量の開始に失敗しました</translation>
+    </message>
+    <message>
+        <source>Nodal capacity logs</source>
+        <translation>ノード容量ログ</translation>
+    </message>
+    <message>
+        <source>Nodal capacity time series failed to start</source>
+        <translation>ノード容量時系列の開始に失敗しました</translation>
+    </message>
+    <message>
+        <source>Nodal capacity time series logs</source>
+        <translation>ノード容量時系列ログ</translation>
+    </message>
+    <message>
+        <source>OPF time series failed to start</source>
+        <translation>OPF時系列の開始に失敗しました</translation>
+    </message>
+    <message>
+        <source>OPF time series logs</source>
+        <translation>OPF時系列ログ</translation>
+    </message>
+    <message>
+        <source>Optimal power flow failed to start</source>
+        <translation>最適潮流の開始に失敗しました</translation>
+    </message>
+    <message>
+        <source>Optimal power flow logs</source>
+        <translation>最適潮流ログ</translation>
+    </message>
+    <message>
+        <source>Running OPF time series with only one time step in range</source>
+        <translation>範囲内に時間ステップが1つのみのOPF時系列を実行中</translation>
+    </message>
+    <message>
+        <source>Something went wrong, there are no OPF results.</source>
+        <translation>何らかのエラーが発生しました。OPFの結果がありません。</translation>
+    </message>
+    <message>
+        <source>Something went wrong, there are no OPF time series results.</source>
+        <translation>何らかのエラーが発生しました。OPF時系列の結果がありません。</translation>
+    </message>
+    <message>
+        <source>Something went wrong, there are no nodal capacity results.</source>
+        <translation>何らかのエラーが発生しました。ノード容量の結果がありません。</translation>
+    </message>
+    <message>
+        <source>Something went wrong, there are no nodal capacity time series results.</source>
+        <translation>何らかのエラーが発生しました。ノード容量時系列の結果がありません。</translation>
+    </message>
+    <message>
+        <source>Voltage stability failed to start</source>
+        <translation>電圧安定度の開始に失敗しました</translation>
+    </message>
+    <message>
+        <source>Voltage stability logs</source>
+        <translation>電圧安定度ログ</translation>
+    </message>
+    <message>
+        <source>Wait until the running simulations finish before clearing results.</source>
+        <translation>結果をクリアする前に、実行中のシミュレーションが完了するまで待ってください。</translation>
+    </message>
+</context>
+<context>
+    <name>SolarPvWizard</name>
+    <message>
+        <source>Solar power profile</source>
+        <translation>太陽光発電プロファイル</translation>
+    </message>
 </context>
 <context>
     <name>SubstationDesigner</name>
@@ -8879,6 +9365,10 @@ You need to load or create a grid!</source>
     <message>
         <source>There is no profile displayed, please display one</source>
         <translation>プロフィールが表示されていません。プロフィールを表示してください</translation>
+    </message>
+    <message>
+        <source>Profiles plot</source>
+        <translation>プロファイルプロット</translation>
     </message>
 </context>
 <context>
@@ -9330,6 +9820,10 @@ You need to load or create a grid!</source>
     <message>
         <source>Removed {count} __pycache__ folders</source>
         <translation>{count}個の__pycache__フォルダを削除しました</translation>
+    </message>
+    <message>
+        <source>Some operations are still stopping. Close again after they finish.</source>
+        <translation>いくつかの操作がまだ停止中です。完了後に再度閉じてください。</translation>
     </message>
 </context>
 <context>
@@ -11552,6 +12046,13 @@ You need to load or create a grid!</source>
     </message>
 </context>
 <context>
+    <name>VerticalHeaderWidthResizer</name>
+    <message>
+        <source>Resize index column</source>
+        <translation>インデックス列のサイズ変更</translation>
+    </message>
+</context>
+<context>
     <name>VoltageLevelConversionWizard</name>
     <message>
         <source>+ Add spare position</source>
@@ -11704,6 +12205,14 @@ You need to load or create a grid!</source>
 {error_text}</source>
         <translation>選択された風力タービンを作成できませんでした：
 {error_text}</translation>
+    </message>
+    <message>
+        <source>Wind power profile</source>
+        <translation>風力発電プロファイル</translation>
+    </message>
+    <message>
+        <source>Wind turbine design curves</source>
+        <translation>風力タービン設計曲線</translation>
     </message>
 </context>
 <context>
@@ -12313,7 +12822,7 @@ You need to load or create a grid!</source>
     <message>
         <location filename="../Main/MainWindow.ui" line="12737"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Add RMS event&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Open the Dynamic events editor preferring RMS events&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;RMSイベントの追加&lt;/span&gt;&lt;/p&gt;&lt;p&gt;RMSイベントを優先する動的イベントエディタを開きます&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;RMSイベントの追加&lt;/span&gt;&lt;/p&gt;&lt;p&gt;RMSイベントを優先する動的イベントエディタを開きます&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="13068"/>
@@ -12323,7 +12832,7 @@ You need to load or create a grid!</source>
     <message>
         <location filename="../Main/MainWindow.ui" line="13071"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Add EMT event&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Open the Dynamic events editor preferring EMT events&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;EMTイベントの追加&lt;/span&gt;&lt;/p&gt;&lt;p&gt;EMTイベントを優先する動的イベントエディタを開きます&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;EMTイベントの追加&lt;/span&gt;&lt;/p&gt;&lt;p&gt;EMTイベントを優先する動的イベントエディタを開きます&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="13143"/>
@@ -15124,306 +15633,6 @@ You need to load or create a grid!</source>
     <message>
         <source>Question</source>
         <translation>質問</translation>
-    </message>
-</context>
-<context>
-    <name>BlockPropertyTreeModel</name>
-    <message>
-        <source>Missing PF mapping</source>
-        <translation>PFマッピングが不足しています</translation>
-    </message>
-    <message>
-        <source>Name</source>
-        <translation>名前</translation>
-    </message>
-    <message>
-        <source>Output</source>
-        <translation>出力</translation>
-    </message>
-    <message>
-        <source>Power-flow reference; variable mappings are used for initialization.</source>
-        <translation>電力潮流参照；変数マッピングは初期化に使用されます。</translation>
-    </message>
-    <message>
-        <source>Template issue: static parameters require api_obj_mapping. An independently editable parameter should be in event_dict. This refactor does not migrate templates automatically.</source>
-        <translation>テンプレートの問題：静的パラメータはapi_obj_mappingが必要です。独立して編集可能なパラメータはevent_dictに含まれている必要があります。このリファクタリングではテンプレートは自動的に移行されません。</translation>
-    </message>
-    <message>
-        <source>Type</source>
-        <translation>種類</translation>
-    </message>
-    <message>
-        <source>Value / PF reference</source>
-        <translation>値 / PF参照</translation>
-    </message>
-</context>
-<context>
-    <name>BlockPropertyValueDelegate</name>
-    <message>
-        <source>None</source>
-        <translation>なし</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicBlockPropertiesDockWidget</name>
-    <message>
-        <source>Block Properties contains changes that have not been applied. Discard those changes and close the editor?</source>
-        <translation>ブロックプロパティには適用されていない変更が含まれています。これらの変更を破棄してエディタを閉じますか？</translation>
-    </message>
-    <message>
-        <source>Unsaved Block Properties changes</source>
-        <translation>未保存のブロックプロパティの変更</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicDeviceTreeWidget</name>
-    <message>
-        <source>EMT editor</source>
-        <translation>EMTエディタ</translation>
-    </message>
-    <message>
-        <source>EMT events</source>
-        <translation>EMTイベント</translation>
-    </message>
-    <message>
-        <source>RMS editor</source>
-        <translation>RMSエディタ</translation>
-    </message>
-    <message>
-        <source>RMS events</source>
-        <translation>RMSイベント</translation>
-    </message>
-    <message>
-        <source>Type to search the device</source>
-        <translation>入力してデバイスを検索します</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEditorWorkspaceSession</name>
-    <message>
-        <source>Invalid dynamic events</source>
-        <translation>無効な動的イベント</translation>
-    </message>
-    <message>
-        <source>Save the changes before closing the last events tab?</source>
-        <translation>最後のイベントタブを閉じる前に変更を保存しますか？</translation>
-    </message>
-    <message>
-        <source>The dynamic events contain unsaved changes.</source>
-        <translation>動的イベントに未保存の変更があります。</translation>
-    </message>
-    <message>
-        <source>Unsaved dynamic events</source>
-        <translation>未保存の動的イベント</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEventsDraftSession</name>
-    <message>
-        <source>An event and its events group use different simulation modes.</source>
-        <translation>イベントとそのイベントグループが異なるシミュレーションモードを使用しています。</translation>
-    </message>
-    <message>
-        <source>An event has no target device.</source>
-        <translation>イベントにターゲットデバイスがありません。</translation>
-    </message>
-    <message>
-        <source>An event in device '{device}' has no valid events group.</source>
-        <translation>デバイス '{device}' のイベントに有効なイベントグループがありません。</translation>
-    </message>
-    <message>
-        <source>An event in device '{device}' has no valid parameter.</source>
-        <translation>デバイス '{device}' のイベントに有効なパラメータがありません。</translation>
-    </message>
-    <message>
-        <source>An events group has an empty name.</source>
-        <translation>イベントグループに空の名前があります。</translation>
-    </message>
-    <message>
-        <source>Events for parameter '{parameter}' overlap in group '{group}' and device '{device}'.</source>
-        <translation>パラメータ '{parameter}' のイベントがグループ '{group}' およびデバイス '{device}' で重複しています。</translation>
-    </message>
-    <message>
-        <source>The events group name '{name}' is duplicated.</source>
-        <translation>イベントグループ名 '{name}' が重複しています。</translation>
-    </message>
-    <message>
-        <source>The ramp event for parameter '{parameter}' has an invalid end time.</source>
-        <translation>パラメータ '{parameter}' のランプイベントの終了時刻が無効です。</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEventsItemDelegate</name>
-    <message>
-        <source>Ramp</source>
-        <translation>ランプ</translation>
-    </message>
-    <message>
-        <source>Step</source>
-        <translation>ステップ</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEventsPage</name>
-    <message>
-        <source>Add an event to the selected event group</source>
-        <translation>選択されたイベントグループにイベントを追加</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to remove group '{group}'? This will remove {events} events from {devices} devices.</source>
-        <translation>グループ「{group}」を削除しますか？これにより、{devices}のデバイスから{events}個のイベントが削除されます。</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to remove the event for '{parameter}' at {time:.4f} s?</source>
-        <translation>「{parameter}」の{time:.4f} sのイベントを削除しますか？</translation>
-    </message>
-    <message>
-        <source>Create an EMT switch opening and reclosing event sequence</source>
-        <translation>EMT開閉および再閉路イベントシーケンスを作成</translation>
-    </message>
-    <message>
-        <source>Create an event group for this simulation mode</source>
-        <translation>このシミュレーションモードのイベントグループを作成</translation>
-    </message>
-    <message>
-        <source>Empty dynamic model</source>
-        <translation>動的モデルを空にする</translation>
-    </message>
-    <message>
-        <source>Events cannot be added because this dynamic model has no event parameters.</source>
-        <translation>この動的モデルにはイベントパラメータがないため、イベントを追加できません。</translation>
-    </message>
-    <message>
-        <source>Events saved</source>
-        <translation>イベントを保存しました</translation>
-    </message>
-    <message>
-        <source>Invalid dynamic events</source>
-        <translation>無効な動的イベント</translation>
-    </message>
-    <message>
-        <source>Invalid event group</source>
-        <translation>無効なイベントグループ</translation>
-    </message>
-    <message>
-        <source>Invalid parameter</source>
-        <translation>無効なパラメータ</translation>
-    </message>
-    <message>
-        <source>No events can be added because the dynamic model has no event parameters.</source>
-        <translation>動的モデルにイベントパラメータがないため、イベントを追加できません。</translation>
-    </message>
-    <message>
-        <source>Remove</source>
-        <translation>取り除く</translation>
-    </message>
-    <message>
-        <source>Remove event</source>
-        <translation>イベントを削除</translation>
-    </message>
-    <message>
-        <source>Remove events group</source>
-        <translation>イベントグループを削除</translation>
-    </message>
-    <message>
-        <source>Remove the selected event or event group</source>
-        <translation>選択したイベントまたはイベントグループを削除</translation>
-    </message>
-    <message>
-        <source>Rename</source>
-        <translation>名前変更</translation>
-    </message>
-    <message>
-        <source>Save events</source>
-        <translation>イベントを保存</translation>
-    </message>
-    <message>
-        <source>Select the event group where you want to add the event.</source>
-        <translation>イベントを追加したいイベントグループを選択してください。</translation>
-    </message>
-    <message>
-        <source>Select the event or event group you want to remove.</source>
-        <translation>削除したいイベントまたはイベントグループを選択してください。</translation>
-    </message>
-    <message>
-        <source>Switch Sequence Wizard</source>
-        <translation>シーケンスウィザードの切り替え</translation>
-    </message>
-    <message>
-        <source>The event group name must be non-empty and unique in this simulation mode.</source>
-        <translation>イベントグループ名は、このシミュレーションモードで空ではなく、一意である必要があります。</translation>
-    </message>
-    <message>
-        <source>This dynamic model is empty. New events cannot be added until the model is built.</source>
-        <translation>この動的モデルは空です。モデルが構築されるまで、新しいイベントを追加することはできません。</translation>
-    </message>
-    <message>
-        <source>➕ New Event Group</source>
-        <translation>➕ 新しいイベントグループ</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEventsTreeModel</name>
-    <message>
-        <source>Align Step</source>
-        <translation>ステップを整列</translation>
-    </message>
-    <message>
-        <source>End Time</source>
-        <translation>終了時間</translation>
-    </message>
-    <message>
-        <source>Invalid / Ungrouped Events</source>
-        <translation>無効な / グループ化されていないイベント</translation>
-    </message>
-    <message>
-        <source>Invalid parameter</source>
-        <translation>無効なパラメータ</translation>
-    </message>
-    <message>
-        <source>New Value</source>
-        <translation>新しい値</translation>
-    </message>
-    <message>
-        <source>Parameter</source>
-        <translation>パラメータ</translation>
-    </message>
-    <message>
-        <source>These persisted events do not reference a valid events group and can only be removed.</source>
-        <translation>これらの永続イベントは有効なイベントグループを参照していないため、削除のみが可能です。</translation>
-    </message>
-    <message>
-        <source>Time</source>
-        <translation>時間</translation>
-    </message>
-    <message>
-        <source>Transition</source>
-        <translation>遷移</translation>
-    </message>
-</context>
-<context>
-    <name>PopupResizeGrip</name>
-    <message>
-        <source>Resize</source>
-        <translation>サイズ変更</translation>
-    </message>
-</context>
-<context>
-    <name>RetainedModeDraftTableModel</name>
-    <message>
-        <source>Retained mode</source>
-        <translation>保持モード</translation>
-    </message>
-    <message>
-        <source>Select one retained mode.</source>
-        <translation>保持モードを一つ選択してください。</translation>
-    </message>
-</context>
-<context>
-    <name>VerticalHeaderWidthResizer</name>
-    <message>
-        <source>Resize index column</source>
-        <translation>インデックス列のサイズ変更</translation>
     </message>
 </context>
 </TS>
