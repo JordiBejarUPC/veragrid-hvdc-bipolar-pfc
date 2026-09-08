@@ -44,6 +44,10 @@ from trunk.dynamics.fmi_comparison.example_models import (
     export_example_rms_cs_fmu,
     export_example_rms_me_fmu,
 )
+from trunk.dynamics.fmi_comparison.event_scenario import (
+    RmsLoadPowerStepScenario,
+    build_default_rms_load_power_step_scenario,
+)
 
 
 def write_example_report(report_path: Path, lines: tuple[str, ...]) -> Path:
@@ -559,18 +563,30 @@ def _try_get_result_value(
 def execute_rms_fmi_example(
         output_dir: Path,
         mode: FmuInterfaceMode,
+        scenario: RmsLoadPowerStepScenario | None = None,
 ) -> RmsFmiExampleExecution:
     """Execute one native RMS FMI example and retain its accepted trajectories.
 
     :param output_dir: Owned directory used for the FMU, extraction and report.
     :param mode: Co-Simulation or Model Exchange interface mode.
+    :param scenario: Validated benchmark scenario, or None for the maintained default.
     :return: Typed execution evidence with defensive trajectory access.
     """
 
+    # Retain a validated scenario copy before creating output or exporting an
+    # FMU so caller mutation cannot alter partial benchmark evidence.
+    active_scenario: RmsLoadPowerStepScenario
+    if scenario is None:
+        active_scenario = build_default_rms_load_power_step_scenario()
+    elif isinstance(scenario, RmsLoadPowerStepScenario):
+        active_scenario = scenario.copy_validated()
+    else:
+        raise TypeError("RMS FMI scenario has an unsupported type")
+
     output_dir.mkdir(parents=True, exist_ok=True)
-    time_step_seconds: float = 1.0e-3
-    simulation_time_seconds: float = 3.0e-1
-    event_time_seconds: float = 1.0e-1
+    time_step_seconds: float = active_scenario.time_step_seconds
+    simulation_time_seconds: float = active_scenario.stop_time_seconds
+    event_time_seconds: float = active_scenario.event_time_seconds
 
     # Export exactly once so the native RMS path and the later direct FMPy
     # consumer can be bound to the same archive bytes.
@@ -587,7 +603,10 @@ def execute_rms_fmi_example(
     # actual infinity-norm residual is retained for the row-zero error budget.
     grid: MultiCircuit
     load: Load
-    grid, load = build_rms_example_grid(event_time_seconds=event_time_seconds)
+    grid, load = build_rms_example_grid(
+        event_time_seconds=event_time_seconds,
+        scenario=active_scenario,
+    )
     power_flow_options: PowerFlowOptions = build_example_power_flow_options()
     pf_driver: PowerFlowDriver = PowerFlowDriver(
         grid=grid,
@@ -683,9 +702,8 @@ def execute_rms_fmi_example(
     # The solver stores the boundary with the old event value and applies the
     # step strictly afterward. Validate the exact lattice and a measurable
     # physical input/output response rather than relying on plot autoscaling.
-    expected_sample_count: int = int(
-        round(simulation_time_seconds / time_step_seconds)
-    ) + 1
+    expected_time_seconds: np.ndarray = active_scenario.build_time_lattice()
+    expected_sample_count: int = active_scenario.sample_count
     boundary_indices: np.ndarray = np.flatnonzero(
         np.abs(time_seconds - event_time_seconds) <= 1.0e-12
     )
@@ -694,11 +712,17 @@ def execute_rms_fmi_example(
     )
     lattice_is_conclusive: bool = bool(
         time_seconds.size == expected_sample_count
+        and np.all(np.abs(time_seconds - expected_time_seconds) <= 1.0e-12)
         and boundary_indices.size == 1
         and post_event_indices.size > 0
-        and int(boundary_indices[0]) == 100
-        and int(post_event_indices[0]) == 101
-        and abs(float(time_seconds[post_event_indices[0]]) - 1.01e-1) <= 1.0e-12
+        and int(boundary_indices[0])
+        == active_scenario.event_boundary_index
+        and int(post_event_indices[0])
+        == active_scenario.first_post_event_index
+        and abs(
+            float(time_seconds[post_event_indices[0]])
+            - active_scenario.first_post_event_time_seconds
+        ) <= 1.0e-12
     )
     if lattice_is_conclusive:
         boundary_index: int = int(boundary_indices[0])
@@ -721,8 +745,9 @@ def execute_rms_fmi_example(
         )
     )
     response_is_conclusive: bool = bool(
-        voltage_response >= 1.0e-5
-        and active_power_response >= 1.0e-5
+        voltage_response >= active_scenario.voltage_response_threshold_pu
+        and active_power_response
+        >= active_scenario.active_power_response_threshold_pu
     )
     if response_is_conclusive:
         pass
@@ -732,13 +757,28 @@ def execute_rms_fmi_example(
             f"Vm={voltage_response:.16e}, P={active_power_response:.16e}"
         )
 
+    # Reuse the scenario's evidence boundary so the report and manifest cannot
+    # drift through duplicated classification text.
+    event_record: dict[str, object] = active_scenario.build_manifest_event_record()
+    boundary_semantics_candidate: object = event_record.get(
+        "boundary_semantics",
+        None,
+    )
+    if isinstance(boundary_semantics_candidate, str):
+        boundary_semantics: str = boundary_semantics_candidate
+    else:
+        raise RuntimeError("RMS event evidence lacks boundary semantics")
+
     lines: tuple[str, ...] = (
         f"fmu_path = {fmu_path}",
         f"mode = {request.mode.value}",
         f"power_flow_residual = {power_flow_residual:.16e}",
         f"rms_solver_tolerance = {rms_options.tolerance:.16e}",
         f"event_time_seconds = {event_time_seconds:.16e}",
-        "event_boundary_semantics = old_value_at_boundary_step_after_boundary",
+        (
+            "event_boundary_semantics = "
+            f"{boundary_semantics}"
+        ),
         f"post_event_voltage_response = {voltage_response:.16e}",
         f"post_event_active_power_response = {active_power_response:.16e}",
     ) + _build_rms_results_summary(rms_driver, load)

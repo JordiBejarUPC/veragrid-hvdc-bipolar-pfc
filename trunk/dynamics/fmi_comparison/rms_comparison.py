@@ -35,6 +35,10 @@ from trunk.dynamics.fmi_comparison.fmi_example_runner import (
     RmsFmiExampleExecution,
     execute_rms_fmi_example,
 )
+from trunk.dynamics.fmi_comparison.event_scenario import (
+    RmsLoadPowerStepScenario,
+    build_default_rms_load_power_step_scenario,
+)
 from trunk.dynamics.fmi_comparison.omsimulator import (
     OmsimulatorTrace,
     _verify_regular_file_path,
@@ -56,6 +60,7 @@ class RmsFmiComparisonConfig:
         "_omsimulator_timeout_seconds",
         "_omsimulator_absolute_tolerance",
         "_omsimulator_relative_tolerance",
+        "_scenario",
     )
 
     def __init__(
@@ -69,6 +74,7 @@ class RmsFmiComparisonConfig:
             omsimulator_timeout_seconds: float = 35.0,
             omsimulator_absolute_tolerance: float = 1.0e-10,
             omsimulator_relative_tolerance: float = 1.0e-10,
+            scenario: RmsLoadPowerStepScenario | None = None,
     ) -> None:
         """Validate and retain the caller-declared comparison configuration.
 
@@ -81,8 +87,19 @@ class RmsFmiComparisonConfig:
         :param omsimulator_timeout_seconds: Python-side process deadline.
         :param omsimulator_absolute_tolerance: OMSimulator absolute solver allowance.
         :param omsimulator_relative_tolerance: OMSimulator relative solver allowance.
+        :param scenario: Validated benchmark scenario, or None for the maintained default.
         :return: None.
         """
+
+        # Retain one validated scenario copy so later caller mutation cannot
+        # change the configuration shared by both FMI modes.
+        active_scenario: RmsLoadPowerStepScenario
+        if scenario is None:
+            active_scenario = build_default_rms_load_power_step_scenario()
+        elif isinstance(scenario, RmsLoadPowerStepScenario):
+            active_scenario = scenario.copy_validated()
+        else:
+            raise TypeError("RMS FMI comparison scenario has an unsupported type")
 
         revision_is_valid: bool = bool(source_revision.strip())
         tree_hash_is_valid: bool = bool(
@@ -141,6 +158,7 @@ class RmsFmiComparisonConfig:
         self._omsimulator_relative_tolerance: float = float(
             omsimulator_relative_tolerance
         )
+        self._scenario: RmsLoadPowerStepScenario = active_scenario
 
     def get_output_dir(self) -> Path:
         """Return the final package destination.
@@ -213,6 +231,14 @@ class RmsFmiComparisonConfig:
         """
 
         return self._omsimulator_relative_tolerance
+
+    def get_scenario(self) -> RmsLoadPowerStepScenario:
+        """Return an independent validated benchmark scenario.
+
+        :return: Copy of the configured RMS load active-power step scenario.
+        """
+
+        return self._scenario.copy_validated()
 
 
 class RmsFmiComparisonMetrics:
@@ -782,6 +808,7 @@ def _write_fmpy_trace_csv(
         voltage_magnitude: np.ndarray,
         active_power: np.ndarray,
         reactive_power: np.ndarray,
+        scenario: RmsLoadPowerStepScenario,
 ) -> Path:
     """Retain the original direct-FMPy trajectory as canonical raw evidence.
 
@@ -791,13 +818,17 @@ def _write_fmpy_trace_csv(
     :param voltage_magnitude: Shared retained VeraGrid voltage input.
     :param active_power: Direct-FMPy active power in p.u.
     :param reactive_power: Direct-FMPy reactive power in p.u.
+    :param scenario: Scenario that defines the maintained producer lattice.
     :return: Written regular CSV path.
     """
 
-    expected_time_seconds: np.ndarray = np.arange(301, dtype=float) * 1.0e-3
+    expected_time_seconds: np.ndarray = scenario.build_time_lattice()
+    expected_sample_count: int = scenario.sample_count
+    event_boundary_index: int = scenario.event_boundary_index
+    first_post_event_index: int = scenario.first_post_event_index
     arrays_are_valid: bool = bool(
         mode in (FmuInterfaceMode.CO_SIMULATION, FmuInterfaceMode.MODEL_EXCHANGE)
-        and time_seconds.shape == (301,)
+        and time_seconds.shape == expected_time_seconds.shape
         and voltage_magnitude.shape == time_seconds.shape
         and active_power.shape == time_seconds.shape
         and reactive_power.shape == time_seconds.shape
@@ -807,7 +838,10 @@ def _write_fmpy_trace_csv(
         and np.all(np.isfinite(reactive_power))
         and np.all(np.diff(time_seconds) > 0.0)
         and np.all(np.abs(time_seconds - expected_time_seconds) <= 1.0e-12)
-        and abs(voltage_magnitude[101] - voltage_magnitude[100]) > 1.0e-5
+        and abs(
+            voltage_magnitude[first_post_event_index]
+            - voltage_magnitude[event_boundary_index]
+        ) > scenario.voltage_response_threshold_pu
     )
     if arrays_are_valid:
         pass
@@ -825,7 +859,7 @@ def _write_fmpy_trace_csv(
         writer: csv.writer = csv.writer(csv_file, lineterminator="\n")
         writer.writerow(header)
         sample_index: int
-        for sample_index in range(301):
+        for sample_index in range(expected_sample_count):
             row: tuple[object, ...] = (
                 sample_index,
                 mode.value,
@@ -1067,11 +1101,13 @@ def _build_input_signal(
 def _get_direct_fmpy_trace(
         execution: RmsFmiExampleExecution,
         extraction_root: Path,
+        scenario: RmsLoadPowerStepScenario,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Execute the exact retained FMU directly through its FMPy backend.
 
     :param execution: Native RMS execution that owns the exact FMU and lattice.
     :param extraction_root: Owned directory used for temporary FMPy extraction.
+    :param scenario: Scenario that defines the direct-runtime communication step.
     :return: Direct time, active-power and reactive-power trajectories.
     """
 
@@ -1094,7 +1130,7 @@ def _get_direct_fmpy_trace(
             output=output_names,
             input_signal=input_signal,
             extraction_root=extraction_root,
-            output_interval=1.0e-3,
+            output_interval=scenario.time_step_seconds,
         )
     elif mode == FmuInterfaceMode.MODEL_EXCHANGE:
         simulation_result = simulate_me_fmu_with_fmpy(
@@ -1103,7 +1139,7 @@ def _get_direct_fmpy_trace(
             output=output_names,
             input_signal=input_signal,
             extraction_root=extraction_root,
-            step_size=1.0e-3,
+            step_size=scenario.time_step_seconds,
         )
     else:
         raise ValueError(f"Unsupported RMS FMI comparison mode: {mode.value}")
@@ -1159,6 +1195,7 @@ def _compare_aligned_trajectories(
         right_relative_allowance: float,
         comparison_absolute_tolerance: float,
         comparison_relative_tolerance: float,
+        expected_time_seconds: np.ndarray,
 ) -> RmsFmiComparisonMetrics:
     """Compare two exact-lattice paths with symmetric declared allowances.
 
@@ -1174,12 +1211,19 @@ def _compare_aligned_trajectories(
     :param right_relative_allowance: Right path relative allowance.
     :param comparison_absolute_tolerance: Pair-independent floating absolute term.
     :param comparison_relative_tolerance: Pair-independent floating relative term.
+    :param expected_time_seconds: Independent expected lattice for this caller.
     :return: Conclusive pair metrics after every sample passes.
     """
 
-    expected_time_seconds: np.ndarray = np.arange(301, dtype=float) * 1.0e-3
+    expected_lattice_is_valid: bool = bool(
+        expected_time_seconds.ndim == 1
+        and expected_time_seconds.size > 0
+        and np.all(np.isfinite(expected_time_seconds))
+        and np.all(np.diff(expected_time_seconds) > 0.0)
+    )
     shapes_are_valid: bool = bool(
-        left_time_seconds.shape == expected_time_seconds.shape
+        expected_lattice_is_valid
+        and left_time_seconds.shape == expected_time_seconds.shape
         and left_active_power.shape == expected_time_seconds.shape
         and left_reactive_power.shape == expected_time_seconds.shape
         and right_time_seconds.shape == expected_time_seconds.shape
@@ -1216,7 +1260,7 @@ def _compare_aligned_trajectories(
 
     lattices_are_valid: bool = bool(
         np.all(np.abs(left_time_seconds - expected_time_seconds) <= 1.0e-12)
-        and np.all(np.abs(right_time_seconds - left_time_seconds) <= 1.0e-12)
+        and np.all(np.abs(right_time_seconds - expected_time_seconds) <= 1.0e-12)
     )
     if lattices_are_valid:
         pass
@@ -1291,6 +1335,7 @@ def _write_trace_csv(
         veragrid_fmpy_metrics: RmsFmiComparisonMetrics,
         veragrid_omsimulator_metrics: RmsFmiComparisonMetrics,
         fmpy_omsimulator_metrics: RmsFmiComparisonMetrics,
+        scenario: RmsLoadPowerStepScenario,
 ) -> Path:
     """Write the three paths and every pair-specific error budget.
 
@@ -1303,6 +1348,7 @@ def _write_trace_csv(
     :param veragrid_fmpy_metrics: VeraGrid-to-FMPy pair metrics.
     :param veragrid_omsimulator_metrics: VeraGrid-to-OMSimulator pair metrics.
     :param fmpy_omsimulator_metrics: FMPy-to-OMSimulator pair metrics.
+    :param scenario: Scenario that defines event-phase sample boundaries.
     :return: Written CSV path.
     """
 
@@ -1389,9 +1435,9 @@ def _write_trace_csv(
                 scenario_phase: str = "baseline"
             else:
                 regime = "accepted_step"
-                if sample_index < 100:
+                if sample_index < scenario.event_boundary_index:
                     scenario_phase = "pre_event"
-                elif sample_index == 100:
+                elif sample_index == scenario.event_boundary_index:
                     scenario_phase = "event_boundary"
                 else:
                     scenario_phase = "post_event"
@@ -1728,6 +1774,7 @@ def _build_path_record(
         voltage_magnitude: np.ndarray,
         active_power: np.ndarray,
         reactive_power: np.ndarray,
+        expected_sample_count: int,
 ) -> dict[str, object]:
     """Build one numerical-path record at the private JSON boundary.
 
@@ -1739,15 +1786,30 @@ def _build_path_record(
     :param voltage_magnitude: Original path voltage values.
     :param active_power: Original path active-power values.
     :param reactive_power: Original path reactive-power values.
+    :param expected_sample_count: Independent expected number of path samples.
     :return: Exact schema-v3 path mapping.
     """
+
+    arrays_are_valid: bool = bool(
+        isinstance(expected_sample_count, int)
+        and not isinstance(expected_sample_count, bool)
+        and expected_sample_count > 0
+        and time_seconds.shape == (expected_sample_count,)
+        and voltage_magnitude.shape == time_seconds.shape
+        and active_power.shape == time_seconds.shape
+        and reactive_power.shape == time_seconds.shape
+    )
+    if arrays_are_valid:
+        pass
+    else:
+        raise ValueError("FMI path arrays do not match the expected sample count")
 
     return dict(
         path_id=path_id,
         runtime_family=runtime_family,
         independent_runtime=independent_runtime,
         fmu_sha256=fmu_sha256,
-        sample_count=301,
+        sample_count=expected_sample_count,
         time_sha256=_hash_float_array(time_seconds),
         voltage_magnitude_sha256=_hash_float_array(voltage_magnitude),
         active_power_sha256=_hash_float_array(active_power),
@@ -1786,11 +1848,13 @@ def _build_comparison_record(
 def _build_mode_record(
         staging_dir: Path,
         mode_evidence: RmsFmiModeEvidence,
+        scenario: RmsLoadPowerStepScenario,
 ) -> dict[str, object]:
     """Build one complete mode record from typed retained evidence.
 
     :param staging_dir: Owned package staging root.
     :param mode_evidence: Typed execution and retained numerical evidence.
+    :param scenario: Scenario that defines maintained mode evidence semantics.
     :return: Exact schema-v3 mode mapping.
     """
 
@@ -1847,12 +1911,14 @@ def _build_mode_record(
         raise RuntimeError("RMS report scalars diverge from execution evidence")
 
     fmu_sha256: str = mode_evidence.get_fmu_sha256()
+    expected_sample_count: int = scenario.sample_count
     veragrid_path_record: dict[str, object] = _build_path_record(
         "veragrid", "FMPy", False, fmu_sha256,
         retained_time,
         retained_voltage,
         retained_trace.get_veragrid_active_power(),
         retained_trace.get_veragrid_reactive_power(),
+        expected_sample_count,
     )
     fmpy_path_record: dict[str, object] = _build_path_record(
         "fmpy", "FMPy", False, fmu_sha256,
@@ -1860,6 +1926,7 @@ def _build_mode_record(
         fmpy_voltage,
         fmpy_active_power,
         fmpy_reactive_power,
+        expected_sample_count,
     )
     omsimulator_path_record: dict[str, object] = _build_path_record(
         "omsimulator", "OMSimulator", True, fmu_sha256,
@@ -1867,6 +1934,7 @@ def _build_mode_record(
         omsimulator_trace.get_voltage_magnitude(),
         omsimulator_trace.get_active_power(),
         omsimulator_trace.get_reactive_power(),
+        expected_sample_count,
     )
     comparison_records: list[dict[str, object]] = list((
         _build_comparison_record(
@@ -1913,7 +1981,7 @@ def _build_mode_record(
             process_arguments=list(process_arguments),
             input_hold="u[i-1] on [t[i-1],t[i])",
             sample_side="stepUntil(t[i]); set u[i]; read outputs",
-            fixed_step_seconds=1.0e-3,
+            fixed_step_seconds=scenario.time_step_seconds,
             absolute_tolerance=None,
             relative_tolerance=None,
             variable_initial_step_seconds=None,
@@ -1939,8 +2007,8 @@ def _build_mode_record(
         )
     else:
         raise ValueError(f"Unsupported manifest mode: {mode.value}")
-    event_boundary_index: int = 100
-    first_post_event_index: int = 101
+    event_boundary_index: int = scenario.event_boundary_index
+    first_post_event_index: int = scenario.first_post_event_index
     post_event_voltage_response: float = float(np.max(np.abs(
         retained_voltage[first_post_event_index:]
         - retained_voltage[event_boundary_index]
@@ -1950,6 +2018,16 @@ def _build_mode_record(
         veragrid_active_power[first_post_event_index:]
         - veragrid_active_power[event_boundary_index]
     )))
+    responses_are_conclusive: bool = bool(
+        post_event_voltage_response
+        >= scenario.voltage_response_threshold_pu
+        and post_event_active_power_response
+        >= scenario.active_power_response_threshold_pu
+    )
+    if responses_are_conclusive:
+        pass
+    else:
+        raise RuntimeError("Mode evidence lacks the required event response")
     return dict(
         mode=mode.value,
         fmu_path=execution.get_fmu_path().relative_to(staging_dir).as_posix(),
@@ -1958,7 +2036,7 @@ def _build_mode_record(
         source_fmu_sha256_after=fmu_sha256,
         owned_fmu_sha256_before=fmu_sha256,
         owned_fmu_sha256_after=fmu_sha256,
-        sample_count=301,
+        sample_count=expected_sample_count,
         trace_csv_path=(
             "co_simulation_trace.csv"
             if mode == FmuInterfaceMode.CO_SIMULATION
@@ -1989,14 +2067,22 @@ def _write_staged_manifest(
         staging_dir: Path,
         config: RmsFmiComparisonConfig,
         mode_evidence: tuple[RmsFmiModeEvidence, ...],
+        scenario: RmsLoadPowerStepScenario,
 ) -> Path:
     """Write the complete schema-v3 evidence manifest last.
 
     :param staging_dir: Complete owned staging directory.
     :param config: Caller-declared provenance and runtime configuration.
     :param mode_evidence: Ordered CS and ME typed evidence owners.
+    :param scenario: Scenario shared by execution and manifest producers.
     :return: Written manifest path.
     """
+
+    scenario_identity_is_valid: bool = bool(scenario is config.get_scenario())
+    if scenario_identity_is_valid:
+        pass
+    else:
+        raise RuntimeError("Manifest scenario must be the config-owned instance")
 
     modes_are_valid: bool = bool(
         len(mode_evidence) == 2
@@ -2033,7 +2119,7 @@ def _write_staged_manifest(
     mode_records: list[dict[str, object]] = list()
     evidence: RmsFmiModeEvidence
     for evidence in mode_evidence:
-        mode_records.append(_build_mode_record(staging_dir, evidence))
+        mode_records.append(_build_mode_record(staging_dir, evidence, scenario))
 
     artifact_relative_paths: list[str] = list()
     candidate_path: Path
@@ -2093,9 +2179,9 @@ def _write_staged_manifest(
             ),
         ),
         configuration=dict(
-            sample_count=301,
-            time_step_seconds=1.0e-3,
-            stop_time_seconds=0.3,
+            sample_count=scenario.sample_count,
+            time_step_seconds=scenario.time_step_seconds,
+            stop_time_seconds=scenario.stop_time_seconds,
             time_alignment_tolerance_seconds=1.0e-12,
             input_alignment_tolerance_pu=1.0e-12,
             floating_absolute_term=config.get_absolute_tolerance(),
@@ -2151,25 +2237,7 @@ def _write_staged_manifest(
                 runtime_tree=134217728,
             ),
         ),
-        event_scenario=dict(
-            kind="RMS native load active-power step",
-            parameter="Pl0",
-            event_time_seconds=0.1,
-            event_boundary_index=100,
-            first_post_event_index=101,
-            boundary_semantics="old_value_at_boundary_step_after_boundary",
-            disturbance_load_initial_active_power_mw=5.0,
-            disturbance_load_initial_reactive_power_mvar=1.0,
-            pre_event_value_pu=-0.05,
-            post_event_value_pu=-0.15,
-            voltage_response_threshold_pu=1.0e-5,
-            active_power_response_threshold_pu=1.0e-5,
-            fmu_active_power_equation="p_out = -0.1 - 2.0*(u - x)",
-            fmu_reactive_power_equation="q_out = -0.01 - (u - x)",
-            fmu_state_derivative="der(x) = 0",
-            fmu_state_initialization="x(0) = u(0)",
-            shared_input="u = retained VeraGrid RMS bus voltage magnitude",
-        ),
+        event_scenario=scenario.build_manifest_event_record(),
         modes=mode_records,
         artifacts=artifact_records,
         backend_disclosure=(
@@ -2763,6 +2831,7 @@ def _verify_combined_trace(
         omsimulator_absolute_tolerance,
         dtype=float,
     )
+    expected_time_seconds: np.ndarray = np.arange(301, dtype=float) * 1.0e-3
     veragrid_fmpy_expected: RmsFmiComparisonMetrics = _compare_aligned_trajectories(
         retained_time,
         retained_trace.get_veragrid_active_power(),
@@ -2776,6 +2845,7 @@ def _verify_combined_trace(
         0.0,
         comparison_absolute_term,
         comparison_relative_coefficient,
+        expected_time_seconds,
     )
     veragrid_omsimulator_expected: RmsFmiComparisonMetrics = (
         _compare_aligned_trajectories(
@@ -2791,6 +2861,7 @@ def _verify_combined_trace(
             omsimulator_relative_tolerance,
             comparison_absolute_term,
             comparison_relative_coefficient,
+            expected_time_seconds,
         )
     )
     fmpy_omsimulator_expected: RmsFmiComparisonMetrics = _compare_aligned_trajectories(
@@ -2806,6 +2877,7 @@ def _verify_combined_trace(
         omsimulator_relative_tolerance,
         comparison_absolute_term,
         comparison_relative_coefficient,
+        expected_time_seconds,
     )
     retained_metrics: tuple[RmsFmiComparisonMetrics, ...] = (
         retained_trace.get_veragrid_fmpy_metrics(),
@@ -3201,10 +3273,12 @@ def _verify_mode_record(
             retained_voltage,
             veragrid_active,
             retained_trace.get_veragrid_reactive_power(),
+            301,
         ),
         _build_path_record(
             "fmpy", "FMPy", False, fmu_sha256,
             fmpy_time, fmpy_voltage, fmpy_active, fmpy_reactive,
+            301,
         ),
         _build_path_record(
             "omsimulator", "OMSimulator", True, fmu_sha256,
@@ -3212,6 +3286,7 @@ def _verify_mode_record(
             omsimulator_voltage,
             omsimulator_active,
             omsimulator_reactive,
+            301,
         ),
     ))
     if path_records == expected_paths:
@@ -3410,6 +3485,10 @@ def generate_rms_fmi_comparison(config: RmsFmiComparisonConfig) -> Path:
     :return: Published package directory.
     """
 
+    # Resolve the single config-owned scenario before any filesystem effect;
+    # every producer below receives this same immutable object identity.
+    scenario: RmsLoadPowerStepScenario = config.get_scenario()
+    expected_time_seconds: np.ndarray = scenario.build_time_lattice()
     final_dir: Path = config.get_output_dir()
     if final_dir.exists():
         raise FileExistsError(f"RMS FMI comparison destination exists: {final_dir}")
@@ -3436,6 +3515,7 @@ def generate_rms_fmi_comparison(config: RmsFmiComparisonConfig) -> Path:
         cs_execution: RmsFmiExampleExecution = execute_rms_fmi_example(
             cs_dir,
             FmuInterfaceMode.CO_SIMULATION,
+            scenario,
         )
         cs_fmu_sha256: str = _hash_file(cs_execution.get_fmu_path())
         cs_validation_issues: list[str] = validate_cs_fmu_with_fmpy(
@@ -3455,7 +3535,7 @@ def generate_rms_fmi_comparison(config: RmsFmiComparisonConfig) -> Path:
             cs_fmpy_time,
             cs_fmpy_active_power,
             cs_fmpy_reactive_power,
-        ) = _get_direct_fmpy_trace(cs_execution, cs_dir)
+        ) = _get_direct_fmpy_trace(cs_execution, cs_dir, scenario)
         cs_voltage_magnitude: np.ndarray | None = (
             cs_execution.get_voltage_magnitude()
         )
@@ -3470,6 +3550,7 @@ def generate_rms_fmi_comparison(config: RmsFmiComparisonConfig) -> Path:
             cs_voltage_magnitude,
             cs_fmpy_active_power,
             cs_fmpy_reactive_power,
+            scenario,
         )
         cs_omsimulator_trace: OmsimulatorTrace
         cs_process_arguments: tuple[str, ...]
@@ -3489,6 +3570,7 @@ def generate_rms_fmi_comparison(config: RmsFmiComparisonConfig) -> Path:
         me_execution: RmsFmiExampleExecution = execute_rms_fmi_example(
             me_dir,
             FmuInterfaceMode.MODEL_EXCHANGE,
+            scenario,
         )
         me_fmu_sha256: str = _hash_file(me_execution.get_fmu_path())
         me_validation_issues: list[str] = validate_me_fmu_with_fmpy(
@@ -3508,7 +3590,7 @@ def generate_rms_fmi_comparison(config: RmsFmiComparisonConfig) -> Path:
             me_fmpy_time,
             me_fmpy_active_power,
             me_fmpy_reactive_power,
-        ) = _get_direct_fmpy_trace(me_execution, me_dir)
+        ) = _get_direct_fmpy_trace(me_execution, me_dir, scenario)
         me_voltage_magnitude: np.ndarray | None = (
             me_execution.get_voltage_magnitude()
         )
@@ -3523,6 +3605,7 @@ def generate_rms_fmi_comparison(config: RmsFmiComparisonConfig) -> Path:
             me_voltage_magnitude,
             me_fmpy_active_power,
             me_fmpy_reactive_power,
+            scenario,
         )
         me_omsimulator_trace: OmsimulatorTrace
         me_process_arguments: tuple[str, ...]
@@ -3541,7 +3624,7 @@ def generate_rms_fmi_comparison(config: RmsFmiComparisonConfig) -> Path:
 
         # VeraGrid has a solver allowance at every accepted sample and an
         # additional power-flow residual only at the initial projection.
-        sample_count: int = 301
+        sample_count: int = scenario.sample_count
         cs_veragrid_allowance: np.ndarray = np.full(
             sample_count,
             cs_execution.get_solver_tolerance(),
@@ -3575,6 +3658,7 @@ def generate_rms_fmi_comparison(config: RmsFmiComparisonConfig) -> Path:
                 right_relative_allowance=0.0,
                 comparison_absolute_tolerance=config.get_absolute_tolerance(),
                 comparison_relative_tolerance=config.get_relative_tolerance(),
+                expected_time_seconds=expected_time_seconds,
             )
         )
         cs_veragrid_omsimulator_metrics: RmsFmiComparisonMetrics = (
@@ -3591,6 +3675,7 @@ def generate_rms_fmi_comparison(config: RmsFmiComparisonConfig) -> Path:
                 right_relative_allowance=config.get_omsimulator_relative_tolerance(),
                 comparison_absolute_tolerance=config.get_absolute_tolerance(),
                 comparison_relative_tolerance=config.get_relative_tolerance(),
+                expected_time_seconds=expected_time_seconds,
             )
         )
         cs_fmpy_omsimulator_metrics: RmsFmiComparisonMetrics = (
@@ -3607,6 +3692,7 @@ def generate_rms_fmi_comparison(config: RmsFmiComparisonConfig) -> Path:
                 right_relative_allowance=config.get_omsimulator_relative_tolerance(),
                 comparison_absolute_tolerance=config.get_absolute_tolerance(),
                 comparison_relative_tolerance=config.get_relative_tolerance(),
+                expected_time_seconds=expected_time_seconds,
             )
         )
         me_veragrid_fmpy_metrics: RmsFmiComparisonMetrics = (
@@ -3623,6 +3709,7 @@ def generate_rms_fmi_comparison(config: RmsFmiComparisonConfig) -> Path:
                 right_relative_allowance=0.0,
                 comparison_absolute_tolerance=config.get_absolute_tolerance(),
                 comparison_relative_tolerance=config.get_relative_tolerance(),
+                expected_time_seconds=expected_time_seconds,
             )
         )
         me_veragrid_omsimulator_metrics: RmsFmiComparisonMetrics = (
@@ -3639,6 +3726,7 @@ def generate_rms_fmi_comparison(config: RmsFmiComparisonConfig) -> Path:
                 right_relative_allowance=config.get_omsimulator_relative_tolerance(),
                 comparison_absolute_tolerance=config.get_absolute_tolerance(),
                 comparison_relative_tolerance=config.get_relative_tolerance(),
+                expected_time_seconds=expected_time_seconds,
             )
         )
         me_fmpy_omsimulator_metrics: RmsFmiComparisonMetrics = (
@@ -3655,6 +3743,7 @@ def generate_rms_fmi_comparison(config: RmsFmiComparisonConfig) -> Path:
                 right_relative_allowance=config.get_omsimulator_relative_tolerance(),
                 comparison_absolute_tolerance=config.get_absolute_tolerance(),
                 comparison_relative_tolerance=config.get_relative_tolerance(),
+                expected_time_seconds=expected_time_seconds,
             )
         )
 
@@ -3668,6 +3757,7 @@ def generate_rms_fmi_comparison(config: RmsFmiComparisonConfig) -> Path:
             cs_veragrid_fmpy_metrics,
             cs_veragrid_omsimulator_metrics,
             cs_fmpy_omsimulator_metrics,
+            scenario,
         )
         me_trace_path: Path = _write_trace_csv(
             staging_dir / "model_exchange_trace.csv",
@@ -3679,6 +3769,7 @@ def generate_rms_fmi_comparison(config: RmsFmiComparisonConfig) -> Path:
             me_veragrid_fmpy_metrics,
             me_veragrid_omsimulator_metrics,
             me_fmpy_omsimulator_metrics,
+            scenario,
         )
         # Reopen the durable CSV files before any rendering so the published
         # plots cannot silently diverge from the retained numerical evidence.
@@ -3750,6 +3841,7 @@ def generate_rms_fmi_comparison(config: RmsFmiComparisonConfig) -> Path:
             staging_dir=staging_dir,
             config=config,
             mode_evidence=mode_evidence,
+            scenario=scenario,
         )
         published_dir: Path = _publish_staged_package(staging_dir, final_dir)
         published = True

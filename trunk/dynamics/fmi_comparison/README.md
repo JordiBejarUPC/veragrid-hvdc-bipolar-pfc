@@ -68,3 +68,83 @@ accuracy, FMI-native internal time-event export, or cross-platform coverage.
 Product integration tests live under `src/tests/FMI` and deliberately use
 their own fixtures. They must not import, invoke, or add this `trunk` package
 to their import path.
+## Reference FMU corpus
+
+reference_fmu_catalog.json pins the official Reference FMUs v0.0.41
+BouncingBall and Stair models for FMI 2.0 and FMI 3.0. Each retained FMU
+declares both Co-Simulation and Model Exchange. The catalog is a sealed
+benchmark identity: changing its release, case order, hash, scalar type, event
+oracle, or termination semantics requires a reviewed catalog revision.
+
+The catalog loader validates strict JSON, portable archive paths, exact release
+and asset identities, complete time lattices, event intervals, and cross-field
+oracle invariants. Schema v2 owns a separate oracle for Co-Simulation and Model
+Exchange because communication samples and solver-located roots are different
+observations of the same FMU semantics. Asset validation reads one explicit
+local `.fmu` once and
+returns the exact immutable bytes whose size and SHA-256 match the selected
+case. It does not download, extract, load, compile, or execute native code.
+
+The maintained event evidence now covers three distinct mechanisms:
+
+- the existing RMS prescribed input discontinuity;
+- Stair time events, including Integer in FMI 2.0 and Int32 in FMI 3.0;
+- BouncingBall state events, including the final zero velocity sustained from
+  the last impact through the configured stop.
+
+Stair ends because the FMU requests termination at 9 s. BouncingBall does not
+request termination and instead reaches the configured stop at 3 s. Keeping
+those causes separate prevents a matching final timestamp from concealing
+different lifecycle behavior.
+
+The FMU archives remain external evidence and are never committed by this
+package. A caller obtains the exact upstream release separately and supplies
+the selected file path to the validator. Loading the catalog or validating its
+bytes is corpus-readiness evidence only: it is not an interoperability PASS,
+platform-support claim, or FMI certification claim. Those conclusions require
+the separately controlled execution and comparison runners.
+
+## Reference FMU execution matrix
+
+`run_reference_fmu_execution` executes exactly sixteen current-host Windows
+x86_64 cells: four pinned Reference FMUs, both CS and ME interfaces, and both
+FMPy and official `fmusim`. All inputs are explicit; the runner does not search
+Git, `PATH`, environment variables, tools, or corpus files.
+
+```text
+python -m trunk.dynamics.fmi_comparison.run_reference_fmu_execution \
+  --output-dir <new-package-directory> \
+  --source-branch devel_dynamics_rebuild \
+  --source-revision <40-character-commit> \
+  --source-tree-sha256 <64-character-tree-digest> \
+  --catalog-path <reference_fmu_catalog.json> \
+  --corpus-root <extracted-Reference-FMUs-v0.0.41-root> \
+  --fmpy-version 0.3.31 \
+  --fmpy-distribution-sha256 39eb2d78370dd241001e5724734f79caf2afcaafc968ba8f93afc597a0337e85 \
+  --fmusim-executable <absolute-path-to-fmusim.exe> \
+  --fmusim-size-bytes 6743040 \
+  --fmusim-sha256 e25529b1a52d441a2c9f284193ba135a418b66a5ef26cc82754bd479c98ba874 \
+  --fmusim-version "fmusim 0.10.0"
+```
+
+Co-Simulation is accepted against the official CSV embedded in each FMU with
+absolute and relative tolerances of `1e-9`. Model Exchange is accepted by
+cross-checking FMPy and fmusim at `1e-6`, while each raw event trace must also
+satisfy its independent catalog oracle. BouncingBall ME therefore validates
+eleven analytically bounded state-event roots. Stair ME validates eight visible
+counter transitions and the ninth termination boundary; the semantic counter
+reaches 10, but public output ends with 9 before the terminating event can
+serialize the new value.
+
+The runner retains all raw rows, including duplicate or native event rows. Its
+regular views select existing samples only: they never insert, interpolate, or
+synthesize data. A successful run atomically publishes `manifest.json` and 32
+artifacts under `raw/cell-00` through `raw/cell-15`: one `trace.csv` per cell,
+plus `stdout.log` and `stderr.log` for each fmusim process. Runtime FMU and tool
+copies are removed before publication. This package deliberately produces no
+plots.
+
+The resulting package is evidence only for execution of the exact Reference
+FMUs v0.0.41 with FMPy 0.3.31 and fmusim 0.10.0 on the recorded host. It is not
+evidence of VeraGrid runtime behavior, FMI 1 support, another operating system,
+multiplatform support, or FMI certification.

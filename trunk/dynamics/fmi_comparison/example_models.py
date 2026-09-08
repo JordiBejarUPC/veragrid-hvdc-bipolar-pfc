@@ -5,6 +5,7 @@
 """Model and grid builders for repository FMI comparison examples."""
 from __future__ import annotations
 
+import math
 from pathlib import Path
 import uuid
 
@@ -30,6 +31,10 @@ from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model, set_rms_model
 from VeraGridEngine.enumerations import BranchImpedanceMode, ParamPowerFlowReferenceType, SolverType
+from trunk.dynamics.fmi_comparison.event_scenario import (
+    RmsLoadPowerStepScenario,
+    build_default_rms_load_power_step_scenario,
+)
 
 def _build_rms_cs_source_block() -> Block:
     """Build the self-contained source block used to export an example RMS CS FMU.
@@ -296,17 +301,45 @@ def build_example_power_flow_options() -> PowerFlowOptions:
     )
 
 
-def build_rms_example_grid(event_time_seconds: float) -> tuple[MultiCircuit, Load]:
+def build_rms_example_grid(
+        event_time_seconds: float,
+        scenario: RmsLoadPowerStepScenario | None = None,
+) -> tuple[MultiCircuit, Load]:
     """Build the minimal RMS demo grid used by the RMS FMU import examples.
 
     :param event_time_seconds: Exact solver-aligned disturbance boundary.
+    :param scenario: Maintained comparison scenario, or None for a standalone call.
     :return: Grid and imported device.
     """
 
-    if event_time_seconds > 0.0:
+    event_time_is_valid: bool = bool(
+        math.isfinite(event_time_seconds)
+        and event_time_seconds > 0.0
+    )
+    if event_time_is_valid:
         pass
     else:
-        raise ValueError("RMS example event time must be positive")
+        raise ValueError("RMS example event time must be finite and positive")
+
+    # Standalone callers retain their exact finite positive time while sharing
+    # only the physical defaults. Maintained evidence supplies an explicit
+    # scenario and must agree before a grid object can be created.
+    active_scenario: RmsLoadPowerStepScenario
+    if scenario is None:
+        active_scenario = build_default_rms_load_power_step_scenario()
+    elif isinstance(scenario, RmsLoadPowerStepScenario):
+        active_scenario = scenario.copy_validated()
+        scenario_time_matches: bool = bool(
+            event_time_seconds == active_scenario.event_time_seconds
+        )
+        if scenario_time_matches:
+            pass
+        else:
+            raise ValueError(
+                "Explicit RMS scenario and event time must match exactly"
+            )
+    else:
+        raise TypeError("RMS example scenario has an unsupported type")
 
     grid: MultiCircuit = MultiCircuit(Sbase=100.0, fbase=50.0)
     bus_slack: Bus = Bus(name="Bus0", Vnom=10.0, is_slack=True)
@@ -329,7 +362,11 @@ def build_rms_example_grid(event_time_seconds: float) -> tuple[MultiCircuit, Loa
         freq=50.0,
     )
     load: Load = Load(name="ImportedLoad", P=10.0, Q=1.0)
-    disturbance_load: Load = Load(name="DisturbanceLoad", P=5.0, Q=1.0)
+    disturbance_load: Load = Load(
+        name="DisturbanceLoad",
+        P=active_scenario.disturbance_load_initial_active_power_mw,
+        Q=active_scenario.disturbance_load_initial_reactive_power_mvar,
+    )
 
     grid.add_line(line)
     grid.add_generator(bus=bus_slack, api_obj=generator)
@@ -342,8 +379,8 @@ def build_rms_example_grid(event_time_seconds: float) -> tuple[MultiCircuit, Loa
     # separate device preserves FMU ownership of the imported load outputs.
     disturbance_model: Block = get_load_rms_template(
         vfactory=grid.var_factory,
-        pl0_init=-0.05,
-        ql0_init=-0.01,
+        pl0_init=active_scenario.pre_event_active_power_pu,
+        ql0_init=active_scenario.pre_event_reactive_power_pu,
     ).block
     set_rms_model(
         device=disturbance_load,
@@ -359,16 +396,18 @@ def build_rms_example_grid(event_time_seconds: float) -> tuple[MultiCircuit, Loa
     else:
         raise RuntimeError("Disturbance load must expose its Pl0 event parameter through the typed API mapping")
 
-    event_group: RmsEventsGroup = RmsEventsGroup(name="rms_load_step")
+    event_group: RmsEventsGroup = RmsEventsGroup(
+        name=active_scenario.event_group_name
+    )
     grid.add_rms_events_group(event_group)
     grid.add_rms_event(
         RmsEvent(
             device=disturbance_load,
             parameter=active_power_parameter,
             time=event_time_seconds,
-            value=-0.15,
+            value=active_scenario.post_event_active_power_pu,
             group=event_group,
-            force_step_alignment=True,
+            force_step_alignment=active_scenario.force_step_alignment,
         )
     )
     return grid, load
