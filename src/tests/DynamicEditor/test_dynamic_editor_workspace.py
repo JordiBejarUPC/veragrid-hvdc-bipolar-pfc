@@ -326,7 +326,7 @@ def test_repeated_workspace_teardown_destroys_dynamic_editor_qt_objects() -> Non
 
 
 def test_workspace_hosts_model_and_events_tabs_with_contextual_toolbar() -> None:
-    """Open model and events content together and switch model-only actions.
+    """Keep every workspace action visible for model and events pages.
 
     :return: None.
     """
@@ -358,11 +358,17 @@ def test_workspace_hosts_model_and_events_tabs_with_contextual_toolbar() -> None
     assert workspace.editor_tabs.tabText(workspace.index_of_page(model_page)).endswith("[RMS model]")
     assert workspace.editor_tabs.tabText(workspace.index_of_page(events_page)).endswith("[RMS events]")
 
+    toolbar_actions: tuple[QtGui.QAction, ...] = (
+        workspace.ui.actionview_tree,
+        workspace.ui.actionRMS_Editor,
+        workspace.ui.actionRMS_Events,
+        workspace.ui.actionEMT_Editor,
+        workspace.ui.actionEMT_Events,
+    )
     workspace.editor_tabs.setCurrentWidget(model_page)
-    assert all(action.isVisible() for action in workspace._model_toolbar_actions)
+    assert all(action.isVisible() for action in toolbar_actions)
     workspace.editor_tabs.setCurrentWidget(events_page)
-    assert all(not action.isVisible() for action in workspace._model_toolbar_actions)
-    assert workspace.ui.actionview_tree.isVisible()
+    assert all(action.isVisible() for action in toolbar_actions)
 
     _reset_dynamic_editor_workspaces()
 
