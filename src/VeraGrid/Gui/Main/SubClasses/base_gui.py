@@ -182,6 +182,7 @@ class BaseMainGui(QMainWindow):
 
         self.stuff_running_now: List[SimulationTypes] = list()
         self._locked_window_enabled_states: Dict[QtWidgets.QWidget, bool] = dict()
+        self._locked_menu_action_enabled_states: Dict[QtGui.QAction, bool] = dict()
 
         self.session: SimulationSession = SimulationSession(name='GUI session')
         self.server_driver: QtCore.QThread | None = None
@@ -408,7 +409,12 @@ class BaseMainGui(QMainWindow):
         self.ui.progress_frame.setEnabled(True)
         self.ui.cancelButton.setEnabled(self.lock_ui)
         self.ui.mainTabWidget.setEnabled(not self.lock_ui)
-        self.ui.menuBar.setEnabled(not self.lock_ui)
+        if self.lock_ui:
+            self.set_menu_bar_actions_locked(locked=True)
+            self.ui.menuBar.setEnabled(False)
+        else:
+            self.ui.menuBar.setEnabled(True)
+            self.set_menu_bar_actions_locked(locked=False)
         self.ui.toolBar.setEnabled(not self.lock_ui)
         self.set_open_child_windows_locked(locked=self.lock_ui)
 
@@ -436,6 +442,8 @@ class BaseMainGui(QMainWindow):
         if window is None:
             pass
         elif window is self:
+            pass
+        elif isinstance(window, QtWidgets.QMenu):
             pass
         elif not shiboken6.isValid(window):
             pass
@@ -536,6 +544,41 @@ class BaseMainGui(QMainWindow):
                 else:
                     pass
             self._locked_window_enabled_states.clear()
+
+    def set_menu_bar_actions_locked(self, locked: bool) -> None:
+        """
+        Apply the main GUI lock state to the menu-bar root actions.
+
+        :param locked: Whether menu-bar root actions must reject user interaction.
+        :returns: None.
+        """
+        menu_action: QtGui.QAction
+        menu: QtWidgets.QMenu | None
+        if locked:
+            for menu_action in self.ui.menuBar.actions():
+                menu = menu_action.menu()
+                if menu_action in self._locked_menu_action_enabled_states:
+                    pass
+                else:
+                    self._locked_menu_action_enabled_states[menu_action] = menu_action.isEnabled()
+                if menu is None:
+                    pass
+                else:
+                    menu.setEnabled(False)
+                menu_action.setEnabled(False)
+        else:
+            state_items: List[tuple[QtGui.QAction, bool]] = list(self._locked_menu_action_enabled_states.items())
+            action_state: tuple[QtGui.QAction, bool]
+            for action_state in state_items:
+                menu_action = action_state[0]
+                was_enabled: bool = action_state[1]
+                menu = menu_action.menu()
+                if menu is None:
+                    pass
+                else:
+                    menu.setEnabled(was_enabled)
+                menu_action.setEnabled(was_enabled)
+            self._locked_menu_action_enabled_states.clear()
 
     def close_open_child_windows(self) -> bool:
         """
