@@ -384,19 +384,33 @@ class BaseMainGui(QMainWindow):
 
     def LOCK(self, val: bool = True) -> None:
         """
-        Lock the interface to prevent new simulation launches
-        :param val:
-        :return:
+        Lock the interface while a worker owns the grid state.
+
+        :param val: Whether the main interface must reject user interaction.
+        :returns: None.
         """
         self.lock_ui = val
+
+        # Keep the progress controls available while the main editing and run
+        # launch surfaces are disabled. Workers receive the live MultiCircuit,
+        # so diagram/model edits must not race against a running calculation.
         self.ui.progress_frame.setVisible(self.lock_ui)
+        self.ui.progress_frame.setEnabled(True)
+        self.ui.cancelButton.setEnabled(self.lock_ui)
+        self.ui.mainTabWidget.setEnabled(not self.lock_ui)
+        self.ui.menuBar.setEnabled(not self.lock_ui)
+        self.ui.toolBar.setEnabled(not self.lock_ui)
 
     def UNLOCK(self) -> None:
         """
-        Unlock the interface
+        Unlock the interface when no worker is still active.
+
+        :returns: None.
         """
         if not self.any_thread_running():
             self.LOCK(False)
+        else:
+            pass
 
     @property
     def multiverse(self) -> MultiVerse:

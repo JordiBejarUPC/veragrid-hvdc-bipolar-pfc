@@ -100,7 +100,10 @@ class AdequacyInvestmentProblem(BlackBoxProblemTemplate):
         self.minimum_firm_share: float = minimum_firm_share
         self.use_firm_capacity_penalty: bool = use_firm_capacity_penalty
         self.save_file = save_file
-        self.time_indices = time_indices
+        if time_indices is None:
+            self.time_indices = grid.get_all_time_indices()
+        else:
+            self.time_indices = np.array(time_indices, dtype=int)
 
         if self.save_file:
             self.output_f = open("adequacy_output.csv", "w")
@@ -115,7 +118,9 @@ class AdequacyInvestmentProblem(BlackBoxProblemTemplate):
                                                            time_indices=self.time_indices,
                                                            logger=self.logger)
 
-        self.years_starts_indices = determine_starting_index_of_every_year(index=self.grid.time_profile)
+        self.years_starts_indices = determine_starting_index_of_every_year(
+            index=self.grid.time_profile[self.time_indices]
+        )
         years = len(self.years_starts_indices)
         self.x_max *= years  # 0 is for not investing, any other number is for the year of entrance
 

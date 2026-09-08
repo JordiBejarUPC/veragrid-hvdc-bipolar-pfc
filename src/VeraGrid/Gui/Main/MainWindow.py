@@ -899,7 +899,7 @@ class Ui_mainWindow(object):
         self.toolBox.addItem(self.page, icon49, u"Diagrams")
         self.page_2 = QWidget()
         self.page_2.setObjectName(u"page_2")
-        self.page_2.setGeometry(QRect(0, 0, 382, 360))
+        self.page_2.setGeometry(QRect(0, 0, 262, 362))
         self.verticalLayout_51 = QVBoxLayout(self.page_2)
         self.verticalLayout_51.setObjectName(u"verticalLayout_51")
         self.frame_24 = QFrame(self.page_2)
@@ -1081,7 +1081,7 @@ class Ui_mainWindow(object):
         self.toolBox.addItem(self.page_2, icon39, u"Map settings")
         self.page_3 = QWidget()
         self.page_3.setObjectName(u"page_3")
-        self.page_3.setGeometry(QRect(0, 0, 396, 322))
+        self.page_3.setGeometry(QRect(0, 0, 174, 240))
         self.verticalLayout_47 = QVBoxLayout(self.page_3)
         self.verticalLayout_47.setObjectName(u"verticalLayout_47")
         self.frame_49 = QFrame(self.page_3)
@@ -1148,7 +1148,7 @@ class Ui_mainWindow(object):
         self.toolBox.addItem(self.page_3, icon59, u"Schematic settings")
         self.page_4 = QWidget()
         self.page_4.setObjectName(u"page_4")
-        self.page_4.setGeometry(QRect(0, 0, 396, 322))
+        self.page_4.setGeometry(QRect(0, 0, 124, 244))
         self.verticalLayout_29 = QVBoxLayout(self.page_4)
         self.verticalLayout_29.setObjectName(u"verticalLayout_29")
         self.frame_51 = QFrame(self.page_4)
@@ -1871,7 +1871,7 @@ class Ui_mainWindow(object):
         self.toolBox_3.setMinimumSize(QSize(240, 0))
         self.toolBox_3Page1 = QWidget()
         self.toolBox_3Page1.setObjectName(u"toolBox_3Page1")
-        self.toolBox_3Page1.setGeometry(QRect(0, 0, 274, 526))
+        self.toolBox_3Page1.setGeometry(QRect(0, 0, 226, 85))
         self.verticalLayout_28 = QVBoxLayout(self.toolBox_3Page1)
         self.verticalLayout_28.setObjectName(u"verticalLayout_28")
         self.verticalLayout_28.setContentsMargins(0, 0, 6, 0)
@@ -1894,7 +1894,7 @@ class Ui_mainWindow(object):
         self.toolBox_3.addItem(self.toolBox_3Page1, icon122, u"Results")
         self.toolBox_3Page2 = QWidget()
         self.toolBox_3Page2.setObjectName(u"toolBox_3Page2")
-        self.toolBox_3Page2.setGeometry(QRect(0, 0, 98, 88))
+        self.toolBox_3Page2.setGeometry(QRect(0, 0, 86, 88))
         self.verticalLayout_44 = QVBoxLayout(self.toolBox_3Page2)
         self.verticalLayout_44.setObjectName(u"verticalLayout_44")
         self.verticalLayout_44.setContentsMargins(0, 0, 6, 0)
@@ -2443,15 +2443,74 @@ class Ui_mainWindow(object):
         self.gridLayout = QGridLayout(self.frame_25)
         self.gridLayout.setObjectName(u"gridLayout")
         self.gridLayout.setContentsMargins(0, 0, 0, 0)
-        self.label_58 = QLabel(self.frame_25)
-        self.label_58.setObjectName(u"label_58")
-
-        self.gridLayout.addWidget(self.label_58, 4, 0, 1, 2)
-
         self.label_101 = QLabel(self.frame_25)
         self.label_101.setObjectName(u"label_101")
 
-        self.gridLayout.addWidget(self.label_101, 6, 0, 1, 2)
+        self.gridLayout.addWidget(self.label_101, 7, 0, 1, 2)
+
+        self.label_48 = QLabel(self.frame_25)
+        self.label_48.setObjectName(u"label_48")
+
+        self.gridLayout.addWidget(self.label_48, 13, 2, 1, 1)
+
+        self.label_82 = QLabel(self.frame_25)
+        self.label_82.setObjectName(u"label_82")
+
+        self.gridLayout.addWidget(self.label_82, 0, 0, 1, 2)
+
+        self.snapshot_dateTimeEdit = QDateTimeEdit(self.frame_25)
+        self.snapshot_dateTimeEdit.setObjectName(u"snapshot_dateTimeEdit")
+        self.snapshot_dateTimeEdit.setCalendarPopup(True)
+
+        self.gridLayout.addWidget(self.snapshot_dateTimeEdit, 8, 0, 1, 3)
+
+        self.label_57 = QLabel(self.frame_25)
+        self.label_57.setObjectName(u"label_57")
+
+        self.gridLayout.addWidget(self.label_57, 3, 0, 1, 2)
+
+        self.sbase_doubleSpinBox = QDoubleSpinBox(self.frame_25)
+        self.sbase_doubleSpinBox.setObjectName(u"sbase_doubleSpinBox")
+        self.sbase_doubleSpinBox.setDecimals(0)
+        self.sbase_doubleSpinBox.setMinimum(1.000000000000000)
+        self.sbase_doubleSpinBox.setMaximum(10000000000000000000.000000000000000)
+        self.sbase_doubleSpinBox.setValue(100.000000000000000)
+
+        self.gridLayout.addWidget(self.sbase_doubleSpinBox, 4, 0, 1, 1)
+
+        self.fbase_doubleSpinBox = QDoubleSpinBox(self.frame_25)
+        self.fbase_doubleSpinBox.setObjectName(u"fbase_doubleSpinBox")
+        self.fbase_doubleSpinBox.setDecimals(0)
+        self.fbase_doubleSpinBox.setMinimum(50.000000000000000)
+        self.fbase_doubleSpinBox.setMaximum(60.000000000000000)
+        self.fbase_doubleSpinBox.setSingleStep(10.000000000000000)
+
+        self.gridLayout.addWidget(self.fbase_doubleSpinBox, 4, 1, 1, 2)
+
+        self.label_24 = QLabel(self.frame_25)
+        self.label_24.setObjectName(u"label_24")
+
+        self.gridLayout.addWidget(self.label_24, 9, 0, 1, 2)
+
+        self.dark_mode_checkBox = QCheckBox(self.frame_25)
+        self.dark_mode_checkBox.setObjectName(u"dark_mode_checkBox")
+
+        self.gridLayout.addWidget(self.dark_mode_checkBox, 13, 0, 1, 2)
+
+        self.grid_name_line_edit = QLineEdit(self.frame_25)
+        self.grid_name_line_edit.setObjectName(u"grid_name_line_edit")
+
+        self.gridLayout.addWidget(self.grid_name_line_edit, 2, 0, 1, 3)
+
+        self.language_label = QLabel(self.frame_25)
+        self.language_label.setObjectName(u"language_label")
+
+        self.gridLayout.addWidget(self.language_label, 11, 0, 1, 2)
+
+        self.label_58 = QLabel(self.frame_25)
+        self.label_58.setObjectName(u"label_58")
+
+        self.gridLayout.addWidget(self.label_58, 3, 2, 1, 1)
 
         self.frame_37 = QFrame(self.frame_25)
         self.frame_37.setObjectName(u"frame_37")
@@ -2461,76 +2520,17 @@ class Ui_mainWindow(object):
         self.horizontalLayout_19.setObjectName(u"horizontalLayout_19")
         self.horizontalLayout_19.setContentsMargins(0, 0, 0, 0)
 
-        self.gridLayout.addWidget(self.frame_37, 12, 1, 1, 1)
-
-        self.fbase_doubleSpinBox = QDoubleSpinBox(self.frame_25)
-        self.fbase_doubleSpinBox.setObjectName(u"fbase_doubleSpinBox")
-        self.fbase_doubleSpinBox.setDecimals(0)
-        self.fbase_doubleSpinBox.setMinimum(50.000000000000000)
-        self.fbase_doubleSpinBox.setMaximum(60.000000000000000)
-        self.fbase_doubleSpinBox.setSingleStep(10.000000000000000)
-
-        self.gridLayout.addWidget(self.fbase_doubleSpinBox, 4, 2, 1, 1)
-
-        self.snapshot_dateTimeEdit = QDateTimeEdit(self.frame_25)
-        self.snapshot_dateTimeEdit.setObjectName(u"snapshot_dateTimeEdit")
-        self.snapshot_dateTimeEdit.setCalendarPopup(True)
-
-        self.gridLayout.addWidget(self.snapshot_dateTimeEdit, 6, 2, 1, 1)
-
-        self.label_57 = QLabel(self.frame_25)
-        self.label_57.setObjectName(u"label_57")
-
-        self.gridLayout.addWidget(self.label_57, 2, 0, 1, 2)
-
-        self.grid_name_line_edit = QLineEdit(self.frame_25)
-        self.grid_name_line_edit.setObjectName(u"grid_name_line_edit")
-
-        self.gridLayout.addWidget(self.grid_name_line_edit, 0, 2, 1, 1)
-
-        self.label_48 = QLabel(self.frame_25)
-        self.label_48.setObjectName(u"label_48")
-
-        self.gridLayout.addWidget(self.label_48, 9, 2, 1, 1)
-
-        self.label_82 = QLabel(self.frame_25)
-        self.label_82.setObjectName(u"label_82")
-
-        self.gridLayout.addWidget(self.label_82, 0, 0, 1, 2)
-
-        self.sbase_doubleSpinBox = QDoubleSpinBox(self.frame_25)
-        self.sbase_doubleSpinBox.setObjectName(u"sbase_doubleSpinBox")
-        self.sbase_doubleSpinBox.setDecimals(0)
-        self.sbase_doubleSpinBox.setMinimum(1.000000000000000)
-        self.sbase_doubleSpinBox.setMaximum(10000000000000000000.000000000000000)
-        self.sbase_doubleSpinBox.setValue(100.000000000000000)
-
-        self.gridLayout.addWidget(self.sbase_doubleSpinBox, 2, 2, 1, 1)
-
-        self.engineComboBox = QComboBox(self.frame_25)
-        self.engineComboBox.setObjectName(u"engineComboBox")
-
-        self.gridLayout.addWidget(self.engineComboBox, 7, 2, 1, 1)
-
-        self.label_24 = QLabel(self.frame_25)
-        self.label_24.setObjectName(u"label_24")
-
-        self.gridLayout.addWidget(self.label_24, 7, 0, 1, 2)
-
-        self.language_label = QLabel(self.frame_25)
-        self.language_label.setObjectName(u"language_label")
-
-        self.gridLayout.addWidget(self.language_label, 8, 0, 1, 2)
+        self.gridLayout.addWidget(self.frame_37, 16, 1, 1, 1)
 
         self.language_combo_box = QComboBox(self.frame_25)
         self.language_combo_box.setObjectName(u"language_combo_box")
 
-        self.gridLayout.addWidget(self.language_combo_box, 8, 2, 1, 1)
+        self.gridLayout.addWidget(self.language_combo_box, 12, 0, 1, 3)
 
-        self.dark_mode_checkBox = QCheckBox(self.frame_25)
-        self.dark_mode_checkBox.setObjectName(u"dark_mode_checkBox")
+        self.engineComboBox = QComboBox(self.frame_25)
+        self.engineComboBox.setObjectName(u"engineComboBox")
 
-        self.gridLayout.addWidget(self.dark_mode_checkBox, 9, 0, 1, 2)
+        self.gridLayout.addWidget(self.engineComboBox, 10, 0, 1, 3)
 
 
         self.verticalLayout_12.addWidget(self.frame_25)
@@ -6446,28 +6446,29 @@ class Ui_mainWindow(object):
         self.mainTabWidget.setTabText(self.mainTabWidget.indexOf(self.main_console_tab), QCoreApplication.translate("mainWindow", u"Scripting", None))
         self.label_68.setText("")
         self.label_69.setText(QCoreApplication.translate("mainWindow", u"General settings", None))
-        self.label_58.setText(QCoreApplication.translate("mainWindow", u"Frequency", None))
         self.label_101.setText(QCoreApplication.translate("mainWindow", u"Snapshot time", None))
-#if QT_CONFIG(tooltip)
-        self.fbase_doubleSpinBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p><span style=\" font-weight:700;\">System frequency</span></p><p>This only has an effect in the program when computing lines' per-unit impedance from ohm values.</p></body></html>", None))
-#endif // QT_CONFIG(tooltip)
-        self.fbase_doubleSpinBox.setSuffix(QCoreApplication.translate("mainWindow", u" Hz", None))
-        self.label_57.setText(QCoreApplication.translate("mainWindow", u"Base power", None))
-#if QT_CONFIG(tooltip)
-        self.grid_name_line_edit.setToolTip(QCoreApplication.translate("mainWindow", u"Name of the grid model", None))
-#endif // QT_CONFIG(tooltip)
         self.label_48.setText("")
         self.label_82.setText(QCoreApplication.translate("mainWindow", u"Grid name", None))
+        self.label_57.setText(QCoreApplication.translate("mainWindow", u"Base power", None))
 #if QT_CONFIG(tooltip)
         self.sbase_doubleSpinBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p><span style=\" font-weight:700;\">Base power</span></p><p>Despite all the bibliography, changing this number to anything other than 100 MVA, might change the meaning of what sensible per-unit voltage are.</p><p>So, don't touch it. To have power in kW, use the option at the loads, geneerators, etc.</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
         self.sbase_doubleSpinBox.setSuffix(QCoreApplication.translate("mainWindow", u" MVA", None))
 #if QT_CONFIG(tooltip)
+        self.fbase_doubleSpinBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p><span style=\" font-weight:700;\">System frequency</span></p><p>This only has an effect in the program when computing lines' per-unit impedance from ohm values.</p></body></html>", None))
+#endif // QT_CONFIG(tooltip)
+        self.fbase_doubleSpinBox.setSuffix(QCoreApplication.translate("mainWindow", u" Hz", None))
+        self.label_24.setText(QCoreApplication.translate("mainWindow", u"Engine", None))
+        self.dark_mode_checkBox.setText(QCoreApplication.translate("mainWindow", u"Dark mode", None))
+#if QT_CONFIG(tooltip)
+        self.grid_name_line_edit.setToolTip(QCoreApplication.translate("mainWindow", u"Name of the grid model", None))
+#endif // QT_CONFIG(tooltip)
+        self.grid_name_line_edit.setPlaceholderText(QCoreApplication.translate("mainWindow", u"Name of the grid", None))
+        self.language_label.setText(QCoreApplication.translate("mainWindow", u"Language", None))
+        self.label_58.setText(QCoreApplication.translate("mainWindow", u"Frequency", None))
+#if QT_CONFIG(tooltip)
         self.engineComboBox.setToolTip(QCoreApplication.translate("mainWindow", u"Engine to be used when available", None))
 #endif // QT_CONFIG(tooltip)
-        self.label_24.setText(QCoreApplication.translate("mainWindow", u"Engine", None))
-        self.language_label.setText(QCoreApplication.translate("mainWindow", u"Language", None))
-        self.dark_mode_checkBox.setText(QCoreApplication.translate("mainWindow", u"Dark mode", None))
 #if QT_CONFIG(tooltip)
         self.settingsTabWidget.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>Settings for state estimation.</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
