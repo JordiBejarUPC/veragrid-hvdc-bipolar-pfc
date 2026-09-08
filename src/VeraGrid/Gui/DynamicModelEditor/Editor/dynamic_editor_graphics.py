@@ -830,6 +830,7 @@ class PortItem(QAbstractGraphicsShapeItem):
         "editor",
         "is_input",
         "_path",
+        "_hit_path",
         "subsystem",
         "connections",
         "index",
@@ -862,6 +863,7 @@ class PortItem(QAbstractGraphicsShapeItem):
         self.editor: DynamicBlockEditorGUI = editor
         self.is_input: bool = is_input
         self._path: QPainterPath = QPainterPath()
+        self._hit_path: QPainterPath = QPainterPath()
         self._build_path()
         self.setZValue(3)
         self.setAcceptHoverEvents(True)
@@ -898,20 +900,28 @@ class PortItem(QAbstractGraphicsShapeItem):
 
         :return: None.
         """
-        side = self._size
-        h = math.sqrt(3) / 2 * side
-        r = self._CORNER_RADIUS
+        side: float = float(self._size)
+        h: float = math.sqrt(3.0) / 2.0 * side
+        r: float = self._CORNER_RADIUS
 
         if self.is_input:
-            v0 = QPointF(0, 0)
-            v1 = QPointF(-h, -side / 2)
-            v2 = QPointF(-h, side / 2)
+            v0: QPointF = QPointF(0.0, 0.0)
+            v1: QPointF = QPointF(-h, -side / 2.0)
+            v2: QPointF = QPointF(-h, side / 2.0)
+            circle_center: QPointF = QPointF(-2.0 * h / 3.0, 0.0)
         else:
             v0 = QPointF(h, 0)
-            v1 = QPointF(0, -side / 2)
-            v2 = QPointF(0, side / 2)
+            v1 = QPointF(0.0, -side / 2.0)
+            v2 = QPointF(0.0, side / 2.0)
+            circle_center = QPointF(h / 3.0, 0.0)
 
         self._path = _build_rounded_triangle_path(v0, v1, v2, r)
+
+        # The smallest circle containing the three original triangle vertices
+        # provides a more forgiving hit target without changing what is drawn.
+        circumradius: float = side / math.sqrt(3.0)
+        self._hit_path = QPainterPath()
+        self._hit_path.addEllipse(circle_center, circumradius, circumradius)
 
     # --- QGraphicsItem interface ---
 
@@ -920,14 +930,14 @@ class PortItem(QAbstractGraphicsShapeItem):
 
         :return: Value produced by the graphics operation.
         """
-        return self._path.boundingRect().adjusted(-0.5, -0.5, 0.5, 0.5)
+        return self._hit_path.boundingRect()
 
     def shape(self) -> QPainterPath:
         """Return the precise painter path used for hit testing.
 
         :return: Value produced by the graphics operation.
         """
-        return self._path
+        return self._hit_path
 
     def paint(self,
               painter: QPainter,
