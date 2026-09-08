@@ -18,7 +18,7 @@ from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
     QTransform)
 from PySide6.QtWidgets import (QAbstractItemView, QApplication, QFrame, QGridLayout,
     QHBoxLayout, QHeaderView, QLabel, QPushButton,
-    QSizePolicy, QSpacerItem, QToolBar, QTreeView,
+    QSizePolicy, QSpacerItem, QTableView, QToolBar,
     QVBoxLayout, QWidget)
 from VeraGrid.Gui.Icons.icons_rc import *
 
@@ -59,16 +59,13 @@ class Ui_DynamicEventsPage(object):
         self.eventsTreeLayout = QGridLayout(self.eventsTreeFrame)
         self.eventsTreeLayout.setObjectName(u"eventsTreeLayout")
         self.eventsTreeLayout.setContentsMargins(0, 0, 0, 0)
-        self.eventsTreeView = QTreeView(self.eventsTreeFrame)
-        self.eventsTreeView.setObjectName(u"eventsTreeView")
-        self.eventsTreeView.setAlternatingRowColors(True)
-        self.eventsTreeView.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
-        self.eventsTreeView.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        self.eventsTreeView.setRootIsDecorated(True)
-        self.eventsTreeView.setUniformRowHeights(True)
-        self.eventsTreeView.setItemsExpandable(True)
+        self.eventsTableView = QTableView(self.eventsTreeFrame)
+        self.eventsTableView.setObjectName(u"eventsTableView")
+        self.eventsTableView.setAlternatingRowColors(True)
+        self.eventsTableView.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.eventsTableView.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
 
-        self.eventsTreeLayout.addWidget(self.eventsTreeView, 0, 0, 1, 1)
+        self.eventsTreeLayout.addWidget(self.eventsTableView, 0, 0, 1, 1)
 
         self.emptyModelMessage = QLabel(self.eventsTreeFrame)
         self.emptyModelMessage.setObjectName(u"emptyModelMessage")
@@ -133,4 +130,3 @@ class Ui_DynamicEventsPage(object):
 #endif // QT_CONFIG(tooltip)
         self.saveButton.setText("")
     # retranslateUi
-

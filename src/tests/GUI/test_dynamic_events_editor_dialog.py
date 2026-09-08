@@ -286,10 +286,8 @@ def test_empty_model_page_removes_stale_events_and_disables_add() -> None:
         initial_device=load,
     )
     page: DynamicEventsPage = dialog.pages[0]
-    group_index: QtCore.QModelIndex = page.tree_model.index(0, 0)
-
     assert not page.empty_model_message.isHidden()
-    assert page.tree_model.rowCount(group_index) == 0
+    assert page.tree_model.rowCount() == 0
     assert page.add_event_action.isEnabled()
     assert page.session.has_unapplied_changes
     dialog.close()
@@ -324,33 +322,36 @@ def test_empty_model_message_is_page_specific_and_uses_block_empty_state() -> No
     dialog.close()
 
 
-def test_add_event_expands_group_selects_row_and_starts_editing() -> None:
-    """Adding an event must reveal it even when its group was collapsed.
+def test_add_event_without_selection_opens_event_group_editor() -> None:
+    """Adding an event must reveal its row and open the Event Group combo.
 
     :return: None.
     """
     _unused_application: QtWidgets.QApplication = get_qt_application()
-    circuit, load, _parameter, _group = build_dynamic_target(DynamicSimulationMode.RMS)
+    circuit, load, _parameter, group = build_dynamic_target(DynamicSimulationMode.RMS)
     dialog: DynamicEventEditor = DynamicEventEditor(
         circuit=circuit,
         preferred_mode=DynamicSimulationMode.RMS,
         initial_device=load,
     )
     page: DynamicEventsPage = dialog.pages[0]
-    group_index: QtCore.QModelIndex = page.tree_model.index(0, 0)
-    page.tree_view.collapse(group_index)
-    page.tree_view.setCurrentIndex(group_index)
+    page.tree_view.setCurrentIndex(QtCore.QModelIndex())
     page.add_event()
     current_index: QtCore.QModelIndex = page.tree_view.currentIndex()
     current_backing: object | None = page.tree_model.backing_object(current_index)
+    editor: QtWidgets.QWidget | None = page.tree_view.indexWidget(current_index)
 
-    assert page.tree_view.isExpanded(current_index.parent())
     assert isinstance(current_backing, DynamicEventDraft)
+    assert current_index.column() == page.tree_model.COLUMN_EVENT_GROUP
+    assert current_backing.group is None
+    assert isinstance(editor, QtWidgets.QComboBox)
+    assert editor.count() == 1
+    assert editor.itemText(0) == group.name
     dialog.close()
 
 
-def test_page_filters_events_by_device_but_displays_every_group() -> None:
-    """Each page must show only its device events under all mode groups.
+def test_page_table_filters_events_by_device() -> None:
+    """Each page table must contain only events for its own device and mode.
 
     :return: None.
     """
@@ -370,18 +371,17 @@ def test_page_filters_events_by_device_but_displays_every_group() -> None:
         initial_device=first_load,
     )
     page: DynamicEventsPage = dialog.pages[0]
-    group_index: QtCore.QModelIndex = page.tree_model.index(0, 0)
-
-    assert page.tree_model.rowCount(group_index) == 1
-    event_index: QtCore.QModelIndex = page.tree_model.index(0, 0, group_index)
+    assert page.tree_model.rowCount() == 1
+    event_index: QtCore.QModelIndex = page.tree_model.index(0, 0)
     event_draft: object | None = page.tree_model.backing_object(event_index)
     assert isinstance(event_draft, DynamicEventDraft)
     assert event_draft.device is first_load
+    assert page.tree_model.headerData(0, QtCore.Qt.Orientation.Horizontal) == "Event Group"
     dialog.close()
 
 
-def test_dragging_event_to_another_group_moves_draft_and_save_persists_it() -> None:
-    """Dropping an event on a group must move it transactionally and preserve its identity.
+def test_event_group_cell_moves_draft_and_save_persists_it() -> None:
+    """Editing Event Group must move the draft transactionally and preserve its identity.
 
     :return: None.
     """
@@ -405,38 +405,22 @@ def test_dragging_event_to_another_group_moves_draft_and_save_persists_it() -> N
     )
     page: DynamicEventsPage = dialog.pages[0]
     group_drafts: list[DynamicEventGroupDraft] = dialog.session.get_groups(DynamicSimulationMode.RMS)
-    source_group_draft: DynamicEventGroupDraft = group_drafts[0]
     target_group_draft: DynamicEventGroupDraft = group_drafts[1]
     event_draft: DynamicEventDraft = dialog.session.get_events_for_device(
         load,
         DynamicSimulationMode.RMS,
     )[0]
     event_index: QtCore.QModelIndex = page.tree_model.index_for_backing_object(event_draft)
-    target_parameter_index: QtCore.QModelIndex = page.tree_model.index_for_backing_object(target_group_draft)
-    target_index: QtCore.QModelIndex = target_parameter_index.siblingAtColumn(
-        page.tree_model.COLUMN_VALUE
+    group_index: QtCore.QModelIndex = event_index.siblingAtColumn(page.tree_model.COLUMN_EVENT_GROUP)
+    accepted: bool = page.tree_model.setData(
+        group_index,
+        target_group_draft,
+        QtCore.Qt.ItemDataRole.EditRole,
     )
-    event_mime_data: QtCore.QMimeData = page.tree_model.mimeData(list((event_index,)))
 
-    event_flags: QtCore.Qt.ItemFlag = page.tree_model.flags(event_index)
-    target_flags: QtCore.Qt.ItemFlag = page.tree_model.flags(target_index)
-    accepted: bool = page.tree_model.dropMimeData(
-        data=event_mime_data,
-        action=QtCore.Qt.DropAction.CopyAction,
-        row=-1,
-        column=-1,
-        parent=target_index,
-    )
-    moved_index: QtCore.QModelIndex = page.tree_model.index_for_backing_object(event_draft)
-
-    assert bool(event_flags & QtCore.Qt.ItemFlag.ItemIsDragEnabled)
-    assert bool(target_flags & QtCore.Qt.ItemFlag.ItemIsDropEnabled)
     assert accepted
     assert event_draft.group is target_group_draft
-    assert page.tree_model.rowCount(page.tree_model.index_for_backing_object(source_group_draft)) == 0
-    assert page.tree_model.rowCount(moved_index.parent()) == 1
-    assert page.tree_model.backing_object(page.tree_view.currentIndex()) is event_draft
-    assert page.tree_view.isExpanded(moved_index.parent())
+    assert page.tree_model.data(group_index) == target_group_draft.name
     assert original_event.group is source_group
 
     dialog.accept_changes()
@@ -446,8 +430,8 @@ def test_dragging_event_to_another_group_moves_draft_and_save_persists_it() -> N
     dialog.close()
 
 
-def test_event_drop_rejects_invalid_targets_and_close_discards_valid_move() -> None:
-    """Only another same-mode group may receive a drop and Close must roll it back.
+def test_event_group_assignment_rejects_foreign_mode_and_close_discards_change() -> None:
+    """Only a same-mode group may be assigned and Close must discard the draft change.
 
     :return: None.
     """
@@ -478,38 +462,20 @@ def test_event_drop_rejects_invalid_targets_and_close_discards_valid_move() -> N
     )[0]
     emt_group_drafts: list[DynamicEventGroupDraft] = dialog.session.get_groups(DynamicSimulationMode.EMT)
     rms_group_draft: DynamicEventGroupDraft = dialog.session.get_groups(DynamicSimulationMode.RMS)[0]
-    source_group_draft: DynamicEventGroupDraft = emt_group_drafts[0]
     target_group_draft: DynamicEventGroupDraft = emt_group_drafts[1]
     event_index: QtCore.QModelIndex = page.tree_model.index_for_backing_object(event_draft)
-    source_index: QtCore.QModelIndex = page.tree_model.index_for_backing_object(source_group_draft)
-    target_index: QtCore.QModelIndex = page.tree_model.index_for_backing_object(target_group_draft)
-    event_mime_data: QtCore.QMimeData = page.tree_model.mimeData(list((event_index,)))
-
-    same_group_accepted: bool = page.tree_model.canDropMimeData(
-        data=event_mime_data,
-        action=QtCore.Qt.DropAction.CopyAction,
-        row=-1,
-        column=-1,
-        parent=source_index,
+    group_index: QtCore.QModelIndex = event_index.siblingAtColumn(page.tree_model.COLUMN_EVENT_GROUP)
+    different_mode_accepted: bool = page.tree_model.setData(
+        group_index,
+        rms_group_draft,
+        QtCore.Qt.ItemDataRole.EditRole,
     )
-    event_row_accepted: bool = page.tree_model.canDropMimeData(
-        data=event_mime_data,
-        action=QtCore.Qt.DropAction.CopyAction,
-        row=-1,
-        column=-1,
-        parent=event_index,
-    )
-    different_mode_accepted: bool = dialog.session.move_event_to_group(event_draft, rms_group_draft)
-    valid_move_accepted: bool = page.tree_model.dropMimeData(
-        data=event_mime_data,
-        action=QtCore.Qt.DropAction.CopyAction,
-        row=-1,
-        column=-1,
-        parent=target_index,
+    valid_move_accepted: bool = page.tree_model.setData(
+        group_index,
+        target_group_draft,
+        QtCore.Qt.ItemDataRole.EditRole,
     )
 
-    assert not same_group_accepted
-    assert not event_row_accepted
     assert not different_mode_accepted
     assert valid_move_accepted
     assert event_draft.group is target_group_draft
@@ -521,7 +487,7 @@ def test_event_drop_rejects_invalid_targets_and_close_discards_valid_move() -> N
 
 
 def test_group_active_and_rename_are_transactional() -> None:
-    """Group activity must toggle repeatedly and remain transactional.
+    """Group metadata must remain transactional without group table rows.
 
     :return: None.
     """
@@ -537,34 +503,11 @@ def test_group_active_and_rename_are_transactional() -> None:
         DynamicSimulationMode.RMS
     )[0]
     cancelled_dialog.session.rename_group(cancelled_group, "Cancelled name")
-    cancelled_group_index: QtCore.QModelIndex = cancelled_dialog.pages[0].tree_model.index(0, 0)
-    first_uncheck_accepted: bool = cancelled_dialog.pages[0].tree_model.setData(
-        cancelled_group_index,
-        QtCore.Qt.CheckState.Unchecked,
-        QtCore.Qt.ItemDataRole.CheckStateRole,
-    )
-    first_check_accepted: bool = cancelled_dialog.pages[0].tree_model.setData(
-        cancelled_group_index,
-        2,
-        QtCore.Qt.ItemDataRole.CheckStateRole,
-    )
-    second_uncheck_accepted: bool = cancelled_dialog.pages[0].tree_model.setData(
-        cancelled_group_index,
-        0,
-        QtCore.Qt.ItemDataRole.CheckStateRole,
-    )
-    second_check_accepted: bool = cancelled_dialog.pages[0].tree_model.setData(
-        cancelled_group_index,
-        QtCore.Qt.CheckState.Checked,
-        QtCore.Qt.ItemDataRole.CheckStateRole,
-    )
+    cancelled_dialog.session.set_group_active(cancelled_group, False)
     cancelled_dialog.reject()
 
-    assert first_uncheck_accepted
-    assert first_check_accepted
-    assert second_uncheck_accepted
-    assert second_check_accepted
-    assert cancelled_group.active
+    assert not cancelled_group.active
+    assert cancelled_dialog.pages[0].tree_model.rowCount() == 0
     assert group.name == "RMS group"
     assert group.active
 
@@ -697,6 +640,7 @@ def test_save_button_and_event_actions_use_ui_toolbar_contract() -> None:
     assert page.save_button.text() == ""
     assert page.save_button.toolTip() == "Save events"
     assert not page.save_button.icon().isNull()
+    assert isinstance(page.tree_view, QtWidgets.QTableView)
     toolbar_actions: list[QtGui.QAction] = page.ui.eventsToolBar.actions()
     assert page.switch_sequence_action in toolbar_actions
     assert page.add_event_action in toolbar_actions
@@ -711,8 +655,33 @@ def test_save_button_and_event_actions_use_ui_toolbar_contract() -> None:
     dialog.close()
 
 
-def test_event_controls_show_guidance_toasts_without_a_selection() -> None:
-    """Add and remove must explain their required tree selections.
+def test_add_event_requires_an_existing_event_group() -> None:
+    """Add Event must explain that its mode needs at least one event group.
+
+    :return: None.
+    """
+    _unused_application: QtWidgets.QApplication = get_qt_application()
+    circuit, load, _parameter, group = build_dynamic_target(DynamicSimulationMode.RMS)
+    assert isinstance(group, RmsEventsGroup)
+    circuit.delete_rms_events_group(group)
+    dialog: DynamicEventEditor = DynamicEventEditor(
+        circuit=circuit,
+        preferred_mode=DynamicSimulationMode.RMS,
+        initial_device=load,
+    )
+    page: DynamicEventsPage = dialog.pages[0]
+
+    page.add_event()
+
+    toast_label: QtWidgets.QLabel | None = page.toast_manager.active_toasts[0].findChild(QtWidgets.QLabel)
+    assert page.tree_model.rowCount() == 0
+    assert toast_label is not None
+    assert toast_label.text() == "Create an event group before adding an event."
+    dialog.close()
+
+
+def test_event_controls_add_without_selection_and_explain_missing_remove_selection() -> None:
+    """Add must not require selection while Remove must explain its requirement.
 
     :return: None.
     """
@@ -728,18 +697,14 @@ def test_event_controls_show_guidance_toasts_without_a_selection() -> None:
     page.tree_view.setCurrentIndex(QtCore.QModelIndex())
 
     page.add_event()
-    add_toast_label: QtWidgets.QLabel | None = page.toast_manager.active_toasts[0].findChild(
-        QtWidgets.QLabel
-    )
     page.remove_selection()
-    remove_toast_label: QtWidgets.QLabel | None = page.toast_manager.active_toasts[1].findChild(
+    remove_toast_label: QtWidgets.QLabel | None = page.toast_manager.active_toasts[0].findChild(
         QtWidgets.QLabel
     )
 
-    assert add_toast_label is not None
-    assert add_toast_label.text() == "Select the event group where you want to add the event."
+    assert page.tree_model.rowCount() == 1
     assert remove_toast_label is not None
-    assert remove_toast_label.text() == "Select the event or event group you want to remove."
+    assert remove_toast_label.text() == "Select the event you want to remove."
     dialog.close()
 
 

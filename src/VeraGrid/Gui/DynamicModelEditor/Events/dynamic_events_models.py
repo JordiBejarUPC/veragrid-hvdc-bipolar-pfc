@@ -431,19 +431,20 @@ class DynamicEventsDraftSession(QtCore.QObject):
     def add_event(self,
                   device: EditableDevice,
                   mode: DynamicSimulationMode,
-                  group: DynamicEventGroupDraft,
+                  group: DynamicEventGroupDraft | None,
                   parameters: list[Var],
                   mode_parameter_uids: set[int]) -> DynamicEventDraft | None:
         """Add a new event draft to the selected device and group.
 
         :param device: Static device targeted by the event.
         :param mode: RMS or EMT family of the page.
-        :param group: Selected events group.
+        :param group: Initially selected events group, or ``None`` for a new table row.
         :param parameters: Runtime parameters currently available in the model.
         :param mode_parameter_uids: Parameters representing discrete modes.
         :return: Created event draft, or ``None`` when the model is empty.
         """
-        if len(parameters) == 0 or group.mode != mode or group.is_removed:
+        invalid_group: bool = group is not None and (group.mode != mode or group.is_removed)
+        if len(parameters) == 0 or invalid_group:
             return None
         else:
             parameter: Var = parameters[0]
@@ -464,6 +465,30 @@ class DynamicEventsDraftSession(QtCore.QObject):
         self.mark_changed(rebuild=True)
         return draft
 
+    def set_event_group(self,
+                        event: DynamicEventDraft,
+                        group: DynamicEventGroupDraft) -> bool:
+        """Assign one compatible event group to an event draft.
+
+        :param event: Event whose group is being selected in the table.
+        :param group: Existing group selected by the user.
+        :return: Whether the assignment was accepted.
+        """
+        event_belongs_to_session: bool = event in self.event_drafts
+        group_belongs_to_session: bool = group in self.group_drafts
+        valid_assignment: bool = (
+            event_belongs_to_session
+            and group_belongs_to_session
+            and not event.is_removed
+            and not group.is_removed
+            and event.mode == group.mode
+        )
+        if valid_assignment:
+            event.group = group
+            return True
+        else:
+            return False
+
     def remove_event(self, event: DynamicEventDraft) -> None:
         """Mark one event as removed from the transaction.
 
@@ -472,60 +497,6 @@ class DynamicEventsDraftSession(QtCore.QObject):
         """
         event.is_removed = True
         self.mark_changed(rebuild=True)
-
-    def move_event_to_group(self,
-                            event: DynamicEventDraft,
-                            target_group: DynamicEventGroupDraft) -> bool:
-        """Move one event to another group inside the shared transaction.
-
-        The event object is preserved and only its group reference changes.
-        Consequently, closing the editor still discards the move, while Save
-        updates the group reference of the same persisted RMS or EMT event.
-
-        :param event: Event draft requested by the drag operation.
-        :param target_group: Non-removed group that should receive the event.
-        :return: Whether the event was moved to a different compatible group.
-        """
-        event_belongs_to_session: bool = False
-        candidate_event: DynamicEventDraft
-        for candidate_event in self.event_drafts:
-            if candidate_event is event:
-                event_belongs_to_session = True
-            else:
-                pass
-
-        group_belongs_to_session: bool = False
-        source_group_belongs_to_session: bool = False
-        candidate_group: DynamicEventGroupDraft
-        for candidate_group in self.group_drafts:
-            if candidate_group is target_group:
-                group_belongs_to_session = True
-            else:
-                pass
-            if candidate_group is event.group and not candidate_group.is_removed:
-                source_group_belongs_to_session = True
-            else:
-                pass
-
-        if (
-            not event_belongs_to_session
-            or not group_belongs_to_session
-            or not source_group_belongs_to_session
-        ):
-            return False
-        elif event.is_removed or target_group.is_removed:
-            return False
-        elif event.mode != target_group.mode:
-            return False
-        elif event.group is target_group:
-            return False
-        else:
-            # The tree models are projections of this relationship. Broadcasting
-            # the structural change removes the row from its old branch and
-            # recreates it under the destination branch on every open page.
-            event.group = target_group
-            self.mark_changed(rebuild=True)
-            return True
 
     def remove_group(self, group: DynamicEventGroupDraft) -> None:
         """Mark one group and every contained event as removed.
