@@ -12,6 +12,7 @@ from typing import Dict, List, Union
 
 import numpy as np
 import pandas as pd
+import shiboken6
 
 # GUI imports
 from PySide6 import QtGui, QtWidgets, QtCore
@@ -180,6 +181,7 @@ class BaseMainGui(QMainWindow):
         self.ui.progress_frame.setVisible(self.lock_ui)
 
         self.stuff_running_now: List[SimulationTypes] = list()
+        self._locked_window_enabled_states: Dict[QtWidgets.QWidget, bool] = dict()
 
         self.session: SimulationSession = SimulationSession(name='GUI session')
         self.server_driver: QtCore.QThread | None = None
@@ -280,6 +282,14 @@ class BaseMainGui(QMainWindow):
         self.about_msg_window: Union[AboutDialogueGuiGUI, None] = None
         self.rms_model_Editor_window: Union[DynamicBlockEditorGUI, None] = None
         self.ai_chat_dialogue: AiChatDialogue | None = None
+        self.rosetta_gui: QtWidgets.QWidget | None = None
+        self.cgmes_dialogue: QtWidgets.QWidget | None = None
+        self.psse_export_dialogue: QtWidgets.QWidget | None = None
+        self.dgs_export_dialogue: QtWidgets.QWidget | None = None
+        self.matpower_export_dialogue: QtWidgets.QWidget | None = None
+        self.ucte_export_dialogue: QtWidgets.QWidget | None = None
+        self.object_column_filter_dialog: QtWidgets.QWidget | None = None
+        self.plugin_windows_list: List[QtWidgets.QWidget] = list()
         self.ai_backend_state: AiBackendState = self.build_default_ai_backend_state()
         self.ai_restore_visible: bool = False
         self.translation_controller: ApplicationTranslator | None = None
@@ -400,6 +410,7 @@ class BaseMainGui(QMainWindow):
         self.ui.mainTabWidget.setEnabled(not self.lock_ui)
         self.ui.menuBar.setEnabled(not self.lock_ui)
         self.ui.toolBar.setEnabled(not self.lock_ui)
+        self.set_open_child_windows_locked(locked=self.lock_ui)
 
     def UNLOCK(self) -> None:
         """
@@ -411,6 +422,142 @@ class BaseMainGui(QMainWindow):
             self.LOCK(False)
         else:
             pass
+
+    def append_lock_managed_window(self,
+                                   windows: List[QtWidgets.QWidget],
+                                   window: QtWidgets.QWidget | None) -> None:
+        """
+        Append one live window to the lock propagation list.
+
+        :param windows: Mutable list of child windows managed by the main GUI lock.
+        :param window: Candidate child window.
+        :returns: None.
+        """
+        if window is None:
+            pass
+        elif window is self:
+            pass
+        elif not shiboken6.isValid(window):
+            pass
+        elif window in windows:
+            pass
+        else:
+            windows.append(window)
+
+    def is_qt_child_window(self, window: QtWidgets.QWidget) -> bool:
+        """
+        Check whether a top-level widget belongs to this main window through Qt parenting.
+
+        :param window: Candidate top-level widget.
+        :returns: True if the widget has this main GUI in its parent chain.
+        """
+        is_child_window: bool = False
+        parent_widget: QtWidgets.QWidget | None = window.parentWidget()
+
+        while parent_widget is not None and not is_child_window:
+            if parent_widget is self:
+                is_child_window = True
+            else:
+                parent_widget = parent_widget.parentWidget()
+
+        return is_child_window
+
+    def get_open_lock_managed_windows(self) -> List[QtWidgets.QWidget]:
+        """
+        Collect currently open windows that must follow the main GUI lock state.
+
+        :returns: Live child windows controlled by the main GUI lock.
+        """
+        windows: List[QtWidgets.QWidget] = list()
+        app: QtWidgets.QApplication | None = QtWidgets.QApplication.instance()
+
+        self.append_lock_managed_window(windows=windows, window=self.file_sync_window)
+        self.append_lock_managed_window(windows=windows, window=self.sigma_dialogue)
+        self.append_lock_managed_window(windows=windows, window=self.catalogue_dialogue)
+        self.append_lock_managed_window(windows=windows, window=self.analysis_dialogue)
+        self.append_lock_managed_window(windows=windows, window=self.about_msg_window)
+        self.append_lock_managed_window(windows=windows, window=self.rms_model_Editor_window)
+        self.append_lock_managed_window(windows=windows, window=self.ai_chat_dialogue)
+        self.append_lock_managed_window(windows=windows, window=self.rosetta_gui)
+        self.append_lock_managed_window(windows=windows, window=self.cgmes_dialogue)
+        self.append_lock_managed_window(windows=windows, window=self.psse_export_dialogue)
+        self.append_lock_managed_window(windows=windows, window=self.dgs_export_dialogue)
+        self.append_lock_managed_window(windows=windows, window=self.matpower_export_dialogue)
+        self.append_lock_managed_window(windows=windows, window=self.ucte_export_dialogue)
+        self.append_lock_managed_window(windows=windows, window=self.object_column_filter_dialog)
+
+        plot_dialog: QtWidgets.QDialog
+        for plot_dialog in self._open_plot_dialogs:
+            self.append_lock_managed_window(windows=windows, window=plot_dialog)
+
+        plugin_window: QtWidgets.QWidget
+        for plugin_window in self.plugin_windows_list:
+            self.append_lock_managed_window(windows=windows, window=plugin_window)
+
+        workspace: DynamicEditorWorkspaceWindow
+        for workspace in self.dynamic_editor_workspace_session.get_open_workspaces():
+            self.append_lock_managed_window(windows=windows, window=workspace)
+
+        if app is None:
+            pass
+        else:
+            top_level_widget: QtWidgets.QWidget
+            for top_level_widget in app.topLevelWidgets():
+                if self.is_qt_child_window(window=top_level_widget):
+                    self.append_lock_managed_window(windows=windows, window=top_level_widget)
+                else:
+                    pass
+
+        return windows
+
+    def set_open_child_windows_locked(self, locked: bool) -> None:
+        """
+        Apply the main GUI lock state to every open child window.
+
+        :param locked: Whether child windows must reject user interaction.
+        :returns: None.
+        """
+        window: QtWidgets.QWidget
+        if locked:
+            for window in self.get_open_lock_managed_windows():
+                if window in self._locked_window_enabled_states:
+                    pass
+                else:
+                    self._locked_window_enabled_states[window] = window.isEnabled()
+                window.setEnabled(False)
+        else:
+            state_items: List[tuple[QtWidgets.QWidget, bool]] = list(self._locked_window_enabled_states.items())
+            window_state: tuple[QtWidgets.QWidget, bool]
+            for window_state in state_items:
+                window = window_state[0]
+                was_enabled: bool = window_state[1]
+                if shiboken6.isValid(window):
+                    window.setEnabled(was_enabled)
+                else:
+                    pass
+            self._locked_window_enabled_states.clear()
+
+    def close_open_child_windows(self) -> bool:
+        """
+        Close every open child window managed by the main GUI.
+
+        :returns: True when every managed child window accepted the close.
+        """
+        all_closed: bool = True
+        windows: List[QtWidgets.QWidget] = self.get_open_lock_managed_windows()
+        window: QtWidgets.QWidget
+
+        for window in windows:
+            if shiboken6.isValid(window):
+                closed: bool = window.close()
+                if closed:
+                    window.deleteLater()
+                else:
+                    all_closed = False
+            else:
+                pass
+
+        return all_closed
 
     @property
     def multiverse(self) -> MultiVerse:

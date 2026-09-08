@@ -302,7 +302,8 @@ class VeraGridMainGUI(ScriptingMain):
                 self.save_all_config()
                 ai_stopped: bool = self.shutdown_ai_dialogue_if_available()
                 threads_stopped: bool = self.stop_all_threads()
-                if ai_stopped and threads_stopped:
+                child_windows_closed: bool = self.close_open_child_windows()
+                if ai_stopped and threads_stopped and child_windows_closed:
                     event.accept()
                 else:
                     self.show_warning_toast(self.tr("Some operations are still stopping. Close again after they finish."))
@@ -315,9 +316,10 @@ class VeraGridMainGUI(ScriptingMain):
             # no buses so exit
             # save config regardless
             self.save_all_config()
-            ai_stopped = self.shutdown_ai_dialogue_if_available()
-            threads_stopped = self.stop_all_threads()
-            if ai_stopped and threads_stopped:
+            ai_stopped: bool = self.shutdown_ai_dialogue_if_available()
+            threads_stopped: bool = self.stop_all_threads()
+            child_windows_closed: bool = self.close_open_child_windows()
+            if ai_stopped and threads_stopped and child_windows_closed:
                 event.accept()
             else:
                 self.show_warning_toast(self.tr("Some operations are still stopping. Close again after they finish."))
