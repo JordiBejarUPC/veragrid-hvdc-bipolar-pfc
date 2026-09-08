@@ -949,6 +949,13 @@ li.checked::마커 { content: &quot;\2612&quot;; }
     </message>
 </context>
 <context>
+    <name>CompiledArraysMain</name>
+    <message>
+        <source>Array plot</source>
+        <translation>배열 플롯</translation>
+    </message>
+</context>
+<context>
     <name>ConfigurationMain</name>
     <message>
         <source>Language</source>
@@ -9054,6 +9061,13 @@ ML 설정에서 클러스터 수를 수정하십시오.</translation>
     </message>
 </context>
 <context>
+    <name>SolarPvWizard</name>
+    <message>
+        <source>Solar power profile</source>
+        <translation>태양광 전력 프로파일</translation>
+    </message>
+</context>
+<context>
     <name>SubstationDesigner</name>
     <message>
         <source>Substation maker</source>
@@ -15630,20 +15644,6 @@ You need to load or create a grid!</source>
     <message>
         <source>Question</source>
         <translation>질문</translation>
-    </message>
-</context>
-<context>
-    <name>CompiledArraysMain</name>
-    <message>
-        <source>Array plot</source>
-        <translation>배열 플롯</translation>
-    </message>
-</context>
-<context>
-    <name>SolarPvWizard</name>
-    <message>
-        <source>Solar power profile</source>
-        <translation>태양광 전력 프로파일</translation>
     </message>
 </context>
 </TS>

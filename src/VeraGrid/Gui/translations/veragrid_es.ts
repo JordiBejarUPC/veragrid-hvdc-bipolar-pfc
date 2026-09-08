@@ -949,6 +949,13 @@ li.checked::marker { content: &quot;\2612&quot;; }
     </message>
 </context>
 <context>
+    <name>CompiledArraysMain</name>
+    <message>
+        <source>Array plot</source>
+        <translation>Gráfico de matriz</translation>
+    </message>
+</context>
+<context>
     <name>ConfigurationMain</name>
     <message>
         <source>Language</source>
@@ -9074,6 +9081,13 @@ Modifique el número de clústeres en la configuración de ML.</translation>
     </message>
 </context>
 <context>
+    <name>SolarPvWizard</name>
+    <message>
+        <source>Solar power profile</source>
+        <translation>Perfil de energía solar</translation>
+    </message>
+</context>
+<context>
     <name>SubstationDesigner</name>
     <message>
         <source>Substation maker</source>
@@ -14690,12 +14704,12 @@ You need to load or create a grid!</source>
     <message>
         <location filename="../Main/MainWindow.ui" line="11513"/>
         <source>Blackout cascade</source>
-        <translation>Cascada de apagón</translation>
+        <translation>Apagón en cascada</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11516"/>
         <source>Run a simulation or step by step blackout cascade</source>
-        <translation>Ejecutar una simulación o una cascada de apagón paso a paso</translation>
+        <translation>Ejecutar una simulación de apagón en cascada paso a paso</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11528"/>
@@ -14740,7 +14754,7 @@ You need to load or create a grid!</source>
     <message>
         <location filename="../Main/MainWindow.ui" line="11579"/>
         <source>Auto rate branches</source>
-        <translation>Valorar ramas automáticamente</translation>
+        <translation>Ajustar capacidad de las ramas automáticamente</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11582"/>
@@ -14750,7 +14764,7 @@ You need to load or create a grid!</source>
     <message>
         <location filename="../Main/MainWindow.ui" line="11597"/>
         <source>Storage location suggestion</source>
-        <translation>Sugerencia de ubicación de almacenamiento</translation>
+        <translation>Sugerir ubicación de almacenamiento</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11600"/>
@@ -14760,7 +14774,7 @@ You need to load or create a grid!</source>
     <message>
         <location filename="../Main/MainWindow.ui" line="11612"/>
         <source>Launch data analysis tool</source>
-        <translation>Iniciar herramienta de análisis de datos</translation>
+        <translation>Lanzar herramienta de análisis de datos</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11615"/>
@@ -15291,7 +15305,7 @@ You need to load or create a grid!</source>
     <message>
         <location filename="../Main/MainWindow.ui" line="12476"/>
         <source>Optimal hosting capacity</source>
-        <translation>Optimal capacidad de alojamiento</translation>
+        <translation>Capacidad de alojamiento óptima</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12479"/>
@@ -15650,20 +15664,6 @@ You need to load or create a grid!</source>
     <message>
         <source>Question</source>
         <translation>Pregunta</translation>
-    </message>
-</context>
-<context>
-    <name>CompiledArraysMain</name>
-    <message>
-        <source>Array plot</source>
-        <translation>Gráfico de matriz</translation>
-    </message>
-</context>
-<context>
-    <name>SolarPvWizard</name>
-    <message>
-        <source>Solar power profile</source>
-        <translation>Perfil de energía solar</translation>
     </message>
 </context>
 </TS>

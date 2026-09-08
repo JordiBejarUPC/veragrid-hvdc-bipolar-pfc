@@ -947,6 +947,13 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
     </message>
 </context>
 <context>
+    <name>CompiledArraysMain</name>
+    <message>
+        <source>Array plot</source>
+        <translation>Γραφήματα πλέγματος</translation>
+    </message>
+</context>
+<context>
     <name>ConfigurationMain</name>
     <message>
         <source>Language</source>
@@ -9045,6 +9052,13 @@ Modify the number of clusters in the ML settings.</source>
     </message>
 </context>
 <context>
+    <name>SolarPvWizard</name>
+    <message>
+        <source>Solar power profile</source>
+        <translation>Προφίλ ηλιακής ενέργειας</translation>
+    </message>
+</context>
+<context>
     <name>SubstationDesigner</name>
     <message>
         <source>Substation maker</source>
@@ -15621,20 +15635,6 @@ You need to load or create a grid!</source>
     <message>
         <source>Question</source>
         <translation>Ερώτηση</translation>
-    </message>
-</context>
-<context>
-    <name>CompiledArraysMain</name>
-    <message>
-        <source>Array plot</source>
-        <translation>Γραφήματα πλέγματος</translation>
-    </message>
-</context>
-<context>
-    <name>SolarPvWizard</name>
-    <message>
-        <source>Solar power profile</source>
-        <translation>Προφίλ ηλιακής ενέργειας</translation>
     </message>
 </context>
 </TS>

@@ -995,6 +995,13 @@ li.checked::marker { content: &quot;\2612&quot;; }
     </message>
 </context>
 <context>
+    <name>CompiledArraysMain</name>
+    <message>
+        <source>Array plot</source>
+        <translation>Wykres tablicy</translation>
+    </message>
+</context>
+<context>
     <name>ConfigurationMain</name>
     <message>
         <source>Language</source>
@@ -8367,6 +8374,13 @@ Zmień liczbę klastrów w ustawieniach ML.</translation>
     </message>
 </context>
 <context>
+    <name>SolarPvWizard</name>
+    <message>
+        <source>Solar power profile</source>
+        <translation>Profil mocy słonecznej</translation>
+    </message>
+</context>
+<context>
     <name>SubstationDesigner</name>
     <message>
         <source>Substation maker</source>
@@ -14930,20 +14944,6 @@ Musisz załadować lub utworzyć sieć!</translation>
     <message>
         <source>Warning</source>
         <translation>Ostrzeżenie</translation>
-    </message>
-</context>
-<context>
-    <name>CompiledArraysMain</name>
-    <message>
-        <source>Array plot</source>
-        <translation>Wykres tablicy</translation>
-    </message>
-</context>
-<context>
-    <name>SolarPvWizard</name>
-    <message>
-        <source>Solar power profile</source>
-        <translation>Profil mocy słonecznej</translation>
     </message>
 </context>
 </TS>

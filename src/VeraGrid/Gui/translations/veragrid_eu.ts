@@ -949,6 +949,13 @@ li.checked::marker { content: &quot;\2612&quot;; }
     </message>
 </context>
 <context>
+    <name>CompiledArraysMain</name>
+    <message>
+        <source>Array plot</source>
+        <translation>Arrain plota</translation>
+    </message>
+</context>
+<context>
     <name>ConfigurationMain</name>
     <message>
         <source>Language</source>
@@ -9065,6 +9072,13 @@ Modifikatzi klasterrak ML ingurukoan.</translation>
     </message>
 </context>
 <context>
+    <name>SolarPvWizard</name>
+    <message>
+        <source>Solar power profile</source>
+        <translation>Solar potentziaren profila</translation>
+    </message>
+</context>
+<context>
     <name>SubstationDesigner</name>
     <message>
         <source>Substation maker</source>
@@ -15641,20 +15655,6 @@ Ekarri edo sortu ekarri-erakunde bat!</translation>
     <message>
         <source>Question</source>
         <translation>Galdera</translation>
-    </message>
-</context>
-<context>
-    <name>CompiledArraysMain</name>
-    <message>
-        <source>Array plot</source>
-        <translation>Arrain plota</translation>
-    </message>
-</context>
-<context>
-    <name>SolarPvWizard</name>
-    <message>
-        <source>Solar power profile</source>
-        <translation>Solar potentziaren profila</translation>
     </message>
 </context>
 </TS>

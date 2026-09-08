@@ -947,6 +947,13 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
     </message>
 </context>
 <context>
+    <name>CompiledArraysMain</name>
+    <message>
+        <source>Array plot</source>
+        <translation>Grafico dell&apos;array</translation>
+    </message>
+</context>
+<context>
     <name>ConfigurationMain</name>
     <message>
         <source>Language</source>
@@ -8965,7 +8972,7 @@ Modificare il numero di cluster nelle impostazioni ML.</translation>
     </message>
     <message>
         <source>Fluid nodes are ignored for nonlinear OPF</source>
-        <translation>I nodi fluidi sono ignorati per l'OPF non lineare</translation>
+        <translation>I nodi fluidi sono ignorati per l&apos;OPF non lineare</translation>
     </message>
     <message>
         <source>Fluid nodes are ignored for this simulation</source>
@@ -9013,7 +9020,7 @@ Modificare il numero di cluster nelle impostazioni ML.</translation>
     </message>
     <message>
         <source>Running OPF time series with only one time step in range</source>
-        <translation>Esecuzione della serie temporale OPF con un solo passo temporale nell'intervallo</translation>
+        <translation>Esecuzione della serie temporale OPF con un solo passo temporale nell&apos;intervallo</translation>
     </message>
     <message>
         <source>Something went wrong, there are no OPF results.</source>
@@ -9042,6 +9049,13 @@ Modificare il numero di cluster nelle impostazioni ML.</translation>
     <message>
         <source>Wait until the running simulations finish before clearing results.</source>
         <translation>Attendere che le simulazioni in corso terminino prima di cancellare i risultati.</translation>
+    </message>
+</context>
+<context>
+    <name>SolarPvWizard</name>
+    <message>
+        <source>Solar power profile</source>
+        <translation>Profilo di potenza solare</translation>
     </message>
 </context>
 <context>
@@ -15621,20 +15635,6 @@ Devi caricare o creare una rete!</translation>
     <message>
         <source>Question</source>
         <translation>Domanda</translation>
-    </message>
-</context>
-<context>
-    <name>CompiledArraysMain</name>
-    <message>
-        <source>Array plot</source>
-        <translation>Grafico dell'array</translation>
-    </message>
-</context>
-<context>
-    <name>SolarPvWizard</name>
-    <message>
-        <source>Solar power profile</source>
-        <translation>Profilo di potenza solare</translation>
     </message>
 </context>
 </TS>

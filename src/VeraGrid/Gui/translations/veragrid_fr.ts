@@ -949,6 +949,13 @@ li.checked :: marqueur { content: &quot;\2612&quot;; }
     </message>
 </context>
 <context>
+    <name>CompiledArraysMain</name>
+    <message>
+        <source>Array plot</source>
+        <translation>Graphique de réseau</translation>
+    </message>
+</context>
+<context>
     <name>ConfigurationMain</name>
     <message>
         <source>Language</source>
@@ -4719,11 +4726,11 @@ Annuler et réessayer&#xa0;?</translation>
     </message>
     <message>
         <source>Some operations are still stopping. Try again after they finish.</source>
-        <translation>Certaines opérations sont encore en cours d'arrêt. Veuillez réessayer après leur achèvement.</translation>
+        <translation>Certaines opérations sont encore en cours d&apos;arrêt. Veuillez réessayer après leur achèvement.</translation>
     </message>
     <message>
         <source>The current save is still finishing. Please retry when it is done.</source>
-        <translation>La sauvegarde actuelle est toujours en cours. Veuillez réessayer lorsqu'elle sera terminée.</translation>
+        <translation>La sauvegarde actuelle est toujours en cours. Veuillez réessayer lorsqu&apos;elle sera terminée.</translation>
     </message>
 </context>
 <context>
@@ -8986,7 +8993,7 @@ Modifiez le nombre de clusters dans les paramètres ML.</translation>
     </message>
     <message>
         <source>Fluid nodes are ignored for nonlinear OPF</source>
-        <translation>Les nœuds fluides sont ignorés pour l'OPF non linéaire</translation>
+        <translation>Les nœuds fluides sont ignorés pour l&apos;OPF non linéaire</translation>
     </message>
     <message>
         <source>Fluid nodes are ignored for this simulation</source>
@@ -8994,11 +9001,11 @@ Modifiez le nombre de clusters dans les paramètres ML.</translation>
     </message>
     <message>
         <source>Investments evaluation failed. Check the logs for details.</source>
-        <translation>L'évaluation des investissements a échoué. Veuillez consulter les journaux pour plus de détails.</translation>
+        <translation>L&apos;évaluation des investissements a échoué. Veuillez consulter les journaux pour plus de détails.</translation>
     </message>
     <message>
         <source>Investments evaluation finished without results.</source>
-        <translation>L'évaluation des investissements est terminée sans résultats.</translation>
+        <translation>L&apos;évaluation des investissements est terminée sans résultats.</translation>
     </message>
     <message>
         <source>Nodal capacity failed to start</source>
@@ -9018,11 +9025,11 @@ Modifiez le nombre de clusters dans les paramètres ML.</translation>
     </message>
     <message>
         <source>OPF time series failed to start</source>
-        <translation>Échec du démarrage de la série temporelle de l'OPF</translation>
+        <translation>Échec du démarrage de la série temporelle de l&apos;OPF</translation>
     </message>
     <message>
         <source>OPF time series logs</source>
-        <translation>Journaux de la série temporelle de l'OPF</translation>
+        <translation>Journaux de la série temporelle de l&apos;OPF</translation>
     </message>
     <message>
         <source>Optimal power flow failed to start</source>
@@ -9038,19 +9045,19 @@ Modifiez le nombre de clusters dans les paramètres ML.</translation>
     </message>
     <message>
         <source>Something went wrong, there are no OPF results.</source>
-        <translation>Quelque chose s'est mal passé, il n'y a pas de résultats OPF.</translation>
+        <translation>Quelque chose s&apos;est mal passé, il n&apos;y a pas de résultats OPF.</translation>
     </message>
     <message>
         <source>Something went wrong, there are no OPF time series results.</source>
-        <translation>Quelque chose s'est mal passé, il n'y a pas de résultats de série temporelle OPF.</translation>
+        <translation>Quelque chose s&apos;est mal passé, il n&apos;y a pas de résultats de série temporelle OPF.</translation>
     </message>
     <message>
         <source>Something went wrong, there are no nodal capacity results.</source>
-        <translation>Quelque chose s'est mal passé, il n'y a pas de résultats de capacité nodale.</translation>
+        <translation>Quelque chose s&apos;est mal passé, il n&apos;y a pas de résultats de capacité nodale.</translation>
     </message>
     <message>
         <source>Something went wrong, there are no nodal capacity time series results.</source>
-        <translation>Quelque chose s'est mal passé, il n'y a pas de résultats de série temporelle de capacité nodale.</translation>
+        <translation>Quelque chose s&apos;est mal passé, il n&apos;y a pas de résultats de série temporelle de capacité nodale.</translation>
     </message>
     <message>
         <source>Voltage stability failed to start</source>
@@ -9062,7 +9069,14 @@ Modifiez le nombre de clusters dans les paramètres ML.</translation>
     </message>
     <message>
         <source>Wait until the running simulations finish before clearing results.</source>
-        <translation>Veuillez attendre que les simulations en cours soient terminées avant d'effacer les résultats.</translation>
+        <translation>Veuillez attendre que les simulations en cours soient terminées avant d&apos;effacer les résultats.</translation>
+    </message>
+</context>
+<context>
+    <name>SolarPvWizard</name>
+    <message>
+        <source>Solar power profile</source>
+        <translation>Profil de puissance solaire</translation>
     </message>
 </context>
 <context>
@@ -9832,7 +9846,7 @@ Vous devez charger ou créer un réseau !</translation>
     </message>
     <message>
         <source>Some operations are still stopping. Close again after they finish.</source>
-        <translation>Certaines opérations sont encore en cours d'arrêt. Veuillez fermer après leur achèvement.</translation>
+        <translation>Certaines opérations sont encore en cours d&apos;arrêt. Veuillez fermer après leur achèvement.</translation>
     </message>
 </context>
 <context>
@@ -15642,20 +15656,6 @@ Vous devez charger ou créer un réseau !</translation>
     <message>
         <source>Question</source>
         <translation>Question</translation>
-    </message>
-</context>
-<context>
-    <name>CompiledArraysMain</name>
-    <message>
-        <source>Array plot</source>
-        <translation>Graphique de réseau</translation>
-    </message>
-</context>
-<context>
-    <name>SolarPvWizard</name>
-    <message>
-        <source>Solar power profile</source>
-        <translation>Profil de puissance solaire</translation>
     </message>
 </context>
 </TS>
