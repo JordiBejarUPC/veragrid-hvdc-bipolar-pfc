@@ -4343,8 +4343,9 @@ class GraphicsView(QGraphicsView):
 
         :return: None.
         """
+        scene: QGraphicsScene | None = self.scene()
         content_rect: QtCore.QRectF = self.get_block_content_rect()
-        if not content_rect.isNull():
+        if scene is not None and not content_rect.isNull():
             margin_x: float = max(
                 content_rect.width() * self.SCENE_MARGIN_FACTOR,
                 self.MINIMUM_SCENE_MARGIN,
@@ -4359,12 +4360,12 @@ class GraphicsView(QGraphicsView):
                 margin_x,
                 margin_y,
             )
-            current_rect: QtCore.QRectF = self.sceneRect()
+            current_rect: QtCore.QRectF = scene.sceneRect()
             if current_rect.isNull():
                 expanded_rect: QtCore.QRectF = required_rect
             else:
                 expanded_rect = current_rect.united(required_rect)
-            self.setSceneRect(expanded_rect)
+            scene.setSceneRect(expanded_rect)
         else:
             pass
 
