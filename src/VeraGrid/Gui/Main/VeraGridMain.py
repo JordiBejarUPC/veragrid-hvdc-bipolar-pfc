@@ -302,7 +302,8 @@ class VeraGridMainGUI(ScriptingMain):
                 self.save_all_config()
                 ai_stopped: bool = self.shutdown_ai_dialogue_if_available()
                 threads_stopped: bool = self.stop_all_threads()
-                if ai_stopped and threads_stopped:
+                child_windows_closed: bool = self.close_open_child_windows()
+                if ai_stopped and threads_stopped and child_windows_closed:
                     event.accept()
                 else:
                     self.show_warning_toast(self.tr("Some operations are still stopping. Close again after they finish."))
@@ -315,9 +316,10 @@ class VeraGridMainGUI(ScriptingMain):
             # no buses so exit
             # save config regardless
             self.save_all_config()
-            ai_stopped = self.shutdown_ai_dialogue_if_available()
-            threads_stopped = self.stop_all_threads()
-            if ai_stopped and threads_stopped:
+            ai_stopped: bool = self.shutdown_ai_dialogue_if_available()
+            threads_stopped: bool = self.stop_all_threads()
+            child_windows_closed: bool = self.close_open_child_windows()
+            if ai_stopped and threads_stopped and child_windows_closed:
                 event.accept()
             else:
                 self.show_warning_toast(self.tr("Some operations are still stopping. Close again after they finish."))
@@ -416,6 +418,17 @@ def check_all_svgs():
         print("SVG compatibility summary: all ok")
 
 
+def shutdown_main_window(window: "VeraGridMainGUI") -> None:
+    """
+    Stop owned GUI workers before Qt/Python starts destroying widgets.
+
+    :param window: Main GUI window.
+    :return: None.
+    """
+    window.shutdown_ai_dialogue_if_available()
+    window.stop_all_threads()
+
+
 def runVeraGrid() -> None:
     """
     Main function to run the GUI
@@ -451,6 +464,8 @@ def runVeraGrid() -> None:
 
     window_ = VeraGridMainGUI(translation_controller=translation_controller)
     window_.setWindowIcon(icon)  # also apply directly
+    app.aboutToQuit.connect(window_.shutdown_ai_dialogue_if_available)
+    app.aboutToQuit.connect(window_.stop_all_threads)
 
     # process the argument if provided
     if len(sys.argv) > 1:
@@ -462,7 +477,9 @@ def runVeraGrid() -> None:
     h_ = 780
     window_.resize(int(1.7 * h_), h_)  # almost the golden ratio :)
     window_.show()
-    sys.exit(app.exec())
+    result: int = app.exec()
+    shutdown_main_window(window=window_)
+    sys.exit(result)
 
 
 if __name__ == "__main__":

@@ -362,8 +362,8 @@
                            <rect>
                             <x>0</x>
                             <y>0</y>
-                            <width>382</width>
-                            <height>360</height>
+                            <width>262</width>
+                            <height>362</height>
                            </rect>
                           </property>
                           <attribute name="icon">
@@ -757,8 +757,8 @@
                            <rect>
                             <x>0</x>
                             <y>0</y>
-                            <width>396</width>
-                            <height>322</height>
+                            <width>174</width>
+                            <height>240</height>
                            </rect>
                           </property>
                           <attribute name="icon">
@@ -908,8 +908,8 @@
                            <rect>
                             <x>0</x>
                             <y>0</y>
-                            <width>396</width>
-                            <height>322</height>
+                            <width>124</width>
+                            <height>244</height>
                            </rect>
                           </property>
                           <attribute name="icon">
@@ -2440,8 +2440,8 @@
                 <rect>
                  <x>0</x>
                  <y>0</y>
-                 <width>274</width>
-                 <height>526</height>
+                 <width>226</width>
+                 <height>85</height>
                 </rect>
                </property>
                <attribute name="icon">
@@ -2496,7 +2496,7 @@
                 <rect>
                  <x>0</x>
                  <y>0</y>
-                 <width>98</width>
+                 <width>86</width>
                  <height>88</height>
                 </rect>
                </property>
@@ -3754,21 +3754,124 @@
               <property name="bottomMargin">
                <number>0</number>
               </property>
-              <item row="4" column="0" colspan="2">
-               <widget class="QLabel" name="label_58">
-                <property name="text">
-                 <string>Frequency</string>
-                </property>
-               </widget>
-              </item>
-              <item row="6" column="0" colspan="2">
+              <item row="7" column="0" colspan="2">
                <widget class="QLabel" name="label_101">
                 <property name="text">
                  <string>Snapshot time</string>
                 </property>
                </widget>
               </item>
-              <item row="12" column="1">
+              <item row="13" column="2">
+               <widget class="QLabel" name="label_48">
+                <property name="text">
+                 <string/>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="0" colspan="2">
+               <widget class="QLabel" name="label_82">
+                <property name="text">
+                 <string>Grid name</string>
+                </property>
+               </widget>
+              </item>
+              <item row="8" column="0" colspan="3">
+               <widget class="QDateTimeEdit" name="snapshot_dateTimeEdit">
+                <property name="calendarPopup">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="0" colspan="2">
+               <widget class="QLabel" name="label_57">
+                <property name="text">
+                 <string>Base power</string>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="0">
+               <widget class="QDoubleSpinBox" name="sbase_doubleSpinBox">
+                <property name="toolTip">
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Base power&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Despite all the bibliography, changing this number to anything other than 100 MVA, might change the meaning of what sensible per-unit voltage are.&lt;/p&gt;&lt;p&gt;So, don't touch it. To have power in kW, use the option at the loads, geneerators, etc.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                </property>
+                <property name="suffix">
+                 <string> MVA</string>
+                </property>
+                <property name="decimals">
+                 <number>0</number>
+                </property>
+                <property name="minimum">
+                 <double>1.000000000000000</double>
+                </property>
+                <property name="maximum">
+                 <double>10000000000000000000.000000000000000</double>
+                </property>
+                <property name="value">
+                 <double>100.000000000000000</double>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="1" colspan="2">
+               <widget class="QDoubleSpinBox" name="fbase_doubleSpinBox">
+                <property name="toolTip">
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;System frequency&lt;/span&gt;&lt;/p&gt;&lt;p&gt;This only has an effect in the program when computing lines' per-unit impedance from ohm values.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                </property>
+                <property name="suffix">
+                 <string> Hz</string>
+                </property>
+                <property name="decimals">
+                 <number>0</number>
+                </property>
+                <property name="minimum">
+                 <double>50.000000000000000</double>
+                </property>
+                <property name="maximum">
+                 <double>60.000000000000000</double>
+                </property>
+                <property name="singleStep">
+                 <double>10.000000000000000</double>
+                </property>
+               </widget>
+              </item>
+              <item row="9" column="0" colspan="2">
+               <widget class="QLabel" name="label_24">
+                <property name="text">
+                 <string>Engine</string>
+                </property>
+               </widget>
+              </item>
+              <item row="13" column="0" colspan="2">
+               <widget class="QCheckBox" name="dark_mode_checkBox">
+                <property name="text">
+                 <string>Dark mode</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="0" colspan="3">
+               <widget class="QLineEdit" name="grid_name_line_edit">
+                <property name="toolTip">
+                 <string>Name of the grid model</string>
+                </property>
+                <property name="placeholderText">
+                 <string>Name of the grid</string>
+                </property>
+               </widget>
+              </item>
+              <item row="11" column="0" colspan="2">
+               <widget class="QLabel" name="language_label">
+                <property name="text">
+                 <string>Language</string>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="2">
+               <widget class="QLabel" name="label_58">
+                <property name="text">
+                 <string>Frequency</string>
+                </property>
+               </widget>
+              </item>
+              <item row="16" column="1">
                <widget class="QFrame" name="frame_37">
                 <property name="frameShape">
                  <enum>QFrame::Shape::NoFrame</enum>
@@ -3792,113 +3895,13 @@
                 </layout>
                </widget>
               </item>
-              <item row="4" column="2">
-               <widget class="QDoubleSpinBox" name="fbase_doubleSpinBox">
-                <property name="toolTip">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;System frequency&lt;/span&gt;&lt;/p&gt;&lt;p&gt;This only has an effect in the program when computing lines' per-unit impedance from ohm values.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                </property>
-                <property name="suffix">
-                 <string> Hz</string>
-                </property>
-                <property name="decimals">
-                 <number>0</number>
-                </property>
-                <property name="minimum">
-                 <double>50.000000000000000</double>
-                </property>
-                <property name="maximum">
-                 <double>60.000000000000000</double>
-                </property>
-                <property name="singleStep">
-                 <double>10.000000000000000</double>
-                </property>
-               </widget>
+              <item row="12" column="0" colspan="3">
+               <widget class="QComboBox" name="language_combo_box"/>
               </item>
-              <item row="6" column="2">
-               <widget class="QDateTimeEdit" name="snapshot_dateTimeEdit">
-                <property name="calendarPopup">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="2" column="0" colspan="2">
-               <widget class="QLabel" name="label_57">
-                <property name="text">
-                 <string>Base power</string>
-                </property>
-               </widget>
-              </item>
-              <item row="0" column="2">
-               <widget class="QLineEdit" name="grid_name_line_edit">
-                <property name="toolTip">
-                 <string>Name of the grid model</string>
-                </property>
-               </widget>
-              </item>
-              <item row="9" column="2">
-               <widget class="QLabel" name="label_48">
-                <property name="text">
-                 <string/>
-                </property>
-               </widget>
-              </item>
-              <item row="0" column="0" colspan="2">
-               <widget class="QLabel" name="label_82">
-                <property name="text">
-                 <string>Grid name</string>
-                </property>
-               </widget>
-              </item>
-              <item row="2" column="2">
-               <widget class="QDoubleSpinBox" name="sbase_doubleSpinBox">
-                <property name="toolTip">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Base power&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Despite all the bibliography, changing this number to anything other than 100 MVA, might change the meaning of what sensible per-unit voltage are.&lt;/p&gt;&lt;p&gt;So, don't touch it. To have power in kW, use the option at the loads, geneerators, etc.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                </property>
-                <property name="suffix">
-                 <string> MVA</string>
-                </property>
-                <property name="decimals">
-                 <number>0</number>
-                </property>
-                <property name="minimum">
-                 <double>1.000000000000000</double>
-                </property>
-                <property name="maximum">
-                 <double>10000000000000000000.000000000000000</double>
-                </property>
-                <property name="value">
-                 <double>100.000000000000000</double>
-                </property>
-               </widget>
-              </item>
-              <item row="7" column="2">
+              <item row="10" column="0" colspan="3">
                <widget class="QComboBox" name="engineComboBox">
                 <property name="toolTip">
                  <string>Engine to be used when available</string>
-                </property>
-               </widget>
-              </item>
-              <item row="7" column="0" colspan="2">
-               <widget class="QLabel" name="label_24">
-                <property name="text">
-                 <string>Engine</string>
-                </property>
-               </widget>
-              </item>
-              <item row="8" column="0" colspan="2">
-               <widget class="QLabel" name="language_label">
-                <property name="text">
-                 <string>Language</string>
-                </property>
-               </widget>
-              </item>
-              <item row="8" column="2">
-               <widget class="QComboBox" name="language_combo_box"/>
-              </item>
-              <item row="9" column="0" colspan="2">
-               <widget class="QCheckBox" name="dark_mode_checkBox">
-                <property name="text">
-                 <string>Dark mode</string>
                 </property>
                </widget>
               </item>

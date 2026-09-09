@@ -75,7 +75,7 @@ class PowerFlowInvestmentProblem(BlackBoxProblemTemplate):
         """
         super().__init__(grid=grid,
                          x_dim=len(grid.investments_groups),
-                         plot_x_idx=4, plot_y_idx=5)
+                         plot_x_idx=4, plot_y_idx=1)
 
         # options object
         self.pf_options = pf_options
@@ -101,7 +101,7 @@ class PowerFlowInvestmentProblem(BlackBoxProblemTemplate):
         Number of objectives (size of f)
         :return:
         """
-        return 6
+        return 5
 
     def n_vars(self) -> int:
         """
@@ -117,7 +117,7 @@ class PowerFlowInvestmentProblem(BlackBoxProblemTemplate):
         """
         return np.array(["losses score", "overload score",
                          "voltage module_score", "voltage angle score",
-                         "financial score", "Technical score"])
+                         "financial score"])
 
     def get_vars_names(self) -> StrVec:
         """
@@ -156,4 +156,8 @@ class PowerFlowInvestmentProblem(BlackBoxProblemTemplate):
                                          status=False,
                                          all_elements_dict=self.get_all_elements_dict)
 
-        return scores.arr()
+        return np.array([scores.losses_score,
+                         scores.overload_score,
+                         scores.voltage_module_score,
+                         scores.voltage_angle_score,
+                         scores.financial_score])
