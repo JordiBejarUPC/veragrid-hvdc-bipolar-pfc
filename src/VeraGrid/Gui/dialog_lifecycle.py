@@ -34,8 +34,13 @@ def delete_dialog_safely(dialog: object) -> None:
     if isinstance(dialog, QtWidgets.QWidget):
         if shiboken6.isValid(dialog):
             delete_child_widgets_safely(widget=dialog)
-            dialog.deleteLater()
-            QtCore.QCoreApplication.sendPostedEvents(dialog, QtCore.QEvent.Type.DeferredDelete)
+            try:
+                dialog.deleteLater()
+                QtCore.QCoreApplication.sendPostedEvents(dialog, QtCore.QEvent.Type.DeferredDelete)
+            except Exception:
+                pass
+            else:
+                pass
         else:
             pass
     else:
@@ -55,7 +60,12 @@ def delete_child_widgets_safely(widget: QtWidgets.QWidget) -> None:
     for child in children:
         if shiboken6.isValid(child):
             child.close()
-            child.deleteLater()
+            try:
+                child.deleteLater()
+            except Exception:
+                pass
+            else:
+                pass
         else:
             pass
 

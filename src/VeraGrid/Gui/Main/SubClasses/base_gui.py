@@ -584,10 +584,11 @@ class BaseMainGui(QMainWindow):
                 menu_action.setEnabled(was_enabled)
             self._locked_menu_action_enabled_states.clear()
 
-    def close_open_child_windows(self) -> bool:
+    def close_open_child_windows(self, delete_windows: bool = False) -> bool:
         """
         Close every open child window managed by the main GUI.
 
+        :param delete_windows: Delete windows that were successfully closed.
         :returns: True when every managed child window accepted the close.
         """
         all_closed: bool = True
@@ -595,10 +596,11 @@ class BaseMainGui(QMainWindow):
         window: QtWidgets.QWidget
 
         for window in windows:
-            if shiboken6.isValid(window):
+            if is_dialog_available(dialog=window):
                 closed: bool = window.close()
                 if closed:
-                    delete_dialog_safely(dialog=window)
+                    if delete_windows:
+                        delete_dialog_safely(dialog=window)
                 else:
                     all_closed = False
             else:
