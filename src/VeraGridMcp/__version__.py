@@ -7,4 +7,4 @@
 VeraGrid MCP package version.
 """
 
-__VeraGridMcp_VERSION__ = "6.5.23"
+__VeraGridMcp_VERSION__ = "6.5.24"
