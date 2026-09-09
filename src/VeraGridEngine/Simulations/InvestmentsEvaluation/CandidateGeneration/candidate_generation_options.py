@@ -17,7 +17,7 @@ DEFAULT_BATTERY_DURATION_HOURS: float = 4.0
 DEFAULT_SHUNT_BMAX_MARGIN: float = 1.5
 
 # Safety cap (MW) on Static Generator / Battery sizing, playing the same bounding role a reference
-# branch's own rating plays for a NEW_LINE candidate.
+# branch's own rating plays for a CandidateKind.NewLine candidate.
 DEFAULT_MAX_INJECTION_MW: float = 50.0
 
 # CAPEX unit costs (EUR). Sources noted where an internet-sourced figure was used; otherwise this

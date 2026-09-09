@@ -7,18 +7,10 @@ from typing import List, Optional, TYPE_CHECKING
 
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.basic_structures import Logger
-from VeraGridEngine.enumerations import ShuntControlMode, GeneratorControlMode
+from VeraGridEngine.enumerations import ShuntControlMode, GeneratorControlMode, CandidateKind
 
 if TYPE_CHECKING:
     from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-
-
-# Candidate kinds
-NEW_LINE = "New line"
-UPGRADE = "Upgrade"
-SHUNT_REACTOR = "Shunt reactor"
-STATIC_GENERATOR = "Static generator"
-BATTERY = "Battery"
 
 
 class ViolationRecord:
@@ -132,12 +124,11 @@ class ReinforcementCandidate:
     violations it relieves, and materialised as an ``Investment``.
     """
 
-    def __init__(self, kind: str):
+    def __init__(self, kind: CandidateKind):
         """
-        :param kind: ``NEW_LINE``, ``UPGRADE``, ``SHUNT_REACTOR``, ``STATIC_GENERATOR`` or
-                    ``BATTERY``.
+        :param kind: Which reinforcement this candidate represents (see ``CandidateKind``).
         """
-        self.kind: str = kind
+        self.kind: CandidateKind = kind
 
         # New-line fields
         self.bus_from: Optional[dev.Bus] = None
@@ -200,38 +191,38 @@ class ReinforcementCandidate:
 
     def group_name(self) -> str:
         """Name of the investments group this candidate goes into: the asset it represents."""
-        if self.kind == NEW_LINE:
+        if self.kind == CandidateKind.NewLine:
             return f"New line {self.bus_from.name} - {self.bus_to.name}"
-        elif self.kind == UPGRADE:
+        elif self.kind == CandidateKind.Upgrade:
             return f"Upgrade {self.target_branch.name} rate {self.new_rate:.0f}"
-        elif self.kind == SHUNT_REACTOR:
+        elif self.kind == CandidateKind.ShuntReactor:
             return f"Shunt reactor @ {self.target_bus.name}"
-        elif self.kind == STATIC_GENERATOR:
+        elif self.kind == CandidateKind.StaticGenerator:
             return f"Static generator @ {self.injection_bus.name}"
-        elif self.kind == BATTERY:
+        elif self.kind == CandidateKind.Battery:
             return f"Battery @ {self.injection_bus.name}"
         else:
             raise ValueError(f"Unhandled candidate kind: {self.kind}")
 
     def label(self) -> str:
         """Human-readable one-line label for the candidate list in the GUI."""
-        if self.kind == NEW_LINE:
+        if self.kind == CandidateKind.NewLine:
             what = f"New line {self.bus_from.name} - {self.bus_to.name} (rate {self.rate:.0f} MVA)"
             n = len(self.relieved_violations)
             return f"{what} | relieves {n} violation(s) | score {self.score:.1f} MW"
-        elif self.kind == UPGRADE:
+        elif self.kind == CandidateKind.Upgrade:
             what = f"Upgrade {self.target_branch.name} rate {self.old_rate:.0f} -> {self.new_rate:.0f} MVA"
             n = len(self.relieved_violations)
             return f"{what} | relieves {n} violation(s) | score {self.score:.1f} MW"
-        elif self.kind == SHUNT_REACTOR:
+        elif self.kind == CandidateKind.ShuntReactor:
             what = f"Shunt reactor @ {self.target_bus.name} (Bmax {self.shunt_bmax:.1f} MVAr, Vset {self.shunt_vset:.3f} pu)"
             n = len(self.relieved_voltage_violations)
             return f"{what} | relieves {n} voltage violation(s) | score {self.score:.3f} pu"
-        elif self.kind == STATIC_GENERATOR:
+        elif self.kind == CandidateKind.StaticGenerator:
             what = f"Static generator @ {self.injection_bus.name} ({self.injection_p:.1f} MW)"
             n = len(self.relieved_violations)
             return f"{what} | relieves {n} violation(s) | score {self.score:.1f} MW"
-        elif self.kind == BATTERY:
+        elif self.kind == CandidateKind.Battery:
             what = f"Battery @ {self.injection_bus.name} ({self.injection_p:.1f} MW, {self.battery_enom:.1f} MWh)"
             n = len(self.relieved_violations)
             if len(self.relieved_voltage_violations) > 0:
@@ -267,7 +258,7 @@ class ReinforcementCandidate:
         :param logger: Logger for messages.
         :return: The newly created device (for drawing), or ``None`` if nothing new is drawable.
         """
-        if self.kind == NEW_LINE:
+        if self.kind == CandidateKind.NewLine:
             # The line is a candidate investment: add it inactive so it shows as disabled on the
             # diagram until its investment is applied.
             line = dev.Line(bus_from=self.bus_from,
@@ -285,7 +276,7 @@ class ReinforcementCandidate:
                                                   CAPEX=self.capex,
                                                   group=group))
             return line
-        elif self.kind == UPGRADE:
+        elif self.kind == CandidateKind.Upgrade:
             # Upgrade: copy the branch, raise the copy's rate, add it inactive. The forced new
             # idtag keeps the copy distinct from the original in the grid's element dictionary.
             upgraded = self.target_branch.copy(forced_new_idtag=True)
@@ -319,7 +310,7 @@ class ReinforcementCandidate:
                                                   status=False,
                                                   group=group))
             return upgraded
-        elif self.kind == SHUNT_REACTOR:
+        elif self.kind == CandidateKind.ShuntReactor:
             # A reactor only absorbs (Bmin=0); the continuous shunt control sizes the actual B
             # within [0, Bmax] during a power flow to hit Vset, so only the cap needs to be built
             # here - see CandidateGenerationDriver._make_shunt_reactor_candidates for the sizing.
@@ -339,7 +330,7 @@ class ReinforcementCandidate:
                                                   CAPEX=self.capex,
                                                   group=group))
             return shunt
-        elif self.kind == STATIC_GENERATOR:
+        elif self.kind == CandidateKind.StaticGenerator:
             static_gen = dev.StaticGenerator(name=f"Static generator @ {self.injection_bus.name}",
                                              P=self.injection_p,
                                              Q=0.0,
@@ -352,7 +343,7 @@ class ReinforcementCandidate:
                                                   CAPEX=self.capex,
                                                   group=group))
             return static_gen
-        elif self.kind == BATTERY:
+        elif self.kind == CandidateKind.Battery:
             # control_mode defaults to V (voltage-controlled, like a PV bus), so voltage support at
             # this bus comes for free - no separate sizing is done for it, per the design decision.
             battery = dev.Battery(name=f"Battery @ {self.injection_bus.name}",

@@ -15,9 +15,7 @@ from VeraGridEngine.Simulations.InvestmentsEvaluation.CandidateGeneration.candid
 from VeraGridEngine.Simulations.InvestmentsEvaluation.CandidateGeneration.candidate_generation_options import (
     CandidateGenerationOptions,
 )
-from VeraGridEngine.Simulations.InvestmentsEvaluation.CandidateGeneration.candidate_generation_results import (
-    NEW_LINE, UPGRADE, SHUNT_REACTOR, STATIC_GENERATOR, BATTERY,
-)
+from VeraGridEngine.enumerations import CandidateKind
 
 
 def _stressed_ieee14():
@@ -59,8 +57,8 @@ def test_candidate_generation_pipeline():
     # --- Steps 3-4: ranked candidates of both kinds ---
     assert len(results.candidates) > 0
     kinds = {c.kind for c in results.candidates}
-    assert NEW_LINE in kinds
-    assert UPGRADE in kinds
+    assert CandidateKind.NewLine in kinds
+    assert CandidateKind.Upgrade in kinds
 
     # Ranking is by descending relief score.
     scores = [c.score for c in results.candidates]
@@ -136,8 +134,8 @@ def test_candidate_apply_creates_investments():
     drv = CandidateGenerationDriver(grid=grid, options=CandidateGenerationOptions(verify_top_k=0))
     drv.run()
 
-    new_line_cand = next(c for c in drv.results.candidates if c.kind == NEW_LINE)
-    upgrade_cand = next(c for c in drv.results.candidates if c.kind == UPGRADE)
+    new_line_cand = next(c for c in drv.results.candidates if c.kind == CandidateKind.NewLine)
+    upgrade_cand = next(c for c in drv.results.candidates if c.kind == CandidateKind.Upgrade)
 
     group = dev.InvestmentsGroup(idtag=None, name="test", category="multiple")
     grid.add_investments_group(group)
@@ -183,9 +181,9 @@ def test_candidate_apply_creates_investments():
 
     # Shunt reactor, static generator and battery candidates: each is a brand-new device added
     # inactive, wrapped in exactly one investment - mirroring the new-line pattern above.
-    shunt_cand = next(c for c in drv.results.voltage_candidates if c.kind == SHUNT_REACTOR)
-    static_gen_cand = next(c for c in drv.results.injection_candidates if c.kind == STATIC_GENERATOR)
-    battery_cand = next(c for c in drv.results.injection_candidates if c.kind == BATTERY)
+    shunt_cand = next(c for c in drv.results.voltage_candidates if c.kind == CandidateKind.ShuntReactor)
+    static_gen_cand = next(c for c in drv.results.injection_candidates if c.kind == CandidateKind.StaticGenerator)
+    battery_cand = next(c for c in drv.results.injection_candidates if c.kind == CandidateKind.Battery)
 
     n_shunts_before = len(grid.controllable_shunts)
     n_inv_before = len(grid.investments)
@@ -230,7 +228,7 @@ def test_static_generator_candidate_relieves_overload():
     drv.run()
     results = drv.results
 
-    static_gen_candidates = [c for c in results.injection_candidates if c.kind == STATIC_GENERATOR]
+    static_gen_candidates = [c for c in results.injection_candidates if c.kind == CandidateKind.StaticGenerator]
     assert len(static_gen_candidates) > 0
     for c in static_gen_candidates:
         assert c.injection_p > 0.0
@@ -250,7 +248,7 @@ def test_battery_candidate_dual_purpose_fields():
     drv.run()
     results = drv.results
 
-    battery_candidates = [c for c in results.injection_candidates if c.kind == BATTERY]
+    battery_candidates = [c for c in results.injection_candidates if c.kind == CandidateKind.Battery]
     assert len(battery_candidates) > 0
     for c in battery_candidates:
         assert c.battery_pmax == c.injection_p
@@ -302,7 +300,7 @@ def test_shunt_reactor_candidate_generated_and_verified():
 
     assert len(results.voltage_candidates) == 1
     cand = results.voltage_candidates[0]
-    assert cand.kind == SHUNT_REACTOR
+    assert cand.kind == CandidateKind.ShuntReactor
     assert cand.shunt_bmax > 0.0
     assert cand.target_bus.name == results.voltage_violations[0].bus_name
     assert cand.capex == options.shunt_cost_per_mvar * cand.shunt_bmax
@@ -363,7 +361,7 @@ def test_candidate_generation_time_series_critical_snapshot():
 
     # Both an upgrade and a competing new-line duplicate are generated for the overloaded line;
     # the upgrade must be sized against hour 2's ~60 MW flow, not hour 0's ~10 MW.
-    upgrade_candidates = [c for c in results.candidates if c.kind == UPGRADE]
+    upgrade_candidates = [c for c in results.candidates if c.kind == CandidateKind.Upgrade]
     assert len(upgrade_candidates) == 1
     assert upgrade_candidates[0].new_rate >= 55.0
 
