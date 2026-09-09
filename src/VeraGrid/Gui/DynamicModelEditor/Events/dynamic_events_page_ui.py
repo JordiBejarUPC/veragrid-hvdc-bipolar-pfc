@@ -41,7 +41,9 @@ class Ui_DynamicEventsPage(object):
         self.actionRemove.setIcon(icon1)
         self.actionNewGroup = QAction(DynamicEventsPage)
         self.actionNewGroup.setObjectName(u"actionNewGroup")
-        self.actionNewGroup.setIcon(icon)
+        icon2 = QIcon()
+        icon2.addFile(u":/Icons/icons/edit.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.actionNewGroup.setIcon(icon2)
         self.mainLayout = QVBoxLayout(DynamicEventsPage)
         self.mainLayout.setObjectName(u"mainLayout")
         self.mainLayout.setContentsMargins(0, 0, 0, 0)
@@ -85,9 +87,9 @@ class Ui_DynamicEventsPage(object):
 
         self.saveButton = QPushButton(DynamicEventsPage)
         self.saveButton.setObjectName(u"saveButton")
-        icon2 = QIcon()
-        icon2.addFile(u":/Icons/icons/accept.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.saveButton.setIcon(icon2)
+        icon3 = QIcon()
+        icon3.addFile(u":/Icons/icons/accept.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.saveButton.setIcon(icon3)
 
         self.saveLayout.addWidget(self.saveButton)
 
@@ -98,8 +100,8 @@ class Ui_DynamicEventsPage(object):
         self.eventsToolBar.addAction(self.actionSwitchSequence)
         self.eventsToolBar.addSeparator()
         self.eventsToolBar.addAction(self.actionAddEvent)
-        self.eventsToolBar.addAction(self.actionNewGroup)
         self.eventsToolBar.addAction(self.actionRemove)
+        self.eventsToolBar.addAction(self.actionNewGroup)
 
         self.retranslateUi(DynamicEventsPage)
 
@@ -116,13 +118,13 @@ class Ui_DynamicEventsPage(object):
 #if QT_CONFIG(tooltip)
         self.actionAddEvent.setToolTip(QCoreApplication.translate("DynamicEventsPage", u"Add an event to the selected event group", None))
 #endif // QT_CONFIG(tooltip)
-        self.actionRemove.setText(QCoreApplication.translate("DynamicEventsPage", u"Remove Selected", None))
+        self.actionRemove.setText(QCoreApplication.translate("DynamicEventsPage", u"Remove Event", None))
 #if QT_CONFIG(tooltip)
         self.actionRemove.setToolTip(QCoreApplication.translate("DynamicEventsPage", u"Remove the selected event or event group", None))
 #endif // QT_CONFIG(tooltip)
-        self.actionNewGroup.setText(QCoreApplication.translate("DynamicEventsPage", u"Add Event Group", None))
+        self.actionNewGroup.setText(QCoreApplication.translate("DynamicEventsPage", u"Edit Events Groups", None))
 #if QT_CONFIG(tooltip)
-        self.actionNewGroup.setToolTip(QCoreApplication.translate("DynamicEventsPage", u"Create an event group for this simulation mode", None))
+        self.actionNewGroup.setToolTip(QCoreApplication.translate("DynamicEventsPage", u"Create, delete, activate or deactivate an event group for this simulation mode", None))
 #endif // QT_CONFIG(tooltip)
         self.emptyModelMessage.setText(QCoreApplication.translate("DynamicEventsPage", u"This dynamic model is empty. New events cannot be added until the model is built.", None))
 #if QT_CONFIG(tooltip)
@@ -130,3 +132,4 @@ class Ui_DynamicEventsPage(object):
 #endif // QT_CONFIG(tooltip)
         self.saveButton.setText("")
     # retranslateUi
+

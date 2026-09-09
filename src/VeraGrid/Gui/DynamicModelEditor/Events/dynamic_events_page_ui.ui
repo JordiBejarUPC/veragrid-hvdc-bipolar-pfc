@@ -40,8 +40,8 @@
      <addaction name="actionSwitchSequence"/>
      <addaction name="separator"/>
      <addaction name="actionAddEvent"/>
-     <addaction name="actionNewGroup"/>
      <addaction name="actionRemove"/>
+     <addaction name="actionNewGroup"/>
     </widget>
    </item>
    <item>
@@ -149,7 +149,7 @@
      <normaloff>:/Icons/icons/minus.png</normaloff>:/Icons/icons/minus.png</iconset>
    </property>
    <property name="text">
-    <string>Remove Selected</string>
+    <string>Remove Event</string>
    </property>
    <property name="toolTip">
     <string>Remove the selected event or event group</string>
@@ -158,13 +158,13 @@
   <action name="actionNewGroup">
    <property name="icon">
     <iconset resource="../../Icons/icons.qrc">
-     <normaloff>:/Icons/icons/plus.png</normaloff>:/Icons/icons/plus.png</iconset>
+     <normaloff>:/Icons/icons/edit.png</normaloff>:/Icons/icons/edit.png</iconset>
    </property>
    <property name="text">
-    <string>Add Event Group</string>
+    <string>Edit Events Groups</string>
    </property>
    <property name="toolTip">
-    <string>Create an event group for this simulation mode</string>
+    <string>Create, delete, activate or deactivate an event group for this simulation mode</string>
    </property>
   </action>
  </widget>
