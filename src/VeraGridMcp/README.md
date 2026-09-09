@@ -1,4 +1,4 @@
-# VeraGridMcp (Dumbed-Down Guide)
+# VeraGridMcp
 
 ## What this is
 

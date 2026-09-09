@@ -7,8 +7,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from mcp.server.fastmcp import FastMCP
 from VeraGridMcp.__version__ import __VeraGridMcp_VERSION__
+
+from mcp.server.mcpserver import MCPServer
 
 
 def veragrid_status() -> str:
@@ -41,22 +42,22 @@ def veragrid_stack_status() -> str:
 
 def _register_tools(server: Any) -> None:
     """
-    Register all MCP tools on the provided FastMCP server instance.
+    Register all MCP tools on the provided MCP server instance.
 
-    :param server: FastMCP server object.
+    :param server: MCP server object.
     :returns: Nothing.
     """
     _ = server.tool(name="veragrid_status", description="Report whether the VeraGrid MCP server is reachable.")(veragrid_status)
     _ = server.tool(name="veragrid_stack_status", description="Report the VeraGridMcp and VeraGridEngine versions available to this MCP server.")(veragrid_stack_status)
 
 
-def build_server() -> Any:
+def build_server() -> MCPServer:
     """
-    Build and configure the FastMCP server.
+    Build and configure the MCP server.
 
-    :returns: Configured FastMCP server instance.
+    :returns: Configured MCP server instance.
     """
-    mcp_server: Any = FastMCP("VeraGrid")
+    mcp_server: MCPServer = MCPServer("VeraGrid")
     _register_tools(server=mcp_server)
     return mcp_server
 
@@ -67,6 +68,6 @@ def run_server() -> int:
 
     :returns: Exit code.
     """
-    server: Any = build_server()
+    server: MCPServer = build_server()
     server.run()
     return 0
