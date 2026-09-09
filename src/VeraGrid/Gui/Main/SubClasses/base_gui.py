@@ -594,7 +594,7 @@ class BaseMainGui(QMainWindow):
             if shiboken6.isValid(window):
                 closed: bool = window.close()
                 if closed:
-                    window.deleteLater()
+                    delete_dialog_safely(dialog=window)
                 else:
                     all_closed = False
             else:

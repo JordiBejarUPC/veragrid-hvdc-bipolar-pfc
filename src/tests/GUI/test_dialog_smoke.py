@@ -1150,6 +1150,33 @@ def test_dialog_smoke_inventory_is_explicit() -> None:
     assert sorted(missing_names) == list()
 
 
+def test_delete_dialog_safely_deletes_child_widgets(qt_app: QtWidgets.QApplication) -> None:
+    """
+    Check that dialog lifecycle cleanup invalidates child widget wrappers.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    app: QtWidgets.QApplication = qt_app
+    dialog: QtWidgets.QDialog = QtWidgets.QDialog()
+    layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(dialog)
+    child_widget: QtWidgets.QWidget = QtWidgets.QWidget(dialog)
+    nested_widget: QtWidgets.QPushButton = QtWidgets.QPushButton(child_widget)
+    child_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(child_widget)
+
+    child_layout.addWidget(nested_widget)
+    layout.addWidget(child_widget)
+    dialog.show()
+    app.processEvents()
+
+    delete_dialog_safely(dialog=dialog)
+    app.processEvents()
+
+    assert not shiboken6.isValid(nested_widget)
+    assert not shiboken6.isValid(child_widget)
+    assert not shiboken6.isValid(dialog)
+
+
 def test_modeless_export_dialogues_reuse_live_windows(qt_app: QtWidgets.QApplication) -> None:
     """
     Check that repeated export actions do not orphan live modeless dialogs.
