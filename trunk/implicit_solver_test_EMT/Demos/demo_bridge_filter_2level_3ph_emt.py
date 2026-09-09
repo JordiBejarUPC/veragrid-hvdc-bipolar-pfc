@@ -306,7 +306,7 @@ def run_bridge_filter_demo(enable_plots: bool = True) -> None:
         axes[2].legend(loc="best")
 
         fig.tight_layout()
-        plt.show()
+        plt.show(block=False)
     else:
         pass
 

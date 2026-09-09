@@ -284,7 +284,7 @@ def plot_comparison(ref_trace: SwitchedConverterHandoverTrace, ml_trace: Switche
     out_aux_path = Path(__file__).resolve().parent / "converter_switched_ml_aux_compare.png"
     fig_aux.savefig(out_aux_path, dpi=170)
     print(f"Plot saved to: {out_aux_path}")
-    plt.show()
+    plt.show(block=False)
 
 
 def main() -> None:

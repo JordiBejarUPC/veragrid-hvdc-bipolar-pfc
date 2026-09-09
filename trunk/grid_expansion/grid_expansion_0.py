@@ -506,7 +506,7 @@ def plot_network(solution: Solution, problem: Problem, title="Optimised Network"
     plt.grid(True, linestyle="--", alpha=0.3)
     plt.legend()
     plt.tight_layout()
-    plt.show()
+    plt.show(block=False)
 
 
 # ======================================================================

@@ -269,7 +269,7 @@ def run_ieee39_small_signal(show_figures: bool = True) -> None:
     plot_s_domain_eigenvalues(driver.results.eigenvalues)
     plot_participation_factors(driver.results.participation_factors)
     if show_figures:
-        plt.show()
+        plt.show(block=False)
     else:
         plt.close("all")
 

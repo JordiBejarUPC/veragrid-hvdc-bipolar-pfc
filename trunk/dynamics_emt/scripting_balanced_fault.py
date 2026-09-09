@@ -688,7 +688,7 @@ def _plot_results(problem: EmtProblemDae,
     plt.legend()
     plt.tight_layout()
 
-    plt.show()
+    plt.show(block=False)
 
 
 def main() -> None:

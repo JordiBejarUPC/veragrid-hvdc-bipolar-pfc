@@ -447,7 +447,7 @@ def plot_bus_vm_va(grid: vg.MultiCircuit, problem, t, y, output_file: Path) -> N
 
     fig.tight_layout()
     #fig.savefig(output_file, dpi=150)
-    plt.show()
+    plt.show(block=False)
     plt.close(fig)
     print(f"Saved bus Vm/Va plot: {output_file}")
 

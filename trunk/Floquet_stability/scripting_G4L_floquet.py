@@ -175,7 +175,7 @@ def plot_selected_mode_pf(results: SmallSignalStabilityEmtResults,
 
     fig.suptitle(title)
     plt.tight_layout()
-    plt.show(block=True)
+    plt.show(block=False)
 
 
 def plot_s_domain_eigenvalues(eigenvalues: np.ndarray) -> None:
@@ -214,7 +214,7 @@ def plot_s_domain_eigenvalues(eigenvalues: np.ndarray) -> None:
     ax.axvline(0.0, color='black', linewidth=1)
     ax.grid(True, alpha=0.3)
     plt.tight_layout()
-    plt.show(block=True)
+    plt.show(block=False)
 
 
 def run_floquet_case(grid,
@@ -319,7 +319,7 @@ def plot_unstable_poles(results: SmallSignalStabilityEmtResults) -> None:
     ax.set_ylabel('Imaginary [rad/s]')
     ax.grid(True, alpha=0.3)
     plt.tight_layout()
-    plt.show(block=True)
+    plt.show(block=False)
 
 
 U = 33000 / 1000

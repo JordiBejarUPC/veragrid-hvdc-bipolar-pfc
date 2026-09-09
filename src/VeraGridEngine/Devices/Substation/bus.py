@@ -583,8 +583,8 @@ class Bus(DynamicBusDevice):
                 if self.auto_update_enabled:
                     self.Vnom = val.Vnom
 
-                if val.substation is not None and self.substation is None:
-                    self.substation = val.substation
+                    if val.substation is not None and self.substation is None:
+                        self.substation = val.substation
         else:
             raise Exception(f'{type(val)} not supported to be set into a '
                             f'voltage_level of type Union[VoltageLevel, None]')
@@ -808,7 +808,7 @@ class Bus(DynamicBusDevice):
             ax_voltage.legend()
 
         if show_fig:
-            plt.show()
+            plt.show(block=False)
 
     def get_coordinates(self) -> Tuple[float, float]:
         """

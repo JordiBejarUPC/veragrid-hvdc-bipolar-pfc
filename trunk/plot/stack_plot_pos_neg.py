@@ -59,4 +59,4 @@ ax.set_xlabel('Time')
 ax.set_ylabel('Value')
 ax.legend(loc='upper right', fontsize='small')
 
-plt.show()
+plt.show(block=False)

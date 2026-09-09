@@ -950,7 +950,7 @@ def rms_kundur() -> None:
     fig.tight_layout()
 
     print("Generating Kundur RMS diagnostic plots...")
-    plt.show()
+    plt.show(block=False)
 
 
 if __name__ == '__main__':

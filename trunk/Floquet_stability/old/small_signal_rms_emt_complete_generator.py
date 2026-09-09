@@ -149,7 +149,7 @@ def plot_s_domain_eigenvalues(
     ax.legend()
 
     fig.tight_layout()
-    plt.show(block=True)
+    plt.show(block=False)
 
 def _format_complex_value(value: complex, decimals: int = 3) -> str:
     """Format a complex value for display inside a table cell."""
@@ -291,7 +291,7 @@ def plot_two_participation_factors_tables(
         decimals=decimals,
     )
 
-    plt.show(block=True)
+    plt.show(block=False)
 
 
 

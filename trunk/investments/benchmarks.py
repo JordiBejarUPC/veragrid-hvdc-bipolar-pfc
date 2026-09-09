@@ -89,5 +89,5 @@ if __name__ == "__main__":
     plt.scatter(y_sorted[:, 0], y_sorted[:, 1], s=6, c='g')
     # plt.scatter(y_pop[rand_eval:, 0], y_pop[rand_eval:, 1], s=6, c='b')
     # plt.scatter(y_pop[:rand_eval, 0], y_pop[:rand_eval, 1], s=6, c='r')
-    plt.show()
+    plt.show(block=False)
     print()

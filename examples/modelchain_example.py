@@ -254,7 +254,7 @@ def plot_or_print(my_turbine, e126, my_turbine2):
         my_turbine2.power_output.plot(legend=True, label="myTurbine2")
         plt.xlabel("Time")
         plt.ylabel("Power in W")
-        plt.show()
+        plt.show(block=False)
     else:
         print(e126.power_output)
         print(my_turbine.power_output)
@@ -271,7 +271,7 @@ def plot_or_print(my_turbine, e126, my_turbine2):
             )
             plt.xlabel("Wind speed in m/s")
             plt.ylabel("Power in W")
-            plt.show()
+            plt.show(block=False)
         if my_turbine.power_curve is not False:
             my_turbine.power_curve.plot(
                 x="wind_speed",
@@ -281,7 +281,7 @@ def plot_or_print(my_turbine, e126, my_turbine2):
             )
             plt.xlabel("Wind speed in m/s")
             plt.ylabel("Power in W")
-            plt.show()
+            plt.show(block=False)
         if my_turbine2.power_curve is not False:
             my_turbine2.power_curve.plot(
                 x="wind_speed",
@@ -291,7 +291,7 @@ def plot_or_print(my_turbine, e126, my_turbine2):
             )
             plt.xlabel("Wind speed in m/s")
             plt.ylabel("Power in W")
-            plt.show()
+            plt.show(block=False)
     else:
         if e126.power_coefficient_curve is not False:
             print(e126.power_coefficient_curve)

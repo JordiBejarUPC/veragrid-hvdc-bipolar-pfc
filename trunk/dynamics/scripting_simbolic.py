@@ -90,7 +90,7 @@ def test_diff_block_in_harmonic_oscillator():
     plt.xlabel("t")
     plt.legend()
     plt.grid(True)
-    plt.show()
+    plt.show(block=False)
 
     assert np.allclose(x_sim, x_ref, atol=1e-2)
     assert np.allclose(y_sim, y_ref, atol=1e-2)
@@ -149,7 +149,7 @@ def test_diff_block_second_order_oscillator():
     plt.xlabel("t")
     plt.legend()
     plt.grid(True)
-    plt.show()
+    plt.show(block=False)
 
     assert np.allclose(x_sim, x_ref, atol=1e-2)
 

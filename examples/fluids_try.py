@@ -449,7 +449,7 @@ def plot_hydro_dispatch(solver: OrToolsLpModel,
                                  font_color='red',
                                  font_size=7)
 
-    plt.show()
+    plt.show(block=False)
 
 
 def example_1():

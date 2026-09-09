@@ -229,7 +229,7 @@ def main() -> None:
     print(f"MAX |Delta V_A|: {max_abs:.6e}")
 
     if show_plots:
-        plt.show()
+        plt.show(block=False)
 
 
 if __name__ == "__main__":

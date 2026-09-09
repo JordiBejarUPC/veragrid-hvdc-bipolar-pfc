@@ -1,6 +1,6 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at https://mozilla.org/MPL/2.0/.  
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
@@ -807,6 +807,7 @@ class MultiCircuit(Assets):
                 'overhead_line_types',
                 'wire_types',
                 'underground_cable_types',
+                'dc_cable_types',
                 'sequence_line_types',
                 'transformer_types',
                 'substations',
@@ -960,6 +961,10 @@ class MultiCircuit(Assets):
         for branch in self._lines:
             if branch.template is not None:
                 branch.apply_template(branch.template, self.Sbase, freq=self.fBase, logger=logger)
+
+        for branch in self._dc_lines:
+            if branch.template is not None:
+                branch.apply_template(branch.template, self.Sbase, logger=logger)
 
         for branch in self._transformers2w:
             if branch.template is not None:
@@ -3468,6 +3473,9 @@ class MultiCircuit(Assets):
 
         for tpe in data.underground_cable_types:
             self.add_underground_line(tpe)
+
+        for tpe in data.dc_cable_types:
+            self.add_dc_cable_type(tpe)
 
         for tpe in data.wire_types:
             self.add_wire(tpe)

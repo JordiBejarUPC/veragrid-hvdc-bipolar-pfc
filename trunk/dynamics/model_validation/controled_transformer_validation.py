@@ -311,7 +311,7 @@ plt.ylabel("Values (pu)")
 plt.xlim([0, xlim])
 plt.grid(True)
 plt.tight_layout()
-plt.show()
+plt.show(block=False)
 
 
 exit()
