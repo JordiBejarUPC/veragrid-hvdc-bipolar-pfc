@@ -105,6 +105,7 @@ class TimeSeriesPowerFlowInvestmentProblem(BlackBoxProblemTemplate):
         :param opf_time_series_results: Optimal power flow results
         :param engine: Engine to run the simulations
         """
+        # The Pareto plot shows the CAPEX (objective 4) against the overload cost (objective 1).
         super().__init__(grid=grid,
                          x_dim=len(grid.investments_groups),
                          plot_x_idx=4,
@@ -156,7 +157,7 @@ class TimeSeriesPowerFlowInvestmentProblem(BlackBoxProblemTemplate):
         Number of objectives (size of f)
         :return:
         """
-        return 5
+        return 6
 
     def n_vars(self) -> int:
         """
@@ -172,7 +173,7 @@ class TimeSeriesPowerFlowInvestmentProblem(BlackBoxProblemTemplate):
         """
         return np.array(["losses score", "overload score",
                          "voltage module_score", "voltage angle score",
-                         "financial score"])
+                         "CAPEX", "OPEX"])
 
     def get_vars_names(self) -> StrVec:
         """
@@ -230,6 +231,7 @@ class TimeSeriesPowerFlowInvestmentProblem(BlackBoxProblemTemplate):
                              scores.overload_score,
                              scores.voltage_module_score,
                              scores.voltage_angle_score,
-                             scores.financial_score])
+                             scores.capex_score,
+                             scores.opex_score])
         finally:
             restore_device_states(states=states)

@@ -1,0 +1,6 @@
+# Client data - never commit
+*.dgs
+*.DGS
+*.csv
+*.xlsx
+*.xls
