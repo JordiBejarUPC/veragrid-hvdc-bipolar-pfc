@@ -397,12 +397,12 @@ class Ui_AiChatDialog(object):
         self.status_label.setText(QCoreApplication.translate("AiChatDialog", u"Ready.", None))
         self.send_button.setText(QCoreApplication.translate("AiChatDialog", u"Send", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab), QCoreApplication.translate("AiChatDialog", u"Dialogue", None))
-        self.groupBox.setTitle(QCoreApplication.translate("AiChatDialog", u"Local AI", None))
-        self.local_model_path_line_edit.setPlaceholderText(QCoreApplication.translate("AiChatDialog", u"/path/to/model.gguf or /path/to/models", None))
-        self.local_ai_radioButton.setText(QCoreApplication.translate("AiChatDialog", u"Local AI settings", None))
-        self.local_refresh_models_button.setText(QCoreApplication.translate("AiChatDialog", u"Scan", None))
-        self.local_model_label.setText(QCoreApplication.translate("AiChatDialog", u"GGUF model", None))
-        self.local_model_path_label.setText(QCoreApplication.translate("AiChatDialog", u"Model path", None))
+        self.groupBox.setTitle(QCoreApplication.translate("AiChatDialog", u"Ollama", None))
+        self.local_model_path_line_edit.setPlaceholderText(QCoreApplication.translate("AiChatDialog", u"http://localhost:11434/v1", None))
+        self.local_ai_radioButton.setText(QCoreApplication.translate("AiChatDialog", u"Ollama settings", None))
+        self.local_refresh_models_button.setText(QCoreApplication.translate("AiChatDialog", u"Refresh", None))
+        self.local_model_label.setText(QCoreApplication.translate("AiChatDialog", u"Ollama model", None))
+        self.local_model_path_label.setText(QCoreApplication.translate("AiChatDialog", u"Ollama base URL", None))
         self.local_timeout_label.setText(QCoreApplication.translate("AiChatDialog", u"Timeout [s]", None))
         self.local_context_tokens_label.setText(QCoreApplication.translate("AiChatDialog", u"Context tokens", None))
         self.local_completion_tokens_label.setText(QCoreApplication.translate("AiChatDialog", u"Completion tokens", None))
@@ -424,4 +424,3 @@ class Ui_AiChatDialog(object):
         self.api_refresh_models_button.setText(QCoreApplication.translate("AiChatDialog", u"Refresh", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2), QCoreApplication.translate("AiChatDialog", u"Settings", None))
     # retranslateUi
-

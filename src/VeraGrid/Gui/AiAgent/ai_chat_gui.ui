@@ -216,7 +216,7 @@
           </size>
          </property>
          <property name="title">
-          <string>Local AI</string>
+          <string>Ollama</string>
          </property>
          <layout class="QGridLayout" name="gridLayout_2">
           <item row="6" column="0" colspan="3">
@@ -245,7 +245,7 @@
           <item row="4" column="0" colspan="3">
            <widget class="QLineEdit" name="local_model_path_line_edit">
             <property name="placeholderText">
-             <string>/path/to/model.gguf or /path/to/models</string>
+             <string>http://localhost:11434/v1</string>
             </property>
            </widget>
           </item>
@@ -271,7 +271,7 @@
           <item row="0" column="0" colspan="2">
            <widget class="QRadioButton" name="local_ai_radioButton">
             <property name="text">
-             <string>Local AI settings</string>
+             <string>Ollama settings</string>
             </property>
             <property name="checked">
              <bool>true</bool>
@@ -281,21 +281,21 @@
           <item row="5" column="2">
            <widget class="QPushButton" name="local_refresh_models_button">
             <property name="text">
-             <string>Scan</string>
+             <string>Refresh</string>
             </property>
            </widget>
           </item>
           <item row="5" column="0" colspan="2">
            <widget class="QLabel" name="local_model_label">
             <property name="text">
-             <string>GGUF model</string>
+             <string>Ollama model</string>
             </property>
            </widget>
           </item>
           <item row="3" column="0">
            <widget class="QLabel" name="local_model_path_label">
             <property name="text">
-             <string>Model path</string>
+             <string>Ollama base URL</string>
             </property>
            </widget>
           </item>
