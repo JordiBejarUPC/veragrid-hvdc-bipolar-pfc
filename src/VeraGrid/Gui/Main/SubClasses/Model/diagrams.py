@@ -10,6 +10,7 @@ from typing import List, Tuple, Union, Callable, Iterable
 
 import networkx as nx
 import numpy as np
+import shiboken6
 from PySide6 import QtGui, QtWidgets, QtCore
 from matplotlib import pyplot as plt
 from pandas.plotting import register_matplotlib_converters
@@ -2367,7 +2368,12 @@ class DiagramsMain(CompiledArraysMain):
             idx = indices[0].row()
             return self._ensure_diagram_widget_at_index(index=idx)
         else:
-            return None
+            current_index: QtCore.QModelIndex = self.ui.diagramsListView.currentIndex()
+            if current_index.isValid():
+                idx = current_index.row()
+                return self._ensure_diagram_widget_at_index(index=idx)
+            else:
+                return None
 
     def create_blank_schematic_diagram(self, name: str = "") -> SchematicWidget:
         """
@@ -3715,7 +3721,7 @@ class DiagramsMain(CompiledArraysMain):
             elif isinstance(diagram, GridMapWidget):
                 pass
 
-    def delete_from_all_diagrams(self, elements: List[ALL_DEV_TYPES]):
+    def delete_from_all_diagrams(self, elements: List[ALL_DEV_TYPES]) -> None:
         """
         Delete elements from all editors
         :param elements: list of devices to delete_with_dialogue from the graphics editors
@@ -3727,6 +3733,54 @@ class DiagramsMain(CompiledArraysMain):
 
             elif isinstance(diagram_widget, GridMapWidget):
                 pass
+
+    def remove_dead_graphics_from_all_diagrams(self) -> None:
+        """
+        Remove diagram graphics whose API object no longer exists in the active circuit.
+
+        :return: None.
+        """
+        for diagram_widget in self.diagram_widgets_list:
+            if isinstance(diagram_widget, (SchematicWidget, GridMapWidget)):
+                self.remove_dead_graphics_from_diagram(diagram_widget=diagram_widget)
+            else:
+                pass
+
+    def remove_dead_graphics_from_diagram(self, diagram_widget: SchematicWidget | GridMapWidget) -> None:
+        """
+        Remove stale graphics from one diagram after an in-place database mutation.
+
+        :param diagram_widget: Diagram to synchronize with the active circuit.
+        :return: None.
+        """
+        for device_tpe, graphics_dict in list(diagram_widget.graphics_manager.graphic_dict.items()):
+            try:
+                live_elements: List[ALL_DEV_TYPES] = list(self.circuit.get_elements_by_type(device_type=device_tpe))
+            except Exception:
+                live_idtags: set[str] | None = None
+            else:
+                live_idtags = {element.idtag for element in live_elements}
+
+            if live_idtags is None:
+                stale_idtags: List[str] = list()
+            else:
+                stale_idtags = [idtag for idtag in list(graphics_dict.keys()) if idtag not in live_idtags]
+
+            for idtag in stale_idtags:
+                graphic_object: object | None = graphics_dict.get(idtag, None)
+
+                if graphic_object is None:
+                    del graphics_dict[idtag]
+                elif shiboken6.isValid(graphic_object):
+                    del graphics_dict[idtag]
+                    try:
+                        diagram_widget._remove_from_scene(graphic_object=graphic_object)
+                    except Exception:
+                        pass
+                    else:
+                        pass
+                else:
+                    del graphics_dict[idtag]
 
     def search_diagram(self):
         """
