@@ -678,7 +678,7 @@ def plot_combined_functions(function, data, scalef):
 
     # Show the plot
     plt.title('Simple sum no-normalized results')
-    plt.show()
+    plt.show(block=False)
 
 
 def plot_mesh(function, scalef, data, figure):
@@ -774,4 +774,4 @@ if __name__ == '__main__':
     # plot_MVRSM_data(all_data, f_obj_tpe=FunctionType.Rosenbrock)
     # plot_combined_functions(get_x_y, all_data, scalef)
     plot_mesh(rosenbrock_function, scalef, data=all_data, figure=1)
-    plt.show()
+    plt.show(block=False)

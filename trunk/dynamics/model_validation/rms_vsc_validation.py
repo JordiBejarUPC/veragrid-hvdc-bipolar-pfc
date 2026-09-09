@@ -555,7 +555,7 @@ def plot_rms_results(grid2, t, y, results):
         ax3.axvline(x=0.1, color='red', linestyle=':', alpha=0.7, label='Event at t=0.1s')
     
     plt.tight_layout()
-    plt.show()
+    plt.show(block=False)
     plt.savefig('rms_vsc_validation_results.png', dpi=150)
     print("  ✓ Plot saved to rms_vsc_validation_results.png")
     plt.close()

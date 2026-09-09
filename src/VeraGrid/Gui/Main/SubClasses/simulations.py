@@ -263,6 +263,7 @@ class SimulationsMain(TimeEventsMain):
             gf.ComboModel(enum_values=[InvestmentsEvaluationObjectives.PowerFlow,
                                        InvestmentsEvaluationObjectives.TimeSeriesPowerFlow,
                                        InvestmentsEvaluationObjectives.LinearOptimalPowerFlowTimeSeries,
+                                       InvestmentsEvaluationObjectives.OptimalPowerFlowThenPowerFlowTimeSeries,
                                        InvestmentsEvaluationObjectives.GenerationAdequacy,
                                        InvestmentsEvaluationObjectives.SimpleDispatch],
                           translate=self.tr)
@@ -3547,6 +3548,21 @@ class SimulationsMain(TimeEventsMain):
                             self.show_warning_toast(self.tr('Linear OPF investment studies need time data...'))
                             return
 
+                    elif obj_fn_tpe == InvestmentsEvaluationObjectives.OptimalPowerFlowThenPowerFlowTimeSeries:
+
+                        if self.circuit.has_time_series:
+                            problem = sim.TimeSeriesOptimalPowerFlowThenPowerFlowInvestmentProblem(
+                                grid=self.circuit,
+                                opf_options=self.get_opf_options(),
+                                pf_options=self.get_selected_power_flow_options(),
+                                time_indices=self.get_time_indices(),
+                                clustering_results=self.get_clustering_results(),
+                                engine=self.get_preferred_engine()
+                            )
+                        else:
+                            self.show_warning_toast(self.tr('Linear OPF and power flow investment studies need time data...'))
+                            return
+
                     elif obj_fn_tpe == InvestmentsEvaluationObjectives.GenerationAdequacy:
 
                         if self.circuit.has_time_series:
@@ -3555,7 +3571,8 @@ class SimulationsMain(TimeEventsMain):
                                 n_monte_carlo_sim=self.ui.max_iterations_reliability_spinBox.value(),
                                 use_monte_carlo=True,
                                 save_file=False,
-                                time_indices=self.get_time_indices()
+                                time_indices=self.get_time_indices(),
+                                clustering_results=self.get_clustering_results()
                             )
                         else:
                             self.show_warning_toast(self.tr('Adequacy studies need time data...'))
@@ -3571,7 +3588,8 @@ class SimulationsMain(TimeEventsMain):
                                 minimum_firm_share=self.ui.firmCapacityShareSpinBox.value() / 100.0,
                                 use_monte_carlo=False,
                                 save_file=False,
-                                time_indices=self.get_time_indices()
+                                time_indices=self.get_time_indices(),
+                                clustering_results=self.get_clustering_results()
                             )
                         else:
                             self.show_warning_toast(self.tr('Adequacy studies need time data...'))

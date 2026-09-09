@@ -98,7 +98,7 @@ def main() -> None:
     out_path = Path(__file__).resolve().parent / "bridge_2level_pwm_ref_compare.png"
     fig.savefig(out_path, dpi=170)
     print(f"Plot saved to: {out_path}")
-    plt.show()
+    plt.show(block=False)
 
 
 if __name__ == "__main__":

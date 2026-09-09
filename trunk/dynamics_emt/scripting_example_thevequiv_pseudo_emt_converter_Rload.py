@@ -429,7 +429,7 @@ def plot_results(t: np.ndarray, data: Dict[str, np.ndarray]) -> None:
     axes[3].legend(loc="upper right")
 
     figure.tight_layout()
-    plt.show()
+    plt.show(block=False)
 
 
 def main() -> None:

@@ -684,7 +684,7 @@ def plot_rms_results(grid2, results):
     print(f"  Time span plotted: 0.0 to {t_plot[-1]:.3f} s")
 
     plt.tight_layout()
-    plt.show()
+    plt.show(block=False)
     plt.savefig('rms_gfl_validation_results.png', dpi=150)
     plt.close(fig)
     print("  ✓ Plot saved to rms_gfl_validation_results.png")

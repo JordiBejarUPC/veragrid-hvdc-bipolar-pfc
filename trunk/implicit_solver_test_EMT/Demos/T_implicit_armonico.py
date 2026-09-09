@@ -172,7 +172,7 @@ def plot_results(t: np.ndarray, x_trap: np.ndarray, v_trap: np.ndarray,
     plt.grid(True)
 
     plt.tight_layout()
-    plt.show()
+    plt.show(block=False)
 
 
 if __name__ == "__main__":

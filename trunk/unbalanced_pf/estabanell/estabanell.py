@@ -465,13 +465,13 @@ print("\n", res.get_current_unbalance_factor_df())
 
 df = res.get_voltage_3ph_df()
 plot_voltage_3ph(df)
-plt.show()
+plt.show(block=False)
 
 df = res.get_current_3ph_df()
 plot_current_3ph(df)
-plt.show()
+plt.show(block=False)
 
 df_vuf = res.get_voltage_unbalance_factor_df()
 df_iuf = res.get_current_unbalance_factor_df()
 plot_unbalance_factors(df_iuf, df_vuf)
-plt.show()
+plt.show(block=False)

@@ -1357,7 +1357,7 @@ def kundur_small_signal_rms_vs_emt() -> None:
     plot_s_domain_eigenvalues(rms_eigenvalues, emt_eigenvalues)
     plot_participation_factors(rms_pfactors, 'RMS participation factors')
     plot_participation_factors(emt_pfactors, 'EMT/Floquet participation factors')
-    plt.show()
+    plt.show(block=False)
 
 
 if __name__ == '__main__':

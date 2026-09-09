@@ -277,7 +277,7 @@ def test_phasor_validation():
     axes[1].grid(True)
     
     plt.tight_layout()
-    plt.show()
+    plt.show(block=False)
     
     return True
 

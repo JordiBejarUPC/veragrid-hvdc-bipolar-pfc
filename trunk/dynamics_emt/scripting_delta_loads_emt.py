@@ -217,7 +217,7 @@ def _plot_reference(reference: Dict[str, object], title: str, png_path: Path, en
     figure.savefig(png_path, dpi=200, bbox_inches="tight")
 
     if enable_plots:
-        plt.show()
+        plt.show(block=False)
     else:
         plt.close(figure)
 

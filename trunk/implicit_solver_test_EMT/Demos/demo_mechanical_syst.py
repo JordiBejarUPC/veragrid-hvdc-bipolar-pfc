@@ -443,7 +443,7 @@ def main() -> None:
 
     plt.tight_layout()
     print("Generating plots...")
-    plt.show()
+    plt.show(block=False)
 
 
 if __name__ == "__main__":

@@ -10,6 +10,7 @@ from scipy.sparse import lil_matrix
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
 from VeraGridEngine.basic_structures import Vec, IntVec, StrVec, IntMat
+from VeraGridEngine.Simulations.Clustering.clustering_results import ClusteringResults
 from VeraGridEngine.Simulations.InvestmentsEvaluation.Problems.black_box_problem_template import BlackBoxProblemTemplate
 from VeraGridEngine.Simulations.Reliability.reliability import reliability_simulation
 from VeraGridEngine.Simulations.OPF.simple_dispatch_ts import GreedyDispatchInputs, greedy_dispatch2
@@ -79,7 +80,8 @@ class AdequacyInvestmentProblem(BlackBoxProblemTemplate):
                  minimum_firm_share: float = 0.2,
                  use_firm_capacity_penalty: bool = True,
                  save_file: bool = True,
-                 time_indices: IntVec | None = None):
+                 time_indices: IntVec | None = None,
+                 clustering_results: ClusteringResults | None = None):
         """
 
         :param grid:
@@ -89,6 +91,7 @@ class AdequacyInvestmentProblem(BlackBoxProblemTemplate):
         :param use_firm_capacity_penalty: if to use the firm capacity penalty
         :param save_file:
         :param time_indices: array of time indices to use, if None all are used
+        :param clustering_results: optional clustering results
         """
         super().__init__(grid=grid,
                          x_dim=len(grid.investments_groups),
@@ -100,10 +103,15 @@ class AdequacyInvestmentProblem(BlackBoxProblemTemplate):
         self.minimum_firm_share: float = minimum_firm_share
         self.use_firm_capacity_penalty: bool = use_firm_capacity_penalty
         self.save_file = save_file
-        if time_indices is None:
-            self.time_indices = grid.get_all_time_indices()
+        self.clustering_results: ClusteringResults | None = clustering_results
+
+        if clustering_results is None:
+            if time_indices is None:
+                self.time_indices = grid.get_all_time_indices()
+            else:
+                self.time_indices = np.array(time_indices, dtype=int)
         else:
-            self.time_indices = np.array(time_indices, dtype=int)
+            self.time_indices = np.array(clustering_results.time_indices, dtype=int)
 
         if self.save_file:
             self.output_f = open("adequacy_output.csv", "w")

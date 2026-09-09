@@ -119,7 +119,7 @@ ax1.legend([
 ])
 
 fig1.tight_layout()
-plt.show()
+plt.show(block=False)
 
 print("Extracting bus voltage results...")
 
@@ -173,6 +173,6 @@ ax2.legend([
 ])
 
 fig2.tight_layout()
-plt.show()
+plt.show(block=False)
 
 print("\nScript completed successfully.")

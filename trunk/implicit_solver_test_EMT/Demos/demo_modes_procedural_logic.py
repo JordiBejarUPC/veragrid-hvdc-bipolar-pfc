@@ -1167,7 +1167,7 @@ def main() -> None:
     plot_antiwindup_case(t2, y2, dy2, problem2, vars2, prot2)
     plot_boolean_operator_case(t3, y3, problem3, vars3, tracing3)
     plot_analog_flipflop_case(t4, y4, problem4, vars4, tracing4)
-    plt.show()
+    plt.show(block=False)
 
 
 if __name__ == "__main__":

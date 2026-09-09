@@ -1937,7 +1937,7 @@ class PolynomialMatrixBuilder:
         plt.grid(True, alpha=0.3)
         plt.legend(fontsize=11)
         plt.tight_layout()
-        plt.show()
+        plt.show(block=False)
 
     def compute_bifurcation_stability(self, pf_map: dict, evals: np.ndarray,
                                       evecs_right: np.ndarray, evecs_left: np.ndarray,

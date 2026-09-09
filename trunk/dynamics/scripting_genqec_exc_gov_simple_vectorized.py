@@ -295,7 +295,7 @@ plt.xlim([0, xlim])
 # plt.ylim([0.85, 1.15])
 plt.grid(True)
 plt.tight_layout()
-plt.show()
+plt.show(block=False)
 
 
 Eq_prime = find_name_in_block("Eq_prime", genqec0_mdl)
@@ -321,7 +321,7 @@ plt.xlim([0, xlim])
 # plt.ylim([0.85, 1.15])
 plt.grid(True)
 plt.tight_layout()
-plt.show()
+plt.show(block=False)
 
 # Generator state variables
 plt.plot(t, y[:, problem.get_var_idx(u_gov1)], label="u_gov1 (pu)")
@@ -337,7 +337,7 @@ plt.xlim([0, xlim])
 # plt.ylim([0.85, 1.15])
 plt.grid(True)
 plt.tight_layout()
-plt.show()
+plt.show(block=False)
 
 # load P and Q
 P_load_runtime = evaluate_rms_runtime_parameter_trace(problem=problem,
@@ -367,6 +367,6 @@ plt.xlim([0, xlim])
 # plt.ylim([0.85, 1.15])
 plt.grid(True)
 plt.tight_layout()
-plt.show()
+plt.show(block=False)
 
 

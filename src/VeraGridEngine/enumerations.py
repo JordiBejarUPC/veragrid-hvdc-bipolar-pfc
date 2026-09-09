@@ -2248,6 +2248,7 @@ class InvestmentsEvaluationObjectives(Enum):
     PowerFlow = 'PowerFlow'
     TimeSeriesPowerFlow = 'TimeSeriesPowerFlow'
     LinearOptimalPowerFlowTimeSeries = 'Linear OPF time series'
+    OptimalPowerFlowThenPowerFlowTimeSeries = 'Linear OPF + Power flow time series'
     GenerationAdequacy = "Adequacy"
     SimpleDispatch = "Simple dispatch"
     FromPlugin = 'From Plugin'

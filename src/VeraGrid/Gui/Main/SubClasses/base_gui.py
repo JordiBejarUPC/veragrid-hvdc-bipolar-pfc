@@ -55,7 +55,9 @@ from VeraGrid.Gui.python_console import PythonConsole
 from VeraGrid.Gui.python_script_editor import ScriptingPythonEditor
 from VeraGrid.Gui.toast_widget import ToastManager
 from VeraGrid.Gui.AiAgent.ai_chat_dialogue import AiChatDialogue, AiBackendState
-from VeraGrid.Gui.AiAgent.ai_backend import ProviderType
+from VeraGrid.AI import ProviderType
+from VeraGrid.AI.mcp_client import VeraGridMcpClient
+from VeraGrid.AI.ollama import OllamaProcessManager
 from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, is_dialog_available
 from VeraGrid.Gui.i18n import (
     ActionShortcutState,
@@ -182,6 +184,7 @@ class BaseMainGui(QMainWindow):
 
         self.stuff_running_now: List[SimulationTypes] = list()
         self._locked_window_enabled_states: Dict[QtWidgets.QWidget, bool] = dict()
+        self._locked_menu_action_enabled_states: Dict[QtGui.QAction, bool] = dict()
 
         self.session: SimulationSession = SimulationSession(name='GUI session')
         self.server_driver: QtCore.QThread | None = None
@@ -282,6 +285,8 @@ class BaseMainGui(QMainWindow):
         self.about_msg_window: Union[AboutDialogueGuiGUI, None] = None
         self.rms_model_Editor_window: Union[DynamicBlockEditorGUI, None] = None
         self.ai_chat_dialogue: AiChatDialogue | None = None
+        self.ai_mcp_client: VeraGridMcpClient = VeraGridMcpClient(self.ai_mcp_config_file_path())
+        self.ai_ollama_manager: OllamaProcessManager = OllamaProcessManager()
         self.rosetta_gui: QtWidgets.QWidget | None = None
         self.cgmes_dialogue: QtWidgets.QWidget | None = None
         self.psse_export_dialogue: QtWidgets.QWidget | None = None
@@ -408,7 +413,12 @@ class BaseMainGui(QMainWindow):
         self.ui.progress_frame.setEnabled(True)
         self.ui.cancelButton.setEnabled(self.lock_ui)
         self.ui.mainTabWidget.setEnabled(not self.lock_ui)
-        self.ui.menuBar.setEnabled(not self.lock_ui)
+        if self.lock_ui:
+            self.set_menu_bar_actions_locked(locked=True)
+            self.ui.menuBar.setEnabled(False)
+        else:
+            self.ui.menuBar.setEnabled(True)
+            self.set_menu_bar_actions_locked(locked=False)
         self.ui.toolBar.setEnabled(not self.lock_ui)
         self.set_open_child_windows_locked(locked=self.lock_ui)
 
@@ -436,6 +446,8 @@ class BaseMainGui(QMainWindow):
         if window is None:
             pass
         elif window is self:
+            pass
+        elif isinstance(window, QtWidgets.QMenu):
             pass
         elif not shiboken6.isValid(window):
             pass
@@ -537,6 +549,41 @@ class BaseMainGui(QMainWindow):
                     pass
             self._locked_window_enabled_states.clear()
 
+    def set_menu_bar_actions_locked(self, locked: bool) -> None:
+        """
+        Apply the main GUI lock state to the menu-bar root actions.
+
+        :param locked: Whether menu-bar root actions must reject user interaction.
+        :returns: None.
+        """
+        menu_action: QtGui.QAction
+        menu: QtWidgets.QMenu | None
+        if locked:
+            for menu_action in self.ui.menuBar.actions():
+                menu = menu_action.menu()
+                if menu_action in self._locked_menu_action_enabled_states:
+                    pass
+                else:
+                    self._locked_menu_action_enabled_states[menu_action] = menu_action.isEnabled()
+                if menu is None:
+                    pass
+                else:
+                    menu.setEnabled(False)
+                menu_action.setEnabled(False)
+        else:
+            state_items: List[tuple[QtGui.QAction, bool]] = list(self._locked_menu_action_enabled_states.items())
+            action_state: tuple[QtGui.QAction, bool]
+            for action_state in state_items:
+                menu_action = action_state[0]
+                was_enabled: bool = action_state[1]
+                menu = menu_action.menu()
+                if menu is None:
+                    pass
+                else:
+                    menu.setEnabled(was_enabled)
+                menu_action.setEnabled(was_enabled)
+            self._locked_menu_action_enabled_states.clear()
+
     def close_open_child_windows(self) -> bool:
         """
         Close every open child window managed by the main GUI.
@@ -551,7 +598,7 @@ class BaseMainGui(QMainWindow):
             if shiboken6.isValid(window):
                 closed: bool = window.close()
                 if closed:
-                    window.deleteLater()
+                    delete_dialog_safely(dialog=window)
                 else:
                     all_closed = False
             else:
@@ -979,38 +1026,14 @@ class BaseMainGui(QMainWindow):
         """
         return os.path.join(get_create_veragrid_folder(), "ai_config.json")
 
-    def find_first_gguf_file(self, directory_path: str) -> str:
+    @staticmethod
+    def ai_mcp_config_file_path() -> str:
         """
-        Find the first GGUF file in a directory in lexicographic order.
+        Return the AI MCP registration file path.
 
-        :param directory_path: Directory to inspect.
-        :returns: GGUF file name or an empty string.
+        :returns: AI MCP registration file path.
         """
-        expanded_directory_path: str = os.path.expanduser(directory_path)
-        entry_names: list[str]
-        sorted_entry_names: list[str]
-        index: int = 0
-
-        if os.path.isdir(expanded_directory_path):
-            try:
-                entry_names = os.listdir(expanded_directory_path)
-            except OSError:
-                return ""
-
-            sorted_entry_names = sorted(entry_names)
-
-            # Prefer a stable first GGUF file so the local backend opens ready to use.
-            while index < len(sorted_entry_names):
-                entry_name: str = sorted_entry_names[index]
-                if entry_name.lower().endswith(".gguf"):
-                    return entry_name
-                else:
-                    pass
-                index += 1
-
-            return ""
-        else:
-            return ""
+        return os.path.join(get_create_veragrid_folder(), "ai_mcp_config.json")
 
     def build_default_ai_backend_state(self) -> AiBackendState:
         """
@@ -1018,42 +1041,10 @@ class BaseMainGui(QMainWindow):
 
         :returns: Default backend state.
         """
-        candidate_paths: list[str] = list()
-        home_models_path: str = os.path.expanduser("~/models")
-        home_downloads_path: str = os.path.expanduser("~/Downloads")
-        project_directory_path: str = os.path.expanduser(self.project_directory)
-        model_name: str = ""
-        model_path: str = ""
-        candidate_index: int = 0
-
-        candidate_paths.append(home_models_path)
-        candidate_paths.append(home_downloads_path)
-
-        if len(project_directory_path) > 0:
-            candidate_paths.append(project_directory_path)
-            candidate_paths.append(os.path.join(project_directory_path, "models"))
-        else:
-            pass
-
-        # Probe a few likely model directories so the floating AI window starts close to a usable local setup.
-        while candidate_index < len(candidate_paths):
-            candidate_path: str = candidate_paths[candidate_index]
-            model_name = self.find_first_gguf_file(candidate_path)
-            if len(model_name) > 0:
-                model_path = candidate_path
-                candidate_index = len(candidate_paths)
-            else:
-                candidate_index += 1
-
-        if len(model_path) == 0:
-            model_path = home_models_path
-        else:
-            pass
-
         return AiBackendState(
-            provider_tpe=ProviderType.LOCAL_LLAMA_CPP,
-            model_name=model_name,
-            base_url=model_path,
+            provider_tpe=ProviderType.OLLAMA,
+            model_name="",
+            base_url="http://localhost:11434/v1",
             api_key=None,
             timeout_s=60.0,
             context_window_tokens=4096,
@@ -1105,8 +1096,8 @@ class BaseMainGui(QMainWindow):
         :param data: Persisted AI configuration dictionary.
         :returns: Nothing.
         """
-        provider_value: object = data.get("provider_tpe", ProviderType.LOCAL_LLAMA_CPP.value)
-        provider_tpe: ProviderType = ProviderType.LOCAL_LLAMA_CPP
+        provider_value: object = data.get("provider_tpe", ProviderType.OLLAMA.value)
+        provider_tpe: ProviderType = ProviderType.OLLAMA
         api_key_obj: object = data.get("api_key", "")
         timeout_obj: object = data.get("timeout_s", 60.0)
         context_window_tokens_obj: object = data.get("context_window_tokens", 4096)
@@ -1119,6 +1110,8 @@ class BaseMainGui(QMainWindow):
         grounding_char_budget_obj: object = data.get("grounding_char_budget", 1800)
         provider_items: list[ProviderType] = list(ProviderType)
         enum_index: int = 0
+        default_state: AiBackendState = self.build_default_ai_backend_state()
+        base_url: str = str(data.get("base_url", default_state.base_url))
 
         while enum_index < len(provider_items):
             enum_item: ProviderType = provider_items[enum_index]
@@ -1128,10 +1121,23 @@ class BaseMainGui(QMainWindow):
             else:
                 enum_index += 1
 
+        if provider_value == "local_llama_cpp":
+            provider_tpe = ProviderType.OLLAMA
+        else:
+            pass
+
+        if provider_tpe == ProviderType.OLLAMA:
+            if base_url.startswith("http://") or base_url.startswith("https://"):
+                pass
+            else:
+                base_url = default_state.base_url
+        else:
+            pass
+
         self.ai_backend_state = AiBackendState(
             provider_tpe=provider_tpe,
             model_name=str(data.get("model_name", "")),
-            base_url=str(data.get("base_url", self.build_default_ai_backend_state().base_url)),
+            base_url=base_url,
             api_key=str(api_key_obj) if isinstance(api_key_obj, str) and len(api_key_obj) > 0 else None,
             timeout_s=float(timeout_obj) if isinstance(timeout_obj, (int, float)) else 60.0,
             context_window_tokens=(
@@ -1206,6 +1212,8 @@ class BaseMainGui(QMainWindow):
 
         self.ai_restore_visible = False
 
+        self.start_ai_services_from_config()
+
     def ensure_ai_dialogue(self) -> None:
         """
         Create the floating AI dialogue lazily and bind it to the live main window.
@@ -1213,7 +1221,7 @@ class BaseMainGui(QMainWindow):
         :returns: Nothing.
         """
         if self.ai_chat_dialogue is None:
-            self.ai_chat_dialogue = AiChatDialogue(parent=self, app=self)
+            self.ai_chat_dialogue = AiChatDialogue(parent=self, app=self, mcp_client=self.ai_mcp_client)
             self.ai_chat_dialogue.set_embedded_mode(False)
             self.ai_chat_dialogue.apply_backend_state(self.ai_backend_state)
             self.ai_chat_dialogue.dialogue_visibility_changed.connect(
@@ -1267,10 +1275,18 @@ class BaseMainGui(QMainWindow):
         :returns: ``True`` when the AI dialogue has no live worker.
         """
         if self.ai_chat_dialogue is None:
+            self.ai_mcp_client.stop_server()
+            self.ai_ollama_manager.stop()
             return True
         else:
             self.ai_chat_dialogue.prepare_for_shutdown()
-            return self.ai_chat_dialogue.shutdown_turn_thread()
+            stopped: bool = self.ai_chat_dialogue.shutdown_turn_thread()
+            if stopped:
+                self.ai_mcp_client.stop_server()
+                self.ai_ollama_manager.stop()
+            else:
+                pass
+            return stopped
 
     def set_ai_dialogue_visible(self, visible: bool) -> None:
         """
@@ -1280,6 +1296,7 @@ class BaseMainGui(QMainWindow):
         :returns: Nothing.
         """
         self.ensure_ai_dialogue()
+        self.start_ai_services_from_config()
 
         if self.ai_chat_dialogue is None:
             pass
@@ -1290,8 +1307,9 @@ class BaseMainGui(QMainWindow):
                 self.ai_chat_dialogue.activateWindow()
                 self.refresh_ai_context_if_available()
                 self.ai_backend_state = self.ai_chat_dialogue.get_backend_state()
+                self.start_ai_services_from_config()
                 if (
-                        self.ai_backend_state.provider_tpe == ProviderType.LOCAL_LLAMA_CPP
+                        self.ai_backend_state.provider_tpe == ProviderType.OLLAMA
                         and len(self.ai_backend_state.base_url.strip()) == 0
                 ):
                     default_state: AiBackendState = self.build_default_ai_backend_state()
@@ -1300,14 +1318,9 @@ class BaseMainGui(QMainWindow):
                 else:
                     pass
 
-                if self.ai_backend_state.provider_tpe == ProviderType.LOCAL_LLAMA_CPP:
-                    self.ai_chat_dialogue.refresh_available_models()
+                if self.ai_backend_state.provider_tpe == ProviderType.OLLAMA:
+                    self.ai_chat_dialogue.run_ollama_startup_check()
                     self.ai_backend_state = self.ai_chat_dialogue.get_backend_state()
-                else:
-                    pass
-
-                if len(self.ai_backend_state.model_name.strip()) == 0:
-                    self.show_info_toast("Configure a local GGUF model path for the AI window", duration=3500)
                 else:
                     pass
 
@@ -1315,6 +1328,22 @@ class BaseMainGui(QMainWindow):
             else:
                 self.ai_chat_dialogue.hide()
                 self.sync_ai_dialogue_action_state(False)
+
+    def start_ai_services_from_config(self) -> None:
+        """
+        Start inexpensive AI services required by the current AI configuration.
+
+        :returns: Nothing.
+        """
+        if self.ai_backend_state.provider_tpe == ProviderType.OLLAMA:
+            self.ai_ollama_manager.start_if_configured(
+                enabled=True,
+                base_url=self.ai_backend_state.base_url,
+            )
+        else:
+            pass
+
+        self.ai_mcp_client.start_server()
 
     def open_ai_chat_dialogue(self) -> None:
         """

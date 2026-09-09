@@ -677,7 +677,7 @@ def plot_network(sol: Solution, problem: Problem, title: str = "Optimised Networ
     plt.grid(True, linestyle="--", alpha=0.3)
     plt.legend()
     plt.tight_layout()
-    plt.show()
+    plt.show(block=False)
 
 
 # ======================================================================
