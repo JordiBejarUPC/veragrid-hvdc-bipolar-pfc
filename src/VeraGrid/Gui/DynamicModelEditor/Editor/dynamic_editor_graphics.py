@@ -429,9 +429,26 @@ def _handle_block_item_change(item: GenericBlockItem | PairedItem | BlockItem
     :param value: Opaque Qt change payload returned unchanged.
     :return: Original Qt change payload.
     """
-    if change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged:
+    position_was_committed: bool = change in (
+        QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged,
+        QGraphicsItem.GraphicsItemChange.ItemScenePositionHasChanged,
+    )
+    if position_was_committed:
         if not _position_collides_with_blocks(item, item.pos(), 30.0):
             item._last_valid_pos = QPointF(item.pos())
+        else:
+            pass
+
+        # The scrollable area follows committed block positions only. Routing
+        # items therefore cannot enlarge or otherwise disturb the canvas.
+        scene: QGraphicsScene | None = item.scene()
+        if scene is not None:
+            view: QGraphicsView
+            for view in scene.views():
+                if isinstance(view, GraphicsView):
+                    view.expand_scene_rect_to_blocks()
+                else:
+                    pass
         else:
             pass
     else:
@@ -4263,6 +4280,17 @@ class GraphicsView(QGraphicsView):
     __slots__ = ()
 
     ZOOM_FACTOR: float = 1.15
+    SCENE_MARGIN_FACTOR: float = 0.10
+    MINIMUM_SCENE_MARGIN: float = 50.0
+    BLOCK_CONTENT_TYPES: tuple[type[QGraphicsItem], ...] = (
+        BlockItem,
+        GenericBlockItem,
+        PairedItem,
+        MeasurementsItem,
+        UnOpItem,
+        RoundBaseArithmeticOpItem,
+        RectBaseArithmeticOpItem,
+    )
 
     def __init__(self, scene: QGraphicsScene) -> None:
         """Initialize the graphics object and its interaction state.
@@ -4273,10 +4301,73 @@ class GraphicsView(QGraphicsView):
         super().__init__(scene)
         self.setRenderHints(self.renderHints() | QPainter.RenderHint.Antialiasing)
         self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
+        self.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.setDragMode(QGraphicsView.DragMode.NoDrag)
         self.setRubberBandSelectionMode(Qt.ItemSelectionMode.IntersectsItemShape)
         self._panning: bool = False
         self._pan_start: QPointF = QPointF()
+
+    def get_block_content_rect(self) -> QtCore.QRectF:
+        """Return the combined scene bounds of every stable block item.
+
+        Connections, ports, elbows and temporary routing graphics are excluded
+        so their geometry cannot change the navigable canvas limits.
+
+        :return: Combined block rectangle, or a null rectangle when empty.
+        """
+        content_rect: QtCore.QRectF = QtCore.QRectF()
+        scene: QGraphicsScene | None = self.scene()
+        if scene is not None:
+            item: QGraphicsItem
+            for item in scene.items():
+                if isinstance(item, self.BLOCK_CONTENT_TYPES):
+                    item_rect: QtCore.QRectF = item.sceneBoundingRect()
+                    if content_rect.isNull():
+                        content_rect = item_rect
+                    else:
+                        content_rect = content_rect.united(item_rect)
+                else:
+                    pass
+        else:
+            pass
+        return content_rect
+
+    def expand_scene_rect_to_blocks(self) -> None:
+        """Expand the navigable scene rectangle to contain every block.
+
+        The existing scene rectangle is preserved so adding or moving a block
+        cannot unexpectedly discard an area that the user can currently visit.
+        This operation changes neither the view transform nor its scroll value.
+
+        :return: None.
+        """
+        scene: QGraphicsScene | None = self.scene()
+        content_rect: QtCore.QRectF = self.get_block_content_rect()
+        if scene is not None and not content_rect.isNull():
+            margin_x: float = max(
+                content_rect.width() * self.SCENE_MARGIN_FACTOR,
+                self.MINIMUM_SCENE_MARGIN,
+            )
+            margin_y: float = max(
+                content_rect.height() * self.SCENE_MARGIN_FACTOR,
+                self.MINIMUM_SCENE_MARGIN,
+            )
+            required_rect: QtCore.QRectF = content_rect.adjusted(
+                -margin_x,
+                -margin_y,
+                margin_x,
+                margin_y,
+            )
+            current_rect: QtCore.QRectF = scene.sceneRect()
+            if current_rect.isNull():
+                expanded_rect: QtCore.QRectF = required_rect
+            else:
+                expanded_rect = current_rect.united(required_rect)
+            scene.setSceneRect(expanded_rect)
+        else:
+            pass
 
     def wheelEvent(self, event: QtGui.QWheelEvent) -> None:
         """Convert the mouse-wheel direction into a scene zoom operation.
@@ -4359,19 +4450,27 @@ class GraphicsView(QGraphicsView):
 
         :return: None.
         """
-        target_items: List[QGraphicsItem] = self.scene().selectedItems()
+        scene: QGraphicsScene | None = self.scene()
         block_items: List[QGraphicsItem] = list()
+        target_items: List[QGraphicsItem] = list()
+        if scene is not None:
+            target_items = scene.selectedItems()
+        else:
+            pass
 
-        if len(target_items) == 0:
+        if scene is not None and len(target_items) == 0:
             item: QGraphicsItem
-            for item in self.scene().items():
-                if isinstance(item, (BlockItem, GenericBlockItem)):
+            for item in scene.items():
+                if isinstance(item, self.BLOCK_CONTENT_TYPES):
                     block_items.append(item)
                 else:
                     pass
             target_items = block_items
         else:
-            target_items = [item for item in target_items if isinstance(item, (BlockItem, GenericBlockItem))]
+            target_items = [
+                item for item in target_items
+                if isinstance(item, self.BLOCK_CONTENT_TYPES)
+            ]
 
         if len(target_items) > 0:
             target_rect: QtCore.QRectF = QtCore.QRectF()
@@ -4385,6 +4484,10 @@ class GraphicsView(QGraphicsView):
             margin_x = max(target_rect.width() * 0.08, 30.0)
             margin_y = max(target_rect.height() * 0.08, 30.0)
             target_rect = target_rect.adjusted(-margin_x, -margin_y, margin_x, margin_y)
+
+            # Scroll ranges must contain the target before fitInView computes
+            # the transform and center needed to expose it in the viewport.
+            self.expand_scene_rect_to_blocks()
             self.fitInView(target_rect, Qt.AspectRatioMode.KeepAspectRatio)
         else:
             pass
@@ -4421,6 +4524,15 @@ class DiagramScene(QGraphicsScene):
         """
         self.addItem(item)
         self._block_items_by_uid[block_uid] = item
+
+        # Include items that were positioned before entering the scene. Items
+        # positioned afterwards are covered by ItemPositionHasChanged.
+        view: QGraphicsView
+        for view in self.views():
+            if isinstance(view, GraphicsView):
+                view.expand_scene_rect_to_blocks()
+            else:
+                pass
 
     def remove_block_item(self, block_uid: int, item: QGraphicsItem) -> None:
         """Remove one root block item from both ownership registries.
