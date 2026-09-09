@@ -68,31 +68,6 @@ class GridReduceDialogue(QtWidgets.QDialog):
         self.ui.reduceButton.clicked.connect(self.reduce_grid)
         self.ui.copyIndicesButton.clicked.connect(self.copy_indices)
 
-    def get_reduction_bus_indices(self, bus_mode: BusReductionMethod) -> IntVec:
-        """
-        Get the bus indices that the selected reduction method must delete.
-
-        :param bus_mode: Selected bus handling mode from the dialogue.
-        :type bus_mode: BusReductionMethod
-        :return: Bus indices to reduce.
-        :rtype: IntVec
-        """
-        reduction_bus_indices: IntVec
-
-        # All reduction backends receive the buses to delete. In reduce mode those are the selected buses.
-        if bus_mode == BusReductionMethod.Reduce:
-            reduction_bus_indices = np.array([self._grid.buses.index(bus)
-                                              for bus in self._selected_buses_set],
-                                             dtype=int)
-        elif bus_mode == BusReductionMethod.Keep:
-            reduction_bus_indices = np.array([idx for idx in range(self._grid.get_bus_number())
-                                              if self._grid.buses[idx] not in self._selected_buses_set],
-                                             dtype=int)
-        else:
-            raise NotImplementedError(f"BusReductionMethod not implemented: {bus_mode.value}")
-
-        return reduction_bus_indices
-
     def reduce_grid(self) -> None:
         """
         The elements of the grid will be added with new idtags.
@@ -119,7 +94,19 @@ class GridReduceDialogue(QtWidgets.QDialog):
 
             if ok:
 
-                reduction_bus_indices: IntVec = self.get_reduction_bus_indices(bus_mode=bus_mode)
+                if bus_mode == BusReductionMethod.Reduce:
+                    # convert the set of buses to bus indices
+                    reduction_bus_indices = np.array([self._grid.buses.index(b)
+                                                      for b in self._selected_buses_set],
+                                                     dtype=int)
+
+                elif bus_mode == BusReductionMethod.Keep:
+                    # the other buses that are not in the set
+                    reduction_bus_indices = np.array([i for i in range(self._grid.get_bus_number())
+                                                      if self._grid.buses[i] not in self._selected_buses_set],
+                                                     dtype=int)
+                else:
+                    raise NotImplementedError(f"BusReductionMethod not implemented: {bus_mode.value}")
 
                 if reduction_method == GridReductionMethod.DiShi:
 
@@ -179,23 +166,13 @@ class GridReduceDialogue(QtWidgets.QDialog):
                         distribute_slack = lin_drv.options.distribute_slack
 
                     else:
-                        pass
+                        distribute_slack = True
 
                     grid_reduced, logger = ptdf_reduction_projected(
                         grid=self._grid,
                         reduction_bus_indices=reduction_bus_indices,
                         distribute_slack=distribute_slack
                     )
-
-                    # grid_reduced, logger = ptdf_reduction_ree_bad(
-                    #     grid=self._grid,
-                    #     reduction_bus_indices=reduction_bus_indices,
-                    # )
-
-                    # grid_reduced, logger = ptdf_reduction_ree_less_bad(
-                    #     grid=self._grid,
-                    #     reduction_bus_indices=reduction_bus_indices,
-                    # )
 
                 else:
                     raise NotImplementedError("Reduction method not supported")
@@ -213,15 +190,10 @@ class GridReduceDialogue(QtWidgets.QDialog):
         # exit
         self.close()
 
-    def copy_indices(self) -> None:
+    def copy_indices(self):
         """
-        Copy the bus indices to delete to the clipboard.
-
-        :return: None
-        :rtype: None
+        Copy the bus indices to the clipboard
         """
-        bus_mode: BusReductionMethod = self.ui.busModeComboBox.currentData()
-        reduction_bus_indices: IntVec = self.get_reduction_bus_indices(bus_mode=bus_mode)
-        tsv_text: str = ", ".join(str(idx) for idx in reduction_bus_indices)
+        tsv_text = ", ".join([bus.name for bus in self._selected_buses_set])
 
         QtWidgets.QApplication.clipboard().setText(tsv_text, QClipboard.Mode.Clipboard)
