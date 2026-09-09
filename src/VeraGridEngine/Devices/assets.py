@@ -1487,14 +1487,13 @@ class Assets:
         Delete N-winding transformer
         :param obj: TransformerNW instance
         """
+        for winding in list(obj.windings):
+            self.delete_winding(winding)
+        self.delete_bus(obj.bus0, delete_associated=True)
         try:
             self._transformers_nw.remove(obj)
         except ValueError:
             pass
-
-        for winding in list(obj.windings):
-            self.delete_winding(winding)
-        self.delete_bus(obj.bus0, delete_associated=True)
 
         elms_to_del = list()
         for lst in [self._rms_events, self._emt_events]:
