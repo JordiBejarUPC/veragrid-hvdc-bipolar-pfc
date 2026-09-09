@@ -302,7 +302,7 @@ class VeraGridMainGUI(ScriptingMain):
                 self.save_all_config()
                 ai_stopped: bool = self.shutdown_ai_dialogue_if_available()
                 threads_stopped: bool = self.stop_all_threads()
-                child_windows_closed: bool = self.close_open_child_windows()
+                child_windows_closed: bool = self.close_open_child_windows(delete_windows=True)
                 if ai_stopped and threads_stopped and child_windows_closed:
                     event.accept()
                 else:
@@ -318,7 +318,7 @@ class VeraGridMainGUI(ScriptingMain):
             self.save_all_config()
             ai_stopped: bool = self.shutdown_ai_dialogue_if_available()
             threads_stopped: bool = self.stop_all_threads()
-            child_windows_closed: bool = self.close_open_child_windows()
+            child_windows_closed: bool = self.close_open_child_windows(delete_windows=True)
             if ai_stopped and threads_stopped and child_windows_closed:
                 event.accept()
             else:

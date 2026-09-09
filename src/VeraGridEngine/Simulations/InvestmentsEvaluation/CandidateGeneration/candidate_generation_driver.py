@@ -13,7 +13,7 @@ from VeraGridEngine.basic_structures import Vec, IntVec
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
 from VeraGridEngine.DataStructures.numerical_circuit import NumericalCircuit
-from VeraGridEngine.enumerations import ShuntControlMode, GeneratorControlMode
+from VeraGridEngine.enumerations import ShuntControlMode, GeneratorControlMode, CandidateKind
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
@@ -25,7 +25,6 @@ from VeraGridEngine.Simulations.InvestmentsEvaluation.CandidateGeneration.candid
 )
 from VeraGridEngine.Simulations.InvestmentsEvaluation.CandidateGeneration.candidate_generation_results import (
     CandidateGenerationResults, ViolationRecord, VoltageViolationRecord, ReinforcementCandidate,
-    NEW_LINE, UPGRADE, SHUNT_REACTOR, STATIC_GENERATOR, BATTERY,
 )
 
 
@@ -295,7 +294,7 @@ class CandidateGenerationDriver(DriverTemplate):
             if new_rate <= old_rate:
                 continue
 
-            cand = ReinforcementCandidate(kind=UPGRADE)
+            cand = ReinforcementCandidate(kind=CandidateKind.Upgrade)
             cand.target_branch = branch_by_idtag[str(idtags[m])]
             cand.branch_idx = m
             cand.old_rate = old_rate
@@ -382,7 +381,7 @@ class CandidateGenerationDriver(DriverTemplate):
             if score <= 0.0 or len(relieved) == 0:
                 continue
 
-            cand = ReinforcementCandidate(kind=NEW_LINE)
+            cand = ReinforcementCandidate(kind=CandidateKind.NewLine)
             cand.bus_from = buses[a]
             cand.bus_to = buses[b]
             cand.bus_from_idx = a
@@ -443,7 +442,7 @@ class CandidateGenerationDriver(DriverTemplate):
                 q_needed = v.excess * sk_proxy
                 bmax = self.options.shunt_bmax_margin * q_needed
 
-                cand = ReinforcementCandidate(kind=SHUNT_REACTOR)
+                cand = ReinforcementCandidate(kind=CandidateKind.ShuntReactor)
                 cand.target_bus = buses[i]
                 cand.target_bus_idx = i
                 cand.shunt_vset = v.vmax
@@ -564,7 +563,7 @@ class CandidateGenerationDriver(DriverTemplate):
             if score <= 0.0 or len(relieved) == 0:
                 pass
             else:
-                cand = ReinforcementCandidate(kind=STATIC_GENERATOR)
+                cand = ReinforcementCandidate(kind=CandidateKind.StaticGenerator)
                 cand.injection_bus = buses[site]
                 cand.injection_bus_idx = site
                 cand.injection_p = p_size
@@ -606,7 +605,7 @@ class CandidateGenerationDriver(DriverTemplate):
             if score <= 0.0 or len(relieved) == 0:
                 pass
             else:
-                cand = ReinforcementCandidate(kind=BATTERY)
+                cand = ReinforcementCandidate(kind=CandidateKind.Battery)
                 cand.injection_bus = buses[site]
                 cand.injection_bus_idx = site
                 cand.injection_p = p_size
@@ -655,14 +654,14 @@ class CandidateGenerationDriver(DriverTemplate):
         cpy = self.grid.copy()
         cpy_buses = cpy.get_buses()
 
-        if candidate.kind == NEW_LINE:
+        if candidate.kind == CandidateKind.NewLine:
             line = dev.Line(bus_from=cpy_buses[candidate.bus_from_idx],
                             bus_to=cpy_buses[candidate.bus_to_idx],
                             name=candidate.name,
                             r=candidate.r, x=candidate.x, b=candidate.b,
                             rate=candidate.rate)
             cpy.add_line(line)
-        elif candidate.kind == UPGRADE:
+        elif candidate.kind == CandidateKind.Upgrade:
             target_idtag = candidate.target_branch.idtag
             for br in cpy.get_branches(add_switch=True):
                 if br.idtag == target_idtag:
@@ -675,9 +674,9 @@ class CandidateGenerationDriver(DriverTemplate):
                     break
                 else:
                     pass
-        elif candidate.kind == SHUNT_REACTOR:
+        elif candidate.kind == CandidateKind.ShuntReactor:
             # Added directly active (no Investment wrapper) - testing "what if this existed",
-            # mirroring how NEW_LINE's verification copy adds an active Line.
+            # mirroring how a new-line candidate's verification copy adds an active Line.
             shunt = dev.ControllableShunt(name="verify-shunt",
                                           Bmin=0.0, Bmax=candidate.shunt_bmax,
                                           Gmin=0.0, Gmax=0.0,
@@ -686,12 +685,12 @@ class CandidateGenerationDriver(DriverTemplate):
                                           control_mode=ShuntControlMode.Continuous,
                                           active=True)
             cpy.add_controllable_shunt(cpy_buses[candidate.target_bus_idx], shunt)
-        elif candidate.kind == STATIC_GENERATOR:
+        elif candidate.kind == CandidateKind.StaticGenerator:
             static_gen = dev.StaticGenerator(name="verify-staticgen",
                                              P=candidate.injection_p, Q=0.0,
                                              Snom=candidate.injection_snom, active=True)
             cpy.add_static_generator(cpy_buses[candidate.injection_bus_idx], static_gen)
-        elif candidate.kind == BATTERY:
+        elif candidate.kind == CandidateKind.Battery:
             battery = dev.Battery(name="verify-battery",
                                   P=candidate.injection_p, Pmin=0.0, Pmax=candidate.battery_pmax,
                                   Enom=candidate.battery_enom,

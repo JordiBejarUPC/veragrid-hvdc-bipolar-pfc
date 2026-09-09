@@ -1492,8 +1492,14 @@ class Assets:
         except ValueError:
             pass
 
-        for winding in list(obj.windings):
+        winding_list: list[dev.Winding] = list(obj.windings)
+        for winding in winding_list:
             self.delete_winding(winding)
+
+        winding_count_to_clear: int = len(obj.windings)
+        for winding_index in range(winding_count_to_clear):
+            obj.delete_winding(0)
+
         self.delete_bus(obj.bus0, delete_associated=True)
 
         elms_to_del = list()

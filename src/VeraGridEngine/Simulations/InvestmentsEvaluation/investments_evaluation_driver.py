@@ -252,8 +252,10 @@ class InvestmentsEvaluationDriver(DriverTemplate):
             cancel_checker=self.is_cancel,
         )
 
-        # fix: was X[:, 0]; X is (n_pareto, n_var) so the first member's vector is row 0
-        self.results.set_best_combination(combination=X[0, :])
+        if not self.is_cancel() and X is not None and len(X) > 0:
+            self.results.set_best_combination(combination=X[:, 0])
+        else:
+            pass
 
     def optimized_evaluation_pint_toot_nsga3(self) -> None:
         """
@@ -306,8 +308,10 @@ class InvestmentsEvaluationDriver(DriverTemplate):
             cancel_checker=self.is_cancel,
         )
 
-        # fix: was X[:, 0]; X is (n_pareto, n_var) so the first member's vector is row 0
-        self.results.set_best_combination(combination=X[0, :])
+        if not self.is_cancel() and X is not None and len(X) > 0:
+            self.results.set_best_combination(combination=X[:, 0])
+        else:
+            pass
 
     def randomized_evaluation(self) -> None:
         """
@@ -333,8 +337,10 @@ class InvestmentsEvaluationDriver(DriverTemplate):
             cancel_checker=self.is_cancel,
         )
 
-        # fix: was X[:, 0]; X is (n_evals, n_var) so a combination is a row
-        self.results.set_best_combination(combination=X[0, :])
+        if not self.is_cancel() and len(X) > 0:
+            self.results.set_best_combination(combination=X[:, 0])
+        else:
+            pass
 
     def optimized_evaluation_mixed_nsga2(self) -> None:
         """

@@ -482,6 +482,35 @@ class InvestmentEvaluationMethod(Enum):
             return s
 
 
+class CandidateKind(Enum):
+    """
+    Kinds of reinforcement produced by the candidate-investment generator.
+    """
+    NewLine = "New line"
+    Upgrade = "Upgrade"
+    ShuntReactor = "Shunt reactor"
+    StaticGenerator = "Static generator"
+    Battery = "Battery"
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return CandidateKind[s]
+        except KeyError:
+            return s
+
+
 class BranchImpedanceMode(Enum):
     """
     Enumeration of branch impedance modes
