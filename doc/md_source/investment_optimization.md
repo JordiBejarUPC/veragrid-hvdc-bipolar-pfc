@@ -333,7 +333,8 @@ Returned objective vector:
 | 1      | `overload score`       | Sum of branch loading above 100%, weighted by each branch `Cost`.          |
 | 2      | `voltage module_score` | Sum of voltage-magnitude limit violations, weighted by each bus `Vm_cost`. |
 | 3      | `voltage angle score`  | Sum of voltage-angle limit violations, weighted by each bus `angle_cost`.  |
-| 4      | `financial score`      | Selected-investment CAPEX plus OPEX. OPEX is currently set to `0.0`.       |
+| 4      | `CAPEX`                | Sum of the CAPEX of all the selected investments.                          |
+| 5      | `OPEX`                 | Sum of the OPEX of all the selected investments. Currently set to `0.0`.   |
 
 This problem is appropriate for:
 
@@ -362,7 +363,7 @@ Evaluation:
 - The evaluation runs `PowerFlowTimeSeriesDriver` over the requested `time_indices` and restores the
   original device states.
 
-The returned metrics are the same five metrics used by `PowerFlowInvestmentProblem`,
+The returned metrics are the same six metrics used by `PowerFlowInvestmentProblem`,
 but aggregated over the time-series result arrays.
 
 Returned objective vector:
@@ -373,7 +374,8 @@ Returned objective vector:
 | 1      | `overload score`       | Sum of time-step branch loading above 100%, weighted by branch `Cost`.          |
 | 2      | `voltage module_score` | Sum of time-step voltage-magnitude limit violations, weighted by bus `Vm_cost`. |
 | 3      | `voltage angle score`  | Sum of time-step voltage-angle limit violations, weighted by bus `angle_cost`.  |
-| 4      | `financial score`      | Selected-investment CAPEX plus OPEX. OPEX is currently set to `0.0`.            |
+| 4      | `CAPEX`                | Sum of the CAPEX of all the selected investments.                               |
+| 5      | `OPEX`                 | Sum of the OPEX of all the selected investments. Currently set to `0.0`.        |
 
 This problem is appropriate for:
 
