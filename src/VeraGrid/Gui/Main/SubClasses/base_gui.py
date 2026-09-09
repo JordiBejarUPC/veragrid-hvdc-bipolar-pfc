@@ -1110,6 +1110,8 @@ class BaseMainGui(QMainWindow):
         grounding_char_budget_obj: object = data.get("grounding_char_budget", 1800)
         provider_items: list[ProviderType] = list(ProviderType)
         enum_index: int = 0
+        default_state: AiBackendState = self.build_default_ai_backend_state()
+        base_url: str = str(data.get("base_url", default_state.base_url))
 
         while enum_index < len(provider_items):
             enum_item: ProviderType = provider_items[enum_index]
@@ -1124,10 +1126,18 @@ class BaseMainGui(QMainWindow):
         else:
             pass
 
+        if provider_tpe == ProviderType.OLLAMA:
+            if base_url.startswith("http://") or base_url.startswith("https://"):
+                pass
+            else:
+                base_url = default_state.base_url
+        else:
+            pass
+
         self.ai_backend_state = AiBackendState(
             provider_tpe=provider_tpe,
             model_name=str(data.get("model_name", "")),
-            base_url=str(data.get("base_url", self.build_default_ai_backend_state().base_url)),
+            base_url=base_url,
             api_key=str(api_key_obj) if isinstance(api_key_obj, str) and len(api_key_obj) > 0 else None,
             timeout_s=float(timeout_obj) if isinstance(timeout_obj, (int, float)) else 60.0,
             context_window_tokens=(
@@ -1309,13 +1319,8 @@ class BaseMainGui(QMainWindow):
                     pass
 
                 if self.ai_backend_state.provider_tpe == ProviderType.OLLAMA:
-                    self.ai_chat_dialogue.refresh_available_models()
+                    self.ai_chat_dialogue.run_ollama_startup_check()
                     self.ai_backend_state = self.ai_chat_dialogue.get_backend_state()
-                else:
-                    pass
-
-                if len(self.ai_backend_state.model_name.strip()) == 0:
-                    self.show_info_toast("Start Ollama and select an AI model", duration=3500)
                 else:
                     pass
 

@@ -8,6 +8,7 @@ from __future__ import annotations
 import os
 import platform
 import subprocess
+import time
 import urllib.error
 import urllib.request
 from typing import Optional
@@ -121,13 +122,13 @@ class OllamaProcessManager:
                         stdout=subprocess.DEVNULL,
                         stderr=subprocess.DEVNULL,
                     )
-                    return True
+                    return self.wait_until_running(base_url=base_url, timeout_s=8.0)
                 except OSError:
                     self._process = None
                     return False
             else:
                 if self._process.poll() is None:
-                    return True
+                    return self.wait_until_running(base_url=base_url, timeout_s=8.0)
                 else:
                     self._process = None
                     try:
@@ -137,12 +138,29 @@ class OllamaProcessManager:
                             stdout=subprocess.DEVNULL,
                             stderr=subprocess.DEVNULL,
                         )
-                        return True
+                        return self.wait_until_running(base_url=base_url, timeout_s=8.0)
                     except OSError:
                         self._process = None
                         return False
         else:
             return False
+
+    def wait_until_running(self, base_url: str, timeout_s: float) -> bool:
+        """
+        Wait briefly until the Ollama HTTP endpoint is ready after process launch.
+
+        :param base_url: OpenAI-compatible Ollama base URL.
+        :param timeout_s: Maximum wait time in seconds.
+        :returns: True when the endpoint becomes reachable.
+        """
+        start_time: float = time.monotonic()
+        is_running: bool = self.is_server_running(base_url=base_url, timeout_s=0.5)
+
+        while (not is_running) and ((time.monotonic() - start_time) < timeout_s):
+            time.sleep(0.2)
+            is_running = self.is_server_running(base_url=base_url, timeout_s=0.5)
+
+        return is_running
 
     def stop(self) -> None:
         """
