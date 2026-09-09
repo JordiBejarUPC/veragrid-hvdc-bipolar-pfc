@@ -71,7 +71,9 @@ setup(
     package_data=package_data,
     entry_points={
         'console_scripts': [
-            'veragridmcp = VeraGridMcp.mcp_server:run_server',
+            'veragridmcp = VeraGridMcp.cli:main',
+            'veragridmcp-server = VeraGridMcp.mcp_server:run_server',
+            'veragridmcp-register = VeraGridMcp.cli:main',
         ],
     },
 )
