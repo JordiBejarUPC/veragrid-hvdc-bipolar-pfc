@@ -27,6 +27,10 @@ __VeraGridServer_VERSION__ = read_module_constant(
     os.path.join(SRC_ROOT, 'VeraGridServer', '__version__.py'),
     '__VeraGridServer_VERSION__',
 )
+__VeraGridMcp_VERSION__ = read_module_constant(
+    os.path.join(SRC_ROOT, 'VeraGridMcp', '__version__.py'),
+    '__VeraGridMcp_VERSION__',
+)
 
 
 def update_gui_to_make_sure():
@@ -113,6 +117,10 @@ def check_versions() -> bool:
         print(__VeraGridEngine_VERSION__, 'and', __VeraGridServer_VERSION__, "are different :(")
         return False
 
+    if __VeraGridEngine_VERSION__ != __VeraGridMcp_VERSION__:  # all published packages' versions must match
+        print(__VeraGridEngine_VERSION__, 'and', __VeraGridMcp_VERSION__, "are different :(")
+        return False
+
     return True
 
 
@@ -129,6 +137,7 @@ if __name__ == "__main__":
     search_text_in_python_files(directory="VeraGrid", search_terms=forbidden_text)
     search_text_in_python_files(directory="VeraGridEngine", search_terms=forbidden_text)
     search_text_in_python_files(directory="VeraGridServer", search_terms=forbidden_text)
+    search_text_in_python_files(directory="VeraGridMcp", search_terms=forbidden_text)
 
     update_gui_to_make_sure()
 
@@ -242,6 +251,25 @@ if __name__ == "__main__":
             provides_extra=_provides_extra,
             long_description=_long_description,
             ext_filter=['.py', '.csv', '.txt', '.ico'],
+            exeption_paths=('__pycache__')
+        )
+
+        publish(
+            pkg_name='VeraGridMcp',
+            setup_path=os.path.join('VeraGridMcp', 'setup.py'),
+            version=__VeraGridMcp_VERSION__,
+            summary=_summary,
+            home_page=_home_page,
+            author=_author,
+            email=_author_email,
+            license_=_license_,
+            keywords=_keywords,
+            classifiers_list=_classifiers_list,
+            requires_pyhon=_requires_pyhon,
+            description_content_type=_description_content_type,
+            provides_extra=_provides_extra,
+            long_description=_long_description,
+            ext_filter=['.py', '.txt', '.md'],
             exeption_paths=('__pycache__')
         )
 

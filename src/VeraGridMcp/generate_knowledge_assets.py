@@ -8,7 +8,7 @@ Generate packaged AI knowledge assets for VeraGrid.
 
 This script converts selected repository sources into markdown knowledge files
 that ship with the AI agent. The generated files are written under
-``VeraGrid/AI/knowledge`` so the retrieval layer can load them through
+``VeraGridMcp/knowledge`` so the retrieval layer can load them through
 package resources in production builds.
 """
 
@@ -52,7 +52,7 @@ def build_repository_root() -> str:
     :returns: Absolute repository root path.
     """
     script_dir: str = os.path.abspath(os.path.dirname(__file__))
-    repository_root: str = os.path.abspath(os.path.join(script_dir, "..", "..", "..", ".."))
+    repository_root: str = os.path.abspath(os.path.join(script_dir, "..", ".."))
     return repository_root
 
 
@@ -66,8 +66,7 @@ def build_knowledge_directory(repository_root: str) -> str:
     knowledge_directory: str = os.path.join(
         repository_root,
         "src",
-        "VeraGrid",
-        "AI",
+        "VeraGridMcp",
         "knowledge",
     )
     return knowledge_directory

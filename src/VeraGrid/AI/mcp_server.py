@@ -24,6 +24,7 @@ from VeraGrid.AI.types_and_tools import (
     LLMResponse,
     ModelListResult,
     ProviderConfig,
+    ProviderType,
     ToolSpec,
 )
 
@@ -126,16 +127,19 @@ class VeraGridAiMcpServer:
             if method == "tools/list":
                 return self.handle_tools_list()
             else:
-                if method == "llm/complete":
-                    return self.handle_llm_complete(params)
+                if method == "tools/call":
+                    return self.handle_tools_call(params)
                 else:
-                    if method == "llm/list_models":
-                        return self.handle_llm_list_models(params)
+                    if method == "llm/complete":
+                        return self.handle_llm_complete(params)
                     else:
-                        if method == "shutdown":
-                            return dict()
+                        if method == "llm/list_models":
+                            return self.handle_llm_list_models(params)
                         else:
-                            raise ValueError(f"Unsupported MCP method: {method}")
+                            if method == "shutdown":
+                                return dict()
+                            else:
+                                raise ValueError(f"Unsupported MCP method: {method}")
 
     def handle_initialize(self) -> dict[str, Any]:
         """
@@ -158,12 +162,149 @@ class VeraGridAiMcpServer:
 
     def handle_tools_list(self) -> dict[str, Any]:
         """
-        Return an empty MCP tool list because VeraGrid executes live tools in-process.
+        Return the standard MCP tools exposed by the VeraGrid AI server.
 
         :returns: MCP tools/list result.
         """
         result: dict[str, Any] = dict()
-        result["tools"] = list()
+        tools: list[dict[str, Any]] = list()
+        status_tool: dict[str, Any] = dict()
+        status_schema: dict[str, Any] = dict()
+        model_tool: dict[str, Any] = dict()
+        model_schema: dict[str, Any] = dict()
+        model_properties: dict[str, Any] = dict()
+        base_url_property: dict[str, Any] = dict()
+        stack_tool: dict[str, Any] = dict()
+        stack_schema: dict[str, Any] = dict()
+
+        status_schema["type"] = "object"
+        status_schema["properties"] = dict()
+        status_schema["additionalProperties"] = False
+        status_tool["name"] = "veragrid_status"
+        status_tool["description"] = "Report whether the VeraGrid AI MCP server is reachable."
+        status_tool["inputSchema"] = status_schema
+        tools.append(status_tool)
+
+        base_url_property["type"] = "string"
+        base_url_property["description"] = "Ollama OpenAI-compatible base URL."
+        model_properties["base_url"] = base_url_property
+        model_schema["type"] = "object"
+        model_schema["properties"] = model_properties
+        model_schema["additionalProperties"] = False
+        model_tool["name"] = "ollama_models"
+        model_tool["description"] = "List the models reported by the local Ollama server."
+        model_tool["inputSchema"] = model_schema
+        tools.append(model_tool)
+
+        stack_schema["type"] = "object"
+        stack_schema["properties"] = dict()
+        stack_schema["additionalProperties"] = False
+        stack_tool["name"] = "veragrid_stack_status"
+        stack_tool["description"] = "Report the VeraGrid and VeraGridEngine packages available to this external MCP server."
+        stack_tool["inputSchema"] = stack_schema
+        tools.append(stack_tool)
+
+        result["tools"] = tools
+        return result
+
+    def handle_tools_call(self, params: dict[str, Any]) -> dict[str, Any]:
+        """
+        Execute one standard MCP tool call.
+
+        :param params: Tool-call parameters.
+        :returns: MCP tools/call result.
+        """
+        name_obj: object = params.get("name", "")
+        arguments_obj: object = params.get("arguments", dict())
+        name: str = str(name_obj) if isinstance(name_obj, str) else ""
+        arguments: dict[str, Any]
+        result_text: str
+
+        if isinstance(arguments_obj, dict):
+            arguments = arguments_obj
+        else:
+            arguments = dict()
+
+        if name == "veragrid_status":
+            result_text = "VeraGrid AI MCP server is connected."
+        else:
+            if name == "ollama_models":
+                result_text = self.build_ollama_models_tool_text(arguments)
+            else:
+                if name == "veragrid_stack_status":
+                    result_text = self.build_veragrid_stack_status_text()
+                else:
+                    result_text = f"Unknown VeraGrid AI MCP tool: {name}"
+
+        return self.build_text_tool_result(result_text)
+
+    def build_veragrid_stack_status_text(self) -> str:
+        """
+        Build the VeraGrid package-stack status response.
+
+        :returns: Human-readable package-stack status.
+        """
+        lines: list[str] = list()
+
+        try:
+            from VeraGrid.__version__ import __VeraGrid_VERSION__
+            lines.append("VeraGrid: " + __VeraGrid_VERSION__)
+        except ImportError as exc:
+            lines.append("VeraGrid: unavailable (" + str(exc) + ")")
+
+        try:
+            from VeraGridEngine.__version__ import __VeraGridEngine_VERSION__
+            lines.append("VeraGridEngine: " + __VeraGridEngine_VERSION__)
+        except ImportError as exc:
+            lines.append("VeraGridEngine: unavailable (" + str(exc) + ")")
+
+        return "\n".join(lines)
+
+    def build_ollama_models_tool_text(self, arguments: dict[str, Any]) -> str:
+        """
+        Build the Ollama model-list tool response.
+
+        :param arguments: Tool-call arguments.
+        :returns: Human-readable model-list text.
+        """
+        base_url_obj: object = arguments.get("base_url", "http://localhost:11434/v1")
+        base_url: str = str(base_url_obj) if isinstance(base_url_obj, str) else "http://localhost:11434/v1"
+        config: ProviderConfig = ProviderConfig(
+            provider_tpe=ProviderType.OLLAMA,
+            model_name="",
+            api_key=None,
+            base_url=base_url,
+            timeout_s=15.0,
+        )
+        model_result: ModelListResult = list_provider_models(config)
+        text: str
+
+        if model_result.success:
+            if len(model_result.model_names) > 0:
+                text = "Ollama reported these models: " + ", ".join(model_result.model_names)
+            else:
+                text = "Ollama is reachable, but it reported no installed models."
+        else:
+            text = f"Ollama model discovery failed: {model_result.error_message}"
+
+        return text
+
+    def build_text_tool_result(self, text: str) -> dict[str, Any]:
+        """
+        Build a standard MCP text tool result.
+
+        :param text: Tool result text.
+        :returns: MCP tools/call result.
+        """
+        result: dict[str, Any] = dict()
+        content: list[dict[str, str]] = list()
+        text_content: dict[str, str] = dict()
+
+        text_content["type"] = "text"
+        text_content["text"] = text
+        content.append(text_content)
+        result["content"] = content
+        result["isError"] = False
         return result
 
     def handle_llm_complete(self, params: dict[str, Any]) -> dict[str, Any]:

@@ -556,7 +556,7 @@ def build_default_knowledge_package_name() -> str:
 
     :returns: Knowledge package name.
     """
-    return "VeraGrid.AI.knowledge"
+    return "VeraGridMcp.knowledge"
 
 
 def build_program_documents_from_package(package_name: str) -> list[RetrievalDocument]:
