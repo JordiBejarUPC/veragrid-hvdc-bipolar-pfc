@@ -36,7 +36,7 @@ plt.ylabel("Criterio técnico (M€)")
 plt.title("Mapa de inversiones")
 plt.ylim([100, None])
 plt.legend()
-plt.show()
+plt.show(block=False)
 
 
 

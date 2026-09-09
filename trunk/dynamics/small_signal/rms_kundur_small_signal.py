@@ -850,7 +850,7 @@ def rms_kundur_small_signal() -> None:
 
     plot_s_domain_eigenvalues(eigenvalues=eigenvalues)
     plot_participation_factors(participation_factors=PFactors)
-    plt.show()
+    plt.show(block=False)
 
 
 

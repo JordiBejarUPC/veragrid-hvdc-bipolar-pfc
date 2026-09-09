@@ -218,7 +218,7 @@ def main() -> None:
     print(f"RMSE(Delta i_A): {rmse_i:.6e}")
     print(f"MAX |Delta i_A|: {max_i:.6e}")
 
-    plt.show()
+    plt.show(block=False)
 
 
 if __name__ == "__main__":

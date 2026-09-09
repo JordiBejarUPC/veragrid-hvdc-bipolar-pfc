@@ -187,7 +187,7 @@ def run_method_benchmark() -> None:
     plt.grid(True)
     plt.legend()
     plt.tight_layout()
-    plt.show()
+    plt.show(block=False)
 
 
 if __name__ == "__main__":

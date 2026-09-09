@@ -40,5 +40,5 @@ fig.set_tight_layout(tight=True)
 
 plt.savefig(fname='PTDF flows comparison.png')
 
-plt.show()
+plt.show(block=False)
 

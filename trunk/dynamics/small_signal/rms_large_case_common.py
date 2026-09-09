@@ -165,6 +165,6 @@ def finish_benchmark_figures(show_figures: bool) -> None:
     :return: None.
     """
     if show_figures:
-        plt.show()
+        plt.show(block=False)
     else:
         plt.close("all")

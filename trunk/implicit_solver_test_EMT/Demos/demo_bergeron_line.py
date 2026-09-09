@@ -272,7 +272,7 @@ def main() -> None:
     plt.legend(loc="lower right")
     plt.grid(True, which='both', linestyle='--', alpha=0.6)
     plt.tight_layout()
-    plt.show()
+    plt.show(block=False)
 
 
 if __name__ == "__main__":

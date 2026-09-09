@@ -153,7 +153,7 @@ def save_and_show_or_close_plot(filename: str):
     if matplotlib.get_backend().lower() == "agg":
         plt.close()
     else:
-        plt.show()
+        plt.show(block=False)
 
 
 def print_top_residuals_at_t0(solver, problem, count: int = 12, states_override=None, derivatives_override=None) -> None:

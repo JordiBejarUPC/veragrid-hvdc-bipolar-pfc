@@ -165,7 +165,7 @@ def _plot_eigen_comparison(ml_eigs: np.ndarray, ph_eigs: np.ndarray, grid_label:
     plot_path = plot_dir / f"{safe_label}_eigen_comparison.png"
     fig.savefig(plot_path, dpi=160)
     print(f"Saved eigen comparison plot: {plot_path}")
-    plt.show()
+    plt.show(block=False)
     plt.close(fig)
 
 

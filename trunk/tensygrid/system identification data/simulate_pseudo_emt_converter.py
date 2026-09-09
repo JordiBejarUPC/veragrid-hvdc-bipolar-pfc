@@ -265,7 +265,7 @@ def plot_time_series(time_arr: np.ndarray, signals: dict[str, np.ndarray], input
     fig.tight_layout()
     plot_path = Path(__file__).resolve().with_name("pseudo_emt_converter_standalone_timeseries.png")
     fig.savefig(plot_path, dpi=170)
-    plt.show()
+    plt.show(block=False)
     return plot_path
 
 

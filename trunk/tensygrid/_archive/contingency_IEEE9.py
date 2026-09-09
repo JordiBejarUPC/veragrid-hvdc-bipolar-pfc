@@ -408,7 +408,7 @@ def plot_contingency_severity_and_pf(results_dict: dict):
                                    fontsize=9)
 
     plt.tight_layout()
-    plt.show()
+    plt.show(block=False)
 
 
 def main():

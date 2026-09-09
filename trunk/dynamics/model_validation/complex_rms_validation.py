@@ -174,7 +174,7 @@ def main():
         plt.tight_layout()
         plt.savefig('complex_phasor_dynamic.png', dpi=150)
         print("Plot saved to: complex_phasor_dynamic.png")
-        plt.show()
+        plt.show(block=False)
         
         return converged
         

@@ -905,4 +905,4 @@ ax.legend()
 fig.tight_layout()
 
 print("Generating EMT plots...")
-plt.show()
+plt.show(block=False)

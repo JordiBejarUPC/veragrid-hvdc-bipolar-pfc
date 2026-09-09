@@ -2142,7 +2142,7 @@ def _run_andes_vs_veragrid_stability(
 
     print(f"\nComparison figures and CSV files written to: {comparison_dir}")
     if show_figures:
-        plt.show()
+        plt.show(block=False)
     else:
         generated_figure: Any
         for generated_figure in generated_figures:

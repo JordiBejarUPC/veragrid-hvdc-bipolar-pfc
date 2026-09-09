@@ -51,7 +51,7 @@ if __name__ == "__main__":
     plt.scatter(x, y, facecolor="none", edgecolor="red")
     plt.xlabel("Investment cost (M€)")
     plt.ylabel("Technical cost (M€)")
-    plt.show()
+    plt.show(block=False)
 
     '''# Profile 
     profiler = cProfile.Profile()

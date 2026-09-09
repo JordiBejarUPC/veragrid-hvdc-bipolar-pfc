@@ -482,7 +482,7 @@ plt.legend(loc='upper right')
 plt.grid(True)
 
 plt.tight_layout()
-plt.show()
+plt.show(block=False)
 
 # Plot generator currents and angle
 plt.figure(figsize=(14, 10))
@@ -523,7 +523,7 @@ plt.legend(loc='upper right')
 plt.grid(True)
 
 plt.tight_layout()
-plt.show()
+plt.show(block=False)
 
 # Plot VSC DC current
 plt.figure(figsize=(10, 5))
@@ -534,6 +534,6 @@ plt.xlabel("Time [s]")
 plt.ylabel("Current [p.u.]")
 plt.legend(loc='upper right')
 plt.grid(True)
-plt.show()
+plt.show(block=False)
 
 print("Simulation completed successfully!")

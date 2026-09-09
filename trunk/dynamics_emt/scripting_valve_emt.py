@@ -701,7 +701,7 @@ def _plot_valve_results(valve_tpe: ValveEmtType, result: ValveCaseResult) -> Non
     axes[3].legend(loc='best')
 
     fig.tight_layout()
-    plt.show()
+    plt.show(block=False)
 
 
 def main() -> None:

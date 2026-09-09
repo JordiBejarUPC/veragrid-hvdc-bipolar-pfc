@@ -522,7 +522,7 @@ def main() -> None:
 
     print_benchmark_summary(cases)
     plot_benchmark_comparison(cases)
-    plt.show()
+    plt.show(block=False)
 
 
 if __name__ == "__main__":

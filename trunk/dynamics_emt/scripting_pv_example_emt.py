@@ -1899,7 +1899,7 @@ def plot_results(
     axes[8].set_xlabel("Time [s]")
 
     figure.tight_layout()
-    plt.show()
+    plt.show(block=False)
 
 
 def run_pv_emt_case(case: PvCaseDefinition, pv_level: PvEmtModelLevel, scenario: PvScenario) -> None:

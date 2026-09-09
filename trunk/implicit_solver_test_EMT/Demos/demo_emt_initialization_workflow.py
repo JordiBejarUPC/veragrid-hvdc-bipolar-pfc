@@ -254,7 +254,7 @@ def main() -> None:
 
     _plot_pareto(synthetic_records, "Synthetic")
     _plot_pareto(real_records, "Two-bus real EMT")
-    plt.show()
+    plt.show(block=False)
 
 
 if __name__ == "__main__":

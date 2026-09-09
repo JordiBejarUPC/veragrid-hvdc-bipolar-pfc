@@ -521,7 +521,7 @@ plt.grid(True)
 
 plt.tight_layout()
 print("Generating plots...")
-plt.show()
+plt.show(block=False)
 
 theta = find_name_in_block("theta_abs", gen_mdl)
 omega_gen = find_name_in_block("omega", gen_mdl)
@@ -548,7 +548,7 @@ plt.grid(True)
 
 plt.tight_layout()
 print("Generating plots...")
-plt.show()
+plt.show(block=False)
 
 i_A_gen = find_name_in_block("i_A", gen_mdl)
 i_B_gen = find_name_in_block("i_B", gen_mdl)
@@ -593,7 +593,7 @@ plt.grid(True)
 
 plt.tight_layout()
 print("Generating plots...")
-plt.show()
+plt.show(block=False)
 
 # P_A_load = find_name_in_block("P_A_ZIP_Load_EMT_3ph", load_mdl)
 # P_B_load = find_name_in_block("P_B_ZIP_Load_EMT_3ph", load_mdl)
@@ -686,7 +686,7 @@ plt.grid(True)
 
 plt.tight_layout()
 print("Generating plots...")
-plt.show()
+plt.show(block=False)
 
 i_d_gen = find_name_in_block("i_d", gen_mdl)
 i_q_gen = find_name_in_block("i_q", gen_mdl)
@@ -745,7 +745,7 @@ plt.grid(True)
 
 plt.tight_layout()
 print("Generating plots...")
-plt.show()
+plt.show(block=False)
 
 
 
@@ -812,7 +812,7 @@ plt.legend()
 
 plt.tight_layout()
 print("Generating plots...")
-plt.show()
+plt.show(block=False)
 
 i_ser_A = find_name_in_block("i_ser_A", line0.emt_model)
 i_ser_B = find_name_in_block("i_ser_B", line0.emt_model)
@@ -872,4 +872,4 @@ plt.legend()
 
 plt.tight_layout()
 print("Generating plots...")
-plt.show()
+plt.show(block=False)
