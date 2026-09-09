@@ -280,7 +280,7 @@ def plot_s_domain_eigenvalues(eigenvalues: np.ndarray) -> None:
     # ax.set_ylim([y_min, y_max])
     ax.grid(True, alpha=0.3)
     plt.tight_layout()
-    plt.show(block=True)
+    plt.show(block=False)
 
 def find_name_in_block(name: str, block: Block):
     for var in block.algebraic_vars + block.state_vars + list(block.event_dict.keys()) + block.diff_vars:

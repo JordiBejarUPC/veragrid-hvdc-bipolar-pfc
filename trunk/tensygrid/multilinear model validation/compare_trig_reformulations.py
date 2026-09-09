@@ -594,7 +594,7 @@ def main() -> None:
         #plt.savefig(out_path, dpi=140)
         #print(f"Saved plot: {out_path}")
         if os.environ.get("DISPLAY"):
-            plt.show()
+            plt.show(block=False)
         else:
             plt.close(fig)
 

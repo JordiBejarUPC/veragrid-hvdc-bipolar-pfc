@@ -214,7 +214,7 @@ def run_switch_emt_case(enable_plots: bool = True) -> Dict[str, object]:
     figure_response.savefig(response_png_path, dpi=200, bbox_inches="tight")
 
     if enable_plots:
-        plt.show()
+        plt.show(block=False)
     else:
         plt.close(figure_mode)
         plt.close(figure_response)

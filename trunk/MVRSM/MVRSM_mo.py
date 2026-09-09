@@ -663,4 +663,4 @@ if __name__ == '__main__':
 
     plt.scatter(sorted_y_[:, 0], sorted_y_[:, 1], 1, )
     # plt.plot(y_population_[:, 0])
-    plt.show()
+    plt.show(block=False)

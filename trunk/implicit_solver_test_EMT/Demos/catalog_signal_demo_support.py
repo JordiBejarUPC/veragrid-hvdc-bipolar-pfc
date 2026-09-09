@@ -355,7 +355,7 @@ def plot_named_traces(traces: Dict[str, np.ndarray], title: str, y_labels: Seque
         pass
 
     if file_path is None:
-        plt.show()
+        plt.show(block=False)
     else:
         pass
 

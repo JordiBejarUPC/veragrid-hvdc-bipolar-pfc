@@ -401,7 +401,7 @@ def plot_results(results):
     
     plt.tight_layout()
     plt.savefig('vsc_ac2ac_validation_results.png', dpi=150)
-    plt.show()
+    plt.show(block=False)
 
 
 def main():

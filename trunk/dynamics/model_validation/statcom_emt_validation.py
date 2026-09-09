@@ -168,7 +168,7 @@ def save_and_show_or_close_plot(filename: str):
     if matplotlib.get_backend().lower() == "agg":
         plt.close()
     else:
-        plt.show()
+        plt.show(block=False)
 
 
 def get_dc_link_capacitor_emt_block(vf, capacitance_f: float, name: str = "dc_link_capacitor") -> Block:

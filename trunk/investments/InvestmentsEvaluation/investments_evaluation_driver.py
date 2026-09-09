@@ -346,7 +346,7 @@ class InvestmentsEvaluationDriver(DriverTemplate):
             ax2.legend(lines + lines2, labels + labels2, loc='upper left')
 
             # Showing the plot
-            plt.show()
+            plt.show(block=False)
 
             self.results.set_at(eval_idx=np.arange(len(y_population_)),
                                 capex=y_population_[:, 4],
@@ -392,7 +392,7 @@ class InvestmentsEvaluationDriver(DriverTemplate):
             ax2.legend(lines + lines2, labels + labels2, loc='upper left')
 
             # Showing the plot
-            plt.show()
+            plt.show(block=False)
 
             self.results.set_at(eval_idx=np.arange(len(y_population_)),
                                 capex=y_population_[:, 4],

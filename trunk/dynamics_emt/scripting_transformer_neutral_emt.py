@@ -313,7 +313,7 @@ def run_transformer_neutral_case(enable_plots: bool = True) -> Dict[str, object]
     figure_current.savefig(current_png_path, dpi=200, bbox_inches="tight")
 
     if enable_plots:
-        plt.show()
+        plt.show(block=False)
     else:
         plt.close(figure_voltage)
         plt.close(figure_current)

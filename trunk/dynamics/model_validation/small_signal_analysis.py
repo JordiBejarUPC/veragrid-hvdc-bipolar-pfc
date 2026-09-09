@@ -344,7 +344,7 @@ def small_signal_analysis():
         ax2.grid(True, alpha=0.3, axis='y')
     
     plt.tight_layout()
-    plt.show()
+    plt.show(block=False)
     
     return True
 

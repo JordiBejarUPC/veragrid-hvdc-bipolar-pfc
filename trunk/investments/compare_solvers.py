@@ -148,4 +148,4 @@ if __name__ == "__main__":
                     title='Summation',
                     ylabel='np.sum(x[1:])')
 
-    plt.show()
+    plt.show(block=False)

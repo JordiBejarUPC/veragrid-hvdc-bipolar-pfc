@@ -434,7 +434,7 @@ def run_pf(grid: gce.MultiCircuit, pf_options: gce.PowerFlowOptions):
     logger.print()
     ret.plot_error()
 
-    plt.show()
+    plt.show(block=False)
 
 
 if __name__ == '__main__':

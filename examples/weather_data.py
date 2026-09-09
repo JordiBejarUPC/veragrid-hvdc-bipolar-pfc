@@ -21,4 +21,4 @@ df.fillna(0, inplace=True)
 # Plot line chart including average, minimum and maximum temperature
 df.plot(y=['tavg', 'tmin', 'tmax'])
 # df.plot(x=['wdir'], y=['wspd'], kind='polar')
-plt.show()
+plt.show(block=False)

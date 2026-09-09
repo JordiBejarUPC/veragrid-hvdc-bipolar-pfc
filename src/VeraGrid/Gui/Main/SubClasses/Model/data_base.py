@@ -2340,7 +2340,7 @@ class DataBaseTableMain(DiagramsMain):
 
             elm_type: DeviceType | None = self.get_db_object_selected_type()
 
-            context_menu = QtWidgets.QMenu(parent=self.ui.diagramsListView)
+            context_menu: QtWidgets.QMenu = QtWidgets.QMenu(parent=self.ui.dataStructureTableView)
 
             gf.add_menu_entry(menu=context_menu,
                               text=self.tr("Edit"),

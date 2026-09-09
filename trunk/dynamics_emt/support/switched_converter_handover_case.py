@@ -1626,7 +1626,7 @@ def plot_switched_converter_handover(
         pass
 
     if show_plot:
-        plt.show()
+        plt.show(block=False)
     else:
         plt.close(fig)
 

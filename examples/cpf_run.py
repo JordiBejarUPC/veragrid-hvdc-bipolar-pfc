@@ -53,4 +53,4 @@ plt.tight_layout()
 
 plt.savefig('cpf_south_island_new_zealand.png')
 
-plt.show()
+plt.show(block=False)

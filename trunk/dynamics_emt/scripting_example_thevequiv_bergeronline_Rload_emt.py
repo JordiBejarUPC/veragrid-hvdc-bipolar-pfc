@@ -541,7 +541,7 @@ plt.legend(loc='upper left')
 plt.grid(True)
 
 plt.tight_layout()
-plt.show()
+plt.show(block=False)
 
 plt.plot()
 for k, ph in enumerate(rt.active_ph):
@@ -555,7 +555,7 @@ plt.legend(loc='upper left')
 plt.grid(True)
 
 plt.tight_layout()
-plt.show()
+plt.show(block=False)
 
 
 #
@@ -599,7 +599,7 @@ plt.legend()
 
 plt.tight_layout()
 print("Generating plots...")
-plt.show()
+plt.show(block=False)
 
 theta = find_name_in_block("theta", gen_mdl)
 theta_plt = y[:, problem.get_var_idx(theta)]
@@ -617,7 +617,7 @@ plt.legend()
 
 plt.tight_layout()
 print("Generating plots...")
-plt.show()
+plt.show(block=False)
 
 i_A_gen = find_name_in_block("i_A", gen_mdl)
 i_B_gen = find_name_in_block("i_B", gen_mdl)
@@ -675,6 +675,6 @@ plt.legend()
 
 plt.tight_layout()
 print("Generating plots...")
-plt.show()
+plt.show(block=False)
 
 

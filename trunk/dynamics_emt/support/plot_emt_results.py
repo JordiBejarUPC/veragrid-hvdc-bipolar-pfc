@@ -370,7 +370,7 @@ def plot_results_by_time(csv, what_to_plot='v'):
         plt.legend()
         plt.grid(True)
         plt.ylim([-350000, 350000])
-        plt.show()
+        plt.show(block=False)
 
     if what_to_plot == "i_line":
         line_ids = sorted({
@@ -406,7 +406,7 @@ def plot_results_by_time(csv, what_to_plot='v'):
         plt.title(r"Line currents")
         plt.legend()
         plt.grid(True)
-        plt.show()
+        plt.show(block=False)
 
 # =============================================================
 # 1) PLOT VOLTAGES
@@ -427,7 +427,7 @@ def plot_voltages(csv):
     plt.title(r"Voltages")
     plt.grid(True)
     plt.legend()
-    plt.show()
+    plt.show(block=False)
 
 # =============================================================
 # 2) PLOT ISOURCE
@@ -447,7 +447,7 @@ def plot_isource(csv):
     plt.title(r"Injection currents $i_s$")
     plt.grid(True)
     plt.legend()
-    plt.show()
+    plt.show(block=False)
 
 # =============================================================
 # 3) PLOT LINE CURRENTS
@@ -481,7 +481,7 @@ def plot_itrafo(csv):
     plt.title(r"Transformer currents")
     plt.grid(True)
     plt.legend()
-    plt.show()
+    plt.show(block=False)
 
 def plot_ilines(csv):
     df = pd.read_csv(csv)
@@ -512,7 +512,7 @@ def plot_ilines(csv):
     plt.title(r"Line currents")
     plt.grid(True)
     plt.legend()
-    plt.show()
+    plt.show(block=False)
 
 # =============================================================
 # 4) GENERATOR PLOTS
@@ -535,7 +535,7 @@ def plot_generators(x_csv, dx_csv):
     plt.ylabel(r"$\theta\;[\mathrm{rad}]$")
     plt.legend()
     plt.grid()
-    plt.show()
+    plt.show(block=False)
 
     # Omega
     plt.figure(figsize=(12, 6))
@@ -548,7 +548,7 @@ def plot_generators(x_csv, dx_csv):
     plt.ylabel(r"$\omega\;[\mathrm{p.u.}]$")
     plt.legend()
     plt.grid()
-    plt.show()
+    plt.show(block=False)
 
     # Torques
     plt.figure(figsize=(12, 6))
@@ -563,7 +563,7 @@ def plot_generators(x_csv, dx_csv):
     plt.ylabel(r"$\Gamma~[\mathrm{p.u.}]$")
     plt.legend()
     plt.grid()
-    plt.show()
+    plt.show(block=False)
 
     # Powers
     plt.figure(figsize=(12, 6))
@@ -577,7 +577,7 @@ def plot_generators(x_csv, dx_csv):
     plt.ylabel(r"Power $[\mathrm{p.u.}]$")
     plt.legend()
     plt.grid()
-    plt.show()
+    plt.show(block=False)
 
     # Currents dq0
     plt.figure(figsize=(12, 6))
@@ -591,7 +591,7 @@ def plot_generators(x_csv, dx_csv):
     plt.ylabel(r"Current $[\mathrm{p.u.}]$")
     plt.legend()
     plt.grid()
-    plt.show()
+    plt.show(block=False)
 
     # Fluxes dq0
     plt.figure(figsize=(12, 6))
@@ -605,7 +605,7 @@ def plot_generators(x_csv, dx_csv):
     plt.ylabel(r"$\psi\;[\mathrm{p.u.}]$")
     plt.legend()
     plt.grid()
-    plt.show()
+    plt.show(block=False)
 
 # =============================================================
 # 5) COMBINED VOLTAGE & CURRENT PLOTS
@@ -670,7 +670,7 @@ def plot_v_i(v_csv, x_csv):
         fontsize=14
     )
     plt.tight_layout(rect=[0.0, 0.0, 1.0, 0.96])
-    plt.show()
+    plt.show(block=False)
 
 
 

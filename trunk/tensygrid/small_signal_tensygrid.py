@@ -805,7 +805,7 @@ def main():
 
     plt.tight_layout()
     plt.savefig("scatter_and_bars.png", dpi=300, bbox_inches='tight')
-    plt.show()
+    plt.show(block=False)
 
     # --- CONSOLE OUTPUT (So you can see the exact values) ---
     print("=== EIGENVALUE REPORT ===")
