@@ -16,7 +16,6 @@ Use the repo editables (recommended for local use):
 ```bash
 cd /home/santi/Git/eRoots/VeraGrid
 python -m pip install -e src/VeraGridEngine
-python -m pip install -e src/VeraGrid
 python -m pip install -e src/VeraGridMcp
 ```
 
@@ -71,7 +70,7 @@ Then call:
 `veragrid_stack_status`
 
 Expected output includes:
-- `VeraGrid: <version>`
+- `VeraGridMcp: <version>`
 - `VeraGridEngine: <version>`
 
 ## 5) OpenAI/ChatGPT (publish path)
@@ -95,7 +94,7 @@ Open your client config file and delete the `veragrid` block (or run your own co
 
 - `veragridmcp` command not found: install the package in the active environment.
 - Bad command path: use `--python` and `--cwd` to point to the exact Python and repo root.
-- Missing version text from `veragrid_stack_status`: that means `VeraGrid`/`VeraGridEngine` are not importable in the client environment.
+- Missing version text from `veragrid_stack_status`: that means `VeraGridEngine` is not importable in the client environment.
 
 ## 8) Regenerate knowledge assets (optional)
 

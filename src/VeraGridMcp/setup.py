@@ -44,7 +44,6 @@ package_data: dict[str, list[str]] = {
 }
 
 dependencies: list[str] = [
-    "VeraGrid==" + __VeraGridMcp_VERSION__,
     "VeraGridEngine==" + __VeraGridMcp_VERSION__,
     "mcp<2",
 ]

@@ -7,6 +7,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from mcp.server.fastmcp import FastMCP
+from VeraGridMcp.__version__ import __VeraGridMcp_VERSION__
+
 
 def veragrid_status() -> str:
     """
@@ -19,17 +22,12 @@ def veragrid_status() -> str:
 
 def veragrid_stack_status() -> str:
     """
-    Return the VeraGrid and VeraGridEngine versions available to this MCP server.
+    Return the VeraGridEngine version available to this MCP server.
 
     :returns: Newline separated stack status text.
     """
     output_lines: list[str] = list()
-    try:
-        from VeraGrid.__version__ import __VeraGrid_VERSION__
-
-        output_lines.append("VeraGrid: " + __VeraGrid_VERSION__)
-    except ImportError as exc:
-        output_lines.append("VeraGrid: unavailable (" + str(exc) + ")")
+    output_lines.append("VeraGridMcp: " + __VeraGridMcp_VERSION__)
 
     try:
         from VeraGridEngine.__version__ import __VeraGridEngine_VERSION__
@@ -49,7 +47,7 @@ def _register_tools(server: Any) -> None:
     :returns: Nothing.
     """
     _ = server.tool(name="veragrid_status", description="Report whether the VeraGrid MCP server is reachable.")(veragrid_status)
-    _ = server.tool(name="veragrid_stack_status", description="Report the VeraGrid and VeraGridEngine versions available to this MCP server.")(veragrid_stack_status)
+    _ = server.tool(name="veragrid_stack_status", description="Report the VeraGridMcp and VeraGridEngine versions available to this MCP server.")(veragrid_stack_status)
 
 
 def build_server() -> Any:
@@ -58,8 +56,6 @@ def build_server() -> Any:
 
     :returns: Configured FastMCP server instance.
     """
-    from mcp.server.fastmcp import FastMCP
-
     mcp_server: Any = FastMCP("VeraGrid")
     _register_tools(server=mcp_server)
     return mcp_server
