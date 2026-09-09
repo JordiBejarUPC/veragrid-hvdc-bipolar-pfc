@@ -73,10 +73,22 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     serve_parser = subparsers.add_parser("serve", help="Run the VeraGrid MCP server.")
     serve_parser.set_defaults(run_subcommand="serve")
-    if argv is not None:
-        arguments: argparse.Namespace = parser.parse_args(argv)
+    normalized_argv: list[str] = list()
+    if argv is None:
+        normalized_argv = list(sys.argv[1:])
     else:
-        arguments = parser.parse_args()
+        normalized_argv = list(argv)
+
+    if len(normalized_argv) >= 2:
+        if normalized_argv[0] == "-m" and normalized_argv[1] == "VeraGridMcp.cli":
+            normalized_argv = normalized_argv[2:]
+        else:
+            pass
+
+    if len(normalized_argv) == 0:
+        arguments: argparse.Namespace = parser.parse_args([])
+    else:
+        arguments = parser.parse_args(normalized_argv)
 
     if arguments.command is None:
         arguments.command = "serve"
@@ -116,9 +128,15 @@ def _build_entry(command: str, cwd: str) -> dict[str, Any]:
     """
     entry: dict[str, Any] = dict()
     entry["command"] = command
-    entry["args"] = ["-m", "VeraGridMcp.cli", "serve"]
+    entry["args"] = ["-m", "VeraGridMcp.mcp_server"]
     entry["cwd"] = cwd
     entry["env"] = dict()
+    source_root: Path = Path(cwd) / "src"
+    if source_root.exists() is True:
+        entry["env"] = {"PYTHONPATH": str(source_root)}
+    else:
+        entry["env"] = dict()
+    entry["type"] = "stdio"
     return entry
 
 
@@ -159,13 +177,32 @@ def _write_toml_section(
     command: str = "command = " + json.dumps(entry["command"], ensure_ascii=False)
     args_payload: str = "args = " + json.dumps(entry["args"], ensure_ascii=False)
     cwd_payload: str = "cwd = " + json.dumps(entry["cwd"], ensure_ascii=False)
-    env_payload: str = "env = {}\n"
+    environment: Any = entry.get("env", dict())
+    if environment is None:
+        toml_env_payload: str = "env = {}"
+    elif len(environment) == 0:
+        toml_env_payload = "env = {}"
+    elif len(environment) == 1:
+        first_key: str = ""
+        first_value: Any = ""
+        for first_key, first_value in environment.items():
+            break
+        toml_value: str = json.dumps(first_value, ensure_ascii=False)
+        toml_env_payload = "env = {" + first_key + " = " + toml_value + "}"
+    else:
+        toml_env_lines: list[str] = list()
+        for key, value in environment.items():
+            toml_env_lines.append(key + " = " + json.dumps(value, ensure_ascii=False))
+        toml_env_payload = "env = { " + ", ".join(toml_env_lines) + " }"
     section_lines: list[str] = list()
     section_lines.append("[" + section_name + "]")
     section_lines.append(command)
+    type_payload: str = "type = \"stdio\""
+    section_lines.append(type_payload)
     section_lines.append(args_payload)
     section_lines.append(cwd_payload)
-    section_lines.append(env_payload.rstrip("\n"))
+    section_lines.append("enabled = true")
+    section_lines.append(toml_env_payload)
     section_text: str = "\n".join(section_lines)
 
     if path.exists() is True:
@@ -240,6 +277,11 @@ def _write_json_section(
             data = dict()
     else:
         data = dict()
+
+    if "type" not in entry:
+        entry["type"] = "stdio"
+    else:
+        pass
 
     if "mcpServers" in data:
         mcp_servers: Any = data["mcpServers"]
@@ -490,13 +532,13 @@ def main(argv: list[str] | None = None) -> int:
     :param argv: Optional explicit argument list.
     :returns: Process exit code.
     """
-    print_banner()
     arguments: argparse.Namespace = parse_args(argv=argv)
-    if arguments.command == "register":
-        return _register_clients(clients=arguments.client, args=arguments)
+    if arguments.command == "serve":
+        return run_server()
     else:
-        if arguments.command == "serve":
-            return run_server()
+        print_banner()
+        if arguments.command == "register":
+            return _register_clients(clients=arguments.client, args=arguments)
         else:
             print("Unsupported command: " + arguments.command)
             return 2

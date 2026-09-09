@@ -48,7 +48,10 @@ def _register_tools(server: Any) -> None:
     :returns: Nothing.
     """
     _ = server.tool(name="veragrid_status", description="Report whether the VeraGrid MCP server is reachable.")(veragrid_status)
-    _ = server.tool(name="veragrid_stack_status", description="Report the VeraGridMcp and VeraGridEngine versions available to this MCP server.")(veragrid_stack_status)
+    _ = server.tool(
+        name="veragrid_stack_status",
+        description="Report the VeraGridMcp and VeraGridEngine versions available to this MCP server.",
+    )(veragrid_stack_status)
 
 
 def build_server() -> MCPServer:
@@ -57,7 +60,10 @@ def build_server() -> MCPServer:
 
     :returns: Configured MCP server instance.
     """
-    mcp_server: MCPServer = MCPServer("VeraGrid")
+    mcp_server: MCPServer = MCPServer(
+        "VeraGridMcp",
+        version=__VeraGridMcp_VERSION__,
+    )
     _register_tools(server=mcp_server)
     return mcp_server
 
@@ -69,5 +75,9 @@ def run_server() -> int:
     :returns: Exit code.
     """
     server: MCPServer = build_server()
-    server.run()
+    server.run(transport="stdio")
     return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(run_server())

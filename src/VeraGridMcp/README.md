@@ -46,6 +46,19 @@ veragridmcp register --client cursor --cursor-scope global
 veragridmcp register --client all
 ```
 
+After register:
+
+```bash
+veragridmcp --help
+```
+
+If registration was for:
+- `codex` → confirm `~/.codex/config.toml`
+- `claude` → confirm `claude_desktop_config.json`
+- `cursor`/`cursor-global` → confirm `~/.cursor/mcp.json`
+- `cursor-project` → confirm `./.cursor/mcp.json`
+- `claude-code` → confirm `./.mcp.json`
+
 Common options:
 - `--client` (`codex`, `claude`, `cursor`, `claude-code`, `cursor-project`, `cursor-global`)
 - `--cursor-scope global|project` (used only when `--client cursor`)
@@ -73,7 +86,49 @@ Expected output includes:
 - `VeraGridMcp: <version>`
 - `VeraGridEngine: <version>`
 
-## 5) OpenAI/ChatGPT (publish path)
+## 5) How to check Codex/Claude/Cursor is using VeraGridMcp
+
+1) Confirm registration was written:
+
+- Codex:
+  - `~/.codex/config.toml` must contain `[mcp_servers.<your_server_name>]`
+  - `command` must point to a Python executable from this environment.
+  - `args` must point to `["-m", "VeraGridMcp.mcp_server"]`.
+
+- Claude Desktop:
+  - Open `claude_desktop_config.json`.
+  - Confirm `mcpServers.<your_server_name>` exists and has the same command/args.
+
+- Cursor:
+  - Global config: `~/.cursor/mcp.json`
+  - Project config: `./.cursor/mcp.json`
+  - Confirm `mcpServers.<your_server_name>` exists.
+
+- Claude Code:
+  - Open `./.mcp.json`
+  - Confirm `mcpServers.<your_server_name>` exists.
+
+2) Restart the client app after editing config.
+
+3) In each client chat, run:
+   - `Are you connected to the VeraGrid MCP server?`
+   - If the answer tool exists and returns text, the server is attached.
+
+From Codex:
+```bash
+codex mcp list
+```
+Then in Codex chat, run `/mcp` to see active MCP servers.
+
+4) Run:
+   - `veragrid_stack_status`
+   - Check it returns `VeraGridMcp:` and `VeraGridEngine:` lines.
+
+5) If the server does not appear:
+   - verify the `--python` path in registration matches your active CLI environment,
+   - verify `veragridmcp` runs from that environment.
+
+## 6) OpenAI/ChatGPT (publish path)
 
 For ChatGPT custom MCP apps, this is **workspace registration**, not PyPI publishing.
 
@@ -86,17 +141,17 @@ You still must:
 ChatGPT currently expects remote MCP connections, so private/local servers usually
 need a secure tunnel if not publicly reachable.
 
-## 6) Remove this package from MCP client config
+## 7) Remove this package from MCP client config
 
 Open your client config file and delete the `veragrid` block (or run your own config overwrite manually).
 
-## 7) Troubleshooting (fast)
+## 8) Troubleshooting (fast)
 
 - `veragridmcp` command not found: install the package in the active environment.
 - Bad command path: use `--python` and `--cwd` to point to the exact Python and repo root.
 - Missing version text from `veragrid_stack_status`: that means `VeraGridEngine` is not importable in the client environment.
 
-## 8) Regenerate knowledge assets (optional)
+## 9) Regenerate knowledge assets (optional)
 
 ```bash
 cd /home/santi/Git/eRoots/VeraGrid
