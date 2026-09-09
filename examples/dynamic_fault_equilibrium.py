@@ -43,7 +43,7 @@ from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_rms_mod
 from VeraGridEngine.Utils.procedural_logic import SampledValueLogic, bool_or
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
 from VeraGridEngine.enumerations import VarPowerFlowReferenceType as Ref
-from VeraGridEngine.enumerations import ConverterControlType, ConverterFaultControlType, MethodShortCircuit
+from VeraGridEngine.enumerations import ConverterControlType, ConverterFaultControlType, MethodShortCircuit, GeneratorControlMode
 
 
 def build_wecc_block(vf, voltage_reference: float, rated_ratio: float = 0.5,
@@ -70,23 +70,41 @@ def build_wecc_block(vf, voltage_reference: float, rated_ratio: float = 0.5,
     qref = vf.add_var("Q_order")
     tv = vf.add_var("T_measurement")
     ti = vf.add_var("T_current")
-    dv = vref - measured
-    deadband = sym.max(dv - 0.05, 0.0) + sym.min(dv + 0.05, 0.0)
-    iq_unlimited = sym.hard_sat(gain * deadband, -1.1, 1.1) + sym.hard_sat(qref, -1.0, 1.0) / sym.max(measured, 0.01)
+    # Keep each control signal explicit: nested symbolic limiters duplicate
+    # expression trees, making the equations and graphical expansion enormous.
+    signals = {}
+
+    def signal(name, expression):
+        variable = vf.add_var(name)
+        signals[variable] = expression
+        return variable
+
+    dv = signal("V_error", vref - measured)
+    deadband = signal("V_deadband", sym.max(dv - 0.05, 0.0) + sym.min(dv + 0.05, 0.0))
+    safe_voltage = signal("V_divisor", sym.max(measured, 0.01))
+    iq_injection = signal("Iq_support", sym.hard_sat(gain * deadband, -1.1, 1.1))
+    iq_unlimited = signal("Iq_unlimited", iq_injection + sym.hard_sat(qref, -1.0, 1.0) / safe_voltage)
     # Same piecewise-linear VDL table as converter_fault_controls.py.
-    vdl = 1.1 - 2.0 * sym.hard_sat(measured - 1.1, 0.0, 0.05) - (1.0 / 0.15) * sym.hard_sat(measured - 1.15, 0.0, 0.15)
-    iq_limit = sym.min(vdl, 1.3) * (1.0 - blocked)
-    iq_command = sym.hard_sat(iq_unlimited, -iq_limit, iq_limit)
-    iq_used = sym.min(sym.min(vdl, 1.3), iq_unlimited)
-    ip_limit = sym.min(vdl, sym.sqrt(sym.max(1.3 ** 2 - iq_used ** 2, 0.0)))
-    ip_command = sym.hard_sat(sym.hard_sat(pref, 0.0, 1.0) / sym.max(measured, 0.01), 0.0, ip_limit)
+    vdl = signal("I_vdl", 1.1 - 2.0 * sym.hard_sat(measured - 1.1, 0.0, 0.05)
+                 - (1.0 / 0.15) * sym.hard_sat(measured - 1.15, 0.0, 0.15))
+    iq_limit = signal("Iq_limit", sym.min(vdl, 1.3) * (1.0 - blocked))
+    iq_command = signal("Iq_command", sym.hard_sat(iq_unlimited, -iq_limit, iq_limit))
+    # Preserve the legacy law, including its asymmetric iq_used convention.
+    iq_used = signal("Iq_used", sym.min(sym.min(vdl, 1.3), iq_unlimited))
+    ip_limit = signal("Ip_limit", sym.min(vdl, sym.sqrt(sym.max(1.3 ** 2 - iq_used ** 2, 0.0))))
+    ip_unlimited = signal("Ip_unlimited", sym.hard_sat(pref, 0.0, 1.0) / safe_voltage)
+    ip_command = signal("Ip_command", sym.hard_sat(ip_unlimited, 0.0, ip_limit))
     return Block(
         name="WECC-like voltage support and current limit",
         state_vars=[measured, ip, iq],
         state_eqs=[(vm - measured) / tv, (ip_command - ip) / ti, (iq_command - iq) / ti],
-        algebraic_vars=[p, q],
-        algebraic_eqs=[p - rated_ratio * vm * ip * (1.0 - blocked),
-                       q - rated_ratio * vm * iq * (1.0 - blocked)],
+        # Keep this procedural equation block atomic in the diagram. The
+        # named signals and equations remain editable in its properties table.
+        is_decomposable=False,
+        algebraic_vars=[*signals, p, q],
+        algebraic_eqs=[v - rhs for v, rhs in signals.items()] + [
+            p - rated_ratio * vm * ip * (1.0 - blocked),
+            q - rated_ratio * vm * iq * (1.0 - blocked)],
         in_vars=[vm], out_vars=[p, q],
         event_dict={gain: sym.Const(kqv), vref: sym.Const(voltage_reference),
                     pref: sym.Const(p_order), qref: sym.Const(q_order),
@@ -96,7 +114,7 @@ def build_wecc_block(vf, voltage_reference: float, rated_ratio: float = 0.5,
             output_var_name=blocked.name, output_var_uid=blocked.uid,
             source_expr=bool_or(measured <= blocking_voltage, measured >= 1.2),
             name="WECC voltage blocking")],
-        init_eqs={measured: vm, ip: pref / vm, iq: qref / vm},
+        init_eqs={measured: vm, ip: pref / vm, iq: qref / vm, **signals},
         external_mapping={Ref.Vm: vm, Ref.P: p, Ref.Q: q},
     )
 
@@ -116,16 +134,20 @@ def build_case(fault_r: float = 0.15, kqv: float = 2.0,
     grid = vg.MultiCircuit(name="Two-bus dynamic fault equilibrium", Sbase=100.0)
     source_bus = vg.Bus(name="Source bus", Vnom=20.0, is_slack=True)
     fault_bus = vg.Bus(name="Converter / fault bus", Vnom=20.0)
-    for bus in (source_bus, fault_bus):
+    for bus_index, bus in enumerate((source_bus, fault_bus)):
         grid.add_bus(bus)
         initialize_bus_rms(bus, vf=grid.var_factory)
+        # Distinguish the two connected voltage signals in editor tables.
+        for variable in bus.rms_model.out_vars:
+            variable.name += f"_bus{bus_index + 1}"
     line = vg.Line(bus_from=source_bus, bus_to=fault_bus, name="AC line",
                    r=0.01, x=0.25, rate=100.0)
     grid.add_line(line)
     source = vg.Generator(name="Grid EMF", vset=1.0, r1=0.01, x1=0.15)
     grid.add_generator(source_bus, source)
-    converter = vg.StaticGenerator(name="WECC converter", P=40.0, Q=0.0)
-    grid.add_static_generator(fault_bus, converter)
+    converter = vg.Generator(name="WECC converter", P=40.0, Q=0.0, Snom=50.0,
+                             control_mode=GeneratorControlMode.Q)
+    grid.add_generator(fault_bus, converter)
     fault = vg.Shunt(name="Persistent fault", G=0.0, B=0.0)
     grid.add_shunt(fault_bus, fault)
     pf = vg.power_flow(grid, options=vg.PowerFlowOptions(tolerance=1e-10))
@@ -136,6 +158,9 @@ def build_case(fault_r: float = 0.15, kqv: float = 2.0,
     # initially open, so explicitly set both its admittance and its seeds to zero.
     fault_model.set_parameter_in_model(var_name="b", new_value=0.0)
     fault_model.init_eqs = {v: sym.Const(0.0) for v in fault_model.algebraic_vars}
+    fault_model.out_vars = list(fault_model.algebraic_vars)
+    for reference in (Ref.P, Ref.Q):
+        fault_model.external_mapping[reference].ref = reference
     models = [
         (source, build_thevenin_voltage_source(grid.var_factory, source.R1, source.X1).block),
         (line, get_line_rms_template(grid.var_factory).block),
@@ -144,8 +169,24 @@ def build_case(fault_r: float = 0.15, kqv: float = 2.0,
         (fault, fault_model),
     ]
     for device, model in models:
+        # These are equation models, including implicit Thevenin constraints.
+        # Retain them intact when inspected: graphical decomposition can only
+        # represent a subset of an implicit DAE on the current editor path.
+        for block in model.get_all_blocks():
+            block.is_decomposable = False
+            # Keep inherited line parameter mappings visible at equation level.
+            block.api_obj_mapping.update({reference: variable
+                                          for reference, variable in model.api_obj_mapping.items()
+                                          if variable in block.parameters})
+        if not model.children:
+            # Follow the library template convention: a device interface wraps
+            # an equation block, so the editor can draw actual boundary wires.
+            model = Block(name=device.name + " RMS", children=[model],
+                          in_vars=list(model.in_vars), out_vars=list(model.out_vars),
+                          external_mapping=dict(model.external_mapping),
+                          api_obj_mapping=dict(model.api_obj_mapping))
         set_rms_model(device=device, model=model, var_factory=grid.var_factory)
-    fault_g = next(v for v in fault.rms_model.event_dict if v.name == "g")
+    fault_g = next(v for b in fault.rms_model.get_all_blocks() for v in b.event_dict if v.name == "g")
     group = RmsEventsGroup(name="Fault at 0.1 s, no clearing")
     grid.add_rms_events_group(group)
     grid.add_rms_event(RmsEvent(device=fault, parameter=fault_g, time=0.1,
@@ -156,7 +197,6 @@ def build_case(fault_r: float = 0.15, kqv: float = 2.0,
     logger = vg.Logger()
     problem = RmsProblemDae(grid=grid, options=options, pf_results=pf, logger=logger)
     problem.set_events_group(group)
-    vg.save_file(grid, 'new_sc.veragrid')
     return grid, pf, problem, converter, source, fault, options
 
 
@@ -186,6 +226,13 @@ def solve_equilibrium(problem, initial, time: float = 1.0, tolerance: float = 1e
     problem.reset_boundary_update_state(0.0)
     for mode_iteration in range(8):
         problem.update_variable_params(t=time, x_snapshot=values, scheduled_t=time)
+        # Reconcile algebraic signals with the supplied state seed, just as
+        # the time integrator does. This is a zero-time projection, not a
+        # trajectory or a constraint freezing the converter states below.
+        values, projected, _ = project_initial_algebraic_state(
+            problem, values, dx, tolerance=tolerance, max_iter=40)
+        if not projected or np.any(values[voltage_indices] <= 1e-6):
+            raise RuntimeError("Equilibrium Newton initial algebraic projection failed")
         for iteration in range(40):
             residual = equilibrium_residual(problem, values)
             error = float(np.linalg.norm(residual, np.inf))
@@ -250,7 +297,6 @@ def build_hardcoded_reference(fault_r: float, blocking_voltage: float = 0.1):
     driver = vg.ShortCircuitDriver(grid=grid, options=vg.ShortCircuitOptions(),
                                    pf_options=options, pf_results=pf, pf_results3ph=None)
 
-    vg.save_file(grid, 'legacy_sc.veragrid')
     return pf, driver
 
 
@@ -282,7 +328,7 @@ def run_case(fault_r=0.15, kqv=2.0, current_tau=0.02, time_step=0.001, end_time=
         fault_r, kqv, current_tau, time_step, end_time, blocking_voltage)
     x0 = prepare_prefault(problem)
     # Save generator EMFs to verify that neither solve alters them.
-    emf_vars = list(source.rms_model.event_dict)
+    emf_vars = [v for b in source.rms_model.get_all_blocks() for v in b.event_dict]
     emf_indices = [problem.uid2idx_event_params[v.uid] for v in emf_vars]
     emf_before = problem._variable_parameters_values[emf_indices].copy()
     start = perf_counter()
@@ -308,7 +354,7 @@ def run_case(fault_r=0.15, kqv=2.0, current_tau=0.02, time_step=0.001, end_time=
     if not np.array_equal(emf_before, problem._variable_parameters_values[emf_indices]):
         raise RuntimeError("Generator internal EMF changed")
     va_indices = [problem.get_var_idx(bus.rms_model.external_mapping[Ref.Va]) for bus in grid.buses]
-    state_indices = [problem.get_var_idx(v) for v in converter.rms_model.state_vars]
+    state_indices = [problem.get_var_idx(v) for b in converter.rms_model.get_all_blocks() for v in b.state_vars]
     p_index = problem.get_var_idx(converter.rms_model.external_mapping[Ref.P])
     q_index = problem.get_var_idx(converter.rms_model.external_mapping[Ref.Q])
     return dict(grid=grid, pf=pf, problem=problem, converter=converter,
