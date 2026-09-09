@@ -63,7 +63,7 @@ class Ui_DynamicEventsPage(object):
         self.eventsTreeLayout.setContentsMargins(0, 0, 0, 0)
         self.eventsTableView = QTableView(self.eventsTreeFrame)
         self.eventsTableView.setObjectName(u"eventsTableView")
-        self.eventsTableView.setAlternatingRowColors(True)
+        self.eventsTableView.setAlternatingRowColors(False)
         self.eventsTableView.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.eventsTableView.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
 
@@ -132,4 +132,3 @@ class Ui_DynamicEventsPage(object):
 #endif // QT_CONFIG(tooltip)
         self.saveButton.setText("")
     # retranslateUi
-

@@ -212,6 +212,7 @@ class DialogSmokeTarget(Enum):
     SEQUENCE_EDITOR = "SequenceEditorDialog"
     LOOKUP_MATRIX_EDITOR = "LookupMatrixEditorDialog"
     OBJECT_COLUMN_FILTER = "ObjectColumnFilterDialog"
+    DYNAMIC_EVENTS_GROUP_MANAGER_DIALOG = "DynamicEventsGroupManagerDialog"
 
 
 class NamedObject:

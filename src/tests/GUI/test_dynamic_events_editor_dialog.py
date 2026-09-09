@@ -6,6 +6,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 import VeraGridEngine.api as vge
 from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_support import collect_block_runtime_event_parameters
+from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_support import DynamicEventsGroupManagerDialog
 from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_models import DynamicEventDraft
 from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_models import DynamicEventGroupDraft
 from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_models import DynamicEventsDraftSession
@@ -674,6 +675,149 @@ def test_group_active_and_rename_are_transactional() -> None:
     saved_dialog.close()
 
 
+def test_event_group_manager_adds_and_updates_multiple_groups() -> None:
+    """The manager must create groups and update a multi-selection together.
+
+    :return: None.
+    """
+    _unused_application: QtWidgets.QApplication = get_qt_application()
+    circuit, _load, _parameter, _group = build_dynamic_target(DynamicSimulationMode.RMS)
+    session: DynamicEventsDraftSession = DynamicEventsDraftSession(circuit=circuit)
+    manager: DynamicEventsGroupManagerDialog = DynamicEventsGroupManagerDialog(
+        session=session,
+        mode=DynamicSimulationMode.RMS,
+    )
+    manager.name_edit.setText("Second group")
+
+    manager.add_group()
+
+    groups: list[DynamicEventGroupDraft] = session.get_groups(DynamicSimulationMode.RMS)
+    assert len(groups) == 2
+    assert groups[1].name == "Second group"
+    assert manager.groups_list.count() == 2
+
+    row_index: int
+    for row_index in range(manager.groups_list.count()):
+        manager.groups_list.item(row_index).setSelected(True)
+    manager.deactivate_selected_groups()
+
+    assert all(not group.active for group in groups)
+    for row_index in range(manager.groups_list.count()):
+        item_foreground: QtGui.QColor = manager.groups_list.item(row_index).foreground().color()
+        item_background: QtGui.QColor = manager.groups_list.item(row_index).background().color()
+        assert item_foreground == QtGui.QColor("#686868")
+        assert item_background == QtGui.QColor("#eeeeee")
+
+    manager.activate_selected_groups()
+
+    assert all(group.active for group in groups)
+    manager.close()
+
+
+def test_new_event_assigned_to_inactive_group_is_shaded_and_editable() -> None:
+    """An inactive group must shade its new event row without disabling it.
+
+    :return: None.
+    """
+    _unused_application: QtWidgets.QApplication = get_qt_application()
+    circuit, load, parameter, _group = build_dynamic_target(DynamicSimulationMode.RMS)
+    session: DynamicEventsDraftSession = DynamicEventsDraftSession(circuit=circuit)
+    inactive_group: DynamicEventGroupDraft | None = session.add_group(
+        mode=DynamicSimulationMode.RMS,
+        name="Inactive group",
+    )
+    assert inactive_group is not None
+    session.set_group_active(group=inactive_group, active=False)
+    event: DynamicEventDraft | None = session.add_event(
+        device=load,
+        mode=DynamicSimulationMode.RMS,
+        group=None,
+        parameters=list((parameter,)),
+        mode_parameter_uids=set(),
+    )
+    assert event is not None
+    model: DynamicEventsTreeModel = DynamicEventsTreeModel(
+        session=session,
+        device=load,
+        mode=DynamicSimulationMode.RMS,
+        parameters=list((parameter,)),
+        mode_parameter_uids=set(),
+    )
+    group_index: QtCore.QModelIndex = model.index(
+        0,
+        DynamicEventsTreeModel.COLUMN_EVENT_GROUP,
+    )
+
+    accepted: bool = model.setData(
+        group_index,
+        inactive_group,
+        QtCore.Qt.ItemDataRole.EditRole,
+    )
+
+    assert accepted
+    column_index: int
+    for column_index in range(model.columnCount()):
+        cell_index: QtCore.QModelIndex = model.index(0, column_index)
+        background: QtGui.QBrush = model.data(
+            cell_index,
+            QtCore.Qt.ItemDataRole.BackgroundRole,
+        )
+        assert background.color() == DynamicEventsTreeModel.INACTIVE_EVENT_BACKGROUND
+        assert model.flags(cell_index) & QtCore.Qt.ItemFlag.ItemIsEnabled
+    assert model.flags(group_index) & QtCore.Qt.ItemFlag.ItemIsEditable
+
+
+def test_event_group_manager_uses_grey_deactivate_icon() -> None:
+    """The deactivate action must use a grey status-circle icon.
+
+    :return: None.
+    """
+    _unused_application: QtWidgets.QApplication = get_qt_application()
+    circuit, _load, _parameter, _group = build_dynamic_target(DynamicSimulationMode.EMT)
+    session: DynamicEventsDraftSession = DynamicEventsDraftSession(circuit=circuit)
+    manager: DynamicEventsGroupManagerDialog = DynamicEventsGroupManagerDialog(
+        session=session,
+        mode=DynamicSimulationMode.EMT,
+    )
+    icon_pixmap: QtGui.QPixmap = manager.deactivate_button.icon().pixmap(16, 16)
+    center_color: QtGui.QColor = icon_pixmap.toImage().pixelColor(8, 8)
+
+    assert center_color == QtGui.QColor("#808080")
+    manager.close()
+
+
+def test_event_group_manager_empty_area_click_clears_selection() -> None:
+    """Clicking below the group rows must clear every selected group.
+
+    :return: None.
+    """
+    _unused_application: QtWidgets.QApplication = get_qt_application()
+    circuit, _load, _parameter, _group = build_dynamic_target(DynamicSimulationMode.RMS)
+    session: DynamicEventsDraftSession = DynamicEventsDraftSession(circuit=circuit)
+    manager: DynamicEventsGroupManagerDialog = DynamicEventsGroupManagerDialog(
+        session=session,
+        mode=DynamicSimulationMode.RMS,
+    )
+    selected_item: QtWidgets.QListWidgetItem = manager.groups_list.item(0)
+    selected_item.setSelected(True)
+    manager.groups_list.setCurrentItem(selected_item)
+    empty_position: QtCore.QPointF = QtCore.QPointF(10.0, 300.0)
+    mouse_event: QtGui.QMouseEvent = QtGui.QMouseEvent(
+        QtCore.QEvent.Type.MouseButtonPress,
+        empty_position,
+        empty_position,
+        QtCore.Qt.MouseButton.LeftButton,
+        QtCore.Qt.MouseButton.LeftButton,
+        QtCore.Qt.KeyboardModifier.NoModifier,
+    )
+
+    manager.eventFilter(manager.groups_list.viewport(), mouse_event)
+
+    assert len(manager.groups_list.selectedItems()) == 0
+    assert manager.groups_list.currentItem() is None
+    manager.close()
+
+
 def test_group_removal_cascades_events_across_devices_on_save() -> None:
     """Removing a global group must remove all its device events on Save.
 
@@ -782,6 +926,7 @@ def test_save_button_and_event_actions_use_ui_toolbar_contract() -> None:
     assert page.save_button.toolTip() == "Save events"
     assert not page.save_button.icon().isNull()
     assert isinstance(page.tree_view, QtWidgets.QTableView)
+    assert not page.tree_view.alternatingRowColors()
     toolbar_actions: list[QtGui.QAction] = page.ui.eventsToolBar.actions()
     assert page.switch_sequence_action in toolbar_actions
     assert page.add_event_action in toolbar_actions
@@ -793,6 +938,48 @@ def test_save_button_and_event_actions_use_ui_toolbar_contract() -> None:
     assert page.new_group_action.text() != ""
     assert page.add_event_action.toolTip() != ""
     assert page.remove_action.toolTip() != ""
+    dialog.close()
+
+
+def test_events_table_empty_area_click_clears_current_row() -> None:
+    """Clicking below event rows must clear table selection and current index.
+
+    :return: None.
+    """
+    _unused_application: QtWidgets.QApplication = get_qt_application()
+    circuit, load, parameter, _group = build_dynamic_target(DynamicSimulationMode.RMS)
+    dialog: DynamicEventEditor = DynamicEventEditor(
+        circuit=circuit,
+        preferred_mode=DynamicSimulationMode.RMS,
+        initial_device=load,
+    )
+    page: DynamicEventsPage = dialog.pages[0]
+    group: DynamicEventGroupDraft = dialog.session.get_groups(DynamicSimulationMode.RMS)[0]
+    event: DynamicEventDraft | None = dialog.session.add_event(
+        device=load,
+        mode=DynamicSimulationMode.RMS,
+        group=group,
+        parameters=list((parameter,)),
+        mode_parameter_uids=set(),
+    )
+    assert event is not None
+    selected_index: QtCore.QModelIndex = page.filter_model.index(0, 0)
+    page.tree_view.setCurrentIndex(selected_index)
+    page.tree_view.selectRow(0)
+    empty_position: QtCore.QPointF = QtCore.QPointF(10.0, 300.0)
+    mouse_event: QtGui.QMouseEvent = QtGui.QMouseEvent(
+        QtCore.QEvent.Type.MouseButtonPress,
+        empty_position,
+        empty_position,
+        QtCore.Qt.MouseButton.LeftButton,
+        QtCore.Qt.MouseButton.LeftButton,
+        QtCore.Qt.KeyboardModifier.NoModifier,
+    )
+
+    page.eventFilter(page.tree_view.viewport(), mouse_event)
+
+    assert not page.tree_view.currentIndex().isValid()
+    assert len(page.tree_view.selectionModel().selectedRows()) == 0
     dialog.close()
 
 

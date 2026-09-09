@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_support import DynamicEventsGroupsDialog
+from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_support import DynamicEventsGroupManagerDialog
 from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_support import collect_dynamic_events_page_parameters
 from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_support import SwitchSequenceData
 from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_support import SwitchSequenceDialog
@@ -75,6 +75,7 @@ class DynamicEventsTreeModel(QtGui.QStandardItemModel):
     COLUMN_TRANSITION: int = 4
     COLUMN_END_TIME: int = 5
     COLUMN_ALIGN_STEP: int = 6
+    INACTIVE_EVENT_BACKGROUND: QtGui.QColor = QtGui.QColor("#e0e0e0")
 
     def __init__(self,
                  session: DynamicEventsDraftSession,
@@ -207,6 +208,32 @@ class DynamicEventsTreeModel(QtGui.QStandardItemModel):
                 index.siblingAtColumn(self.COLUMN_EVENT_GROUP),
                 QtCore.Qt.ItemDataRole.UserRole,
             )
+
+    def data(self,
+             index: QtCore.QModelIndex,
+             role: int = QtCore.Qt.ItemDataRole.DisplayRole) -> object:
+        """Return event data and shade rows belonging to inactive groups.
+
+        The background role is purely visual. Item flags remain enabled and
+        editable regardless of the event-group activation state.
+
+        :param index: Table cell queried by Qt.
+        :param role: Requested Qt item-data role.
+        :return: Stored cell value or the inactive-group background brush.
+        """
+        if role == QtCore.Qt.ItemDataRole.BackgroundRole:
+            backing: object | None = self.backing_object(index)
+            if (
+                isinstance(backing, DynamicEventDraft)
+                and backing.group is not None
+                and not backing.group.active
+            ):
+                return QtGui.QBrush(self.INACTIVE_EVENT_BACKGROUND)
+            else:
+                pass
+        else:
+            pass
+        return QtGui.QStandardItemModel.data(self, index, role)
 
     def index_for_backing_object(self, backing_object: object) -> QtCore.QModelIndex:
         """Locate the Event Group index representing one draft object.
@@ -1035,6 +1062,22 @@ class DynamicEventsItemDelegate(QtWidgets.QStyledItemDelegate):
         if column == DynamicEventsTreeModel.COLUMN_EVENT_GROUP and isinstance(editor, QtWidgets.QComboBox):
             group_index: int = editor.findData(event.group)
             editor.setCurrentIndex(group_index)
+
+            # The persistent group editor covers its table cell, so mirror the
+            # row background in its palette without disabling interaction.
+            editor_palette: QtGui.QPalette = QtWidgets.QApplication.palette()
+            if event.group is not None and not event.group.active:
+                editor_palette.setColor(
+                    QtGui.QPalette.ColorRole.Base,
+                    DynamicEventsTreeModel.INACTIVE_EVENT_BACKGROUND,
+                )
+                editor_palette.setColor(
+                    QtGui.QPalette.ColorRole.Button,
+                    DynamicEventsTreeModel.INACTIVE_EVENT_BACKGROUND,
+                )
+            else:
+                pass
+            editor.setPalette(editor_palette)
         elif column == DynamicEventsTreeModel.COLUMN_PARAMETER and isinstance(editor, QtWidgets.QComboBox):
             parameter_index: int = editor.findData(event.parameter)
             editor.setCurrentIndex(parameter_index)
@@ -1184,6 +1227,7 @@ class DynamicEventsPage(QtWidgets.QWidget):
         self.filter_model.setSourceModel(self.tree_model)
         self.tree_view.setModel(self.filter_model)
         self.tree_view.setItemDelegate(DynamicEventsItemDelegate(self.tree_view))
+        self.tree_view.viewport().installEventFilter(self)
         self.tree_view.setEditTriggers(
             QtWidgets.QAbstractItemView.EditTrigger.DoubleClicked
             | QtWidgets.QAbstractItemView.EditTrigger.EditKeyPressed
@@ -1220,6 +1264,34 @@ class DynamicEventsPage(QtWidgets.QWidget):
         self.session.dirty_state_changed.connect(self._on_dirty_state_changed)
         self._open_event_group_editors()
         self.update_actions()
+
+    def eventFilter(self, watched: QtCore.QObject, event: QtCore.QEvent) -> bool:
+        """Clear the event selection when the table viewport background is clicked.
+
+        :param watched: Object receiving the intercepted event.
+        :param event: Qt event delivered to the watched object.
+        :return: Whether the event was consumed.
+        """
+        is_table_mouse_press: bool = (
+            watched is self.tree_view.viewport()
+            and event.type() == QtCore.QEvent.Type.MouseButtonPress
+            and isinstance(event, QtGui.QMouseEvent)
+        )
+        if is_table_mouse_press and isinstance(event, QtGui.QMouseEvent):
+            clicked_index: QtCore.QModelIndex = self.tree_view.indexAt(
+                event.position().toPoint()
+            )
+            if (
+                event.button() == QtCore.Qt.MouseButton.LeftButton
+                and not clicked_index.isValid()
+            ):
+                self.tree_view.clearSelection()
+                self.tree_view.setCurrentIndex(QtCore.QModelIndex())
+            else:
+                pass
+        else:
+            pass
+        return QtWidgets.QWidget.eventFilter(self, watched, event)
 
     def get_dynamic_editor_entry(self) -> DynamicEditorEntry:
         """Return the device entry represented by this workspace page.
@@ -1349,30 +1421,17 @@ class DynamicEventsPage(QtWidgets.QWidget):
 
     @QtCore.Slot(bool)
     def create_event_group(self, _checked: bool = False) -> None:
-        """Ask for and create one draft event group for this page mode.
+        """Open the event-group manager for this page simulation mode.
 
         :param _checked: QAction checked state supplied by Qt.
         :return: None.
         """
-        group_dialog: DynamicEventsGroupsDialog = DynamicEventsGroupsDialog(
+        group_dialog: DynamicEventsGroupManagerDialog = DynamicEventsGroupManagerDialog(
+            session=self.session,
             mode=self.mode,
             parent=self,
         )
-        if group_dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
-            created_group: DynamicEventGroupDraft | None = self.session.add_group(
-                mode=self.mode,
-                name=group_dialog.get_name(),
-            )
-            if created_group is None:
-                QtWidgets.QMessageBox.warning(
-                    self,
-                    self.tr("Invalid event group"),
-                    self.tr("The event group name must be non-empty and unique in this simulation mode."),
-                )
-            else:
-                pass
-        else:
-            pass
+        group_dialog.exec()
 
     @QtCore.Slot()
     def save_changes(self) -> None:
