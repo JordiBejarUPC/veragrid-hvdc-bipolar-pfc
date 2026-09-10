@@ -15,10 +15,11 @@ from typing import Any, Dict, List, Set
 import numpy as np
 import pandas as pd
 import shiboken6
-from PySide6 import QtCore
+from PySide6 import QtCore, QtGui
 from PySide6 import QtWidgets
 
 import VeraGridEngine as vge
+import VeraGrid.Gui.GridReduce.grid_reduce as grid_reduce_module
 from VeraGrid.Gui.AboutDialogue.about_dialogue import AboutDialogueGuiGUI
 from VeraGrid.Gui.AiAgent.ai_chat_dialogue import AiChatDialogue
 from VeraGrid.Gui.Analysis.AnalysisDialogue import GridAnalysisGUI
@@ -37,10 +38,12 @@ from VeraGrid.Gui.DeviceEditors.Transformer3wEditor.transformer3w_editor import 
 from VeraGrid.Gui.DeviceEditors.TransformerEditor.transformer_editor import TransformerEditor
 from VeraGrid.Gui.Diagrams.Editors.bus_selector import BusSelectorDialogue
 from VeraGrid.Gui.Diagrams.Editors.new_line_dialogue import NewMapLineDialogue
+from VeraGrid.Gui.Diagrams.graphics_manager import GraphicsManager
 from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import SelectionDialog
 from VeraGrid.Gui.Diagrams.SchematicWidget.diagram_bus_selection_dialogue import DiagramBusSelectorDialogue
 from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_models import DynamicEventsDraftSession
 from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_support import DynamicEventsGroupManagerDialog
+import VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget as schematic_widget_module
 from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_support import DynamicEventsGroupsDialog
 from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_support import SwitchSequenceDialog
 from VeraGrid.Gui.DynamicModelEditor.Editor.ElementDialogues.jmarti_line_emt_dialog import JMartiLineEmtDialog
@@ -73,6 +76,7 @@ from VeraGrid.Gui.GridGenerator.grid_generator_dialogue import GridGeneratorGUI
 from VeraGrid.Gui.GridMerge.grid_diff import GridDiffDialogue
 from VeraGrid.Gui.GridMerge.grid_merge import GridMergeDialogue
 from VeraGrid.Gui.GridReduce.grid_reduce import GridReduceDialogue
+from VeraGrid.Gui.Main.SubClasses.Model.diagrams import DiagramsMain
 from VeraGrid.Gui.Main.VeraGridMain import VeraGridMainGUI
 from VeraGrid.Gui.Main.object_select_window import ListSelectWindow
 from VeraGrid.Gui.Main.object_select_window import ObjectSelectWindow
@@ -457,6 +461,174 @@ class FakeBranchGraphic:
         self.api_object: object = api_object
 
 
+class FakeQtGraphic(QtWidgets.QWidget):
+    """
+    Minimal valid Qt graphic wrapper with an API object pointer.
+    """
+
+    __slots__ = ("api_object",)
+
+    def __init__(self, api_object: object) -> None:
+        """
+        Store the API object on a live Qt wrapper.
+
+        :param api_object: API object owned by the graphic.
+        :return: None.
+        """
+        QtWidgets.QWidget.__init__(self)
+        self.api_object: object = api_object
+
+
+class FakeSelectedBusGraphic:
+    """
+    Minimal selected bus graphic for stale selection lookup tests.
+    """
+
+    __slots__ = ("api_object",)
+
+    def __init__(self, api_object: object) -> None:
+        """
+        Store the API object represented by the fake graphic.
+
+        :param api_object: API object.
+        :return: None.
+        """
+        self.api_object: object = api_object
+
+    def isSelected(self) -> bool:
+        """
+        Return selected state.
+
+        :return: Always ``True``.
+        """
+        return True
+
+
+class FakeReductionDiagram:
+    """
+    Minimal diagram facade for stale-graphics cleanup.
+    """
+
+    __slots__ = ("graphics_manager", "removed_graphics")
+
+    def __init__(self) -> None:
+        """
+        Build an empty fake reduction diagram.
+
+        :return: None.
+        """
+        self.graphics_manager: GraphicsManager = GraphicsManager()
+        self.removed_graphics: List[object] = list()
+
+    def _remove_from_scene(self, graphic_object: object) -> None:
+        """
+        Record scene-only removal.
+
+        :param graphic_object: Graphic object to remove.
+        :return: None.
+        """
+        self.removed_graphics.append(graphic_object)
+
+
+class FakeReductionMain:
+    """
+    Minimal main-window facade exposing the active circuit.
+    """
+
+    __slots__ = ("circuit",)
+
+    def __init__(self, circuit: vge.MultiCircuit) -> None:
+        """
+        Store the active circuit.
+
+        :param circuit: Active circuit.
+        :return: None.
+        """
+        self.circuit: vge.MultiCircuit = circuit
+
+
+class FakeDiagramListView:
+    """
+    Diagram-list facade with a current row but no selected rows.
+    """
+
+    __slots__ = ("_current_index",)
+
+    def __init__(self, current_index: QtCore.QModelIndex) -> None:
+        """
+        Store the current model index.
+
+        :param current_index: Current model index.
+        :return: None.
+        """
+        self._current_index: QtCore.QModelIndex = current_index
+
+    def selectedIndexes(self) -> List[QtCore.QModelIndex]:
+        """
+        Return no selected rows.
+
+        :return: Empty index list.
+        """
+        return list()
+
+    def currentIndex(self) -> QtCore.QModelIndex:
+        """
+        Return the current row.
+
+        :return: Current index.
+        """
+        return self._current_index
+
+
+class FakeDiagramMainUi:
+    """
+    Minimal UI facade exposing the diagrams list view.
+    """
+
+    __slots__ = ("diagramsListView",)
+
+    def __init__(self, diagrams_list_view: FakeDiagramListView) -> None:
+        """
+        Store the diagrams list view.
+
+        :param diagrams_list_view: Diagram list view facade.
+        :return: None.
+        """
+        self.diagramsListView: FakeDiagramListView = diagrams_list_view
+
+
+class FakeDiagramMain:
+    """
+    Main facade for selected-diagram fallback tests.
+    """
+
+    __slots__ = ("diagram_widgets_list", "ui")
+
+    def __init__(self, current_index: QtCore.QModelIndex) -> None:
+        """
+        Build the fake main facade.
+
+        :param current_index: Current diagram-list index.
+        :return: None.
+        """
+        self.diagram_widgets_list: List[object] = [object()]
+        self.ui: FakeDiagramMainUi = FakeDiagramMainUi(
+            diagrams_list_view=FakeDiagramListView(current_index=current_index)
+        )
+
+    def _ensure_diagram_widget_at_index(self, index: int) -> object | None:
+        """
+        Return the diagram object at the requested row.
+
+        :param index: Diagram row.
+        :return: Diagram object.
+        """
+        if index == 0:
+            return self.diagram_widgets_list[0]
+        else:
+            return None
+
+
 class FakeSyncThread:
     """
     Minimal sync-thread facade used by ``SyncDialogueWindow``.
@@ -603,6 +775,52 @@ def build_smoke_circuit() -> vge.MultiCircuit:
     circuit.add_rms_events_group(rms_events_group)
 
     return circuit
+
+
+def accept_grid_reduction_question(text: str, title: str) -> bool:
+    """
+    Accept the destructive grid-reduction confirmation in the regression test.
+
+    :param text: Question text.
+    :param title: Question title.
+    :return: Always ``True``.
+    """
+    return True
+
+
+def fake_logged_ptdf_reduction(grid: vge.MultiCircuit,
+                               reduction_bus_indices: np.ndarray) -> tuple[vge.MultiCircuit, Logger]:
+    """
+    Mutate the grid like the real reducer and emit one log entry.
+
+    :param grid: Circuit to reduce.
+    :param reduction_bus_indices: Bus indices to delete.
+    :return: Reduced circuit and logger.
+    """
+    logger: Logger = Logger()
+    bus_to_delete: vge.Bus
+
+    logger.add_info(msg="synthetic reduction log")
+    if grid.get_bus_number() > 1:
+        bus_to_delete = grid.buses[1]
+    else:
+        bus_to_delete = grid.buses[int(reduction_bus_indices[0])]
+
+    grid.delete_buses(lst=[bus_to_delete], delete_associated=True)
+    return grid, logger
+
+
+def fake_failing_ptdf_reduction(grid: vge.MultiCircuit,
+                                reduction_bus_indices: np.ndarray) -> tuple[vge.MultiCircuit, Logger]:
+    """
+    Mutate the reducer input and fail like the PTDF dimension error.
+
+    :param grid: Circuit passed to the reducer.
+    :param reduction_bus_indices: Bus indices to delete.
+    :return: Never returned.
+    """
+    grid.delete_buses(lst=[grid.buses[int(reduction_bus_indices[0])]], delete_associated=True)
+    raise ValueError("Incompatible dimensions")
 
 
 def build_object_filter_dialog() -> ObjectColumnFilterDialog:
@@ -1185,6 +1403,145 @@ def test_delete_dialog_safely_deletes_child_widgets(qt_app: QtWidgets.QApplicati
     assert not shiboken6.isValid(nested_widget)
     assert not shiboken6.isValid(child_widget)
     assert not shiboken6.isValid(dialog)
+
+
+def test_grid_reduce_accepts_before_log_display(qt_app: QtWidgets.QApplication, monkeypatch: Any) -> None:
+    """
+    Keep logged reductions from blocking the reducer dialog result.
+
+    :param qt_app: Shared Qt application fixture.
+    :param monkeypatch: Pytest monkeypatch fixture.
+    :return: None.
+    """
+    app: QtWidgets.QApplication = qt_app
+    circuit: vge.MultiCircuit = build_smoke_circuit()
+    selected_buses: Set[vge.Bus] = {circuit.buses[0]}
+    dialog: GridReduceDialogue = GridReduceDialogue(
+        grid=circuit,
+        session=SimulationSession(),
+        selected_buses_set=selected_buses
+    )
+    accepted_result: int = int(QtWidgets.QDialog.DialogCode.Accepted)
+
+    monkeypatch.setattr(grid_reduce_module, "yes_no_question", accept_grid_reduction_question)
+    monkeypatch.setattr(grid_reduce_module, "ptdf_reduction", fake_logged_ptdf_reduction)
+
+    try:
+        QtCore.QTimer.singleShot(0, dialog.reduce_grid)
+        result: int = int(dialog.exec())
+        app.processEvents()
+
+        assert result == accepted_result
+        assert dialog.result() == accepted_result
+        assert dialog.did_reduce is True
+        deleted_bus_names: List[str] = [bus.name for bus in dialog.deleted_buses]
+        assert "Bus 2" in deleted_bus_names
+        assert circuit.get_bus_number() > 1
+        assert dialog.reduced_grid is not None
+        assert dialog.reduced_grid.get_bus_number() == 1
+    finally:
+        delete_dialog_safely(dialog=dialog)
+
+
+def test_grid_reduce_failure_does_not_mutate_live_grid(qt_app: QtWidgets.QApplication, monkeypatch: Any) -> None:
+    """
+    Keep PTDF failures from deleting buses in the live circuit.
+
+    :param qt_app: Shared Qt application fixture.
+    :param monkeypatch: Pytest monkeypatch fixture.
+    :return: None.
+    """
+    app: QtWidgets.QApplication = qt_app
+    circuit: vge.MultiCircuit = build_smoke_circuit()
+    selected_bus: vge.Bus = circuit.buses[0]
+    original_bus_number: int = circuit.get_bus_number()
+    dialog: GridReduceDialogue = GridReduceDialogue(
+        grid=circuit,
+        session=SimulationSession(),
+        selected_buses_set={selected_bus}
+    )
+    rejected_result: int = int(QtWidgets.QDialog.DialogCode.Rejected)
+
+    monkeypatch.setattr(grid_reduce_module, "yes_no_question", accept_grid_reduction_question)
+    monkeypatch.setattr(grid_reduce_module, "ptdf_reduction", fake_failing_ptdf_reduction)
+
+    try:
+        QtCore.QTimer.singleShot(0, dialog.reduce_grid)
+        result: int = int(dialog.exec())
+        app.processEvents()
+
+        assert result == rejected_result
+        assert dialog.did_reduce is False
+        assert dialog.reduced_grid is None
+        assert circuit.get_bus_number() == original_bus_number
+        assert selected_bus in circuit.buses
+        assert dialog.logger.has_logs()
+    finally:
+        delete_dialog_safely(dialog=dialog)
+
+
+def test_grid_reduction_cleanup_removes_indirect_dead_graphics(qt_app: QtWidgets.QApplication) -> None:
+    """
+    Remove graphics for branch objects deleted as side effects of grid reduction.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    app: QtWidgets.QApplication = qt_app
+    circuit: vge.MultiCircuit = build_smoke_circuit()
+    line: vge.Line = circuit.lines[0]
+    fake_main: FakeReductionMain = FakeReductionMain(circuit=circuit)
+    fake_diagram: FakeReductionDiagram = FakeReductionDiagram()
+    graphic: FakeQtGraphic = FakeQtGraphic(api_object=line)
+
+    fake_diagram.graphics_manager.add_device(elm=line, graphic=graphic)
+    circuit.delete_line(obj=line)
+
+    DiagramsMain.remove_dead_graphics_from_diagram(fake_main, diagram_widget=fake_diagram)
+    app.processEvents()
+
+    assert fake_diagram.graphics_manager.query(elm=line) is None
+    assert fake_diagram.removed_graphics == [graphic]
+
+
+def test_schematic_selected_buses_skip_stale_graphics(monkeypatch: Any) -> None:
+    """
+    Keep grid-reduction launch from crashing on a stale selected bus graphic.
+
+    :param monkeypatch: Pytest monkeypatch fixture.
+    :return: None.
+    """
+    circuit: vge.MultiCircuit = build_smoke_circuit()
+    stale_bus: vge.Bus = circuit.buses[0]
+    fake_app: FakeReductionMain = FakeReductionMain(circuit=circuit)
+    widget: schematic_widget_module.SchematicWidget = schematic_widget_module.SchematicWidget.__new__(
+        schematic_widget_module.SchematicWidget
+    )
+    widget.gui = fake_app
+    widget.graphics_manager = GraphicsManager()
+    widget.graphics_manager.add_device(elm=stale_bus, graphic=FakeSelectedBusGraphic(api_object=stale_bus))
+
+    monkeypatch.setattr(schematic_widget_module, "BusGraphicItem", FakeSelectedBusGraphic)
+    circuit.delete_bus(obj=stale_bus, delete_associated=True)
+
+    selected_buses: List[tuple[int, vge.Bus, FakeSelectedBusGraphic]] = widget.get_selected_buses()
+
+    assert selected_buses == list()
+
+
+def test_selected_diagram_uses_current_index_when_selection_is_empty() -> None:
+    """
+    Keep menu actions working when the diagrams list has a current row but no selected row.
+
+    :return: None.
+    """
+    model: QtGui.QStandardItemModel = QtGui.QStandardItemModel()
+    model.appendRow(QtGui.QStandardItem("Diagram"))
+    current_index: QtCore.QModelIndex = model.index(0, 0)
+    fake_main: FakeDiagramMain = FakeDiagramMain(current_index=current_index)
+    selected_diagram: object | None = DiagramsMain.get_selected_diagram_widget(fake_main)
+
+    assert selected_diagram is fake_main.diagram_widgets_list[0]
 
 
 def test_modeless_export_dialogues_reuse_live_windows(qt_app: QtWidgets.QApplication) -> None:

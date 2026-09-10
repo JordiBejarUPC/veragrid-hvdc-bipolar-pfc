@@ -1909,8 +1909,16 @@ class SchematicWidget(BaseDiagramWidget):
         for idtag, graphic_object in bus_graphic_dict.items():
             if isinstance(graphic_object, BusGraphicItem):
                 if graphic_object.isSelected():
-                    idx, bus = bus_dict[idtag]
-                    lst.append((idx, bus, graphic_object))
+                    bus_tuple: Tuple[int, Bus] | None = bus_dict.get(idtag, None)
+                    if bus_tuple is None:
+                        pass
+                    else:
+                        idx, bus = bus_tuple
+                        lst.append((idx, bus, graphic_object))
+                else:
+                    pass
+            else:
+                pass
         return lst
 
     def get_buses(self) -> List[Tuple[int, Bus, BusGraphicItem]]:
@@ -1924,8 +1932,14 @@ class SchematicWidget(BaseDiagramWidget):
 
         for bus_idtag, graphic_object in bus_graphics_dict.items():
             if isinstance(graphic_object, BusGraphicItem):
-                idx, bus = bus_dict[bus_idtag]
-                lst.append((idx, bus, graphic_object))
+                bus_tuple: Tuple[int, Bus] | None = bus_dict.get(bus_idtag, None)
+                if bus_tuple is None:
+                    pass
+                else:
+                    idx, bus = bus_tuple
+                    lst.append((idx, bus, graphic_object))
+            else:
+                pass
 
         return lst
 
