@@ -347,7 +347,7 @@ class AboutDialogueGuiGUI(QtWidgets.QDialog):
             licensed=len(pypowsybl_installed_version) > 0,
         ))
 
-        self.ui.librariesTableWidget.setColumnCount(7)
+        self.ui.librariesTableWidget.setColumnCount(6)
         self.ui.librariesTableWidget.setRowCount(len(rows))
         self.ui.librariesTableWidget.setHorizontalHeaderLabels([
             self.tr("Name"),

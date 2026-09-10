@@ -5,7 +5,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VeraGridEngine.Devices.assets &mdash; VeraGrid 6.5.13 documentation</title>
+  <title>VeraGridEngine.Devices.assets &mdash; VeraGrid 6.5.26 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
@@ -14,7 +14,7 @@
   
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../../../_static/documentation_options.js?v=3377d3ec"></script>
+      <script src="../../../_static/documentation_options.js?v=c62e3d9e"></script>
       <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
       <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/js/theme.js"></script>
@@ -44,6 +44,7 @@
               <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../md_source/installation.html">💽 Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../md_source/user_interface.html">📊 User interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../md_source/veragrid_scripting_guide.html">📑 VeraGrid scripting guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../md_source/grid_analysis.html">🔎 Grid analysis</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../md_source/structure.html">🌁 Structure of VeraGrid</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../md_source/modelling.html">📐 Grid Modelling</a></li>
@@ -1795,13 +1796,20 @@
 <span class="sd">        Delete N-winding transformer</span>
 <span class="sd">        :param obj: TransformerNW instance</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">for</span> <span class="n">winding</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">windings</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">delete_winding</span><span class="p">(</span><span class="n">winding</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">delete_bus</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">bus0</span><span class="p">,</span> <span class="n">delete_associated</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_transformers_nw</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
             <span class="k">pass</span>
+
+        <span class="n">winding_list</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">Winding</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">windings</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">winding</span> <span class="ow">in</span> <span class="n">winding_list</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">delete_winding</span><span class="p">(</span><span class="n">winding</span><span class="p">)</span>
+
+        <span class="n">winding_count_to_clear</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">windings</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">winding_index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">winding_count_to_clear</span><span class="p">):</span>
+            <span class="n">obj</span><span class="o">.</span><span class="n">delete_winding</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">delete_bus</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">bus0</span><span class="p">,</span> <span class="n">delete_associated</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
         <span class="n">elms_to_del</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
         <span class="k">for</span> <span class="n">lst</span> <span class="ow">in</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_rms_events</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_emt_events</span><span class="p">]:</span>
@@ -1811,6 +1819,55 @@
 
         <span class="k">for</span> <span class="n">elm</span> <span class="ow">in</span> <span class="n">elms_to_del</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">delete_element</span><span class="p">(</span><span class="n">elm</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Assets.delete_associated_multi_winding_transformers">
+<a class="viewcode-back" href="../../../rst_source/api/auto/VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.delete_associated_multi_winding_transformers">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">delete_associated_multi_winding_transformers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">buses_to_remove</span><span class="p">:</span> <span class="n">Set</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">Bus</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Delete multi-winding transformers connected to any bus being removed.</span>
+
+<span class="sd">        :param buses_to_remove: Buses requested for deletion.</span>
+<span class="sd">        :type buses_to_remove: Set[dev.Bus]</span>
+<span class="sd">        :return: None</span>
+<span class="sd">        :rtype: None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">transformers3w_to_delete</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">Transformer3W</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+        <span class="n">transformers_nw_to_delete</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">TransformerNW</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+
+        <span class="c1"># Transformer windings are stored as branch devices, but the transformer parent also has to disappear.</span>
+        <span class="k">for</span> <span class="n">transformer3w</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transformers3w</span><span class="p">:</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">transformer3w</span><span class="o">.</span><span class="n">bus0</span> <span class="ow">in</span> <span class="n">buses_to_remove</span>
+                    <span class="ow">or</span> <span class="n">transformer3w</span><span class="o">.</span><span class="n">bus1</span> <span class="ow">in</span> <span class="n">buses_to_remove</span>
+                    <span class="ow">or</span> <span class="n">transformer3w</span><span class="o">.</span><span class="n">bus2</span> <span class="ow">in</span> <span class="n">buses_to_remove</span>
+                    <span class="ow">or</span> <span class="n">transformer3w</span><span class="o">.</span><span class="n">bus3</span> <span class="ow">in</span> <span class="n">buses_to_remove</span><span class="p">):</span>
+                <span class="n">transformers3w_to_delete</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">transformer3w</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+        <span class="c1"># N-winding transformers need the same parent cleanup for their internal and terminal buses.</span>
+        <span class="k">for</span> <span class="n">transformer_nw</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transformers_nw</span><span class="p">:</span>
+            <span class="n">delete_transformer</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">transformer_nw</span><span class="o">.</span><span class="n">bus0</span> <span class="ow">in</span> <span class="n">buses_to_remove</span>
+
+            <span class="k">if</span> <span class="n">delete_transformer</span><span class="p">:</span>
+                <span class="k">pass</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">bus</span> <span class="ow">in</span> <span class="n">transformer_nw</span><span class="o">.</span><span class="n">buses</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">bus</span> <span class="ow">in</span> <span class="n">buses_to_remove</span><span class="p">:</span>
+                        <span class="n">delete_transformer</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">pass</span>
+
+            <span class="k">if</span> <span class="n">delete_transformer</span><span class="p">:</span>
+                <span class="n">transformers_nw_to_delete</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">transformer_nw</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+        <span class="k">for</span> <span class="n">transformer3w</span> <span class="ow">in</span> <span class="n">transformers3w_to_delete</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">delete_transformer3w</span><span class="p">(</span><span class="n">obj</span><span class="o">=</span><span class="n">transformer3w</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">transformer_nw</span> <span class="ow">in</span> <span class="n">transformers_nw_to_delete</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">delete_transformer_nw</span><span class="p">(</span><span class="n">obj</span><span class="o">=</span><span class="n">transformer_nw</span><span class="p">)</span></div>
 
 
     <span class="c1"># ------------------------------------------------------------------------------------------------------------------</span>
@@ -2135,6 +2192,12 @@
 <span class="sd">        :param delete_associated: Delete the associated branches and injections</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
+        <span class="c1"># Multi-winding transformer parents must be deleted before their winding branches are removed.</span>
+        <span class="k">if</span> <span class="n">delete_associated</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">delete_associated_multi_winding_transformers</span><span class="p">(</span><span class="n">buses_to_remove</span><span class="o">=</span><span class="p">{</span><span class="n">obj</span><span class="p">})</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">pass</span>
+
         <span class="c1"># delete associated Branches in reverse order</span>
         <span class="k">for</span> <span class="n">branch_list</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_branch_lists</span><span class="p">(</span><span class="n">add_vsc</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">add_hvdc</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">add_switch</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
             <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">branch_list</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">):</span>
@@ -2253,6 +2316,12 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">buses_to_remove</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">lst</span><span class="p">)</span>
         <span class="n">injections_to_delete</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+
+        <span class="c1"># Multi-winding transformer parents must be deleted before their winding branches are removed.</span>
+        <span class="k">if</span> <span class="n">delete_associated</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">delete_associated_multi_winding_transformers</span><span class="p">(</span><span class="n">buses_to_remove</span><span class="o">=</span><span class="n">buses_to_remove</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">pass</span>
 
         <span class="c1"># We delete the associated branches by knowing the buses to remove</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">delete_branches_with_sets</span><span class="p">(</span><span class="n">buses_to_remove</span><span class="p">,</span> <span class="n">delete_associated</span><span class="p">)</span>
