@@ -585,7 +585,7 @@ def _read_explicit_file_bytes(path: Path, maximum_size_bytes: int) -> bytes:
         raise ValueError("Explicit file exceeds its size boundary")
 
 
-def _read_fmpy_distribution_identity() -> tuple[str, str]:
+def read_fmpy_distribution_identity() -> tuple[str, str]:
     """Recompute the complete installed FMPy distribution identity.
 
     :return: Installed version and deterministic all-file SHA-256 digest.
@@ -1784,7 +1784,7 @@ def generate_reference_fmu_comparison(
     )
     fmpy_version: str
     fmpy_distribution_sha256: str
-    fmpy_version, fmpy_distribution_sha256 = _read_fmpy_distribution_identity()
+    fmpy_version, fmpy_distribution_sha256 = read_fmpy_distribution_identity()
     if (
         fmpy_version == execution_config.fmpy_expected_version
         and fmpy_distribution_sha256

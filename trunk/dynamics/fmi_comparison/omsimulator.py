@@ -527,7 +527,7 @@ def _terminate_omsimulator_process(process: subprocess.Popen[bytes]) -> None:
         pass
 
 
-def _run_omsimulator_process(
+def run_bounded_omsimulator_process(
         executable_path: Path,
         runtime_dir: Path,
         process_arguments: tuple[str, ...],
@@ -563,16 +563,19 @@ def _run_omsimulator_process(
         while process.poll() is None and process_failure is None:
             elapsed_seconds: float = time.monotonic() - started_at
             runtime_size_bytes: int = 0
-            runtime_entry: Path
-            for runtime_entry in runtime_dir.rglob("*"):
-                if runtime_entry.is_symlink():
-                    process_failure = RuntimeError(
-                        "OMSimulator runtime produced an unsupported symbolic link"
-                    )
-                elif runtime_entry.is_file():
-                    runtime_size_bytes += runtime_entry.stat().st_size
-                else:
-                    pass
+            try:
+                runtime_entry: Path
+                for runtime_entry in runtime_dir.rglob("*"):
+                    if runtime_entry.is_symlink():
+                        process_failure = RuntimeError(
+                            "OMSimulator runtime produced an unsupported symbolic link"
+                        )
+                    elif runtime_entry.is_file():
+                        runtime_size_bytes += runtime_entry.stat().st_size
+                    else:
+                        pass
+            except FileNotFoundError:
+                pass
             stdout_size_bytes: int = stdout_path.stat().st_size
             stderr_size_bytes: int = stderr_path.stat().st_size
             if process_failure is not None:
@@ -745,7 +748,7 @@ def execute_omsimulator_trace(
             resolved_executable,
             runtime_dir,
         )
-        _run_omsimulator_process(
+        run_bounded_omsimulator_process(
             resolved_executable, runtime_dir, process_arguments, timeout_seconds
         )
         runtime_output_path: Path = runtime_dir / "omsimulator_output.csv"
