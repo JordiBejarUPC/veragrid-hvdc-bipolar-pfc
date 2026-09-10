@@ -1400,6 +1400,11 @@ def test_measurements_dialog_tree_io_column_composes_reference_directions(qt_app
         assert dialog.ui.measurement_tree.headerItem().text(0) == "Name"
         assert dialog.ui.measurement_tree.headerItem().text(1) == "I/O"
         assert dialog.ui.measurement_tree.headerItem().text(2) == "Comment"
+        tree_header: QtWidgets.QHeaderView = dialog.ui.measurement_tree.header()
+        assert not tree_header.stretchLastSection()
+        assert tree_header.sectionResizeMode(0) == QtWidgets.QHeaderView.ResizeMode.Interactive
+        assert tree_header.sectionResizeMode(1) == QtWidgets.QHeaderView.ResizeMode.Interactive
+        assert tree_header.sectionResizeMode(2) == QtWidgets.QHeaderView.ResizeMode.Interactive
 
         parent_item.setCheckState(0, QtCore.Qt.CheckState.Checked)
         child_item.setCheckState(1, QtCore.Qt.CheckState.Checked)

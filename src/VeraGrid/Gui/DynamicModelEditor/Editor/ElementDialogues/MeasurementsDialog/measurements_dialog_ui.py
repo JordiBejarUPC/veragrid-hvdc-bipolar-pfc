@@ -77,6 +77,7 @@ class Ui_MeasurementsDialog(object):
         self.measurement_tree.setAlternatingRowColors(True)
         self.measurement_tree.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.measurement_tree.setRootIsDecorated(True)
+        self.measurement_tree.header().setStretchLastSection(False)
 
         self.verticalLayout_4.addWidget(self.measurement_tree)
 
