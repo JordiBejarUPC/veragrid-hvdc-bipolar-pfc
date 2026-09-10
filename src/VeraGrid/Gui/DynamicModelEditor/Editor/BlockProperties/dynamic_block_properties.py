@@ -5742,7 +5742,6 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         "_symbol_model",
         "_retained_mode_model",
         "_property_tree_model",
-        "_expanded_property_groups",
         "_runtime_logic_drafts",
         "_procedural_add_menu",
         "_namespace",
@@ -5812,7 +5811,6 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         # All edits stay detached until Apply validates the complete transaction.
         self._parameter_model: BlockParameterDraftModel = BlockParameterDraftModel(block, self)
         self._symbol_model: BlockSymbolDraftModel = BlockSymbolDraftModel(block, self)
-        self._expanded_property_groups: set[tuple[str, int | None]] = set()
 
         # Build one source buffer for every direct or nested equation owner.
         self._equation_buffers: List[BlockCodeBuffer] = list()
@@ -6185,54 +6183,27 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._add_symbol_dialog.adjustSize()
         self._add_symbol_dialog.exec()
 
-    def remember_property_tree(self) -> None:
-        """Remember expanded categories and owners before source rows change.
-
-        :return: None.
-        """
-        self._expanded_property_groups.clear()
-        group_row: int
-        for group_row in range(self._property_tree_model.rowCount()):
-            group: QtCore.QModelIndex = self._property_tree_model.index(group_row, 0)
-            label: str = str(group.data())
-            if self.ui.property_tree.isExpanded(group):
-                self._expanded_property_groups.add((label, None))
-            else:
-                pass
-            owner_row: int
-            for owner_row in range(self._property_tree_model.rowCount(group)):
-                owner_index: QtCore.QModelIndex = self._property_tree_model.index(owner_row, 0, group)
-                owner: object = owner_index.data(Qt.ItemDataRole.UserRole + 1)
-                if isinstance(owner, Block) and self.ui.property_tree.isExpanded(owner_index):
-                    self._expanded_property_groups.add((label, owner.uid))
-                else:
-                    pass
-
     @QtCore.Slot()
     def restore_property_tree(self) -> None:
-        """Restore owner branches and spanning category rows after rebuilding.
+        """Expand owner branches and restore spanning category rows after rebuilding.
 
         :return: None.
         """
-        # The saved set starts empty, so all branches open collapsed. Later
-        # model refreshes restore only the branches the user chose to expand.
+        # Category and owner rows are structural headers, so they keep spanning
+        # after each model rebuild while the property tree remains fully open.
         group_row: int
         for group_row in range(self._property_tree_model.rowCount()):
             group: QtCore.QModelIndex = self._property_tree_model.index(group_row, 0)
-            label: str = str(group.data())
             self.ui.property_tree.setFirstColumnSpanned(group_row, QtCore.QModelIndex(), True)
-            self.ui.property_tree.setExpanded(group, (label, None) in self._expanded_property_groups)
             owner_row: int
             for owner_row in range(self._property_tree_model.rowCount(group)):
                 owner_index: QtCore.QModelIndex = self._property_tree_model.index(owner_row, 0, group)
                 owner: object = owner_index.data(Qt.ItemDataRole.UserRole + 1)
                 if isinstance(owner, Block):
                     self.ui.property_tree.setFirstColumnSpanned(owner_row, group, True)
-                    self.ui.property_tree.setExpanded(
-                        owner_index, (label, owner.uid) in self._expanded_property_groups,
-                    )
                 else:
                     pass
+        self.ui.property_tree.expandAll()
         self.filter_properties(self.ui.property_search.text())
 
     @QtCore.Slot(str)
@@ -6407,7 +6378,6 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self.ui.property_tree.customContextMenuRequested.connect(self.show_symbol_context_menu)
         self.ui.property_tree.clicked.connect(self.on_property_selected)
         self.ui.property_search.textChanged.connect(self.filter_properties)
-        self._property_tree_model.aboutToRebuild.connect(self.remember_property_tree)
         self._property_tree_model.rebuilt.connect(self.restore_property_tree)
         self._property_tree_model.pendingNameChanged.connect(self.on_pending_symbol_renamed)
         self._property_tree_model.existingNameChangeRequested.connect(
