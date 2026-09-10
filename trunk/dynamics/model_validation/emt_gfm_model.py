@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "sr
 import VeraGridEngine.api as vge
 from VeraGridEngine.Utils.Symbolic.block import Block
 
-from emt_gfm_aggregated_model import build_emt_gfm_aggregated_model
+from VeraGridEngine.Templates.Emt.emt_gfm_upc import build_emt_gfm_aggregated_model
 
 
 def find_name_in_block(name: str, block: Block) -> Any:
