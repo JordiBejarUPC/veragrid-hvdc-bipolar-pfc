@@ -1156,7 +1156,8 @@ class DynamicEventsPage(QtWidgets.QWidget):
         "add_event_action",
         "remove_action",
         "new_group_action",
-        "save_button",
+        "clear_device_events_action",
+        "save_action",
         "toast_manager",
         "_prepared_to_delete",
     )
@@ -1203,7 +1204,8 @@ class DynamicEventsPage(QtWidgets.QWidget):
         self.add_event_action: QtGui.QAction = self.ui.actionAddEvent
         self.remove_action: QtGui.QAction = self.ui.actionRemove
         self.new_group_action: QtGui.QAction = self.ui.actionNewGroup
-        self.save_button: QtWidgets.QPushButton = self.ui.saveButton
+        self.clear_device_events_action: QtGui.QAction = self.ui.actionClearDeviceEvents
+        self.save_action: QtGui.QAction = self.ui.actionSave
 
         # The empty-state label overlays the table without intercepting input,
         # so existing rows remain interactive while the message is visible.
@@ -1251,7 +1253,8 @@ class DynamicEventsPage(QtWidgets.QWidget):
         self.add_event_action.triggered.connect(self.add_event)
         self.remove_action.triggered.connect(self.remove_selection)
         self.new_group_action.triggered.connect(self.create_event_group)
-        self.save_button.clicked.connect(self.save_changes)
+        self.clear_device_events_action.triggered.connect(self.clear_device_events)
+        self.save_action.triggered.connect(self.save_changes)
         self.switch_sequence_action.triggered.connect(self.open_switch_sequence)
         self.tree_view.customContextMenuRequested.connect(self.show_context_menu)
         self.tree_model.rebuilt.connect(self._on_event_model_rebuilt)
@@ -1474,6 +1477,7 @@ class DynamicEventsPage(QtWidgets.QWidget):
         self.filter_model.reconcile_selected_values()
         self.filter_header.viewport().update()
         self._open_event_group_editors()
+        self.update_actions()
 
     @QtCore.Slot()
     def _on_filter_changed(self) -> None:
@@ -1509,6 +1513,11 @@ class DynamicEventsPage(QtWidgets.QWidget):
         """
         self.add_event_action.setEnabled(True)
         self.remove_action.setEnabled(True)
+        device_events: list[DynamicEventDraft] = self.session.get_events_for_device(
+            device=self.device,
+            mode=self.mode,
+        )
+        self.clear_device_events_action.setEnabled(len(device_events) > 0)
 
         mode_parameters: list[Var] = self._get_switch_mode_parameters()
         mode_groups: list[DynamicEventGroupDraft] = self.session.get_groups(self.mode)
@@ -1524,6 +1533,43 @@ class DynamicEventsPage(QtWidgets.QWidget):
             self.add_event_action.setToolTip(
                 self.tr("No events can be added because the dynamic model has no event parameters.")
             )
+
+    @QtCore.Slot(bool)
+    def clear_device_events(self, _checked: bool = False) -> None:
+        """Confirm removal of every current-mode event for this device.
+
+        :param _checked: QAction checked state supplied by Qt.
+        :return: None.
+        """
+        device_events: list[DynamicEventDraft] = self.session.get_events_for_device(
+            device=self.device,
+            mode=self.mode,
+        )
+        if len(device_events) == 0:
+            return
+        else:
+            pass
+
+        result: QtWidgets.QMessageBox.StandardButton = QtWidgets.QMessageBox.warning(
+            self,
+            self.tr("Delete all device events"),
+            self.tr(
+                "Are you sure you want to delete all {mode} events applied to '{device}'?\n\n"
+                "The events will be permanently deleted when you save the changes."
+            ).format(
+                mode=self.mode.name,
+                device=self.device.name,
+            ),
+            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
+            QtWidgets.QMessageBox.StandardButton.No,
+        )
+        if result == QtWidgets.QMessageBox.StandardButton.Yes:
+            self.session.remove_device_events(
+                device=self.device,
+                mode=self.mode,
+            )
+        else:
+            pass
 
     @QtCore.Slot(bool)
     def add_event(self, _checked: bool = False) -> None:

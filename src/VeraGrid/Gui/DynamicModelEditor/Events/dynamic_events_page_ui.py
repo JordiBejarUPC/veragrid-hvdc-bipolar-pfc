@@ -17,9 +17,8 @@ from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
     QPainter, QPalette, QPixmap, QRadialGradient,
     QTransform)
 from PySide6.QtWidgets import (QAbstractItemView, QApplication, QFrame, QGridLayout,
-    QHBoxLayout, QHeaderView, QLabel, QPushButton,
-    QSizePolicy, QSpacerItem, QTableView, QToolBar,
-    QVBoxLayout, QWidget)
+    QHeaderView, QLabel, QTableView, QToolBar, QVBoxLayout,
+    QWidget)
 from VeraGrid.Gui.Icons.icons_rc import *
 
 class Ui_DynamicEventsPage(object):
@@ -27,29 +26,43 @@ class Ui_DynamicEventsPage(object):
         if not DynamicEventsPage.objectName():
             DynamicEventsPage.setObjectName(u"DynamicEventsPage")
         DynamicEventsPage.resize(900, 560)
+        self.actionClearDeviceEvents = QAction(DynamicEventsPage)
+        self.actionClearDeviceEvents.setObjectName(u"actionClearDeviceEvents")
+        self.actionClearDeviceEvents.setPriority(QAction.Priority.LowPriority)
+        icon = QIcon()
+        icon.addFile(u":/Icons/icons/new.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.actionClearDeviceEvents.setIcon(icon)
+        self.actionSave = QAction(DynamicEventsPage)
+        self.actionSave.setObjectName(u"actionSave")
+        self.actionSave.setPriority(QAction.Priority.LowPriority)
+        icon1 = QIcon()
+        icon1.addFile(u":/Icons/icons/savec.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.actionSave.setIcon(icon1)
         self.actionSwitchSequence = QAction(DynamicEventsPage)
         self.actionSwitchSequence.setObjectName(u"actionSwitchSequence")
         self.actionAddEvent = QAction(DynamicEventsPage)
         self.actionAddEvent.setObjectName(u"actionAddEvent")
-        icon = QIcon()
-        icon.addFile(u":/Icons/icons/plus.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.actionAddEvent.setIcon(icon)
+        icon2 = QIcon()
+        icon2.addFile(u":/Icons/icons/plus.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.actionAddEvent.setIcon(icon2)
         self.actionRemove = QAction(DynamicEventsPage)
         self.actionRemove.setObjectName(u"actionRemove")
-        icon1 = QIcon()
-        icon1.addFile(u":/Icons/icons/minus.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.actionRemove.setIcon(icon1)
+        icon3 = QIcon()
+        icon3.addFile(u":/Icons/icons/minus.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.actionRemove.setIcon(icon3)
         self.actionNewGroup = QAction(DynamicEventsPage)
         self.actionNewGroup.setObjectName(u"actionNewGroup")
-        icon2 = QIcon()
-        icon2.addFile(u":/Icons/icons/edit.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.actionNewGroup.setIcon(icon2)
+        icon4 = QIcon()
+        icon4.addFile(u":/Icons/icons/edit.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.actionNewGroup.setIcon(icon4)
         self.mainLayout = QVBoxLayout(DynamicEventsPage)
         self.mainLayout.setObjectName(u"mainLayout")
+        self.mainLayout.setSpacing(0)
         self.mainLayout.setContentsMargins(0, 0, 0, 0)
         self.eventsToolBar = QToolBar(DynamicEventsPage)
         self.eventsToolBar.setObjectName(u"eventsToolBar")
         self.eventsToolBar.setMovable(False)
+        self.eventsToolBar.setIconSize(QSize(24, 24))
         self.eventsToolBar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         self.eventsToolBar.setFloatable(False)
 
@@ -78,27 +91,10 @@ class Ui_DynamicEventsPage(object):
 
 
         self.mainLayout.addWidget(self.eventsTreeFrame)
-
-        self.saveLayout = QHBoxLayout()
-        self.saveLayout.setObjectName(u"saveLayout")
-        self.saveSpacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-
-        self.saveLayout.addItem(self.saveSpacer)
-
-        self.saveButton = QPushButton(DynamicEventsPage)
-        self.saveButton.setObjectName(u"saveButton")
-        icon3 = QIcon()
-        icon3.addFile(u":/Icons/icons/accept.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.saveButton.setIcon(icon3)
-
-        self.saveLayout.addWidget(self.saveButton)
-
-
-        self.mainLayout.addLayout(self.saveLayout)
-
-
-        self.eventsToolBar.addAction(self.actionSwitchSequence)
+        self.eventsToolBar.addAction(self.actionClearDeviceEvents)
+        self.eventsToolBar.addAction(self.actionSave)
         self.eventsToolBar.addSeparator()
+        self.eventsToolBar.addAction(self.actionSwitchSequence)
         self.eventsToolBar.addAction(self.actionAddEvent)
         self.eventsToolBar.addAction(self.actionRemove)
         self.eventsToolBar.addAction(self.actionNewGroup)
@@ -110,6 +106,17 @@ class Ui_DynamicEventsPage(object):
 
     def retranslateUi(self, DynamicEventsPage):
         DynamicEventsPage.setWindowTitle(QCoreApplication.translate("DynamicEventsPage", u"Dynamic Events", None))
+        self.actionClearDeviceEvents.setText(QCoreApplication.translate("DynamicEventsPage", u"New", None))
+#if QT_CONFIG(tooltip)
+        self.actionClearDeviceEvents.setToolTip(QCoreApplication.translate("DynamicEventsPage", u"Delete all events of this simulation mode from the current device", None))
+#endif // QT_CONFIG(tooltip)
+        self.actionSave.setText(QCoreApplication.translate("DynamicEventsPage", u"Save", None))
+#if QT_CONFIG(tooltip)
+        self.actionSave.setToolTip(QCoreApplication.translate("DynamicEventsPage", u"Save event changes", None))
+#endif // QT_CONFIG(tooltip)
+#if QT_CONFIG(shortcut)
+        self.actionSave.setShortcut(QCoreApplication.translate("DynamicEventsPage", u"Ctrl+S", None))
+#endif // QT_CONFIG(shortcut)
         self.actionSwitchSequence.setText(QCoreApplication.translate("DynamicEventsPage", u"Switch Sequence Wizard", None))
 #if QT_CONFIG(tooltip)
         self.actionSwitchSequence.setToolTip(QCoreApplication.translate("DynamicEventsPage", u"Create an EMT switch opening and reclosing event sequence", None))
@@ -127,8 +134,4 @@ class Ui_DynamicEventsPage(object):
         self.actionNewGroup.setToolTip(QCoreApplication.translate("DynamicEventsPage", u"Create, delete, activate or deactivate an event group for this simulation mode", None))
 #endif // QT_CONFIG(tooltip)
         self.emptyModelMessage.setText(QCoreApplication.translate("DynamicEventsPage", u"This dynamic model is empty. New events cannot be added until the model is built.", None))
-#if QT_CONFIG(tooltip)
-        self.saveButton.setToolTip(QCoreApplication.translate("DynamicEventsPage", u"Save events", None))
-#endif // QT_CONFIG(tooltip)
-        self.saveButton.setText("")
     # retranslateUi

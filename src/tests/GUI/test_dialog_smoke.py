@@ -39,6 +39,8 @@ from VeraGrid.Gui.Diagrams.Editors.bus_selector import BusSelectorDialogue
 from VeraGrid.Gui.Diagrams.Editors.new_line_dialogue import NewMapLineDialogue
 from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import SelectionDialog
 from VeraGrid.Gui.Diagrams.SchematicWidget.diagram_bus_selection_dialogue import DiagramBusSelectorDialogue
+from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_models import DynamicEventsDraftSession
+from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_support import DynamicEventsGroupManagerDialog
 from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_support import DynamicEventsGroupsDialog
 from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_support import SwitchSequenceDialog
 from VeraGrid.Gui.DynamicModelEditor.Editor.ElementDialogues.jmarti_line_emt_dialog import JMartiLineEmtDialog
@@ -723,6 +725,12 @@ def build_dialog_for_smoke(target: DialogSmokeTarget, context: DialogSmokeContex
         dialog = SwitchSequenceDialog(mode_parameters=list(), events_groups=list())
     elif target == DialogSmokeTarget.DYNAMIC_EVENTS_GROUPS:
         dialog = DynamicEventsGroupsDialog(mode=DynamicSimulationMode.RMS)
+    elif target == DialogSmokeTarget.DYNAMIC_EVENTS_GROUP_MANAGER_DIALOG:
+        events_session: DynamicEventsDraftSession = DynamicEventsDraftSession(circuit=circuit)
+        dialog = DynamicEventsGroupManagerDialog(
+            session=events_session,
+            mode=DynamicSimulationMode.RMS,
+        )
     elif target == DialogSmokeTarget.JMARTI_LINE_EMT:
         dialog = JMartiLineEmtDialog()
     elif target == DialogSmokeTarget.LOOKUP_ARRAY_LINEAR:

@@ -908,8 +908,8 @@ def test_tabs_are_unique_per_device_and_mode() -> None:
     dialog.close()
 
 
-def test_save_button_and_event_actions_use_ui_toolbar_contract() -> None:
-    """The events page must expose its save button and UI-defined toolbar actions.
+def test_save_and_clear_actions_use_ui_toolbar_contract() -> None:
+    """The events page must expose Save and Clear through its top toolbar.
 
     :return: None.
     """
@@ -922,16 +922,23 @@ def test_save_button_and_event_actions_use_ui_toolbar_contract() -> None:
     )
     page: DynamicEventsPage = dialog.pages[0]
 
-    assert page.save_button.text() == ""
-    assert page.save_button.toolTip() == "Save events"
-    assert not page.save_button.icon().isNull()
+    assert page.findChild(QtWidgets.QPushButton, "saveButton") is None
     assert isinstance(page.tree_view, QtWidgets.QTableView)
     assert not page.tree_view.alternatingRowColors()
     toolbar_actions: list[QtGui.QAction] = page.ui.eventsToolBar.actions()
+    assert toolbar_actions[0] is page.clear_device_events_action
+    assert toolbar_actions[1] is page.save_action
+    separator_count: int = sum(1 for action in toolbar_actions if action.isSeparator())
+    assert separator_count == 1
     assert page.switch_sequence_action in toolbar_actions
     assert page.add_event_action in toolbar_actions
     assert page.remove_action in toolbar_actions
     assert page.new_group_action in toolbar_actions
+    assert not page.clear_device_events_action.icon().isNull()
+    assert not page.save_action.icon().isNull()
+    assert page.clear_device_events_action.priority() == QtGui.QAction.Priority.LowPriority
+    assert page.save_action.priority() == QtGui.QAction.Priority.LowPriority
+    assert page.save_action.shortcut() == QtGui.QKeySequence("Ctrl+S")
     assert isinstance(page.new_group_action, QtGui.QAction)
     assert isinstance(page.add_event_action, QtGui.QAction)
     assert isinstance(page.remove_action, QtGui.QAction)
@@ -939,6 +946,72 @@ def test_save_button_and_event_actions_use_ui_toolbar_contract() -> None:
     assert page.add_event_action.toolTip() != ""
     assert page.remove_action.toolTip() != ""
     dialog.close()
+
+
+def test_clear_device_events_is_mode_local_and_transactional() -> None:
+    """Clear must remove only current-device/current-mode events after Save.
+
+    :return: None.
+    """
+    _unused_application: QtWidgets.QApplication = get_qt_application()
+    circuit, target_load, parameter, rms_group = build_dynamic_target(DynamicSimulationMode.RMS)
+    assert isinstance(rms_group, RmsEventsGroup)
+    bus: vge.Bus = circuit.buses[0]
+    other_load: vge.Load = vge.Load(name="Other load")
+    circuit.add_load(bus=bus, api_obj=other_load)
+    emt_group: EmtEventsGroup = EmtEventsGroup(name="EMT group")
+    circuit.add_emt_events_group(emt_group)
+
+    first_target_event: vge.RmsEvent = vge.RmsEvent(
+        device=target_load,
+        parameter=parameter,
+        time=1.0,
+        value=1.0,
+        group=rms_group,
+    )
+    second_target_event: vge.RmsEvent = vge.RmsEvent(
+        device=target_load,
+        parameter=parameter,
+        time=2.0,
+        value=2.0,
+        group=rms_group,
+    )
+    other_device_event: vge.RmsEvent = vge.RmsEvent(
+        device=other_load,
+        parameter=parameter,
+        time=3.0,
+        value=3.0,
+        group=rms_group,
+    )
+    other_mode_event: vge.EmtEvent = vge.EmtEvent(
+        device=target_load,
+        parameter=parameter,
+        time=4.0,
+        value=4.0,
+        group=emt_group,
+    )
+    circuit.add_rms_event(first_target_event)
+    circuit.add_rms_event(second_target_event)
+    circuit.add_rms_event(other_device_event)
+    circuit.add_emt_event(other_mode_event)
+    session: DynamicEventsDraftSession = DynamicEventsDraftSession(circuit=circuit)
+
+    removed_count: int = session.remove_device_events(
+        device=target_load,
+        mode=DynamicSimulationMode.RMS,
+    )
+
+    assert removed_count == 2
+    assert len(circuit.rms_events) == 3
+    assert len(circuit.emt_events) == 1
+    assert session.has_unapplied_changes
+
+    session.commit()
+
+    assert circuit.rms_events == [other_device_event]
+    assert circuit.emt_events == [other_mode_event]
+    assert circuit.rms_events_groups == [rms_group]
+    assert circuit.emt_events_groups == [emt_group]
 
 
 def test_events_table_empty_area_click_clears_current_row() -> None:

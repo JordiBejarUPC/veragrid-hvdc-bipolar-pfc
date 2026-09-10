@@ -498,6 +498,42 @@ class DynamicEventsDraftSession(QtCore.QObject):
         event.is_removed = True
         self.mark_changed(rebuild=True)
 
+    def remove_device_events(self,
+                             device: EditableDevice,
+                             mode: DynamicSimulationMode) -> int:
+        """Mark every event for one device and simulation mode as removed.
+
+        The shared RMS/EMT groups remain available because they define global
+        simulation scenarios and may still contain events for other devices.
+
+        :param device: Device whose event drafts must be cleared.
+        :param mode: RMS or EMT family to clear.
+        :return: Number of visible event drafts marked for removal.
+        """
+        removed_count: int = 0
+        event: DynamicEventDraft
+        for event in self.event_drafts:
+            event_matches: bool = (
+                event.device is device
+                and event.mode == mode
+                and not event.is_removed
+            )
+            if event_matches:
+                # Keep the deletion transactional. ``commit`` applies it to the
+                # circuit only after the user explicitly saves the shared draft.
+                event.is_removed = True
+                removed_count += 1
+            else:
+                pass
+
+        if removed_count > 0:
+            # One rebuild updates every open projection of the shared session
+            # after the complete device-local operation has finished.
+            self.mark_changed(rebuild=True)
+        else:
+            pass
+        return removed_count
+
     def remove_group(self, group: DynamicEventGroupDraft) -> None:
         """Mark one group and every contained event as removed.
 

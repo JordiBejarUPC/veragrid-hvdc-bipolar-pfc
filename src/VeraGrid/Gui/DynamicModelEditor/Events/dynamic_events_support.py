@@ -481,6 +481,7 @@ class DynamicEventsGroupManagerDialog(QtWidgets.QDialog):
         "activate_button",
         "deactivate_button",
         "close_buttons",
+        "_prepared_to_delete",
     )
 
     GROUP_DATA_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole)
@@ -499,6 +500,7 @@ class DynamicEventsGroupManagerDialog(QtWidgets.QDialog):
         super().__init__(parent)
         self.session: DynamicEventsDraftSession = session
         self.mode: DynamicSimulationMode = mode
+        self._prepared_to_delete: bool = False
         self.setWindowTitle(self.tr("Edit Events Groups"))
         self.setModal(True)
         self.setMinimumSize(480, 360)
@@ -567,6 +569,38 @@ class DynamicEventsGroupManagerDialog(QtWidgets.QDialog):
 
         self.refresh_groups()
 
+    def prepare_to_delete(self) -> None:
+        """Detach viewport callbacks before Qt starts deleting child widgets.
+
+        :return: None.
+        """
+        if self._prepared_to_delete:
+            return
+        else:
+            self._prepared_to_delete = True
+
+        # The viewport can emit one final event while its QListWidget parent is
+        # being destroyed. Removing the filter while both objects are alive
+        # prevents that event from dereferencing an already deleted wrapper.
+        self.groups_list.viewport().removeEventFilter(self)
+
+    def reject(self) -> None:
+        """Close the manager after detaching its viewport event filter.
+
+        :return: None.
+        """
+        self.prepare_to_delete()
+        QtWidgets.QDialog.reject(self)
+
+    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
+        """Prepare the manager for every window-manager close path.
+
+        :param event: Close event delivered by Qt.
+        :return: None.
+        """
+        self.prepare_to_delete()
+        QtWidgets.QDialog.closeEvent(self, event)
+
     def eventFilter(self, watched: QtCore.QObject, event: QtCore.QEvent) -> bool:
         """Clear group selection when the empty list background is clicked.
 
@@ -574,6 +608,11 @@ class DynamicEventsGroupManagerDialog(QtWidgets.QDialog):
         :param event: Qt event delivered to the watched object.
         :return: Whether the event was consumed.
         """
+        if self._prepared_to_delete:
+            return QtWidgets.QDialog.eventFilter(self, watched, event)
+        else:
+            pass
+
         is_list_mouse_press: bool = (
             watched is self.groups_list.viewport()
             and event.type() == QtCore.QEvent.Type.MouseButtonPress
