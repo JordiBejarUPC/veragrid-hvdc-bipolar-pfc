@@ -14,13 +14,14 @@ from matplotlib.colors import LinearSegmentedColormap
 import VeraGrid.Gui.gui_functions as gf
 from VeraGrid.Gui.i18n import translate_tree_label
 from VeraGrid.Gui.general_dialogues import LogsDialogue
-from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget, make_diagram_from_buses
+from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
 from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import MapWidget
 from VeraGrid.Gui.messages import yes_no_question, error_msg, warning_msg, info_msg
 from VeraGrid.Gui.Main.SubClasses.Model.time_events import TimeEventsMain
 from VeraGrid.Gui.SigmaAnalysis.sigma_analysis_dialogue import SigmaAnalysisGUI
 from VeraGrid.Gui.ProceduralGrid.procedural_grid import ProceduralGridWindow
 from VeraGrid.Gui.ProceduralGrid.map_warning import MapWarningDialog
+from VeraGrid.Gui.CandidateInvestments.candidate_investments import CandidateInvestmentsWindow
 from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, is_dialog_available
 from VeraGrid.Session.session import GcThread
 from VeraGrid.Session.server_driver import RemoteJobDriver
@@ -367,6 +368,7 @@ class SimulationsMain(TimeEventsMain):
         self.ui.actionRun_Small_Signal_RMS_Simulation.triggered.connect(self.rms_small_signal_dispatcher)
         self.ui.actionRun_Dynamic_EMT_Simulation.triggered.connect(self.emt_dispatcher)
         self.ui.actionRun_Small_Signal_EMT_Simulation.triggered.connect(self.emt_small_signal_dispatcher)
+        self.ui.actionCandidate_investment_generator.triggered.connect(self.candidate_investment_generator)
         self.ui.actionProcedural_grid_expansion.triggered.connect(self.procedural_grid_expansion)
         self.ui.actionCatalogue_element_optimization.triggered.connect(self.catalogue_element_optimization)
 
@@ -3668,43 +3670,17 @@ class SimulationsMain(TimeEventsMain):
                 best_x = results.x[results.sorting_indices[0], :]
                 inv_list = driver.problem.get_investments_for_combination(x=best_x)
 
-                # Apply the best Pareto combination directly on self.circuit (no copy).
-                # Reason: the auto-generated diagram below must be bound to self.circuit
-                # so that subsequent clicks in the Variations panel — which mutate
-                # self.circuit — actually update the visible graphics. If we kept the
-                # old self.circuit.copy() pattern, every graphic's api_object would
-                # point to the copy, and clicking a Pareto combination later would
-                # silently change self.circuit while the diagram (still bound to the
-                # untouched copy) showed every branch as dashed forever.
-                # First deactivate every investment-touched device, then activate
-                # only the ones in best_x — same all-off-then-selected convention
-                # the click handler uses, so the auto-generated diagram is
-                # consistent with what a click on the same Pareto row would do.
+                # First deactivate every investment-touched device, then activate only the ones in
+                # best_x — same all-off-then-selected convention the Variations-panel click handler
+                # uses, so the state right after a run matches clicking the top Pareto row.
                 self.circuit.set_investments_status(investments_list=self._investments_all,
-                                                    status=False,
+                                                    apply_investment=False,
                                                     all_elements_dict=all_elements_dict)
                 self.circuit.set_investments_status(investments_list=inv_list,
-                                                    status=True,
+                                                    apply_investment=True,
                                                     all_elements_dict=all_elements_dict)
-
-                diagram = make_diagram_from_buses(
-                    circuit=self.circuit,
-                    buses=self.circuit.buses,
-                    name='Investments evaluation (best Pareto)'
-                )
-
-                diagram_widget = SchematicWidget(
-                    gui=self,
-                    diagram=diagram,
-                    default_bus_voltage=self.ui.defaultBusVoltageSpinBox.value(),
-                    time_index=self.get_diagram_slider_index()
-                )
-
-                self.add_diagram_widget_and_diagram(diagram_widget=diagram_widget,
-                                                    diagram=diagram)
-                self.set_diagrams_list_view()
             else:
-                # no Pareto results - nothing to apply or auto-display
+                # no Pareto results - nothing to apply
                 pass
 
             # apply result-based colouring after the baseline + best-Pareto state is set
@@ -4576,6 +4552,31 @@ class SimulationsMain(TimeEventsMain):
         self.ui.mip_solver_comboBox.setModel(
             gf.ComboModel(enum_values=mip_solver_enums, translate=self.tr)
         )
+
+    def candidate_investment_generator(self):
+        """
+        Handler for the "Candidate investment generator" menu action.
+
+        Runs the transmission-expansion candidate generator (AC PF -> LODF N-1 screening ->
+        PTDF-ranked reinforcements -> shortlist -> AC PF verification) and lets the user pick
+        which candidates to materialise as investments. Requires a selected diagram, mirroring
+        the procedural grid expansion flow.
+
+        :return:
+        """
+        if not self.circuit.valid_for_simulation():
+            return
+
+        # A diagram must be selected so the generated candidates can be drawn/attached, just
+        # like the procedural grid expansion flow.
+        current_diagram = self.get_selected_diagram_widget()
+        if current_diagram is None:
+            self.map_warning = MapWarningDialog(parent=self)
+            self.map_warning.exec()
+            return
+
+        self.candidate_investments_window = CandidateInvestmentsWindow(app=self)
+        self.candidate_investments_window.exec()
 
     def procedural_grid_expansion(self):
         """
