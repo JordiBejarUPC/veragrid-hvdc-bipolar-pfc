@@ -409,12 +409,16 @@ class BaseMainGui(QMainWindow):
         self.ui.progress_frame.setVisible(self.lock_ui)
         self.ui.progress_frame.setEnabled(True)
         self.ui.cancelButton.setEnabled(self.lock_ui)
+        self.ui.mainTabWidget.setVisible(not self.lock_ui)
+        self.ui.menuBar.setVisible(not self.lock_ui)
+        self.ui.toolBar.setVisible(not self.lock_ui)
         if self.lock_ui:
             # Move the active view to the editable model diagram page while
             # keeping the interface available during the running job.
             self.ui.mainTabWidget.setCurrentIndex(0)
             self.ui.modelTabWidget.setCurrentIndex(0)
             self.ui.tabWidget_6.setCurrentIndex(0)
+
         else:
             pass
 
