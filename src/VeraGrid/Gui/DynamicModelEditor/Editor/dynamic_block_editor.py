@@ -1832,6 +1832,17 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.libraryTreeView.setModel(self.library_proxy_model)
         self.ui.libraryTreeView.setDragEnabled(True)
         self.ui.libraryTreeView.setHeaderHidden(False)
+        self.ui.libraryTreeView.header().setStretchLastSection(False)
+        self.ui.libraryTreeView.header().setSectionResizeMode(
+            0,
+            QtWidgets.QHeaderView.ResizeMode.Interactive,
+        )
+        self.ui.libraryTreeView.header().setSectionResizeMode(
+            1,
+            QtWidgets.QHeaderView.ResizeMode.Interactive,
+        )
+        self.ui.libraryTreeView.setColumnWidth(0, 190)
+        self.ui.libraryTreeView.setColumnWidth(1, 360)
         self.ui.libraryTreeView.setUniformRowHeights(True)
         self.ui.libraryTreeView.doubleClicked.connect(self.on_library_item_double_clicked)
 

@@ -353,12 +353,33 @@ def _find_scene_block_item(editor: DynamicBlockEditorGUI, block_uid: int):
     raise AssertionError(f"Missing scene block item for uid '{block_uid}'")
 
 
+def _assert_index_has_icon(index: QtCore.QModelIndex) -> None:
+    """
+    Assert that a model index exposes a non-empty decoration icon.
+
+    :param index: Index expected to hold an icon.
+    :return: None.
+    """
+    icon_data: object = index.data(QtCore.Qt.ItemDataRole.DecorationRole)
+    assert isinstance(icon_data, QtGui.QIcon)
+    assert not icon_data.isNull()
+
+
 def test_emt_editor_exposes_basic_block_catalog_under_basic() -> None:
     editor = _build_editor(DynamicSimulationMode.EMT)
     source_model = editor.library.library_model
     basic_item = source_model.invisibleRootItem().child(0)
     native_item = basic_item.child(0)
+    const_index: QtCore.QModelIndex = _find_index_by_label(source_model, "Const")
+    moving_average_descriptor: BasicBlockTemplateDescriptor = get_basic_block_catalog_descriptor_by_key()["movingavg"]
+    moving_average_index: QtCore.QModelIndex = _find_index_by_label(
+        source_model,
+        moving_average_descriptor.display_label,
+    )
 
+    assert source_model.columnCount() == 2
+    assert source_model.headerData(0, QtCore.Qt.Orientation.Horizontal) == "Name"
+    assert source_model.headerData(1, QtCore.Qt.Orientation.Horizontal) == "Description"
     assert basic_item.text() == "Basic"
     assert basic_item.rowCount() == 1
     assert native_item.text() == "Native"
@@ -366,6 +387,21 @@ def test_emt_editor_exposes_basic_block_catalog_under_basic() -> None:
     assert _find_index_by_label(editor.library.library_model, "Scaling and Products").isValid()
     assert not _find_index_by_label(editor.library.library_model, "Arithmetic and Products").isValid()
     assert _count_descriptor_leaves(editor, native_item) == 542
+    _assert_index_has_icon(source_model.index(0, 0))
+    assert const_index.isValid()
+    _assert_index_has_icon(const_index)
+    assert (
+        source_model.data(const_index.siblingAtColumn(1), QtCore.Qt.ItemDataRole.DisplayRole)
+        == "Native mathematical block"
+    )
+    assert moving_average_index.isValid()
+    _assert_index_has_icon(moving_average_index)
+    assert "Inputs:" in str(
+        source_model.data(moving_average_index.siblingAtColumn(1), QtCore.Qt.ItemDataRole.DisplayRole)
+    )
+    assert "Outputs:" in str(
+        source_model.data(moving_average_index.siblingAtColumn(1), QtCore.Qt.ItemDataRole.DisplayRole)
+    )
 
     editor.close()
 
