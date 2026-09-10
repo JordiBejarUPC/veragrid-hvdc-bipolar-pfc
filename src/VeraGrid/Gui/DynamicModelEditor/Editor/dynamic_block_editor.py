@@ -66,6 +66,7 @@ from VeraGrid.Gui.DynamicModelEditor.Editor.BlockProperties.dynamic_block_proper
     DynamicBlockPropertiesDialog,
     resolve_block_documentation_url,
 )
+from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, is_dialog_available
 import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_validation as valid
 from VeraGrid.Gui.DynamicModelEditor.Editor.DynamicLibrary.dynamic_editor_utilities import (
     create_block_of_type,
@@ -2528,9 +2529,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return: Whether no dialogue remains or its close request was accepted.
         """
         properties_dialogue: DynamicBlockPropertiesDialog | None = self._block_properties_dialogue
-        if properties_dialogue is not None:
+        if is_dialog_available(properties_dialogue):
             closed: bool = properties_dialogue.close()
         else:
+            self._block_properties_dialogue = None
             closed = True
         return closed
 
@@ -12202,7 +12204,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return: None.
         """
         properties_dialogue: DynamicBlockPropertiesDialog | None = self._block_properties_dialogue
-        if properties_dialogue is not None:
+        if is_dialog_available(properties_dialogue):
             # The dialogue can outlive its editor until DeferredDelete is
             # processed. Disconnect every Python receiver first so no queued
             # properties signal can call into the dismantled editor.
@@ -12244,10 +12246,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 pass
             properties_dialogue.prepare_to_delete()
             properties_dialogue.setParent(None)
-            properties_dialogue.deleteLater()
-            self._block_properties_dialogue = None
+            delete_dialog_safely(dialog=properties_dialogue)
         else:
             pass
+        self._block_properties_dialogue = None
 
     def _dispose_library_dock(self) -> None:
         """Detach and delete the fixed Library dock after its models are gone.

@@ -176,6 +176,28 @@ class BlockEquationDraft:
             return None
 
 
+def is_finite_real_number_text(value: object) -> bool:
+    """Return whether a value can be parsed as a finite real number.
+
+    :param value: Edited value supplied by Qt.
+    :return: ``True`` when the value is a finite real number.
+    """
+    value_text: str = str(value).strip()
+    if len(value_text) == 0:
+        result: bool = False
+    else:
+        try:
+            numeric_value: float = float(value_text)
+            result = (
+                numeric_value != float("inf")
+                and numeric_value != float("-inf")
+                and numeric_value == numeric_value
+            )
+        except (TypeError, ValueError):
+            result = False
+    return result
+
+
 class ParameterDraftRow:
     """One static value or event expression staged without mutating its block."""
 
@@ -2570,13 +2592,31 @@ class BlockParameterDraftModel(QtCore.QAbstractTableModel):
         :param role: Value supplied for ``role``.
         :return: True when the edited value was accepted; otherwise False.
         """
-        if not index.isValid() or index.column() != 2 or role != Qt.ItemDataRole.EditRole:
+        if (
+            not index.isValid()
+            or index.row() >= len(self._rows)
+            or index.column() != 2
+            or role != Qt.ItemDataRole.EditRole
+        ):
             return False
         else:
             row: ParameterDraftRow = self._rows[index.row()]
-            row.set_draft_text(str(value))
-            self.dataChanged.emit(index, index, list((role,)))
-            return True
+            expression: Expr = row.get_expression()
+            requires_numeric_value: bool = False
+            if isinstance(expression, Const):
+                expression_value: object = expression.value
+                requires_numeric_value = (
+                    isinstance(expression_value, (int, float))
+                    and not isinstance(expression_value, bool)
+                )
+            else:
+                pass
+            if requires_numeric_value and not is_finite_real_number_text(value):
+                return False
+            else:
+                row.set_draft_text(str(value))
+                self.dataChanged.emit(index, index, list((role,)))
+                return True
 
     def flags(self, index: QtCore.QModelIndex) -> Qt.ItemFlag:
         """
@@ -5573,9 +5613,12 @@ class BlockPropertyTreeModel(QtGui.QStandardItemModel):
             if value_index.isValid():
                 return self._parameters.setData(value_index, value, role)
             elif role == Qt.ItemDataRole.EditRole:
-                row.set_value_text(str(value))
-                self.dataChanged.emit(index, index)
-                return True
+                if is_finite_real_number_text(value):
+                    row.set_value_text(str(value))
+                    self.dataChanged.emit(index, index)
+                    return True
+                else:
+                    return False
             else:
                 return False
         else:
@@ -6002,27 +6045,6 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             property_header,
             list((170, 100, 230, 60)),
         )
-        # Size identity columns from their complete visible contents instead
-        # of clipping them at the former fixed widths. The value column absorbs
-        # the remaining viewport width, so each row reaches the right edge and
-        # long expressions use all available horizontal space.
-        property_header.setSectionResizeMode(
-            0,
-            QtWidgets.QHeaderView.ResizeMode.ResizeToContents,
-        )
-        property_header.setSectionResizeMode(
-            1,
-            QtWidgets.QHeaderView.ResizeMode.ResizeToContents,
-        )
-        property_header.setSectionResizeMode(
-            2,
-            QtWidgets.QHeaderView.ResizeMode.Stretch,
-        )
-        property_header.setSectionResizeMode(
-            3,
-            QtWidgets.QHeaderView.ResizeMode.ResizeToContents,
-        )
-        property_header.setStretchLastSection(False)
         self.restore_property_tree()
 
         # Populate the DAE owner selector once so tab changes never recreate or
@@ -8396,6 +8418,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                 self.toast_manager.show_info_toast(
                     self.tr("Block structure rebuilt with the selected settings."),
                 )
+                self.close()
                 return
             else:
                 self._show_validation_error(rebuild_request.get_error_message())
@@ -8487,6 +8510,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         else:
             status_message = self.tr("Changes applied to the editor working copy.")
         self.toast_manager.show_info_toast(status_message)
+        self.close()
 
     def _reload_applied_models(self) -> None:
         """Reload property models and runtime drafts from the current block.
