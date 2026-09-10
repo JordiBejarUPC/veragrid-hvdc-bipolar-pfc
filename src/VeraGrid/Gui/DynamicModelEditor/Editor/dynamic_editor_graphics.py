@@ -4749,12 +4749,15 @@ class DiagramScene(QGraphicsScene):
                 rename_action: QAction | None
                 edit_action: QAction | None
                 block_info_action: QAction | None
+                internals_action: QAction | None
+                measurement_edit_action: QAction | None
 
                 # Ordinary symbolic blocks expose the same editor from double
                 # click and from an explicit context-menu action. Root
                 # interface variables and measurement configuration retain
                 # their specialized workflows.
                 context_block: Block | None = None
+                context_measurement_item: MeasurementsItem | None = None
                 is_editable_block: bool = (
                         isinstance(
                             item,
@@ -4773,6 +4776,11 @@ class DiagramScene(QGraphicsScene):
                         text=self.tr("Properties"),
                         icon_path=":/Icons/icons/dyn_edit.png",
                     )
+                    internals_action = gf.add_menu_entry(
+                        menu=menu,
+                        text=self.tr("Open internals"),
+                        icon_path=":/Icons/icons/tree.png",
+                    )
                     block_info_action = gf.add_menu_entry(
                         menu=menu,
                         text=self.tr("Block info"),
@@ -4782,6 +4790,18 @@ class DiagramScene(QGraphicsScene):
                 else:
                     edit_action = None
                     block_info_action = None
+                    internals_action = None
+
+                if isinstance(item, MeasurementsItem):
+                    context_measurement_item = item
+                    measurement_edit_action = gf.add_menu_entry(
+                        menu=menu,
+                        text=self.tr("Edit"),
+                        icon_path=":/Icons/icons/edit.png",
+                    )
+                    menu.addSeparator()
+                else:
+                    measurement_edit_action = None
 
                 # Root interface ovals are part of the device contract and can
                 # only be renamed from this menu.
@@ -4829,6 +4849,19 @@ class DiagramScene(QGraphicsScene):
                       and selected_action is edit_action
                       and context_block is not None):
                     self.editor.request_open_block_properties(context_block)
+                elif (internals_action is not None
+                      and selected_action is internals_action
+                      and context_block is not None):
+                    self.editor.request_navigate_to_block(context_block)
+                elif (measurement_edit_action is not None
+                      and selected_action is measurement_edit_action
+                      and context_measurement_item is not None):
+                    item_position: QPointF = context_measurement_item.scenePos()
+                    self.editor.open_measurements_editor(
+                        source_item=context_measurement_item,
+                        x_pos=item_position.x(),
+                        y_pos=item_position.y(),
+                    )
                 elif (block_info_action is not None
                       and selected_action is block_info_action
                       and context_block is not None):

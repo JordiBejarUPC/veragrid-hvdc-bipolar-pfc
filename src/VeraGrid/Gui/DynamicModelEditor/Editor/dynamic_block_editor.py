@@ -2396,7 +2396,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             dialogue.closed.connect(self.on_block_properties_dialogue_closed)
             self._block_properties_dialogue = dialogue
             dialogue.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
-            dialogue.resize(1200, 700)
+            dialogue.resize(720, 420)
             self.center_block_properties_dialogue(dialogue)
             dialogue.show()
             dialogue.raise_()
