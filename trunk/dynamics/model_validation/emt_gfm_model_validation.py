@@ -12,7 +12,7 @@ import numpy as np
 matplotlib.use("Agg")
 from matplotlib import pyplot as plt
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "src"))
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "..", "src"))
 
 import VeraGridEngine.api as vge
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
@@ -135,7 +135,7 @@ def attach_emt_models(grid: vge.MultiCircuit, devices: dict, pf_results=None) ->
             va0 = vpk * np.sin(angle)
             vb0 = vpk * np.sin(angle - 2.0 * np.pi / 3.0)
             vc0 = vpk * np.sin(angle + 2.0 * np.pi / 3.0)
-            theta = float(np.pi) - angle
+            theta = angle
 
             def abc_from_dq(id_value: float, iq_value: float) -> tuple[float, float, float]:
                 c = np.cos(theta)
@@ -143,10 +143,10 @@ def attach_emt_models(grid: vge.MultiCircuit, devices: dict, pf_results=None) ->
                 sqrt3 = np.sqrt(3.0)
                 return (
                     id_value * c + iq_value * s,
-                    id_value * (-0.5 * c - 0.5 * sqrt3 * s)
-                    + iq_value * (-0.5 * s + 0.5 * sqrt3 * c),
                     id_value * (-0.5 * c + 0.5 * sqrt3 * s)
                     + iq_value * (-0.5 * s - 0.5 * sqrt3 * c),
+                    id_value * (-0.5 * c - 0.5 * sqrt3 * s)
+                    + iq_value * (-0.5 * s + 0.5 * sqrt3 * c),
                 )
 
             def abc_power(id_value: float, iq_value: float) -> tuple[float, float]:
@@ -163,7 +163,7 @@ def attach_emt_models(grid: vge.MultiCircuit, devices: dict, pf_results=None) ->
             dva0 = omega_base * vpk * np.cos(angle)
 
             def phase_a_derivative(d_value: float, q_value: float) -> float:
-                theta_dot = -omega_base
+                theta_dot = omega_base
                 return theta_dot * (-d_value * np.sin(theta) + q_value * np.cos(theta))
 
             dia0 = phase_a_derivative(float(id0), float(iq0))
@@ -298,6 +298,8 @@ def set_block_event_value(block, vf, name: str, value: float) -> None:
 
 def apply_gfm_gain_overrides(gfm_block, vf) -> None:
     overrides = {
+        "Kp_vcl": "VERAGRID_GFM_EMT_KP_VCL",
+        "Ki_vcl": "VERAGRID_GFM_EMT_KI_VCL",
         "Kp_icl": "VERAGRID_GFM_EMT_KP_ICL",
         "Ki_icl": "VERAGRID_GFM_EMT_KI_ICL",
         "Kdp": "VERAGRID_GFM_EMT_KDP",
@@ -322,7 +324,7 @@ def seed_gfm_from_power_flow(problem: EmtProblemDae, grid: vge.MultiCircuit, pf_
     voltage = complex(pf_results.voltage[bus_idx])
     vpk = float(np.sqrt(2.0) * abs(voltage))
     angle = float(np.angle(voltage))
-    theta = float(np.pi) - angle
+    theta = angle
     p0 = float(np.real(pf_results.Sbus[bus_idx]) / grid.Sbase)
     q0 = float(np.imag(pf_results.Sbus[bus_idx]) / grid.Sbase)
     va0 = vpk * np.sin(angle)
@@ -335,10 +337,10 @@ def seed_gfm_from_power_flow(problem: EmtProblemDae, grid: vge.MultiCircuit, pf_
         sqrt3 = np.sqrt(3.0)
         return (
             id_value * c + iq_value * s,
-            id_value * (-0.5 * c - 0.5 * sqrt3 * s)
-            + iq_value * (-0.5 * s + 0.5 * sqrt3 * c),
             id_value * (-0.5 * c + 0.5 * sqrt3 * s)
             + iq_value * (-0.5 * s - 0.5 * sqrt3 * c),
+            id_value * (-0.5 * c - 0.5 * sqrt3 * s)
+            + iq_value * (-0.5 * s + 0.5 * sqrt3 * c),
         )
 
     def abc_power(id_value: float, iq_value: float) -> tuple[float, float]:
@@ -362,21 +364,23 @@ def seed_gfm_from_power_flow(problem: EmtProblemDae, grid: vge.MultiCircuit, pf_
     lc = 0.1
     cf = 0.05
     rcap = 1.0e6
-    kp = float(os.environ.get("VERAGRID_GFM_EMT_KP_ICL", "0.00075"))
-    ki = float(os.environ.get("VERAGRID_GFM_EMT_KI_ICL", "0.2"))
-    if abs(ki) <= 1.0e-12:
-        raise ValueError("VERAGRID_GFM_EMT_KI_ICL must be non-zero for explicit GFM PI-state seeding")
+    kp_vcl = float(os.environ.get("VERAGRID_GFM_EMT_KP_VCL", "0.00075"))
+    ki_vcl = float(os.environ.get("VERAGRID_GFM_EMT_KI_VCL", "0.2"))
+    kp_icl = float(os.environ.get("VERAGRID_GFM_EMT_KP_ICL", "0.00075"))
+    ki_icl = float(os.environ.get("VERAGRID_GFM_EMT_KI_ICL", "0.2"))
+    if abs(ki_vcl) <= 1.0e-12 or abs(ki_icl) <= 1.0e-12:
+        raise ValueError("GFM voltage- and current-loop integral gains must be non-zero for explicit PI-state seeding")
     omega0 = 1.0
     vd_g0 = 0.0
     vq_g0 = vpk
     # These steady-state dq drops are derived from the phase-domain EMT
     # state equations with constant dq quantities in the rotating frame.
-    vd_f0 = vd_g0 + rc * id0 - omega0 * lc * iq0
-    vq_f0 = vq_g0 + rc * iq0 + omega0 * lc * id0
-    id_c0 = id0 - cf * omega0 * vq_f0 + vd_f0 / rcap
-    iq_c0 = iq0 + cf * omega0 * vd_f0 + vq_f0 / rcap
-    vd_c0 = vd_f0 + rf * id_c0 - omega0 * lf * iq_c0
-    vq_c0 = vq_f0 + rf * iq_c0 + omega0 * lf * id_c0
+    vd_f0 = vd_g0 + rc * id0 + omega0 * lc * iq0
+    vq_f0 = vq_g0 + rc * iq0 - omega0 * lc * id0
+    id_c0 = id0 + cf * omega0 * vq_f0 + vd_f0 / rcap
+    iq_c0 = iq0 - cf * omega0 * vd_f0 + vq_f0 / rcap
+    vd_c0 = vd_f0 + rf * id_c0 + omega0 * lf * iq_c0
+    vq_c0 = vq_f0 + rf * iq_c0 - omega0 * lf * id_c0
 
     # The GFM voltage loop regulates the filter-capacitor voltage, not the bus
     # voltage. Rotate the controller frame so the seeded capacitor voltage has
@@ -399,10 +403,10 @@ def seed_gfm_from_power_flow(problem: EmtProblemDae, grid: vge.MultiCircuit, pf_
     vd_c0, vq_c0 = rotate_pair(vd_c0, vq_c0)
     v_ref0 = vq_f0
 
-    z_vd0 = (id_c0 - id0 + cf * omega0 * vq_f0 - kp * (0.0 - vd_f0)) / ki
-    z_vq0 = (iq_c0 - iq0 - cf * omega0 * vd_f0 - kp * (v_ref0 - vq_f0)) / ki
-    vd_ctrl0 = vd_c0 - vd_f0 + lf * omega0 * iq_c0
-    vq_ctrl0 = vq_c0 - vq_f0 - lf * omega0 * id_c0
+    z_vd0 = (id_c0 - id0 - cf * omega0 * vq_f0 - kp_vcl * (0.0 - vd_f0)) / ki_vcl
+    z_vq0 = (iq_c0 - iq0 + cf * omega0 * vd_f0 - kp_vcl * (v_ref0 - vq_f0)) / ki_vcl
+    vd_ctrl0 = vd_c0 - vd_f0 - lf * omega0 * iq_c0
+    vq_ctrl0 = vq_c0 - vq_f0 + lf * omega0 * id_c0
     ia0, ib0, ic0 = abc_from_dq(float(id0), float(iq0))
     i_c_a0, i_c_b0, i_c_c0 = abc_from_dq(float(id_c0), float(iq_c0))
     v_f_a0, v_f_b0, v_f_c0 = abc_from_dq(float(vd_f0), float(vq_f0))
@@ -449,8 +453,8 @@ def seed_gfm_from_power_flow(problem: EmtProblemDae, grid: vge.MultiCircuit, pf_
         ("iq_ref_sat", iq_c0),
         ("z_vd_loop", z_vd0),
         ("z_vq_loop", z_vq0),
-        ("z_id_loop", vd_ctrl0 / ki),
-        ("z_iq_loop", vq_ctrl0 / ki),
+        ("z_id_loop", vd_ctrl0 / ki_icl),
+        ("z_iq_loop", vq_ctrl0 / ki_icl),
         ("vd_ctrl_out", vd_ctrl0),
         ("vq_ctrl_out", vq_ctrl0),
         ("Pt_vsc", -p0),
@@ -494,19 +498,19 @@ def seed_gfm_from_power_flow(problem: EmtProblemDae, grid: vge.MultiCircuit, pf_
 
     theta_var = find_name_in_block("theta", gfm_block)
     if theta_var is not None and theta_var.diff_var is not None:
-        problem.diff_init_guess[theta_var.diff_var.uid] = -2.0 * np.pi * grid.fBase
+        problem.diff_init_guess[theta_var.diff_var.uid] = 2.0 * np.pi * grid.fBase
 
     def dq_derivative_samples(d_value: float, q_value: float) -> tuple[float, float, float]:
         c = np.cos(theta)
         s = np.sin(theta)
         sqrt3 = np.sqrt(3.0)
-        theta_dot = -2.0 * np.pi * grid.fBase * omega0
+        theta_dot = 2.0 * np.pi * grid.fBase * omega0
         return (
             theta_dot * (-d_value * s + q_value * c),
-            theta_dot * (d_value * (0.5 * s - 0.5 * sqrt3 * c)
-                         + q_value * (-0.5 * c - 0.5 * sqrt3 * s)),
             theta_dot * (d_value * (0.5 * s + 0.5 * sqrt3 * c)
                          + q_value * (-0.5 * c + 0.5 * sqrt3 * s)),
+            theta_dot * (d_value * (0.5 * s - 0.5 * sqrt3 * c)
+                         + q_value * (-0.5 * c - 0.5 * sqrt3 * s)),
         )
 
     omega_base = 2.0 * np.pi * grid.fBase
@@ -1054,6 +1058,11 @@ def plot_results(t: np.ndarray, problem: EmtProblemDae, y: np.ndarray, gfm_block
     p_lp = trace(problem, y, "y_p_lp", gfm_block)
     q_lp = trace(problem, y, "y_q_lp", gfm_block)
     p_ref = trace_or_param(problem, y, "P_ref", gfm_block)
+    if P_REF_STEP is not None:
+        # Runtime parameters retain only their final value after a segmented
+        # event run. Reconstruct the pre-event reference for truthful plots.
+        p_ref = p_ref.copy()
+        p_ref[t < P_REF_STEP_TIME] -= float(P_REF_STEP)
     q_ref = trace_or_param(problem, y, "Q_ref", gfm_block)
     v = trace(problem, y, "V", gfm_block)
     v_ref = trace_or_param(problem, y, "V_ref", gfm_block)
@@ -1147,11 +1156,6 @@ def main() -> None:
     print(pf_results.get_branch_df())
 
     gfm_block = attach_emt_models(grid, devices, pf_results=pf_results)
-    bus_idx = grid.buses.index(devices["bus_gfm"])
-    voltage = complex(pf_results.voltage[bus_idx])
-    set_block_event_value(gfm_block, grid.var_factory, "P_ref", float(np.real(pf_results.Sbus[bus_idx]) / grid.Sbase))
-    set_block_event_value(gfm_block, grid.var_factory, "Q_ref", float(np.imag(pf_results.Sbus[bus_idx]) / grid.Sbase))
-    set_block_event_value(gfm_block, grid.var_factory, "V_ref", float(np.sqrt(2.0) * abs(voltage)))
     apply_gfm_gain_overrides(gfm_block, grid.var_factory)
 
     options = EmtOptions(
@@ -1165,9 +1169,6 @@ def main() -> None:
         verbose=0,
     )
     problem = EmtProblemDae(grid=grid, options=options, pf_results=pf_results)
-    seed_gfm_from_power_flow(problem, grid, pf_results, gfm_block, devices["bus_gfm"])
-    seed_bus_algebraic_predictors(problem, grid, pf_results)
-    seed_line_current_predictors(problem, grid, pf_results, devices)
     print_gfm_algebraic_residuals(problem, gfm_block)
     print_gfm_state_residuals(problem, gfm_block)
     print_block_algebraic_residuals(problem, devices["gen_slack"].emt_model, "Slack source")

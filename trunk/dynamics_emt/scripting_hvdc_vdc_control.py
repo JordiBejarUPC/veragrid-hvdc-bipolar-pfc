@@ -34,6 +34,7 @@ from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDa
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
 from VeraGridEngine.Templates.Emt.converter_emt_template import get_full_pseudo_emt_converter
 from VeraGridEngine.Templates.Emt.dc_line_vdc_control_emt_template import get_dc_line_with_vdc_control_emt_template
+from VeraGridEngine.Templates.Emt.dc_line_emt_template import get_dc_line_with_power_input_emt_template
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template_with_ref
 from VeraGridEngine.Utils.Symbolic.block import Block, Var, build_name_to_var_lookup, find_name_in_block
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
@@ -88,6 +89,11 @@ def run_hvdc_vdc_control_simulation(
         solver_type: EmtSolverTypes = EmtSolverTypes.StructuralCompiled,
         integration_method: DynamicIntegrationMethod = DynamicIntegrationMethod.DaeTrapezoidal,
         enable_vdc_reference_event: bool = True,
+        use_line_vdc_control: bool = True,
+        power_event_time_s: float = 0.04,
+        vdc_event_time_s: float = 0.08,
+        transfer_power_pu: float = 0.20,
+        vdc_event_value_pu: float = 1.02,
         plot: bool = True,
         save_grid_filename: Optional[str] = os.path.join(SCRIPT_DIR, "hvdc_vdc_control.veragrid"),
 ) -> dict[str, Any]:
@@ -99,20 +105,23 @@ def run_hvdc_vdc_control_simulation(
     grid_inductance_h = 0.052 * 0.669
     coupling_resistance_ohm = 3.68 / 10.0
     coupling_inductance_h = 30.0e-3
-    transfer_power_pu = 0.20
     idle_power_pu = 1.0e-6
 
     q_setpoint_1_pu = 0.0
     q_setpoint_2_pu = 0.0
     tau = 1.0 / 3100.0
-    current_kp = coupling_inductance_h / tau
-    current_ki = coupling_resistance_ohm / tau
+    # The pseudo-converter current plant is written on electrical-angle time,
+    # i.e. di/dt = omega_base/L * (...).  Include that omega_base factor when
+    # placing the PI pole at 1/tau; omitting it makes the loop ~314 times too
+    # aggressive at 50 Hz.
+    omega_base_rad_s = 2.0 * np.pi * fbase_hz
+    current_kp = coupling_inductance_h / (omega_base_rad_s * tau)
+    current_ki = coupling_resistance_ohm / (omega_base_rad_s * tau)
 
     grid = gce.MultiCircuit(name="Point-to-point HVDC EMT Vdc-control example", Sbase=sbase_mva, fbase=fbase_hz)
 
     ac_base_impedance_ohm = (ac_voltage_ll_kv * ac_voltage_ll_kv) / sbase_mva
     dc_base_impedance_ohm = (dc_voltage_kv * dc_voltage_kv) / sbase_mva
-    omega_base_rad_s = 2.0 * np.pi * fbase_hz
     dc_base_inductance_h = dc_base_impedance_ohm / omega_base_rad_s
     dc_base_capacitance_f = 1.0 / (omega_base_rad_s * dc_base_impedance_ohm)
 
@@ -172,7 +181,17 @@ def run_hvdc_vdc_control_simulation(
     generator_2_mdl = get_generator_thevenin_rl_emt_template_with_ref(vf=grid.var_factory, name="grid2_thevenin_emt").block
     converter_1_mdl = get_full_pseudo_emt_converter(vf=grid.var_factory, name="vsc1_pseudo_emt").block
     converter_2_mdl = get_full_pseudo_emt_converter(vf=grid.var_factory, name="vsc2_pseudo_emt").block
-    dc_line_mdl = get_dc_line_with_vdc_control_emt_template(vf=grid.var_factory, name="hvdc_line_vdc_control_emt").block
+    if use_line_vdc_control:
+        dc_line_mdl = get_dc_line_with_vdc_control_emt_template(
+            vf=grid.var_factory,
+            name="hvdc_line_vdc_control_emt",
+        ).block
+    else:
+        dc_line_mdl = get_dc_line_with_power_input_emt_template(
+            vf=grid.var_factory,
+            name="hvdc_line_passive_emt",
+        ).block
+        dc_line_mdl.set_parameter_in_model("Pext", 0.0)
 
     for converter_mdl, suffix, control1_type, control1_value, q_setpoint_pu in [
         (converter_1_mdl, "vsc1_pseudo_emt", ConverterControlType.Vm_dc, 1.0, q_setpoint_1_pu),
@@ -234,11 +253,14 @@ def run_hvdc_vdc_control_simulation(
     events_group = EmtEventsGroup("vdc_control")
     grid.add_emt_events_group(events_group)
 
-    vsc2_reference_events = [(0.04, transfer_power_pu, None, DynamicEventTransitionType.Step)]
-    vdc_reference_events = [(0.08, 1.02, None, DynamicEventTransitionType.Step)] if enable_vdc_reference_event else []
+    vsc2_reference_events = [(power_event_time_s, transfer_power_pu, None, DynamicEventTransitionType.Step)]
+    vdc_reference_events = [(vdc_event_time_s, vdc_event_value_pu, None, DynamicEventTransitionType.Step)] if enable_vdc_reference_event else []
 
     vsc2_control1_var = build_name_to_var_lookup(converter_2_mdl).get("control1_val")
-    vdc_ref_var = build_name_to_var_lookup(dc_line_mdl).get("Vdc_ref")
+    vdc_control_device = dc_line if use_line_vdc_control else converter_1
+    vdc_ref_var = build_name_to_var_lookup(
+        dc_line_mdl if use_line_vdc_control else converter_1_mdl
+    ).get("Vdc_ref" if use_line_vdc_control else "control1_val")
     if vsc2_control1_var is None or vdc_ref_var is None:
         raise RuntimeError("Could not resolve EMT event parameters for the HVDC Vdc-control case.")
 
@@ -255,7 +277,7 @@ def run_hvdc_vdc_control_simulation(
 
     for event_time_s, event_value, end_time_s, transition_type in vdc_reference_events:
         grid.add_emt_event(EmtEvent(
-            device=dc_line,
+            device=vdc_control_device,
             parameter=vdc_ref_var,
             time=event_time_s,
             end_time=end_time_s,
@@ -317,6 +339,10 @@ def run_hvdc_vdc_control_simulation(
         "p_f_dc": get_signal(problem, dc_line_mdl, "p_f_dc", trajectory),
         "p_t_dc": get_signal(problem, dc_line_mdl, "p_t_dc", trajectory),
         "p_vsc2": get_signal(problem, converter_2_mdl, "P", trajectory),
+        "p_ref_vsc2": get_signal(problem, converter_2_mdl, "P_ref", trajectory),
+        "vdc_ref_vsc1": get_signal(problem, converter_1_mdl, "Vdc_ref", trajectory),
+        "i_d_ref_vsc1": get_signal(problem, converter_1_mdl, "i_d_ref", trajectory),
+        "i_d_ref_vsc2": get_signal(problem, converter_2_mdl, "i_d_ref", trajectory),
         "i_f_dc": get_signal(problem, dc_line_mdl, "i_f_dc", trajectory),
         "i_t_dc": get_signal(problem, dc_line_mdl, "i_t_dc", trajectory),
         "vdc_ref": get_event_reference_trace(time_s, 1.0, vdc_reference_events),
