@@ -126,6 +126,10 @@ DynamicBlockGraphicsItem: TypeAlias = (
         | graph.UnOpItem
         | graph.PairedItem
 )
+DynamicColorableBlockGraphicsItem: TypeAlias = (
+        DynamicBlockGraphicsItem
+        | graph.MeasurementsItem
+)
 
 
 class BlockClipboardEntry:
@@ -2134,6 +2138,51 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.colors_palet = graph.EditorGraphicsDefaultsDark()
         else:
             self.colors_palet = graph.EditorGraphicsDefaultsLight()
+
+    def get_diagram_node_for_block_uid(self, block_uid: int) -> BlockDiagramNode | None:
+        """Return the persisted diagram node for one symbolic block UID.
+
+        :param block_uid: Symbolic block UID represented by a scene item.
+        :return: Matching diagram node or ``None``.
+        """
+        diagram_node: BlockDiagramNode | None = self.diagram.node_data.get(block_uid, None)
+        candidate_node: BlockDiagramNode
+
+        if diagram_node is None:
+            for candidate_node in self.diagram.node_data.values():
+                if candidate_node.device_uid == block_uid:
+                    diagram_node = candidate_node
+                    break
+                else:
+                    pass
+        else:
+            pass
+
+        return diagram_node
+
+    def apply_diagram_node_color_to_block_item(self, item: DynamicColorableBlockGraphicsItem) -> None:
+        """Apply a persisted custom fill colour to one rebuilt block item.
+
+        :param item: Scene block item that may have saved presentation state.
+        :return: None.
+        """
+        block: Block | None = item.subsys
+        light_default_color: str = graph.EditorGraphicsDefaultsLight.BLOCK_FILL.name()
+
+        if block is None:
+            pass
+        else:
+            diagram_node: BlockDiagramNode | None = self.get_diagram_node_for_block_uid(block.uid)
+            if diagram_node is None or not isinstance(diagram_node.color, str):
+                pass
+            else:
+                persisted_color: QtGui.QColor = QtGui.QColor(diagram_node.color)
+                if persisted_color.isValid() and persisted_color.name() != light_default_color:
+                    brush: QtGui.QBrush = item.brush()
+                    brush.setColor(persisted_color)
+                    item.setBrush(brush)
+                else:
+                    pass
 
     def set_navigation_delegate(self, delegate: DynamicEditorTab) -> None:
         """
@@ -8391,6 +8440,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         block_item.position_changed_callback = self.build_position_changed_callback(node_uid)
                         block_item.build_item()
                         block_item.recolour()
+                        self.apply_diagram_node_color_to_block_item(block_item)
                         self.scene.add_block_item(block_uid=block_model.uid, item=block_item)
                         block_item.setPos(QPointF(node.x, node.y))
                         uid_to_blockitem[node_uid] = block_item
@@ -9670,7 +9720,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         if device_uid in self.diagram.node_data:
             self.diagram.node_data[device_uid].x = x
             self.diagram.node_data[device_uid].y = y
-            print("")
         else:
             pass
 
@@ -12198,6 +12247,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         protected_item.position_changed_callback = self.build_position_changed_callback(uid)
                         protected_item.build_item()
                         protected_item.recolour()
+                        self.apply_diagram_node_color_to_block_item(protected_item)
                         self.scene.add_block_item(block_uid=block_model.uid, item=protected_item)
                         protected_item.setPos(QPointF(node.x, node.y))
                         uid_to_blockitem[uid] = protected_item
@@ -12221,6 +12271,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         measurements_item.position_changed_callback = self.build_position_changed_callback(uid)
                         measurements_item.build_item()
                         measurements_item.recolour()
+                        self.apply_diagram_node_color_to_block_item(measurements_item)
                         self.scene.add_block_item(block_uid=block_model.uid, item=measurements_item)
                         measurements_item.setPos(QPointF(node.x, node.y))
                         uid_to_blockitem[node.device_uid] = measurements_item
@@ -12301,6 +12352,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 item.recolour()
 
             if item is not None:
+                self.apply_diagram_node_color_to_block_item(item)
                 self.scene.add_block_item(block_uid=block_model.uid, item=item)
                 item.setPos(QPointF(node.x, node.y))
                 uid_to_blockitem[uid] = item

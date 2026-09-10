@@ -21,7 +21,7 @@ from PySide6.QtCore import Signal
 
 import VeraGrid.Gui.gui_functions as gf
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
+from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram, BlockDiagramNode
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.enumerations import BlockType
 from VeraGridEngine.Utils.Symbolic.block import Block
@@ -4655,27 +4655,35 @@ class DiagramScene(QGraphicsScene):
         new_color: QColor = QColorDialog.getColor()
 
         if new_color.isValid():
-            if isinstance(item, GenericBlockItem):
-                if item.subsys is not None:
+            if isinstance(item, (BlockItem, GenericBlockItem, RoundBaseArithmeticOpItem,
+                                 RectBaseArithmeticOpItem, UnOpItem, MeasurementsItem,
+                                 PairedItem)):
+                if self.editor is not None and item.subsys is not None:
                     brush: QBrush = item.brush()
                     brush.setColor(new_color)
                     item.setBrush(brush)
                     self.update()
 
-                    if item.subsys.uid in self.editor.diagram.node_data:
-                        self.editor.diagram.node_data[item.subsys.uid].color = new_color.name()
+                    diagram_node: BlockDiagramNode | None = self.editor.get_diagram_node_for_block_uid(item.subsys.uid)
+                    if diagram_node is not None:
+                        diagram_node.color = new_color.name()
+                        self.editor.mark_unapplied_changes()
                     else:
                         pass
                 else:
                     pass
             elif isinstance(item, ConnectionItem):
-                pen: QPen = item.pen()
-                pen.setColor(new_color)
-                item.setPen(pen)
-                self.update()
+                if self.editor is not None:
+                    pen: QPen = item.pen()
+                    pen.setColor(new_color)
+                    item.setPen(pen)
+                    self.update()
 
-                if item.uid in self.editor.diagram.con_data:
-                    self.editor.diagram.con_data[item.uid].color = new_color.name()
+                    if item.uid in self.editor.diagram.con_data:
+                        self.editor.diagram.con_data[item.uid].color = new_color.name()
+                        self.editor.mark_unapplied_changes()
+                    else:
+                        pass
                 else:
                     pass
             else:

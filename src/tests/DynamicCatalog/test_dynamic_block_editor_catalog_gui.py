@@ -4,7 +4,7 @@ import gc
 import sys
 
 import pytest
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_editor as dynamic_block_editor_module
 import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_graphics as graph
@@ -13,6 +13,7 @@ from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGrid.Gui.DynamicModelEditor.Editor.BlockProperties import DynamicBlockPropertiesDialog
 from VeraGrid.Gui.DynamicModelEditor.Editor.DynamicLibrary.dynamic_editor_library import DynamicEditorLibrary
+from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagramNode
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Templates.BasicBlockCatalog import BasicBlockTemplateDescriptor
 from VeraGridEngine.Templates.BasicBlockCatalog import get_basic_block_catalog_descriptor_by_key
@@ -61,6 +62,14 @@ def _get_app() -> QtWidgets.QApplication:
         return QtWidgets.QApplication(sys.argv)
     else:
         return app
+
+
+def _select_catalog_test_color() -> QtGui.QColor:
+    """Return the deterministic colour selected by colour-menu tests.
+
+    :return: Test colour.
+    """
+    return QtGui.QColor("#117733")
 
 
 def _collect_pending_resources() -> None:
@@ -644,6 +653,59 @@ def test_canvas_request_opens_restructured_block_properties() -> None:
     assert editor._block_properties_dialogue is dialogue
 
     editor.close_block_properties_dialogue()
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_custom_block_color_survives_canvas_rebuild() -> None:
+    """Keep a custom block fill after the properties path rebuilds the scene.
+
+    :return: None.
+    """
+    editor: DynamicBlockEditorGUI = _build_editor(DynamicSimulationMode.EMT)
+    block_item: graph.GenericBlockItem = _build_catalog_block_item(editor, "pulse")
+    assert block_item.subsys is not None
+    block_uid: int = block_item.subsys.uid
+    custom_color: str = "#bb2244"
+    diagram_node: BlockDiagramNode | None = editor.get_diagram_node_for_block_uid(block_uid)
+    assert diagram_node is not None
+
+    diagram_node.color = custom_color
+    editor.apply_diagram_node_color_to_block_item(block_item)
+    assert block_item.brush().color().name() == custom_color
+
+    editor.rebuild_scene_from_diagram()
+
+    rebuilt_item: object = editor.get_scene_item_by_block_uid(block_uid)
+    assert isinstance(rebuilt_item, graph.GenericBlockItem)
+    assert rebuilt_item.brush().color().name() == custom_color
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_change_color_handles_arithmetic_blocks(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Apply the context-menu fill colour to compact arithmetic blocks.
+
+    :param monkeypatch: Pytest monkeypatch fixture.
+    :return: None.
+    """
+    editor: DynamicBlockEditorGUI = _build_editor(DynamicSimulationMode.EMT)
+    block_item: graph.RoundBaseArithmeticOpItem | graph.RectBaseArithmeticOpItem | None = (
+        editor.create_basic_arithmetic_op_item(BlockType.SUM, 10.0, 20.0)
+    )
+    assert isinstance(block_item, graph.RoundBaseArithmeticOpItem)
+    assert block_item.subsys is not None
+    custom_color: str = "#117733"
+
+    monkeypatch.setattr(graph.QColorDialog, "getColor", _select_catalog_test_color)
+
+    editor.scene.change_item_fill_color(block_item)
+    diagram_node: BlockDiagramNode | None = editor.get_diagram_node_for_block_uid(block_item.subsys.uid)
+    assert diagram_node is not None
+    assert block_item.brush().color().name() == custom_color
+    assert diagram_node.color == custom_color
+
     editor.has_unapplied_changes = False
     editor.close()
 

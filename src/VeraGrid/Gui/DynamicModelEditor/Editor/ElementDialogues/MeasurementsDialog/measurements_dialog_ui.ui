@@ -99,100 +99,37 @@
     </widget>
    </item>
    <item>
-    <widget class="QLabel" name="explanation_label">
-     <property name="text">
-      <string>Check one measurement type, choose its variables, and drag variables between Outputs and Inputs.</string>
-     </property>
-     <property name="wordWrap">
-      <bool>true</bool>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QSplitter" name="splitter">
+    <widget class="QTreeWidget" name="measurement_tree">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Expanding" vsizetype="MinimumExpanding">
        <horstretch>0</horstretch>
        <verstretch>0</verstretch>
       </sizepolicy>
      </property>
-     <property name="orientation">
-      <enum>Qt::Orientation::Horizontal</enum>
+     <property name="alternatingRowColors">
+      <bool>true</bool>
      </property>
-     <widget class="QFrame" name="frame_2">
-      <property name="frameShape">
-       <enum>QFrame::Shape::NoFrame</enum>
+     <property name="selectionMode">
+      <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
+     </property>
+     <property name="rootIsDecorated">
+      <bool>true</bool>
+     </property>
+     <column>
+      <property name="text">
+       <string>Name</string>
       </property>
-      <property name="frameShadow">
-       <enum>QFrame::Shadow::Raised</enum>
+     </column>
+     <column>
+      <property name="text">
+       <string>I/O</string>
       </property>
-      <layout class="QVBoxLayout" name="verticalLayout">
-       <property name="leftMargin">
-        <number>0</number>
-       </property>
-       <item>
-        <widget class="QTreeWidget" name="measurement_tree">
-         <property name="alternatingRowColors">
-          <bool>true</bool>
-         </property>
-         <property name="selectionMode">
-          <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
-         </property>
-         <property name="rootIsDecorated">
-          <bool>true</bool>
-         </property>
-         <column>
-          <property name="text">
-           <string>Measurement variables</string>
-          </property>
-         </column>
-        </widget>
-       </item>
-      </layout>
-     </widget>
-     <widget class="QFrame" name="frame_3">
-      <property name="frameShape">
-       <enum>QFrame::Shape::NoFrame</enum>
+     </column>
+     <column>
+      <property name="text">
+       <string>Comment</string>
       </property>
-      <property name="frameShadow">
-       <enum>QFrame::Shadow::Raised</enum>
-      </property>
-      <layout class="QVBoxLayout" name="verticalLayout_2">
-       <item>
-        <widget class="QLabel" name="label">
-         <property name="text">
-          <string>Inputs</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="MeasurementReferenceList" name="input_list"/>
-       </item>
-      </layout>
-     </widget>
-     <widget class="QFrame" name="frame_4">
-      <property name="frameShape">
-       <enum>QFrame::Shape::NoFrame</enum>
-      </property>
-      <property name="frameShadow">
-       <enum>QFrame::Shadow::Raised</enum>
-      </property>
-      <layout class="QVBoxLayout" name="verticalLayout_3">
-       <property name="rightMargin">
-        <number>0</number>
-       </property>
-       <item>
-        <widget class="QLabel" name="label_2">
-         <property name="text">
-          <string>Outputs</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="MeasurementReferenceList" name="output_list"/>
-       </item>
-      </layout>
-     </widget>
+     </column>
     </widget>
    </item>
    <item>
@@ -208,11 +145,6 @@
   <customwidget>
    <class>DeviceSelectionLabel</class>
    <extends>QLabel</extends>
-   <header>VeraGrid.Gui.DynamicModelEditor.Editor.ElementDialogues.MeasurementsDialog.measurement_widgets</header>
-  </customwidget>
-  <customwidget>
-   <class>MeasurementReferenceList</class>
-   <extends>QListWidget</extends>
    <header>VeraGrid.Gui.DynamicModelEditor.Editor.ElementDialogues.MeasurementsDialog.measurement_widgets</header>
   </customwidget>
  </customwidgets>
