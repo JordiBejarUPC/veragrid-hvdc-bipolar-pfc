@@ -662,6 +662,17 @@ li.checked::marker { content: &quot;\2612&quot;; }
     </message>
 </context>
 <context>
+    <name>BaseMainGui</name>
+    <message>
+        <source>Are you sure that you want to cancel the simulation?</source>
+        <translation>क्या आप निश्चित हैं कि आप सिमुलेशन रद्द करना चाहते हैं?</translation>
+    </message>
+    <message>
+        <source>Unlocking the UI may cause crash depending on the conditions. Are you sure?</source>
+        <translation>UI को अनलॉक करने से स्थितियों के आधार पर क्रैश हो सकता है। क्या आप निश्चित हैं?</translation>
+    </message>
+</context>
+<context>
     <name>BlockEditorWindow</name>
     <message>
         <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="14"/>
@@ -2396,6 +2407,18 @@ Are you sure?</source>
         <source>You are going to delete the complete model and start from scratch. Are you sure?</source>
         <translation type="vanished">आप संपूर्ण मॉडल को हटा रहे हैं और शुरू से शुरू कर रहे हैं। क्या आप निश्चित हैं?</translation>
     </message>
+    <message>
+        <source>Block info</source>
+        <translation>ब्लॉक जानकारी</translation>
+    </message>
+    <message>
+        <source>No online catalogue documentation is available for this custom block.</source>
+        <translation>इस कस्टम ब्लॉक के लिए कोई ऑनलाइन कैटलॉग दस्तावेज़ीकरण उपलब्ध नहीं है।</translation>
+    </message>
+    <message>
+        <source>The online block documentation could not be opened.</source>
+        <translation>ऑनलाइन ब्लॉक दस्तावेज़ीकरण नहीं खोला जा सका।</translation>
+    </message>
 </context>
 <context>
     <name>DynamicBlockPropertiesDialog</name>
@@ -2405,9 +2428,8 @@ Are you sure?</source>
         <translation>गुण ब्लॉक करें</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="70"/>
         <source>Apply changes</source>
-        <translation>परिवर्तन लागू करें</translation>
+        <translation type="vanished">परिवर्तन लागू करें</translation>
     </message>
     <message>
         <source>1 / {count}</source>
@@ -2415,11 +2437,11 @@ Are you sure?</source>
     </message>
     <message>
         <source>Add symbol</source>
-        <translation>सिंबल जोड़ें</translation>
+        <translation type="vanished">सिंबल जोड़ें</translation>
     </message>
     <message>
         <source>Add symbol to selected block</source>
-        <translation>चयनित ब्लॉक में सिंबल जोड़ें</translation>
+        <translation type="vanished">चयनित ब्लॉक में सिंबल जोड़ें</translation>
     </message>
     <message>
         <source>Advanced runtime logic</source>
@@ -2430,16 +2452,17 @@ Are you sure?</source>
         <translation>DAE-कोड या सिंबल-इंटरफ़ेस परिवर्तनों से संरचनात्मक सेटिंग्स अलग से लागू करें।</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="388"/>
         <source>Block / equation group</source>
         <translation>ब्लॉक / समीकरण समूह</translation>
     </message>
     <message>
         <source>Block configuration</source>
-        <translation>ब्लॉक विन्यास</translation>
+        <translation type="vanished">ब्लॉक विन्यास</translation>
     </message>
     <message>
         <source>Block info</source>
-        <translation>ब्लॉक जानकारी</translation>
+        <translation type="vanished">ब्लॉक जानकारी</translation>
     </message>
     <message>
         <source>Block properties - {name}</source>
@@ -2462,12 +2485,13 @@ Are you sure?</source>
         <translation>परिवर्तन लागू किए गए। उन्नत असमानताएं/discrete/boolean तर्क अपरिवर्तित संरक्षित था।</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="323"/>
         <source>Clear</source>
         <translation>साफ़ करें</translation>
     </message>
     <message>
         <source>Create derivative variable</source>
-        <translation>व्युत्पन्न चर बनाएं</translation>
+        <translation type="vanished">व्युत्पन्न चर बनाएं</translation>
     </message>
     <message>
         <source>DAE and runtime-logic changes applied to the editor working copy.</source>
@@ -2478,8 +2502,9 @@ Are you sure?</source>
         <translation type="vanished">DAE कोड मान्य है।</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="131"/>
         <source>DAE model</source>
-        <translation type="vanished">DAE मॉडल</translation>
+        <translation>DAE मॉडल</translation>
     </message>
     <message>
         <source>DAE validation failed at line {line}: {message}</source>
@@ -2491,11 +2516,11 @@ Are you sure?</source>
     </message>
     <message>
         <source>Download rendered PDF</source>
-        <translation>रेंडर किया गया PDF डाउनलोड करें</translation>
+        <translation type="vanished">रेंडर किया गया PDF डाउनलोड करें</translation>
     </message>
     <message>
         <source>Enter a name</source>
-        <translation>एक नाम दर्ज करें</translation>
+        <translation type="vanished">एक नाम दर्ज करें</translation>
     </message>
     <message>
         <source>Enter a valid Python symbol name.</source>
@@ -2506,14 +2531,48 @@ Are you sure?</source>
         <translation>समीकरण PDF बनाया गया: {path}</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="158"/>
         <source>Equation owner</source>
         <translation>समीकरण स्वामी</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="251"/>
+        <source>&lt;&lt;</source>
+        <translation>&lt;&lt;</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="261"/>
+        <source>&gt;&gt;</source>
+        <translation>&gt;&gt;</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="289"/>
+        <source>LaTeX rendering</source>
+        <translation>LaTeX रेंडरिंग</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="343"/>
+        <source>Save redered PDF</source>
+        <translation>रेंडर की गई PDF सहेजें</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="372"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="393"/>
         <source>Equations</source>
         <translation>समीकरण</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="410"/>
+        <source>LaTex source</source>
+        <translation>LaTeX स्रोत</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="509"/>
+        <source>Accept changes</source>
+        <translation>परिवर्तन स्वीकार करें</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="40"/>
         <source>General options</source>
         <translation>सामान्य विकल्प</translation>
     </message>
@@ -2523,7 +2582,7 @@ Are you sure?</source>
     </message>
     <message>
         <source>Initial numeric value</source>
-        <translation>प्रारंभिक संख्यात्मक मान</translation>
+        <translation type="vanished">प्रारंभिक संख्यात्मक मान</translation>
     </message>
     <message>
         <source>Inputs</source>
@@ -2535,11 +2594,11 @@ Are you sure?</source>
     </message>
     <message>
         <source>LaTeX</source>
-        <translation>LaTeX</translation>
+        <translation type="vanished">LaTeX</translation>
     </message>
     <message>
         <source>LaTeX source</source>
-        <translation>LaTeX स्रोत</translation>
+        <translation type="vanished">LaTeX स्रोत</translation>
     </message>
     <message>
         <source>Name</source>
@@ -2547,11 +2606,11 @@ Are you sure?</source>
     </message>
     <message>
         <source>New symbol name</source>
-        <translation>नया सिंबल नाम</translation>
+        <translation type="vanished">नया सिंबल नाम</translation>
     </message>
     <message>
         <source>Next</source>
-        <translation>अगला</translation>
+        <translation type="vanished">अगला</translation>
     </message>
     <message>
         <source>No matches</source>
@@ -2559,7 +2618,7 @@ Are you sure?</source>
     </message>
     <message>
         <source>No online catalogue documentation is available for this custom block.</source>
-        <translation>इस कस्टम ब्लॉक के लिए कोई ऑनलाइन कैटलॉग दस्तावेज़ीकरण उपलब्ध नहीं है।</translation>
+        <translation type="vanished">इस कस्टम ब्लॉक के लिए कोई ऑनलाइन कैटलॉग दस्तावेज़ीकरण उपलब्ध नहीं है।</translation>
     </message>
     <message>
         <source>None</source>
@@ -2575,11 +2634,11 @@ Are you sure?</source>
     </message>
     <message>
         <source>Opens the documentation for the original predefined library block. If this block has been modified in the editor, its current equations, symbols, parameters, or runtime logic may differ from the online documentation.</source>
-        <translation>मूल पूर्वनिर्धारित लाइब्रेरी ब्लॉक का दस्तावेज़ीकरण खोलता है। यदि इस ब्लॉक को संपादक में संशोधित किया गया है, तो इसके वर्तमान समीकरण, सिंबल, पैरामीटर या रनटाइम तर्क ऑनलाइन दस्तावेज़ीकरण से भिन्न हो सकते हैं।</translation>
+        <translation type="vanished">मूल पूर्वनिर्धारित लाइब्रेरी ब्लॉक का दस्तावेज़ीकरण खोलता है। यदि इस ब्लॉक को संपादक में संशोधित किया गया है, तो इसके वर्तमान समीकरण, सिंबल, पैरामीटर या रनटाइम तर्क ऑनलाइन दस्तावेज़ीकरण से भिन्न हो सकते हैं।</translation>
     </message>
     <message>
         <source>Output</source>
-        <translation>आउटपुट</translation>
+        <translation type="vanished">आउटपुट</translation>
     </message>
     <message>
         <source>Outputs</source>
@@ -2587,7 +2646,7 @@ Are you sure?</source>
     </message>
     <message>
         <source>Owner block</source>
-        <translation>मालिक ब्लॉक</translation>
+        <translation type="vanished">मालिक ब्लॉक</translation>
     </message>
     <message>
         <source>PDF documents (*.pdf)</source>
@@ -2603,19 +2662,19 @@ Are you sure?</source>
     </message>
     <message>
         <source>Power-flow variable</source>
-        <translation>पावर-फ्लो चर</translation>
+        <translation type="vanished">पावर-फ्लो चर</translation>
     </message>
     <message>
         <source>Power-flow variable used to initialize this dynamic variable.</source>
-        <translation>इस गतिशील चर को आरंभ करने के लिए उपयोग किया जाने वाला पावर-फ्लो चर।</translation>
+        <translation type="vanished">इस गतिशील चर को आरंभ करने के लिए उपयोग किया जाने वाला पावर-फ्लो चर।</translation>
     </message>
     <message>
         <source>Previous</source>
-        <translation>पिछला</translation>
+        <translation type="vanished">पिछला</translation>
     </message>
     <message>
         <source>Python code</source>
-        <translation>Python कोड</translation>
+        <translation type="vanished">Python कोड</translation>
     </message>
     <message>
         <source>Rename...</source>
@@ -2630,6 +2689,7 @@ Are you sure?</source>
         <translation>डायनेमिक समीकरणों को PDF के रूप में सहेजें</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="238"/>
         <source>Search Python code...</source>
         <translation>Python कोड खोजें...</translation>
     </message>
@@ -2650,6 +2710,7 @@ Are you sure?</source>
         <translation>एक वैध प्रतीक प्रकार का चयन करें।</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="316"/>
         <source>Select all</source>
         <translation>सभी चुनें</translation>
     </message>
@@ -2658,10 +2719,12 @@ Are you sure?</source>
         <translation>कम से कम एक गैर-खाली समीकरण समूह का चयन करें।</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="422"/>
         <source>Select equation groups to generate copyable LaTeX source.</source>
         <translation>कॉपी करने योग्य LaTeX स्रोत उत्पन्न करने के लिए समीकरण समूहों का चयन करें।</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="378"/>
         <source>Select the equation groups to include. Each internal block and each DAE section can be selected independently.</source>
         <translation>शामिल किए जाने वाले समीकरण समूहों का चयन करें। प्रत्येक आंतरिक ब्लॉक और प्रत्येक DAE अनुभाग को स्वतंत्र रूप से चुना जा सकता है।</translation>
     </message>
@@ -2671,11 +2734,11 @@ Are you sure?</source>
     </message>
     <message>
         <source>Static device mapping</source>
-        <translation>स्थैतिक उपकरण मैपिंग</translation>
+        <translation type="vanished">स्थैतिक उपकरण मैपिंग</translation>
     </message>
     <message>
         <source>Symbol category</source>
-        <translation>प्रतीक श्रेणी</translation>
+        <translation type="vanished">प्रतीक श्रेणी</translation>
     </message>
     <message>
         <source>The PDF could not be created: {message}</source>
@@ -2683,9 +2746,10 @@ Are you sure?</source>
     </message>
     <message>
         <source>The online block documentation could not be opened in the system browser.</source>
-        <translation>ऑनलाइन ब्लॉक दस्तावेज़ीकरण को सिस्टम ब्राउज़र में नहीं खोला जा सका।</translation>
+        <translation type="vanished">ऑनलाइन ब्लॉक दस्तावेज़ीकरण को सिस्टम ब्राउज़र में नहीं खोला जा सका।</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="440"/>
         <source>These settings contain structured data used to regenerate the block. Edit sequences with valid Python tuple/list syntax.</source>
         <translation>इन सेटिंग्स में ब्लॉक को पुनर्जीवित करने के लिए उपयोग किया जाने वाला संरचित डेटा होता है। वैध Python टपल/सूची सिंटैक्स के साथ अनुक्रम संपादित करें।</translation>
     </message>
@@ -2695,7 +2759,7 @@ Are you sure?</source>
     </message>
     <message>
         <source>Type</source>
-        <translation>प्रकार</translation>
+        <translation type="vanished">प्रकार</translation>
     </message>
     <message>
         <source>Validate all code</source>
@@ -2715,19 +2779,20 @@ Are you sure?</source>
     </message>
     <message>
         <source>+ Add procedural logic</source>
-        <translation>+ प्रक्रियात्मक तर्क जोड़ें</translation>
+        <translation type="vanished">+ प्रक्रियात्मक तर्क जोड़ें</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="188"/>
         <source>Add one procedural behavior to the active equation owner&apos;s Python code.</source>
         <translation>सक्रिय समीकरण मालिक के पायथन कोड में एक प्रक्रियात्मक व्यवहार जोड़ें।</translation>
     </message>
     <message>
         <source>DAE editor</source>
-        <translation>DAE संपादक</translation>
+        <translation type="vanished">DAE संपादक</translation>
     </message>
     <message>
         <source>Documentation</source>
-        <translation>दस्तावेज़ीकरण</translation>
+        <translation type="vanished">दस्तावेज़ीकरण</translation>
     </message>
     <message>
         <source>Model code is valid.</source>
@@ -2746,6 +2811,7 @@ Are you sure?</source>
         <translation>बरकरार मोड</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="82"/>
         <source>Search properties...</source>
         <translation>गुण खोजें...</translation>
     </message>
@@ -2755,9 +2821,10 @@ Are you sure?</source>
     </message>
     <message>
         <source>Show or hide Python code and LaTeX rendering tool</source>
-        <translation>पायथन कोड और LaTeX रेंडरिंग टूल दिखाएं या छिपाएं</translation>
+        <translation type="vanished">पायथन कोड और LaTeX रेंडरिंग टूल दिखाएं या छिपाएं</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="434"/>
         <source>Special configuration</source>
         <translation>विशेष विन्यास</translation>
     </message>
@@ -2770,6 +2837,7 @@ Are you sure?</source>
         <translation>चयनित मालिक के पास कोई पायथन-कोड बफर नहीं है।</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="482"/>
         <source>Validate model</source>
         <translation>मॉडल मान्य करें</translation>
     </message>
@@ -2780,6 +2848,22 @@ Are you sure?</source>
     <message>
         <source>Unsaved Block Properties changes</source>
         <translation>सहेजे बिना ब्लॉक गुण परिवर्तन</translation>
+    </message>
+    <message>
+        <source>Add parameter...</source>
+        <translation>पैरामीटर जोड़ें...</translation>
+    </message>
+    <message>
+        <source>Add retained mode...</source>
+        <translation>रिटेन्ड मोड जोड़ें...</translation>
+    </message>
+    <message>
+        <source>Add variable...</source>
+        <translation>वेरिएबल जोड़ें...</translation>
+    </message>
+    <message>
+        <source>Nothing was added: {message}</source>
+        <translation>कुछ भी नहीं जोड़ा गया: {message}</translation>
     </message>
 </context>
 <context>
@@ -2866,19 +2950,19 @@ Are you sure?</source>
     <name>DynamicEditorWorkspaceSession</name>
     <message>
         <source>Invalid dynamic events</source>
-        <translation>अमान्य गतिशील इवेंट्स</translation>
+        <translation type="vanished">अमान्य गतिशील इवेंट्स</translation>
     </message>
     <message>
         <source>Save the changes before closing the last events tab?</source>
-        <translation>अंतिम इवेंट्स टैब बंद करने से पहले परिवर्तन सहेजें?</translation>
+        <translation type="vanished">अंतिम इवेंट्स टैब बंद करने से पहले परिवर्तन सहेजें?</translation>
     </message>
     <message>
         <source>The dynamic events contain unsaved changes.</source>
-        <translation>गतिशील इवेंट्स में सहेजे बिना परिवर्तन हैं।</translation>
+        <translation type="vanished">गतिशील इवेंट्स में सहेजे बिना परिवर्तन हैं।</translation>
     </message>
     <message>
         <source>Unsaved dynamic events</source>
-        <translation>सहेजे बिना गतिशील इवेंट्स</translation>
+        <translation type="vanished">सहेजे बिना गतिशील इवेंट्स</translation>
     </message>
 </context>
 <context>
@@ -3186,35 +3270,42 @@ Are you sure?</source>
     <name>DynamicEventsDraftSession</name>
     <message>
         <source>An event and its events group use different simulation modes.</source>
-        <translation>एक इवेंट और उसका इवेंट्स ग्रुप अलग-अलग सिमुलेशन मोड का उपयोग करते हैं।</translation>
+        <translation type="vanished">एक इवेंट और उसका इवेंट्स ग्रुप अलग-अलग सिमुलेशन मोड का उपयोग करते हैं।</translation>
     </message>
     <message>
         <source>An event has no target device.</source>
-        <translation>इवेंट का कोई लक्ष्य उपकरण नहीं है।</translation>
+        <translation type="vanished">इवेंट का कोई लक्ष्य उपकरण नहीं है।</translation>
     </message>
     <message>
         <source>An event in device &apos;{device}&apos; has no valid events group.</source>
-        <translation>उपकरण &apos;{device}&apos; में इवेंट का कोई वैध इवेंट्स ग्रुप नहीं है।</translation>
+        <translation type="vanished">उपकरण &apos;{device}&apos; में इवेंट का कोई वैध इवेंट्स ग्रुप नहीं है।</translation>
     </message>
     <message>
         <source>An event in device &apos;{device}&apos; has no valid parameter.</source>
-        <translation>उपकरण &apos;{device}&apos; में इवेंट का कोई वैध पैरामीटर नहीं है।</translation>
+        <translation type="vanished">उपकरण &apos;{device}&apos; में इवेंट का कोई वैध पैरामीटर नहीं है।</translation>
     </message>
     <message>
         <source>An events group has an empty name.</source>
-        <translation>इवेंट्स ग्रुप का नाम खाली है।</translation>
+        <translation type="vanished">इवेंट्स ग्रुप का नाम खाली है।</translation>
     </message>
     <message>
         <source>Events for parameter &apos;{parameter}&apos; overlap in group &apos;{group}&apos; and device &apos;{device}&apos;.</source>
-        <translation>पैरामीटर &apos;{parameter}&apos; के इवेंट्स ग्रुप &apos;{group}&apos; और उपकरण &apos;{device}&apos; में ओवरलैप होते हैं।</translation>
+        <translation type="vanished">पैरामीटर &apos;{parameter}&apos; के इवेंट्स ग्रुप &apos;{group}&apos; और उपकरण &apos;{device}&apos; में ओवरलैप होते हैं।</translation>
     </message>
     <message>
         <source>The events group name &apos;{name}&apos; is duplicated.</source>
-        <translation>इवेंट्स ग्रुप का नाम &apos;{name}&apos; दोहराया गया है।</translation>
+        <translation type="vanished">इवेंट्स ग्रुप का नाम &apos;{name}&apos; दोहराया गया है।</translation>
     </message>
     <message>
         <source>The ramp event for parameter &apos;{parameter}&apos; has an invalid end time.</source>
-        <translation>पैरामीटर &apos;{parameter}&apos; के रैंप इवेंट का समाप्ति समय अमान्य है।</translation>
+        <translation type="vanished">पैरामीटर &apos;{parameter}&apos; के रैंप इवेंट का समाप्ति समय अमान्य है।</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventsFilterPopup</name>
+    <message>
+        <source>All</source>
+        <translation type="vanished">सभी</translation>
     </message>
 </context>
 <context>
@@ -3248,17 +3339,17 @@ Are you sure?</source>
     <name>DynamicEventsItemDelegate</name>
     <message>
         <source>Ramp</source>
-        <translation>रैंप</translation>
+        <translation type="vanished">रैंप</translation>
     </message>
     <message>
         <source>Step</source>
-        <translation>चरण</translation>
+        <translation type="vanished">चरण</translation>
     </message>
 </context>
 <context>
     <name>DynamicEventsPage</name>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="143"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="165"/>
         <source>Add an event to the selected event group</source>
         <translation>चयनित इवेंट समूह में एक इवेंट जोड़ें।</translation>
     </message>
@@ -3268,7 +3359,7 @@ Are you sure?</source>
     </message>
     <message>
         <source>Are you sure you want to remove the event for &apos;{parameter}&apos; at {time:.4f} s?</source>
-        <translation>क्या आप &apos;{parameter}&apos; के लिए {time:.4f} सेकंड पर इवेंट हटाना चाहते हैं?</translation>
+        <translation type="vanished">क्या आप &apos;{parameter}&apos; के लिए {time:.4f} सेकंड पर इवेंट हटाना चाहते हैं?</translation>
     </message>
     <message>
         <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="14"/>
@@ -3276,45 +3367,76 @@ Are you sure?</source>
         <translation>डायनामिक इवेंट्स</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="131"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="124"/>
+        <source>New</source>
+        <translation>नया</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="127"/>
+        <source>Delete all events of this simulation mode from the current device</source>
+        <translation>वर्तमान डिवाइस से इस सिमुलेशन मोड के सभी इवेंट हटा दें</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="139"/>
+        <source>Save</source>
+        <translation>सहेजें</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="142"/>
+        <source>Save event changes</source>
+        <translation>इवेंट परिवर्तन सहेजें</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="145"/>
+        <source>Ctrl+S</source>
+        <translation>Ctrl+S</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="153"/>
         <source>Create an EMT switch opening and reclosing event sequence</source>
         <translation>एक EMT स्विच ओपनिंग और रीक्लोजिंग इवेंट सीक्वेंस बनाएं।</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="140"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="182"/>
+        <source>Create Event Group</source>
+        <translation>इवेंट समूह बनाएँ</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="185"/>
+        <source>Create an event group</source>
+        <translation>एक इवेंट समूह बनाएँ</translation>
+    </message>
+    <message>
         <source>Add Event</source>
-        <translation>इवेंट जोड़ें</translation>
+        <translation type="vanished">इवेंट जोड़ें</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="152"/>
         <source>Remove Selected</source>
-        <translation>चयनित हटाएं</translation>
+        <translation type="vanished">चयनित हटाएं</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="164"/>
         <source>Add Event Group</source>
         <translation>इवेंट ग्रुप जोड़ें</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="167"/>
         <source>Create an event group for this simulation mode</source>
-        <translation>इस सिमुलेशन मोड के लिए एक इवेंट समूह बनाएं।</translation>
+        <translation type="vanished">इस सिमुलेशन मोड के लिए एक इवेंट समूह बनाएं।</translation>
     </message>
     <message>
         <source>Empty dynamic model</source>
-        <translation>खाली गतिशील मॉडल</translation>
+        <translation type="vanished">खाली गतिशील मॉडल</translation>
     </message>
     <message>
         <source>Events cannot be added because this dynamic model has no event parameters.</source>
-        <translation>इवेंट्स नहीं जोड़े जा सकते क्योंकि इस गतिशील मॉडल में कोई इवेंट पैरामीटर नहीं है।</translation>
+        <translation type="vanished">इवेंट्स नहीं जोड़े जा सकते क्योंकि इस गतिशील मॉडल में कोई इवेंट पैरामीटर नहीं है।</translation>
     </message>
     <message>
         <source>Events saved</source>
-        <translation>इवेंट्स सहेजे गए।</translation>
+        <translation type="vanished">इवेंट्स सहेजे गए।</translation>
     </message>
     <message>
         <source>Invalid dynamic events</source>
-        <translation>अमान्य गतिशील इवेंट्स</translation>
+        <translation type="vanished">अमान्य गतिशील इवेंट्स</translation>
     </message>
     <message>
         <source>Invalid event group</source>
@@ -3322,15 +3444,15 @@ Are you sure?</source>
     </message>
     <message>
         <source>Invalid parameter</source>
-        <translation>अमान्य पैरामीटर</translation>
+        <translation type="vanished">अमान्य पैरामीटर</translation>
     </message>
     <message>
         <source>No events can be added because the dynamic model has no event parameters.</source>
-        <translation>इवेंट्स नहीं जोड़े जा सकते क्योंकि गतिशील मॉडल में कोई इवेंट पैरामीटर नहीं है।</translation>
+        <translation type="vanished">इवेंट्स नहीं जोड़े जा सकते क्योंकि गतिशील मॉडल में कोई इवेंट पैरामीटर नहीं है।</translation>
     </message>
     <message>
         <source>Remove</source>
-        <translation>हटाएँ</translation>
+        <translation type="vanished">हटाएँ</translation>
     </message>
     <message>
         <source>Remove event</source>
@@ -3341,7 +3463,7 @@ Are you sure?</source>
         <translation type="vanished">इवेंट समूह हटाएं।</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="155"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="177"/>
         <source>Remove the selected event or event group</source>
         <translation>चयनित इवेंट या इवेंट समूह हटाएं।</translation>
     </message>
@@ -3350,9 +3472,8 @@ Are you sure?</source>
         <translation type="vanished">नाम बदलें</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="112"/>
         <source>Save events</source>
-        <translation>इवेंट्स सहेजें।</translation>
+        <translation type="vanished">इवेंट्स सहेजें।</translation>
     </message>
     <message>
         <source>Select the event group where you want to add the event.</source>
@@ -3363,16 +3484,16 @@ Are you sure?</source>
         <translation type="vanished">वह इवेंट या इवेंट समूह चुनें जिसे आप हटाना चाहते हैं।</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="128"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="150"/>
         <source>Switch Sequence Wizard</source>
         <translation>स्विच सीक्वेंस विज़ार्ड</translation>
     </message>
     <message>
         <source>The event group name must be non-empty and unique in this simulation mode.</source>
-        <translation>इवेंट समूह का नाम इस सिमुलेशन मोड में खाली नहीं और अद्वितीय होना चाहिए।</translation>
+        <translation type="vanished">इवेंट समूह का नाम इस सिमुलेशन मोड में खाली नहीं और अद्वितीय होना चाहिए।</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="81"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="101"/>
         <source>This dynamic model is empty. New events cannot be added until the model is built.</source>
         <translation>यह गतिशील मॉडल खाली है। मॉडल बनने तक नए इवेंट नहीं जोड़े जा सकते।</translation>
     </message>
@@ -3382,26 +3503,66 @@ Are you sure?</source>
     </message>
     <message>
         <source>Add an event and select its event group</source>
-        <translation>एक इवेंट जोड़ें और उसका इवेंट ग्रुप चुनें</translation>
+        <translation type="vanished">एक इवेंट जोड़ें और उसका इवेंट ग्रुप चुनें</translation>
     </message>
     <message>
         <source>Create an event group before adding an event.</source>
-        <translation>इवेंट जोड़ने से पहले एक इवेंट ग्रुप बनाएं।</translation>
+        <translation type="vanished">इवेंट जोड़ने से पहले एक इवेंट ग्रुप बनाएं।</translation>
     </message>
     <message>
         <source>Select the event you want to remove.</source>
-        <translation>वह इवेंट चुनें जिसे आप हटाना चाहते हैं।</translation>
+        <translation type="vanished">वह इवेंट चुनें जिसे आप हटाना चाहते हैं।</translation>
+    </message>
+    <message>
+        <source>An event group with this name already exists.</source>
+        <translation>इस नाम का एक इवेंट समूह पहले से मौजूद है।</translation>
+    </message>
+    <message>
+        <source>Delete all device events</source>
+        <translation>सभी डिवाइस इवेंट हटाएँ</translation>
+    </message>
+    <message>
+        <source>Delete all events for this device and simulation mode?</source>
+        <translation>क्या इस डिवाइस और सिमुलेशन मोड के सभी इवेंट हटा दें?</translation>
+    </message>
+    <message>
+        <source>Group name:</source>
+        <translation>समूह का नाम:</translation>
+    </message>
+    <message>
+        <source>Remove '{name}' and all events in this group?</source>
+        <translation>क्या '{name}' और इस समूह में सभी इवेंट हटाएँ?</translation>
+    </message>
+    <message>
+        <source>Remove event group</source>
+        <translation>इवेंट समूह हटाएँ</translation>
+    </message>
+    <message>
+        <source>Remove the selected event?</source>
+        <translation>क्या चयनित इवेंट हटाएँ?</translation>
+    </message>
+    <message>
+        <source>Select an event group before adding an event.</source>
+        <translation>इवेंट जोड़ने से पहले एक इवेंट समूह चुनें।</translation>
+    </message>
+    <message>
+        <source>Select an event or event group to remove.</source>
+        <translation>हटाने के लिए एक इवेंट या इवेंट समूह चुनें।</translation>
+    </message>
+    <message>
+        <source>The dynamic model has no event parameters.</source>
+        <translation>डायनेमिक मॉडल में कोई इवेंट पैरामीटर नहीं है।</translation>
     </message>
 </context>
 <context>
     <name>DynamicEventsTreeModel</name>
     <message>
         <source>Align Step</source>
-        <translation>स्टेप संरेखित करें</translation>
+        <translation type="vanished">स्टेप संरेखित करें</translation>
     </message>
     <message>
         <source>End Time</source>
-        <translation>समाप्ति समय</translation>
+        <translation type="vanished">समाप्ति समय</translation>
     </message>
     <message>
         <source>Invalid / Ungrouped Events</source>
@@ -3409,15 +3570,15 @@ Are you sure?</source>
     </message>
     <message>
         <source>Invalid parameter</source>
-        <translation>अमान्य पैरामीटर</translation>
+        <translation type="vanished">अमान्य पैरामीटर</translation>
     </message>
     <message>
         <source>New Value</source>
-        <translation>नया मान</translation>
+        <translation type="vanished">नया मान</translation>
     </message>
     <message>
         <source>Parameter</source>
-        <translation>पैरामीटर</translation>
+        <translation type="vanished">पैरामीटर</translation>
     </message>
     <message>
         <source>These persisted events do not reference a valid events group and can only be removed.</source>
@@ -3425,19 +3586,19 @@ Are you sure?</source>
     </message>
     <message>
         <source>Time</source>
-        <translation>समय</translation>
+        <translation type="vanished">समय</translation>
     </message>
     <message>
         <source>Transition</source>
-        <translation>संक्रमण</translation>
+        <translation type="vanished">संक्रमण</translation>
     </message>
     <message>
         <source>Event Group</source>
-        <translation>इवेंट ग्रुप</translation>
+        <translation type="vanished">इवेंट ग्रुप</translation>
     </message>
     <message>
         <source>Select Event Group</source>
-        <translation>इवेंट ग्रुप चुनें</translation>
+        <translation type="vanished">इवेंट ग्रुप चुनें</translation>
     </message>
 </context>
 <context>
@@ -3614,6 +3775,79 @@ select the expected processing format</source>
     <message>
         <source>Select FMU file</source>
         <translation>FMU फ़ाइल चुनें</translation>
+    </message>
+</context>
+<context>
+    <name>Form</name>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="14"/>
+        <source>Add block property</source>
+        <translation>ब्लॉक प्रॉपर्टी जोड़ें</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="26"/>
+        <source>Add symbol to selected block</source>
+        <translation>चयनित ब्लॉक में सिंबल जोड़ें</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="71"/>
+        <source>Output</source>
+        <translation>आउटपुट</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="78"/>
+        <source>Create derivative variable</source>
+        <translation>व्युत्पन्न चर बनाएं</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="144"/>
+        <source>New symbol name</source>
+        <translation>नया सिंबल नाम</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="151"/>
+        <source>Symbol category</source>
+        <translation>प्रतीक श्रेणी</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="158"/>
+        <source>Owner block</source>
+        <translation>मालिक ब्लॉक</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="165"/>
+        <source>Type</source>
+        <translation>प्रकार</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="172"/>
+        <source>Add symbol</source>
+        <translation>सिंबल जोड़ें</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="195"/>
+        <source>Static device mapping</source>
+        <translation>स्थैतिक उपकरण मैपिंग</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="202"/>
+        <source>Power-flow variable used to initialize this dynamic variable.</source>
+        <translation>इस गतिशील चर को आरंभ करने के लिए उपयोग किया जाने वाला पावर-फ्लो चर।</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="205"/>
+        <source>Power-flow variable</source>
+        <translation>पावर-फ्लो चर</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="266"/>
+        <source>Enter a name</source>
+        <translation>एक नाम दर्ज करें</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="273"/>
+        <source>Initial numeric value</source>
+        <translation>प्रारंभिक संख्यात्मक मान</translation>
     </message>
 </context>
 <context>
@@ -12287,7 +12521,7 @@ You need to load or create a grid!</source>
     <message>
         <location filename="../Main/MainWindow.ui" line="12999"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Candidate investment generator&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Generate candidate reinforcements (new lines and upgrades) for N-1 violations via LODF/PTDF screening&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Candidate investment generator&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Generate candidate reinforcements (new lines and upgrades) for N-1 violations via LODF/PTDF screening&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Candidate investment generator&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Generate candidate reinforcements (new lines and upgrades) for N-1 violations via LODF/PTDF screening&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="13117"/>
@@ -15097,21 +15331,21 @@ You need to load or create a grid!</source>
     </message>
 </context>
 <context>
-    <name>BaseMainGui</name>
+    <name>DiagramScene</name>
     <message>
-        <source>Are you sure that you want to cancel the simulation?</source>
-        <translation>क्या आप निश्चित हैं कि आप सिमुलेशन रद्द करना चाहते हैं?</translation>
+        <source>Block info</source>
+        <translation>ब्लॉक जानकारी</translation>
     </message>
     <message>
-        <source>Unlocking the UI may cause crash depending on the conditions. Are you sure?</source>
-        <translation>UI को अनलॉक करने से स्थितियों के आधार पर क्रैश हो सकता है। क्या आप निश्चित हैं?</translation>
+        <source>Edit block</source>
+        <translation>ब्लॉक संपादित करें</translation>
     </message>
 </context>
 <context>
-    <name>DynamicEventsFilterPopup</name>
+    <name>DynamicEventGroupsTreeModel</name>
     <message>
-        <source>All</source>
-        <translation>सभी</translation>
+        <source>Event groups</source>
+        <translation>इवेंट समूह</translation>
     </message>
 </context>
 </TS>

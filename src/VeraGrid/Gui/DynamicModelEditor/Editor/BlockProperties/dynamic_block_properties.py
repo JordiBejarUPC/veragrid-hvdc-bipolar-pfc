@@ -18,6 +18,7 @@ from typing import Dict, List, Mapping, Sequence
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtCore import Qt, Signal
 
+import VeraGrid.Gui.gui_functions as gf
 from VeraGrid.Gui.base_python_code_editor import BasePythonCodeEditor
 from VeraGrid.Gui.DynamicModelEditor.Editor.BlockProperties.dae_code_completion import (
     DaeCompletionEntry,
@@ -6129,8 +6130,10 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                 pass
 
             logic_tpe: ProceduralLogicType = procedural_descriptor.logic_tpe
-            logic_action: QtGui.QAction = self._procedural_add_menu.addAction(
-                procedural_descriptor.display_label
+            logic_action: QtGui.QAction = gf.add_menu_entry(
+                menu=self._procedural_add_menu,
+                text=procedural_descriptor.display_label,
+                icon_path=":/Icons/icons/dyn_add.png",
             )
             logic_action.setData(logic_tpe)
             procedural_help: str | None = get_procedural_logic_help_by_code_name(
@@ -7650,17 +7653,37 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         else:
             pass
 
-        menu: QtWidgets.QMenu = QtWidgets.QMenu(table)
-        add_variable_action: QtGui.QAction = menu.addAction(self.tr("Add variable..."))
-        add_parameter_action: QtGui.QAction = menu.addAction(self.tr("Add parameter..."))
-        add_retained_mode_action: QtGui.QAction = menu.addAction(self.tr("Add retained mode..."))
+        menu: QtWidgets.QMenu = QtWidgets.QMenu(parent=table)
+        add_variable_action: QtGui.QAction = gf.add_menu_entry(
+            menu=menu,
+            text=self.tr("Add variable..."),
+            icon_path=":/Icons/icons/plus.png",
+        )
+        add_parameter_action: QtGui.QAction = gf.add_menu_entry(
+            menu=menu,
+            text=self.tr("Add parameter..."),
+            icon_path=":/Icons/icons/plus.png",
+        )
+        add_retained_mode_action: QtGui.QAction = gf.add_menu_entry(
+            menu=menu,
+            text=self.tr("Add retained mode..."),
+            icon_path=":/Icons/icons/dyn_add.png",
+        )
         menu.addSeparator()
 
         rename_action: QtGui.QAction | None
         delete_action: QtGui.QAction | None
         if source_row is not None or source_mode is not None:
-            rename_action = menu.addAction(self.tr("Rename"))
-            delete_action = menu.addAction(self.tr("Delete"))
+            rename_action = gf.add_menu_entry(
+                menu=menu,
+                text=self.tr("Rename"),
+                icon_path=":/Icons/icons/edit.png",
+            )
+            delete_action = gf.add_menu_entry(
+                menu=menu,
+                text=self.tr("Delete"),
+                icon_path=":/Icons/icons/delete.png",
+            )
         else:
             rename_action = None
             delete_action = None

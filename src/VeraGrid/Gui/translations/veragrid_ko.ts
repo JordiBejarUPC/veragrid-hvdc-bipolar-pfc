@@ -662,6 +662,17 @@ li.checked::마커 { content: &quot;\2612&quot;; }
     </message>
 </context>
 <context>
+    <name>BaseMainGui</name>
+    <message>
+        <source>Are you sure that you want to cancel the simulation?</source>
+        <translation>시뮬레이션을 취소하시겠습니까?</translation>
+    </message>
+    <message>
+        <source>Unlocking the UI may cause crash depending on the conditions. Are you sure?</source>
+        <translation>UI 잠금 해제가 조건에 따라 충돌을 일으킬 수 있습니다. 정말로 하시겠습니까?</translation>
+    </message>
+</context>
+<context>
     <name>BlockEditorWindow</name>
     <message>
         <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="14"/>
@@ -2966,6 +2977,18 @@ Are you sure?</source>
         <source>You are going to delete the complete model and start from scratch. Are you sure?</source>
         <translation type="vanished">전체 모델을 삭제하고 처음부터 시작합니다. 정말로 하시겠습니까?</translation>
     </message>
+    <message>
+        <source>Block info</source>
+        <translation>블록 정보</translation>
+    </message>
+    <message>
+        <source>No online catalogue documentation is available for this custom block.</source>
+        <translation>이 사용자 정의 블록에 대한 온라인 카탈로그 문서를 사용할 수 없습니다.</translation>
+    </message>
+    <message>
+        <source>The online block documentation could not be opened.</source>
+        <translation>온라인 블록 문서를 열 수 없습니다.</translation>
+    </message>
 </context>
 <context>
     <name>DynamicBlockPropertiesDialog</name>
@@ -2975,9 +2998,8 @@ Are you sure?</source>
         <translation>블록 속성</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="70"/>
         <source>Apply changes</source>
-        <translation>변경 사항 적용</translation>
+        <translation type="vanished">변경 사항 적용</translation>
     </message>
     <message>
         <source>Close</source>
@@ -2989,11 +3011,11 @@ Are you sure?</source>
     </message>
     <message>
         <source>Add symbol</source>
-        <translation>심볼 추가</translation>
+        <translation type="vanished">심볼 추가</translation>
     </message>
     <message>
         <source>Add symbol to selected block</source>
-        <translation>선택된 블록에 심볼 추가</translation>
+        <translation type="vanished">선택된 블록에 심볼 추가</translation>
     </message>
     <message>
         <source>Advanced runtime logic</source>
@@ -3004,16 +3026,17 @@ Are you sure?</source>
         <translation>구조적 설정을 DAE 코드 또는 심볼 인터페이스 변경 사항과 분리하여 적용합니다.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="388"/>
         <source>Block / equation group</source>
         <translation>블록 / 방정식 그룹</translation>
     </message>
     <message>
         <source>Block configuration</source>
-        <translation>블록 구성</translation>
+        <translation type="vanished">블록 구성</translation>
     </message>
     <message>
         <source>Block info</source>
-        <translation>블록 정보</translation>
+        <translation type="vanished">블록 정보</translation>
     </message>
     <message>
         <source>Block properties - {name}</source>
@@ -3036,12 +3059,13 @@ Are you sure?</source>
         <translation>변경 사항이 적용되었습니다. 고급 부등식/이산/불리언 로직은 변경 없이 보존되었습니다.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="323"/>
         <source>Clear</source>
         <translation>분명한</translation>
     </message>
     <message>
         <source>Create derivative variable</source>
-        <translation>미분 변수 생성</translation>
+        <translation type="vanished">미분 변수 생성</translation>
     </message>
     <message>
         <source>DAE and runtime-logic changes applied to the editor working copy.</source>
@@ -3052,8 +3076,9 @@ Are you sure?</source>
         <translation type="vanished">DAE 코드가 유효합니다.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="131"/>
         <source>DAE model</source>
-        <translation type="vanished">DAE 모델</translation>
+        <translation>DAE 모델</translation>
     </message>
     <message>
         <source>DAE validation failed at line {line}: {message}</source>
@@ -3065,11 +3090,11 @@ Are you sure?</source>
     </message>
     <message>
         <source>Download rendered PDF</source>
-        <translation>렌더링된 PDF 다운로드</translation>
+        <translation type="vanished">렌더링된 PDF 다운로드</translation>
     </message>
     <message>
         <source>Enter a name</source>
-        <translation>이름을 입력하세요</translation>
+        <translation type="vanished">이름을 입력하세요</translation>
     </message>
     <message>
         <source>Enter a valid Python symbol name.</source>
@@ -3080,14 +3105,48 @@ Are you sure?</source>
         <translation>방정식 PDF가 생성되었습니다: {path}</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="158"/>
         <source>Equation owner</source>
         <translation>방정식 소유자</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="251"/>
+        <source>&lt;&lt;</source>
+        <translation>&lt;&lt;</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="261"/>
+        <source>&gt;&gt;</source>
+        <translation>&gt;&gt;</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="289"/>
+        <source>LaTeX rendering</source>
+        <translation>LaTeX 렌더링</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="343"/>
+        <source>Save redered PDF</source>
+        <translation>렌더링된 PDF 저장</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="372"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="393"/>
         <source>Equations</source>
         <translation>방정식</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="410"/>
+        <source>LaTex source</source>
+        <translation>LaTeX 소스</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="509"/>
+        <source>Accept changes</source>
+        <translation>변경 사항 수락</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="40"/>
         <source>General options</source>
         <translation>일반 옵션</translation>
     </message>
@@ -3097,7 +3156,7 @@ Are you sure?</source>
     </message>
     <message>
         <source>Initial numeric value</source>
-        <translation>초기 수치 값</translation>
+        <translation type="vanished">초기 수치 값</translation>
     </message>
     <message>
         <source>Inputs</source>
@@ -3109,11 +3168,11 @@ Are you sure?</source>
     </message>
     <message>
         <source>LaTeX</source>
-        <translation>LaTeX</translation>
+        <translation type="vanished">LaTeX</translation>
     </message>
     <message>
         <source>LaTeX source</source>
-        <translation>LaTeX 소스</translation>
+        <translation type="vanished">LaTeX 소스</translation>
     </message>
     <message>
         <source>Name</source>
@@ -3121,11 +3180,11 @@ Are you sure?</source>
     </message>
     <message>
         <source>New symbol name</source>
-        <translation>새 심볼 이름</translation>
+        <translation type="vanished">새 심볼 이름</translation>
     </message>
     <message>
         <source>Next</source>
-        <translation>다음</translation>
+        <translation type="vanished">다음</translation>
     </message>
     <message>
         <source>No matches</source>
@@ -3133,7 +3192,7 @@ Are you sure?</source>
     </message>
     <message>
         <source>No online catalogue documentation is available for this custom block.</source>
-        <translation>이 사용자 정의 블록에 대한 온라인 카탈로그 문서가 없습니다.</translation>
+        <translation type="vanished">이 사용자 정의 블록에 대한 온라인 카탈로그 문서가 없습니다.</translation>
     </message>
     <message>
         <source>None</source>
@@ -3149,11 +3208,11 @@ Are you sure?</source>
     </message>
     <message>
         <source>Opens the documentation for the original predefined library block. If this block has been modified in the editor, its current equations, symbols, parameters, or runtime logic may differ from the online documentation.</source>
-        <translation>원본 사전 정의 라이브러리 블록의 문서를 엽니다. 이 블록이 편집기에서 수정된 경우, 현재 방정식, 심볼, 매개변수 또는 런타임 로직이 온라인 문서와 다를 수 있습니다.</translation>
+        <translation type="vanished">원본 사전 정의 라이브러리 블록의 문서를 엽니다. 이 블록이 편집기에서 수정된 경우, 현재 방정식, 심볼, 매개변수 또는 런타임 로직이 온라인 문서와 다를 수 있습니다.</translation>
     </message>
     <message>
         <source>Output</source>
-        <translation>출력</translation>
+        <translation type="vanished">출력</translation>
     </message>
     <message>
         <source>Outputs</source>
@@ -3161,7 +3220,7 @@ Are you sure?</source>
     </message>
     <message>
         <source>Owner block</source>
-        <translation>소유 블록</translation>
+        <translation type="vanished">소유 블록</translation>
     </message>
     <message>
         <source>PDF documents (*.pdf)</source>
@@ -3177,19 +3236,19 @@ Are you sure?</source>
     </message>
     <message>
         <source>Power-flow variable</source>
-        <translation>전력 흐름 변수</translation>
+        <translation type="vanished">전력 흐름 변수</translation>
     </message>
     <message>
         <source>Power-flow variable used to initialize this dynamic variable.</source>
-        <translation>이 동적 변수를 초기화하는 데 사용되는 전력 흐름 변수입니다.</translation>
+        <translation type="vanished">이 동적 변수를 초기화하는 데 사용되는 전력 흐름 변수입니다.</translation>
     </message>
     <message>
         <source>Previous</source>
-        <translation>이전</translation>
+        <translation type="vanished">이전</translation>
     </message>
     <message>
         <source>Python code</source>
-        <translation>Python 코드</translation>
+        <translation type="vanished">Python 코드</translation>
     </message>
     <message>
         <source>Rename...</source>
@@ -3204,6 +3263,7 @@ Are you sure?</source>
         <translation>동적 방정식 PDF 저장</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="238"/>
         <source>Search Python code...</source>
         <translation>Python 코드 검색...</translation>
     </message>
@@ -3224,6 +3284,7 @@ Are you sure?</source>
         <translation>유효한 심볼 유형을 선택하십시오.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="316"/>
         <source>Select all</source>
         <translation>모두 선택</translation>
     </message>
@@ -3232,10 +3293,12 @@ Are you sure?</source>
         <translation>비어 있지 않은 방정식 그룹을 하나 이상 선택하십시오.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="422"/>
         <source>Select equation groups to generate copyable LaTeX source.</source>
         <translation>복사 가능한 LaTeX 소스를 생성할 방정식 그룹을 선택하십시오.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="378"/>
         <source>Select the equation groups to include. Each internal block and each DAE section can be selected independently.</source>
         <translation>포함할 방정식 그룹을 선택하십시오. 각 내부 블록과 각 DAE 섹션은 독립적으로 선택할 수 있습니다.</translation>
     </message>
@@ -3245,11 +3308,11 @@ Are you sure?</source>
     </message>
     <message>
         <source>Static device mapping</source>
-        <translation>정적 장치 매핑</translation>
+        <translation type="vanished">정적 장치 매핑</translation>
     </message>
     <message>
         <source>Symbol category</source>
-        <translation>심볼 카테고리</translation>
+        <translation type="vanished">심볼 카테고리</translation>
     </message>
     <message>
         <source>The PDF could not be created: {message}</source>
@@ -3257,9 +3320,10 @@ Are you sure?</source>
     </message>
     <message>
         <source>The online block documentation could not be opened in the system browser.</source>
-        <translation>온라인 블록 문서를 시스템 브라우저에서 열 수 없습니다.</translation>
+        <translation type="vanished">온라인 블록 문서를 시스템 브라우저에서 열 수 없습니다.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="440"/>
         <source>These settings contain structured data used to regenerate the block. Edit sequences with valid Python tuple/list syntax.</source>
         <translation>이 설정에는 블록을 재생성하는 데 사용되는 구조화된 데이터가 포함되어 있습니다. 유효한 Python 튜플/리스트 구문으로 시퀀스를 편집하십시오.</translation>
     </message>
@@ -3269,7 +3333,7 @@ Are you sure?</source>
     </message>
     <message>
         <source>Type</source>
-        <translation>유형</translation>
+        <translation type="vanished">유형</translation>
     </message>
     <message>
         <source>Validate all code</source>
@@ -3289,19 +3353,20 @@ Are you sure?</source>
     </message>
     <message>
         <source>+ Add procedural logic</source>
-        <translation>+ 절차 로직 추가</translation>
+        <translation type="vanished">+ 절차 로직 추가</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="188"/>
         <source>Add one procedural behavior to the active equation owner&apos;s Python code.</source>
         <translation>활성 방정식 소유자의 Python 코드에 절차적 동작 추가.</translation>
     </message>
     <message>
         <source>DAE editor</source>
-        <translation>DAE 에디터</translation>
+        <translation type="vanished">DAE 에디터</translation>
     </message>
     <message>
         <source>Documentation</source>
-        <translation>문서</translation>
+        <translation type="vanished">문서</translation>
     </message>
     <message>
         <source>Model code is valid.</source>
@@ -3320,6 +3385,7 @@ Are you sure?</source>
         <translation>유지 모드</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="82"/>
         <source>Search properties...</source>
         <translation>속성 검색...</translation>
     </message>
@@ -3329,9 +3395,10 @@ Are you sure?</source>
     </message>
     <message>
         <source>Show or hide Python code and LaTeX rendering tool</source>
-        <translation>Python 코드 및 LaTeX 렌더링 도구 표시/숨기기</translation>
+        <translation type="vanished">Python 코드 및 LaTeX 렌더링 도구 표시/숨기기</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="434"/>
         <source>Special configuration</source>
         <translation>특수 구성</translation>
     </message>
@@ -3344,6 +3411,7 @@ Are you sure?</source>
         <translation>선택된 소유자에는 Python 코드 버퍼가 없습니다.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="482"/>
         <source>Validate model</source>
         <translation>모델 유효성 검사</translation>
     </message>
@@ -3354,6 +3422,22 @@ Are you sure?</source>
     <message>
         <source>Unsaved Block Properties changes</source>
         <translation>저장되지 않은 블록 속성 변경 사항</translation>
+    </message>
+    <message>
+        <source>Add parameter...</source>
+        <translation>매개변수 추가...</translation>
+    </message>
+    <message>
+        <source>Add retained mode...</source>
+        <translation>유지 모드 추가...</translation>
+    </message>
+    <message>
+        <source>Add variable...</source>
+        <translation>변수 추가...</translation>
+    </message>
+    <message>
+        <source>Nothing was added: {message}</source>
+        <translation>추가된 항목 없음: {message}</translation>
     </message>
 </context>
 <context>
@@ -3440,19 +3524,19 @@ Are you sure?</source>
     <name>DynamicEditorWorkspaceSession</name>
     <message>
         <source>Invalid dynamic events</source>
-        <translation>유효하지 않은 동적 이벤트</translation>
+        <translation type="vanished">유효하지 않은 동적 이벤트</translation>
     </message>
     <message>
         <source>Save the changes before closing the last events tab?</source>
-        <translation>마지막 이벤트 탭을 닫기 전에 변경 사항을 저장하시겠습니까?</translation>
+        <translation type="vanished">마지막 이벤트 탭을 닫기 전에 변경 사항을 저장하시겠습니까?</translation>
     </message>
     <message>
         <source>The dynamic events contain unsaved changes.</source>
-        <translation>동적 이벤트에 저장되지 않은 변경 사항이 있습니다.</translation>
+        <translation type="vanished">동적 이벤트에 저장되지 않은 변경 사항이 있습니다.</translation>
     </message>
     <message>
         <source>Unsaved dynamic events</source>
-        <translation>저장되지 않은 동적 이벤트</translation>
+        <translation type="vanished">저장되지 않은 동적 이벤트</translation>
     </message>
 </context>
 <context>
@@ -3760,35 +3844,42 @@ Are you sure?</source>
     <name>DynamicEventsDraftSession</name>
     <message>
         <source>An event and its events group use different simulation modes.</source>
-        <translation>이벤트와 해당 이벤트 그룹이 다른 시뮬레이션 모드를 사용합니다.</translation>
+        <translation type="vanished">이벤트와 해당 이벤트 그룹이 다른 시뮬레이션 모드를 사용합니다.</translation>
     </message>
     <message>
         <source>An event has no target device.</source>
-        <translation>이벤트에 대상 장치가 없습니다.</translation>
+        <translation type="vanished">이벤트에 대상 장치가 없습니다.</translation>
     </message>
     <message>
         <source>An event in device &apos;{device}&apos; has no valid events group.</source>
-        <translation>장치 &apos;{device}&apos;의 이벤트에 유효한 이벤트 그룹이 없습니다.</translation>
+        <translation type="vanished">장치 &apos;{device}&apos;의 이벤트에 유효한 이벤트 그룹이 없습니다.</translation>
     </message>
     <message>
         <source>An event in device &apos;{device}&apos; has no valid parameter.</source>
-        <translation>장치 &apos;{device}&apos;의 이벤트에 유효한 매개변수가 없습니다.</translation>
+        <translation type="vanished">장치 &apos;{device}&apos;의 이벤트에 유효한 매개변수가 없습니다.</translation>
     </message>
     <message>
         <source>An events group has an empty name.</source>
-        <translation>이벤트 그룹에 이름이 비어 있습니다.</translation>
+        <translation type="vanished">이벤트 그룹에 이름이 비어 있습니다.</translation>
     </message>
     <message>
         <source>Events for parameter &apos;{parameter}&apos; overlap in group &apos;{group}&apos; and device &apos;{device}&apos;.</source>
-        <translation>매개변수 &apos;{parameter}&apos;의 이벤트가 그룹 &apos;{group}&apos; 및 장치 &apos;{device}&apos;에서 중복됩니다.</translation>
+        <translation type="vanished">매개변수 &apos;{parameter}&apos;의 이벤트가 그룹 &apos;{group}&apos; 및 장치 &apos;{device}&apos;에서 중복됩니다.</translation>
     </message>
     <message>
         <source>The events group name &apos;{name}&apos; is duplicated.</source>
-        <translation>이벤트 그룹 이름 &apos;{name}&apos;이 중복됩니다.</translation>
+        <translation type="vanished">이벤트 그룹 이름 &apos;{name}&apos;이 중복됩니다.</translation>
     </message>
     <message>
         <source>The ramp event for parameter &apos;{parameter}&apos; has an invalid end time.</source>
-        <translation>매개변수 &apos;{parameter}&apos;의 램프 이벤트에 유효하지 않은 종료 시간이 있습니다.</translation>
+        <translation type="vanished">매개변수 &apos;{parameter}&apos;의 램프 이벤트에 유효하지 않은 종료 시간이 있습니다.</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventsFilterPopup</name>
+    <message>
+        <source>All</source>
+        <translation type="vanished">모두</translation>
     </message>
 </context>
 <context>
@@ -3822,17 +3913,17 @@ Are you sure?</source>
     <name>DynamicEventsItemDelegate</name>
     <message>
         <source>Ramp</source>
-        <translation>램프</translation>
+        <translation type="vanished">램프</translation>
     </message>
     <message>
         <source>Step</source>
-        <translation>계단</translation>
+        <translation type="vanished">계단</translation>
     </message>
 </context>
 <context>
     <name>DynamicEventsPage</name>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="143"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="165"/>
         <source>Add an event to the selected event group</source>
         <translation>선택된 이벤트 그룹에 이벤트 추가</translation>
     </message>
@@ -3842,7 +3933,7 @@ Are you sure?</source>
     </message>
     <message>
         <source>Are you sure you want to remove the event for &apos;{parameter}&apos; at {time:.4f} s?</source>
-        <translation>&apos;{parameter}&apos;에 대한 {time:.4f} s의 이벤트를 제거하시겠습니까?</translation>
+        <translation type="vanished">&apos;{parameter}&apos;에 대한 {time:.4f} s의 이벤트를 제거하시겠습니까?</translation>
     </message>
     <message>
         <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="14"/>
@@ -3850,45 +3941,76 @@ Are you sure?</source>
         <translation>동적 이벤트</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="131"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="124"/>
+        <source>New</source>
+        <translation>새로 만들기</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="127"/>
+        <source>Delete all events of this simulation mode from the current device</source>
+        <translation>현재 장치에서 이 시뮬레이션 모드의 모든 이벤트 삭제</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="139"/>
+        <source>Save</source>
+        <translation>구하다</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="142"/>
+        <source>Save event changes</source>
+        <translation>이벤트 변경 사항 저장</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="145"/>
+        <source>Ctrl+S</source>
+        <translation>Ctrl+S</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="153"/>
         <source>Create an EMT switch opening and reclosing event sequence</source>
         <translation>EMT 스위치 개폐 및 재투입 이벤트 시퀀스 생성</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="140"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="182"/>
+        <source>Create Event Group</source>
+        <translation>이벤트 그룹 생성</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="185"/>
+        <source>Create an event group</source>
+        <translation>이벤트 그룹 생성</translation>
+    </message>
+    <message>
         <source>Add Event</source>
-        <translation>이벤트 추가</translation>
+        <translation type="vanished">이벤트 추가</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="152"/>
         <source>Remove Selected</source>
-        <translation>선택 항목 제거</translation>
+        <translation type="vanished">선택 항목 제거</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="164"/>
         <source>Add Event Group</source>
         <translation>이벤트 그룹 추가</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="167"/>
         <source>Create an event group for this simulation mode</source>
-        <translation>이 시뮬레이션 모드에 이벤트 그룹 생성</translation>
+        <translation type="vanished">이 시뮬레이션 모드에 이벤트 그룹 생성</translation>
     </message>
     <message>
         <source>Empty dynamic model</source>
-        <translation>동적 모델 비우기</translation>
+        <translation type="vanished">동적 모델 비우기</translation>
     </message>
     <message>
         <source>Events cannot be added because this dynamic model has no event parameters.</source>
-        <translation>이 동적 모델에 이벤트 파라미터가 없으므로 이벤트를 추가할 수 없습니다.</translation>
+        <translation type="vanished">이 동적 모델에 이벤트 파라미터가 없으므로 이벤트를 추가할 수 없습니다.</translation>
     </message>
     <message>
         <source>Events saved</source>
-        <translation>이벤트 저장됨</translation>
+        <translation type="vanished">이벤트 저장됨</translation>
     </message>
     <message>
         <source>Invalid dynamic events</source>
-        <translation>유효하지 않은 동적 이벤트</translation>
+        <translation type="vanished">유효하지 않은 동적 이벤트</translation>
     </message>
     <message>
         <source>Invalid event group</source>
@@ -3896,15 +4018,15 @@ Are you sure?</source>
     </message>
     <message>
         <source>Invalid parameter</source>
-        <translation>유효하지 않은 파라미터</translation>
+        <translation type="vanished">유효하지 않은 파라미터</translation>
     </message>
     <message>
         <source>No events can be added because the dynamic model has no event parameters.</source>
-        <translation>동적 모델에 이벤트 파라미터가 없으므로 이벤트를 추가할 수 없습니다.</translation>
+        <translation type="vanished">동적 모델에 이벤트 파라미터가 없으므로 이벤트를 추가할 수 없습니다.</translation>
     </message>
     <message>
         <source>Remove</source>
-        <translation>제거하다</translation>
+        <translation type="vanished">제거하다</translation>
     </message>
     <message>
         <source>Remove event</source>
@@ -3915,7 +4037,7 @@ Are you sure?</source>
         <translation type="vanished">이벤트 그룹 제거</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="155"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="177"/>
         <source>Remove the selected event or event group</source>
         <translation>선택된 이벤트 또는 이벤트 그룹 제거</translation>
     </message>
@@ -3924,9 +4046,8 @@ Are you sure?</source>
         <translation type="vanished">이름 바꾸기</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="112"/>
         <source>Save events</source>
-        <translation>이벤트 저장</translation>
+        <translation type="vanished">이벤트 저장</translation>
     </message>
     <message>
         <source>Select the event group where you want to add the event.</source>
@@ -3937,16 +4058,16 @@ Are you sure?</source>
         <translation type="vanished">제거하려는 이벤트 또는 이벤트 그룹을 선택하십시오.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="128"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="150"/>
         <source>Switch Sequence Wizard</source>
         <translation>스위치 시퀀스 마법사</translation>
     </message>
     <message>
         <source>The event group name must be non-empty and unique in this simulation mode.</source>
-        <translation>이벤트 그룹 이름은 비어 있지 않아야 하며 이 시뮬레이션 모드에서 고유해야 합니다.</translation>
+        <translation type="vanished">이벤트 그룹 이름은 비어 있지 않아야 하며 이 시뮬레이션 모드에서 고유해야 합니다.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="81"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="101"/>
         <source>This dynamic model is empty. New events cannot be added until the model is built.</source>
         <translation>이 동적 모델은 비어 있습니다. 모델이 구축될 때까지 새 이벤트를 추가할 수 없습니다.</translation>
     </message>
@@ -3956,26 +4077,66 @@ Are you sure?</source>
     </message>
     <message>
         <source>Add an event and select its event group</source>
-        <translation>이벤트를 추가하고 이벤트 그룹을 선택하세요</translation>
+        <translation type="vanished">이벤트를 추가하고 이벤트 그룹을 선택하세요</translation>
     </message>
     <message>
         <source>Create an event group before adding an event.</source>
-        <translation>이벤트를 추가하기 전에 이벤트 그룹을 생성하세요.</translation>
+        <translation type="vanished">이벤트를 추가하기 전에 이벤트 그룹을 생성하세요.</translation>
     </message>
     <message>
         <source>Select the event you want to remove.</source>
-        <translation>제거하려는 이벤트를 선택하세요.</translation>
+        <translation type="vanished">제거하려는 이벤트를 선택하세요.</translation>
+    </message>
+    <message>
+        <source>An event group with this name already exists.</source>
+        <translation>이 이름의 이벤트 그룹이 이미 존재합니다.</translation>
+    </message>
+    <message>
+        <source>Delete all device events</source>
+        <translation>모든 장치 이벤트 삭제</translation>
+    </message>
+    <message>
+        <source>Delete all events for this device and simulation mode?</source>
+        <translation>이 장치 및 시뮬레이션 모드의 모든 이벤트를 삭제하시겠습니까?</translation>
+    </message>
+    <message>
+        <source>Group name:</source>
+        <translation>그룹 이름:</translation>
+    </message>
+    <message>
+        <source>Remove '{name}' and all events in this group?</source>
+        <translation>'{name}'과 이 그룹의 모든 이벤트를 제거하시겠습니까?</translation>
+    </message>
+    <message>
+        <source>Remove event group</source>
+        <translation>이벤트 그룹 제거</translation>
+    </message>
+    <message>
+        <source>Remove the selected event?</source>
+        <translation>선택한 이벤트 제거?</translation>
+    </message>
+    <message>
+        <source>Select an event group before adding an event.</source>
+        <translation>이벤트를 추가하기 전에 이벤트 그룹을 선택하십시오.</translation>
+    </message>
+    <message>
+        <source>Select an event or event group to remove.</source>
+        <translation>제거할 이벤트 또는 이벤트 그룹을 선택하십시오.</translation>
+    </message>
+    <message>
+        <source>The dynamic model has no event parameters.</source>
+        <translation>동적 모델에 이벤트 매개변수가 없습니다.</translation>
     </message>
 </context>
 <context>
     <name>DynamicEventsTreeModel</name>
     <message>
         <source>Align Step</source>
-        <translation>스텝 정렬</translation>
+        <translation type="vanished">스텝 정렬</translation>
     </message>
     <message>
         <source>End Time</source>
-        <translation>종료 시간</translation>
+        <translation type="vanished">종료 시간</translation>
     </message>
     <message>
         <source>Invalid / Ungrouped Events</source>
@@ -3983,15 +4144,15 @@ Are you sure?</source>
     </message>
     <message>
         <source>Invalid parameter</source>
-        <translation>유효하지 않은 파라미터</translation>
+        <translation type="vanished">유효하지 않은 파라미터</translation>
     </message>
     <message>
         <source>New Value</source>
-        <translation>새 값</translation>
+        <translation type="vanished">새 값</translation>
     </message>
     <message>
         <source>Parameter</source>
-        <translation>파라미터</translation>
+        <translation type="vanished">파라미터</translation>
     </message>
     <message>
         <source>These persisted events do not reference a valid events group and can only be removed.</source>
@@ -3999,19 +4160,19 @@ Are you sure?</source>
     </message>
     <message>
         <source>Time</source>
-        <translation>시간</translation>
+        <translation type="vanished">시간</translation>
     </message>
     <message>
         <source>Transition</source>
-        <translation>전환</translation>
+        <translation type="vanished">전환</translation>
     </message>
     <message>
         <source>Event Group</source>
-        <translation>이벤트 그룹</translation>
+        <translation type="vanished">이벤트 그룹</translation>
     </message>
     <message>
         <source>Select Event Group</source>
-        <translation>이벤트 그룹 선택</translation>
+        <translation type="vanished">이벤트 그룹 선택</translation>
     </message>
 </context>
 <context>
@@ -4188,6 +4349,79 @@ select the expected processing format</source>
     <message>
         <source>Choose an FMU file first.</source>
         <translation>먼저 FMU 파일을 선택하세요.</translation>
+    </message>
+</context>
+<context>
+    <name>Form</name>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="14"/>
+        <source>Add block property</source>
+        <translation>블록 속성 추가</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="26"/>
+        <source>Add symbol to selected block</source>
+        <translation>선택된 블록에 심볼 추가</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="71"/>
+        <source>Output</source>
+        <translation>출력</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="78"/>
+        <source>Create derivative variable</source>
+        <translation>미분 변수 생성</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="144"/>
+        <source>New symbol name</source>
+        <translation>새 심볼 이름</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="151"/>
+        <source>Symbol category</source>
+        <translation>심볼 카테고리</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="158"/>
+        <source>Owner block</source>
+        <translation>소유 블록</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="165"/>
+        <source>Type</source>
+        <translation>유형</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="172"/>
+        <source>Add symbol</source>
+        <translation>심볼 추가</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="195"/>
+        <source>Static device mapping</source>
+        <translation>정적 장치 매핑</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="202"/>
+        <source>Power-flow variable used to initialize this dynamic variable.</source>
+        <translation>이 동적 변수를 초기화하는 데 사용되는 전력 흐름 변수입니다.</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="205"/>
+        <source>Power-flow variable</source>
+        <translation>전력 흐름 변수</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="266"/>
+        <source>Enter a name</source>
+        <translation>이름을 입력하세요</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="273"/>
+        <source>Initial numeric value</source>
+        <translation>초기 수치 값</translation>
     </message>
 </context>
 <context>
@@ -13037,7 +13271,7 @@ You need to load or create a grid!</source>
     <message>
         <location filename="../Main/MainWindow.ui" line="12999"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Candidate investment generator&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Generate candidate reinforcements (new lines and upgrades) for N-1 violations via LODF/PTDF screening&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Candidate investment generator&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Generate candidate reinforcements (new lines and upgrades) for N-1 violations via LODF/PTDF screening&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Candidate investment generator&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Generate candidate reinforcements (new lines and upgrades) for N-1 violations via LODF/PTDF screening&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="13117"/>
@@ -15851,21 +16085,21 @@ You need to load or create a grid!</source>
     </message>
 </context>
 <context>
-    <name>BaseMainGui</name>
+    <name>DiagramScene</name>
     <message>
-        <source>Are you sure that you want to cancel the simulation?</source>
-        <translation>시뮬레이션을 취소하시겠습니까?</translation>
+        <source>Block info</source>
+        <translation>블록 정보</translation>
     </message>
     <message>
-        <source>Unlocking the UI may cause crash depending on the conditions. Are you sure?</source>
-        <translation>UI 잠금 해제가 조건에 따라 충돌을 일으킬 수 있습니다. 정말로 하시겠습니까?</translation>
+        <source>Edit block</source>
+        <translation>블록 편집</translation>
     </message>
 </context>
 <context>
-    <name>DynamicEventsFilterPopup</name>
+    <name>DynamicEventGroupsTreeModel</name>
     <message>
-        <source>All</source>
-        <translation>모두</translation>
+        <source>Event groups</source>
+        <translation>이벤트 그룹</translation>
     </message>
 </context>
 </TS>

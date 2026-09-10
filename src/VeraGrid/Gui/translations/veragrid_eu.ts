@@ -662,6 +662,17 @@ li.checked::marker { content: &quot;\2612&quot;; }
     </message>
 </context>
 <context>
+    <name>BaseMainGui</name>
+    <message>
+        <source>Are you sure that you want to cancel the simulation?</source>
+        <translation>Zure simulazioa kitatu nahi duzun ziurtatu zara?</translation>
+    </message>
+    <message>
+        <source>Unlocking the UI may cause crash depending on the conditions. Are you sure?</source>
+        <translation>UI-a irekitzeko buruzko zailtasunak kausatu dezake. Ziurtatu zara?</translation>
+    </message>
+</context>
+<context>
     <name>BlockEditorWindow</name>
     <message>
         <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="14"/>
@@ -2958,6 +2969,18 @@ Are you sure?</translation>
         <source>You are going to delete the complete model and start from scratch. Are you sure?</source>
         <translation type="vanished">Modelo osoa bete nahi duzu eta hasieraetik hasi. Zure ziurtasunez dagozu?</translation>
     </message>
+    <message>
+        <source>Block info</source>
+        <translation>Blok informazioa</translation>
+    </message>
+    <message>
+        <source>No online catalogue documentation is available for this custom block.</source>
+        <translation>Ez dago online katalogo dokumentazioa kudeaketa-blok handika.</translation>
+    </message>
+    <message>
+        <source>The online block documentation could not be opened.</source>
+        <translation>Online blok dokumentazioa ireki nahi ez da.</translation>
+    </message>
 </context>
 <context>
     <name>DynamicBlockPropertiesDialog</name>
@@ -2967,9 +2990,8 @@ Are you sure?</translation>
         <translation>Blokatzeko propietatak</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="70"/>
         <source>Apply changes</source>
-        <translation>Kirolak aplikatu</translation>
+        <translation type="vanished">Kirolak aplikatu</translation>
     </message>
     <message>
         <source>Close</source>
@@ -2981,11 +3003,11 @@ Are you sure?</translation>
     </message>
     <message>
         <source>Add symbol</source>
-        <translation>Simbolo gehitu</translation>
+        <translation type="vanished">Simbolo gehitu</translation>
     </message>
     <message>
         <source>Add symbol to selected block</source>
-        <translation>Simboloa aukeratutako blokean gehitu</translation>
+        <translation type="vanished">Simboloa aukeratutako blokean gehitu</translation>
     </message>
     <message>
         <source>Advanced runtime logic</source>
@@ -2996,16 +3018,17 @@ Are you sure?</translation>
         <translation>Aplikatu egoera-neurriak DAE-kodearekin edo simbolo-interfazioaren gai-aldaketakarekin lotuta.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="388"/>
         <source>Block / equation group</source>
         <translation>Blokea / ekuazio-grupoa</translation>
     </message>
     <message>
         <source>Block configuration</source>
-        <translation>Blokearen konfigurazioa</translation>
+        <translation type="vanished">Blokearen konfigurazioa</translation>
     </message>
     <message>
         <source>Block info</source>
-        <translation>Blokearen informazioa</translation>
+        <translation type="vanished">Blokearen informazioa</translation>
     </message>
     <message>
         <source>Block properties - {name}</source>
@@ -3028,12 +3051,13 @@ Are you sure?</translation>
         <translation>Aldaketak aplikatuak. Desigualdade aurreratuak/diskretuak/booleanoak ez dira aldatu.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="323"/>
         <source>Clear</source>
         <translation>Garbi</translation>
     </message>
     <message>
         <source>Create derivative variable</source>
-        <translation>Deribateri variabile sortu</translation>
+        <translation type="vanished">Deribateri variabile sortu</translation>
     </message>
     <message>
         <source>DAE and runtime-logic changes applied to the editor working copy.</source>
@@ -3044,8 +3068,9 @@ Are you sure?</translation>
         <translation type="vanished">DAE-kodea balio bate dago.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="131"/>
         <source>DAE model</source>
-        <translation type="vanished">DAE modeloa</translation>
+        <translation>DAE modeloa</translation>
     </message>
     <message>
         <source>DAE validation failed at line {line}: {message}</source>
@@ -3057,11 +3082,11 @@ Are you sure?</translation>
     </message>
     <message>
         <source>Download rendered PDF</source>
-        <translation>PDF renderatutakoa deskargatu</translation>
+        <translation type="vanished">PDF renderatutakoa deskargatu</translation>
     </message>
     <message>
         <source>Enter a name</source>
-        <translation>Izena sartu</translation>
+        <translation type="vanished">Izena sartu</translation>
     </message>
     <message>
         <source>Enter a valid Python symbol name.</source>
@@ -3072,14 +3097,48 @@ Are you sure?</translation>
         <translation>Ekuazio PDF sortu: {path}</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="158"/>
         <source>Equation owner</source>
         <translation>Ekuazioaren jatorria</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="251"/>
+        <source>&lt;&lt;</source>
+        <translation>&lt;&lt;</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="261"/>
+        <source>&gt;&gt;</source>
+        <translation>&gt;&gt;</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="289"/>
+        <source>LaTeX rendering</source>
+        <translation>LaTeX erakustarakoa</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="343"/>
+        <source>Save redered PDF</source>
+        <translation>PDF erakustarakoat salbatu</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="372"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="393"/>
         <source>Equations</source>
         <translation>Ekuazioak</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="410"/>
+        <source>LaTex source</source>
+        <translation>LaTeX iturria</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="509"/>
+        <source>Accept changes</source>
+        <translation>Aldaketak onartu</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="40"/>
         <source>General options</source>
         <translation>Optionak nagusiak</translation>
     </message>
@@ -3089,7 +3148,7 @@ Are you sure?</translation>
     </message>
     <message>
         <source>Initial numeric value</source>
-        <translation>Balio numeriko inguruko</translation>
+        <translation type="vanished">Balio numeriko inguruko</translation>
     </message>
     <message>
         <source>Inputs</source>
@@ -3101,11 +3160,11 @@ Are you sure?</translation>
     </message>
     <message>
         <source>LaTeX</source>
-        <translation>LaTeX</translation>
+        <translation type="vanished">LaTeX</translation>
     </message>
     <message>
         <source>LaTeX source</source>
-        <translation>LaTeX iturria</translation>
+        <translation type="vanished">LaTeX iturria</translation>
     </message>
     <message>
         <source>Name</source>
@@ -3113,11 +3172,11 @@ Are you sure?</translation>
     </message>
     <message>
         <source>New symbol name</source>
-        <translation>Simbolo berri izena</translation>
+        <translation type="vanished">Simbolo berri izena</translation>
     </message>
     <message>
         <source>Next</source>
-        <translation>Hurrengo</translation>
+        <translation type="vanished">Hurrengo</translation>
     </message>
     <message>
         <source>No matches</source>
@@ -3125,7 +3184,7 @@ Are you sure?</translation>
     </message>
     <message>
         <source>No online catalogue documentation is available for this custom block.</source>
-        <translation>Ez dago online katalogo dokumentazioa gai bloke honearen gaineko.</translation>
+        <translation type="vanished">Ez dago online katalogo dokumentazioa gai bloke honearen gaineko.</translation>
     </message>
     <message>
         <source>None</source>
@@ -3141,11 +3200,11 @@ Are you sure?</translation>
     </message>
     <message>
         <source>Opens the documentation for the original predefined library block. If this block has been modified in the editor, its current equations, symbols, parameters, or runtime logic may differ from the online documentation.</source>
-        <translation>Ireki da oraindik definitu dagoen biblioteka blokearen dokumentazioa. Hone blokea editorean geroa egin da, bere ekuazioak, simboloak, parametroak edo gointzaren logika neurrategia online dokumentazioarekin ez da lotuta daiteke.</translation>
+        <translation type="vanished">Ireki da oraindik definitu dagoen biblioteka blokearen dokumentazioa. Hone blokea editorean geroa egin da, bere ekuazioak, simboloak, parametroak edo gointzaren logika neurrategia online dokumentazioarekin ez da lotuta daiteke.</translation>
     </message>
     <message>
         <source>Output</source>
-        <translation>Irau</translation>
+        <translation type="vanished">Irau</translation>
     </message>
     <message>
         <source>Outputs</source>
@@ -3153,7 +3212,7 @@ Are you sure?</translation>
     </message>
     <message>
         <source>Owner block</source>
-        <translation>Jatorri blokea</translation>
+        <translation type="vanished">Jatorri blokea</translation>
     </message>
     <message>
         <source>PDF documents (*.pdf)</source>
@@ -3169,19 +3228,19 @@ Are you sure?</translation>
     </message>
     <message>
         <source>Power-flow variable</source>
-        <translation>Potentzial-uharraldearen variablea</translation>
+        <translation type="vanished">Potentzial-uharraldearen variablea</translation>
     </message>
     <message>
         <source>Power-flow variable used to initialize this dynamic variable.</source>
-        <translation>Hau dinamiko variablea lehenesanatzeko erabiltzen den potentzial-uharraldearen variablea.</translation>
+        <translation type="vanished">Hau dinamiko variablea lehenesanatzeko erabiltzen den potentzial-uharraldearen variablea.</translation>
     </message>
     <message>
         <source>Previous</source>
-        <translation>Aurreko</translation>
+        <translation type="vanished">Aurreko</translation>
     </message>
     <message>
         <source>Python code</source>
-        <translation>Python koda</translation>
+        <translation type="vanished">Python koda</translation>
     </message>
     <message>
         <source>Rename...</source>
@@ -3196,6 +3255,7 @@ Are you sure?</translation>
         <translation>Dinamiko ekuazioak PDF-era itxurkari</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="238"/>
         <source>Search Python code...</source>
         <translation>Python kodaarekin bilatu...</translation>
     </message>
@@ -3216,6 +3276,7 @@ Are you sure?</translation>
         <translation>Simbolo mota legezko bat aukeratu.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="316"/>
         <source>Select all</source>
         <translation>Hautatu guztiak</translation>
     </message>
@@ -3224,10 +3285,12 @@ Are you sure?</translation>
         <translation>Ekuazio grupo lege ez bat aukeratu.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="422"/>
         <source>Select equation groups to generate copyable LaTeX source.</source>
         <translation>Kopiatu daiteko LaTeX urratzia sortzeko ekuazio grupoak aukeratu.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="378"/>
         <source>Select the equation groups to include. Each internal block and each DAE section can be selected independently.</source>
         <translation>Sertu nahi dituzten ekuazio grupoak aukeratu. Bloke harritako bakoak eta DAE sezioko bakoak independentean aukeratu daitezke.</translation>
     </message>
@@ -3237,11 +3300,11 @@ Are you sure?</translation>
     </message>
     <message>
         <source>Static device mapping</source>
-        <translation>Eginak estatikoak mapatu</translation>
+        <translation type="vanished">Eginak estatikoak mapatu</translation>
     </message>
     <message>
         <source>Symbol category</source>
-        <translation>Simbolo kategoriak</translation>
+        <translation type="vanished">Simbolo kategoriak</translation>
     </message>
     <message>
         <source>The PDF could not be created: {message}</source>
@@ -3249,9 +3312,10 @@ Are you sure?</translation>
     </message>
     <message>
         <source>The online block documentation could not be opened in the system browser.</source>
-        <translation>Online bloke dokumentazioa sistema-browserrean ireki daiteko.</translation>
+        <translation type="vanished">Online bloke dokumentazioa sistema-browserrean ireki daiteko.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="440"/>
         <source>These settings contain structured data used to regenerate the block. Edit sequences with valid Python tuple/list syntax.</source>
         <translation>Ezaugarri hauek blokea berriro sortzeko erabiltzen den egoera datuak dituzte. Sekuentziak Python tuple/list sintaxis legearekin editatu.</translation>
     </message>
@@ -3261,7 +3325,7 @@ Are you sure?</translation>
     </message>
     <message>
         <source>Type</source>
-        <translation>Tipoa</translation>
+        <translation type="vanished">Tipoa</translation>
     </message>
     <message>
         <source>Validate all code</source>
@@ -3281,19 +3345,20 @@ Are you sure?</translation>
     </message>
     <message>
         <source>+ Add procedural logic</source>
-        <translation>+ Prozedural logika gehitu</translation>
+        <translation type="vanished">+ Prozedural logika gehitu</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="188"/>
         <source>Add one procedural behavior to the active equation owner&apos;s Python code.</source>
         <translation>Prozedurala ziurtatu bat aktiboa dagoen iruzainaren Python kodean gehitu.</translation>
     </message>
     <message>
         <source>DAE editor</source>
-        <translation>DAE editorea</translation>
+        <translation type="vanished">DAE editorea</translation>
     </message>
     <message>
         <source>Documentation</source>
-        <translation>Dokumentazioa</translation>
+        <translation type="vanished">Dokumentazioa</translation>
     </message>
     <message>
         <source>Model code is valid.</source>
@@ -3312,6 +3377,7 @@ Are you sure?</translation>
         <translation>Modeu mantendu</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="82"/>
         <source>Search properties...</source>
         <translation>Propietateak (...) bilatu</translation>
     </message>
@@ -3321,9 +3387,10 @@ Are you sure?</translation>
     </message>
     <message>
         <source>Show or hide Python code and LaTeX rendering tool</source>
-        <translation>Python kodea eta LaTeX renderatzeko tresna erakustea edo isgauztu</translation>
+        <translation type="vanished">Python kodea eta LaTeX renderatzeko tresna erakustea edo isgauztu</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="434"/>
         <source>Special configuration</source>
         <translation>Konfigurazio zehatza</translation>
     </message>
@@ -3336,6 +3403,7 @@ Are you sure?</translation>
         <translation>Aukeratu dagoen iruzainaren Python-kode buffer batek ez dago.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="482"/>
         <source>Validate model</source>
         <translation>Modeloa baliatu</translation>
     </message>
@@ -3346,6 +3414,22 @@ Are you sure?</translation>
     <message>
         <source>Unsaved Block Properties changes</source>
         <translation>Block Properties-ko dirudiak ez dago jartuak</translation>
+    </message>
+    <message>
+        <source>Add parameter...</source>
+        <translation>Parametrua gehitu...</translation>
+    </message>
+    <message>
+        <source>Add retained mode...</source>
+        <translation>Estatua mantendu modu gehitu...</translation>
+    </message>
+    <message>
+        <source>Add variable...</source>
+        <translation>Bariablea gehitu...</translation>
+    </message>
+    <message>
+        <source>Nothing was added: {message}</source>
+        <translation>Zer ez da gehitua: {message}</translation>
     </message>
 </context>
 <context>
@@ -3432,19 +3516,19 @@ Are you sure?</translation>
     <name>DynamicEditorWorkspaceSession</name>
     <message>
         <source>Invalid dynamic events</source>
-        <translation>Ekitate dinamikoak balio batean dauden</translation>
+        <translation type="vanished">Ekitate dinamikoak balio batean dauden</translation>
     </message>
     <message>
         <source>Save the changes before closing the last events tab?</source>
-        <translation>Dirudiak jartu baino lehen ekitate ekitateak xutetzea?</translation>
+        <translation type="vanished">Dirudiak jartu baino lehen ekitate ekitateak xutetzea?</translation>
     </message>
     <message>
         <source>The dynamic events contain unsaved changes.</source>
-        <translation>Ekitate dinamikoak dirudiak ez dago jartuak dituzte.</translation>
+        <translation type="vanished">Ekitate dinamikoak dirudiak ez dago jartuak dituzte.</translation>
     </message>
     <message>
         <source>Unsaved dynamic events</source>
-        <translation>Ekitate dinamikoak ez dago jartuak</translation>
+        <translation type="vanished">Ekitate dinamikoak ez dago jartuak</translation>
     </message>
 </context>
 <context>
@@ -3752,35 +3836,42 @@ Are you sure?</translation>
     <name>DynamicEventsDraftSession</name>
     <message>
         <source>An event and its events group use different simulation modes.</source>
-        <translation>Ekitate batek eta bere ekitate grupoak simulazio modu ezberdinak erabiltzen dituzte.</translation>
+        <translation type="vanished">Ekitate batek eta bere ekitate grupoak simulazio modu ezberdinak erabiltzen dituzte.</translation>
     </message>
     <message>
         <source>An event has no target device.</source>
-        <translation>Ekitate batek oinarrizko gailu batek ez du.</translation>
+        <translation type="vanished">Ekitate batek oinarrizko gailu batek ez du.</translation>
     </message>
     <message>
         <source>An event in device &apos;{device}&apos; has no valid events group.</source>
-        <translation>Ekitate batek &apos;{device}&apos; gailuan balio batean dagoen ekitate grupo batek ez du.</translation>
+        <translation type="vanished">Ekitate batek &apos;{device}&apos; gailuan balio batean dagoen ekitate grupo batek ez du.</translation>
     </message>
     <message>
         <source>An event in device &apos;{device}&apos; has no valid parameter.</source>
-        <translation>Ekitate batek &apos;{device}&apos; gailuan balio batean dagoen parametro batek ez du.</translation>
+        <translation type="vanished">Ekitate batek &apos;{device}&apos; gailuan balio batean dagoen parametro batek ez du.</translation>
     </message>
     <message>
         <source>An events group has an empty name.</source>
-        <translation>Ekitate grupo batek izen kosong batek gotuz.</translation>
+        <translation type="vanished">Ekitate grupo batek izen kosong batek gotuz.</translation>
     </message>
     <message>
         <source>Events for parameter &apos;{parameter}&apos; overlap in group &apos;{group}&apos; and device &apos;{device}&apos;.</source>
-        <translation>Parametro &apos;{parameter}&apos;ko ekitateak grupo &apos;{group}&apos; eta gailu &apos;{device}&apos; batean isekarteko da.</translation>
+        <translation type="vanished">Parametro &apos;{parameter}&apos;ko ekitateak grupo &apos;{group}&apos; eta gailu &apos;{device}&apos; batean isekarteko da.</translation>
     </message>
     <message>
         <source>The events group name &apos;{name}&apos; is duplicated.</source>
-        <translation>Ekitate grupoaren izena &apos;{name}&apos; errepikatua da.</translation>
+        <translation type="vanished">Ekitate grupoaren izena &apos;{name}&apos; errepikatua da.</translation>
     </message>
     <message>
         <source>The ramp event for parameter &apos;{parameter}&apos; has an invalid end time.</source>
-        <translation>Parametro &apos;{parameter}&apos;ko ramp event-ak amaitzeko denbora balio batean dagoen.</translation>
+        <translation type="vanished">Parametro &apos;{parameter}&apos;ko ramp event-ak amaitzeko denbora balio batean dagoen.</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventsFilterPopup</name>
+    <message>
+        <source>All</source>
+        <translation type="vanished">Beterrek</translation>
     </message>
 </context>
 <context>
@@ -3814,17 +3905,17 @@ Are you sure?</translation>
     <name>DynamicEventsItemDelegate</name>
     <message>
         <source>Ramp</source>
-        <translation>Rampa</translation>
+        <translation type="vanished">Rampa</translation>
     </message>
     <message>
         <source>Step</source>
-        <translation>Zututak</translation>
+        <translation type="vanished">Zututak</translation>
     </message>
 </context>
 <context>
     <name>DynamicEventsPage</name>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="143"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="165"/>
         <source>Add an event to the selected event group</source>
         <translation>Ego-grupari hautsaitako egoera gehitzea</translation>
     </message>
@@ -3834,7 +3925,7 @@ Are you sure?</translation>
     </message>
     <message>
         <source>Are you sure you want to remove the event for &apos;{parameter}&apos; at {time:.4f} s?</source>
-        <translation>Zure &apos;{parameter}&apos; egoera apurtu nahi duzun ziurtatu {time:.4f} s-an?</translation>
+        <translation type="vanished">Zure &apos;{parameter}&apos; egoera apurtu nahi duzun ziurtatu {time:.4f} s-an?</translation>
     </message>
     <message>
         <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="14"/>
@@ -3842,45 +3933,76 @@ Are you sure?</translation>
         <translation>Ereki Dinamikoak</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="131"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="124"/>
+        <source>New</source>
+        <translation>Berri</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="127"/>
+        <source>Delete all events of this simulation mode from the current device</source>
+        <translation>Gailu kopurua dagoen simulazio-moduaren gertakari guztien kontaintza egin</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="139"/>
+        <source>Save</source>
+        <translation>Gorde</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="142"/>
+        <source>Save event changes</source>
+        <translation>Gertakari-aldaketak salbatu</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="145"/>
+        <source>Ctrl+S</source>
+        <translation>Ktrl+S</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="153"/>
         <source>Create an EMT switch opening and reclosing event sequence</source>
         <translation>EMT altzola ireketa eta bardutze egoera-silsilak sortu</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="140"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="182"/>
+        <source>Create Event Group</source>
+        <translation>Gertakari-grupo sortu</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="185"/>
+        <source>Create an event group</source>
+        <translation>Gertakari-grupo bat sortu</translation>
+    </message>
+    <message>
         <source>Add Event</source>
-        <translation>Ereki Sartu</translation>
+        <translation type="vanished">Ereki Sartu</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="152"/>
         <source>Remove Selected</source>
-        <translation>Kendu Hautatuak</translation>
+        <translation type="vanished">Kendu Hautatuak</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="164"/>
         <source>Add Event Group</source>
         <translation>Ereki Taldea Sartu</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="167"/>
         <source>Create an event group for this simulation mode</source>
-        <translation>Simulazio-modo honeko ego-grupo bat sortu</translation>
+        <translation type="vanished">Simulazio-modo honeko ego-grupo bat sortu</translation>
     </message>
     <message>
         <source>Empty dynamic model</source>
-        <translation>Modelo dinamiko joan</translation>
+        <translation type="vanished">Modelo dinamiko joan</translation>
     </message>
     <message>
         <source>Events cannot be added because this dynamic model has no event parameters.</source>
-        <translation>Egoerak gehi nahi ez dira, modelo dinamiko honek egoera parametroak ez du.</translation>
+        <translation type="vanished">Egoerak gehi nahi ez dira, modelo dinamiko honek egoera parametroak ez du.</translation>
     </message>
     <message>
         <source>Events saved</source>
-        <translation>Egoerak taldeatu</translation>
+        <translation type="vanished">Egoerak taldeatu</translation>
     </message>
     <message>
         <source>Invalid dynamic events</source>
-        <translation>Ekitate dinamikoak balio batean dauden</translation>
+        <translation type="vanished">Ekitate dinamikoak balio batean dauden</translation>
     </message>
     <message>
         <source>Invalid event group</source>
@@ -3888,15 +4010,15 @@ Are you sure?</translation>
     </message>
     <message>
         <source>Invalid parameter</source>
-        <translation>Parametru ez baliozkoa</translation>
+        <translation type="vanished">Parametru ez baliozkoa</translation>
     </message>
     <message>
         <source>No events can be added because the dynamic model has no event parameters.</source>
-        <translation>Egoerak gehi nahi ez dira, modelo dinamikoak egoera parametroak ez du.</translation>
+        <translation type="vanished">Egoerak gehi nahi ez dira, modelo dinamikoak egoera parametroak ez du.</translation>
     </message>
     <message>
         <source>Remove</source>
-        <translation>Kendu</translation>
+        <translation type="vanished">Kendu</translation>
     </message>
     <message>
         <source>Remove event</source>
@@ -3907,7 +4029,7 @@ Are you sure?</translation>
         <translation type="vanished">Egoerak grupo bete</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="155"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="177"/>
         <source>Remove the selected event or event group</source>
         <translation>Hautsaitako egoera edo ego-grupoa bete</translation>
     </message>
@@ -3916,9 +4038,8 @@ Are you sure?</translation>
         <translation type="vanished">Izena daida</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="112"/>
         <source>Save events</source>
-        <translation>Egoerak taldeatu</translation>
+        <translation type="vanished">Egoerak taldeatu</translation>
     </message>
     <message>
         <source>Select the event group where you want to add the event.</source>
@@ -3929,16 +4050,16 @@ Are you sure?</translation>
         <translation type="vanished">Apurtu nahi duzun egoera edo ego-grupoa hautatu.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="128"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="150"/>
         <source>Switch Sequence Wizard</source>
         <translation>Zigurutuzko Sukegiak Aldatzeko Zirkuitu-Zirkuitua</translation>
     </message>
     <message>
         <source>The event group name must be non-empty and unique in this simulation mode.</source>
-        <translation>Ego-grupoaren izenak ez izan behar ezik eta uniko izan behar simulazio-modo honean.</translation>
+        <translation type="vanished">Ego-grupoaren izenak ez izan behar ezik eta uniko izan behar simulazio-modo honean.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="81"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="101"/>
         <source>This dynamic model is empty. New events cannot be added until the model is built.</source>
         <translation>Modelo dinamiko hau joan dago. Modeloa sortu arte, egoerak berriak gehi nahi da ez.</translation>
     </message>
@@ -3948,26 +4069,66 @@ Are you sure?</translation>
     </message>
     <message>
         <source>Add an event and select its event group</source>
-        <translation>Ereki bat sartu eta bere ereki taldea aukeratu</translation>
+        <translation type="vanished">Ereki bat sartu eta bere ereki taldea aukeratu</translation>
     </message>
     <message>
         <source>Create an event group before adding an event.</source>
-        <translation>Ereki bat sartu baino lehen ereki taldea bat sortu.</translation>
+        <translation type="vanished">Ereki bat sartu baino lehen ereki taldea bat sortu.</translation>
     </message>
     <message>
         <source>Select the event you want to remove.</source>
-        <translation>Steitureko erekia aukeratu.</translation>
+        <translation type="vanished">Steitureko erekia aukeratu.</translation>
+    </message>
+    <message>
+        <source>An event group with this name already exists.</source>
+        <translation>Izena baten gertakari-grupo bat dago ere.</translation>
+    </message>
+    <message>
+        <source>Delete all device events</source>
+        <translation>Gailu kopurueko gertakari guztien kontaintza egin</translation>
+    </message>
+    <message>
+        <source>Delete all events for this device and simulation mode?</source>
+        <translation>Gailu kopurueko eta simulazio-moduaren gertakari guztien kontaintza egin?</translation>
+    </message>
+    <message>
+        <source>Group name:</source>
+        <translation>Grupoen izena:</translation>
+    </message>
+    <message>
+        <source>Remove '{name}' and all events in this group?</source>
+        <translation>Taldea honako '{name}' eta gertakari guztien kontaintza egin?</translation>
+    </message>
+    <message>
+        <source>Remove event group</source>
+        <translation>Gertakari-grupoa kontaintza egin</translation>
+    </message>
+    <message>
+        <source>Remove the selected event?</source>
+        <translation>Gertakari hautakontzat kontaintza egin?</translation>
+    </message>
+    <message>
+        <source>Select an event group before adding an event.</source>
+        <translation>Gertakari-grupo bat hautakontzi behar da gertakari bat gehitu baino lehen.</translation>
+    </message>
+    <message>
+        <source>Select an event or event group to remove.</source>
+        <translation>Kontaintza egiteko gertakari edo gertakari-grupo bat hautakontzi.</translation>
+    </message>
+    <message>
+        <source>The dynamic model has no event parameters.</source>
+        <translation>Modelo dinamikoak gertakari parametroak ez ditu.</translation>
     </message>
 </context>
 <context>
     <name>DynamicEventsTreeModel</name>
     <message>
         <source>Align Step</source>
-        <translation>Zuzendarata</translation>
+        <translation type="vanished">Zuzendarata</translation>
     </message>
     <message>
         <source>End Time</source>
-        <translation>Amaitzeko Oroa</translation>
+        <translation type="vanished">Amaitzeko Oroa</translation>
     </message>
     <message>
         <source>Invalid / Ungrouped Events</source>
@@ -3975,15 +4136,15 @@ Are you sure?</translation>
     </message>
     <message>
         <source>Invalid parameter</source>
-        <translation>Parametru ez baliozkoa</translation>
+        <translation type="vanished">Parametru ez baliozkoa</translation>
     </message>
     <message>
         <source>New Value</source>
-        <translation>Balio berria</translation>
+        <translation type="vanished">Balio berria</translation>
     </message>
     <message>
         <source>Parameter</source>
-        <translation>Parametru</translation>
+        <translation type="vanished">Parametru</translation>
     </message>
     <message>
         <source>These persisted events do not reference a valid events group and can only be removed.</source>
@@ -3991,19 +4152,19 @@ Are you sure?</translation>
     </message>
     <message>
         <source>Time</source>
-        <translation>Egutegia</translation>
+        <translation type="vanished">Egutegia</translation>
     </message>
     <message>
         <source>Transition</source>
-        <translation>Trantzisio</translation>
+        <translation type="vanished">Trantzisio</translation>
     </message>
     <message>
         <source>Event Group</source>
-        <translation>Ereki Taldea</translation>
+        <translation type="vanished">Ereki Taldea</translation>
     </message>
     <message>
         <source>Select Event Group</source>
-        <translation>Ereki Taldea Aukeratu</translation>
+        <translation type="vanished">Ereki Taldea Aukeratu</translation>
     </message>
 </context>
 <context>
@@ -4180,6 +4341,79 @@ prozesatzeko formatu espero denak aukeratu</translation>
     <message>
         <source>Choose an FMU file first.</source>
         <translation>Aukeratu lehenik FMU fitxategi bat.</translation>
+    </message>
+</context>
+<context>
+    <name>Form</name>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="14"/>
+        <source>Add block property</source>
+        <translation>Blok eigiaitza gehitu</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="26"/>
+        <source>Add symbol to selected block</source>
+        <translation>Simboloa aukeratutako blokean gehitu</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="71"/>
+        <source>Output</source>
+        <translation>Irau</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="78"/>
+        <source>Create derivative variable</source>
+        <translation>Deribateri variabile sortu</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="144"/>
+        <source>New symbol name</source>
+        <translation>Simbolo berri izena</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="151"/>
+        <source>Symbol category</source>
+        <translation>Simbolo kategoriak</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="158"/>
+        <source>Owner block</source>
+        <translation>Jatorri blokea</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="165"/>
+        <source>Type</source>
+        <translation>Tipoa</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="172"/>
+        <source>Add symbol</source>
+        <translation>Simbolo gehitu</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="195"/>
+        <source>Static device mapping</source>
+        <translation>Eginak estatikoak mapatu</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="202"/>
+        <source>Power-flow variable used to initialize this dynamic variable.</source>
+        <translation>Hau dinamiko variablea lehenesanatzeko erabiltzen den potentzial-uharraldearen variablea.</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="205"/>
+        <source>Power-flow variable</source>
+        <translation>Potentzial-uharraldearen variablea</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="266"/>
+        <source>Enter a name</source>
+        <translation>Izena sartu</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="273"/>
+        <source>Initial numeric value</source>
+        <translation>Balio numeriko inguruko</translation>
     </message>
 </context>
 <context>
@@ -13048,7 +13282,7 @@ Ekarri edo sortu ekarri-erakunde bat!</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="12999"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Candidate investment generator&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Generate candidate reinforcements (new lines and upgrades) for N-1 violations via LODF/PTDF screening&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Inbertsio kandidatu sortzailea&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Sortu indartzeko kandidatuak (lineak berriak eta eguneratzak) N-1 eragtalak LODF/PTDF skreeningaren bidez&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Inbertsio kandidatu sortzailea&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Sortu indartzeko kandidatuak (lineak berriak eta eguneratzak) N-1 eragtalak LODF/PTDF skreeningaren bidez&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="13117"/>
@@ -15862,21 +16096,21 @@ Ekarri edo sortu ekarri-erakunde bat!</translation>
     </message>
 </context>
 <context>
-    <name>BaseMainGui</name>
+    <name>DiagramScene</name>
     <message>
-        <source>Are you sure that you want to cancel the simulation?</source>
-        <translation>Zure simulazioa kitatu nahi duzun ziurtatu zara?</translation>
+        <source>Block info</source>
+        <translation>Blok informazioa</translation>
     </message>
     <message>
-        <source>Unlocking the UI may cause crash depending on the conditions. Are you sure?</source>
-        <translation>UI-a irekitzeko buruzko zailtasunak kausatu dezake. Ziurtatu zara?</translation>
+        <source>Edit block</source>
+        <translation>Blokak editatu</translation>
     </message>
 </context>
 <context>
-    <name>DynamicEventsFilterPopup</name>
+    <name>DynamicEventGroupsTreeModel</name>
     <message>
-        <source>All</source>
-        <translation>Beterrek</translation>
+        <source>Event groups</source>
+        <translation>Gertakari-grupoak</translation>
     </message>
 </context>
 </TS>

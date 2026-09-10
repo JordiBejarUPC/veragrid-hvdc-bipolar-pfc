@@ -660,6 +660,17 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
     </message>
 </context>
 <context>
+    <name>BaseMainGui</name>
+    <message>
+        <source>Are you sure that you want to cancel the simulation?</source>
+        <translation>Βέρετε ότι θέλετε να ακυρώσετε τηจำλοποίηση?</translation>
+    </message>
+    <message>
+        <source>Unlocking the UI may cause crash depending on the conditions. Are you sure?</source>
+        <translation>Το ξεκλείδωμα της διεπαφής χρήστη μπορεί να προκαλέσει κατάρρευση ανάλογα με τις συνθήκες. Βέρετε?</translation>
+    </message>
+</context>
+<context>
     <name>BlockEditorWindow</name>
     <message>
         <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="14"/>
@@ -2956,6 +2967,18 @@ Are you sure?</translation>
         <source>You are going to delete the complete model and start from scratch. Are you sure?</source>
         <translation type="vanished">You are going to delete the complete model and start from scratch. Are you sure?</translation>
     </message>
+    <message>
+        <source>Block info</source>
+        <translation>Πληροφορίες μπλοκ</translation>
+    </message>
+    <message>
+        <source>No online catalogue documentation is available for this custom block.</source>
+        <translation>Δεν είναι διαθέσιμη διαδικτυακή τεκμηρίωση καταλόγου για αυτό το προσαρμοσμένο μπλοκ.</translation>
+    </message>
+    <message>
+        <source>The online block documentation could not be opened.</source>
+        <translation>Δεν μπορούσε να ανοίξει η διαδικτυακή τεκμηρίωση του μπλοκ.</translation>
+    </message>
 </context>
 <context>
     <name>DynamicBlockPropertiesDialog</name>
@@ -2965,9 +2988,8 @@ Are you sure?</translation>
         <translation>Ιδιότητες μπλοκ</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="70"/>
         <source>Apply changes</source>
-        <translation>Εφαρμογή αλλαγών</translation>
+        <translation type="vanished">Εφαρμογή αλλαγών</translation>
     </message>
     <message>
         <source>Close</source>
@@ -2979,11 +3001,11 @@ Are you sure?</translation>
     </message>
     <message>
         <source>Add symbol</source>
-        <translation>Προσθήκη συμβόλου</translation>
+        <translation type="vanished">Προσθήκη συμβόλου</translation>
     </message>
     <message>
         <source>Add symbol to selected block</source>
-        <translation>Προσθήκη συμβόλου στο επιλεγμένο μπλοκ</translation>
+        <translation type="vanished">Προσθήκη συμβόλου στο επιλεγμένο μπλοκ</translation>
     </message>
     <message>
         <source>Advanced runtime logic</source>
@@ -2994,16 +3016,17 @@ Are you sure?</translation>
         <translation>Εφαρμόστε τις δομικές ρυθμίσεις ξεχωριστά από τον κώδικα DAE ή τις αλλαγές διεπαφής συμβόλου.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="388"/>
         <source>Block / equation group</source>
         <translation>Μπλοκ / ομάδα εξισώσεων</translation>
     </message>
     <message>
         <source>Block configuration</source>
-        <translation>Διαμόρφωση μπλοκ</translation>
+        <translation type="vanished">Διαμόρφωση μπλοκ</translation>
     </message>
     <message>
         <source>Block info</source>
-        <translation>Πληροφορίες μπλοκ</translation>
+        <translation type="vanished">Πληροφορίες μπλοκ</translation>
     </message>
     <message>
         <source>Block properties - {name}</source>
@@ -3026,12 +3049,13 @@ Are you sure?</translation>
         <translation>Οι αλλαγές εφαρμόστηκαν. Η προηγμένη ανισότητα/διακριτή/boolean λογική διατηρήθηκε χωρίς αλλαγές.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="323"/>
         <source>Clear</source>
         <translation>Σαφής</translation>
     </message>
     <message>
         <source>Create derivative variable</source>
-        <translation>Δημιουργία μεταβλητής παραγώγου</translation>
+        <translation type="vanished">Δημιουργία μεταβλητής παραγώγου</translation>
     </message>
     <message>
         <source>DAE and runtime-logic changes applied to the editor working copy.</source>
@@ -3042,8 +3066,9 @@ Are you sure?</translation>
         <translation type="vanished">Ο κώδικας DAE είναι έγκυρος.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="131"/>
         <source>DAE model</source>
-        <translation type="vanished">Μοντέλο DAE</translation>
+        <translation>Μοντέλο DAE</translation>
     </message>
     <message>
         <source>DAE validation failed at line {line}: {message}</source>
@@ -3055,11 +3080,11 @@ Are you sure?</translation>
     </message>
     <message>
         <source>Download rendered PDF</source>
-        <translation>Λήψη ψηφιοποιημένου PDF</translation>
+        <translation type="vanished">Λήψη ψηφιοποιημένου PDF</translation>
     </message>
     <message>
         <source>Enter a name</source>
-        <translation>Εισάγετε ένα όνομα</translation>
+        <translation type="vanished">Εισάγετε ένα όνομα</translation>
     </message>
     <message>
         <source>Enter a valid Python symbol name.</source>
@@ -3070,14 +3095,48 @@ Are you sure?</translation>
         <translation>Δημιουργήθηκε PDF εξίσωσης: {path}</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="158"/>
         <source>Equation owner</source>
         <translation>Ιδιοκτήτης εξίσωσης</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="251"/>
+        <source>&lt;&lt;</source>
+        <translation>&lt;&lt;</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="261"/>
+        <source>&gt;&gt;</source>
+        <translation>&gt;&gt;</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="289"/>
+        <source>LaTeX rendering</source>
+        <translation>Απόδοση LaTeX</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="343"/>
+        <source>Save redered PDF</source>
+        <translation>Αποθήκευση αποδομένου PDF</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="372"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="393"/>
         <source>Equations</source>
         <translation>Εξισώσεις</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="410"/>
+        <source>LaTex source</source>
+        <translation>Πηγή LaTeX</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="509"/>
+        <source>Accept changes</source>
+        <translation>Αποδοχή αλλαγών</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="40"/>
         <source>General options</source>
         <translation>Γενικές επιλογές</translation>
     </message>
@@ -3087,7 +3146,7 @@ Are you sure?</translation>
     </message>
     <message>
         <source>Initial numeric value</source>
-        <translation>Αρχική αριθμητική τιμή</translation>
+        <translation type="vanished">Αρχική αριθμητική τιμή</translation>
     </message>
     <message>
         <source>Inputs</source>
@@ -3099,11 +3158,11 @@ Are you sure?</translation>
     </message>
     <message>
         <source>LaTeX</source>
-        <translation>LaTeX</translation>
+        <translation type="vanished">LaTeX</translation>
     </message>
     <message>
         <source>LaTeX source</source>
-        <translation>Πηγή LaTeX</translation>
+        <translation type="vanished">Πηγή LaTeX</translation>
     </message>
     <message>
         <source>Name</source>
@@ -3111,11 +3170,11 @@ Are you sure?</translation>
     </message>
     <message>
         <source>New symbol name</source>
-        <translation>Νέο όνομα συμβόλου</translation>
+        <translation type="vanished">Νέο όνομα συμβόλου</translation>
     </message>
     <message>
         <source>Next</source>
-        <translation>Επόμενο</translation>
+        <translation type="vanished">Επόμενο</translation>
     </message>
     <message>
         <source>No matches</source>
@@ -3123,7 +3182,7 @@ Are you sure?</translation>
     </message>
     <message>
         <source>No online catalogue documentation is available for this custom block.</source>
-        <translation>Δεν είναι διαθέσιμη online τεκμηρίωση καταλόγου για αυτό το προσαρμοσμένο μπλοκ.</translation>
+        <translation type="vanished">Δεν είναι διαθέσιμη online τεκμηρίωση καταλόγου για αυτό το προσαρμοσμένο μπλοκ.</translation>
     </message>
     <message>
         <source>None</source>
@@ -3139,11 +3198,11 @@ Are you sure?</translation>
     </message>
     <message>
         <source>Opens the documentation for the original predefined library block. If this block has been modified in the editor, its current equations, symbols, parameters, or runtime logic may differ from the online documentation.</source>
-        <translation>Ανοίγει την τεκμηρίωση για το αρχικό προκαθορισμένο βιβλιοθηκίου μπλοκ. Εάν αυτό το μπλοκ έχει τροποποιηθεί στον επεξεργαστή, οι τρέχουσες εξισώσεις, σύμβολα, παράμετροι ή λογική εκτέλεσης χρόνου του μπορεί να διαφέρουν από την online τεκμηρίωση.</translation>
+        <translation type="vanished">Ανοίγει την τεκμηρίωση για το αρχικό προκαθορισμένο βιβλιοθηκίου μπλοκ. Εάν αυτό το μπλοκ έχει τροποποιηθεί στον επεξεργαστή, οι τρέχουσες εξισώσεις, σύμβολα, παράμετροι ή λογική εκτέλεσης χρόνου του μπορεί να διαφέρουν από την online τεκμηρίωση.</translation>
     </message>
     <message>
         <source>Output</source>
-        <translation>Εξόδους</translation>
+        <translation type="vanished">Εξόδους</translation>
     </message>
     <message>
         <source>Outputs</source>
@@ -3151,7 +3210,7 @@ Are you sure?</translation>
     </message>
     <message>
         <source>Owner block</source>
-        <translation>Μπλοκ ιδιοκτήτης</translation>
+        <translation type="vanished">Μπλοκ ιδιοκτήτης</translation>
     </message>
     <message>
         <source>PDF documents (*.pdf)</source>
@@ -3167,19 +3226,19 @@ Are you sure?</translation>
     </message>
     <message>
         <source>Power-flow variable</source>
-        <translation>Μεταβλητή ροής ισχύος</translation>
+        <translation type="vanished">Μεταβλητή ροής ισχύος</translation>
     </message>
     <message>
         <source>Power-flow variable used to initialize this dynamic variable.</source>
-        <translation>Μεταβλητή ροής ισχύος που χρησιμοποιείται για την αρχικοποίηση αυτής της δυναμικής μεταβλητής.</translation>
+        <translation type="vanished">Μεταβλητή ροής ισχύος που χρησιμοποιείται για την αρχικοποίηση αυτής της δυναμικής μεταβλητής.</translation>
     </message>
     <message>
         <source>Previous</source>
-        <translation>Προηγούμενο</translation>
+        <translation type="vanished">Προηγούμενο</translation>
     </message>
     <message>
         <source>Python code</source>
-        <translation>Κώδικας Python</translation>
+        <translation type="vanished">Κώδικας Python</translation>
     </message>
     <message>
         <source>Rename...</source>
@@ -3194,6 +3253,7 @@ Are you sure?</translation>
         <translation>Αποθήκευση PDF δυναμικών εξισώσεων</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="238"/>
         <source>Search Python code...</source>
         <translation>Αναζήτηση κώδικα Python...</translation>
     </message>
@@ -3214,6 +3274,7 @@ Are you sure?</translation>
         <translation>Επιλέξτε έναν έγκυρο τύπο συμβόλου.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="316"/>
         <source>Select all</source>
         <translation>Επιλέξτε όλα</translation>
     </message>
@@ -3222,10 +3283,12 @@ Are you sure?</translation>
         <translation>Επιλέξτε τουλάχιστον μία μη κενή ομάδα εξισώσεων.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="422"/>
         <source>Select equation groups to generate copyable LaTeX source.</source>
         <translation>Επιλέξτε ομάδες εξισώσεων για τη δημιουργία αντιγράφσιμου κώδικα LaTeX.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="378"/>
         <source>Select the equation groups to include. Each internal block and each DAE section can be selected independently.</source>
         <translation>Επιλέξτε τις ομάδες εξισώσεων που θέλετε να συμπεριλάβετε. Κάθε εσωτερικό μπλοκ και κάθε 섹션 DAE μπορούν να επιλεγούν ανεξάρτητα.</translation>
     </message>
@@ -3235,11 +3298,11 @@ Are you sure?</translation>
     </message>
     <message>
         <source>Static device mapping</source>
-        <translation>Στατικό χαρτογράφημα συσκευών</translation>
+        <translation type="vanished">Στατικό χαρτογράφημα συσκευών</translation>
     </message>
     <message>
         <source>Symbol category</source>
-        <translation>Κατηγορία συμβόλου</translation>
+        <translation type="vanished">Κατηγορία συμβόλου</translation>
     </message>
     <message>
         <source>The PDF could not be created: {message}</source>
@@ -3247,9 +3310,10 @@ Are you sure?</translation>
     </message>
     <message>
         <source>The online block documentation could not be opened in the system browser.</source>
-        <translation>Η online τεκμηρίωση του μπλοκ δεν μπορούσε να ανοίξει στον φυλλομετρητή του συστήματος.</translation>
+        <translation type="vanished">Η online τεκμηρίωση του μπλοκ δεν μπορούσε να ανοίξει στον φυλλομετρητή του συστήματος.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="440"/>
         <source>These settings contain structured data used to regenerate the block. Edit sequences with valid Python tuple/list syntax.</source>
         <translation>Αυτές οι ρυθμίσεις περιέχουν δομημένα δεδομένα που χρησιμοποιούνται για την επαναδημιουργία του μπλοκ. Επεξεργαστείτε τις ακολουθίες με έγκυρη σύνταξη tuple/list Python.</translation>
     </message>
@@ -3259,7 +3323,7 @@ Are you sure?</translation>
     </message>
     <message>
         <source>Type</source>
-        <translation>Τύπος</translation>
+        <translation type="vanished">Τύπος</translation>
     </message>
     <message>
         <source>Validate all code</source>
@@ -3279,19 +3343,20 @@ Are you sure?</translation>
     </message>
     <message>
         <source>+ Add procedural logic</source>
-        <translation>+ Προσθήκη διαδικαστικής λογικής</translation>
+        <translation type="vanished">+ Προσθήκη διαδικαστικής λογικής</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="188"/>
         <source>Add one procedural behavior to the active equation owner&apos;s Python code.</source>
         <translation>Προσθήκη μιας διαδικαστικής συμπεριφοράς στον κώδικα Python του ενεργού ιδιοκτήτη εξίσωσης.</translation>
     </message>
     <message>
         <source>DAE editor</source>
-        <translation>Επεξεργαστής DAE</translation>
+        <translation type="vanished">Επεξεργαστής DAE</translation>
     </message>
     <message>
         <source>Documentation</source>
-        <translation>Τεκμηρίωση</translation>
+        <translation type="vanished">Τεκμηρίωση</translation>
     </message>
     <message>
         <source>Model code is valid.</source>
@@ -3310,6 +3375,7 @@ Are you sure?</translation>
         <translation>Κατάσταση διατήρησης</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="82"/>
         <source>Search properties...</source>
         <translation>Αναζήτηση ιδιοτήτων...</translation>
     </message>
@@ -3319,9 +3385,10 @@ Are you sure?</translation>
     </message>
     <message>
         <source>Show or hide Python code and LaTeX rendering tool</source>
-        <translation>Εμφάνιση ή κρυφή του εργαλείου 렌더िंग κώδικα Python και LaTeX</translation>
+        <translation type="vanished">Εμφάνιση ή κρυφή του εργαλείου 렌더िंग κώδικα Python και LaTeX</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="434"/>
         <source>Special configuration</source>
         <translation>Ειδική διαμόρφωση</translation>
     </message>
@@ -3334,6 +3401,7 @@ Are you sure?</translation>
         <translation>Ο επιλεγμένος ιδιοκτήτης δεν έχει χώρο αποθήκευσης κώδικα Python.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="482"/>
         <source>Validate model</source>
         <translation>Επαλήθευση μοντέλου</translation>
     </message>
@@ -3344,6 +3412,22 @@ Are you sure?</translation>
     <message>
         <source>Unsaved Block Properties changes</source>
         <translation>Αποθηκευμένες αλλαγές Ιδιοτήτων Μπλοκ</translation>
+    </message>
+    <message>
+        <source>Add parameter...</source>
+        <translation>Προσθήκη παραμέτρου...</translation>
+    </message>
+    <message>
+        <source>Add retained mode...</source>
+        <translation>Προσθήκη λειτουργίας διατήρησης...</translation>
+    </message>
+    <message>
+        <source>Add variable...</source>
+        <translation>Προσθήκη μεταβλητής...</translation>
+    </message>
+    <message>
+        <source>Nothing was added: {message}</source>
+        <translation>Δεν προστέθηκε τίποτα: {message}</translation>
     </message>
 </context>
 <context>
@@ -3430,19 +3514,19 @@ Are you sure?</translation>
     <name>DynamicEditorWorkspaceSession</name>
     <message>
         <source>Invalid dynamic events</source>
-        <translation>Ακίνητα δυναμικά γεγονότα</translation>
+        <translation type="vanished">Ακίνητα δυναμικά γεγονότα</translation>
     </message>
     <message>
         <source>Save the changes before closing the last events tab?</source>
-        <translation>Θέλετε να αποθηκεύσετε τις αλλαγές πριν κλείσετε την τελευταία καρτέλα γεγονότων;</translation>
+        <translation type="vanished">Θέλετε να αποθηκεύσετε τις αλλαγές πριν κλείσετε την τελευταία καρτέλα γεγονότων;</translation>
     </message>
     <message>
         <source>The dynamic events contain unsaved changes.</source>
-        <translation>Τα δυναμικά γεγονότα περιέχουν αποθηκευμένες αλλαγές.</translation>
+        <translation type="vanished">Τα δυναμικά γεγονότα περιέχουν αποθηκευμένες αλλαγές.</translation>
     </message>
     <message>
         <source>Unsaved dynamic events</source>
-        <translation>Αποθηκευμένα δυναμικά γεγονότα</translation>
+        <translation type="vanished">Αποθηκευμένα δυναμικά γεγονότα</translation>
     </message>
 </context>
 <context>
@@ -3750,35 +3834,42 @@ Are you sure?</translation>
     <name>DynamicEventsDraftSession</name>
     <message>
         <source>An event and its events group use different simulation modes.</source>
-        <translation>Ένα γεγονός και η ομάδα γεγονότων του χρησιμοποιούν διαφορετικούς τρόπουςจำλοποίησης.</translation>
+        <translation type="vanished">Ένα γεγονός και η ομάδα γεγονότων του χρησιμοποιούν διαφορετικούς τρόπουςจำλοποίησης.</translation>
     </message>
     <message>
         <source>An event has no target device.</source>
-        <translation>Ένα γεγονός δεν έχει στόχο συσκευή.</translation>
+        <translation type="vanished">Ένα γεγονός δεν έχει στόχο συσκευή.</translation>
     </message>
     <message>
         <source>An event in device &apos;{device}&apos; has no valid events group.</source>
-        <translation>Ένα γεγονός στη συσκευή &apos;{device}&apos; δεν έχει έγκυρη ομάδα γεγονότων.</translation>
+        <translation type="vanished">Ένα γεγονός στη συσκευή &apos;{device}&apos; δεν έχει έγκυρη ομάδα γεγονότων.</translation>
     </message>
     <message>
         <source>An event in device &apos;{device}&apos; has no valid parameter.</source>
-        <translation>Ένα γεγονός στη συσκευή &apos;{device}&apos; δεν έχει έγκυρη παράμετρο.</translation>
+        <translation type="vanished">Ένα γεγονός στη συσκευή &apos;{device}&apos; δεν έχει έγκυρη παράμετρο.</translation>
     </message>
     <message>
         <source>An events group has an empty name.</source>
-        <translation>Μια ομάδα γεγονότων έχει κενό όνομα.</translation>
+        <translation type="vanished">Μια ομάδα γεγονότων έχει κενό όνομα.</translation>
     </message>
     <message>
         <source>Events for parameter &apos;{parameter}&apos; overlap in group &apos;{group}&apos; and device &apos;{device}&apos;.</source>
-        <translation>Τα γεγονότα για τη παράμετρο &apos;{parameter}&apos; επικαλύπτονται στην ομάδα &apos;{group}&apos; και τη συσκευή &apos;{device}&apos;.</translation>
+        <translation type="vanished">Τα γεγονότα για τη παράμετρο &apos;{parameter}&apos; επικαλύπτονται στην ομάδα &apos;{group}&apos; και τη συσκευή &apos;{device}&apos;.</translation>
     </message>
     <message>
         <source>The events group name &apos;{name}&apos; is duplicated.</source>
-        <translation>Το όνομα της ομάδας γεγονότων &apos;{name}&apos; είναι διπλότυπο.</translation>
+        <translation type="vanished">Το όνομα της ομάδας γεγονότων &apos;{name}&apos; είναι διπλότυπο.</translation>
     </message>
     <message>
         <source>The ramp event for parameter &apos;{parameter}&apos; has an invalid end time.</source>
-        <translation>Το γεγονός ράμπης για τη παράμετρο &apos;{parameter}&apos; έχει μη έγκυρο χρόνο λήξης.</translation>
+        <translation type="vanished">Το γεγονός ράμπης για τη παράμετρο &apos;{parameter}&apos; έχει μη έγκυρο χρόνο λήξης.</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventsFilterPopup</name>
+    <message>
+        <source>All</source>
+        <translation type="vanished">Όλα</translation>
     </message>
 </context>
 <context>
@@ -3812,17 +3903,17 @@ Are you sure?</translation>
     <name>DynamicEventsItemDelegate</name>
     <message>
         <source>Ramp</source>
-        <translation>Ράμπη</translation>
+        <translation type="vanished">Ράμπη</translation>
     </message>
     <message>
         <source>Step</source>
-        <translation>Βήμα</translation>
+        <translation type="vanished">Βήμα</translation>
     </message>
 </context>
 <context>
     <name>DynamicEventsPage</name>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="143"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="165"/>
         <source>Add an event to the selected event group</source>
         <translation>Προσθήκη γεγονότος στην επιλεγμένη ομάδα γεγονότων</translation>
     </message>
@@ -3832,7 +3923,7 @@ Are you sure?</translation>
     </message>
     <message>
         <source>Are you sure you want to remove the event for &apos;{parameter}&apos; at {time:.4f} s?</source>
-        <translation>Είστε βέβαιοι ότι θέλετε να αφαιρέσετε το γεγονός για το &apos;{parameter}&apos; στα {time:.4f} s;</translation>
+        <translation type="vanished">Είστε βέβαιοι ότι θέλετε να αφαιρέσετε το γεγονός για το &apos;{parameter}&apos; στα {time:.4f} s;</translation>
     </message>
     <message>
         <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="14"/>
@@ -3840,45 +3931,76 @@ Are you sure?</translation>
         <translation>Δυναμικά Γεγονότα</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="131"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="124"/>
+        <source>New</source>
+        <translation>Νέο</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="127"/>
+        <source>Delete all events of this simulation mode from the current device</source>
+        <translation>Διαγραφή όλων των γεγονότων αυτής της λειτουργίας môδους από τη συσκευή.</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="139"/>
+        <source>Save</source>
+        <translation>Εκτός</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="142"/>
+        <source>Save event changes</source>
+        <translation>Αποθήκευση αλλαγών γεγονότων</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="145"/>
+        <source>Ctrl+S</source>
+        <translation>Ctrl+S</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="153"/>
         <source>Create an EMT switch opening and reclosing event sequence</source>
         <translation>Δημιουργία ακολουθίας γεγονότος άνοιγμα και επανακλείσιμο διακόπτη EMT</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="140"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="182"/>
+        <source>Create Event Group</source>
+        <translation>Δημιουργία Ομάδας Γεγονότων</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="185"/>
+        <source>Create an event group</source>
+        <translation>Δημιουργία μιας ομάδας γεγονότων</translation>
+    </message>
+    <message>
         <source>Add Event</source>
-        <translation>Προσθήκη Γεγονότος</translation>
+        <translation type="vanished">Προσθήκη Γεγονότος</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="152"/>
         <source>Remove Selected</source>
-        <translation>Αφαίρεση επιλεγμένων</translation>
+        <translation type="vanished">Αφαίρεση επιλεγμένων</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="164"/>
         <source>Add Event Group</source>
         <translation>Προσθήκη Ομάδας Γεγονότων</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="167"/>
         <source>Create an event group for this simulation mode</source>
-        <translation>Δημιουργία ομάδας γεγονότων για αυτή τη λειτουργία môδελου</translation>
+        <translation type="vanished">Δημιουργία ομάδας γεγονότων για αυτή τη λειτουργία môδελου</translation>
     </message>
     <message>
         <source>Empty dynamic model</source>
-        <translation>Κενό δυναμικό μοντέλο</translation>
+        <translation type="vanished">Κενό δυναμικό μοντέλο</translation>
     </message>
     <message>
         <source>Events cannot be added because this dynamic model has no event parameters.</source>
-        <translation>Δεν μπορούν να προστεθούν γεγονότα επειδή αυτό το δυναμικό μοντέλο δεν έχει παραμέτρους γεγονότων.</translation>
+        <translation type="vanished">Δεν μπορούν να προστεθούν γεγονότα επειδή αυτό το δυναμικό μοντέλο δεν έχει παραμέτρους γεγονότων.</translation>
     </message>
     <message>
         <source>Events saved</source>
-        <translation>Γεγονότα αποθηκευμένα.</translation>
+        <translation type="vanished">Γεγονότα αποθηκευμένα.</translation>
     </message>
     <message>
         <source>Invalid dynamic events</source>
-        <translation>Ακίνητα δυναμικά γεγονότα</translation>
+        <translation type="vanished">Ακίνητα δυναμικά γεγονότα</translation>
     </message>
     <message>
         <source>Invalid event group</source>
@@ -3886,15 +4008,15 @@ Are you sure?</translation>
     </message>
     <message>
         <source>Invalid parameter</source>
-        <translation>Μη έγκυρος παράμετρος.</translation>
+        <translation type="vanished">Μη έγκυρος παράμετρος.</translation>
     </message>
     <message>
         <source>No events can be added because the dynamic model has no event parameters.</source>
-        <translation>Δεν μπορούν να προστεθούν γεγονότα επειδή το δυναμικό μοντέλο δεν έχει παραμέτρους γεγονότων.</translation>
+        <translation type="vanished">Δεν μπορούν να προστεθούν γεγονότα επειδή το δυναμικό μοντέλο δεν έχει παραμέτρους γεγονότων.</translation>
     </message>
     <message>
         <source>Remove</source>
-        <translation>Αφαιρώ</translation>
+        <translation type="vanished">Αφαιρώ</translation>
     </message>
     <message>
         <source>Remove event</source>
@@ -3905,7 +4027,7 @@ Are you sure?</translation>
         <translation type="vanished">Αφαίρεση ομάδας γεγονότων.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="155"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="177"/>
         <source>Remove the selected event or event group</source>
         <translation>Αφαίρεση του επιλεγμένου γεγονότος ή της ομάδας γεγονότων.</translation>
     </message>
@@ -3914,9 +4036,8 @@ Are you sure?</translation>
         <translation type="vanished">Μετονομασία</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="112"/>
         <source>Save events</source>
-        <translation>Αποθήκευση γεγονότων.</translation>
+        <translation type="vanished">Αποθήκευση γεγονότων.</translation>
     </message>
     <message>
         <source>Select the event group where you want to add the event.</source>
@@ -3927,16 +4048,16 @@ Are you sure?</translation>
         <translation type="vanished">Επιλέξτε το γεγονός ή την ομάδα γεγονότων που θέλετε να αφαιρέσετε.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="128"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="150"/>
         <source>Switch Sequence Wizard</source>
         <translation>Εναλλαγή Εργασιακού Βοηθήματος Ακολουθίας</translation>
     </message>
     <message>
         <source>The event group name must be non-empty and unique in this simulation mode.</source>
-        <translation>Το όνομα της ομάδας γεγονότων πρέπει να είναι μη κενό και μοναδικό σε αυτή τη λειτουργία môδελου.</translation>
+        <translation type="vanished">Το όνομα της ομάδας γεγονότων πρέπει να είναι μη κενό και μοναδικό σε αυτή τη λειτουργία môδελου.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="81"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="101"/>
         <source>This dynamic model is empty. New events cannot be added until the model is built.</source>
         <translation>Αυτό το δυναμικό μοντέλο είναι κενό. Δεν μπορούν να προστεθούν νέα γεγονότα μέχρι να κατασκευαστεί το μοντέλο.</translation>
     </message>
@@ -3946,26 +4067,66 @@ Are you sure?</translation>
     </message>
     <message>
         <source>Add an event and select its event group</source>
-        <translation>Προσθέστε ένα γεγονός και επιλέξτε την ομάδα γεγονότων του.</translation>
+        <translation type="vanished">Προσθέστε ένα γεγονός και επιλέξτε την ομάδα γεγονότων του.</translation>
     </message>
     <message>
         <source>Create an event group before adding an event.</source>
-        <translation>Δημιουργήστε μια ομάδα γεγονότων πριν προσθέσετε ένα γεγονός.</translation>
+        <translation type="vanished">Δημιουργήστε μια ομάδα γεγονότων πριν προσθέσετε ένα γεγονός.</translation>
     </message>
     <message>
         <source>Select the event you want to remove.</source>
-        <translation>Επιλέξτε το γεγονός που θέλετε να αφαιρέσετε.</translation>
+        <translation type="vanished">Επιλέξτε το γεγονός που θέλετε να αφαιρέσετε.</translation>
+    </message>
+    <message>
+        <source>An event group with this name already exists.</source>
+        <translation>Υπάρχει ήδη μια ομάδα γεγονότων με αυτό το όνομα.</translation>
+    </message>
+    <message>
+        <source>Delete all device events</source>
+        <translation>Διαγραφή όλων των γεγονότων της συσκευής</translation>
+    </message>
+    <message>
+        <source>Delete all events for this device and simulation mode?</source>
+        <translation>Θέλετε να διαγράψετε όλα τα γεγονότα για αυτή τη συσκευή και τη λειτουργία môδους;</translation>
+    </message>
+    <message>
+        <source>Group name:</source>
+        <translation>Όνομα ομάδας:</translation>
+    </message>
+    <message>
+        <source>Remove '{name}' and all events in this group?</source>
+        <translation>Θέλετε να αφαιρέσετε το '{name}' και όλα τα γεγονότα σε αυτήν την ομάδα;</translation>
+    </message>
+    <message>
+        <source>Remove event group</source>
+        <translation>Αφαίρεση ομάδας γεγονότων</translation>
+    </message>
+    <message>
+        <source>Remove the selected event?</source>
+        <translation>Θέλετε να αφαιρέσετε το επιλεγμένο γεγονός;</translation>
+    </message>
+    <message>
+        <source>Select an event group before adding an event.</source>
+        <translation>Επιλέξτε μια ομάδα γεγονότων πριν προσθέσετε ένα γεγονός.</translation>
+    </message>
+    <message>
+        <source>Select an event or event group to remove.</source>
+        <translation>Επιλέξτε ένα γεγονός ή μια ομάδα γεγονότων για αφαίρεση.</translation>
+    </message>
+    <message>
+        <source>The dynamic model has no event parameters.</source>
+        <translation>Το δυναμικό μοντέλο δεν έχει παραμέτρους γεγονότων.</translation>
     </message>
 </context>
 <context>
     <name>DynamicEventsTreeModel</name>
     <message>
         <source>Align Step</source>
-        <translation>Ευθυγράμμιση Βήματος</translation>
+        <translation type="vanished">Ευθυγράμμιση Βήματος</translation>
     </message>
     <message>
         <source>End Time</source>
-        <translation>Τελικός Χρόνος</translation>
+        <translation type="vanished">Τελικός Χρόνος</translation>
     </message>
     <message>
         <source>Invalid / Ungrouped Events</source>
@@ -3973,15 +4134,15 @@ Are you sure?</translation>
     </message>
     <message>
         <source>Invalid parameter</source>
-        <translation>Μη έγκυρος παράμετρος.</translation>
+        <translation type="vanished">Μη έγκυρος παράμετρος.</translation>
     </message>
     <message>
         <source>New Value</source>
-        <translation>Νέα Τιμή</translation>
+        <translation type="vanished">Νέα Τιμή</translation>
     </message>
     <message>
         <source>Parameter</source>
-        <translation>Παράμετρος</translation>
+        <translation type="vanished">Παράμετρος</translation>
     </message>
     <message>
         <source>These persisted events do not reference a valid events group and can only be removed.</source>
@@ -3989,19 +4150,19 @@ Are you sure?</translation>
     </message>
     <message>
         <source>Time</source>
-        <translation>Χρόνος</translation>
+        <translation type="vanished">Χρόνος</translation>
     </message>
     <message>
         <source>Transition</source>
-        <translation>Μετάβαση</translation>
+        <translation type="vanished">Μετάβαση</translation>
     </message>
     <message>
         <source>Event Group</source>
-        <translation>Ομάδα Γεγονότων</translation>
+        <translation type="vanished">Ομάδα Γεγονότων</translation>
     </message>
     <message>
         <source>Select Event Group</source>
-        <translation>Επιλογή Ομάδας Γεγονότων</translation>
+        <translation type="vanished">Επιλογή Ομάδας Γεγονότων</translation>
     </message>
 </context>
 <context>
@@ -4178,6 +4339,79 @@ select the expected processing format</source>
     <message>
         <source>Choose an FMU file first.</source>
         <translation>Επιλέξτε πρώτα ένα αρχείο FMU.</translation>
+    </message>
+</context>
+<context>
+    <name>Form</name>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="14"/>
+        <source>Add block property</source>
+        <translation>Προσθήκη ιδιότητας μπλοκ</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="26"/>
+        <source>Add symbol to selected block</source>
+        <translation>Προσθήκη συμβόλου στο επιλεγμένο μπλοκ</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="71"/>
+        <source>Output</source>
+        <translation>Εξόδους</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="78"/>
+        <source>Create derivative variable</source>
+        <translation>Δημιουργία μεταβλητής παραγώγου</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="144"/>
+        <source>New symbol name</source>
+        <translation>Νέο όνομα συμβόλου</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="151"/>
+        <source>Symbol category</source>
+        <translation>Κατηγορία συμβόλου</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="158"/>
+        <source>Owner block</source>
+        <translation>Μπλοκ ιδιοκτήτης</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="165"/>
+        <source>Type</source>
+        <translation>Τύπος</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="172"/>
+        <source>Add symbol</source>
+        <translation>Προσθήκη συμβόλου</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="195"/>
+        <source>Static device mapping</source>
+        <translation>Στατικό χαρτογράφημα συσκευών</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="202"/>
+        <source>Power-flow variable used to initialize this dynamic variable.</source>
+        <translation>Μεταβλητή ροής ισχύος που χρησιμοποιείται για την αρχικοποίηση αυτής της δυναμικής μεταβλητής.</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="205"/>
+        <source>Power-flow variable</source>
+        <translation>Μεταβλητή ροής ισχύος</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="266"/>
+        <source>Enter a name</source>
+        <translation>Εισάγετε ένα όνομα</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="273"/>
+        <source>Initial numeric value</source>
+        <translation>Αρχική αριθμητική τιμή</translation>
     </message>
 </context>
 <context>
@@ -13028,7 +13262,7 @@ You need to load or create a grid!</source>
     <message>
         <location filename="../Main/MainWindow.ui" line="12999"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Candidate investment generator&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Generate candidate reinforcements (new lines and upgrades) for N-1 violations via LODF/PTDF screening&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Γεννήτρια υποψήφιων επενδύσεων&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Δημιουργία υποψήφιων ενισχύσεων (νέες γραμμές και αναβαθμίσεις) για παραβιάσεις N-1 μέσω غربαλίσματος LODF/PTDF&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Γεννήτρια υποψήφιων επενδύσεων&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Δημιουργία υποψήφιων ενισχύσεων (νέες γραμμές και αναβαθμίσεις) για παραβιάσεις N-1 μέσω غربαλίσματος LODF/PTDF&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="13117"/>
@@ -15842,21 +16076,21 @@ You need to load or create a grid!</source>
     </message>
 </context>
 <context>
-    <name>BaseMainGui</name>
+    <name>DiagramScene</name>
     <message>
-        <source>Are you sure that you want to cancel the simulation?</source>
-        <translation>Βέρετε ότι θέλετε να ακυρώσετε τηจำλοποίηση?</translation>
+        <source>Block info</source>
+        <translation>Πληροφορίες μπλοκ</translation>
     </message>
     <message>
-        <source>Unlocking the UI may cause crash depending on the conditions. Are you sure?</source>
-        <translation>Το ξεκλείδωμα της διεπαφής χρήστη μπορεί να προκαλέσει κατάρρευση ανάλογα με τις συνθήκες. Βέρετε?</translation>
+        <source>Edit block</source>
+        <translation>Επεξεργασία μπλοκ</translation>
     </message>
 </context>
 <context>
-    <name>DynamicEventsFilterPopup</name>
+    <name>DynamicEventGroupsTreeModel</name>
     <message>
-        <source>All</source>
-        <translation>Όλα</translation>
+        <source>Event groups</source>
+        <translation>Ομάδες Γεγονότων</translation>
     </message>
 </context>
 </TS>

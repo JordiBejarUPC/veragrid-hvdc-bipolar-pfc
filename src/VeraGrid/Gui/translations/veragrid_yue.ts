@@ -662,6 +662,17 @@ li.checked::標記 { content: &quot;\2612&quot;; }
     </message>
 </context>
 <context>
+    <name>BaseMainGui</name>
+    <message>
+        <source>Are you sure that you want to cancel the simulation?</source>
+        <translation>您確定要取消模擬嗎？</translation>
+    </message>
+    <message>
+        <source>Unlocking the UI may cause crash depending on the conditions. Are you sure?</source>
+        <translation>解鎖 UI 可能會根據條件導致崩潰。您確定嗎？</translation>
+    </message>
+</context>
+<context>
     <name>BlockEditorWindow</name>
     <message>
         <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="14"/>
@@ -2398,6 +2409,18 @@ Are you sure?</source>
         <source>You are going to delete the complete model and start from scratch. Are you sure?</source>
         <translation type="vanished">您即將刪除整個模型並從頭開始。您確定嗎？</translation>
     </message>
+    <message>
+        <source>Block info</source>
+        <translation>區塊資訊</translation>
+    </message>
+    <message>
+        <source>No online catalogue documentation is available for this custom block.</source>
+        <translation>此自定義區塊沒有線上目錄文件。</translation>
+    </message>
+    <message>
+        <source>The online block documentation could not be opened.</source>
+        <translation>無法開啟線上區塊文件。</translation>
+    </message>
 </context>
 <context>
     <name>DynamicBlockPropertiesDialog</name>
@@ -2407,9 +2430,8 @@ Are you sure?</source>
         <translation>區塊屬性</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="70"/>
         <source>Apply changes</source>
-        <translation>應用更改</translation>
+        <translation type="vanished">應用更改</translation>
     </message>
     <message>
         <source>1 / {count}</source>
@@ -2417,11 +2439,11 @@ Are you sure?</source>
     </message>
     <message>
         <source>Add symbol</source>
-        <translation>添加符號</translation>
+        <translation type="vanished">添加符號</translation>
     </message>
     <message>
         <source>Add symbol to selected block</source>
-        <translation>將符號添加到選定區塊</translation>
+        <translation type="vanished">將符號添加到選定區塊</translation>
     </message>
     <message>
         <source>Advanced runtime logic</source>
@@ -2432,16 +2454,17 @@ Are you sure?</source>
         <translation>分開應用結構設置，與 DAE 代碼或符號接口更改。</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="388"/>
         <source>Block / equation group</source>
         <translation>區塊 / 方程組</translation>
     </message>
     <message>
         <source>Block configuration</source>
-        <translation>區塊配置</translation>
+        <translation type="vanished">區塊配置</translation>
     </message>
     <message>
         <source>Block info</source>
-        <translation>區塊資訊</translation>
+        <translation type="vanished">區塊資訊</translation>
     </message>
     <message>
         <source>Block properties - {name}</source>
@@ -2464,12 +2487,13 @@ Are you sure?</source>
         <translation>已應用更改。進階不等式/離散/布林邏輯保持不變。</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="323"/>
         <source>Clear</source>
         <translation>清除</translation>
     </message>
     <message>
         <source>Create derivative variable</source>
-        <translation>創建導數變數</translation>
+        <translation type="vanished">創建導數變數</translation>
     </message>
     <message>
         <source>DAE and runtime-logic changes applied to the editor working copy.</source>
@@ -2480,8 +2504,9 @@ Are you sure?</source>
         <translation type="vanished">DAE 代碼有效。</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="131"/>
         <source>DAE model</source>
-        <translation type="vanished">DAE 模型</translation>
+        <translation>DAE 模型</translation>
     </message>
     <message>
         <source>DAE validation failed at line {line}: {message}</source>
@@ -2493,11 +2518,11 @@ Are you sure?</source>
     </message>
     <message>
         <source>Download rendered PDF</source>
-        <translation>下載渲染的 PDF</translation>
+        <translation type="vanished">下載渲染的 PDF</translation>
     </message>
     <message>
         <source>Enter a name</source>
-        <translation>輸入名稱</translation>
+        <translation type="vanished">輸入名稱</translation>
     </message>
     <message>
         <source>Enter a valid Python symbol name.</source>
@@ -2508,14 +2533,48 @@ Are you sure?</source>
         <translation>方程 PDF 已創建：{path}</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="158"/>
         <source>Equation owner</source>
         <translation>方程所有者</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="251"/>
+        <source>&lt;&lt;</source>
+        <translation>&lt;&lt;</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="261"/>
+        <source>&gt;&gt;</source>
+        <translation>&gt;&gt;</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="289"/>
+        <source>LaTeX rendering</source>
+        <translation>LaTeX 渲染</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="343"/>
+        <source>Save redered PDF</source>
+        <translation>儲存渲染的 PDF</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="372"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="393"/>
         <source>Equations</source>
         <translation>方程</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="410"/>
+        <source>LaTex source</source>
+        <translation>LaTeX 原始碼</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="509"/>
+        <source>Accept changes</source>
+        <translation>接受更改</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="40"/>
         <source>General options</source>
         <translation>一般選項</translation>
     </message>
@@ -2525,7 +2584,7 @@ Are you sure?</source>
     </message>
     <message>
         <source>Initial numeric value</source>
-        <translation>初始數值</translation>
+        <translation type="vanished">初始數值</translation>
     </message>
     <message>
         <source>Inputs</source>
@@ -2537,11 +2596,11 @@ Are you sure?</source>
     </message>
     <message>
         <source>LaTeX</source>
-        <translation>LaTeX</translation>
+        <translation type="vanished">LaTeX</translation>
     </message>
     <message>
         <source>LaTeX source</source>
-        <translation>LaTeX 源代碼</translation>
+        <translation type="vanished">LaTeX 源代碼</translation>
     </message>
     <message>
         <source>Name</source>
@@ -2549,11 +2608,11 @@ Are you sure?</source>
     </message>
     <message>
         <source>New symbol name</source>
-        <translation>新符號名稱</translation>
+        <translation type="vanished">新符號名稱</translation>
     </message>
     <message>
         <source>Next</source>
-        <translation>下一個</translation>
+        <translation type="vanished">下一個</translation>
     </message>
     <message>
         <source>No matches</source>
@@ -2561,7 +2620,7 @@ Are you sure?</source>
     </message>
     <message>
         <source>No online catalogue documentation is available for this custom block.</source>
-        <translation>此自定義區塊沒有線上目錄文件。</translation>
+        <translation type="vanished">此自定義區塊沒有線上目錄文件。</translation>
     </message>
     <message>
         <source>None</source>
@@ -2577,11 +2636,11 @@ Are you sure?</source>
     </message>
     <message>
         <source>Opens the documentation for the original predefined library block. If this block has been modified in the editor, its current equations, symbols, parameters, or runtime logic may differ from the online documentation.</source>
-        <translation>打開原始預定義庫區塊的文檔。如果此區塊已在編輯器中修改，其當前方程、符號、參數或運行時邏輯可能與線上文檔不同。</translation>
+        <translation type="vanished">打開原始預定義庫區塊的文檔。如果此區塊已在編輯器中修改，其當前方程、符號、參數或運行時邏輯可能與線上文檔不同。</translation>
     </message>
     <message>
         <source>Output</source>
-        <translation>輸出</translation>
+        <translation type="vanished">輸出</translation>
     </message>
     <message>
         <source>Outputs</source>
@@ -2589,7 +2648,7 @@ Are you sure?</source>
     </message>
     <message>
         <source>Owner block</source>
-        <translation>擁有者區塊</translation>
+        <translation type="vanished">擁有者區塊</translation>
     </message>
     <message>
         <source>PDF documents (*.pdf)</source>
@@ -2605,19 +2664,19 @@ Are you sure?</source>
     </message>
     <message>
         <source>Power-flow variable</source>
-        <translation>電力潮流變數</translation>
+        <translation type="vanished">電力潮流變數</translation>
     </message>
     <message>
         <source>Power-flow variable used to initialize this dynamic variable.</source>
-        <translation>用於初始化此動態變數的電力潮流變數。</translation>
+        <translation type="vanished">用於初始化此動態變數的電力潮流變數。</translation>
     </message>
     <message>
         <source>Previous</source>
-        <translation>上一個</translation>
+        <translation type="vanished">上一個</translation>
     </message>
     <message>
         <source>Python code</source>
-        <translation>Python 代碼</translation>
+        <translation type="vanished">Python 代碼</translation>
     </message>
     <message>
         <source>Rename...</source>
@@ -2632,6 +2691,7 @@ Are you sure?</source>
         <translation>儲存動態方程式 PDF</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="238"/>
         <source>Search Python code...</source>
         <translation>搜尋 Python 代碼...</translation>
     </message>
@@ -2652,6 +2712,7 @@ Are you sure?</source>
         <translation>選擇一個有效的符號類型。</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="316"/>
         <source>Select all</source>
         <translation>選擇全部</translation>
     </message>
@@ -2660,10 +2721,12 @@ Are you sure?</source>
         <translation>選擇至少一個非空方程式組。</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="422"/>
         <source>Select equation groups to generate copyable LaTeX source.</source>
         <translation>選擇方程式組以生成可複製的 LaTeX 來源。</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="378"/>
         <source>Select the equation groups to include. Each internal block and each DAE section can be selected independently.</source>
         <translation>選擇要包含的方程式組。每個內部區塊和每個 DAE 部分都可以獨立選擇。</translation>
     </message>
@@ -2673,11 +2736,11 @@ Are you sure?</source>
     </message>
     <message>
         <source>Static device mapping</source>
-        <translation>靜態設備映射</translation>
+        <translation type="vanished">靜態設備映射</translation>
     </message>
     <message>
         <source>Symbol category</source>
-        <translation>符號類別</translation>
+        <translation type="vanished">符號類別</translation>
     </message>
     <message>
         <source>The PDF could not be created: {message}</source>
@@ -2685,9 +2748,10 @@ Are you sure?</source>
     </message>
     <message>
         <source>The online block documentation could not be opened in the system browser.</source>
-        <translation>無法在系統瀏覽器中打開線上區塊文檔。</translation>
+        <translation type="vanished">無法在系統瀏覽器中打開線上區塊文檔。</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="440"/>
         <source>These settings contain structured data used to regenerate the block. Edit sequences with valid Python tuple/list syntax.</source>
         <translation>這些設定包含用於重新生成區塊的結構化數據。請使用有效的 Python 元組/列表語法編輯序列。</translation>
     </message>
@@ -2697,7 +2761,7 @@ Are you sure?</source>
     </message>
     <message>
         <source>Type</source>
-        <translation>類型</translation>
+        <translation type="vanished">類型</translation>
     </message>
     <message>
         <source>Validate all code</source>
@@ -2717,19 +2781,20 @@ Are you sure?</source>
     </message>
     <message>
         <source>+ Add procedural logic</source>
-        <translation>+ 添加程序邏輯</translation>
+        <translation type="vanished">+ 添加程序邏輯</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="188"/>
         <source>Add one procedural behavior to the active equation owner&apos;s Python code.</source>
         <translation>為活動方程式擁有者添加一個程序行為。</translation>
     </message>
     <message>
         <source>DAE editor</source>
-        <translation>DAE 編輯器</translation>
+        <translation type="vanished">DAE 編輯器</translation>
     </message>
     <message>
         <source>Documentation</source>
-        <translation>文件</translation>
+        <translation type="vanished">文件</translation>
     </message>
     <message>
         <source>Model code is valid.</source>
@@ -2748,6 +2813,7 @@ Are you sure?</source>
         <translation>保留模式</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="82"/>
         <source>Search properties...</source>
         <translation>搜尋屬性...</translation>
     </message>
@@ -2757,9 +2823,10 @@ Are you sure?</source>
     </message>
     <message>
         <source>Show or hide Python code and LaTeX rendering tool</source>
-        <translation>顯示或隱藏 Python 代碼和 LaTeX 渲染工具</translation>
+        <translation type="vanished">顯示或隱藏 Python 代碼和 LaTeX 渲染工具</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="434"/>
         <source>Special configuration</source>
         <translation>特殊配置</translation>
     </message>
@@ -2772,6 +2839,7 @@ Are you sure?</source>
         <translation>所選的擁有者沒有 Python 代碼緩衝區。</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="482"/>
         <source>Validate model</source>
         <translation>驗證模型</translation>
     </message>
@@ -2782,6 +2850,22 @@ Are you sure?</source>
     <message>
         <source>Unsaved Block Properties changes</source>
         <translation>未儲存的區塊屬性變更</translation>
+    </message>
+    <message>
+        <source>Add parameter...</source>
+        <translation>添加參數...</translation>
+    </message>
+    <message>
+        <source>Add retained mode...</source>
+        <translation>添加保留模式...</translation>
+    </message>
+    <message>
+        <source>Add variable...</source>
+        <translation>添加變數...</translation>
+    </message>
+    <message>
+        <source>Nothing was added: {message}</source>
+        <translation>未添加任何內容：{message}</translation>
     </message>
 </context>
 <context>
@@ -2868,19 +2952,19 @@ Are you sure?</source>
     <name>DynamicEditorWorkspaceSession</name>
     <message>
         <source>Invalid dynamic events</source>
-        <translation>無效的動態事件</translation>
+        <translation type="vanished">無效的動態事件</translation>
     </message>
     <message>
         <source>Save the changes before closing the last events tab?</source>
-        <translation>關閉最後一個事件標籤前是否儲存變更？</translation>
+        <translation type="vanished">關閉最後一個事件標籤前是否儲存變更？</translation>
     </message>
     <message>
         <source>The dynamic events contain unsaved changes.</source>
-        <translation>動態事件包含未儲存的變更。</translation>
+        <translation type="vanished">動態事件包含未儲存的變更。</translation>
     </message>
     <message>
         <source>Unsaved dynamic events</source>
-        <translation>未儲存的動態事件</translation>
+        <translation type="vanished">未儲存的動態事件</translation>
     </message>
 </context>
 <context>
@@ -3188,35 +3272,42 @@ Are you sure?</source>
     <name>DynamicEventsDraftSession</name>
     <message>
         <source>An event and its events group use different simulation modes.</source>
-        <translation>事件及其事件組使用了不同的模擬模式。</translation>
+        <translation type="vanished">事件及其事件組使用了不同的模擬模式。</translation>
     </message>
     <message>
         <source>An event has no target device.</source>
-        <translation>事件沒有目標設備。</translation>
+        <translation type="vanished">事件沒有目標設備。</translation>
     </message>
     <message>
         <source>An event in device &apos;{device}&apos; has no valid events group.</source>
-        <translation>設備 &apos;{device}&apos; 中的事件沒有有效的事件組。</translation>
+        <translation type="vanished">設備 &apos;{device}&apos; 中的事件沒有有效的事件組。</translation>
     </message>
     <message>
         <source>An event in device &apos;{device}&apos; has no valid parameter.</source>
-        <translation>設備 &apos;{device}&apos; 中的事件沒有有效的參數。</translation>
+        <translation type="vanished">設備 &apos;{device}&apos; 中的事件沒有有效的參數。</translation>
     </message>
     <message>
         <source>An events group has an empty name.</source>
-        <translation>事件組名稱為空。</translation>
+        <translation type="vanished">事件組名稱為空。</translation>
     </message>
     <message>
         <source>Events for parameter &apos;{parameter}&apos; overlap in group &apos;{group}&apos; and device &apos;{device}&apos;.</source>
-        <translation>參數 &apos;{parameter}&apos; 的事件在組 &apos;{group}&apos; 和設備 &apos;{device}&apos; 中重疊。</translation>
+        <translation type="vanished">參數 &apos;{parameter}&apos; 的事件在組 &apos;{group}&apos; 和設備 &apos;{device}&apos; 中重疊。</translation>
     </message>
     <message>
         <source>The events group name &apos;{name}&apos; is duplicated.</source>
-        <translation>事件組名稱 &apos;{name}&apos; 重複了。</translation>
+        <translation type="vanished">事件組名稱 &apos;{name}&apos; 重複了。</translation>
     </message>
     <message>
         <source>The ramp event for parameter &apos;{parameter}&apos; has an invalid end time.</source>
-        <translation>參數 &apos;{parameter}&apos; 的斜坡事件具有無效的結束時間。</translation>
+        <translation type="vanished">參數 &apos;{parameter}&apos; 的斜坡事件具有無效的結束時間。</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventsFilterPopup</name>
+    <message>
+        <source>All</source>
+        <translation type="vanished">全部</translation>
     </message>
 </context>
 <context>
@@ -3250,17 +3341,17 @@ Are you sure?</source>
     <name>DynamicEventsItemDelegate</name>
     <message>
         <source>Ramp</source>
-        <translation>斜坡</translation>
+        <translation type="vanished">斜坡</translation>
     </message>
     <message>
         <source>Step</source>
-        <translation>階梯</translation>
+        <translation type="vanished">階梯</translation>
     </message>
 </context>
 <context>
     <name>DynamicEventsPage</name>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="143"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="165"/>
         <source>Add an event to the selected event group</source>
         <translation>為選定嘅事件組添加一個事件</translation>
     </message>
@@ -3270,7 +3361,7 @@ Are you sure?</source>
     </message>
     <message>
         <source>Are you sure you want to remove the event for &apos;{parameter}&apos; at {time:.4f} s?</source>
-        <translation>你確定要移除喺 {time:.4f} 秒嘅 &apos;{parameter}&apos; 事件嗎？</translation>
+        <translation type="vanished">你確定要移除喺 {time:.4f} 秒嘅 &apos;{parameter}&apos; 事件嗎？</translation>
     </message>
     <message>
         <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="14"/>
@@ -3278,45 +3369,76 @@ Are you sure?</source>
         <translation>動態事件</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="131"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="124"/>
+        <source>New</source>
+        <translation>新建</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="127"/>
+        <source>Delete all events of this simulation mode from the current device</source>
+        <translation>從當前設備刪除所有此模擬模式的事件。</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="139"/>
+        <source>Save</source>
+        <translation>儲存</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="142"/>
+        <source>Save event changes</source>
+        <translation>儲存事件更改</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="145"/>
+        <source>Ctrl+S</source>
+        <translation>Ctrl+S</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="153"/>
         <source>Create an EMT switch opening and reclosing event sequence</source>
         <translation>創建一個 EMT 開關開合及重合事件序列</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="140"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="182"/>
+        <source>Create Event Group</source>
+        <translation>建立事件組</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="185"/>
+        <source>Create an event group</source>
+        <translation>建立一個事件組</translation>
+    </message>
+    <message>
         <source>Add Event</source>
-        <translation>添加事件</translation>
+        <translation type="vanished">添加事件</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="152"/>
         <source>Remove Selected</source>
-        <translation>移除選取項目</translation>
+        <translation type="vanished">移除選取項目</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="164"/>
         <source>Add Event Group</source>
         <translation>添加事件組</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="167"/>
         <source>Create an event group for this simulation mode</source>
-        <translation>為此模擬模式創建一個事件組</translation>
+        <translation type="vanished">為此模擬模式創建一個事件組</translation>
     </message>
     <message>
         <source>Empty dynamic model</source>
-        <translation>清空動態模型</translation>
+        <translation type="vanished">清空動態模型</translation>
     </message>
     <message>
         <source>Events cannot be added because this dynamic model has no event parameters.</source>
-        <translation>由於此動態模型沒有事件參數，無法添加事件。</translation>
+        <translation type="vanished">由於此動態模型沒有事件參數，無法添加事件。</translation>
     </message>
     <message>
         <source>Events saved</source>
-        <translation>事件已儲存</translation>
+        <translation type="vanished">事件已儲存</translation>
     </message>
     <message>
         <source>Invalid dynamic events</source>
-        <translation>無效的動態事件</translation>
+        <translation type="vanished">無效的動態事件</translation>
     </message>
     <message>
         <source>Invalid event group</source>
@@ -3324,15 +3446,15 @@ Are you sure?</source>
     </message>
     <message>
         <source>Invalid parameter</source>
-        <translation>無效參數</translation>
+        <translation type="vanished">無效參數</translation>
     </message>
     <message>
         <source>No events can be added because the dynamic model has no event parameters.</source>
-        <translation>由於動態模型沒有事件參數，無法添加事件。</translation>
+        <translation type="vanished">由於動態模型沒有事件參數，無法添加事件。</translation>
     </message>
     <message>
         <source>Remove</source>
-        <translation>移除</translation>
+        <translation type="vanished">移除</translation>
     </message>
     <message>
         <source>Remove event</source>
@@ -3343,7 +3465,7 @@ Are you sure?</source>
         <translation type="vanished">移除事件組</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="155"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="177"/>
         <source>Remove the selected event or event group</source>
         <translation>移除選定嘅事件或事件組</translation>
     </message>
@@ -3352,9 +3474,8 @@ Are you sure?</source>
         <translation type="vanished">重命名</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="112"/>
         <source>Save events</source>
-        <translation>儲存事件</translation>
+        <translation type="vanished">儲存事件</translation>
     </message>
     <message>
         <source>Select the event group where you want to add the event.</source>
@@ -3365,16 +3486,16 @@ Are you sure?</source>
         <translation type="vanished">請選擇您想移除嘅事件或事件組。</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="128"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="150"/>
         <source>Switch Sequence Wizard</source>
         <translation>轉換序次嚮導</translation>
     </message>
     <message>
         <source>The event group name must be non-empty and unique in this simulation mode.</source>
-        <translation>事件組名稱必須喺此模擬模式中非空且唯一。</translation>
+        <translation type="vanished">事件組名稱必須喺此模擬模式中非空且唯一。</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="81"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="101"/>
         <source>This dynamic model is empty. New events cannot be added until the model is built.</source>
         <translation>此動態模型為空。在模型構建之前，無法添加新事件。</translation>
     </message>
@@ -3384,26 +3505,66 @@ Are you sure?</source>
     </message>
     <message>
         <source>Add an event and select its event group</source>
-        <translation>添加一個事件並選擇其事件組。</translation>
+        <translation type="vanished">添加一個事件並選擇其事件組。</translation>
     </message>
     <message>
         <source>Create an event group before adding an event.</source>
-        <translation>在添加事件前，請先創建一個事件組。</translation>
+        <translation type="vanished">在添加事件前，請先創建一個事件組。</translation>
     </message>
     <message>
         <source>Select the event you want to remove.</source>
-        <translation>請選擇您要移除的事件。</translation>
+        <translation type="vanished">請選擇您要移除的事件。</translation>
+    </message>
+    <message>
+        <source>An event group with this name already exists.</source>
+        <translation>此名稱的事件組已存在。</translation>
+    </message>
+    <message>
+        <source>Delete all device events</source>
+        <translation>刪除所有設備事件</translation>
+    </message>
+    <message>
+        <source>Delete all events for this device and simulation mode?</source>
+        <translation>刪除此設備和模擬模式的所有事件？</translation>
+    </message>
+    <message>
+        <source>Group name:</source>
+        <translation>組名稱：</translation>
+    </message>
+    <message>
+        <source>Remove '{name}' and all events in this group?</source>
+        <translation>移除 '{name}' 及其組內所有事件？</translation>
+    </message>
+    <message>
+        <source>Remove event group</source>
+        <translation>移除事件組</translation>
+    </message>
+    <message>
+        <source>Remove the selected event?</source>
+        <translation>移除所選事件？</translation>
+    </message>
+    <message>
+        <source>Select an event group before adding an event.</source>
+        <translation>添加事件前，請選擇一個事件組。</translation>
+    </message>
+    <message>
+        <source>Select an event or event group to remove.</source>
+        <translation>請選擇一個事件或事件組以進行移除。</translation>
+    </message>
+    <message>
+        <source>The dynamic model has no event parameters.</source>
+        <translation>動態模型沒有事件參數。</translation>
     </message>
 </context>
 <context>
     <name>DynamicEventsTreeModel</name>
     <message>
         <source>Align Step</source>
-        <translation>對齊步長</translation>
+        <translation type="vanished">對齊步長</translation>
     </message>
     <message>
         <source>End Time</source>
-        <translation>結束時間</translation>
+        <translation type="vanished">結束時間</translation>
     </message>
     <message>
         <source>Invalid / Ungrouped Events</source>
@@ -3411,15 +3572,15 @@ Are you sure?</source>
     </message>
     <message>
         <source>Invalid parameter</source>
-        <translation>無效參數</translation>
+        <translation type="vanished">無效參數</translation>
     </message>
     <message>
         <source>New Value</source>
-        <translation>新值</translation>
+        <translation type="vanished">新值</translation>
     </message>
     <message>
         <source>Parameter</source>
-        <translation>參數</translation>
+        <translation type="vanished">參數</translation>
     </message>
     <message>
         <source>These persisted events do not reference a valid events group and can only be removed.</source>
@@ -3427,19 +3588,19 @@ Are you sure?</source>
     </message>
     <message>
         <source>Time</source>
-        <translation>時間</translation>
+        <translation type="vanished">時間</translation>
     </message>
     <message>
         <source>Transition</source>
-        <translation>過渡</translation>
+        <translation type="vanished">過渡</translation>
     </message>
     <message>
         <source>Event Group</source>
-        <translation>事件組</translation>
+        <translation type="vanished">事件組</translation>
     </message>
     <message>
         <source>Select Event Group</source>
-        <translation>選擇事件組</translation>
+        <translation type="vanished">選擇事件組</translation>
     </message>
 </context>
 <context>
@@ -3616,6 +3777,79 @@ select the expected processing format</source>
     <message>
         <source>Select FMU file</source>
         <translation>選擇 FMU 檔案</translation>
+    </message>
+</context>
+<context>
+    <name>Form</name>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="14"/>
+        <source>Add block property</source>
+        <translation>添加區塊屬性</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="26"/>
+        <source>Add symbol to selected block</source>
+        <translation>將符號添加到選定區塊</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="71"/>
+        <source>Output</source>
+        <translation>輸出</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="78"/>
+        <source>Create derivative variable</source>
+        <translation>創建導數變數</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="144"/>
+        <source>New symbol name</source>
+        <translation>新符號名稱</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="151"/>
+        <source>Symbol category</source>
+        <translation>符號類別</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="158"/>
+        <source>Owner block</source>
+        <translation>擁有者區塊</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="165"/>
+        <source>Type</source>
+        <translation>類型</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="172"/>
+        <source>Add symbol</source>
+        <translation>添加符號</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="195"/>
+        <source>Static device mapping</source>
+        <translation>靜態設備映射</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="202"/>
+        <source>Power-flow variable used to initialize this dynamic variable.</source>
+        <translation>用於初始化此動態變數的電力潮流變數。</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="205"/>
+        <source>Power-flow variable</source>
+        <translation>電力潮流變數</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="266"/>
+        <source>Enter a name</source>
+        <translation>輸入名稱</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="273"/>
+        <source>Initial numeric value</source>
+        <translation>初始數值</translation>
     </message>
 </context>
 <context>
@@ -12315,7 +12549,7 @@ You need to load or create a grid!</source>
     <message>
         <location filename="../Main/MainWindow.ui" line="12999"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Candidate investment generator&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Generate candidate reinforcements (new lines and upgrades) for N-1 violations via LODF/PTDF screening&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;候選投資生成器&lt;/span&gt;&lt;/p&gt;&lt;p&gt;透過 LODF/PTDF 篩選，為 N-1 違規生成候選加強（新線和升級）&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;候選投資生成器&lt;/span&gt;&lt;/p&gt;&lt;p&gt;透過 LODF/PTDF 篩選，為 N-1 違規生成候選加強（新線和升級）&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="13117"/>
@@ -15125,21 +15359,21 @@ You need to load or create a grid!</source>
     </message>
 </context>
 <context>
-    <name>BaseMainGui</name>
+    <name>DiagramScene</name>
     <message>
-        <source>Are you sure that you want to cancel the simulation?</source>
-        <translation>您確定要取消模擬嗎？</translation>
+        <source>Block info</source>
+        <translation>區塊資訊</translation>
     </message>
     <message>
-        <source>Unlocking the UI may cause crash depending on the conditions. Are you sure?</source>
-        <translation>解鎖 UI 可能會根據條件導致崩潰。您確定嗎？</translation>
+        <source>Edit block</source>
+        <translation>編輯區塊</translation>
     </message>
 </context>
 <context>
-    <name>DynamicEventsFilterPopup</name>
+    <name>DynamicEventGroupsTreeModel</name>
     <message>
-        <source>All</source>
-        <translation>全部</translation>
+        <source>Event groups</source>
+        <translation>事件組</translation>
     </message>
 </context>
 </TS>

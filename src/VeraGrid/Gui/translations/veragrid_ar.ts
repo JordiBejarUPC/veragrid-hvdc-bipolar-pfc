@@ -660,6 +660,17 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
     </message>
 </context>
 <context>
+    <name>BaseMainGui</name>
+    <message>
+        <source>Are you sure that you want to cancel the simulation?</source>
+        <translation>هل أنت متأكد أنك تريد إلغاء المحاكاة؟</translation>
+    </message>
+    <message>
+        <source>Unlocking the UI may cause crash depending on the conditions. Are you sure?</source>
+        <translation>قد يؤدي فتح واجهة المستخدم إلى تعطل اعتمادًا على الظروف. هل أنت متأكد؟</translation>
+    </message>
+</context>
+<context>
     <name>BlockEditorWindow</name>
     <message>
         <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="14"/>
@@ -2956,6 +2967,18 @@ Are you sure?</source>
         <source>You are going to delete the complete model and start from scratch. Are you sure?</source>
         <translation type="vanished">أنت على وشك حذف النموذج بالكامل والبدء من الصفر. هل أنت متأكد؟</translation>
     </message>
+    <message>
+        <source>Block info</source>
+        <translation>معلومات الكتلة</translation>
+    </message>
+    <message>
+        <source>No online catalogue documentation is available for this custom block.</source>
+        <translation>لا تتوفر وثائق كتالوج عبر الإنترنت لهذه الكتلة المخصصة.</translation>
+    </message>
+    <message>
+        <source>The online block documentation could not be opened.</source>
+        <translation>تعذّر فتح وثائق الكتلة عبر الإنترنت.</translation>
+    </message>
 </context>
 <context>
     <name>DynamicBlockPropertiesDialog</name>
@@ -2965,9 +2988,8 @@ Are you sure?</source>
         <translation>خصائص الكتلة</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="70"/>
         <source>Apply changes</source>
-        <translation>تطبيق التغييرات</translation>
+        <translation type="vanished">تطبيق التغييرات</translation>
     </message>
     <message>
         <source>Close</source>
@@ -2979,11 +3001,11 @@ Are you sure?</source>
     </message>
     <message>
         <source>Add symbol</source>
-        <translation>إضافة رمز</translation>
+        <translation type="vanished">إضافة رمز</translation>
     </message>
     <message>
         <source>Add symbol to selected block</source>
-        <translation>إضافة رمز إلى الكتلة المحددة</translation>
+        <translation type="vanished">إضافة رمز إلى الكتلة المحددة</translation>
     </message>
     <message>
         <source>Advanced runtime logic</source>
@@ -2994,16 +3016,17 @@ Are you sure?</source>
         <translation>تطبيق الإعدادات الهيكلية بشكل منفصل عن تغييرات كود DAE أو واجهة الرمز.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="388"/>
         <source>Block / equation group</source>
         <translation>المجموعة / الكتلة المعادلة</translation>
     </message>
     <message>
         <source>Block configuration</source>
-        <translation>تكوين الكتلة</translation>
+        <translation type="vanished">تكوين الكتلة</translation>
     </message>
     <message>
         <source>Block info</source>
-        <translation>معلومات الكتلة</translation>
+        <translation type="vanished">معلومات الكتلة</translation>
     </message>
     <message>
         <source>Block properties - {name}</source>
@@ -3026,12 +3049,13 @@ Are you sure?</source>
         <translation>تم تطبيق التغييرات. تم الحفاظ على المتباينات المتقدمة/المنفصلة/المنطق البولياني دون تغيير.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="323"/>
         <source>Clear</source>
         <translation>واضح</translation>
     </message>
     <message>
         <source>Create derivative variable</source>
-        <translation>إنشاء متغير مشتق</translation>
+        <translation type="vanished">إنشاء متغير مشتق</translation>
     </message>
     <message>
         <source>DAE and runtime-logic changes applied to the editor working copy.</source>
@@ -3042,8 +3066,9 @@ Are you sure?</source>
         <translation type="vanished">كود DAE صالح.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="131"/>
         <source>DAE model</source>
-        <translation type="vanished">نموذج DAE</translation>
+        <translation>نموذج DAE</translation>
     </message>
     <message>
         <source>DAE validation failed at line {line}: {message}</source>
@@ -3055,11 +3080,11 @@ Are you sure?</source>
     </message>
     <message>
         <source>Download rendered PDF</source>
-        <translation>تنزيل ملف PDF المُصاغ</translation>
+        <translation type="vanished">تنزيل ملف PDF المُصاغ</translation>
     </message>
     <message>
         <source>Enter a name</source>
-        <translation>أدخل اسمًا</translation>
+        <translation type="vanished">أدخل اسمًا</translation>
     </message>
     <message>
         <source>Enter a valid Python symbol name.</source>
@@ -3070,14 +3095,48 @@ Are you sure?</source>
         <translation>تم إنشاء ملف PDF للمعادلة: {path}</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="158"/>
         <source>Equation owner</source>
         <translation>مالك المعادلة</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="251"/>
+        <source>&lt;&lt;</source>
+        <translation>&lt;&lt;</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="261"/>
+        <source>&gt;&gt;</source>
+        <translation>&gt;&gt;</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="289"/>
+        <source>LaTeX rendering</source>
+        <translation>عرض LaTeX</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="343"/>
+        <source>Save redered PDF</source>
+        <translation>حفظ ملف PDF المعروض</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="372"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="393"/>
         <source>Equations</source>
         <translation>المعادلات</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="410"/>
+        <source>LaTex source</source>
+        <translation>مصدر LaTeX</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="509"/>
+        <source>Accept changes</source>
+        <translation>قبول التغييرات</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="40"/>
         <source>General options</source>
         <translation>الخيارات العامة</translation>
     </message>
@@ -3087,7 +3146,7 @@ Are you sure?</source>
     </message>
     <message>
         <source>Initial numeric value</source>
-        <translation>القيمة الرقمية الأولية</translation>
+        <translation type="vanished">القيمة الرقمية الأولية</translation>
     </message>
     <message>
         <source>Inputs</source>
@@ -3099,11 +3158,11 @@ Are you sure?</source>
     </message>
     <message>
         <source>LaTeX</source>
-        <translation>LaTeX</translation>
+        <translation type="vanished">LaTeX</translation>
     </message>
     <message>
         <source>LaTeX source</source>
-        <translation>مصدر LaTeX</translation>
+        <translation type="vanished">مصدر LaTeX</translation>
     </message>
     <message>
         <source>Name</source>
@@ -3111,11 +3170,11 @@ Are you sure?</source>
     </message>
     <message>
         <source>New symbol name</source>
-        <translation>اسم الرمز الجديد</translation>
+        <translation type="vanished">اسم الرمز الجديد</translation>
     </message>
     <message>
         <source>Next</source>
-        <translation>التالي</translation>
+        <translation type="vanished">التالي</translation>
     </message>
     <message>
         <source>No matches</source>
@@ -3123,7 +3182,7 @@ Are you sure?</source>
     </message>
     <message>
         <source>No online catalogue documentation is available for this custom block.</source>
-        <translation>لا تتوفر وثائق كتالوج عبر الإنترنت لهذه الكتلة المخصصة.</translation>
+        <translation type="vanished">لا تتوفر وثائق كتالوج عبر الإنترنت لهذه الكتلة المخصصة.</translation>
     </message>
     <message>
         <source>None</source>
@@ -3139,11 +3198,11 @@ Are you sure?</source>
     </message>
     <message>
         <source>Opens the documentation for the original predefined library block. If this block has been modified in the editor, its current equations, symbols, parameters, or runtime logic may differ from the online documentation.</source>
-        <translation>يفتح وثائق الكتلة الأصلية المحددة مسبقًا. إذا تم تعديل هذه الكتلة في المحرر، فقد تختلف معادلاتها أو رموزها أو معاييرها أو منطق تشغيلها الحالي عن الوثائق عبر الإنترنت.</translation>
+        <translation type="vanished">يفتح وثائق الكتلة الأصلية المحددة مسبقًا. إذا تم تعديل هذه الكتلة في المحرر، فقد تختلف معادلاتها أو رموزها أو معاييرها أو منطق تشغيلها الحالي عن الوثائق عبر الإنترنت.</translation>
     </message>
     <message>
         <source>Output</source>
-        <translation>المخرجات</translation>
+        <translation type="vanished">المخرجات</translation>
     </message>
     <message>
         <source>Outputs</source>
@@ -3151,7 +3210,7 @@ Are you sure?</source>
     </message>
     <message>
         <source>Owner block</source>
-        <translation>الكتلة المالكة</translation>
+        <translation type="vanished">الكتلة المالكة</translation>
     </message>
     <message>
         <source>PDF documents (*.pdf)</source>
@@ -3167,19 +3226,19 @@ Are you sure?</source>
     </message>
     <message>
         <source>Power-flow variable</source>
-        <translation>متغير تدفق الطاقة</translation>
+        <translation type="vanished">متغير تدفق الطاقة</translation>
     </message>
     <message>
         <source>Power-flow variable used to initialize this dynamic variable.</source>
-        <translation>متغير تدفق الطاقة المستخدم لتهيئة هذا المتغير الديناميكي.</translation>
+        <translation type="vanished">متغير تدفق الطاقة المستخدم لتهيئة هذا المتغير الديناميكي.</translation>
     </message>
     <message>
         <source>Previous</source>
-        <translation>السابق</translation>
+        <translation type="vanished">السابق</translation>
     </message>
     <message>
         <source>Python code</source>
-        <translation>كود بايثون</translation>
+        <translation type="vanished">كود بايثون</translation>
     </message>
     <message>
         <source>Rename...</source>
@@ -3194,6 +3253,7 @@ Are you sure?</source>
         <translation>حفظ معادلات ديناميكية بصيغة PDF</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="238"/>
         <source>Search Python code...</source>
         <translation>البحث في كود بايثون...</translation>
     </message>
@@ -3214,6 +3274,7 @@ Are you sure?</source>
         <translation>اختر نوع رمز صالح.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="316"/>
         <source>Select all</source>
         <translation>حدد الكل</translation>
     </message>
@@ -3222,10 +3283,12 @@ Are you sure?</source>
         <translation>اختر مجموعة معادلات واحدة على الأقل وغير فارغة.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="422"/>
         <source>Select equation groups to generate copyable LaTeX source.</source>
         <translation>اختر مجموعات المعادلات لتوليد مصدر LaTeX قابل للنسخ.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="378"/>
         <source>Select the equation groups to include. Each internal block and each DAE section can be selected independently.</source>
         <translation>اختر مجموعات المعادلات المراد تضمينها. يمكن تحديد كل كتلة داخلية وكل قسم DAE بشكل مستقل.</translation>
     </message>
@@ -3235,11 +3298,11 @@ Are you sure?</source>
     </message>
     <message>
         <source>Static device mapping</source>
-        <translation>تخطيط الأجهزة الثابتة</translation>
+        <translation type="vanished">تخطيط الأجهزة الثابتة</translation>
     </message>
     <message>
         <source>Symbol category</source>
-        <translation>فئة الرمز</translation>
+        <translation type="vanished">فئة الرمز</translation>
     </message>
     <message>
         <source>The PDF could not be created: {message}</source>
@@ -3247,9 +3310,10 @@ Are you sure?</source>
     </message>
     <message>
         <source>The online block documentation could not be opened in the system browser.</source>
-        <translation>تعذر فتح وثائق الكتلة عبر الإنترنت في متصفح النظام.</translation>
+        <translation type="vanished">تعذر فتح وثائق الكتلة عبر الإنترنت في متصفح النظام.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="440"/>
         <source>These settings contain structured data used to regenerate the block. Edit sequences with valid Python tuple/list syntax.</source>
         <translation>تحتوي هذه الإعدادات على بيانات منظمة تُستخدم لإعادة توليد الكتلة. قم بتحرير التسلسلات باستخدام بناء جملة بايثون (tuple/list) صالح.</translation>
     </message>
@@ -3259,7 +3323,7 @@ Are you sure?</source>
     </message>
     <message>
         <source>Type</source>
-        <translation>النوع</translation>
+        <translation type="vanished">النوع</translation>
     </message>
     <message>
         <source>Validate all code</source>
@@ -3279,19 +3343,20 @@ Are you sure?</source>
     </message>
     <message>
         <source>+ Add procedural logic</source>
-        <translation>+ إضافة منطق إجرائي</translation>
+        <translation type="vanished">+ إضافة منطق إجرائي</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="188"/>
         <source>Add one procedural behavior to the active equation owner&apos;s Python code.</source>
         <translation>إضافة سلوك إجرائي إلى كود بايثون لمالك المعادلة النشط.</translation>
     </message>
     <message>
         <source>DAE editor</source>
-        <translation>محرر DAE</translation>
+        <translation type="vanished">محرر DAE</translation>
     </message>
     <message>
         <source>Documentation</source>
-        <translation>التوثيق</translation>
+        <translation type="vanished">التوثيق</translation>
     </message>
     <message>
         <source>Model code is valid.</source>
@@ -3310,6 +3375,7 @@ Are you sure?</source>
         <translation>الوضع المحتفظ به</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="82"/>
         <source>Search properties...</source>
         <translation>البحث عن الخصائص...</translation>
     </message>
@@ -3319,9 +3385,10 @@ Are you sure?</source>
     </message>
     <message>
         <source>Show or hide Python code and LaTeX rendering tool</source>
-        <translation>إظهار أو إخفاء أداة عرض كود بايثون و LaTeX</translation>
+        <translation type="vanished">إظهار أو إخفاء أداة عرض كود بايثون و LaTeX</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="434"/>
         <source>Special configuration</source>
         <translation>تكوين خاص</translation>
     </message>
@@ -3334,6 +3401,7 @@ Are you sure?</source>
         <translation>ليس لدى المالك المحدد مخزن كود بايثون.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="482"/>
         <source>Validate model</source>
         <translation>التحقق من صحة النموذج</translation>
     </message>
@@ -3344,6 +3412,22 @@ Are you sure?</source>
     <message>
         <source>Unsaved Block Properties changes</source>
         <translation>تغييرات خصائص الكتلة غير المحفوظة</translation>
+    </message>
+    <message>
+        <source>Add parameter...</source>
+        <translation>إضافة مُعامل...</translation>
+    </message>
+    <message>
+        <source>Add retained mode...</source>
+        <translation>إضافة وضع الاحتفاظ...</translation>
+    </message>
+    <message>
+        <source>Add variable...</source>
+        <translation>إضافة متغير...</translation>
+    </message>
+    <message>
+        <source>Nothing was added: {message}</source>
+        <translation>لم تتم إضافة أي شيء: {message}</translation>
     </message>
 </context>
 <context>
@@ -3430,19 +3514,19 @@ Are you sure?</source>
     <name>DynamicEditorWorkspaceSession</name>
     <message>
         <source>Invalid dynamic events</source>
-        <translation>أحداث ديناميكية غير صالحة</translation>
+        <translation type="vanished">أحداث ديناميكية غير صالحة</translation>
     </message>
     <message>
         <source>Save the changes before closing the last events tab?</source>
-        <translation>هل تريد حفظ التغييرات قبل إغلاق علامة تبويب الأحداث الأخيرة؟</translation>
+        <translation type="vanished">هل تريد حفظ التغييرات قبل إغلاق علامة تبويب الأحداث الأخيرة؟</translation>
     </message>
     <message>
         <source>The dynamic events contain unsaved changes.</source>
-        <translation>تحتوي الأحداث الديناميكية على تغييرات غير محفوظة.</translation>
+        <translation type="vanished">تحتوي الأحداث الديناميكية على تغييرات غير محفوظة.</translation>
     </message>
     <message>
         <source>Unsaved dynamic events</source>
-        <translation>أحداث ديناميكية غير محفوظة</translation>
+        <translation type="vanished">أحداث ديناميكية غير محفوظة</translation>
     </message>
 </context>
 <context>
@@ -3750,35 +3834,42 @@ Are you sure?</source>
     <name>DynamicEventsDraftSession</name>
     <message>
         <source>An event and its events group use different simulation modes.</source>
-        <translation>يستخدم الحدث ومجموعة أحداثه أوضاع محاكاة مختلفة.</translation>
+        <translation type="vanished">يستخدم الحدث ومجموعة أحداثه أوضاع محاكاة مختلفة.</translation>
     </message>
     <message>
         <source>An event has no target device.</source>
-        <translation>ليس للحدث جهاز مستهدف.</translation>
+        <translation type="vanished">ليس للحدث جهاز مستهدف.</translation>
     </message>
     <message>
         <source>An event in device &apos;{device}&apos; has no valid events group.</source>
-        <translation>ليس للحدث في الجهاز &apos;{device}&apos; مجموعة أحداث صالحة.</translation>
+        <translation type="vanished">ليس للحدث في الجهاز &apos;{device}&apos; مجموعة أحداث صالحة.</translation>
     </message>
     <message>
         <source>An event in device &apos;{device}&apos; has no valid parameter.</source>
-        <translation>ليس للحدث في الجهاز &apos;{device}&apos; معلمة صالحة.</translation>
+        <translation type="vanished">ليس للحدث في الجهاز &apos;{device}&apos; معلمة صالحة.</translation>
     </message>
     <message>
         <source>An events group has an empty name.</source>
-        <translation>تحتوي مجموعة الأحداث على اسم فارغ.</translation>
+        <translation type="vanished">تحتوي مجموعة الأحداث على اسم فارغ.</translation>
     </message>
     <message>
         <source>Events for parameter &apos;{parameter}&apos; overlap in group &apos;{group}&apos; and device &apos;{device}&apos;.</source>
-        <translation>تتداخل أحداث المعلمة &apos;{parameter}&apos; في المجموعة &apos;{group}&apos; والجهاز &apos;{device}&apos;.</translation>
+        <translation type="vanished">تتداخل أحداث المعلمة &apos;{parameter}&apos; في المجموعة &apos;{group}&apos; والجهاز &apos;{device}&apos;.</translation>
     </message>
     <message>
         <source>The events group name &apos;{name}&apos; is duplicated.</source>
-        <translation>اسم مجموعة الأحداث &apos;{name}&apos; مكرر.</translation>
+        <translation type="vanished">اسم مجموعة الأحداث &apos;{name}&apos; مكرر.</translation>
     </message>
     <message>
         <source>The ramp event for parameter &apos;{parameter}&apos; has an invalid end time.</source>
-        <translation>يحتوي حدث التدرج للمعلمة &apos;{parameter}&apos; على وقت نهاية غير صالح.</translation>
+        <translation type="vanished">يحتوي حدث التدرج للمعلمة &apos;{parameter}&apos; على وقت نهاية غير صالح.</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventsFilterPopup</name>
+    <message>
+        <source>All</source>
+        <translation type="vanished">جميع</translation>
     </message>
 </context>
 <context>
@@ -3812,17 +3903,17 @@ Are you sure?</source>
     <name>DynamicEventsItemDelegate</name>
     <message>
         <source>Ramp</source>
-        <translation>التدرج</translation>
+        <translation type="vanished">التدرج</translation>
     </message>
     <message>
         <source>Step</source>
-        <translation>الخطوة</translation>
+        <translation type="vanished">الخطوة</translation>
     </message>
 </context>
 <context>
     <name>DynamicEventsPage</name>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="143"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="165"/>
         <source>Add an event to the selected event group</source>
         <translation>إضافة حدث إلى مجموعة الأحداث المحددة</translation>
     </message>
@@ -3832,7 +3923,7 @@ Are you sure?</source>
     </message>
     <message>
         <source>Are you sure you want to remove the event for &apos;{parameter}&apos; at {time:.4f} s?</source>
-        <translation>هل أنت متأكد من أنك تريد إزالة الحدث الخاص بـ &apos;{parameter}&apos; عند {time:.4f} ثانية؟</translation>
+        <translation type="vanished">هل أنت متأكد من أنك تريد إزالة الحدث الخاص بـ &apos;{parameter}&apos; عند {time:.4f} ثانية؟</translation>
     </message>
     <message>
         <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="14"/>
@@ -3840,45 +3931,76 @@ Are you sure?</source>
         <translation>الأحداث الديناميكية</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="131"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="124"/>
+        <source>New</source>
+        <translation>جديد</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="127"/>
+        <source>Delete all events of this simulation mode from the current device</source>
+        <translation>حذف جميع الأحداث الخاصة بوضع المحاكاة هذا من الجهاز الحالي</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="139"/>
+        <source>Save</source>
+        <translation>يحفظ</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="142"/>
+        <source>Save event changes</source>
+        <translation>حفظ تغييرات الأحداث</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="145"/>
+        <source>Ctrl+S</source>
+        <translation>السيطرة + س</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="153"/>
         <source>Create an EMT switch opening and reclosing event sequence</source>
         <translation>إنشاء تسلسل حدث فتح وإعادة إغلاق مفتاح EMT</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="140"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="182"/>
+        <source>Create Event Group</source>
+        <translation>إنشاء مجموعة أحداث</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="185"/>
+        <source>Create an event group</source>
+        <translation>إنشاء مجموعة أحداث</translation>
+    </message>
+    <message>
         <source>Add Event</source>
-        <translation>إضافة حدث</translation>
+        <translation type="vanished">إضافة حدث</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="152"/>
         <source>Remove Selected</source>
-        <translation>إزالة المحدد</translation>
+        <translation type="vanished">إزالة المحدد</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="164"/>
         <source>Add Event Group</source>
         <translation>إضافة مجموعة أحداث</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="167"/>
         <source>Create an event group for this simulation mode</source>
-        <translation>إنشاء مجموعة أحداث لوضع المحاكاة هذا</translation>
+        <translation type="vanished">إنشاء مجموعة أحداث لوضع المحاكاة هذا</translation>
     </message>
     <message>
         <source>Empty dynamic model</source>
-        <translation>نموذج ديناميكي فارغ</translation>
+        <translation type="vanished">نموذج ديناميكي فارغ</translation>
     </message>
     <message>
         <source>Events cannot be added because this dynamic model has no event parameters.</source>
-        <translation>لا يمكن إضافة الأحداث لأن نموذج الديناميكي هذا ليس له معلمات أحداث.</translation>
+        <translation type="vanished">لا يمكن إضافة الأحداث لأن نموذج الديناميكي هذا ليس له معلمات أحداث.</translation>
     </message>
     <message>
         <source>Events saved</source>
-        <translation>تم حفظ الأحداث</translation>
+        <translation type="vanished">تم حفظ الأحداث</translation>
     </message>
     <message>
         <source>Invalid dynamic events</source>
-        <translation>أحداث ديناميكية غير صالحة</translation>
+        <translation type="vanished">أحداث ديناميكية غير صالحة</translation>
     </message>
     <message>
         <source>Invalid event group</source>
@@ -3886,15 +4008,15 @@ Are you sure?</source>
     </message>
     <message>
         <source>Invalid parameter</source>
-        <translation>معلمة غير صالحة</translation>
+        <translation type="vanished">معلمة غير صالحة</translation>
     </message>
     <message>
         <source>No events can be added because the dynamic model has no event parameters.</source>
-        <translation>لا يمكن إضافة أحداث لأن نموذج الديناميكي ليس له معلمات أحداث.</translation>
+        <translation type="vanished">لا يمكن إضافة أحداث لأن نموذج الديناميكي ليس له معلمات أحداث.</translation>
     </message>
     <message>
         <source>Remove</source>
-        <translation>يزيل</translation>
+        <translation type="vanished">يزيل</translation>
     </message>
     <message>
         <source>Remove event</source>
@@ -3905,7 +4027,7 @@ Are you sure?</source>
         <translation type="vanished">إزالة مجموعة الأحداث</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="155"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="177"/>
         <source>Remove the selected event or event group</source>
         <translation>إزالة الحدث أو مجموعة الأحداث المحددة</translation>
     </message>
@@ -3914,9 +4036,8 @@ Are you sure?</source>
         <translation type="vanished">إعادة التسمية</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="112"/>
         <source>Save events</source>
-        <translation>حفظ الأحداث</translation>
+        <translation type="vanished">حفظ الأحداث</translation>
     </message>
     <message>
         <source>Select the event group where you want to add the event.</source>
@@ -3927,16 +4048,16 @@ Are you sure?</source>
         <translation type="vanished">حدد الحدث أو مجموعة الأحداث التي تريد إزالتها.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="128"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="150"/>
         <source>Switch Sequence Wizard</source>
         <translation>معالج تسلسل التبديل</translation>
     </message>
     <message>
         <source>The event group name must be non-empty and unique in this simulation mode.</source>
-        <translation>يجب أن يكون اسم مجموعة الأحداث غير فارغ وفريدًا في وضع المحاكاة هذا.</translation>
+        <translation type="vanished">يجب أن يكون اسم مجموعة الأحداث غير فارغ وفريدًا في وضع المحاكاة هذا.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="81"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="101"/>
         <source>This dynamic model is empty. New events cannot be added until the model is built.</source>
         <translation>هذا النموذج الديناميكي فارغ. لا يمكن إضافة أحداث جديدة حتى يتم بناء النموذج.</translation>
     </message>
@@ -3946,26 +4067,66 @@ Are you sure?</source>
     </message>
     <message>
         <source>Add an event and select its event group</source>
-        <translation>إضافة حدث وتحديد مجموعة الأحداث الخاصة به</translation>
+        <translation type="vanished">إضافة حدث وتحديد مجموعة الأحداث الخاصة به</translation>
     </message>
     <message>
         <source>Create an event group before adding an event.</source>
-        <translation>قم بإنشاء مجموعة أحداث قبل إضافة حدث.</translation>
+        <translation type="vanished">قم بإنشاء مجموعة أحداث قبل إضافة حدث.</translation>
     </message>
     <message>
         <source>Select the event you want to remove.</source>
-        <translation>حدد الحدث الذي تريد إزالته.</translation>
+        <translation type="vanished">حدد الحدث الذي تريد إزالته.</translation>
+    </message>
+    <message>
+        <source>An event group with this name already exists.</source>
+        <translation>توجد بالفعل مجموعة أحداث بهذا الاسم.</translation>
+    </message>
+    <message>
+        <source>Delete all device events</source>
+        <translation>حذف جميع أحداث الجهاز</translation>
+    </message>
+    <message>
+        <source>Delete all events for this device and simulation mode?</source>
+        <translation>هل تريد حذف جميع الأحداث لهذا الجهاز ووضع المحاكاة؟</translation>
+    </message>
+    <message>
+        <source>Group name:</source>
+        <translation>اسم المجموعة:</translation>
+    </message>
+    <message>
+        <source>Remove '{name}' and all events in this group?</source>
+        <translation>هل تريد إزالة '{name}' وجميع الأحداث في هذه المجموعة؟</translation>
+    </message>
+    <message>
+        <source>Remove event group</source>
+        <translation>إزالة مجموعة الأحداث</translation>
+    </message>
+    <message>
+        <source>Remove the selected event?</source>
+        <translation>هل تريد إزالة الحدث المحدد؟</translation>
+    </message>
+    <message>
+        <source>Select an event group before adding an event.</source>
+        <translation>يرجى تحديد مجموعة أحداث قبل إضافة حدث.</translation>
+    </message>
+    <message>
+        <source>Select an event or event group to remove.</source>
+        <translation>يرجى تحديد حدث أو مجموعة أحداث للإزالة.</translation>
+    </message>
+    <message>
+        <source>The dynamic model has no event parameters.</source>
+        <translation>لا يحتوي النموذج الديناميكي على معاملات أحداث.</translation>
     </message>
 </context>
 <context>
     <name>DynamicEventsTreeModel</name>
     <message>
         <source>Align Step</source>
-        <translation>محاذاة الخطوة</translation>
+        <translation type="vanished">محاذاة الخطوة</translation>
     </message>
     <message>
         <source>End Time</source>
-        <translation>الوقت النهائي</translation>
+        <translation type="vanished">الوقت النهائي</translation>
     </message>
     <message>
         <source>Invalid / Ungrouped Events</source>
@@ -3973,15 +4134,15 @@ Are you sure?</source>
     </message>
     <message>
         <source>Invalid parameter</source>
-        <translation>معلمة غير صالحة</translation>
+        <translation type="vanished">معلمة غير صالحة</translation>
     </message>
     <message>
         <source>New Value</source>
-        <translation>قيمة جديدة</translation>
+        <translation type="vanished">قيمة جديدة</translation>
     </message>
     <message>
         <source>Parameter</source>
-        <translation>المعلمة</translation>
+        <translation type="vanished">المعلمة</translation>
     </message>
     <message>
         <source>These persisted events do not reference a valid events group and can only be removed.</source>
@@ -3989,19 +4150,19 @@ Are you sure?</source>
     </message>
     <message>
         <source>Time</source>
-        <translation>الوقت</translation>
+        <translation type="vanished">الوقت</translation>
     </message>
     <message>
         <source>Transition</source>
-        <translation>الانتقال</translation>
+        <translation type="vanished">الانتقال</translation>
     </message>
     <message>
         <source>Event Group</source>
-        <translation>مجموعة الأحداث</translation>
+        <translation type="vanished">مجموعة الأحداث</translation>
     </message>
     <message>
         <source>Select Event Group</source>
-        <translation>تحديد مجموعة الأحداث</translation>
+        <translation type="vanished">تحديد مجموعة الأحداث</translation>
     </message>
 </context>
 <context>
@@ -4178,6 +4339,79 @@ select the expected processing format</source>
     <message>
         <source>Choose an FMU file first.</source>
         <translation>اختر ملف FMU أولاً.</translation>
+    </message>
+</context>
+<context>
+    <name>Form</name>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="14"/>
+        <source>Add block property</source>
+        <translation>إضافة خاصية الكتلة</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="26"/>
+        <source>Add symbol to selected block</source>
+        <translation>إضافة رمز إلى الكتلة المحددة</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="71"/>
+        <source>Output</source>
+        <translation>المخرجات</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="78"/>
+        <source>Create derivative variable</source>
+        <translation>إنشاء متغير مشتق</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="144"/>
+        <source>New symbol name</source>
+        <translation>اسم الرمز الجديد</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="151"/>
+        <source>Symbol category</source>
+        <translation>فئة الرمز</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="158"/>
+        <source>Owner block</source>
+        <translation>الكتلة المالكة</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="165"/>
+        <source>Type</source>
+        <translation>النوع</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="172"/>
+        <source>Add symbol</source>
+        <translation>إضافة رمز</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="195"/>
+        <source>Static device mapping</source>
+        <translation>تخطيط الأجهزة الثابتة</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="202"/>
+        <source>Power-flow variable used to initialize this dynamic variable.</source>
+        <translation>متغير تدفق الطاقة المستخدم لتهيئة هذا المتغير الديناميكي.</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="205"/>
+        <source>Power-flow variable</source>
+        <translation>متغير تدفق الطاقة</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="266"/>
+        <source>Enter a name</source>
+        <translation>أدخل اسمًا</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="273"/>
+        <source>Initial numeric value</source>
+        <translation>القيمة الرقمية الأولية</translation>
     </message>
 </context>
 <context>
@@ -13027,7 +13261,7 @@ You need to load or create a grid!</source>
     <message>
         <location filename="../Main/MainWindow.ui" line="12999"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Candidate investment generator&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Generate candidate reinforcements (new lines and upgrades) for N-1 violations via LODF/PTDF screening&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Candidate investment generator&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Generate candidate reinforcements (new lines and upgrades) for N-1 violations via LODF/PTDF screening&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Candidate investment generator&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Generate candidate reinforcements (new lines and upgrades) for N-1 violations via LODF/PTDF screening&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="13117"/>
@@ -15841,21 +16075,21 @@ You need to load or create a grid!</source>
     </message>
 </context>
 <context>
-    <name>BaseMainGui</name>
+    <name>DiagramScene</name>
     <message>
-        <source>Are you sure that you want to cancel the simulation?</source>
-        <translation>هل أنت متأكد أنك تريد إلغاء المحاكاة؟</translation>
+        <source>Block info</source>
+        <translation>معلومات الكتلة</translation>
     </message>
     <message>
-        <source>Unlocking the UI may cause crash depending on the conditions. Are you sure?</source>
-        <translation>قد يؤدي فتح واجهة المستخدم إلى تعطل اعتمادًا على الظروف. هل أنت متأكد؟</translation>
+        <source>Edit block</source>
+        <translation>تحرير الكتلة</translation>
     </message>
 </context>
 <context>
-    <name>DynamicEventsFilterPopup</name>
+    <name>DynamicEventGroupsTreeModel</name>
     <message>
-        <source>All</source>
-        <translation>جميع</translation>
+        <source>Event groups</source>
+        <translation>مجموعات الأحداث</translation>
     </message>
 </context>
 </TS>

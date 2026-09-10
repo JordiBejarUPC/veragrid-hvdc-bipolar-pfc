@@ -662,6 +662,17 @@ li.checked::marcador { content: &quot;\2612&quot;; }
     </message>
 </context>
 <context>
+    <name>BaseMainGui</name>
+    <message>
+        <source>Are you sure that you want to cancel the simulation?</source>
+        <translation>Tem a certeza de que deseja cancelar a simulação?</translation>
+    </message>
+    <message>
+        <source>Unlocking the UI may cause crash depending on the conditions. Are you sure?</source>
+        <translation>Desbloquear a interface de utilizador pode causar falhas dependendo das condições. Tem a certeza?</translation>
+    </message>
+</context>
+<context>
     <name>BlockEditorWindow</name>
     <message>
         <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="14"/>
@@ -2958,6 +2969,18 @@ Tem a certeza?</translation>
         <source>You are going to delete the complete model and start from scratch. Are you sure?</source>
         <translation type="vanished">Vai apagar o modelo completo e começar do zero. Tem a certeza?</translation>
     </message>
+    <message>
+        <source>Block info</source>
+        <translation>Informação do Bloco</translation>
+    </message>
+    <message>
+        <source>No online catalogue documentation is available for this custom block.</source>
+        <translation>Não está disponível documentação de catálogo online para este bloco personalizado.</translation>
+    </message>
+    <message>
+        <source>The online block documentation could not be opened.</source>
+        <translation>Não foi possível abrir a documentação online do bloco.</translation>
+    </message>
 </context>
 <context>
     <name>DynamicBlockPropertiesDialog</name>
@@ -2967,9 +2990,8 @@ Tem a certeza?</translation>
         <translation>Bloquear propriedades</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="70"/>
         <source>Apply changes</source>
-        <translation>Aplicar alterações</translation>
+        <translation type="vanished">Aplicar alterações</translation>
     </message>
     <message>
         <source>Close</source>
@@ -2981,11 +3003,11 @@ Tem a certeza?</translation>
     </message>
     <message>
         <source>Add symbol</source>
-        <translation>Adicionar símbolo</translation>
+        <translation type="vanished">Adicionar símbolo</translation>
     </message>
     <message>
         <source>Add symbol to selected block</source>
-        <translation>Adicionar símbolo ao bloco selecionado</translation>
+        <translation type="vanished">Adicionar símbolo ao bloco selecionado</translation>
     </message>
     <message>
         <source>Advanced runtime logic</source>
@@ -2996,16 +3018,17 @@ Tem a certeza?</translation>
         <translation>Aplicar configurações estruturais separadamente das alterações no código DAE ou na interface do símbolo.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="388"/>
         <source>Block / equation group</source>
         <translation>Bloco / grupo de equações</translation>
     </message>
     <message>
         <source>Block configuration</source>
-        <translation>Configuração do bloco</translation>
+        <translation type="vanished">Configuração do bloco</translation>
     </message>
     <message>
         <source>Block info</source>
-        <translation>Informações do bloco</translation>
+        <translation type="vanished">Informações do bloco</translation>
     </message>
     <message>
         <source>Block properties - {name}</source>
@@ -3028,12 +3051,13 @@ Tem a certeza?</translation>
         <translation>Alterações aplicadas. As inequações avançadas/lógicas discretas/booleanas foram preservadas sem alterações.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="323"/>
         <source>Clear</source>
         <translation>Limpar</translation>
     </message>
     <message>
         <source>Create derivative variable</source>
-        <translation>Criar variável derivada</translation>
+        <translation type="vanished">Criar variável derivada</translation>
     </message>
     <message>
         <source>DAE and runtime-logic changes applied to the editor working copy.</source>
@@ -3044,8 +3068,9 @@ Tem a certeza?</translation>
         <translation type="vanished">O código DAE é válido.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="131"/>
         <source>DAE model</source>
-        <translation type="vanished">Modelo DAE</translation>
+        <translation>Modelo DAE</translation>
     </message>
     <message>
         <source>DAE validation failed at line {line}: {message}</source>
@@ -3057,11 +3082,11 @@ Tem a certeza?</translation>
     </message>
     <message>
         <source>Download rendered PDF</source>
-        <translation>Descarregar PDF renderizado</translation>
+        <translation type="vanished">Descarregar PDF renderizado</translation>
     </message>
     <message>
         <source>Enter a name</source>
-        <translation>Introduzir um nome</translation>
+        <translation type="vanished">Introduzir um nome</translation>
     </message>
     <message>
         <source>Enter a valid Python symbol name.</source>
@@ -3072,14 +3097,48 @@ Tem a certeza?</translation>
         <translation>PDF da equação criado: {path}</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="158"/>
         <source>Equation owner</source>
         <translation>Proprietário da equação</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="251"/>
+        <source>&lt;&lt;</source>
+        <translation>&lt;&lt;</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="261"/>
+        <source>&gt;&gt;</source>
+        <translation>&gt;&gt;</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="289"/>
+        <source>LaTeX rendering</source>
+        <translation>Renderização LaTeX</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="343"/>
+        <source>Save redered PDF</source>
+        <translation>Guardar PDF renderizado</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="372"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="393"/>
         <source>Equations</source>
         <translation>Equações</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="410"/>
+        <source>LaTex source</source>
+        <translation>Fonte LaTeX</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="509"/>
+        <source>Accept changes</source>
+        <translation>Aceitar alterações</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="40"/>
         <source>General options</source>
         <translation>Opções gerais</translation>
     </message>
@@ -3089,7 +3148,7 @@ Tem a certeza?</translation>
     </message>
     <message>
         <source>Initial numeric value</source>
-        <translation>Valor numérico inicial</translation>
+        <translation type="vanished">Valor numérico inicial</translation>
     </message>
     <message>
         <source>Inputs</source>
@@ -3101,11 +3160,11 @@ Tem a certeza?</translation>
     </message>
     <message>
         <source>LaTeX</source>
-        <translation>LaTeX</translation>
+        <translation type="vanished">LaTeX</translation>
     </message>
     <message>
         <source>LaTeX source</source>
-        <translation>Fonte LaTeX</translation>
+        <translation type="vanished">Fonte LaTeX</translation>
     </message>
     <message>
         <source>Name</source>
@@ -3113,11 +3172,11 @@ Tem a certeza?</translation>
     </message>
     <message>
         <source>New symbol name</source>
-        <translation>Novo nome de símbolo</translation>
+        <translation type="vanished">Novo nome de símbolo</translation>
     </message>
     <message>
         <source>Next</source>
-        <translation>Próximo</translation>
+        <translation type="vanished">Próximo</translation>
     </message>
     <message>
         <source>No matches</source>
@@ -3125,7 +3184,7 @@ Tem a certeza?</translation>
     </message>
     <message>
         <source>No online catalogue documentation is available for this custom block.</source>
-        <translation>Não está disponível documentação de catálogo online para este bloco personalizado.</translation>
+        <translation type="vanished">Não está disponível documentação de catálogo online para este bloco personalizado.</translation>
     </message>
     <message>
         <source>None</source>
@@ -3141,11 +3200,11 @@ Tem a certeza?</translation>
     </message>
     <message>
         <source>Opens the documentation for the original predefined library block. If this block has been modified in the editor, its current equations, symbols, parameters, or runtime logic may differ from the online documentation.</source>
-        <translation>Abre a documentação do bloco de biblioteca predefinido original. Se este bloco foi modificado no editor, as suas equações, símbolos, parâmetros ou lógica de tempo de execução atuais podem diferir da documentação online.</translation>
+        <translation type="vanished">Abre a documentação do bloco de biblioteca predefinido original. Se este bloco foi modificado no editor, as suas equações, símbolos, parâmetros ou lógica de tempo de execução atuais podem diferir da documentação online.</translation>
     </message>
     <message>
         <source>Output</source>
-        <translation>Saída</translation>
+        <translation type="vanished">Saída</translation>
     </message>
     <message>
         <source>Outputs</source>
@@ -3153,7 +3212,7 @@ Tem a certeza?</translation>
     </message>
     <message>
         <source>Owner block</source>
-        <translation>Bloco proprietário</translation>
+        <translation type="vanished">Bloco proprietário</translation>
     </message>
     <message>
         <source>PDF documents (*.pdf)</source>
@@ -3169,19 +3228,19 @@ Tem a certeza?</translation>
     </message>
     <message>
         <source>Power-flow variable</source>
-        <translation>Variável de fluxo de potência</translation>
+        <translation type="vanished">Variável de fluxo de potência</translation>
     </message>
     <message>
         <source>Power-flow variable used to initialize this dynamic variable.</source>
-        <translation>Variável de fluxo de potência usada para inicializar esta variável dinâmica.</translation>
+        <translation type="vanished">Variável de fluxo de potência usada para inicializar esta variável dinâmica.</translation>
     </message>
     <message>
         <source>Previous</source>
-        <translation>Anterior</translation>
+        <translation type="vanished">Anterior</translation>
     </message>
     <message>
         <source>Python code</source>
-        <translation>Código Python</translation>
+        <translation type="vanished">Código Python</translation>
     </message>
     <message>
         <source>Rename...</source>
@@ -3196,6 +3255,7 @@ Tem a certeza?</translation>
         <translation>Guardar PDF de equações dinâmicas</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="238"/>
         <source>Search Python code...</source>
         <translation>Pesquisar código Python...</translation>
     </message>
@@ -3216,6 +3276,7 @@ Tem a certeza?</translation>
         <translation>Selecionar um tipo de símbolo válido.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="316"/>
         <source>Select all</source>
         <translation>Selecionar tudo</translation>
     </message>
@@ -3224,10 +3285,12 @@ Tem a certeza?</translation>
         <translation>Selecionar pelo menos um grupo de equações não vazio.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="422"/>
         <source>Select equation groups to generate copyable LaTeX source.</source>
         <translation>Selecionar grupos de equações para gerar fonte LaTeX copiável.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="378"/>
         <source>Select the equation groups to include. Each internal block and each DAE section can be selected independently.</source>
         <translation>Selecionar os grupos de equações a incluir. Cada bloco interno e cada secção DAE podem ser selecionados independentemente.</translation>
     </message>
@@ -3237,11 +3300,11 @@ Tem a certeza?</translation>
     </message>
     <message>
         <source>Static device mapping</source>
-        <translation>Mapeamento de dispositivos estáticos</translation>
+        <translation type="vanished">Mapeamento de dispositivos estáticos</translation>
     </message>
     <message>
         <source>Symbol category</source>
-        <translation>Categoria de símbolo</translation>
+        <translation type="vanished">Categoria de símbolo</translation>
     </message>
     <message>
         <source>The PDF could not be created: {message}</source>
@@ -3249,9 +3312,10 @@ Tem a certeza?</translation>
     </message>
     <message>
         <source>The online block documentation could not be opened in the system browser.</source>
-        <translation>Não foi possível abrir a documentação do bloco online no navegador do sistema.</translation>
+        <translation type="vanished">Não foi possível abrir a documentação do bloco online no navegador do sistema.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="440"/>
         <source>These settings contain structured data used to regenerate the block. Edit sequences with valid Python tuple/list syntax.</source>
         <translation>Estas definições contêm dados estruturados usados para regenerar o bloco. Editar sequências com sintaxe válida de tupla/lista Python.</translation>
     </message>
@@ -3261,7 +3325,7 @@ Tem a certeza?</translation>
     </message>
     <message>
         <source>Type</source>
-        <translation>Tipo</translation>
+        <translation type="vanished">Tipo</translation>
     </message>
     <message>
         <source>Validate all code</source>
@@ -3281,19 +3345,20 @@ Tem a certeza?</translation>
     </message>
     <message>
         <source>+ Add procedural logic</source>
-        <translation>+ Adicionar lógica procedural</translation>
+        <translation type="vanished">+ Adicionar lógica procedural</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="188"/>
         <source>Add one procedural behavior to the active equation owner&apos;s Python code.</source>
         <translation>Adicionar um comportamento procedural ao código Python do proprietário da equação ativa.</translation>
     </message>
     <message>
         <source>DAE editor</source>
-        <translation>Editor DAE</translation>
+        <translation type="vanished">Editor DAE</translation>
     </message>
     <message>
         <source>Documentation</source>
-        <translation>Documentação</translation>
+        <translation type="vanished">Documentação</translation>
     </message>
     <message>
         <source>Model code is valid.</source>
@@ -3312,6 +3377,7 @@ Tem a certeza?</translation>
         <translation>Modo retido</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="82"/>
         <source>Search properties...</source>
         <translation>Procurar propriedades...</translation>
     </message>
@@ -3321,9 +3387,10 @@ Tem a certeza?</translation>
     </message>
     <message>
         <source>Show or hide Python code and LaTeX rendering tool</source>
-        <translation>Mostrar ou ocultar a ferramenta de renderização de código Python e LaTeX</translation>
+        <translation type="vanished">Mostrar ou ocultar a ferramenta de renderização de código Python e LaTeX</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="434"/>
         <source>Special configuration</source>
         <translation>Configuração especial</translation>
     </message>
@@ -3336,6 +3403,7 @@ Tem a certeza?</translation>
         <translation>O proprietário selecionado não tem buffer de código Python.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="482"/>
         <source>Validate model</source>
         <translation>Validar modelo</translation>
     </message>
@@ -3346,6 +3414,22 @@ Tem a certeza?</translation>
     <message>
         <source>Unsaved Block Properties changes</source>
         <translation>Alterações não guardadas nas Propriedades do Bloco</translation>
+    </message>
+    <message>
+        <source>Add parameter...</source>
+        <translation>Adicionar parâmetro...</translation>
+    </message>
+    <message>
+        <source>Add retained mode...</source>
+        <translation>Adicionar modo retido...</translation>
+    </message>
+    <message>
+        <source>Add variable...</source>
+        <translation>Adicionar variável...</translation>
+    </message>
+    <message>
+        <source>Nothing was added: {message}</source>
+        <translation>Nada foi adicionado: {message}</translation>
     </message>
 </context>
 <context>
@@ -3432,19 +3516,19 @@ Tem a certeza?</translation>
     <name>DynamicEditorWorkspaceSession</name>
     <message>
         <source>Invalid dynamic events</source>
-        <translation>Eventos dinâmicos inválidos</translation>
+        <translation type="vanished">Eventos dinâmicos inválidos</translation>
     </message>
     <message>
         <source>Save the changes before closing the last events tab?</source>
-        <translation>Guardar as alterações antes de fechar a última aba de eventos?</translation>
+        <translation type="vanished">Guardar as alterações antes de fechar a última aba de eventos?</translation>
     </message>
     <message>
         <source>The dynamic events contain unsaved changes.</source>
-        <translation>Os eventos dinâmicos contêm alterações não guardadas.</translation>
+        <translation type="vanished">Os eventos dinâmicos contêm alterações não guardadas.</translation>
     </message>
     <message>
         <source>Unsaved dynamic events</source>
-        <translation>Eventos dinâmicos não guardados</translation>
+        <translation type="vanished">Eventos dinâmicos não guardados</translation>
     </message>
 </context>
 <context>
@@ -3752,35 +3836,42 @@ Tem a certeza?</translation>
     <name>DynamicEventsDraftSession</name>
     <message>
         <source>An event and its events group use different simulation modes.</source>
-        <translation>Um evento e o seu grupo de eventos usam modos de simulação diferentes.</translation>
+        <translation type="vanished">Um evento e o seu grupo de eventos usam modos de simulação diferentes.</translation>
     </message>
     <message>
         <source>An event has no target device.</source>
-        <translation>Um evento não tem dispositivo alvo.</translation>
+        <translation type="vanished">Um evento não tem dispositivo alvo.</translation>
     </message>
     <message>
         <source>An event in device &apos;{device}&apos; has no valid events group.</source>
-        <translation>Um evento no dispositivo &apos;{device}&apos; não tem grupo de eventos válido.</translation>
+        <translation type="vanished">Um evento no dispositivo &apos;{device}&apos; não tem grupo de eventos válido.</translation>
     </message>
     <message>
         <source>An event in device &apos;{device}&apos; has no valid parameter.</source>
-        <translation>Um evento no dispositivo &apos;{device}&apos; não tem parâmetro válido.</translation>
+        <translation type="vanished">Um evento no dispositivo &apos;{device}&apos; não tem parâmetro válido.</translation>
     </message>
     <message>
         <source>An events group has an empty name.</source>
-        <translation>Um grupo de eventos tem um nome vazio.</translation>
+        <translation type="vanished">Um grupo de eventos tem um nome vazio.</translation>
     </message>
     <message>
         <source>Events for parameter &apos;{parameter}&apos; overlap in group &apos;{group}&apos; and device &apos;{device}&apos;.</source>
-        <translation>Os eventos para o parâmetro &apos;{parameter}&apos; sobrepõem-se no grupo &apos;{group}&apos; e no dispositivo &apos;{device}&apos;.</translation>
+        <translation type="vanished">Os eventos para o parâmetro &apos;{parameter}&apos; sobrepõem-se no grupo &apos;{group}&apos; e no dispositivo &apos;{device}&apos;.</translation>
     </message>
     <message>
         <source>The events group name &apos;{name}&apos; is duplicated.</source>
-        <translation>O nome do grupo de eventos &apos;{name}&apos; está duplicado.</translation>
+        <translation type="vanished">O nome do grupo de eventos &apos;{name}&apos; está duplicado.</translation>
     </message>
     <message>
         <source>The ramp event for parameter &apos;{parameter}&apos; has an invalid end time.</source>
-        <translation>O evento de rampa para o parâmetro &apos;{parameter}&apos; tem uma hora de fim inválida.</translation>
+        <translation type="vanished">O evento de rampa para o parâmetro &apos;{parameter}&apos; tem uma hora de fim inválida.</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventsFilterPopup</name>
+    <message>
+        <source>All</source>
+        <translation type="vanished">Todos</translation>
     </message>
 </context>
 <context>
@@ -3814,17 +3905,17 @@ Tem a certeza?</translation>
     <name>DynamicEventsItemDelegate</name>
     <message>
         <source>Ramp</source>
-        <translation>Rampa</translation>
+        <translation type="vanished">Rampa</translation>
     </message>
     <message>
         <source>Step</source>
-        <translation>Degrau</translation>
+        <translation type="vanished">Degrau</translation>
     </message>
 </context>
 <context>
     <name>DynamicEventsPage</name>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="143"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="165"/>
         <source>Add an event to the selected event group</source>
         <translation>Adicionar um evento ao grupo de eventos selecionado</translation>
     </message>
@@ -3834,7 +3925,7 @@ Tem a certeza?</translation>
     </message>
     <message>
         <source>Are you sure you want to remove the event for &apos;{parameter}&apos; at {time:.4f} s?</source>
-        <translation>Tem a certeza de que deseja remover o evento para &apos;{parameter}&apos; em {time:.4f} s?</translation>
+        <translation type="vanished">Tem a certeza de que deseja remover o evento para &apos;{parameter}&apos; em {time:.4f} s?</translation>
     </message>
     <message>
         <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="14"/>
@@ -3842,45 +3933,76 @@ Tem a certeza?</translation>
         <translation>Eventos Dinâmicos</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="131"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="124"/>
+        <source>New</source>
+        <translation>Novo</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="127"/>
+        <source>Delete all events of this simulation mode from the current device</source>
+        <translation>Eliminar todos os eventos deste modo de simulação do dispositivo atual</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="139"/>
+        <source>Save</source>
+        <translation>Salvar</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="142"/>
+        <source>Save event changes</source>
+        <translation>Guardar alterações de eventos</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="145"/>
+        <source>Ctrl+S</source>
+        <translation>Ctrl+S</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="153"/>
         <source>Create an EMT switch opening and reclosing event sequence</source>
         <translation>Criar uma sequência de eventos de abertura e refechamento de interruptor EMT</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="140"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="182"/>
+        <source>Create Event Group</source>
+        <translation>Criar Grupo de Eventos</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="185"/>
+        <source>Create an event group</source>
+        <translation>Criar um grupo de eventos</translation>
+    </message>
+    <message>
         <source>Add Event</source>
-        <translation>Adicionar Evento</translation>
+        <translation type="vanished">Adicionar Evento</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="152"/>
         <source>Remove Selected</source>
-        <translation>Remover selecionado</translation>
+        <translation type="vanished">Remover selecionado</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="164"/>
         <source>Add Event Group</source>
         <translation>Adicionar Grupo de Eventos</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="167"/>
         <source>Create an event group for this simulation mode</source>
-        <translation>Criar um grupo de eventos para este modo de simulação</translation>
+        <translation type="vanished">Criar um grupo de eventos para este modo de simulação</translation>
     </message>
     <message>
         <source>Empty dynamic model</source>
-        <translation>Modelo dinâmico vazio</translation>
+        <translation type="vanished">Modelo dinâmico vazio</translation>
     </message>
     <message>
         <source>Events cannot be added because this dynamic model has no event parameters.</source>
-        <translation>Não é possível adicionar eventos porque este modelo dinâmico não tem parâmetros de evento.</translation>
+        <translation type="vanished">Não é possível adicionar eventos porque este modelo dinâmico não tem parâmetros de evento.</translation>
     </message>
     <message>
         <source>Events saved</source>
-        <translation>Eventos guardados</translation>
+        <translation type="vanished">Eventos guardados</translation>
     </message>
     <message>
         <source>Invalid dynamic events</source>
-        <translation>Eventos dinâmicos inválidos</translation>
+        <translation type="vanished">Eventos dinâmicos inválidos</translation>
     </message>
     <message>
         <source>Invalid event group</source>
@@ -3888,15 +4010,15 @@ Tem a certeza?</translation>
     </message>
     <message>
         <source>Invalid parameter</source>
-        <translation>Parâmetro inválido</translation>
+        <translation type="vanished">Parâmetro inválido</translation>
     </message>
     <message>
         <source>No events can be added because the dynamic model has no event parameters.</source>
-        <translation>Não é possível adicionar eventos porque o modelo dinâmico não tem parâmetros de evento.</translation>
+        <translation type="vanished">Não é possível adicionar eventos porque o modelo dinâmico não tem parâmetros de evento.</translation>
     </message>
     <message>
         <source>Remove</source>
-        <translation>Remover</translation>
+        <translation type="vanished">Remover</translation>
     </message>
     <message>
         <source>Remove event</source>
@@ -3907,7 +4029,7 @@ Tem a certeza?</translation>
         <translation type="vanished">Remover grupo de eventos</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="155"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="177"/>
         <source>Remove the selected event or event group</source>
         <translation>Remover o evento ou grupo de eventos selecionado</translation>
     </message>
@@ -3916,9 +4038,8 @@ Tem a certeza?</translation>
         <translation type="vanished">Renomear</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="112"/>
         <source>Save events</source>
-        <translation>Guardar eventos</translation>
+        <translation type="vanished">Guardar eventos</translation>
     </message>
     <message>
         <source>Select the event group where you want to add the event.</source>
@@ -3929,16 +4050,16 @@ Tem a certeza?</translation>
         <translation type="vanished">Selecione o evento ou grupo de eventos que deseja remover.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="128"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="150"/>
         <source>Switch Sequence Wizard</source>
         <translation>Assistente de Sequência de Comutação</translation>
     </message>
     <message>
         <source>The event group name must be non-empty and unique in this simulation mode.</source>
-        <translation>O nome do grupo de eventos deve estar preenchido e ser único neste modo de simulação.</translation>
+        <translation type="vanished">O nome do grupo de eventos deve estar preenchido e ser único neste modo de simulação.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="81"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="101"/>
         <source>This dynamic model is empty. New events cannot be added until the model is built.</source>
         <translation>Este modelo dinâmico está vazio. Não é possível adicionar novos eventos até que o modelo seja construído.</translation>
     </message>
@@ -3948,26 +4069,66 @@ Tem a certeza?</translation>
     </message>
     <message>
         <source>Add an event and select its event group</source>
-        <translation>Adicionar um evento e selecionar o seu grupo de eventos</translation>
+        <translation type="vanished">Adicionar um evento e selecionar o seu grupo de eventos</translation>
     </message>
     <message>
         <source>Create an event group before adding an event.</source>
-        <translation>Criar um grupo de eventos antes de adicionar um evento.</translation>
+        <translation type="vanished">Criar um grupo de eventos antes de adicionar um evento.</translation>
     </message>
     <message>
         <source>Select the event you want to remove.</source>
-        <translation>Selecionar o evento que deseja remover.</translation>
+        <translation type="vanished">Selecionar o evento que deseja remover.</translation>
+    </message>
+    <message>
+        <source>An event group with this name already exists.</source>
+        <translation>Já existe um grupo de eventos com este nome.</translation>
+    </message>
+    <message>
+        <source>Delete all device events</source>
+        <translation>Eliminar todos os eventos do dispositivo</translation>
+    </message>
+    <message>
+        <source>Delete all events for this device and simulation mode?</source>
+        <translation>Eliminar todos os eventos para este dispositivo e modo de simulação?</translation>
+    </message>
+    <message>
+        <source>Group name:</source>
+        <translation>Nome do grupo:</translation>
+    </message>
+    <message>
+        <source>Remove '{name}' and all events in this group?</source>
+        <translation>Remover '{name}' e todos os eventos neste grupo?</translation>
+    </message>
+    <message>
+        <source>Remove event group</source>
+        <translation>Remover grupo de eventos</translation>
+    </message>
+    <message>
+        <source>Remove the selected event?</source>
+        <translation>Remover o evento selecionado?</translation>
+    </message>
+    <message>
+        <source>Select an event group before adding an event.</source>
+        <translation>Selecione um grupo de eventos antes de adicionar um evento.</translation>
+    </message>
+    <message>
+        <source>Select an event or event group to remove.</source>
+        <translation>Selecione um evento ou grupo de eventos para remover.</translation>
+    </message>
+    <message>
+        <source>The dynamic model has no event parameters.</source>
+        <translation>O modelo dinâmico não tem parâmetros de evento.</translation>
     </message>
 </context>
 <context>
     <name>DynamicEventsTreeModel</name>
     <message>
         <source>Align Step</source>
-        <translation>Alinhar Passo</translation>
+        <translation type="vanished">Alinhar Passo</translation>
     </message>
     <message>
         <source>End Time</source>
-        <translation>Tempo Final</translation>
+        <translation type="vanished">Tempo Final</translation>
     </message>
     <message>
         <source>Invalid / Ungrouped Events</source>
@@ -3975,15 +4136,15 @@ Tem a certeza?</translation>
     </message>
     <message>
         <source>Invalid parameter</source>
-        <translation>Parâmetro inválido</translation>
+        <translation type="vanished">Parâmetro inválido</translation>
     </message>
     <message>
         <source>New Value</source>
-        <translation>Novo Valor</translation>
+        <translation type="vanished">Novo Valor</translation>
     </message>
     <message>
         <source>Parameter</source>
-        <translation>Parâmetro</translation>
+        <translation type="vanished">Parâmetro</translation>
     </message>
     <message>
         <source>These persisted events do not reference a valid events group and can only be removed.</source>
@@ -3991,19 +4152,19 @@ Tem a certeza?</translation>
     </message>
     <message>
         <source>Time</source>
-        <translation>Tempo</translation>
+        <translation type="vanished">Tempo</translation>
     </message>
     <message>
         <source>Transition</source>
-        <translation>Transição</translation>
+        <translation type="vanished">Transição</translation>
     </message>
     <message>
         <source>Event Group</source>
-        <translation>Grupo de Eventos</translation>
+        <translation type="vanished">Grupo de Eventos</translation>
     </message>
     <message>
         <source>Select Event Group</source>
-        <translation>Selecionar Grupo de Eventos</translation>
+        <translation type="vanished">Selecionar Grupo de Eventos</translation>
     </message>
 </context>
 <context>
@@ -4180,6 +4341,79 @@ selecione o formato de processamento esperado</translation>
     <message>
         <source>Choose an FMU file first.</source>
         <translation>Escolha um arquivo FMU primeiro.</translation>
+    </message>
+</context>
+<context>
+    <name>Form</name>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="14"/>
+        <source>Add block property</source>
+        <translation>Adicionar propriedade do bloco</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="26"/>
+        <source>Add symbol to selected block</source>
+        <translation>Adicionar símbolo ao bloco selecionado</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="71"/>
+        <source>Output</source>
+        <translation>Saída</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="78"/>
+        <source>Create derivative variable</source>
+        <translation>Criar variável derivada</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="144"/>
+        <source>New symbol name</source>
+        <translation>Novo nome de símbolo</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="151"/>
+        <source>Symbol category</source>
+        <translation>Categoria de símbolo</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="158"/>
+        <source>Owner block</source>
+        <translation>Bloco proprietário</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="165"/>
+        <source>Type</source>
+        <translation>Tipo</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="172"/>
+        <source>Add symbol</source>
+        <translation>Adicionar símbolo</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="195"/>
+        <source>Static device mapping</source>
+        <translation>Mapeamento de dispositivos estáticos</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="202"/>
+        <source>Power-flow variable used to initialize this dynamic variable.</source>
+        <translation>Variável de fluxo de potência usada para inicializar esta variável dinâmica.</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="205"/>
+        <source>Power-flow variable</source>
+        <translation>Variável de fluxo de potência</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="266"/>
+        <source>Enter a name</source>
+        <translation>Introduzir um nome</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="273"/>
+        <source>Initial numeric value</source>
+        <translation>Valor numérico inicial</translation>
     </message>
 </context>
 <context>
@@ -13049,7 +13283,7 @@ Tem de carregar ou criar uma rede!</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="12999"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Candidate investment generator&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Generate candidate reinforcements (new lines and upgrades) for N-1 violations via LODF/PTDF screening&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Gerador de investimento candidato&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Gerar reforços candidatos (novas linhas e melhorias) para violações N-1 via triagem LODF/PTDF&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Gerador de investimento candidato&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Gerar reforços candidatos (novas linhas e melhorias) para violações N-1 via triagem LODF/PTDF&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="13117"/>
@@ -15863,21 +16097,21 @@ Tem de carregar ou criar uma rede!</translation>
     </message>
 </context>
 <context>
-    <name>BaseMainGui</name>
+    <name>DiagramScene</name>
     <message>
-        <source>Are you sure that you want to cancel the simulation?</source>
-        <translation>Tem a certeza de que deseja cancelar a simulação?</translation>
+        <source>Block info</source>
+        <translation>Informação do Bloco</translation>
     </message>
     <message>
-        <source>Unlocking the UI may cause crash depending on the conditions. Are you sure?</source>
-        <translation>Desbloquear a interface de utilizador pode causar falhas dependendo das condições. Tem a certeza?</translation>
+        <source>Edit block</source>
+        <translation>Editar bloco</translation>
     </message>
 </context>
 <context>
-    <name>DynamicEventsFilterPopup</name>
+    <name>DynamicEventGroupsTreeModel</name>
     <message>
-        <source>All</source>
-        <translation>Todos</translation>
+        <source>Event groups</source>
+        <translation>Grupos de eventos</translation>
     </message>
 </context>
 </TS>

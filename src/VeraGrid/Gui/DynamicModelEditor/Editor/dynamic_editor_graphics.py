@@ -19,6 +19,7 @@ from PySide6.QtWidgets import QAbstractGraphicsShapeItem, QApplication, QColorDi
 
 from PySide6.QtCore import Signal
 
+import VeraGrid.Gui.gui_functions as gf
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
@@ -4755,17 +4756,30 @@ class DiagramScene(QGraphicsScene):
                     remove_action = None
                     color_action = None
                 else:
-                    remove_action = QAction("Remove", menu)
-                    menu.addAction(remove_action)
-                    color_action = QAction("Change Color", menu)
-                    menu.addAction(color_action)
+                    remove_action = gf.add_menu_entry(
+                        menu=menu,
+                        text=self.tr("Remove"),
+                        icon_path=":/Icons/icons/delete.png",
+                    )
+                    color_action = gf.add_menu_entry(
+                        menu=menu,
+                        text=self.tr("Change Color"),
+                        icon_path=":/Icons/icons/color_grid.png",
+                    )
 
                 if isinstance(item, (GenericBlockItem, BlockItem)):
                     if is_variable_item:
-                        rename_action = QAction("Change Variable Name", menu)
+                        rename_action = gf.add_menu_entry(
+                            menu=menu,
+                            text=self.tr("Change Variable Name"),
+                            icon_path=":/Icons/icons/edit.png",
+                        )
                     else:
-                        rename_action = QAction("Change Name", menu)
-                    menu.addAction(rename_action)
+                        rename_action = gf.add_menu_entry(
+                            menu=menu,
+                            text=self.tr("Change Name"),
+                            icon_path=":/Icons/icons/edit.png",
+                        )
                 else:
                     rename_action = None
 
@@ -4787,10 +4801,16 @@ class DiagramScene(QGraphicsScene):
                 if is_editable_block:
                     context_block = item.subsys
                     menu.addSeparator()
-                    edit_action = QAction(self.tr("Edit block"), menu)
-                    menu.addAction(edit_action)
-                    block_info_action = QAction(self.tr("Block info"), menu)
-                    menu.addAction(block_info_action)
+                    edit_action = gf.add_menu_entry(
+                        menu=menu,
+                        text=self.tr("Edit block"),
+                        icon_path=":/Icons/icons/dyn_edit.png",
+                    )
+                    block_info_action = gf.add_menu_entry(
+                        menu=menu,
+                        text=self.tr("Block info"),
+                        icon_path=":/Icons/icons/grid_icon.png",
+                    )
                 else:
                     edit_action = None
                     block_info_action = None
@@ -4818,16 +4838,25 @@ class DiagramScene(QGraphicsScene):
             elif isinstance(item, PairedItem):
                 self.context_item = item
                 menu = QMenu()
-                remove_action = QAction("Remove", menu)
-                menu.addAction(remove_action)
+                remove_action = gf.add_menu_entry(
+                    menu=menu,
+                    text=self.tr("Remove"),
+                    icon_path=":/Icons/icons/delete.png",
+                )
                 duplicate_action: QAction | None
                 if item.is_signal_in:
                     duplicate_action = None
                 else:
-                    duplicate_action = QAction("Duplicate", menu)
-                    menu.addAction(duplicate_action)
-                color_action = QAction("Change Color", menu)
-                menu.addAction(color_action)
+                    duplicate_action = gf.add_menu_entry(
+                        menu=menu,
+                        text=self.tr("Duplicate"),
+                        icon_path=":/Icons/icons/copy.png",
+                    )
+                color_action = gf.add_menu_entry(
+                    menu=menu,
+                    text=self.tr("Change Color"),
+                    icon_path=":/Icons/icons/color_grid.png",
+                )
 
                 selected_action = menu.exec(event.screenPos())
                 if selected_action is remove_action:

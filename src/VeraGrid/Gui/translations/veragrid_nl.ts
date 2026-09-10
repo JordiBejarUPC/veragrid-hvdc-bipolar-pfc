@@ -660,6 +660,17 @@ li.checked::markering { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;
     </message>
 </context>
 <context>
+    <name>BaseMainGui</name>
+    <message>
+        <source>Are you sure that you want to cancel the simulation?</source>
+        <translation>Weet u zeker dat u de simulatie wilt annuleren?</translation>
+    </message>
+    <message>
+        <source>Unlocking the UI may cause crash depending on the conditions. Are you sure?</source>
+        <translation>Het ontgrendelen van de UI kan, afhankelijk van de omstandigheden, tot een crash leiden. Weet u zeker?</translation>
+    </message>
+</context>
+<context>
     <name>BlockEditorWindow</name>
     <message>
         <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="14"/>
@@ -2956,6 +2967,18 @@ Weet u zeker?</translation>
         <source>You are going to delete the complete model and start from scratch. Are you sure?</source>
         <translation type="vanished">U gaat het volledige model verwijderen en opnieuw beginnen. Weet u zeker?</translation>
     </message>
+    <message>
+        <source>Block info</source>
+        <translation>Informatie over blok</translation>
+    </message>
+    <message>
+        <source>No online catalogue documentation is available for this custom block.</source>
+        <translation>Er is geen online catalogusdocumentatie beschikbaar voor dit aangepaste blok.</translation>
+    </message>
+    <message>
+        <source>The online block documentation could not be opened.</source>
+        <translation>De online blokdocumentatie kon niet worden geopend.</translation>
+    </message>
 </context>
 <context>
     <name>DynamicBlockPropertiesDialog</name>
@@ -2965,9 +2988,8 @@ Weet u zeker?</translation>
         <translation>Blokken eigenschappen</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="70"/>
         <source>Apply changes</source>
-        <translation>Wijzigingen toepassen</translation>
+        <translation type="vanished">Wijzigingen toepassen</translation>
     </message>
     <message>
         <source>Close</source>
@@ -2979,11 +3001,11 @@ Weet u zeker?</translation>
     </message>
     <message>
         <source>Add symbol</source>
-        <translation>Symbool toevoegen</translation>
+        <translation type="vanished">Symbool toevoegen</translation>
     </message>
     <message>
         <source>Add symbol to selected block</source>
-        <translation>Symbool aan geselecteerd blok toevoegen</translation>
+        <translation type="vanished">Symbool aan geselecteerd blok toevoegen</translation>
     </message>
     <message>
         <source>Advanced runtime logic</source>
@@ -2994,16 +3016,17 @@ Weet u zeker?</translation>
         <translation>Pas structurele instellingen afzonderlijk toe van DAE-code of symbool-interface wijzigingen.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="388"/>
         <source>Block / equation group</source>
         <translation>Blok / vergelijkingsgroep</translation>
     </message>
     <message>
         <source>Block configuration</source>
-        <translation>Blokconfiguratie</translation>
+        <translation type="vanished">Blokconfiguratie</translation>
     </message>
     <message>
         <source>Block info</source>
-        <translation>Blokinformatie</translation>
+        <translation type="vanished">Blokinformatie</translation>
     </message>
     <message>
         <source>Block properties - {name}</source>
@@ -3026,12 +3049,13 @@ Weet u zeker?</translation>
         <translation>Wijzigingen toegepast. Geavanceerde ongelijkheden/discrete/boolean logica is ongewijzigd behouden.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="323"/>
         <source>Clear</source>
         <translation>Duidelijk</translation>
     </message>
     <message>
         <source>Create derivative variable</source>
-        <translation>Afgeleide variabele creëren</translation>
+        <translation type="vanished">Afgeleide variabele creëren</translation>
     </message>
     <message>
         <source>DAE and runtime-logic changes applied to the editor working copy.</source>
@@ -3042,8 +3066,9 @@ Weet u zeker?</translation>
         <translation type="vanished">DAE-code is geldig.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="131"/>
         <source>DAE model</source>
-        <translation type="vanished">DAE-model</translation>
+        <translation>DAE-model</translation>
     </message>
     <message>
         <source>DAE validation failed at line {line}: {message}</source>
@@ -3055,11 +3080,11 @@ Weet u zeker?</translation>
     </message>
     <message>
         <source>Download rendered PDF</source>
-        <translation>Gerenderde PDF downloaden</translation>
+        <translation type="vanished">Gerenderde PDF downloaden</translation>
     </message>
     <message>
         <source>Enter a name</source>
-        <translation>Voer een naam in</translation>
+        <translation type="vanished">Voer een naam in</translation>
     </message>
     <message>
         <source>Enter a valid Python symbol name.</source>
@@ -3070,14 +3095,48 @@ Weet u zeker?</translation>
         <translation>Vergelijking PDF aangemaakt: {path}</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="158"/>
         <source>Equation owner</source>
         <translation>Vergelijking eigenaar</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="251"/>
+        <source>&lt;&lt;</source>
+        <translation>&lt;&lt;</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="261"/>
+        <source>&gt;&gt;</source>
+        <translation>&gt;&gt;</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="289"/>
+        <source>LaTeX rendering</source>
+        <translation>LaTeX rendering</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="343"/>
+        <source>Save redered PDF</source>
+        <translation>Opslaan gerenderde PDF</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="372"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="393"/>
         <source>Equations</source>
         <translation>Vergelijkingen</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="410"/>
+        <source>LaTex source</source>
+        <translation>LaTeX bron</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="509"/>
+        <source>Accept changes</source>
+        <translation>Wijzigingen accepteren</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="40"/>
         <source>General options</source>
         <translation>Algemene opties</translation>
     </message>
@@ -3087,7 +3146,7 @@ Weet u zeker?</translation>
     </message>
     <message>
         <source>Initial numeric value</source>
-        <translation>Initiële numerieke waarde</translation>
+        <translation type="vanished">Initiële numerieke waarde</translation>
     </message>
     <message>
         <source>Inputs</source>
@@ -3099,11 +3158,11 @@ Weet u zeker?</translation>
     </message>
     <message>
         <source>LaTeX</source>
-        <translation>LaTeX</translation>
+        <translation type="vanished">LaTeX</translation>
     </message>
     <message>
         <source>LaTeX source</source>
-        <translation>LaTeX bron</translation>
+        <translation type="vanished">LaTeX bron</translation>
     </message>
     <message>
         <source>Name</source>
@@ -3111,11 +3170,11 @@ Weet u zeker?</translation>
     </message>
     <message>
         <source>New symbol name</source>
-        <translation>Nieuwe symboolnaam</translation>
+        <translation type="vanished">Nieuwe symboolnaam</translation>
     </message>
     <message>
         <source>Next</source>
-        <translation>Volgende</translation>
+        <translation type="vanished">Volgende</translation>
     </message>
     <message>
         <source>No matches</source>
@@ -3123,7 +3182,7 @@ Weet u zeker?</translation>
     </message>
     <message>
         <source>No online catalogue documentation is available for this custom block.</source>
-        <translation>Er is geen online catalogusdocumentatie beschikbaar voor dit aangepaste blok.</translation>
+        <translation type="vanished">Er is geen online catalogusdocumentatie beschikbaar voor dit aangepaste blok.</translation>
     </message>
     <message>
         <source>None</source>
@@ -3139,11 +3198,11 @@ Weet u zeker?</translation>
     </message>
     <message>
         <source>Opens the documentation for the original predefined library block. If this block has been modified in the editor, its current equations, symbols, parameters, or runtime logic may differ from the online documentation.</source>
-        <translation>Opent de documentatie voor het oorspronkelijke vooraf gedefinieerde bibliotheekblok. Als dit blok in de editor is gewijzigd, kunnen de huidige vergelijkingen, symbolen, parameters of runtime-logica afwijken van de online documentatie.</translation>
+        <translation type="vanished">Opent de documentatie voor het oorspronkelijke vooraf gedefinieerde bibliotheekblok. Als dit blok in de editor is gewijzigd, kunnen de huidige vergelijkingen, symbolen, parameters of runtime-logica afwijken van de online documentatie.</translation>
     </message>
     <message>
         <source>Output</source>
-        <translation>Uitgang</translation>
+        <translation type="vanished">Uitgang</translation>
     </message>
     <message>
         <source>Outputs</source>
@@ -3151,7 +3210,7 @@ Weet u zeker?</translation>
     </message>
     <message>
         <source>Owner block</source>
-        <translation>Eigenaar blok</translation>
+        <translation type="vanished">Eigenaar blok</translation>
     </message>
     <message>
         <source>PDF documents (*.pdf)</source>
@@ -3167,19 +3226,19 @@ Weet u zeker?</translation>
     </message>
     <message>
         <source>Power-flow variable</source>
-        <translation>Vermogensstroomvariabele</translation>
+        <translation type="vanished">Vermogensstroomvariabele</translation>
     </message>
     <message>
         <source>Power-flow variable used to initialize this dynamic variable.</source>
-        <translation>Vermogensstroomvariabele gebruikt om deze dynamische variabele te initialiseren.</translation>
+        <translation type="vanished">Vermogensstroomvariabele gebruikt om deze dynamische variabele te initialiseren.</translation>
     </message>
     <message>
         <source>Previous</source>
-        <translation>Vorige</translation>
+        <translation type="vanished">Vorige</translation>
     </message>
     <message>
         <source>Python code</source>
-        <translation>Python-code</translation>
+        <translation type="vanished">Python-code</translation>
     </message>
     <message>
         <source>Rename...</source>
@@ -3194,6 +3253,7 @@ Weet u zeker?</translation>
         <translation>Dynamische vergelijkingen opslaan als PDF</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="238"/>
         <source>Search Python code...</source>
         <translation>Python-code zoeken...</translation>
     </message>
@@ -3214,6 +3274,7 @@ Weet u zeker?</translation>
         <translation>Selecteer een geldig symbooltype.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="316"/>
         <source>Select all</source>
         <translation>Selecteer alles</translation>
     </message>
@@ -3222,10 +3283,12 @@ Weet u zeker?</translation>
         <translation>Selecteer ten minste één niet-lege vergelijkingsgroep.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="422"/>
         <source>Select equation groups to generate copyable LaTeX source.</source>
         <translation>Selecteer vergelijkingsgroepen om kopieerbare LaTeX-broncode te genereren.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="378"/>
         <source>Select the equation groups to include. Each internal block and each DAE section can be selected independently.</source>
         <translation>Selecteer de vergelijkingsgroepen om op te nemen. Elke interne cel en elke DAE-sectie kan onafhankelijk worden geselecteerd.</translation>
     </message>
@@ -3235,11 +3298,11 @@ Weet u zeker?</translation>
     </message>
     <message>
         <source>Static device mapping</source>
-        <translation>Statische apparaatmapping</translation>
+        <translation type="vanished">Statische apparaatmapping</translation>
     </message>
     <message>
         <source>Symbol category</source>
-        <translation>Symboolcategorie</translation>
+        <translation type="vanished">Symboolcategorie</translation>
     </message>
     <message>
         <source>The PDF could not be created: {message}</source>
@@ -3247,9 +3310,10 @@ Weet u zeker?</translation>
     </message>
     <message>
         <source>The online block documentation could not be opened in the system browser.</source>
-        <translation>De online blokdocumentatie kon niet in de systeembrowser worden geopend.</translation>
+        <translation type="vanished">De online blokdocumentatie kon niet in de systeembrowser worden geopend.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="440"/>
         <source>These settings contain structured data used to regenerate the block. Edit sequences with valid Python tuple/list syntax.</source>
         <translation>Deze instellingen bevatten gestructureerde gegevens die worden gebruikt om de blok te regenereren. Bewerk sequenties met geldige Python-tuple/lijst-syntax.</translation>
     </message>
@@ -3259,7 +3323,7 @@ Weet u zeker?</translation>
     </message>
     <message>
         <source>Type</source>
-        <translation>Type</translation>
+        <translation type="vanished">Type</translation>
     </message>
     <message>
         <source>Validate all code</source>
@@ -3279,19 +3343,20 @@ Weet u zeker?</translation>
     </message>
     <message>
         <source>+ Add procedural logic</source>
-        <translation>+ Procedurele logica toevoegen</translation>
+        <translation type="vanished">+ Procedurele logica toevoegen</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="188"/>
         <source>Add one procedural behavior to the active equation owner&apos;s Python code.</source>
         <translation>Voeg een procedureel gedrag toe aan de Python-code van de actieve vergelijkingseigenaar.</translation>
     </message>
     <message>
         <source>DAE editor</source>
-        <translation>DAE-editor</translation>
+        <translation type="vanished">DAE-editor</translation>
     </message>
     <message>
         <source>Documentation</source>
-        <translation>Documentatie</translation>
+        <translation type="vanished">Documentatie</translation>
     </message>
     <message>
         <source>Model code is valid.</source>
@@ -3310,6 +3375,7 @@ Weet u zeker?</translation>
         <translation>Behouden modus</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="82"/>
         <source>Search properties...</source>
         <translation>Eigenschappen zoeken...</translation>
     </message>
@@ -3319,9 +3385,10 @@ Weet u zeker?</translation>
     </message>
     <message>
         <source>Show or hide Python code and LaTeX rendering tool</source>
-        <translation>Python-code en LaTeX-renderingshulpmiddel tonen of verbergen</translation>
+        <translation type="vanished">Python-code en LaTeX-renderingshulpmiddel tonen of verbergen</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="434"/>
         <source>Special configuration</source>
         <translation>Speciale configuratie</translation>
     </message>
@@ -3334,6 +3401,7 @@ Weet u zeker?</translation>
         <translation>De geselecteerde eigenaar heeft geen Python-code buffer.</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="482"/>
         <source>Validate model</source>
         <translation>Model valideren</translation>
     </message>
@@ -3344,6 +3412,22 @@ Weet u zeker?</translation>
     <message>
         <source>Unsaved Block Properties changes</source>
         <translation>Ongeslagen wijzigingen in Block Properties</translation>
+    </message>
+    <message>
+        <source>Add parameter...</source>
+        <translation>Parameter toevoegen...</translation>
+    </message>
+    <message>
+        <source>Add retained mode...</source>
+        <translation>Retained modus toevoegen...</translation>
+    </message>
+    <message>
+        <source>Add variable...</source>
+        <translation>Variabele toevoegen...</translation>
+    </message>
+    <message>
+        <source>Nothing was added: {message}</source>
+        <translation>Niets toegevoegd: {message}</translation>
     </message>
 </context>
 <context>
@@ -3430,19 +3514,19 @@ Weet u zeker?</translation>
     <name>DynamicEditorWorkspaceSession</name>
     <message>
         <source>Invalid dynamic events</source>
-        <translation>Ongeldige dynamische gebeurtenissen</translation>
+        <translation type="vanished">Ongeldige dynamische gebeurtenissen</translation>
     </message>
     <message>
         <source>Save the changes before closing the last events tab?</source>
-        <translation>Wijzigingen opslaan voordat de laatste gebeurtenissen tab wordt gesloten?</translation>
+        <translation type="vanished">Wijzigingen opslaan voordat de laatste gebeurtenissen tab wordt gesloten?</translation>
     </message>
     <message>
         <source>The dynamic events contain unsaved changes.</source>
-        <translation>De dynamische gebeurtenissen bevatten onopgeslagen wijzigingen.</translation>
+        <translation type="vanished">De dynamische gebeurtenissen bevatten onopgeslagen wijzigingen.</translation>
     </message>
     <message>
         <source>Unsaved dynamic events</source>
-        <translation>Ongeslagen dynamische gebeurtenissen</translation>
+        <translation type="vanished">Ongeslagen dynamische gebeurtenissen</translation>
     </message>
 </context>
 <context>
@@ -3750,35 +3834,42 @@ Weet u zeker?</translation>
     <name>DynamicEventsDraftSession</name>
     <message>
         <source>An event and its events group use different simulation modes.</source>
-        <translation>Een gebeurtenis en de gebeurtenisgroep gebruiken verschillende simulatiemodi.</translation>
+        <translation type="vanished">Een gebeurtenis en de gebeurtenisgroep gebruiken verschillende simulatiemodi.</translation>
     </message>
     <message>
         <source>An event has no target device.</source>
-        <translation>Een gebeurtenis heeft geen doelapparaat.</translation>
+        <translation type="vanished">Een gebeurtenis heeft geen doelapparaat.</translation>
     </message>
     <message>
         <source>An event in device &apos;{device}&apos; has no valid events group.</source>
-        <translation>Een gebeurtenis in apparaat &apos;{device}&apos; heeft geen geldige gebeurtenisgroep.</translation>
+        <translation type="vanished">Een gebeurtenis in apparaat &apos;{device}&apos; heeft geen geldige gebeurtenisgroep.</translation>
     </message>
     <message>
         <source>An event in device &apos;{device}&apos; has no valid parameter.</source>
-        <translation>Een gebeurtenis in apparaat &apos;{device}&apos; heeft geen geldige parameter.</translation>
+        <translation type="vanished">Een gebeurtenis in apparaat &apos;{device}&apos; heeft geen geldige parameter.</translation>
     </message>
     <message>
         <source>An events group has an empty name.</source>
-        <translation>Een gebeurtenisgroep heeft een lege naam.</translation>
+        <translation type="vanished">Een gebeurtenisgroep heeft een lege naam.</translation>
     </message>
     <message>
         <source>Events for parameter &apos;{parameter}&apos; overlap in group &apos;{group}&apos; and device &apos;{device}&apos;.</source>
-        <translation>Gebeurtenissen voor parameter &apos;{parameter}&apos; overlappen in groep &apos;{group}&apos; en apparaat &apos;{device}&apos;.</translation>
+        <translation type="vanished">Gebeurtenissen voor parameter &apos;{parameter}&apos; overlappen in groep &apos;{group}&apos; en apparaat &apos;{device}&apos;.</translation>
     </message>
     <message>
         <source>The events group name &apos;{name}&apos; is duplicated.</source>
-        <translation>De naam van de gebeurtenisgroep &apos;{name}&apos; is gedupliceerd.</translation>
+        <translation type="vanished">De naam van de gebeurtenisgroep &apos;{name}&apos; is gedupliceerd.</translation>
     </message>
     <message>
         <source>The ramp event for parameter &apos;{parameter}&apos; has an invalid end time.</source>
-        <translation>De rampgebeurtenis voor parameter &apos;{parameter}&apos; heeft een ongeldige eindtijd.</translation>
+        <translation type="vanished">De rampgebeurtenis voor parameter &apos;{parameter}&apos; heeft een ongeldige eindtijd.</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventsFilterPopup</name>
+    <message>
+        <source>All</source>
+        <translation type="vanished">Alles</translation>
     </message>
 </context>
 <context>
@@ -3812,17 +3903,17 @@ Weet u zeker?</translation>
     <name>DynamicEventsItemDelegate</name>
     <message>
         <source>Ramp</source>
-        <translation>Ramp</translation>
+        <translation type="vanished">Ramp</translation>
     </message>
     <message>
         <source>Step</source>
-        <translation>Stap</translation>
+        <translation type="vanished">Stap</translation>
     </message>
 </context>
 <context>
     <name>DynamicEventsPage</name>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="143"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="165"/>
         <source>Add an event to the selected event group</source>
         <translation>Voeg een gebeurtenis toe aan de geselecteerde gebeurtenisgroep</translation>
     </message>
@@ -3832,7 +3923,7 @@ Weet u zeker?</translation>
     </message>
     <message>
         <source>Are you sure you want to remove the event for &apos;{parameter}&apos; at {time:.4f} s?</source>
-        <translation>Weet u zeker dat u de gebeurtenis voor &apos;{parameter}&apos; op {time:.4f} s wilt verwijderen?</translation>
+        <translation type="vanished">Weet u zeker dat u de gebeurtenis voor &apos;{parameter}&apos; op {time:.4f} s wilt verwijderen?</translation>
     </message>
     <message>
         <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="14"/>
@@ -3840,45 +3931,76 @@ Weet u zeker?</translation>
         <translation>Dynamische Gebeurtenissen</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="131"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="124"/>
+        <source>New</source>
+        <translation>Nieuw</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="127"/>
+        <source>Delete all events of this simulation mode from the current device</source>
+        <translation>Verwijder alle gebeurtenissen van deze simulatiemodus van het huidige apparaat</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="139"/>
+        <source>Save</source>
+        <translation>Redden</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="142"/>
+        <source>Save event changes</source>
+        <translation>Gebeurteniswijzigingen opslaan</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="145"/>
+        <source>Ctrl+S</source>
+        <translation>Ctrl+S</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="153"/>
         <source>Create an EMT switch opening and reclosing event sequence</source>
         <translation>Creëer een EMT-schakelaar open- en sluitingsgebeurtenisreeks</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="140"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="182"/>
+        <source>Create Event Group</source>
+        <translation>Gebeurtenisgroep aanmaken</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="185"/>
+        <source>Create an event group</source>
+        <translation>Een gebeurtenisgroep aanmaken</translation>
+    </message>
+    <message>
         <source>Add Event</source>
-        <translation>Gebeurtenis Toevoegen</translation>
+        <translation type="vanished">Gebeurtenis Toevoegen</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="152"/>
         <source>Remove Selected</source>
-        <translation>Geselecteerde verwijderen</translation>
+        <translation type="vanished">Geselecteerde verwijderen</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="164"/>
         <source>Add Event Group</source>
         <translation>Gebeurtenisgroep Toevoegen</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="167"/>
         <source>Create an event group for this simulation mode</source>
-        <translation>Creëer een gebeurtenisgroep voor deze simulatiemodus</translation>
+        <translation type="vanished">Creëer een gebeurtenisgroep voor deze simulatiemodus</translation>
     </message>
     <message>
         <source>Empty dynamic model</source>
-        <translation>Leeg dynamisch model</translation>
+        <translation type="vanished">Leeg dynamisch model</translation>
     </message>
     <message>
         <source>Events cannot be added because this dynamic model has no event parameters.</source>
-        <translation>Gebeurtenissen kunnen niet worden toegevoegd omdat dit dynamische model geen gebeurtenisparameters heeft.</translation>
+        <translation type="vanished">Gebeurtenissen kunnen niet worden toegevoegd omdat dit dynamische model geen gebeurtenisparameters heeft.</translation>
     </message>
     <message>
         <source>Events saved</source>
-        <translation>Gebeurtenissen opgeslagen</translation>
+        <translation type="vanished">Gebeurtenissen opgeslagen</translation>
     </message>
     <message>
         <source>Invalid dynamic events</source>
-        <translation>Ongeldige dynamische gebeurtenissen</translation>
+        <translation type="vanished">Ongeldige dynamische gebeurtenissen</translation>
     </message>
     <message>
         <source>Invalid event group</source>
@@ -3886,15 +4008,15 @@ Weet u zeker?</translation>
     </message>
     <message>
         <source>Invalid parameter</source>
-        <translation>Ongeldige parameter</translation>
+        <translation type="vanished">Ongeldige parameter</translation>
     </message>
     <message>
         <source>No events can be added because the dynamic model has no event parameters.</source>
-        <translation>Er kunnen geen gebeurtenissen worden toegevoegd omdat het dynamische model geen gebeurtenisparameters heeft.</translation>
+        <translation type="vanished">Er kunnen geen gebeurtenissen worden toegevoegd omdat het dynamische model geen gebeurtenisparameters heeft.</translation>
     </message>
     <message>
         <source>Remove</source>
-        <translation>Verwijderen</translation>
+        <translation type="vanished">Verwijderen</translation>
     </message>
     <message>
         <source>Remove event</source>
@@ -3905,7 +4027,7 @@ Weet u zeker?</translation>
         <translation type="vanished">Gebeurtenisgroep verwijderen</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="155"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="177"/>
         <source>Remove the selected event or event group</source>
         <translation>De geselecteerde gebeurtenis of gebeurtenisgroep verwijderen</translation>
     </message>
@@ -3914,9 +4036,8 @@ Weet u zeker?</translation>
         <translation type="vanished">Hernoemen</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="112"/>
         <source>Save events</source>
-        <translation>Gebeurtenissen opslaan</translation>
+        <translation type="vanished">Gebeurtenissen opslaan</translation>
     </message>
     <message>
         <source>Select the event group where you want to add the event.</source>
@@ -3927,16 +4048,16 @@ Weet u zeker?</translation>
         <translation type="vanished">Selecteer de gebeurtenis of gebeurtenisgroep die u wilt verwijderen.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="128"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="150"/>
         <source>Switch Sequence Wizard</source>
         <translation>Sequentie Wizard schakelen</translation>
     </message>
     <message>
         <source>The event group name must be non-empty and unique in this simulation mode.</source>
-        <translation>De naam van de gebeurtenisgroep moet niet leeg zijn en uniek zijn in deze simulatiemodus.</translation>
+        <translation type="vanished">De naam van de gebeurtenisgroep moet niet leeg zijn en uniek zijn in deze simulatiemodus.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="81"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="101"/>
         <source>This dynamic model is empty. New events cannot be added until the model is built.</source>
         <translation>Dit dynamische model is leeg. Nieuwe gebeurtenissen kunnen niet worden toegevoegd totdat het model is opgebouwd.</translation>
     </message>
@@ -3946,26 +4067,66 @@ Weet u zeker?</translation>
     </message>
     <message>
         <source>Add an event and select its event group</source>
-        <translation>Voeg een gebeurtenis toe en selecteer de gebeurtenisgroep</translation>
+        <translation type="vanished">Voeg een gebeurtenis toe en selecteer de gebeurtenisgroep</translation>
     </message>
     <message>
         <source>Create an event group before adding an event.</source>
-        <translation>Maak een gebeurtenisgroep aan voordat u een gebeurtenis toevoegt.</translation>
+        <translation type="vanished">Maak een gebeurtenisgroep aan voordat u een gebeurtenis toevoegt.</translation>
     </message>
     <message>
         <source>Select the event you want to remove.</source>
-        <translation>Selecteer de gebeurtenis die u wilt verwijderen.</translation>
+        <translation type="vanished">Selecteer de gebeurtenis die u wilt verwijderen.</translation>
+    </message>
+    <message>
+        <source>An event group with this name already exists.</source>
+        <translation>Er bestaat al een gebeurtenisgroep met deze naam.</translation>
+    </message>
+    <message>
+        <source>Delete all device events</source>
+        <translation>Alle apparaatgebeurtenissen verwijderen</translation>
+    </message>
+    <message>
+        <source>Delete all events for this device and simulation mode?</source>
+        <translation>Alle gebeurtenissen voor dit apparaat en deze simulatiemodus verwijderen?</translation>
+    </message>
+    <message>
+        <source>Group name:</source>
+        <translation>Groepnaam:</translation>
+    </message>
+    <message>
+        <source>Remove '{name}' and all events in this group?</source>
+        <translation>'{name}' en alle gebeurtenissen in deze groep verwijderen?</translation>
+    </message>
+    <message>
+        <source>Remove event group</source>
+        <translation>Gebeurtenisgroep verwijderen</translation>
+    </message>
+    <message>
+        <source>Remove the selected event?</source>
+        <translation>De geselecteerde gebeurtenis verwijderen?</translation>
+    </message>
+    <message>
+        <source>Select an event group before adding an event.</source>
+        <translation>Selecteer een gebeurtenisgroep voordat u een gebeurtenis toevoegt.</translation>
+    </message>
+    <message>
+        <source>Select an event or event group to remove.</source>
+        <translation>Selecteer een gebeurtenis of gebeurtenisgroep om te verwijderen.</translation>
+    </message>
+    <message>
+        <source>The dynamic model has no event parameters.</source>
+        <translation>Het dynamische model heeft geen gebeurtenisparameters.</translation>
     </message>
 </context>
 <context>
     <name>DynamicEventsTreeModel</name>
     <message>
         <source>Align Step</source>
-        <translation>Stap uitlijnen</translation>
+        <translation type="vanished">Stap uitlijnen</translation>
     </message>
     <message>
         <source>End Time</source>
-        <translation>Eindtijd</translation>
+        <translation type="vanished">Eindtijd</translation>
     </message>
     <message>
         <source>Invalid / Ungrouped Events</source>
@@ -3973,15 +4134,15 @@ Weet u zeker?</translation>
     </message>
     <message>
         <source>Invalid parameter</source>
-        <translation>Ongeldige parameter</translation>
+        <translation type="vanished">Ongeldige parameter</translation>
     </message>
     <message>
         <source>New Value</source>
-        <translation>Nieuwe Waarde</translation>
+        <translation type="vanished">Nieuwe Waarde</translation>
     </message>
     <message>
         <source>Parameter</source>
-        <translation>Parameter</translation>
+        <translation type="vanished">Parameter</translation>
     </message>
     <message>
         <source>These persisted events do not reference a valid events group and can only be removed.</source>
@@ -3989,19 +4150,19 @@ Weet u zeker?</translation>
     </message>
     <message>
         <source>Time</source>
-        <translation>Tijd</translation>
+        <translation type="vanished">Tijd</translation>
     </message>
     <message>
         <source>Transition</source>
-        <translation>Transitie</translation>
+        <translation type="vanished">Transitie</translation>
     </message>
     <message>
         <source>Event Group</source>
-        <translation>Gebeurtenisgroep</translation>
+        <translation type="vanished">Gebeurtenisgroep</translation>
     </message>
     <message>
         <source>Select Event Group</source>
-        <translation>Selecteer Gebeurtenisgroep</translation>
+        <translation type="vanished">Selecteer Gebeurtenisgroep</translation>
     </message>
 </context>
 <context>
@@ -4178,6 +4339,79 @@ selecteer het verwachte verwerkingsformaat</translation>
     <message>
         <source>Choose an FMU file first.</source>
         <translation>Kies eerst een FMU-bestand.</translation>
+    </message>
+</context>
+<context>
+    <name>Form</name>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="14"/>
+        <source>Add block property</source>
+        <translation>Blokeigenschap toevoegen</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="26"/>
+        <source>Add symbol to selected block</source>
+        <translation>Symbool aan geselecteerd blok toevoegen</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="71"/>
+        <source>Output</source>
+        <translation>Uitgang</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="78"/>
+        <source>Create derivative variable</source>
+        <translation>Afgeleide variabele creëren</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="144"/>
+        <source>New symbol name</source>
+        <translation>Nieuwe symboolnaam</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="151"/>
+        <source>Symbol category</source>
+        <translation>Symboolcategorie</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="158"/>
+        <source>Owner block</source>
+        <translation>Eigenaar blok</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="165"/>
+        <source>Type</source>
+        <translation>Type</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="172"/>
+        <source>Add symbol</source>
+        <translation>Symbool toevoegen</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="195"/>
+        <source>Static device mapping</source>
+        <translation>Statische apparaatmapping</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="202"/>
+        <source>Power-flow variable used to initialize this dynamic variable.</source>
+        <translation>Vermogensstroomvariabele gebruikt om deze dynamische variabele te initialiseren.</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="205"/>
+        <source>Power-flow variable</source>
+        <translation>Vermogensstroomvariabele</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="266"/>
+        <source>Enter a name</source>
+        <translation>Voer een naam in</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="273"/>
+        <source>Initial numeric value</source>
+        <translation>Initiële numerieke waarde</translation>
     </message>
 </context>
 <context>
@@ -13028,7 +13262,7 @@ U moet een net laden of aanmaken!</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="12999"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Candidate investment generator&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Generate candidate reinforcements (new lines and upgrades) for N-1 violations via LODF/PTDF screening&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Kandidaat investeringsgenerator&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Genereer kandidaat versterkingen (nieuwe lijnen en upgrades) voor N-1 overtredingen via LODF/PTDF screening&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Kandidaat investeringsgenerator&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Genereer kandidaat versterkingen (nieuwe lijnen en upgrades) voor N-1 overtredingen via LODF/PTDF screening&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="13117"/>
@@ -15842,21 +16076,21 @@ U moet een net laden of aanmaken!</translation>
     </message>
 </context>
 <context>
-    <name>BaseMainGui</name>
+    <name>DiagramScene</name>
     <message>
-        <source>Are you sure that you want to cancel the simulation?</source>
-        <translation>Weet u zeker dat u de simulatie wilt annuleren?</translation>
+        <source>Block info</source>
+        <translation>Informatie over blok</translation>
     </message>
     <message>
-        <source>Unlocking the UI may cause crash depending on the conditions. Are you sure?</source>
-        <translation>Het ontgrendelen van de UI kan, afhankelijk van de omstandigheden, tot een crash leiden. Weet u zeker?</translation>
+        <source>Edit block</source>
+        <translation>Blok bewerken</translation>
     </message>
 </context>
 <context>
-    <name>DynamicEventsFilterPopup</name>
+    <name>DynamicEventGroupsTreeModel</name>
     <message>
-        <source>All</source>
-        <translation>Alles</translation>
+        <source>Event groups</source>
+        <translation>Gebeurtenisgroepen</translation>
     </message>
 </context>
 </TS>

@@ -660,6 +660,17 @@ li.checked::マーカー { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&
     </message>
 </context>
 <context>
+    <name>BaseMainGui</name>
+    <message>
+        <source>Are you sure that you want to cancel the simulation?</source>
+        <translation>シミュレーションをキャンセルしますか？よろしいですか？</translation>
+    </message>
+    <message>
+        <source>Unlocking the UI may cause crash depending on the conditions. Are you sure?</source>
+        <translation>UIのロック解除は、状況によってはクラッシュを引き起こす可能性があります。よろしいですか？</translation>
+    </message>
+</context>
+<context>
     <name>BlockEditorWindow</name>
     <message>
         <location filename="../DynamicModelEditor/Editor/block_editor.ui" line="14"/>
@@ -2956,6 +2967,18 @@ Are you sure?</source>
         <source>You are going to delete the complete model and start from scratch. Are you sure?</source>
         <translation type="vanished">モデル全体を削除し、最初からやり直します。よろしいですか？</translation>
     </message>
+    <message>
+        <source>Block info</source>
+        <translation>ブロック情報</translation>
+    </message>
+    <message>
+        <source>No online catalogue documentation is available for this custom block.</source>
+        <translation>このカスタムブロックにはオンラインカタログドキュメントがありません。</translation>
+    </message>
+    <message>
+        <source>The online block documentation could not be opened.</source>
+        <translation>オンラインブロックドキュメントを開けませんでした。</translation>
+    </message>
 </context>
 <context>
     <name>DynamicBlockPropertiesDialog</name>
@@ -2965,9 +2988,8 @@ Are you sure?</source>
         <translation>ブロックプロパティ</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="70"/>
         <source>Apply changes</source>
-        <translation>変更を適用</translation>
+        <translation type="vanished">変更を適用</translation>
     </message>
     <message>
         <source>Close</source>
@@ -2979,11 +3001,11 @@ Are you sure?</source>
     </message>
     <message>
         <source>Add symbol</source>
-        <translation>シンボルを追加</translation>
+        <translation type="vanished">シンボルを追加</translation>
     </message>
     <message>
         <source>Add symbol to selected block</source>
-        <translation>選択されたブロックにシンボルを追加</translation>
+        <translation type="vanished">選択されたブロックにシンボルを追加</translation>
     </message>
     <message>
         <source>Advanced runtime logic</source>
@@ -2994,16 +3016,17 @@ Are you sure?</source>
         <translation>構造設定をDAEコードまたはシンボルインターフェースの変更とは別に適用します。</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="388"/>
         <source>Block / equation group</source>
         <translation>ブロック / 方程式グループ</translation>
     </message>
     <message>
         <source>Block configuration</source>
-        <translation>ブロック設定</translation>
+        <translation type="vanished">ブロック設定</translation>
     </message>
     <message>
         <source>Block info</source>
-        <translation>ブロック情報</translation>
+        <translation type="vanished">ブロック情報</translation>
     </message>
     <message>
         <source>Block properties - {name}</source>
@@ -3026,12 +3049,13 @@ Are you sure?</source>
         <translation>変更が適用されました。高度な不等式/離散/ブールロジックは変更されずに保持されました。</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="323"/>
         <source>Clear</source>
         <translation>クリア</translation>
     </message>
     <message>
         <source>Create derivative variable</source>
-        <translation>微分変数を作成</translation>
+        <translation type="vanished">微分変数を作成</translation>
     </message>
     <message>
         <source>DAE and runtime-logic changes applied to the editor working copy.</source>
@@ -3042,8 +3066,9 @@ Are you sure?</source>
         <translation type="vanished">DAEコードは有効です。</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="131"/>
         <source>DAE model</source>
-        <translation type="vanished">DAEモデル</translation>
+        <translation>DAEモデル</translation>
     </message>
     <message>
         <source>DAE validation failed at line {line}: {message}</source>
@@ -3055,11 +3080,11 @@ Are you sure?</source>
     </message>
     <message>
         <source>Download rendered PDF</source>
-        <translation>レンダリングされたPDFをダウンロード</translation>
+        <translation type="vanished">レンダリングされたPDFをダウンロード</translation>
     </message>
     <message>
         <source>Enter a name</source>
-        <translation>名前を入力</translation>
+        <translation type="vanished">名前を入力</translation>
     </message>
     <message>
         <source>Enter a valid Python symbol name.</source>
@@ -3070,14 +3095,48 @@ Are you sure?</source>
         <translation>方程式PDFが作成されました: {path}</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="158"/>
         <source>Equation owner</source>
         <translation>方程式の所有者</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="251"/>
+        <source>&lt;&lt;</source>
+        <translation>&lt;&lt;</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="261"/>
+        <source>&gt;&gt;</source>
+        <translation>&gt;&gt;</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="289"/>
+        <source>LaTeX rendering</source>
+        <translation>LaTeXレンダリング</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="343"/>
+        <source>Save redered PDF</source>
+        <translation>レンダリングされたPDFを保存</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="372"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="393"/>
         <source>Equations</source>
         <translation>方程式</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="410"/>
+        <source>LaTex source</source>
+        <translation>LaTeXソース</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="509"/>
+        <source>Accept changes</source>
+        <translation>変更を承認</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="40"/>
         <source>General options</source>
         <translation>一般オプション</translation>
     </message>
@@ -3087,7 +3146,7 @@ Are you sure?</source>
     </message>
     <message>
         <source>Initial numeric value</source>
-        <translation>初期数値</translation>
+        <translation type="vanished">初期数値</translation>
     </message>
     <message>
         <source>Inputs</source>
@@ -3099,11 +3158,11 @@ Are you sure?</source>
     </message>
     <message>
         <source>LaTeX</source>
-        <translation>LaTeX</translation>
+        <translation type="vanished">LaTeX</translation>
     </message>
     <message>
         <source>LaTeX source</source>
-        <translation>LaTeXソース</translation>
+        <translation type="vanished">LaTeXソース</translation>
     </message>
     <message>
         <source>Name</source>
@@ -3111,11 +3170,11 @@ Are you sure?</source>
     </message>
     <message>
         <source>New symbol name</source>
-        <translation>新しいシンボル名</translation>
+        <translation type="vanished">新しいシンボル名</translation>
     </message>
     <message>
         <source>Next</source>
-        <translation>次へ</translation>
+        <translation type="vanished">次へ</translation>
     </message>
     <message>
         <source>No matches</source>
@@ -3123,7 +3182,7 @@ Are you sure?</source>
     </message>
     <message>
         <source>No online catalogue documentation is available for this custom block.</source>
-        <translation>このカスタムブロックのオンラインカタログドキュメントは利用できません。</translation>
+        <translation type="vanished">このカスタムブロックのオンラインカタログドキュメントは利用できません。</translation>
     </message>
     <message>
         <source>None</source>
@@ -3139,11 +3198,11 @@ Are you sure?</source>
     </message>
     <message>
         <source>Opens the documentation for the original predefined library block. If this block has been modified in the editor, its current equations, symbols, parameters, or runtime logic may differ from the online documentation.</source>
-        <translation>元の定義済みライブラリブロックのドキュメントを開きます。このブロックがエディタで変更されている場合、現在の方程式、シンボル、パラメータ、または実行時ロジックはオンラインドキュメントと異なる場合があります。</translation>
+        <translation type="vanished">元の定義済みライブラリブロックのドキュメントを開きます。このブロックがエディタで変更されている場合、現在の方程式、シンボル、パラメータ、または実行時ロジックはオンラインドキュメントと異なる場合があります。</translation>
     </message>
     <message>
         <source>Output</source>
-        <translation>出力</translation>
+        <translation type="vanished">出力</translation>
     </message>
     <message>
         <source>Outputs</source>
@@ -3151,7 +3210,7 @@ Are you sure?</source>
     </message>
     <message>
         <source>Owner block</source>
-        <translation>所有ブロック</translation>
+        <translation type="vanished">所有ブロック</translation>
     </message>
     <message>
         <source>PDF documents (*.pdf)</source>
@@ -3167,19 +3226,19 @@ Are you sure?</source>
     </message>
     <message>
         <source>Power-flow variable</source>
-        <translation>電力潮流変数</translation>
+        <translation type="vanished">電力潮流変数</translation>
     </message>
     <message>
         <source>Power-flow variable used to initialize this dynamic variable.</source>
-        <translation>この動的変数を初期化するために使用される電力潮流変数。</translation>
+        <translation type="vanished">この動的変数を初期化するために使用される電力潮流変数。</translation>
     </message>
     <message>
         <source>Previous</source>
-        <translation>前の</translation>
+        <translation type="vanished">前の</translation>
     </message>
     <message>
         <source>Python code</source>
-        <translation>Pythonコード</translation>
+        <translation type="vanished">Pythonコード</translation>
     </message>
     <message>
         <source>Rename...</source>
@@ -3194,6 +3253,7 @@ Are you sure?</source>
         <translation>動的方程式をPDFとして保存</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="238"/>
         <source>Search Python code...</source>
         <translation>Pythonコードを検索...</translation>
     </message>
@@ -3214,6 +3274,7 @@ Are you sure?</source>
         <translation>有効なシンボルタイプを選択してください。</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="316"/>
         <source>Select all</source>
         <translation>すべて選択</translation>
     </message>
@@ -3222,10 +3283,12 @@ Are you sure?</source>
         <translation>空でない方程式グループを少なくとも1つ選択してください。</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="422"/>
         <source>Select equation groups to generate copyable LaTeX source.</source>
         <translation>コピー可能なLaTeXソースを生成する方程式グループを選択してください。</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="378"/>
         <source>Select the equation groups to include. Each internal block and each DAE section can be selected independently.</source>
         <translation>含める方程式グループを選択してください。各内部ブロックおよび各DAEセクションは個別に選択できます。</translation>
     </message>
@@ -3235,11 +3298,11 @@ Are you sure?</source>
     </message>
     <message>
         <source>Static device mapping</source>
-        <translation>静的デバイスマッピング</translation>
+        <translation type="vanished">静的デバイスマッピング</translation>
     </message>
     <message>
         <source>Symbol category</source>
-        <translation>シンボルカテゴリ</translation>
+        <translation type="vanished">シンボルカテゴリ</translation>
     </message>
     <message>
         <source>The PDF could not be created: {message}</source>
@@ -3247,9 +3310,10 @@ Are you sure?</source>
     </message>
     <message>
         <source>The online block documentation could not be opened in the system browser.</source>
-        <translation>オンラインブロックドキュメントをシステムブラウザで開けませんでした。</translation>
+        <translation type="vanished">オンラインブロックドキュメントをシステムブラウザで開けませんでした。</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="440"/>
         <source>These settings contain structured data used to regenerate the block. Edit sequences with valid Python tuple/list syntax.</source>
         <translation>これらの設定には、ブロックを再生成するために使用される構造化データが含まれています。有効なPythonタプル/リスト構文でシーケンスを編集してください。</translation>
     </message>
@@ -3259,7 +3323,7 @@ Are you sure?</source>
     </message>
     <message>
         <source>Type</source>
-        <translation>種類</translation>
+        <translation type="vanished">種類</translation>
     </message>
     <message>
         <source>Validate all code</source>
@@ -3279,19 +3343,20 @@ Are you sure?</source>
     </message>
     <message>
         <source>+ Add procedural logic</source>
-        <translation>+ 手続きロジックの追加</translation>
+        <translation type="vanished">+ 手続きロジックの追加</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="188"/>
         <source>Add one procedural behavior to the active equation owner&apos;s Python code.</source>
         <translation>アクティブな方程式所有者のPythonコードに手続き的な動作を追加します。</translation>
     </message>
     <message>
         <source>DAE editor</source>
-        <translation>DAEエディタ</translation>
+        <translation type="vanished">DAEエディタ</translation>
     </message>
     <message>
         <source>Documentation</source>
-        <translation>ドキュメント</translation>
+        <translation type="vanished">ドキュメント</translation>
     </message>
     <message>
         <source>Model code is valid.</source>
@@ -3310,6 +3375,7 @@ Are you sure?</source>
         <translation>保持モード</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="82"/>
         <source>Search properties...</source>
         <translation>プロパティを検索...</translation>
     </message>
@@ -3319,9 +3385,10 @@ Are you sure?</source>
     </message>
     <message>
         <source>Show or hide Python code and LaTeX rendering tool</source>
-        <translation>PythonコードとLaTeXレンダリングツールの表示/非表示</translation>
+        <translation type="vanished">PythonコードとLaTeXレンダリングツールの表示/非表示</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="434"/>
         <source>Special configuration</source>
         <translation>特別な設定</translation>
     </message>
@@ -3334,6 +3401,7 @@ Are you sure?</source>
         <translation>選択された所有者にPythonコードバッファがありません。</translation>
     </message>
     <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="482"/>
         <source>Validate model</source>
         <translation>モデルを検証</translation>
     </message>
@@ -3344,6 +3412,22 @@ Are you sure?</source>
     <message>
         <source>Unsaved Block Properties changes</source>
         <translation>未保存のブロックプロパティの変更</translation>
+    </message>
+    <message>
+        <source>Add parameter...</source>
+        <translation>パラメータを追加...</translation>
+    </message>
+    <message>
+        <source>Add retained mode...</source>
+        <translation>保持モードを追加...</translation>
+    </message>
+    <message>
+        <source>Add variable...</source>
+        <translation>変数を追加...</translation>
+    </message>
+    <message>
+        <source>Nothing was added: {message}</source>
+        <translation>何も追加されませんでした: {message}</translation>
     </message>
 </context>
 <context>
@@ -3430,19 +3514,19 @@ Are you sure?</source>
     <name>DynamicEditorWorkspaceSession</name>
     <message>
         <source>Invalid dynamic events</source>
-        <translation>無効な動的イベント</translation>
+        <translation type="vanished">無効な動的イベント</translation>
     </message>
     <message>
         <source>Save the changes before closing the last events tab?</source>
-        <translation>最後のイベントタブを閉じる前に変更を保存しますか？</translation>
+        <translation type="vanished">最後のイベントタブを閉じる前に変更を保存しますか？</translation>
     </message>
     <message>
         <source>The dynamic events contain unsaved changes.</source>
-        <translation>動的イベントに未保存の変更があります。</translation>
+        <translation type="vanished">動的イベントに未保存の変更があります。</translation>
     </message>
     <message>
         <source>Unsaved dynamic events</source>
-        <translation>未保存の動的イベント</translation>
+        <translation type="vanished">未保存の動的イベント</translation>
     </message>
 </context>
 <context>
@@ -3750,35 +3834,42 @@ Are you sure?</source>
     <name>DynamicEventsDraftSession</name>
     <message>
         <source>An event and its events group use different simulation modes.</source>
-        <translation>イベントとそのイベントグループが異なるシミュレーションモードを使用しています。</translation>
+        <translation type="vanished">イベントとそのイベントグループが異なるシミュレーションモードを使用しています。</translation>
     </message>
     <message>
         <source>An event has no target device.</source>
-        <translation>イベントにターゲットデバイスがありません。</translation>
+        <translation type="vanished">イベントにターゲットデバイスがありません。</translation>
     </message>
     <message>
         <source>An event in device &apos;{device}&apos; has no valid events group.</source>
-        <translation>デバイス &apos;{device}&apos; のイベントに有効なイベントグループがありません。</translation>
+        <translation type="vanished">デバイス &apos;{device}&apos; のイベントに有効なイベントグループがありません。</translation>
     </message>
     <message>
         <source>An event in device &apos;{device}&apos; has no valid parameter.</source>
-        <translation>デバイス &apos;{device}&apos; のイベントに有効なパラメータがありません。</translation>
+        <translation type="vanished">デバイス &apos;{device}&apos; のイベントに有効なパラメータがありません。</translation>
     </message>
     <message>
         <source>An events group has an empty name.</source>
-        <translation>イベントグループに空の名前があります。</translation>
+        <translation type="vanished">イベントグループに空の名前があります。</translation>
     </message>
     <message>
         <source>Events for parameter &apos;{parameter}&apos; overlap in group &apos;{group}&apos; and device &apos;{device}&apos;.</source>
-        <translation>パラメータ &apos;{parameter}&apos; のイベントがグループ &apos;{group}&apos; およびデバイス &apos;{device}&apos; で重複しています。</translation>
+        <translation type="vanished">パラメータ &apos;{parameter}&apos; のイベントがグループ &apos;{group}&apos; およびデバイス &apos;{device}&apos; で重複しています。</translation>
     </message>
     <message>
         <source>The events group name &apos;{name}&apos; is duplicated.</source>
-        <translation>イベントグループ名 &apos;{name}&apos; が重複しています。</translation>
+        <translation type="vanished">イベントグループ名 &apos;{name}&apos; が重複しています。</translation>
     </message>
     <message>
         <source>The ramp event for parameter &apos;{parameter}&apos; has an invalid end time.</source>
-        <translation>パラメータ &apos;{parameter}&apos; のランプイベントの終了時刻が無効です。</translation>
+        <translation type="vanished">パラメータ &apos;{parameter}&apos; のランプイベントの終了時刻が無効です。</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicEventsFilterPopup</name>
+    <message>
+        <source>All</source>
+        <translation type="vanished">すべて</translation>
     </message>
 </context>
 <context>
@@ -3812,17 +3903,17 @@ Are you sure?</source>
     <name>DynamicEventsItemDelegate</name>
     <message>
         <source>Ramp</source>
-        <translation>ランプ</translation>
+        <translation type="vanished">ランプ</translation>
     </message>
     <message>
         <source>Step</source>
-        <translation>ステップ</translation>
+        <translation type="vanished">ステップ</translation>
     </message>
 </context>
 <context>
     <name>DynamicEventsPage</name>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="143"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="165"/>
         <source>Add an event to the selected event group</source>
         <translation>選択されたイベントグループにイベントを追加</translation>
     </message>
@@ -3832,7 +3923,7 @@ Are you sure?</source>
     </message>
     <message>
         <source>Are you sure you want to remove the event for &apos;{parameter}&apos; at {time:.4f} s?</source>
-        <translation>「{parameter}」の{time:.4f} sのイベントを削除しますか？</translation>
+        <translation type="vanished">「{parameter}」の{time:.4f} sのイベントを削除しますか？</translation>
     </message>
     <message>
         <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="14"/>
@@ -3840,45 +3931,76 @@ Are you sure?</source>
         <translation>動的イベント</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="131"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="124"/>
+        <source>New</source>
+        <translation>新規</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="127"/>
+        <source>Delete all events of this simulation mode from the current device</source>
+        <translation>現在のデバイスからこのシミュレーションモードのすべてのイベントを削除します</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="139"/>
+        <source>Save</source>
+        <translation>保存</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="142"/>
+        <source>Save event changes</source>
+        <translation>イベントの変更を保存</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="145"/>
+        <source>Ctrl+S</source>
+        <translation>Ctrl+S</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="153"/>
         <source>Create an EMT switch opening and reclosing event sequence</source>
         <translation>EMT開閉および再閉路イベントシーケンスを作成</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="140"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="182"/>
+        <source>Create Event Group</source>
+        <translation>イベントグループを作成</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="185"/>
+        <source>Create an event group</source>
+        <translation>イベントグループを作成する</translation>
+    </message>
+    <message>
         <source>Add Event</source>
-        <translation>イベントを追加</translation>
+        <translation type="vanished">イベントを追加</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="152"/>
         <source>Remove Selected</source>
-        <translation>選択したものを削除</translation>
+        <translation type="vanished">選択したものを削除</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="164"/>
         <source>Add Event Group</source>
         <translation>イベントグループを追加</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="167"/>
         <source>Create an event group for this simulation mode</source>
-        <translation>このシミュレーションモードのイベントグループを作成</translation>
+        <translation type="vanished">このシミュレーションモードのイベントグループを作成</translation>
     </message>
     <message>
         <source>Empty dynamic model</source>
-        <translation>動的モデルを空にする</translation>
+        <translation type="vanished">動的モデルを空にする</translation>
     </message>
     <message>
         <source>Events cannot be added because this dynamic model has no event parameters.</source>
-        <translation>この動的モデルにはイベントパラメータがないため、イベントを追加できません。</translation>
+        <translation type="vanished">この動的モデルにはイベントパラメータがないため、イベントを追加できません。</translation>
     </message>
     <message>
         <source>Events saved</source>
-        <translation>イベントを保存しました</translation>
+        <translation type="vanished">イベントを保存しました</translation>
     </message>
     <message>
         <source>Invalid dynamic events</source>
-        <translation>無効な動的イベント</translation>
+        <translation type="vanished">無効な動的イベント</translation>
     </message>
     <message>
         <source>Invalid event group</source>
@@ -3886,15 +4008,15 @@ Are you sure?</source>
     </message>
     <message>
         <source>Invalid parameter</source>
-        <translation>無効なパラメータ</translation>
+        <translation type="vanished">無効なパラメータ</translation>
     </message>
     <message>
         <source>No events can be added because the dynamic model has no event parameters.</source>
-        <translation>動的モデルにイベントパラメータがないため、イベントを追加できません。</translation>
+        <translation type="vanished">動的モデルにイベントパラメータがないため、イベントを追加できません。</translation>
     </message>
     <message>
         <source>Remove</source>
-        <translation>取り除く</translation>
+        <translation type="vanished">取り除く</translation>
     </message>
     <message>
         <source>Remove event</source>
@@ -3905,7 +4027,7 @@ Are you sure?</source>
         <translation type="vanished">イベントグループを削除</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="155"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="177"/>
         <source>Remove the selected event or event group</source>
         <translation>選択したイベントまたはイベントグループを削除</translation>
     </message>
@@ -3914,9 +4036,8 @@ Are you sure?</source>
         <translation type="vanished">名前変更</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="112"/>
         <source>Save events</source>
-        <translation>イベントを保存</translation>
+        <translation type="vanished">イベントを保存</translation>
     </message>
     <message>
         <source>Select the event group where you want to add the event.</source>
@@ -3927,16 +4048,16 @@ Are you sure?</source>
         <translation type="vanished">削除したいイベントまたはイベントグループを選択してください。</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="128"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="150"/>
         <source>Switch Sequence Wizard</source>
         <translation>シーケンスウィザードの切り替え</translation>
     </message>
     <message>
         <source>The event group name must be non-empty and unique in this simulation mode.</source>
-        <translation>イベントグループ名は、このシミュレーションモードで空ではなく、一意である必要があります。</translation>
+        <translation type="vanished">イベントグループ名は、このシミュレーションモードで空ではなく、一意である必要があります。</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="81"/>
+        <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="101"/>
         <source>This dynamic model is empty. New events cannot be added until the model is built.</source>
         <translation>この動的モデルは空です。モデルが構築されるまで、新しいイベントを追加することはできません。</translation>
     </message>
@@ -3946,26 +4067,66 @@ Are you sure?</source>
     </message>
     <message>
         <source>Add an event and select its event group</source>
-        <translation>イベントを追加し、そのイベントグループを選択してください</translation>
+        <translation type="vanished">イベントを追加し、そのイベントグループを選択してください</translation>
     </message>
     <message>
         <source>Create an event group before adding an event.</source>
-        <translation>イベントを追加する前に、イベントグループを作成してください。</translation>
+        <translation type="vanished">イベントを追加する前に、イベントグループを作成してください。</translation>
     </message>
     <message>
         <source>Select the event you want to remove.</source>
-        <translation>削除したいイベントを選択してください。</translation>
+        <translation type="vanished">削除したいイベントを選択してください。</translation>
+    </message>
+    <message>
+        <source>An event group with this name already exists.</source>
+        <translation>この名前のイベントグループはすでに存在します。</translation>
+    </message>
+    <message>
+        <source>Delete all device events</source>
+        <translation>すべてのデバイスイベントを削除</translation>
+    </message>
+    <message>
+        <source>Delete all events for this device and simulation mode?</source>
+        <translation>このデバイスとシミュレーションモードのすべてのイベントを削除しますか？</translation>
+    </message>
+    <message>
+        <source>Group name:</source>
+        <translation>グループ名:</translation>
+    </message>
+    <message>
+        <source>Remove '{name}' and all events in this group?</source>
+        <translation>'{name}'とこのグループ内のすべてのイベントを削除しますか？</translation>
+    </message>
+    <message>
+        <source>Remove event group</source>
+        <translation>イベントグループを削除</translation>
+    </message>
+    <message>
+        <source>Remove the selected event?</source>
+        <translation>選択したイベントを削除しますか？</translation>
+    </message>
+    <message>
+        <source>Select an event group before adding an event.</source>
+        <translation>イベントを追加する前に、イベントグループを選択してください。</translation>
+    </message>
+    <message>
+        <source>Select an event or event group to remove.</source>
+        <translation>削除するイベントまたはイベントグループを選択してください。</translation>
+    </message>
+    <message>
+        <source>The dynamic model has no event parameters.</source>
+        <translation>動的モデルにイベントパラメータがありません。</translation>
     </message>
 </context>
 <context>
     <name>DynamicEventsTreeModel</name>
     <message>
         <source>Align Step</source>
-        <translation>ステップを整列</translation>
+        <translation type="vanished">ステップを整列</translation>
     </message>
     <message>
         <source>End Time</source>
-        <translation>終了時間</translation>
+        <translation type="vanished">終了時間</translation>
     </message>
     <message>
         <source>Invalid / Ungrouped Events</source>
@@ -3973,15 +4134,15 @@ Are you sure?</source>
     </message>
     <message>
         <source>Invalid parameter</source>
-        <translation>無効なパラメータ</translation>
+        <translation type="vanished">無効なパラメータ</translation>
     </message>
     <message>
         <source>New Value</source>
-        <translation>新しい値</translation>
+        <translation type="vanished">新しい値</translation>
     </message>
     <message>
         <source>Parameter</source>
-        <translation>パラメータ</translation>
+        <translation type="vanished">パラメータ</translation>
     </message>
     <message>
         <source>These persisted events do not reference a valid events group and can only be removed.</source>
@@ -3989,19 +4150,19 @@ Are you sure?</source>
     </message>
     <message>
         <source>Time</source>
-        <translation>時間</translation>
+        <translation type="vanished">時間</translation>
     </message>
     <message>
         <source>Transition</source>
-        <translation>遷移</translation>
+        <translation type="vanished">遷移</translation>
     </message>
     <message>
         <source>Event Group</source>
-        <translation>イベントグループ</translation>
+        <translation type="vanished">イベントグループ</translation>
     </message>
     <message>
         <source>Select Event Group</source>
-        <translation>イベントグループを選択</translation>
+        <translation type="vanished">イベントグループを選択</translation>
     </message>
 </context>
 <context>
@@ -4178,6 +4339,79 @@ select the expected processing format</source>
     <message>
         <source>Choose an FMU file first.</source>
         <translation>最初に FMU ファイルを選択します。</translation>
+    </message>
+</context>
+<context>
+    <name>Form</name>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="14"/>
+        <source>Add block property</source>
+        <translation>ブロックプロパティを追加</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="26"/>
+        <source>Add symbol to selected block</source>
+        <translation>選択されたブロックにシンボルを追加</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="71"/>
+        <source>Output</source>
+        <translation>出力</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="78"/>
+        <source>Create derivative variable</source>
+        <translation>微分変数を作成</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="144"/>
+        <source>New symbol name</source>
+        <translation>新しいシンボル名</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="151"/>
+        <source>Symbol category</source>
+        <translation>シンボルカテゴリ</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="158"/>
+        <source>Owner block</source>
+        <translation>所有ブロック</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="165"/>
+        <source>Type</source>
+        <translation>種類</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="172"/>
+        <source>Add symbol</source>
+        <translation>シンボルを追加</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="195"/>
+        <source>Static device mapping</source>
+        <translation>静的デバイスマッピング</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="202"/>
+        <source>Power-flow variable used to initialize this dynamic variable.</source>
+        <translation>この動的変数を初期化するために使用される電力潮流変数。</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="205"/>
+        <source>Power-flow variable</source>
+        <translation>電力潮流変数</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="266"/>
+        <source>Enter a name</source>
+        <translation>名前を入力</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/add_symbol_widget.ui" line="273"/>
+        <source>Initial numeric value</source>
+        <translation>初期数値</translation>
     </message>
 </context>
 <context>
@@ -13026,7 +13260,7 @@ You need to load or create a grid!</source>
     <message>
         <location filename="../Main/MainWindow.ui" line="12999"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Candidate investment generator&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Generate candidate reinforcements (new lines and upgrades) for N-1 violations via LODF/PTDF screening&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Candidate investment generator&lt;/span&gt;&lt;/p&gt;&lt;p&gt;候補の補強（新規送電線およびアップグレード）をN-1違反に対してLODF/PTDFスクリーニング経由で生成します&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Candidate investment generator&lt;/span&gt;&lt;/p&gt;&lt;p&gt;候補の補強（新規送電線およびアップグレード）をN-1違反に対してLODF/PTDFスクリーニング経由で生成します&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="13117"/>
@@ -15840,21 +16074,21 @@ You need to load or create a grid!</source>
     </message>
 </context>
 <context>
-    <name>BaseMainGui</name>
+    <name>DiagramScene</name>
     <message>
-        <source>Are you sure that you want to cancel the simulation?</source>
-        <translation>シミュレーションをキャンセルしますか？よろしいですか？</translation>
+        <source>Block info</source>
+        <translation>ブロック情報</translation>
     </message>
     <message>
-        <source>Unlocking the UI may cause crash depending on the conditions. Are you sure?</source>
-        <translation>UIのロック解除は、状況によってはクラッシュを引き起こす可能性があります。よろしいですか？</translation>
+        <source>Edit block</source>
+        <translation>ブロックを編集</translation>
     </message>
 </context>
 <context>
-    <name>DynamicEventsFilterPopup</name>
+    <name>DynamicEventGroupsTreeModel</name>
     <message>
-        <source>All</source>
-        <translation>すべて</translation>
+        <source>Event groups</source>
+        <translation>イベントグループ</translation>
     </message>
 </context>
 </TS>
