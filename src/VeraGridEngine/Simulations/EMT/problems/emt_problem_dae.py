@@ -7443,16 +7443,17 @@ class EmtProblemDae(EmtProblemTemplate):
         # as their controller feedforward operating point.  The API object's P0 is
         # commonly zero in Vm_dc mode, which otherwise initializes i_d/P_f at zero
         # while the DC load is already drawing the full PF power.
-        self.set_internal_runtime_if_exists(
-            mdl=mdl,
-            var_name="P0",
-            value=float(-np.real(S_dc_total) * sbase),
-        )
-        self.set_internal_runtime_if_exists(mdl=mdl, var_name="sbase", value=float(sbase))
-        vsc_device = self.grid.vsc_devices[vsc_index]
-        self.set_internal_runtime_if_exists(mdl=mdl, var_name="P_loss0", value=float(vsc_device.alpha1))
-        self.set_internal_runtime_if_exists(mdl=mdl, var_name="P_loss_i1", value=float(vsc_device.alpha2))
-        self.set_internal_runtime_if_exists(mdl=mdl, var_name="P_loss_i2", value=float(vsc_device.alpha3))
+        if _find_internal_vars_by_name(mdl, "P_loss0"):
+            self.set_internal_runtime_if_exists(
+                mdl=mdl,
+                var_name="P0",
+                value=float(-np.real(S_dc_total) * sbase),
+            )
+            self.set_internal_runtime_if_exists(mdl=mdl, var_name="sbase", value=float(sbase))
+            vsc_device = self.grid.vsc_devices[vsc_index]
+            self.set_internal_runtime_if_exists(mdl=mdl, var_name="P_loss0", value=float(vsc_device.alpha1))
+            self.set_internal_runtime_if_exists(mdl=mdl, var_name="P_loss_i1", value=float(vsc_device.alpha2))
+            self.set_internal_runtime_if_exists(mdl=mdl, var_name="P_loss_i2", value=float(vsc_device.alpha3))
 
         S_from = S_ac_total if ac_is_from else S_dc_total
         S_to = S_dc_total if ac_is_from else S_ac_total
@@ -7689,16 +7690,17 @@ class EmtProblemDae(EmtProblemTemplate):
 
         self.set_if_exists(mdl=mdl, key=VarPowerFlowReferenceType.P, value=float(np.real(S_ac_total)))
         self.set_if_exists(mdl=mdl, key=VarPowerFlowReferenceType.Q, value=float(np.imag(S_ac_total)))
-        self.set_internal_runtime_if_exists(
-            mdl=mdl,
-            var_name="P0",
-            value=float(-np.real(S_dc_total) * sbase),
-        )
-        self.set_internal_runtime_if_exists(mdl=mdl, var_name="sbase", value=float(sbase))
-        vsc_device = self.grid.vsc_devices[vsc_index]
-        self.set_internal_runtime_if_exists(mdl=mdl, var_name="P_loss0", value=float(vsc_device.alpha1))
-        self.set_internal_runtime_if_exists(mdl=mdl, var_name="P_loss_i1", value=float(vsc_device.alpha2))
-        self.set_internal_runtime_if_exists(mdl=mdl, var_name="P_loss_i2", value=float(vsc_device.alpha3))
+        if _find_internal_vars_by_name(mdl, "P_loss0"):
+            self.set_internal_runtime_if_exists(
+                mdl=mdl,
+                var_name="P0",
+                value=float(-np.real(S_dc_total) * sbase),
+            )
+            self.set_internal_runtime_if_exists(mdl=mdl, var_name="sbase", value=float(sbase))
+            vsc_device = self.grid.vsc_devices[vsc_index]
+            self.set_internal_runtime_if_exists(mdl=mdl, var_name="P_loss0", value=float(vsc_device.alpha1))
+            self.set_internal_runtime_if_exists(mdl=mdl, var_name="P_loss_i1", value=float(vsc_device.alpha2))
+            self.set_internal_runtime_if_exists(mdl=mdl, var_name="P_loss_i2", value=float(vsc_device.alpha3))
 
         S_from = S_ac_total if ac_is_from else S_dc_total
         S_to = S_dc_total if ac_is_from else S_ac_total
