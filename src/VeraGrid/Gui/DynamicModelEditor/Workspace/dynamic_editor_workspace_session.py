@@ -9,9 +9,7 @@ from typing import List, Dict, Tuple, TYPE_CHECKING
 
 from PySide6 import QtCore, QtWidgets
 
-from VeraGrid.Gui.DynamicModelEditor.Events.direct_dynamic_events_page import (
-    DirectDynamicEventsPage as DynamicEventsPage,
-)
+from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_page import DynamicEventsPage
 from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_support import collect_dynamic_events_page_parameters
 from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGrid.Gui.DynamicModelEditor.Workspace.Tabs.dynamic_editor_tab import DynamicEditorTab
