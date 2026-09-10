@@ -47,11 +47,11 @@
       <bool>false</bool>
      </property>
      <addaction name="actionClearDeviceEvents"/>
-     <addaction name="actionSave"/>
      <addaction name="separator"/>
      <addaction name="actionSwitchSequence"/>
-     <addaction name="actionAdd"/>
+     <addaction name="actionAddEvent"/>
      <addaction name="actionRemove"/>
+     <addaction name="actionNewGroup"/>
     </widget>
    </item>
    <item>
@@ -73,16 +73,26 @@
        <number>0</number>
       </property>
       <item row="0" column="0">
-       <widget class="QTableView" name="eventsTableView">
-        <property name="alternatingRowColors">
-         <bool>false</bool>
-        </property>
-        <property name="selectionMode">
-         <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
-        </property>
-        <property name="selectionBehavior">
-         <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
-        </property>
+       <widget class="QSplitter" name="eventsSplitter">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+        <widget class="QTreeView" name="eventGroupsTreeView">
+         <property name="minimumSize">
+          <size>
+           <width>220</width>
+           <height>0</height>
+          </size>
+         </property>
+        </widget>
+        <widget class="QTableView" name="eventsTableView">
+         <property name="selectionMode">
+          <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
+         </property>
+         <property name="selectionBehavior">
+          <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
+         </property>
+        </widget>
        </widget>
       </item>
       <item row="0" column="0">
@@ -103,6 +113,9 @@
    </item>
   </layout>
   <action name="actionClearDeviceEvents">
+   <property name="priority">
+    <enum>QAction::Priority::LowPriority</enum>
+   </property>
    <property name="icon">
     <iconset resource="../../Icons/icons.qrc">
      <normaloff>:/Icons/icons/new.png</normaloff>:/Icons/icons/new.png</iconset>
@@ -113,11 +126,11 @@
    <property name="toolTip">
     <string>Delete all events of this simulation mode from the current device</string>
    </property>
+  </action>
+  <action name="actionSave">
    <property name="priority">
     <enum>QAction::Priority::LowPriority</enum>
    </property>
-  </action>
-  <action name="actionSave">
    <property name="icon">
     <iconset resource="../../Icons/icons.qrc">
      <normaloff>:/Icons/icons/savec.png</normaloff>:/Icons/icons/savec.png</iconset>
@@ -131,23 +144,16 @@
    <property name="shortcut">
     <string>Ctrl+S</string>
    </property>
-   <property name="priority">
-    <enum>QAction::Priority::LowPriority</enum>
-   </property>
   </action>
   <action name="actionSwitchSequence">
-   <property name="icon">
-    <iconset resource="../../Icons/icons.qrc">
-     <normaloff>:/Icons/icons/area_transfer.png</normaloff>:/Icons/icons/area_transfer.png</iconset>
-   </property>
    <property name="text">
-    <string/>
+    <string>Switch Sequence Wizard</string>
    </property>
    <property name="toolTip">
     <string>Create an EMT switch opening and reclosing event sequence</string>
    </property>
   </action>
-  <action name="actionAdd">
+  <action name="actionAddEvent">
    <property name="icon">
     <iconset resource="../../Icons/icons.qrc">
      <normaloff>:/Icons/icons/plus.png</normaloff>:/Icons/icons/plus.png</iconset>
@@ -169,6 +175,14 @@
    </property>
    <property name="toolTip">
     <string>Remove the selected event or event group</string>
+   </property>
+  </action>
+  <action name="actionNewGroup">
+   <property name="text">
+    <string>Create Event Group</string>
+   </property>
+   <property name="toolTip">
+    <string>Create an event group</string>
    </property>
   </action>
  </widget>
