@@ -58,7 +58,7 @@ from VeraGrid.Gui.DynamicModelEditor.Editor.block_editor import Ui_BlockEditorWi
 import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_graphics as graph
 from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import DynamicEditorEntry
 from VeraGrid.Gui.DynamicModelEditor.Editor.DynamicLibrary.dynamic_editor_library import DynamicEditorLibrary, LibraryTreeFilterProxyModel
-from VeraGrid.Gui.DynamicModelEditor.Editor.ElementDialogues.measurements_dialog import MeasurementsDialog
+from VeraGrid.Gui.DynamicModelEditor.Editor.ElementDialogues.MeasurementsDialog import MeasurementsDialog
 import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_models as dialog_models
 from VeraGrid.Gui.DynamicModelEditor.Editor.BlockProperties.dynamic_block_properties import (
     BlockStructuralEditRequest,
@@ -2162,6 +2162,266 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
+    def find_bus_by_idtag_or_name(self, buses_list: List[Bus], bus_label: str) -> Bus | None:
+        """
+        Find one bus by stable id tag first and visible name second.
+
+        :param buses_list: Available buses.
+        :param bus_label: Persisted bus id tag or legacy visible name.
+        :return: Matching bus, or ``None``.
+        """
+        selected_bus: Bus | None = None
+        bus: Bus
+        for bus in buses_list:
+            if selected_bus is None:
+                if bus.idtag == bus_label or bus.name == bus_label:
+                    selected_bus = bus
+                else:
+                    pass
+            else:
+                pass
+        return selected_bus
+
+    def infer_measurements_dialog_bus_from_device(self,
+                                                  source_item: graph.MeasurementsItem,
+                                                  buses_list: List[Bus]) -> Bus | None:
+        """
+        Infer the measurement bus for older blocks without persisted bus metadata.
+
+        :param source_item: Measurement graphics item being edited.
+        :param buses_list: Available buses.
+        :return: Inferred bus, or ``None``.
+        """
+        selected_bus: Bus | None = None
+        if source_item.subsys is not None:
+            references: List[VarPowerFlowReferenceType] = self.get_measurements_dialog_refs_from_vars(
+                variables=source_item.subsys.in_vars,
+            )
+            references.extend(
+                self.get_measurements_dialog_refs_from_vars(
+                    variables=source_item.subsys.out_vars,
+                )
+            )
+        else:
+            references = list()
+
+        if isinstance(self.api_object, InjectionParent):
+            selected_bus = self.api_object.bus
+        elif isinstance(self.api_object, BranchParent):
+            from_refs: set[VarPowerFlowReferenceType] = set((
+                VarPowerFlowReferenceType.Vmf,
+                VarPowerFlowReferenceType.Vaf,
+                VarPowerFlowReferenceType.Vf_dc,
+                VarPowerFlowReferenceType.Pf,
+                VarPowerFlowReferenceType.Qf,
+            ))
+            to_refs: set[VarPowerFlowReferenceType] = set((
+                VarPowerFlowReferenceType.Vmt,
+                VarPowerFlowReferenceType.Vat,
+                VarPowerFlowReferenceType.Vt_dc,
+                VarPowerFlowReferenceType.Pt,
+                VarPowerFlowReferenceType.Qt,
+            ))
+            from_match: bool = False
+            to_match: bool = False
+            reference: VarPowerFlowReferenceType
+            for reference in references:
+                if reference in from_refs:
+                    from_match = True
+                else:
+                    pass
+                if reference in to_refs:
+                    to_match = True
+                else:
+                    pass
+            if from_match and not to_match:
+                selected_bus = self.api_object.bus_from
+            elif to_match and not from_match:
+                selected_bus = self.api_object.bus_to
+            else:
+                selected_bus = self.api_object.bus_from
+        else:
+            pass
+
+        if selected_bus in buses_list:
+            return selected_bus
+        else:
+            return None
+
+    def get_measurements_dialog_initial_bus(self,
+                                            source_item: graph.MeasurementsItem,
+                                            buses_list: List[Bus]) -> Bus | None:
+        """
+        Resolve the bus shown when reopening the measurements editor.
+
+        :param source_item: Measurement graphics item being edited.
+        :param buses_list: Available buses.
+        :return: Initial bus, or ``None``.
+        """
+        selected_bus: Bus | None = None
+        if source_item.subsys is not None:
+            node_data: BlockDiagramNode | None = self.diagram.node_data.get(source_item.subsys.uid, None)
+            if node_data is not None and node_data.api_object_name != "":
+                selected_bus = self.find_bus_by_idtag_or_name(
+                    buses_list=buses_list,
+                    bus_label=node_data.api_object_name,
+                )
+            else:
+                pass
+        else:
+            pass
+
+        if selected_bus is None:
+            selected_bus = self.infer_measurements_dialog_bus_from_device(
+                source_item=source_item,
+                buses_list=buses_list,
+            )
+        else:
+            pass
+        return selected_bus
+
+    def get_measurements_dialog_initial_block_type(self,
+                                                  source_item: graph.MeasurementsItem) -> BlockType | None:
+        """
+        Resolve the measurement type shown when reopening the measurements editor.
+
+        :param source_item: Measurement graphics item being edited.
+        :return: Initial measurement block type, or ``None``.
+        """
+        selected_block_type: BlockType | None = None
+        if source_item.subsys is not None:
+            node_data: BlockDiagramNode | None = self.diagram.node_data.get(source_item.subsys.uid, None)
+            if node_data is not None and node_data.tpe in BlockType.__members__:
+                selected_block_type = BlockType[node_data.tpe]
+            elif source_item.subsys.name in BlockType.__members__:
+                selected_block_type = BlockType[source_item.subsys.name]
+            else:
+                pass
+        else:
+            pass
+        return selected_block_type
+
+    def get_measurements_dialog_block_type_for_refs(
+            self,
+            initial_bus: Bus | None,
+            initial_references: List[VarPowerFlowReferenceType],
+            vars_dict: Dict[str, Dict[BlockType, List[VarPowerFlowReferenceType]]],
+    ) -> BlockType | None:
+        """
+        Infer one measurement type from the already exposed measurement refs.
+
+        :param initial_bus: Selected bus defining the AC/DC domain.
+        :param initial_references: Dialog-compatible selected references.
+        :param vars_dict: Measurement types grouped by bus domain.
+        :return: Matching measurement block type, or ``None``.
+        """
+        selected_block_type: BlockType | None = None
+        if initial_bus is None:
+            pass
+        else:
+            if initial_bus.is_dc:
+                bus_domain: str = "dc_bus"
+            else:
+                bus_domain = "a_c_bus"
+
+            domain_measurements: Dict[BlockType, List[VarPowerFlowReferenceType]] | None = vars_dict.get(
+                bus_domain,
+                None,
+            )
+            if domain_measurements is None:
+                pass
+            else:
+                requested_references: set[VarPowerFlowReferenceType] = set(initial_references)
+                block_type: BlockType
+                available_references: List[VarPowerFlowReferenceType]
+                for block_type, available_references in domain_measurements.items():
+                    if selected_block_type is None:
+                        available_reference_set: set[VarPowerFlowReferenceType] = set(available_references)
+                        if requested_references == available_reference_set:
+                            selected_block_type = block_type
+                        elif len(requested_references) > 0 and requested_references.issubset(available_reference_set):
+                            selected_block_type = block_type
+                        else:
+                            pass
+                    else:
+                        pass
+        return selected_block_type
+
+    def is_measurements_dialog_block_type_available(
+            self,
+            initial_bus: Bus | None,
+            block_type: BlockType | None,
+            vars_dict: Dict[str, Dict[BlockType, List[VarPowerFlowReferenceType]]],
+    ) -> bool:
+        """
+        Check if one block type can be shown for the selected bus domain.
+
+        :param initial_bus: Selected bus defining the AC/DC domain.
+        :param block_type: Candidate block type.
+        :param vars_dict: Measurement types grouped by bus domain.
+        :return: ``True`` when the dialog can show that block type.
+        """
+        if initial_bus is None or block_type is None:
+            available: bool = False
+        else:
+            if initial_bus.is_dc:
+                bus_domain: str = "dc_bus"
+            else:
+                bus_domain = "a_c_bus"
+            domain_measurements: Dict[BlockType, List[VarPowerFlowReferenceType]] | None = vars_dict.get(
+                bus_domain,
+                None,
+            )
+            if domain_measurements is not None and block_type in domain_measurements:
+                available = True
+            else:
+                available = False
+        return available
+
+    def coerce_measurements_dialog_reference(
+            self,
+            reference: VarPowerFlowReferenceType,
+    ) -> VarPowerFlowReferenceType:
+        """
+        Convert branch-side root references into the generic dialog references.
+
+        :param reference: Stored symbolic variable reference.
+        :return: Dialog reference.
+        """
+        if reference == VarPowerFlowReferenceType.Vmf or reference == VarPowerFlowReferenceType.Vmt:
+            dialog_reference: VarPowerFlowReferenceType = VarPowerFlowReferenceType.Vm
+        elif reference == VarPowerFlowReferenceType.Vaf or reference == VarPowerFlowReferenceType.Vat:
+            dialog_reference = VarPowerFlowReferenceType.Va
+        elif reference == VarPowerFlowReferenceType.Vf_dc or reference == VarPowerFlowReferenceType.Vt_dc:
+            dialog_reference = VarPowerFlowReferenceType.Vdc
+        elif reference == VarPowerFlowReferenceType.Pf or reference == VarPowerFlowReferenceType.Pt:
+            dialog_reference = VarPowerFlowReferenceType.P
+        elif reference == VarPowerFlowReferenceType.Qf or reference == VarPowerFlowReferenceType.Qt:
+            dialog_reference = VarPowerFlowReferenceType.Q
+        else:
+            dialog_reference = reference
+        return dialog_reference
+
+    def get_measurements_dialog_refs_from_vars(self, variables: List[Var]) -> List[VarPowerFlowReferenceType]:
+        """
+        Read dialog-compatible measurement references from symbolic variables.
+
+        :param variables: Variables attached to one side of the measurement block.
+        :return: Measurement references in port order.
+        """
+        references: List[VarPowerFlowReferenceType] = list()
+        var: Var
+        for var in variables:
+            if isinstance(var.ref, VarPowerFlowReferenceType):
+                dialog_reference: VarPowerFlowReferenceType = self.coerce_measurements_dialog_reference(var.ref)
+                if dialog_reference not in references:
+                    references.append(dialog_reference)
+                else:
+                    pass
+            else:
+                pass
+        return references
+
     def open_measurements_editor(self,
                                  source_item: graph.MeasurementsItem,
                                  x_pos: float,
@@ -2178,9 +2438,46 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         # measurement block must reference after the modal selection is accepted.
         buses_list: List[Bus] = list(self.circuit.buses)
         vars_dict: Dict[str, Dict[BlockType, List[VarPowerFlowReferenceType]]] = measurement_vars_dict
+        initial_bus: Bus | None = self.get_measurements_dialog_initial_bus(
+            source_item=source_item,
+            buses_list=buses_list,
+        )
+        if source_item.subsys is not None:
+            initial_input_references: List[VarPowerFlowReferenceType] = self.get_measurements_dialog_refs_from_vars(
+                variables=source_item.subsys.in_vars,
+            )
+            initial_output_references: List[VarPowerFlowReferenceType] = self.get_measurements_dialog_refs_from_vars(
+                variables=source_item.subsys.out_vars,
+            )
+        else:
+            initial_input_references = list()
+            initial_output_references = list()
+
+        initial_block_type: BlockType | None = self.get_measurements_dialog_initial_block_type(
+            source_item=source_item,
+        )
+        if self.is_measurements_dialog_block_type_available(
+                initial_bus=initial_bus,
+                block_type=initial_block_type,
+                vars_dict=vars_dict,
+        ):
+            pass
+        else:
+            all_initial_references: List[VarPowerFlowReferenceType] = list(initial_input_references)
+            all_initial_references.extend(initial_output_references)
+            initial_block_type = self.get_measurements_dialog_block_type_for_refs(
+                initial_bus=initial_bus,
+                initial_references=all_initial_references,
+                vars_dict=vars_dict,
+            )
+
         dialogue: MeasurementsDialog = MeasurementsDialog(
             buses=buses_list,
             measurement_vars_dict=vars_dict,
+            initial_bus=initial_bus,
+            initial_block_type=initial_block_type,
+            initial_input_references=initial_input_references,
+            initial_output_references=initial_output_references,
             parent=self,
         )
 
@@ -3327,7 +3624,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 x=x_pos,
                 y=y_pos,
                 tpe=block_type.name,
-                device_uid=block_model.uid
+                device_uid=block_model.uid,
+                api_object_name=bus.idtag,
             )
 
         elif block_type in self.UNARY_MATH_BLOCK_TYPES:
@@ -3814,11 +4112,18 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             vars_list = pq_vars
 
         for var in vars_list:
-            if var.ref in ref_inputs:
-                block.in_vars.append(var)
+            if isinstance(var.ref, VarPowerFlowReferenceType):
+                dialog_reference: VarPowerFlowReferenceType = self.coerce_measurements_dialog_reference(var.ref)
             else:
+                dialog_reference = VarPowerFlowReferenceType.NOTHING
+            if dialog_reference in ref_inputs:
+                block.in_vars.append(var)
+            elif dialog_reference in ref_outputs:
                 block.out_vars.append(var)
+            else:
+                pass
 
+        block.name = block_type.name
         return block
 
     def create_measurements_block_item(self, x_pos: float, y_pos: float, bus: ALL_DEV_TYPES | None = None,
@@ -6222,7 +6527,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         if isinstance(self.api_object, BranchParent):
             if bus.is_dc:
-                if bus.idtag == self.api_object.bus_from:
+                if bus is self.api_object.bus_from or bus.idtag == self.api_object.bus_from.idtag:
                     P = self.main_block.external_mapping[VarPowerFlowReferenceType.Pf]
                     pq_vars.append(P)
                     return pq_vars
@@ -6232,7 +6537,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     return pq_vars
 
             else:
-                if bus.idtag == self.api_object.bus_from:
+                if bus is self.api_object.bus_from or bus.idtag == self.api_object.bus_from.idtag:
                     P = self.main_block.external_mapping[VarPowerFlowReferenceType.Pf]
                     Q = self.main_block.external_mapping[VarPowerFlowReferenceType.Qf]
                     pq_vars.append(P)

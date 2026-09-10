@@ -4,150 +4,31 @@
 # SPDX-License-Identifier: MPL-2.001--.0-
 from __future__ import annotations
 
-from typing import Dict, List, Tuple
+from typing import Dict, List, Sequence, Tuple
 
-from PySide6 import QtCore, QtGui, QtWidgets
+from PySide6 import QtCore, QtWidgets
 
 from VeraGrid.Gui.general_dialogues import DeviceSelectorDialogue
+from VeraGrid.Gui.DynamicModelEditor.Editor.ElementDialogues.MeasurementsDialog.measurements_dialog_ui import (
+    Ui_MeasurementsDialog,
+)
+from VeraGrid.Gui.DynamicModelEditor.Editor.ElementDialogues.MeasurementsDialog.measurement_widgets import (
+    MeasurementReferenceList,
+)
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.enumerations import BlockType, DeviceType, VarPowerFlowReferenceType
-
-
-class DeviceSelectionLabel(QtWidgets.QLabel):
-    """Label that requests device selection through pointer or keyboard input."""
-
-    __slots__ = ()
-
-    clicked = QtCore.Signal()
-
-    def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
-        """Emit the selection request for a left-button click.
-
-        :param event: Incoming label mouse event.
-        :return: None.
-        """
-        if event.button() == QtCore.Qt.MouseButton.LeftButton:
-            self.clicked.emit()
-            event.accept()
-        else:
-            QtWidgets.QLabel.mousePressEvent(self, event)
-
-    def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
-        """Emit the selection request for Enter, Return or Space.
-
-        :param event: Incoming label key event.
-        :return: None.
-        """
-        selection_keys: tuple[QtCore.Qt.Key, ...] = (
-            QtCore.Qt.Key.Key_Enter,
-            QtCore.Qt.Key.Key_Return,
-            QtCore.Qt.Key.Key_Space,
-        )
-        if event.key() in selection_keys:
-            self.clicked.emit()
-            event.accept()
-        else:
-            QtWidgets.QLabel.keyPressEvent(self, event)
-
-
-class MeasurementReferenceList(QtWidgets.QListWidget):
-    """One direction list that accepts dragged measurement references."""
-
-    __slots__ = ("_target_direction",)
-
-    moveRequested = QtCore.Signal(object, int)
-
-    def __init__(self,
-                 target_direction: int,
-                 parent: QtWidgets.QWidget | None = None) -> None:
-        """Create one input or output reference list.
-
-        :param target_direction: Zero for inputs or one for outputs.
-        :param parent: Optional owning widget.
-        :return: None.
-        """
-        super().__init__(parent)
-        self._target_direction: int = target_direction
-        self.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
-        self.setDragEnabled(True)
-        self.setAcceptDrops(True)
-        self.viewport().setAcceptDrops(True)
-        self.setDropIndicatorShown(True)
-        self.setDragDropMode(QtWidgets.QAbstractItemView.DragDropMode.DragDrop)
-        self.setDefaultDropAction(QtCore.Qt.DropAction.MoveAction)
-        self.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
-
-    def startDrag(self, supported_actions: QtCore.Qt.DropAction) -> None:
-        """Start a drag carrying one typed measurement reference.
-
-        :param supported_actions: Actions accepted by the initiating view.
-        :return: None.
-        """
-        selected_items: List[QtWidgets.QListWidgetItem] = self.selectedItems()
-        if len(selected_items) == 1:
-            selected_item: QtWidgets.QListWidgetItem = selected_items[0]
-            reference_data: object = selected_item.data(QtCore.Qt.ItemDataRole.UserRole)
-            if isinstance(reference_data, VarPowerFlowReferenceType):
-                mime_data: QtCore.QMimeData = QtCore.QMimeData()
-                mime_data.setText(reference_data.name)
-                drag: QtGui.QDrag = QtGui.QDrag(self)
-                drag.setMimeData(mime_data)
-                drag.exec(QtCore.Qt.DropAction.MoveAction)
-            else:
-                pass
-        else:
-            pass
-
-    def dragEnterEvent(self, event: QtGui.QDragEnterEvent) -> None:
-        """Accept drags containing one measurement-reference name.
-
-        :param event: Incoming drag event.
-        :return: None.
-        """
-        if event.mimeData().hasText():
-            event.acceptProposedAction()
-        else:
-            event.ignore()
-
-    def dragMoveEvent(self, event: QtGui.QDragMoveEvent) -> None:
-        """Keep a valid measurement drag active over this direction list.
-
-        :param event: Incoming drag-move event.
-        :return: None.
-        """
-        if event.mimeData().hasText():
-            event.acceptProposedAction()
-        else:
-            event.ignore()
-
-    def dropEvent(self, event: QtGui.QDropEvent) -> None:
-        """Request moving the dropped reference into this list's direction.
-
-        :param event: Incoming drop event.
-        :return: None.
-        """
-        reference_name: str = event.mimeData().text()
-        if reference_name in VarPowerFlowReferenceType.__members__:
-            reference: VarPowerFlowReferenceType = VarPowerFlowReferenceType[reference_name]
-            self.moveRequested.emit(reference, self._target_direction)
-            event.acceptProposedAction()
-        else:
-            event.ignore()
 
 
 class MeasurementsDialog(QtWidgets.QDialog):
     """Select one bus and configure the interface of one RMS measurement block."""
 
     __slots__ = (
+        "ui",
         "_buses",
         "_measurement_vars_dict",
         "_active_measurement_vars_dict",
-        "_bus_label",
         "_selected_bus",
-        "_measurement_tree",
-        "_input_list",
-        "_output_list",
         "_selected_block_type",
         "_input_references",
         "_output_references",
@@ -157,17 +38,24 @@ class MeasurementsDialog(QtWidgets.QDialog):
     def __init__(self,
                  buses: List[Bus],
                  measurement_vars_dict: Dict[str, Dict[BlockType, List[VarPowerFlowReferenceType]]],
+                 initial_bus: Bus | None = None,
+                 initial_block_type: BlockType | None = None,
+                 initial_input_references: Sequence[VarPowerFlowReferenceType] | None = None,
+                 initial_output_references: Sequence[VarPowerFlowReferenceType] | None = None,
                  parent: QtWidgets.QWidget | None = None) -> None:
         """Build the measurement configuration dialog.
 
         :param buses: Buses available to the measurement block.
         :param measurement_vars_dict: Measurement types and references grouped by bus domain.
+        :param initial_bus: Bus to preselect when editing an existing block.
+        :param initial_block_type: Measurement type to preselect when editing.
+        :param initial_input_references: Measurement references already routed as inputs.
+        :param initial_output_references: Measurement references already routed as outputs.
         :param parent: Optional owning widget.
         :return: None.
         """
         super().__init__(parent)
-        self.setWindowTitle("Configure measurement block")
-        self.resize(900, 560)
+        self.ui: Ui_MeasurementsDialog = Ui_MeasurementsDialog()
 
         self._buses: List[Bus] = list(buses)
         self._measurement_vars_dict: Dict[
@@ -188,11 +76,7 @@ class MeasurementsDialog(QtWidgets.QDialog):
             List[VarPowerFlowReferenceType],
         ] = dict()
 
-        self._bus_label: DeviceSelectionLabel = DeviceSelectionLabel("Select bus...", self)
         self._selected_bus: Bus | None = None
-        self._measurement_tree: QtWidgets.QTreeWidget = QtWidgets.QTreeWidget(self)
-        self._input_list: MeasurementReferenceList = MeasurementReferenceList(0, self)
-        self._output_list: MeasurementReferenceList = MeasurementReferenceList(1, self)
         self._selected_block_type: BlockType | None = None
         self._input_references: List[VarPowerFlowReferenceType] = list()
         self._output_references: List[VarPowerFlowReferenceType] = list()
@@ -202,77 +86,27 @@ class MeasurementsDialog(QtWidgets.QDialog):
         self._connect_signals()
         self._refresh_direction_lists()
         self._set_measurement_configuration_enabled(False)
+        if initial_bus is not None:
+            self.set_selected_bus(initial_bus)
+            if initial_block_type is not None:
+                self.set_selected_measurement(
+                    selected_block_type=initial_block_type,
+                    input_references=initial_input_references,
+                    output_references=initial_output_references,
+                )
+            else:
+                pass
+        else:
+            pass
 
     def _build_ui(self) -> None:
         """Build the bus selector, measurement tree, direction lists, and buttons.
 
         :return: None.
         """
-        main_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self)
-        bus_layout: QtWidgets.QFormLayout = QtWidgets.QFormLayout()
-        # Present the selected bus as a compact clickable field while the full
-        # searchable device tree remains inside DeviceSelectorDialogue.
-        self._bus_label.setMinimumWidth(140)
-        self._bus_label.setMaximumWidth(260)
-        self._bus_label.setMinimumHeight(26)
-        self._bus_label.setFrameShape(QtWidgets.QFrame.Shape.Panel)
-        self._bus_label.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
-        self._bus_label.setMargin(5)
-        self._bus_label.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
-        self._bus_label.setFocusPolicy(QtCore.Qt.FocusPolicy.StrongFocus)
-        self._bus_label.setToolTip("Click to select a bus")
-        self._bus_label.setSizePolicy(
-            QtWidgets.QSizePolicy.Policy.Fixed,
-            QtWidgets.QSizePolicy.Policy.Fixed,
-        )
-        bus_layout.addRow("Bus", self._bus_label)
-        main_layout.addLayout(bus_layout)
-
-        content_widget: QtWidgets.QWidget = QtWidgets.QWidget(self)
-        content_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout(content_widget)
-        # Divide the available width equally and leave an actual blank gap
-        # between the measurement tree and the combined direction area.
-        content_layout.setContentsMargins(0, 0, 0, 0)
-        content_layout.setSpacing(20)
-        self._measurement_tree.setHeaderLabels(list(("Measurement variables",)))
-        self._measurement_tree.setAlternatingRowColors(True)
-        self._measurement_tree.setRootIsDecorated(True)
-        self._measurement_tree.setSelectionMode(
-            QtWidgets.QAbstractItemView.SelectionMode.SingleSelection
-        )
-        content_layout.addWidget(self._measurement_tree, 1)
-
-        direction_widget: QtWidgets.QWidget = QtWidgets.QWidget(content_widget)
-        direction_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout(direction_widget)
-        # Remove only the container margin so the two direction groups start at
-        # the same vertical position as the measurement-variable tree.
-        direction_layout.setContentsMargins(0, 0, 0, 0)
-        input_group: QtWidgets.QGroupBox = QtWidgets.QGroupBox("Inputs", direction_widget)
-        input_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(input_group)
-        input_layout.addWidget(self._input_list)
-        output_group: QtWidgets.QGroupBox = QtWidgets.QGroupBox("Outputs", direction_widget)
-        output_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(output_group)
-        output_layout.addWidget(self._output_list)
-        direction_layout.addWidget(input_group)
-        direction_layout.addWidget(output_group)
-        content_layout.addWidget(direction_widget, 1)
-        main_layout.addWidget(content_widget, 1)
-
-        explanation_label: QtWidgets.QLabel = QtWidgets.QLabel(
-            "Check one measurement type, choose its variables, and drag variables between Outputs and Inputs.",
-            self,
-        )
-        explanation_label.setWordWrap(True)
-        main_layout.addWidget(explanation_label)
-
-        buttons: QtWidgets.QDialogButtonBox = QtWidgets.QDialogButtonBox(
-            QtWidgets.QDialogButtonBox.StandardButton.Ok
-            | QtWidgets.QDialogButtonBox.StandardButton.Cancel,
-            self,
-        )
-        buttons.accepted.connect(self.accept_dialog)
-        buttons.rejected.connect(self.reject)
-        main_layout.addWidget(buttons)
+        self.ui.setupUi(self)
+        self.ui.input_list.set_target_direction(0)
+        self.ui.output_list.set_target_direction(1)
 
     def _set_measurement_configuration_enabled(self, enabled: bool) -> None:
         """Enable or shade all controls that depend on the selected bus.
@@ -280,9 +114,9 @@ class MeasurementsDialog(QtWidgets.QDialog):
         :param enabled: Whether a concrete bus has been selected.
         :return: None.
         """
-        self._measurement_tree.setEnabled(enabled)
-        self._input_list.setEnabled(enabled)
-        self._output_list.setEnabled(enabled)
+        self.ui.measurement_tree.setEnabled(enabled)
+        self.ui.input_list.setEnabled(enabled)
+        self.ui.output_list.setEnabled(enabled)
 
     def _populate_measurement_tree(self) -> None:
         """Populate collapsed measurement keys and their checkable references.
@@ -293,7 +127,7 @@ class MeasurementsDialog(QtWidgets.QDialog):
         references: List[VarPowerFlowReferenceType]
         for block_type, references in self._active_measurement_vars_dict.items():
             parent_item: QtWidgets.QTreeWidgetItem = QtWidgets.QTreeWidgetItem(
-                self._measurement_tree,
+                self.ui.measurement_tree,
                 list((block_type.name,)),
             )
             parent_item.setData(0, QtCore.Qt.ItemDataRole.UserRole, block_type)
@@ -324,11 +158,13 @@ class MeasurementsDialog(QtWidgets.QDialog):
 
         :return: None.
         """
-        self._measurement_tree.itemChanged.connect(self.on_tree_item_changed)
-        self._measurement_tree.itemClicked.connect(self.on_tree_item_clicked)
-        self._input_list.moveRequested.connect(self.move_reference)
-        self._output_list.moveRequested.connect(self.move_reference)
-        self._bus_label.clicked.connect(self.select_bus)
+        self.ui.measurement_tree.itemChanged.connect(self.tree_item_changed)
+        self.ui.measurement_tree.itemClicked.connect(self.tree_item_clicked)
+        self.ui.input_list.moveRequested.connect(self.move_reference)
+        self.ui.output_list.moveRequested.connect(self.move_reference)
+        self.ui.bus_label.clicked.connect(self.select_bus)
+        self.ui.button_box.accepted.connect(self.accept_dialog)
+        self.ui.button_box.rejected.connect(self.reject)
 
     @QtCore.Slot()
     def select_bus(self) -> None:
@@ -360,12 +196,12 @@ class MeasurementsDialog(QtWidgets.QDialog):
         :return: None.
         """
         self._selected_bus = selected_bus
-        self._bus_label.setText(selected_bus.name)
+        self.ui.bus_label.setText(selected_bus.name)
 
         # Changing the physical bus invalidates every selection made for the
         # previous domain, even when both buses happen to share that domain.
         self._updating_tree = True
-        self._measurement_tree.clear()
+        self.ui.measurement_tree.clear()
         self._selected_block_type = None
         self._input_references = list()
         self._output_references = list()
@@ -392,10 +228,95 @@ class MeasurementsDialog(QtWidgets.QDialog):
         self._updating_tree = False
         self._refresh_direction_lists()
 
+    def set_selected_measurement(
+            self,
+            selected_block_type: BlockType,
+            input_references: Sequence[VarPowerFlowReferenceType] | None,
+            output_references: Sequence[VarPowerFlowReferenceType] | None,
+    ) -> None:
+        """Select one measurement type and restore its input/output directions.
+
+        :param selected_block_type: Measurement type to select.
+        :param input_references: References that must appear in the Inputs list.
+        :param output_references: References that must appear in the Outputs list.
+        :return: None.
+        """
+        available_references: List[VarPowerFlowReferenceType] | None = (
+            self._active_measurement_vars_dict.get(selected_block_type, None)
+        )
+        if available_references is None:
+            pass
+        else:
+            self._selected_block_type = selected_block_type
+            self._input_references = list()
+            self._output_references = list()
+
+            if input_references is not None:
+                reference: VarPowerFlowReferenceType
+                for reference in input_references:
+                    if reference in available_references and reference not in self._input_references:
+                        self._input_references.append(reference)
+                    else:
+                        pass
+            else:
+                pass
+
+            reference: VarPowerFlowReferenceType
+            if output_references is not None:
+                for reference in output_references:
+                    if (reference in available_references
+                            and reference not in self._input_references
+                            and reference not in self._output_references):
+                        self._output_references.append(reference)
+                    else:
+                        pass
+            else:
+                pass
+
+            if len(self._input_references) == 0 and len(self._output_references) == 0:
+                self._output_references = list(available_references)
+            else:
+                pass
+
+            self._updating_tree = True
+            selected_item: QtWidgets.QTreeWidgetItem | None = None
+            top_index: int
+            for top_index in range(self.ui.measurement_tree.topLevelItemCount()):
+                parent_item: QtWidgets.QTreeWidgetItem = self.ui.measurement_tree.topLevelItem(top_index)
+                block_type_data: object = parent_item.data(0, QtCore.Qt.ItemDataRole.UserRole)
+                if block_type_data is selected_block_type:
+                    parent_item.setCheckState(0, QtCore.Qt.CheckState.Checked)
+                    parent_item.setExpanded(True)
+                    selected_item = parent_item
+                    child_index: int
+                    for child_index in range(parent_item.childCount()):
+                        child_item: QtWidgets.QTreeWidgetItem = parent_item.child(child_index)
+                        reference_data: object = child_item.data(0, QtCore.Qt.ItemDataRole.UserRole)
+                        if (reference_data in self._input_references
+                                or reference_data in self._output_references):
+                            child_item.setCheckState(0, QtCore.Qt.CheckState.Checked)
+                        else:
+                            child_item.setCheckState(0, QtCore.Qt.CheckState.Unchecked)
+                else:
+                    parent_item.setCheckState(0, QtCore.Qt.CheckState.Unchecked)
+                    child_index = 0
+                    for child_index in range(parent_item.childCount()):
+                        parent_item.child(child_index).setCheckState(
+                            0,
+                            QtCore.Qt.CheckState.Unchecked,
+                        )
+            self._updating_tree = False
+
+            if selected_item is not None:
+                self.ui.measurement_tree.setCurrentItem(selected_item)
+            else:
+                pass
+            self._refresh_direction_lists()
+
     @QtCore.Slot(QtWidgets.QTreeWidgetItem, int)
-    def on_tree_item_changed(self,
-                             item: QtWidgets.QTreeWidgetItem,
-                             column: int) -> None:
+    def tree_item_changed(self,
+                          item: QtWidgets.QTreeWidgetItem,
+                          column: int) -> None:
         """Apply exclusive key selection and individual reference selection.
 
         :param item: Tree item whose check state changed.
@@ -421,8 +342,8 @@ class MeasurementsDialog(QtWidgets.QDialog):
         elif item.checkState(0) == QtCore.Qt.CheckState.Checked:
             self._updating_tree = True
             top_index: int
-            for top_index in range(self._measurement_tree.topLevelItemCount()):
-                candidate_item: QtWidgets.QTreeWidgetItem = self._measurement_tree.topLevelItem(top_index)
+            for top_index in range(self.ui.measurement_tree.topLevelItemCount()):
+                candidate_item: QtWidgets.QTreeWidgetItem = self.ui.measurement_tree.topLevelItem(top_index)
                 if candidate_item is item:
                     pass
                 else:
@@ -502,9 +423,9 @@ class MeasurementsDialog(QtWidgets.QDialog):
                 self._refresh_direction_lists()
 
     @QtCore.Slot(QtWidgets.QTreeWidgetItem, int)
-    def on_tree_item_clicked(self,
-                             item: QtWidgets.QTreeWidgetItem,
-                             column: int) -> None:
+    def tree_item_clicked(self,
+                          item: QtWidgets.QTreeWidgetItem,
+                          column: int) -> None:
         """Expand a clicked measurement key so its references become visible.
 
         :param item: Clicked tree item.
@@ -559,13 +480,13 @@ class MeasurementsDialog(QtWidgets.QDialog):
 
         :return: None.
         """
-        self._input_list.clear()
-        self._output_list.clear()
+        self.ui.input_list.clear()
+        self.ui.output_list.clear()
         reference: VarPowerFlowReferenceType
         for reference in self._input_references:
-            self._add_direction_item(self._input_list, reference)
+            self._add_direction_item(self.ui.input_list, reference)
         for reference in self._output_references:
-            self._add_direction_item(self._output_list, reference)
+            self._add_direction_item(self.ui.output_list, reference)
 
     def _add_direction_item(self,
                             destination_list: MeasurementReferenceList,
