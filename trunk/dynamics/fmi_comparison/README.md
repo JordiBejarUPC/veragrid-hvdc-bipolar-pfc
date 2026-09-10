@@ -416,3 +416,49 @@ electrical power and governor command so the event response is directly visible.
 This lane proves the recorded FMI 2.0 Co-Simulation runtime behavior only. It
 does not claim FMI.jl composition-master conformance, FMI 1.0, FMI 3.0, Model
 Exchange, another operating system, or FMI certification.
+
+## PathSim-FMI orchestration comparison
+
+`run_pathsim_comparison` executes the authenticated Reference FMUs v0.0.41
+BouncingBall and Stair cases through PathSim 0.25.0 and PathSim-FMI 0.1.1. The
+matrix attempts FMI 2.0 and 3.0, Co-Simulation and Model Exchange, with both a
+state-event and a time-event family. PathSim-FMI is FMPy-backed, so this lane
+measures high-level orchestration behavior and does not count as an independent
+low-level FMI runtime.
+
+Each of the eight cells runs in a fresh Python 3.11.9 process with an absolute
+interpreter, `-B -I`, no shell and a child environment limited to
+`PROCESSOR_ARCHITECTURE`, `SystemRoot`, `TEMP` and `TMP`. The architecture is
+explicitly fixed to `AMD64`; no inherited `PATH`, `PYTHONPATH` or user state is
+available to the worker. The runtime tree, interpreter, catalog, release archive, FMU,
+accepted FMPy trace and staged worker are authenticated around execution. Model
+Exchange follows the upstream RKBS32 example with `dt=dt_max=0.01`, relative
+tolerance `1e-6`, absolute tolerance `1e-9` and event tolerance `1e-10`.
+
+```text
+python -m trunk.dynamics.fmi_comparison.run_pathsim_comparison \
+  --output <new-package-directory> \
+  --source-branch devel_dynamics_rebuild \
+  --source-revision <40-character-commit> \
+  --source-tree-sha256 <64-character-tree-digest> \
+  --runtime-root <authenticated-python-environment> \
+  --python <authenticated-python.exe> \
+  --system-root <absolute-windows-system-root> \
+  --processor-architecture AMD64 \
+  --catalog <reference_fmu_catalog.json> \
+  --archive <Reference-FMUs.zip> \
+  --fmi2-bouncing-ball <authenticated-fmu> \
+  --fmi2-stair <authenticated-fmu> \
+  --fmi3-bouncing-ball <authenticated-fmu> \
+  --fmi3-stair <authenticated-fmu> \
+  --reference-manifest <accepted-reference-execution-manifest>
+```
+
+The expected result is deliberately `COMPLETED_WITH_FINDINGS`: all four
+BouncingBall cells must pass their state-event and trajectory oracles, while
+the four Stair cells retain PathSim-FMI 0.1.1's current Integer/Int32 output
+limitation (`fmi2GetReal` or `fmi3GetFloat64`, status 3). The runner never
+patches the external tool or substitutes an easier FMU. It publishes exactly
+35 files, including raw results and logs, successful traces, a four-panel
+PathSim/FMPy overlay, a complete capability matrix and a closed manifest. This
+is interoperability evidence, not FMI certification.
