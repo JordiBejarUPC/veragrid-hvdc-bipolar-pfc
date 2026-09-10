@@ -638,12 +638,12 @@ def test_canvas_request_opens_restructured_block_properties() -> None:
     assert dialogue is not None
     tab_titles: list[str] = list()
     tab_index: int
-    for tab_index in range(dialogue._tabs.count()):
-        tab_titles.append(dialogue._tabs.tabText(tab_index))
+    for tab_index in range(dialogue.ui.tab_widget.count()):
+        tab_titles.append(dialogue.ui.tab_widget.tabText(tab_index))
     assert tab_titles == list(("General options", "DAE model", "LaTeX rendering"))
-    assert editor._block_properties_dock is not None
+    assert editor._block_properties_dialogue is dialogue
 
-    editor.close_block_properties_dock()
+    editor.close_block_properties_dialogue()
     editor.has_unapplied_changes = False
     editor.close()
 
@@ -721,8 +721,8 @@ def test_parameter_modal_separates_runtime_modes_for_pulse_block() -> None:
         assert f"{mode_name}:" in python_source
     tab_titles: list[str] = list()
     tab_index: int
-    for tab_index in range(dialogue._tabs.count()):
-        tab_titles.append(dialogue._tabs.tabText(tab_index))
+    for tab_index in range(dialogue.ui.tab_widget.count()):
+        tab_titles.append(dialogue.ui.tab_widget.tabText(tab_index))
     assert "Runtime logic" not in tab_titles
     dialogue.close()
 

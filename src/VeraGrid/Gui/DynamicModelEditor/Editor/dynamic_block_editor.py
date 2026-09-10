@@ -3625,7 +3625,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 y=y_pos,
                 tpe=block_type.name,
                 device_uid=block_model.uid,
-                api_object_name=bus.idtag,
             )
 
         elif block_type in self.UNARY_MATH_BLOCK_TYPES:
