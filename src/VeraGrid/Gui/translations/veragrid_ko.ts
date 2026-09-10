@@ -2239,6 +2239,49 @@ Are you sure?</source>
     </message>
 </context>
 <context>
+    <name>DiagramScene</name>
+    <message>
+        <source>Block info</source>
+        <translation>블록 정보</translation>
+    </message>
+    <message>
+        <source>Edit block</source>
+        <translation type="vanished">블록 편집</translation>
+    </message>
+    <message>
+        <source>Change Color</source>
+        <translation>색상 변경</translation>
+    </message>
+    <message>
+        <source>Change Name</source>
+        <translation>이름 변경</translation>
+    </message>
+    <message>
+        <source>Change Variable Name</source>
+        <translation>변수 이름 변경</translation>
+    </message>
+    <message>
+        <source>Duplicate</source>
+        <translation>복제하다</translation>
+    </message>
+    <message>
+        <source>Edit</source>
+        <translation>편집하다</translation>
+    </message>
+    <message>
+        <source>Open internals</source>
+        <translation>내부 열기</translation>
+    </message>
+    <message>
+        <source>Properties</source>
+        <translation>속성</translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation>제거하다</translation>
+    </message>
+</context>
+<context>
     <name>DiagramsMain</name>
     <message>
         <source>Are you sure that you want to try an automatic layout?</source>
@@ -3026,7 +3069,7 @@ Are you sure?</source>
         <translation>구조적 설정을 DAE 코드 또는 심볼 인터페이스 변경 사항과 분리하여 적용합니다.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="388"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="405"/>
         <source>Block / equation group</source>
         <translation>블록 / 방정식 그룹</translation>
     </message>
@@ -3059,9 +3102,8 @@ Are you sure?</source>
         <translation>변경 사항이 적용되었습니다. 고급 부등식/이산/불리언 로직은 변경 없이 보존되었습니다.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="323"/>
         <source>Clear</source>
-        <translation>분명한</translation>
+        <translation type="vanished">분명한</translation>
     </message>
     <message>
         <source>Create derivative variable</source>
@@ -3076,7 +3118,7 @@ Are you sure?</source>
         <translation type="vanished">DAE 코드가 유효합니다.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="131"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="134"/>
         <source>DAE model</source>
         <translation>DAE 모델</translation>
     </message>
@@ -3105,43 +3147,48 @@ Are you sure?</source>
         <translation>방정식 PDF가 생성되었습니다: {path}</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="158"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="188"/>
         <source>Equation owner</source>
         <translation>방정식 소유자</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="251"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="254"/>
         <source>&lt;&lt;</source>
         <translation>&lt;&lt;</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="261"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="264"/>
         <source>&gt;&gt;</source>
         <translation>&gt;&gt;</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="289"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="292"/>
         <source>LaTeX rendering</source>
         <translation>LaTeX 렌더링</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="343"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="333"/>
+        <source>Select None</source>
+        <translation>선택 안 함</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="360"/>
         <source>Save redered PDF</source>
         <translation>렌더링된 PDF 저장</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="372"/>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="393"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="389"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="410"/>
         <source>Equations</source>
         <translation>방정식</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="410"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="427"/>
         <source>LaTex source</source>
         <translation>LaTeX 소스</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="509"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="529"/>
         <source>Accept changes</source>
         <translation>변경 사항 수락</translation>
     </message>
@@ -3263,7 +3310,7 @@ Are you sure?</source>
         <translation>동적 방정식 PDF 저장</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="238"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="241"/>
         <source>Search Python code...</source>
         <translation>Python 코드 검색...</translation>
     </message>
@@ -3284,7 +3331,7 @@ Are you sure?</source>
         <translation>유효한 심볼 유형을 선택하십시오.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="316"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="319"/>
         <source>Select all</source>
         <translation>모두 선택</translation>
     </message>
@@ -3293,12 +3340,12 @@ Are you sure?</source>
         <translation>비어 있지 않은 방정식 그룹을 하나 이상 선택하십시오.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="422"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="439"/>
         <source>Select equation groups to generate copyable LaTeX source.</source>
         <translation>복사 가능한 LaTeX 소스를 생성할 방정식 그룹을 선택하십시오.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="378"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="395"/>
         <source>Select the equation groups to include. Each internal block and each DAE section can be selected independently.</source>
         <translation>포함할 방정식 그룹을 선택하십시오. 각 내부 블록과 각 DAE 섹션은 독립적으로 선택할 수 있습니다.</translation>
     </message>
@@ -3323,7 +3370,7 @@ Are you sure?</source>
         <translation type="vanished">온라인 블록 문서를 시스템 브라우저에서 열 수 없습니다.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="440"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="457"/>
         <source>These settings contain structured data used to regenerate the block. Edit sequences with valid Python tuple/list syntax.</source>
         <translation>이 설정에는 블록을 재생성하는 데 사용되는 구조화된 데이터가 포함되어 있습니다. 유효한 Python 튜플/리스트 구문으로 시퀀스를 편집하십시오.</translation>
     </message>
@@ -3356,7 +3403,7 @@ Are you sure?</source>
         <translation type="vanished">+ 절차 로직 추가</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="188"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="161"/>
         <source>Add one procedural behavior to the active equation owner&apos;s Python code.</source>
         <translation>활성 방정식 소유자의 Python 코드에 절차적 동작 추가.</translation>
     </message>
@@ -3398,7 +3445,7 @@ Are you sure?</source>
         <translation type="vanished">Python 코드 및 LaTeX 렌더링 도구 표시/숨기기</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="434"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="451"/>
         <source>Special configuration</source>
         <translation>특수 구성</translation>
     </message>
@@ -3411,7 +3458,7 @@ Are you sure?</source>
         <translation>선택된 소유자에는 Python 코드 버퍼가 없습니다.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="482"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="502"/>
         <source>Validate model</source>
         <translation>모델 유효성 검사</translation>
     </message>
@@ -3841,6 +3888,13 @@ Are you sure?</source>
     </message>
 </context>
 <context>
+    <name>DynamicEventGroupsTreeModel</name>
+    <message>
+        <source>Event groups</source>
+        <translation>이벤트 그룹</translation>
+    </message>
+</context>
+<context>
     <name>DynamicEventsDraftSession</name>
     <message>
         <source>An event and its events group use different simulation modes.</source>
@@ -4104,8 +4158,8 @@ Are you sure?</source>
         <translation>그룹 이름:</translation>
     </message>
     <message>
-        <source>Remove '{name}' and all events in this group?</source>
-        <translation>'{name}'과 이 그룹의 모든 이벤트를 제거하시겠습니까?</translation>
+        <source>Remove &apos;{name}&apos; and all events in this group?</source>
+        <translation>&apos;{name}&apos;과 이 그룹의 모든 이벤트를 제거하시겠습니까?</translation>
     </message>
     <message>
         <source>Remove event group</source>
@@ -7045,6 +7099,44 @@ Do you want to continue without a template?</source>
     <message>
         <source>MATPOWER export</source>
         <translation>MATPOWER 내보내기</translation>
+    </message>
+</context>
+<context>
+    <name>MeasurementsDialog</name>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="14"/>
+        <source>Configure measurement block</source>
+        <translation>측정 블록 구성</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="38"/>
+        <source>Bus</source>
+        <translation>버스</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="69"/>
+        <source>Click to select a bus</source>
+        <translation>버스를 선택하려면 클릭하세요</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="78"/>
+        <source>Select bus...</source>
+        <translation>버스 선택...</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="123"/>
+        <source>Name</source>
+        <translation>이름</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="128"/>
+        <source>I/O</source>
+        <translation>I/O</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="133"/>
+        <source>Comment</source>
+        <translation>주석</translation>
     </message>
 </context>
 <context>
@@ -16082,24 +16174,6 @@ You need to load or create a grid!</source>
     <message>
         <source>Question</source>
         <translation>질문</translation>
-    </message>
-</context>
-<context>
-    <name>DiagramScene</name>
-    <message>
-        <source>Block info</source>
-        <translation>블록 정보</translation>
-    </message>
-    <message>
-        <source>Edit block</source>
-        <translation>블록 편집</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEventGroupsTreeModel</name>
-    <message>
-        <source>Event groups</source>
-        <translation>이벤트 그룹</translation>
     </message>
 </context>
 </TS>

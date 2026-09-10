@@ -2231,6 +2231,49 @@ Combreu?</translation>
     </message>
 </context>
 <context>
+    <name>DiagramScene</name>
+    <message>
+        <source>Block info</source>
+        <translation>Informació del bloc</translation>
+    </message>
+    <message>
+        <source>Edit block</source>
+        <translation type="vanished">Editar bloc</translation>
+    </message>
+    <message>
+        <source>Change Color</source>
+        <translation>Canvia el color</translation>
+    </message>
+    <message>
+        <source>Change Name</source>
+        <translation>Canvi Nom</translation>
+    </message>
+    <message>
+        <source>Change Variable Name</source>
+        <translation>Canviar nom de la variable</translation>
+    </message>
+    <message>
+        <source>Duplicate</source>
+        <translation>Duplicat</translation>
+    </message>
+    <message>
+        <source>Edit</source>
+        <translation>Edita</translation>
+    </message>
+    <message>
+        <source>Open internals</source>
+        <translation>Obrir internals</translation>
+    </message>
+    <message>
+        <source>Properties</source>
+        <translation>Propietats</translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation>Eliminar</translation>
+    </message>
+</context>
+<context>
     <name>DiagramsMain</name>
     <message>
         <source>Are you sure that you want to try an automatic layout?</source>
@@ -2979,7 +3022,7 @@ Combreu?</translation>
     </message>
     <message>
         <source>The online block documentation could not be opened.</source>
-        <translation>No s'ha pogut obrir la documentació del bloc online.</translation>
+        <translation>No s&apos;ha pogut obrir la documentació del bloc online.</translation>
     </message>
 </context>
 <context>
@@ -3018,7 +3061,7 @@ Combreu?</translation>
         <translation>Aplicar configuracions estructurals separat del codi DAE o dels canvis d&apos;interfície de símbol.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="388"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="405"/>
         <source>Block / equation group</source>
         <translation>Bloc / grup d&apos;equacions</translation>
     </message>
@@ -3051,9 +3094,8 @@ Combreu?</translation>
         <translation>Canvis aplicats. Les desigualtats avançades/lògica discreta/booleana s&apos;han conservat sense canvis.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="323"/>
         <source>Clear</source>
-        <translation>Clar</translation>
+        <translation type="vanished">Clar</translation>
     </message>
     <message>
         <source>Create derivative variable</source>
@@ -3068,7 +3110,7 @@ Combreu?</translation>
         <translation type="vanished">El codi DAE és vàlid.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="131"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="134"/>
         <source>DAE model</source>
         <translation>Model DAE</translation>
     </message>
@@ -3097,43 +3139,48 @@ Combreu?</translation>
         <translation>PDF d&apos;equació creat: {path}</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="158"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="188"/>
         <source>Equation owner</source>
         <translation>Propietari de l&apos;equació</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="251"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="254"/>
         <source>&lt;&lt;</source>
         <translation>&lt;&lt;</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="261"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="264"/>
         <source>&gt;&gt;</source>
         <translation>&gt;&gt;</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="289"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="292"/>
         <source>LaTeX rendering</source>
         <translation>Renderitzatge LaTeX</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="343"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="333"/>
+        <source>Select None</source>
+        <translation>Seleccionar Cap</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="360"/>
         <source>Save redered PDF</source>
         <translation>Guardar PDF renderitzat</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="372"/>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="393"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="389"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="410"/>
         <source>Equations</source>
         <translation>Equacions</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="410"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="427"/>
         <source>LaTex source</source>
         <translation>Font de LaTex</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="509"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="529"/>
         <source>Accept changes</source>
         <translation>Acceptar canvis</translation>
     </message>
@@ -3255,7 +3302,7 @@ Combreu?</translation>
         <translation>Guardar PDF d&apos;equacions dinàmiques</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="238"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="241"/>
         <source>Search Python code...</source>
         <translation>Cercar codi Python...</translation>
     </message>
@@ -3276,7 +3323,7 @@ Combreu?</translation>
         <translation>Triar un tipus de símbol vàlid.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="316"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="319"/>
         <source>Select all</source>
         <translation>Seleccioneu-ho tot</translation>
     </message>
@@ -3285,12 +3332,12 @@ Combreu?</translation>
         <translation>Triar almenys un grup d&apos;equacions no buit.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="422"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="439"/>
         <source>Select equation groups to generate copyable LaTeX source.</source>
         <translation>Triar els grups d&apos;equacions per generar una font LaTeX copiable.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="378"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="395"/>
         <source>Select the equation groups to include. Each internal block and each DAE section can be selected independently.</source>
         <translation>Triar els grups d&apos;equacions a incloure. Cada bloc intern i cada secció DAE es poden triar de manera independent.</translation>
     </message>
@@ -3315,7 +3362,7 @@ Combreu?</translation>
         <translation type="vanished">No s&apos;ha pogut obrir la documentació del bloc en línia al navegador del sistema.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="440"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="457"/>
         <source>These settings contain structured data used to regenerate the block. Edit sequences with valid Python tuple/list syntax.</source>
         <translation>Aquests paràmetres contenen dades estructurades utilitzades per regenerar el bloc. Editeu seqüències amb sintaxi vàlida de tuple/lista Python.</translation>
     </message>
@@ -3348,7 +3395,7 @@ Combreu?</translation>
         <translation type="vanished">+ Afegir lògica procedural</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="188"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="161"/>
         <source>Add one procedural behavior to the active equation owner&apos;s Python code.</source>
         <translation>Afegir un comportament procedural al codi Python del propietari de l&apos;equació activa.</translation>
     </message>
@@ -3390,7 +3437,7 @@ Combreu?</translation>
         <translation type="vanished">Mostrar o amagar l&apos;eina de renderitzat de codi Python i LaTeX</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="434"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="451"/>
         <source>Special configuration</source>
         <translation>Configuració especial</translation>
     </message>
@@ -3403,7 +3450,7 @@ Combreu?</translation>
         <translation>El propietari seleccionat no té buffer de codi Python.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="482"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="502"/>
         <source>Validate model</source>
         <translation>Validar model</translation>
     </message>
@@ -3429,7 +3476,7 @@ Combreu?</translation>
     </message>
     <message>
         <source>Nothing was added: {message}</source>
-        <translation>No s'ha afegit res: {message}</translation>
+        <translation>No s&apos;ha afegit res: {message}</translation>
     </message>
 </context>
 <context>
@@ -3833,6 +3880,13 @@ Combreu?</translation>
     </message>
 </context>
 <context>
+    <name>DynamicEventGroupsTreeModel</name>
+    <message>
+        <source>Event groups</source>
+        <translation>Grups d&apos;esdeveniments</translation>
+    </message>
+</context>
+<context>
     <name>DynamicEventsDraftSession</name>
     <message>
         <source>An event and its events group use different simulation modes.</source>
@@ -3940,7 +3994,7 @@ Combreu?</translation>
     <message>
         <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="127"/>
         <source>Delete all events of this simulation mode from the current device</source>
-        <translation>Eliminar tots els esdeveniments d'aquest mode de simulació del dispositiu actual</translation>
+        <translation>Eliminar tots els esdeveniments d&apos;aquest mode de simulació del dispositiu actual</translation>
     </message>
     <message>
         <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="139"/>
@@ -3950,7 +4004,7 @@ Combreu?</translation>
     <message>
         <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="142"/>
         <source>Save event changes</source>
-        <translation>Guardar canvis d'esdeveniment</translation>
+        <translation>Guardar canvis d&apos;esdeveniment</translation>
     </message>
     <message>
         <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="145"/>
@@ -3965,12 +4019,12 @@ Combreu?</translation>
     <message>
         <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="182"/>
         <source>Create Event Group</source>
-        <translation>Crear grup d'esdeveniments</translation>
+        <translation>Crear grup d&apos;esdeveniments</translation>
     </message>
     <message>
         <location filename="../DynamicModelEditor/Events/dynamic_events_page_ui.ui" line="185"/>
         <source>Create an event group</source>
-        <translation>Crear un grup d'esdeveniments</translation>
+        <translation>Crear un grup d&apos;esdeveniments</translation>
     </message>
     <message>
         <source>Add Event</source>
@@ -4081,7 +4135,7 @@ Combreu?</translation>
     </message>
     <message>
         <source>An event group with this name already exists.</source>
-        <translation>Ja existeix un grup d'esdeveniments amb aquest nom.</translation>
+        <translation>Ja existeix un grup d&apos;esdeveniments amb aquest nom.</translation>
     </message>
     <message>
         <source>Delete all device events</source>
@@ -4096,28 +4150,28 @@ Combreu?</translation>
         <translation>Nom del grup:</translation>
     </message>
     <message>
-        <source>Remove '{name}' and all events in this group?</source>
-        <translation>Eliminar '{name}' i tots els esdeveniments d'aquest grup?</translation>
+        <source>Remove &apos;{name}&apos; and all events in this group?</source>
+        <translation>Eliminar &apos;{name}&apos; i tots els esdeveniments d&apos;aquest grup?</translation>
     </message>
     <message>
         <source>Remove event group</source>
-        <translation>Eliminar grup d'esdeveniments</translation>
+        <translation>Eliminar grup d&apos;esdeveniments</translation>
     </message>
     <message>
         <source>Remove the selected event?</source>
-        <translation>Eliminar l'esdeveniment seleccionat?</translation>
+        <translation>Eliminar l&apos;esdeveniment seleccionat?</translation>
     </message>
     <message>
         <source>Select an event group before adding an event.</source>
-        <translation>Seleccioneu un grup d'esdeveniments abans d'afegir un esdeveniment.</translation>
+        <translation>Seleccioneu un grup d&apos;esdeveniments abans d&apos;afegir un esdeveniment.</translation>
     </message>
     <message>
         <source>Select an event or event group to remove.</source>
-        <translation>Seleccioneu un esdeveniment o grup d'esdeveniments per eliminar.</translation>
+        <translation>Seleccioneu un esdeveniment o grup d&apos;esdeveniments per eliminar.</translation>
     </message>
     <message>
         <source>The dynamic model has no event parameters.</source>
-        <translation>El model dinàmic no té paràmetres d'esdeveniment.</translation>
+        <translation>El model dinàmic no té paràmetres d&apos;esdeveniment.</translation>
     </message>
 </context>
 <context>
@@ -7037,6 +7091,44 @@ Si us plau, corregiu les dades i proveu de nou.</translation>
     <message>
         <source>MATPOWER export</source>
         <translation>Exportació MATPOWER</translation>
+    </message>
+</context>
+<context>
+    <name>MeasurementsDialog</name>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="14"/>
+        <source>Configure measurement block</source>
+        <translation>Configurar bloc de mesura</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="38"/>
+        <source>Bus</source>
+        <translation>Bus</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="69"/>
+        <source>Click to select a bus</source>
+        <translation>Clicar per seleccionar un bus</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="78"/>
+        <source>Select bus...</source>
+        <translation>Seleccionar bus...</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="123"/>
+        <source>Name</source>
+        <translation>Nom</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="128"/>
+        <source>I/O</source>
+        <translation>I/O</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="133"/>
+        <source>Comment</source>
+        <translation>Comentari</translation>
     </message>
 </context>
 <context>
@@ -16092,24 +16184,6 @@ Ha de carregar o crear una xarxa!</translation>
     <message>
         <source>Question</source>
         <translation>Pregunta</translation>
-    </message>
-</context>
-<context>
-    <name>DiagramScene</name>
-    <message>
-        <source>Block info</source>
-        <translation>Informació del bloc</translation>
-    </message>
-    <message>
-        <source>Edit block</source>
-        <translation>Editar bloc</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEventGroupsTreeModel</name>
-    <message>
-        <source>Event groups</source>
-        <translation>Grups d'esdeveniments</translation>
     </message>
 </context>
 </TS>

@@ -2231,6 +2231,49 @@ Are you sure?</translation>
     </message>
 </context>
 <context>
+    <name>DiagramScene</name>
+    <message>
+        <source>Block info</source>
+        <translation>Blok informazioa</translation>
+    </message>
+    <message>
+        <source>Edit block</source>
+        <translation type="vanished">Blokak editatu</translation>
+    </message>
+    <message>
+        <source>Change Color</source>
+        <translation>Kolorea aldatu</translation>
+    </message>
+    <message>
+        <source>Change Name</source>
+        <translation>Izena aldatu</translation>
+    </message>
+    <message>
+        <source>Change Variable Name</source>
+        <translation>Zenbatek Izena Aldatzea</translation>
+    </message>
+    <message>
+        <source>Duplicate</source>
+        <translation>Bikoiztu</translation>
+    </message>
+    <message>
+        <source>Edit</source>
+        <translation>Editatu</translation>
+    </message>
+    <message>
+        <source>Open internals</source>
+        <translation>Bidezurua ireki</translation>
+    </message>
+    <message>
+        <source>Properties</source>
+        <translation>Propietateak</translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation>Kendu</translation>
+    </message>
+</context>
+<context>
     <name>DiagramsMain</name>
     <message>
         <source>Are you sure that you want to try an automatic layout?</source>
@@ -3018,7 +3061,7 @@ Are you sure?</translation>
         <translation>Aplikatu egoera-neurriak DAE-kodearekin edo simbolo-interfazioaren gai-aldaketakarekin lotuta.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="388"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="405"/>
         <source>Block / equation group</source>
         <translation>Blokea / ekuazio-grupoa</translation>
     </message>
@@ -3051,9 +3094,8 @@ Are you sure?</translation>
         <translation>Aldaketak aplikatuak. Desigualdade aurreratuak/diskretuak/booleanoak ez dira aldatu.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="323"/>
         <source>Clear</source>
-        <translation>Garbi</translation>
+        <translation type="vanished">Garbi</translation>
     </message>
     <message>
         <source>Create derivative variable</source>
@@ -3068,7 +3110,7 @@ Are you sure?</translation>
         <translation type="vanished">DAE-kodea balio bate dago.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="131"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="134"/>
         <source>DAE model</source>
         <translation>DAE modeloa</translation>
     </message>
@@ -3097,43 +3139,48 @@ Are you sure?</translation>
         <translation>Ekuazio PDF sortu: {path}</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="158"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="188"/>
         <source>Equation owner</source>
         <translation>Ekuazioaren jatorria</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="251"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="254"/>
         <source>&lt;&lt;</source>
         <translation>&lt;&lt;</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="261"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="264"/>
         <source>&gt;&gt;</source>
         <translation>&gt;&gt;</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="289"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="292"/>
         <source>LaTeX rendering</source>
         <translation>LaTeX erakustarakoa</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="343"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="333"/>
+        <source>Select None</source>
+        <translation>Batu bat ez aukeratu</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="360"/>
         <source>Save redered PDF</source>
         <translation>PDF erakustarakoat salbatu</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="372"/>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="393"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="389"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="410"/>
         <source>Equations</source>
         <translation>Ekuazioak</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="410"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="427"/>
         <source>LaTex source</source>
         <translation>LaTeX iturria</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="509"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="529"/>
         <source>Accept changes</source>
         <translation>Aldaketak onartu</translation>
     </message>
@@ -3255,7 +3302,7 @@ Are you sure?</translation>
         <translation>Dinamiko ekuazioak PDF-era itxurkari</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="238"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="241"/>
         <source>Search Python code...</source>
         <translation>Python kodaarekin bilatu...</translation>
     </message>
@@ -3276,7 +3323,7 @@ Are you sure?</translation>
         <translation>Simbolo mota legezko bat aukeratu.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="316"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="319"/>
         <source>Select all</source>
         <translation>Hautatu guztiak</translation>
     </message>
@@ -3285,12 +3332,12 @@ Are you sure?</translation>
         <translation>Ekuazio grupo lege ez bat aukeratu.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="422"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="439"/>
         <source>Select equation groups to generate copyable LaTeX source.</source>
         <translation>Kopiatu daiteko LaTeX urratzia sortzeko ekuazio grupoak aukeratu.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="378"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="395"/>
         <source>Select the equation groups to include. Each internal block and each DAE section can be selected independently.</source>
         <translation>Sertu nahi dituzten ekuazio grupoak aukeratu. Bloke harritako bakoak eta DAE sezioko bakoak independentean aukeratu daitezke.</translation>
     </message>
@@ -3315,7 +3362,7 @@ Are you sure?</translation>
         <translation type="vanished">Online bloke dokumentazioa sistema-browserrean ireki daiteko.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="440"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="457"/>
         <source>These settings contain structured data used to regenerate the block. Edit sequences with valid Python tuple/list syntax.</source>
         <translation>Ezaugarri hauek blokea berriro sortzeko erabiltzen den egoera datuak dituzte. Sekuentziak Python tuple/list sintaxis legearekin editatu.</translation>
     </message>
@@ -3348,7 +3395,7 @@ Are you sure?</translation>
         <translation type="vanished">+ Prozedural logika gehitu</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="188"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="161"/>
         <source>Add one procedural behavior to the active equation owner&apos;s Python code.</source>
         <translation>Prozedurala ziurtatu bat aktiboa dagoen iruzainaren Python kodean gehitu.</translation>
     </message>
@@ -3390,7 +3437,7 @@ Are you sure?</translation>
         <translation type="vanished">Python kodea eta LaTeX renderatzeko tresna erakustea edo isgauztu</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="434"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="451"/>
         <source>Special configuration</source>
         <translation>Konfigurazio zehatza</translation>
     </message>
@@ -3403,7 +3450,7 @@ Are you sure?</translation>
         <translation>Aukeratu dagoen iruzainaren Python-kode buffer batek ez dago.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="482"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="502"/>
         <source>Validate model</source>
         <translation>Modeloa baliatu</translation>
     </message>
@@ -3833,6 +3880,13 @@ Are you sure?</translation>
     </message>
 </context>
 <context>
+    <name>DynamicEventGroupsTreeModel</name>
+    <message>
+        <source>Event groups</source>
+        <translation>Gertakari-grupoak</translation>
+    </message>
+</context>
+<context>
     <name>DynamicEventsDraftSession</name>
     <message>
         <source>An event and its events group use different simulation modes.</source>
@@ -4096,8 +4150,8 @@ Are you sure?</translation>
         <translation>Grupoen izena:</translation>
     </message>
     <message>
-        <source>Remove '{name}' and all events in this group?</source>
-        <translation>Taldea honako '{name}' eta gertakari guztien kontaintza egin?</translation>
+        <source>Remove &apos;{name}&apos; and all events in this group?</source>
+        <translation>Taldea honako &apos;{name}&apos; eta gertakari guztien kontaintza egin?</translation>
     </message>
     <message>
         <source>Remove event group</source>
@@ -7036,6 +7090,44 @@ Please correct the data and try again.</translation>
     <message>
         <source>MATPOWER export</source>
         <translation>MATPOWER eksportaketa</translation>
+    </message>
+</context>
+<context>
+    <name>MeasurementsDialog</name>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="14"/>
+        <source>Configure measurement block</source>
+        <translation>Neuritzako blokea konfiguratu</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="38"/>
+        <source>Bus</source>
+        <translation>Bus</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="69"/>
+        <source>Click to select a bus</source>
+        <translation>Bus bat aukeratzeko klikatu</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="78"/>
+        <source>Select bus...</source>
+        <translation>Bus bat aukeratu...</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="123"/>
+        <source>Name</source>
+        <translation>Izena</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="128"/>
+        <source>I/O</source>
+        <translation>I/O</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="133"/>
+        <source>Comment</source>
+        <translation>Komentario</translation>
     </message>
 </context>
 <context>
@@ -16093,24 +16185,6 @@ Ekarri edo sortu ekarri-erakunde bat!</translation>
     <message>
         <source>Question</source>
         <translation>Galdera</translation>
-    </message>
-</context>
-<context>
-    <name>DiagramScene</name>
-    <message>
-        <source>Block info</source>
-        <translation>Blok informazioa</translation>
-    </message>
-    <message>
-        <source>Edit block</source>
-        <translation>Blokak editatu</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEventGroupsTreeModel</name>
-    <message>
-        <source>Event groups</source>
-        <translation>Gertakari-grupoak</translation>
     </message>
 </context>
 </TS>
