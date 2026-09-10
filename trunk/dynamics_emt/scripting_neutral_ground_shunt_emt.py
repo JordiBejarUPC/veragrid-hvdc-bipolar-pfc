@@ -317,7 +317,7 @@ def run_neutral_ground_shunt_cases(enable_plots: bool = True) -> Dict[str, objec
     figure.savefig(png_path, dpi=200, bbox_inches="tight")
 
     if enable_plots:
-        plt.show()
+        plt.show(block=False)
     else:
         plt.close(figure)
 

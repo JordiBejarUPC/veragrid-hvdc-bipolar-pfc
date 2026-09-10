@@ -683,7 +683,7 @@ def make_2x2_figure(results: list[dict[str, Any]], title: str, builder) -> None:
         builder(ax, result)
 
     plt.tight_layout()
-    plt.show()
+    plt.show(block=False)
 
 
 def plot_all_results(results: list[dict[str, Any]]) -> None:
@@ -825,7 +825,7 @@ def plot_all_results(results: list[dict[str, Any]]) -> None:
         ax.legend(loc="best")
 
     plt.tight_layout()
-    plt.show()
+    plt.show(block=False)
 
 
 ##################################################################################################

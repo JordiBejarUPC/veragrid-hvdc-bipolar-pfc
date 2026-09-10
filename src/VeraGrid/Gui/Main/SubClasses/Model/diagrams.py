@@ -49,7 +49,6 @@ from VeraGrid.Gui.Main.SubClasses.Model.compiled_arrays import CompiledArraysMai
 from VeraGrid.Gui.Main.object_select_window import ObjectSelectWindow, ListSelectWindow
 from VeraGrid.Gui.Diagrams.MapWidget.Tiles.TileProviders.cartodb import CartoDbTiles
 from VeraGrid.Gui.object_proxy_model import ObjectModelFilterProxy
-from VeraGrid.Gui.DynamicEventsDialog.dynamic_events_editor import DynamicEventEditor
 from VeraGrid.Gui.Diagrams.MapWidget.Substation.substation_graphic_item import SubstationGraphicItem
 from VeraGrid.Gui.ShortCircuitEditor.short_circuit_selector import ShortCircuitSelector
 from VeraGrid.Gui.general_dialogues import (CheckListDialogue, StartEndSelectionDialogue,
@@ -376,31 +375,43 @@ class DiagramsMain(CompiledArraysMain):
         self.ui.diagramsListView.setContextMenuPolicy(QtGui.Qt.ContextMenuPolicy.CustomContextMenu)
         self.ui.diagramsListView.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
 
-    def shutdown_tile_sources(self) -> None:
+    def shutdown_tile_sources(self) -> bool:
         """
         Stop the map tile provider workers owned by the diagrams layer.
 
-        :return: Nothing.
+        :return: ``True`` when every tile worker has stopped.
         """
+        all_stopped: bool = True
         diagram_widget: SchematicWidget | GridMapWidget
         for diagram_widget in self.diagram_widgets_list:
             if isinstance(diagram_widget, GridMapWidget):
-                diagram_widget.map.tile_src.shutdown()
+                stopped: bool = diagram_widget.map.tile_src.shutdown()
+                if stopped:
+                    pass
+                else:
+                    all_stopped = False
             else:
                 pass
 
         tile_source: CartoDbTiles
         for tile_source in self.tile_sources:
-            tile_source.shutdown()
+            stopped = tile_source.shutdown()
+            if stopped:
+                pass
+            else:
+                all_stopped = False
 
-    def stop_all_threads(self) -> None:
+        return all_stopped
+
+    def stop_all_threads(self) -> bool:
         """
         Stop GUI worker threads, including the tile workers owned by diagrams.
 
-        :return: Nothing.
+        :return: ``True`` when every known worker has stopped.
         """
-        self.shutdown_tile_sources()
-        CompiledArraysMain.stop_all_threads(self)
+        tile_sources_stopped: bool = self.shutdown_tile_sources()
+        threads_stopped: bool = CompiledArraysMain.stop_all_threads(self)
+        return tile_sources_stopped and threads_stopped
 
     def get_current_objects_model_view(self) -> ObjectModelFilterProxy | None:
         """
@@ -3358,11 +3369,11 @@ class DiagramsMain(CompiledArraysMain):
         self._open_dynamic_events_editor(DynamicSimulationMode.EMT)
 
     def _open_dynamic_events_editor(self, mode: DynamicSimulationMode) -> None:
-        """Open the shared dynamic-events workspace from a legacy mode action.
+        """Open the requested events content in the unified dynamic workspace.
 
-        Exactly one selected device opens directly in the requested mode with
-        the device tree collapsed. Zero or multiple selections open the same
-        modal with the tree visible, allowing an explicit device choice.
+        Exactly one selected device opens directly in an RMS or EMT events tab.
+        Zero or multiple selections expose the same workspace device tree so
+        the user can select one of its four model and events actions.
 
         :param mode: RMS or EMT family preferred by the triggering action.
         :return: None.
@@ -3376,15 +3387,18 @@ class DiagramsMain(CompiledArraysMain):
         else:
             initial_device = None
 
-        # The dialog owns a reusable transaction. Save checkpoints the current
-        # edits, while Close discards changes made after the latest checkpoint.
-        events_dialog: DynamicEventEditor = DynamicEventEditor(
-            circuit=self.circuit,
-            preferred_mode=mode,
-            initial_device=initial_device,
-            parent=self,
-        )
-        events_dialog.exec()
+        if initial_device is not None:
+            self.open_dynamic_events(
+                api_object=initial_device,
+                circuit=self.circuit,
+                mode=mode,
+                show_tree=False,
+            )
+        else:
+            # Without one unambiguous diagram target, expose the unified device
+            # tree. Its four context actions let the user choose both model or
+            # events content and the RMS or EMT family.
+            self.display_dynamic_models_editor()
 
     def add_short_circuit_events(self):
         """
@@ -4006,12 +4020,12 @@ class DiagramsMain(CompiledArraysMain):
         # used when seeding the diagram.
         all_elements_dict, _ = self.circuit.get_all_elements_dict()
         self.circuit.set_investments_status(investments_list=self._investments_all,
-                                            status=False,
+                                            apply_investment=False,
                                             all_elements_dict=all_elements_dict)
 
         # apply the selected combination on top of the now-deactivated state
         self.circuit.set_investments_status(investments_list=inv_list,
-                                            status=True,
+                                            apply_investment=True,
                                             all_elements_dict=all_elements_dict)
 
         # Refresh active/inactive pen styles on every open schematic so toggled

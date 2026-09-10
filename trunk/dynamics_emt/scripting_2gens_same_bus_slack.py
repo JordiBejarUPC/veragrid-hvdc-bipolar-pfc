@@ -463,7 +463,7 @@ def save_two_panel_three_phase_plot(
 
     figure.tight_layout()
     figure.savefig(file_path, dpi=200)
-    plt.show()
+    plt.show(block=False)
     plt.close(figure)
     return file_path
 
@@ -520,7 +520,7 @@ def save_line_internal_currents_plot(
 
     figure.tight_layout()
     figure.savefig(file_path, dpi=200)
-    plt.show()
+    plt.show(block=False)
     plt.close(figure)
     return file_path
 
@@ -564,7 +564,7 @@ def save_phase_a_split_plot(
 
     figure.tight_layout()
     figure.savefig(file_path, dpi=200)
-    plt.show()
+    plt.show(block=False)
     plt.close(figure)
     return file_path
 

@@ -2149,7 +2149,7 @@ def plot_testing_performance(
     plt.legend()
     plt.tight_layout()
 
-    plt.show()
+    plt.show(block=False)
 
 
 def main_multigrid_example(

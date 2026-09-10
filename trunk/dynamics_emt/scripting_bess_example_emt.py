@@ -1020,7 +1020,7 @@ def plot_one_case(case: BessCase, time_values: np.ndarray, data: BessPlotData) -
     soc_axis.legend(soc_handles + diag_handles, soc_labels + diag_labels, loc="upper right")
 
     figure.tight_layout()
-    plt.show()
+    plt.show(block=False)
 
 
 def run_case(case: BessCase) -> tuple[np.ndarray, BessPlotData]:

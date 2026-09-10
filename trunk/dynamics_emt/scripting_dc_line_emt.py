@@ -489,7 +489,7 @@ def _plot_dc_line_results(
     axes[2].legend(loc='best')
 
     fig.tight_layout()
-    plt.show()
+    plt.show(block=False)
 
 
 def main() -> None:

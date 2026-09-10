@@ -276,7 +276,7 @@ plt.xlim([0, xlim])
 # plt.ylim([0.85, 1.15])
 plt.grid(True)
 plt.tight_layout()
-plt.show()
+plt.show(block=False)
 
 omega1 = find_name_in_block("omega", genqec1_mdl)
 Pg1 = genqec1_mdl.out_vars[0]
@@ -308,7 +308,7 @@ plt.xlim([0, xlim])
 # plt.ylim([0.85, 1.15])
 plt.grid(True)
 plt.tight_layout()
-plt.show()
+plt.show(block=False)
 
 #
 # Eq_prime = find_name_in_block("Eq_prime", genqec_mdl)

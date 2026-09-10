@@ -173,7 +173,7 @@ class InvestmentsEvaluationResults(ResultsTemplate):
                 ax3.set_ylabel('Objective')
                 fig.suptitle(result_type.value[0])
                 plt.grid()
-                plt.show()
+                plt.show(block=False)
 
         else:
             columns = []

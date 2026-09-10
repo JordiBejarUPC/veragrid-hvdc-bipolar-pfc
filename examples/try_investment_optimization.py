@@ -159,7 +159,7 @@ def plot_scatter_plot(df1, df2, title, plot_df2=True):
     plt.legend()
 
     # Show the plot
-    plt.show()
+    plt.show(block=False)
 
 
 if __name__ == "__main__":

@@ -1711,7 +1711,7 @@ class BlockSolver:
             axs[i].legend(loc="best", fontsize="x-small", ncol=2, frameon=False)
         axs[-1].set_xlabel("Step index")
         plt.tight_layout()
-        plt.show()
+        plt.show(block=False)
         # print('Pseudo Transient finished')
 
         return x_new, init_guess

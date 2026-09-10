@@ -6,6 +6,7 @@ import gc
 import multiprocessing
 import queue
 import tempfile
+import time
 import traceback
 from enum import Enum
 from pathlib import Path
@@ -38,18 +39,19 @@ from VeraGrid.Gui.Diagrams.Editors.bus_selector import BusSelectorDialogue
 from VeraGrid.Gui.Diagrams.Editors.new_line_dialogue import NewMapLineDialogue
 from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import SelectionDialog
 from VeraGrid.Gui.Diagrams.SchematicWidget.diagram_bus_selection_dialogue import DiagramBusSelectorDialogue
-from VeraGrid.Gui.DynamicEventsDialog.dynamic_events_editor import DynamicEventEditor
-from VeraGrid.Gui.DynamicEventsDialog.dynamic_events_editor_support import DynamicEventsGroupsDialog
-from VeraGrid.Gui.DynamicEventsDialog.dynamic_events_editor_support import SwitchSequenceDialog
-from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.jmarti_line_emt_dialog import JMartiLineEmtDialog
-from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.lookup_table_dialog import LookupArrayLinearDialog
-from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.lookup_table_dialog import LookupMatrixLinearDialog
-from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.measurements_dialog import MeasurementsDialog
-from VeraGrid.Gui.DynamicModelEditor.detachable_editor_tabs_widget import DynamicEditorPickerDialog
-from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
-from VeraGrid.Gui.DynamicModelEditor.dynamic_block_properties import DynamicBlockPropertiesDialog
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_validation import ValidationSectionDialog
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_window import DynamicEditorWorkspaceWindow
+from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_models import DynamicEventsDraftSession
+from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_support import DynamicEventsGroupManagerDialog
+from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_support import DynamicEventsGroupsDialog
+from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_support import SwitchSequenceDialog
+from VeraGrid.Gui.DynamicModelEditor.Editor.ElementDialogues.jmarti_line_emt_dialog import JMartiLineEmtDialog
+from VeraGrid.Gui.DynamicModelEditor.Editor.ElementDialogues.lookup_table_dialog import LookupArrayLinearDialog
+from VeraGrid.Gui.DynamicModelEditor.Editor.ElementDialogues.lookup_table_dialog import LookupMatrixLinearDialog
+from VeraGrid.Gui.DynamicModelEditor.Editor.ElementDialogues.measurements_dialog import MeasurementsDialog
+from VeraGrid.Gui.DynamicModelEditor.Workspace.detachable_editor_tabs_widget import DynamicEditorPickerDialog
+from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_editor import DynamicBlockEditorGUI
+from VeraGrid.Gui.DynamicModelEditor.Editor.BlockProperties import DynamicBlockPropertiesDialog
+from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_validation import ValidationSectionDialog
+from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_workspace_window import DynamicEditorWorkspaceWindow
 from VeraGrid.Gui.FileDialogues.CGMESDialogue.cgmes_export import CgmesExportDialogue
 from VeraGrid.Gui.FileDialogues.CGMESDialogue.cgmes_import import CgmesImportDialogue
 from VeraGrid.Gui.FileDialogues.CoordinatesInput.coordinates_dialogue import CoordinatesInputGUI
@@ -108,7 +110,7 @@ from VeraGrid.Gui.object_column_filter_dialog import ObjectColumnFilterDialog
 from VeraGrid.Gui.object_model import ObjectsModel
 from VeraGrid.Gui.object_proxy_model import ObjectModelFilterProxy
 from VeraGrid.Session.session import SimulationSession
-from VeraGrid.Session.dynamic_editor_workspace_session import DynamicEditorWorkspaceSession
+from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_workspace_session import DynamicEditorWorkspaceSession
 from VeraGridEngine.Devices.Dynamic.fmu_template import FmuTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Parents.editable_device import GCProp
@@ -149,7 +151,6 @@ class DialogSmokeTarget(Enum):
     NEW_MAP_LINE = "NewMapLineDialogue"
     MAP_SELECTION = "SelectionDialog"
     DIAGRAM_BUS_SELECTOR = "DiagramBusSelectorDialogue"
-    DYNAMIC_EVENT_EDITOR = "DynamicEventEditor"
     SWITCH_SEQUENCE = "SwitchSequenceDialog"
     DYNAMIC_EVENTS_GROUPS = "DynamicEventsGroupsDialog"
     JMARTI_LINE_EMT = "JMartiLineEmtDialog"
@@ -213,6 +214,7 @@ class DialogSmokeTarget(Enum):
     SEQUENCE_EDITOR = "SequenceEditorDialog"
     LOOKUP_MATRIX_EDITOR = "LookupMatrixEditorDialog"
     OBJECT_COLUMN_FILTER = "ObjectColumnFilterDialog"
+    DYNAMIC_EVENTS_GROUP_MANAGER_DIALOG = "DynamicEventsGroupManagerDialog"
 
 
 class NamedObject:
@@ -719,15 +721,16 @@ def build_dialog_for_smoke(target: DialogSmokeTarget, context: DialogSmokeContex
         dialog = SelectionDialog(branch=FakeBranchGraphic(api_object=circuit.lines[0]), vnom=110.0)
     elif target == DialogSmokeTarget.DIAGRAM_BUS_SELECTOR:
         dialog = DiagramBusSelectorDialogue(gui=fake_app, grid=circuit, substation=circuit.substations[0])
-    elif target == DialogSmokeTarget.DYNAMIC_EVENT_EDITOR:
-        dialog = DynamicEventEditor(
-            circuit=circuit,
-            preferred_mode=DynamicSimulationMode.RMS,
-        )
     elif target == DialogSmokeTarget.SWITCH_SEQUENCE:
         dialog = SwitchSequenceDialog(mode_parameters=list(), events_groups=list())
     elif target == DialogSmokeTarget.DYNAMIC_EVENTS_GROUPS:
         dialog = DynamicEventsGroupsDialog(mode=DynamicSimulationMode.RMS)
+    elif target == DialogSmokeTarget.DYNAMIC_EVENTS_GROUP_MANAGER_DIALOG:
+        events_session: DynamicEventsDraftSession = DynamicEventsDraftSession(circuit=circuit)
+        dialog = DynamicEventsGroupManagerDialog(
+            session=events_session,
+            mode=DynamicSimulationMode.RMS,
+        )
     elif target == DialogSmokeTarget.JMARTI_LINE_EMT:
         dialog = JMartiLineEmtDialog()
     elif target == DialogSmokeTarget.LOOKUP_ARRAY_LINEAR:
@@ -1027,7 +1030,7 @@ def run_dialog_smoke_suite_subprocess(timeout_s: float) -> None:
     """
     Run dialog smoke coverage outside the parent pytest Qt process.
 
-    :param timeout_s: Maximum child-process runtime in seconds.
+    :param timeout_s: Maximum interval without child-process progress in seconds.
     :return: None.
     """
     process_context: multiprocessing.context.BaseContext = multiprocessing.get_context("spawn")
@@ -1038,24 +1041,41 @@ def run_dialog_smoke_suite_subprocess(timeout_s: float) -> None:
     )
 
     process.start()
-    process.join(timeout_s)
-
     message: str = ""
+
+    # Treat each queued dialog name as a watchdog heartbeat. The complete
+    # inventory can legitimately exceed one fixed wall-clock budget on slower
+    # machines, while a genuinely blocked constructor or close operation stops
+    # producing these progress messages.
+    last_progress_time_s: float = time.monotonic()
+    while process.is_alive() and time.monotonic() - last_progress_time_s <= timeout_s:
+        try:
+            queued_message: object = message_queue.get(timeout=1.0)
+            if isinstance(queued_message, str):
+                message = queued_message
+            else:
+                message = repr(queued_message)
+            last_progress_time_s = time.monotonic()
+        except queue.Empty:
+            pass
+
+    if process.is_alive():
+        process.terminate()
+        process.join(10.0)
+        raise AssertionError(f"Dialog smoke subprocess made no progress for {timeout_s} seconds: {message}")
+    else:
+        process.join(10.0)
+
+    # Capture any final diagnostic that the child queued immediately before it
+    # exited so construction failures still report their traceback.
     try:
         while True:
-            queued_message: object = message_queue.get_nowait()
+            queued_message = message_queue.get_nowait()
             if isinstance(queued_message, str):
                 message = queued_message
             else:
                 message = repr(queued_message)
     except queue.Empty:
-        pass
-
-    if process.is_alive():
-        process.terminate()
-        process.join(10.0)
-        raise AssertionError(f"Dialog smoke subprocess timed out after {timeout_s} seconds: {message}")
-    else:
         pass
 
     assert process.exitcode == 0, message
@@ -1083,6 +1103,8 @@ def get_deferred_dialog_class_names() -> Set[str]:
     names: Set[str] = set()
     names.add("BaseMainGui")
     names.add("CenteredDialog")
+    names.add("MatplotlibFigureDialog")
+    names.add("CandidateInvestmentsWindow")
     return names
 
 
@@ -1136,6 +1158,33 @@ def test_dialog_smoke_inventory_is_explicit() -> None:
     missing_names: Set[str] = discover_qt_dialog_class_names() - known_names
 
     assert sorted(missing_names) == list()
+
+
+def test_delete_dialog_safely_deletes_child_widgets(qt_app: QtWidgets.QApplication) -> None:
+    """
+    Check that dialog lifecycle cleanup invalidates child widget wrappers.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    app: QtWidgets.QApplication = qt_app
+    dialog: QtWidgets.QDialog = QtWidgets.QDialog()
+    layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(dialog)
+    child_widget: QtWidgets.QWidget = QtWidgets.QWidget(dialog)
+    nested_widget: QtWidgets.QPushButton = QtWidgets.QPushButton(child_widget)
+    child_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(child_widget)
+
+    child_layout.addWidget(nested_widget)
+    layout.addWidget(child_widget)
+    dialog.show()
+    app.processEvents()
+
+    delete_dialog_safely(dialog=dialog)
+    app.processEvents()
+
+    assert not shiboken6.isValid(nested_widget)
+    assert not shiboken6.isValid(child_widget)
+    assert not shiboken6.isValid(dialog)
 
 
 def test_modeless_export_dialogues_reuse_live_windows(qt_app: QtWidgets.QApplication) -> None:

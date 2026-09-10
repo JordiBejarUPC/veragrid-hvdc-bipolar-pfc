@@ -567,7 +567,7 @@ def save_comparison_figures(
     state_figure.savefig(output_directory / "representative_state_trajectories.png", dpi=180)
 
     if show_figures:
-        plt.show()
+        plt.show(block=False)
     else:
         plt.close("all")
 

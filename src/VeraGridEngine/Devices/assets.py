@@ -1487,13 +1487,20 @@ class Assets:
         Delete N-winding transformer
         :param obj: TransformerNW instance
         """
-        for winding in list(obj.windings):
-            self.delete_winding(winding)
-        self.delete_bus(obj.bus0, delete_associated=True)
         try:
             self._transformers_nw.remove(obj)
         except ValueError:
             pass
+
+        winding_list: list[dev.Winding] = list(obj.windings)
+        for winding in winding_list:
+            self.delete_winding(winding)
+
+        winding_count_to_clear: int = len(obj.windings)
+        for winding_index in range(winding_count_to_clear):
+            obj.delete_winding(0)
+
+        self.delete_bus(obj.bus0, delete_associated=True)
 
         elms_to_del = list()
         for lst in [self._rms_events, self._emt_events]:
@@ -1503,6 +1510,52 @@ class Assets:
 
         for elm in elms_to_del:
             self.delete_element(elm)
+
+    def delete_associated_multi_winding_transformers(self, buses_to_remove: Set[dev.Bus]) -> None:
+        """
+        Delete multi-winding transformers connected to any bus being removed.
+
+        :param buses_to_remove: Buses requested for deletion.
+        :type buses_to_remove: Set[dev.Bus]
+        :return: None
+        :rtype: None
+        """
+        transformers3w_to_delete: List[dev.Transformer3W] = list()
+        transformers_nw_to_delete: List[dev.TransformerNW] = list()
+
+        # Transformer windings are stored as branch devices, but the transformer parent also has to disappear.
+        for transformer3w in self._transformers3w:
+            if (transformer3w.bus0 in buses_to_remove
+                    or transformer3w.bus1 in buses_to_remove
+                    or transformer3w.bus2 in buses_to_remove
+                    or transformer3w.bus3 in buses_to_remove):
+                transformers3w_to_delete.append(transformer3w)
+            else:
+                pass
+
+        # N-winding transformers need the same parent cleanup for their internal and terminal buses.
+        for transformer_nw in self._transformers_nw:
+            delete_transformer: bool = transformer_nw.bus0 in buses_to_remove
+
+            if delete_transformer:
+                pass
+            else:
+                for bus in transformer_nw.buses:
+                    if bus in buses_to_remove:
+                        delete_transformer = True
+                    else:
+                        pass
+
+            if delete_transformer:
+                transformers_nw_to_delete.append(transformer_nw)
+            else:
+                pass
+
+        for transformer3w in transformers3w_to_delete:
+            self.delete_transformer3w(obj=transformer3w)
+
+        for transformer_nw in transformers_nw_to_delete:
+            self.delete_transformer_nw(obj=transformer_nw)
 
     # ------------------------------------------------------------------------------------------------------------------
     # Windings
@@ -1764,6 +1817,12 @@ class Assets:
         :param delete_associated: Delete the associated branches and injections
         """
 
+        # Multi-winding transformer parents must be deleted before their winding branches are removed.
+        if delete_associated:
+            self.delete_associated_multi_winding_transformers(buses_to_remove={obj})
+        else:
+            pass
+
         # delete associated Branches in reverse order
         for branch_list in self.get_branch_lists(add_vsc=True, add_hvdc=True, add_switch=True):
             for i in range(len(branch_list) - 1, -1, -1):
@@ -1876,6 +1935,12 @@ class Assets:
         """
         buses_to_remove = set(lst)
         injections_to_delete = list()
+
+        # Multi-winding transformer parents must be deleted before their winding branches are removed.
+        if delete_associated:
+            self.delete_associated_multi_winding_transformers(buses_to_remove=buses_to_remove)
+        else:
+            pass
 
         # We delete the associated branches by knowing the buses to remove
         self.delete_branches_with_sets(buses_to_remove, delete_associated)

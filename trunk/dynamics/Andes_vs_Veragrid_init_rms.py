@@ -99,7 +99,7 @@ plt.tight_layout(rect=[0, 0, 1, 0.97])
 # plt.suptitle("Simulation Variable Comparison (VeraGrid vs GENCLS)", fontsize=16, y=1.02)
 plt.ylim([0.85, 1.15])
 plt.subplots_adjust(top=0.95)
-plt.show()
+plt.show(block=False)
 
 # plt.savefig('comparison_plots.png', dpi=300)
 

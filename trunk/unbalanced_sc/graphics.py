@@ -27,7 +27,7 @@ plt.ylabel('Voltage [pu]')
 plt.grid(True)
 plt.legend()
 plt.tight_layout()
-plt.show()
+plt.show(block=False)
 
 print('\nError Rf = 0,5 ->', abs(u_Rf05.iloc[-1] - u2_Rf05) / u_Rf05.iloc[-1] * 100, '%')
 
@@ -57,7 +57,7 @@ plt.ylabel('Voltage [pu]')
 plt.grid(True)
 plt.legend()
 plt.tight_layout()
-plt.show()
+plt.show(block=False)
 
 print('\nError Rf = 1 ->', abs(u_Rf1.iloc[-1] - u2_Rf1) / u_Rf1.iloc[-1] * 100, '%')
 
@@ -87,6 +87,6 @@ plt.ylabel('Voltage [pu]')
 plt.grid(True)
 plt.legend()
 plt.tight_layout()
-plt.show()
+plt.show(block=False)
 
 print('\nError Rf = 5 ->', abs(u_Rf5.iloc[-1] - u2_Rf5) / u_Rf5.iloc[-1] * 100, '%')

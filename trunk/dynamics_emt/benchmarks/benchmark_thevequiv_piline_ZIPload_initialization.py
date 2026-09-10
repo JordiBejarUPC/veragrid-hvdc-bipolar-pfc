@@ -246,7 +246,7 @@ def main() -> None:
         f"native={best_result.get_native_stage_elapsed_s():.6f}s | final_res={best_result.get_final_residual_inf():.3e}"
     )
     plot_pareto(results)
-    plt.show()
+    plt.show(block=False)
 
 
 if __name__ == "__main__":

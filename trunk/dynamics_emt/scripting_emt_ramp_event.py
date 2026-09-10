@@ -153,7 +153,7 @@ def run_ramp_event_case(enable_plots: bool = True) -> Dict[str, object]:
         plt.xlabel("Time [s]")
         plt.tight_layout()
         plt.savefig(png_path, dpi=200, bbox_inches="tight")
-        plt.show()
+        plt.show(block=False)
     else:
         plt.figure(figsize=(10, 7))
         plt.subplot(2, 1, 1)

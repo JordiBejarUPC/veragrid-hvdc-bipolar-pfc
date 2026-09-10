@@ -580,14 +580,13 @@ def convert_battery(batt: dev.Battery, new_id: str, t: int | None = None) -> Elm
     return e
 
 
-def convert_generator(gen: dev.Generator, tpe_new_id: str, new_id: str, bus_v_controlled: Dict[dev.Bus, bool],
+def convert_generator(gen: dev.Generator, tpe_new_id: str, new_id: str,
                       Sbase: float, t: int | None) -> Tuple[TypSym, ElmSym]:
     """
 
     :param gen:
     :param tpe_new_id:
     :param new_id:
-    :param bus_v_controlled:
     :param Sbase:
     :param t:
     :return:
@@ -636,13 +635,7 @@ def convert_generator(gen: dev.Generator, tpe_new_id: str, new_id: str, bus_v_co
     e.Pmin_uc = gen.get_Pmin_at(t)
     e.Pmax_uc = gen.get_Pmax_at(t)
 
-    if not bus_v_controlled[gen.bus]:
-        # NOTE: in power factory, only one generator can control the bus voltage
-        e.av_mode = "constv" if gen.control_mode == GeneratorControlMode.V else "constq"
-        bus_v_controlled[gen.bus] = True
-    else:
-        # the bus was flagged already
-        e.av_mode = "constq"
+    e.av_mode = "constv" if gen.control_mode == GeneratorControlMode.V else "constq"
 
     return tpe, e
 
@@ -1242,12 +1235,10 @@ def circuit_to_dgs(
 
     # buses
     bus2term_dict: Dict[dev.Bus, ElmTerm] = dict()
-    bus_v_controlled: Dict[dev.Bus, bool] = dict()
     for bus in grid.buses:
         elm_term = convert_bus(bus, new_id=dgs_grid.new_id(), t=export_t_idx)
         dgs_grid.elmterms.append(elm_term)
         bus2term_dict[bus] = elm_term
-        bus_v_controlled[bus] = False  # initialization values
 
         # int_grf = convert_bus_graphic(elm_term, bus, new_id=dgs_grid.new_id())
         # dgs_grid.intgrfs.append(int_grf)
@@ -1304,15 +1295,6 @@ def circuit_to_dgs(
         else:
             pass
 
-    for external_grid in grid.external_grids:
-        if external_grid.bus in bus_v_controlled and external_grid.get_active_at(export_t_idx):
-            if external_grid.mode in (ExternalGridMode.VD, ExternalGridMode.PV):
-                bus_v_controlled[external_grid.bus] = True
-            else:
-                pass
-        else:
-            pass
-
     # Static generators
     for stagen in grid.static_generators:
         e = convert_static_gen(stagen, new_id=dgs_grid.new_id(), t=export_t_idx)
@@ -1359,7 +1341,6 @@ def circuit_to_dgs(
                 tpe, e = convert_generator(gen=gen,
                                            tpe_new_id=dgs_grid.new_id(),
                                            new_id=dgs_grid.new_id(),
-                                           bus_v_controlled=bus_v_controlled,
                                            Sbase=grid.Sbase,
                                            t=export_t_idx)
                 tpe.fold_id = net.ID
@@ -1385,7 +1366,6 @@ def circuit_to_dgs(
             tpe, e = convert_generator(gen=gen,
                                        tpe_new_id=dgs_grid.new_id(),
                                        new_id=dgs_grid.new_id(),
-                                       bus_v_controlled=bus_v_controlled,
                                        Sbase=grid.Sbase,
                                        t=export_t_idx)
             tpe.fold_id = net.ID

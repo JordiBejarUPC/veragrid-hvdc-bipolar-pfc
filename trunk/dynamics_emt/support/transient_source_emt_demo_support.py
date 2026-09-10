@@ -146,7 +146,7 @@ def run_transient_source_case(case_name: str, source_block: Block, enable_plots:
     figure.savefig(png_path, dpi=200, bbox_inches="tight")
 
     if enable_plots:
-        plt.show()
+        plt.show(block=False)
     else:
         plt.close(figure)
 

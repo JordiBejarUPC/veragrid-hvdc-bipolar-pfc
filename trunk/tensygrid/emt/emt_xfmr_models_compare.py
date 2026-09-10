@@ -224,7 +224,7 @@ def main() -> None:
         print(f"RMSE({key}): {rmse:.6e}")
         print(f"MAX |Delta {key}|: {dmax:.6e}")
 
-    plt.show()
+    plt.show(block=False)
 
 
 if __name__ == "__main__":

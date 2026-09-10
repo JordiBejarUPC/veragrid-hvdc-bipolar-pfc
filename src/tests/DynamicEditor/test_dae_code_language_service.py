@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from VeraGrid.Gui.DynamicModelEditor.dae_code_completion import (
+from VeraGrid.Gui.DynamicModelEditor.Editor.BlockProperties.dae_code_completion import (
     DaeCompletionEntry,
     DaeCompletionPosition,
     DaeLanguageContext,
@@ -10,11 +10,11 @@ from VeraGrid.Gui.DynamicModelEditor.dae_code_completion import (
     build_dae_completion_entries,
     build_symbolic_function_entries,
 )
-from VeraGrid.Gui.DynamicModelEditor.dae_code_linter import (
+from VeraGrid.Gui.DynamicModelEditor.Editor.BlockProperties.dae_code_linter import (
     DaeCodeDiagnostic,
     build_dae_code_diagnostics,
 )
-from VeraGrid.Gui.DynamicModelEditor.dynamic_procedural_logic import (
+from VeraGrid.Gui.DynamicModelEditor.Editor.BlockProperties.dynamic_procedural_logic import (
     build_procedural_logic_call_lines,
     get_procedural_logic_help,
 )

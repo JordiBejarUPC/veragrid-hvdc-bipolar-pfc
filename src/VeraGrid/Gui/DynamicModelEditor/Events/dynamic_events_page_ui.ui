@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>DynamicEventsPage</class>
+ <widget class="QWidget" name="DynamicEventsPage">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>900</width>
+    <height>560</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Dynamic Events</string>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout">
+   <property name="spacing">
+    <number>0</number>
+   </property>
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item>
+    <widget class="QToolBar" name="eventsToolBar">
+     <property name="movable">
+      <bool>false</bool>
+     </property>
+     <property name="iconSize">
+      <size>
+       <width>24</width>
+       <height>24</height>
+      </size>
+     </property>
+     <property name="toolButtonStyle">
+      <enum>Qt::ToolButtonStyle::ToolButtonTextBesideIcon</enum>
+     </property>
+     <property name="floatable">
+      <bool>false</bool>
+     </property>
+     <addaction name="actionClearDeviceEvents"/>
+     <addaction name="actionSave"/>
+     <addaction name="separator"/>
+     <addaction name="actionSwitchSequence"/>
+     <addaction name="actionAddEvent"/>
+     <addaction name="actionRemove"/>
+     <addaction name="actionNewGroup"/>
+    </widget>
+   </item>
+   <item>
+    <widget class="QFrame" name="eventsTreeFrame">
+     <property name="frameShape">
+      <enum>QFrame::Shape::NoFrame</enum>
+     </property>
+     <layout class="QGridLayout" name="eventsTreeLayout">
+      <property name="leftMargin">
+       <number>0</number>
+      </property>
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <property name="rightMargin">
+       <number>0</number>
+      </property>
+      <property name="bottomMargin">
+       <number>0</number>
+      </property>
+      <item row="0" column="0">
+       <widget class="QTableView" name="eventsTableView">
+        <property name="alternatingRowColors">
+         <bool>false</bool>
+        </property>
+        <property name="selectionMode">
+         <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
+        </property>
+        <property name="selectionBehavior">
+         <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="0">
+       <widget class="QLabel" name="emptyModelMessage">
+        <property name="text">
+         <string>This dynamic model is empty. New events cannot be added until the model is built.</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignmentFlag::AlignCenter</set>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+  <action name="actionClearDeviceEvents">
+   <property name="priority">
+    <enum>QAction::Priority::LowPriority</enum>
+   </property>
+   <property name="icon">
+    <iconset resource="../../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/new.png</normaloff>:/Icons/icons/new.png</iconset>
+   </property>
+   <property name="text">
+    <string>New</string>
+   </property>
+   <property name="toolTip">
+    <string>Delete all events of this simulation mode from the current device</string>
+   </property>
+  </action>
+  <action name="actionSave">
+   <property name="priority">
+    <enum>QAction::Priority::LowPriority</enum>
+   </property>
+   <property name="icon">
+    <iconset resource="../../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/savec.png</normaloff>:/Icons/icons/savec.png</iconset>
+   </property>
+   <property name="text">
+    <string>Save</string>
+   </property>
+   <property name="toolTip">
+    <string>Save event changes</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+S</string>
+   </property>
+  </action>
+  <action name="actionSwitchSequence">
+   <property name="text">
+    <string>Switch Sequence Wizard</string>
+   </property>
+   <property name="toolTip">
+    <string>Create an EMT switch opening and reclosing event sequence</string>
+   </property>
+  </action>
+  <action name="actionAddEvent">
+   <property name="icon">
+    <iconset resource="../../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/plus.png</normaloff>:/Icons/icons/plus.png</iconset>
+   </property>
+   <property name="text">
+    <string>Add Event</string>
+   </property>
+   <property name="toolTip">
+    <string>Add an event to the selected event group</string>
+   </property>
+  </action>
+  <action name="actionRemove">
+   <property name="icon">
+    <iconset resource="../../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/minus.png</normaloff>:/Icons/icons/minus.png</iconset>
+   </property>
+   <property name="text">
+    <string>Remove Event</string>
+   </property>
+   <property name="toolTip">
+    <string>Remove the selected event or event group</string>
+   </property>
+  </action>
+  <action name="actionNewGroup">
+   <property name="icon">
+    <iconset resource="../../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/edit.png</normaloff>:/Icons/icons/edit.png</iconset>
+   </property>
+   <property name="text">
+    <string>Edit Events Groups</string>
+   </property>
+   <property name="toolTip">
+    <string>Create, delete, activate or deactivate an event group for this simulation mode</string>
+   </property>
+  </action>
+ </widget>
+ <resources>
+  <include location="../../Icons/icons.qrc"/>
+ </resources>
+ <connections/>
+</ui>

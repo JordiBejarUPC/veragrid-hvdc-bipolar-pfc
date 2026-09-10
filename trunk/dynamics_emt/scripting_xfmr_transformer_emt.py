@@ -304,7 +304,7 @@ plt.ylabel('Voltage [p.u.]')
 plt.grid(True)
 plt.legend(loc='upper right')
 plt.tight_layout()
-plt.show()
+plt.show(block=False)
 
 plt.figure(figsize=(13, 10))
 plt.subplot(2, 1, 1)
@@ -333,7 +333,7 @@ plt.ylabel('Current [p.u.]')
 plt.grid(True)
 plt.legend(loc='upper right')
 plt.tight_layout()
-plt.show()
+plt.show(block=False)
 
 plt.figure(figsize=(13, 9))
 if i_leak_A is not None:
@@ -348,7 +348,7 @@ plt.ylabel('Per-unit / state value')
 plt.grid(True)
 plt.legend(loc='upper right')
 plt.tight_layout()
-plt.show()
+plt.show(block=False)
 
 vcm_hv = (vA_hv + vB_hv + vC_hv) / 3.0
 vab_hv = vA_hv - vB_hv
@@ -376,4 +376,4 @@ plt.grid(True)
 plt.legend()
 
 plt.tight_layout()
-plt.show()
+plt.show(block=False)
