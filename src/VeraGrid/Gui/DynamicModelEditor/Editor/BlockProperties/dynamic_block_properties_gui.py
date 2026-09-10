@@ -73,7 +73,9 @@ class Ui_DynamicBlockPropertiesDialog(object):
 
         self.verticalLayout_3.addWidget(self.property_tools_panel)
 
-        self.tab_widget.addTab(self.general_page, "")
+        icon = QIcon()
+        icon.addFile(u":/Icons/icons/gear.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.tab_widget.addTab(self.general_page, icon, "")
         self.dae_model_page = QWidget()
         self.dae_model_page.setObjectName(u"dae_model_page")
         self.verticalLayout = QVBoxLayout(self.dae_model_page)
@@ -102,9 +104,9 @@ class Ui_DynamicBlockPropertiesDialog(object):
 
         self.procedural_add_button = QPushButton(self.frame_2)
         self.procedural_add_button.setObjectName(u"procedural_add_button")
-        icon = QIcon()
-        icon.addFile(u":/Icons/icons/plus.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.procedural_add_button.setIcon(icon)
+        icon1 = QIcon()
+        icon1.addFile(u":/Icons/icons/plus (gray).png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.procedural_add_button.setIcon(icon1)
 
         self.horizontalLayout_2.addWidget(self.procedural_add_button)
 
@@ -155,7 +157,9 @@ class Ui_DynamicBlockPropertiesDialog(object):
 
         self.verticalLayout.addWidget(self.frame)
 
-        self.tab_widget.addTab(self.dae_model_page, "")
+        icon2 = QIcon()
+        icon2.addFile(u":/Icons/icons/equation.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.tab_widget.addTab(self.dae_model_page, icon2, "")
         self.latex_page = QWidget()
         self.latex_page.setObjectName(u"latex_page")
         self.verticalLayout_2 = QVBoxLayout(self.latex_page)
@@ -183,9 +187,9 @@ class Ui_DynamicBlockPropertiesDialog(object):
 
         self.export_rendered_button = QPushButton(self.frame_4)
         self.export_rendered_button.setObjectName(u"export_rendered_button")
-        icon1 = QIcon()
-        icon1.addFile(u":/Icons/icons/pdf.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.export_rendered_button.setIcon(icon1)
+        icon3 = QIcon()
+        icon3.addFile(u":/Icons/icons/pdf.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.export_rendered_button.setIcon(icon3)
 
         self.horizontalLayout_4.addWidget(self.export_rendered_button)
 
@@ -196,7 +200,7 @@ class Ui_DynamicBlockPropertiesDialog(object):
         self.toolBox.setObjectName(u"toolBox")
         self.page = QWidget()
         self.page.setObjectName(u"page")
-        self.page.setGeometry(QRect(0, 0, 667, 367))
+        self.page.setGeometry(QRect(0, 0, 667, 369))
         self.verticalLayout_7 = QVBoxLayout(self.page)
         self.verticalLayout_7.setObjectName(u"verticalLayout_7")
         self.latex_selection_tree = QTreeWidget(self.page)
@@ -223,7 +227,9 @@ class Ui_DynamicBlockPropertiesDialog(object):
 
         self.verticalLayout_2.addWidget(self.toolBox)
 
-        self.tab_widget.addTab(self.latex_page, "")
+        icon4 = QIcon()
+        icon4.addFile(u":/Icons/icons/new2.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.tab_widget.addTab(self.latex_page, icon4, "")
         self.special_settings_page = QWidget()
         self.special_settings_page.setObjectName(u"special_settings_page")
         self.special_settings_layout = QVBoxLayout(self.special_settings_page)
@@ -253,9 +259,9 @@ class Ui_DynamicBlockPropertiesDialog(object):
         self.horizontalLayout_3.setContentsMargins(0, 0, 0, 0)
         self.validate_code_button = QPushButton(self.frame_3)
         self.validate_code_button.setObjectName(u"validate_code_button")
-        icon2 = QIcon()
-        icon2.addFile(u":/Icons/icons/accept.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.validate_code_button.setIcon(icon2)
+        icon5 = QIcon()
+        icon5.addFile(u":/Icons/icons/calculator.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.validate_code_button.setIcon(icon5)
 
         self.horizontalLayout_3.addWidget(self.validate_code_button)
 
@@ -265,7 +271,9 @@ class Ui_DynamicBlockPropertiesDialog(object):
 
         self.apply_button = QPushButton(self.frame_3)
         self.apply_button.setObjectName(u"apply_button")
-        self.apply_button.setIcon(icon2)
+        icon6 = QIcon()
+        icon6.addFile(u":/Icons/icons/accept.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.apply_button.setIcon(icon6)
 
         self.horizontalLayout_3.addWidget(self.apply_button)
 
@@ -313,7 +321,13 @@ class Ui_DynamicBlockPropertiesDialog(object):
         self.tab_widget.setTabText(self.tab_widget.indexOf(self.latex_page), QCoreApplication.translate("DynamicBlockPropertiesDialog", u"LaTeX rendering", None))
         self.special_settings_description.setText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"These settings contain structured data used to regenerate the block. Edit sequences with valid Python tuple/list syntax.", None))
         self.tab_widget.setTabText(self.tab_widget.indexOf(self.special_settings_page), QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Special configuration", None))
-        self.validate_code_button.setText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Validate model", None))
-        self.apply_button.setText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Apply changes", None))
+#if QT_CONFIG(tooltip)
+        self.validate_code_button.setToolTip(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Validate model", None))
+#endif // QT_CONFIG(tooltip)
+        self.validate_code_button.setText("")
+#if QT_CONFIG(tooltip)
+        self.apply_button.setToolTip(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Accept changes", None))
+#endif // QT_CONFIG(tooltip)
+        self.apply_button.setText("")
     # retranslateUi
 

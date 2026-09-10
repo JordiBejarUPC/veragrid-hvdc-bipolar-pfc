@@ -32,6 +32,10 @@
       <number>0</number>
      </property>
      <widget class="QWidget" name="general_page">
+      <attribute name="icon">
+       <iconset resource="../../../Icons/icons.qrc">
+        <normaloff>:/Icons/icons/gear.png</normaloff>:/Icons/icons/gear.png</iconset>
+      </attribute>
       <attribute name="title">
        <string>General options</string>
       </attribute>
@@ -119,6 +123,10 @@
       </layout>
      </widget>
      <widget class="QWidget" name="dae_model_page">
+      <attribute name="icon">
+       <iconset resource="../../../Icons/icons.qrc">
+        <normaloff>:/Icons/icons/equation.png</normaloff>:/Icons/icons/equation.png</iconset>
+      </attribute>
       <attribute name="title">
        <string>DAE model</string>
       </attribute>
@@ -184,7 +192,7 @@
             </property>
             <property name="icon">
              <iconset resource="../../../Icons/icons.qrc">
-              <normaloff>:/Icons/icons/plus.png</normaloff>:/Icons/icons/plus.png</iconset>
+              <normaloff>:/Icons/icons/plus (gray).png</normaloff>:/Icons/icons/plus (gray).png</iconset>
             </property>
            </widget>
           </item>
@@ -273,6 +281,10 @@
       </layout>
      </widget>
      <widget class="QWidget" name="latex_page">
+      <attribute name="icon">
+       <iconset resource="../../../Icons/icons.qrc">
+        <normaloff>:/Icons/icons/new2.png</normaloff>:/Icons/icons/new2.png</iconset>
+      </attribute>
       <attribute name="title">
        <string>LaTeX rendering</string>
       </attribute>
@@ -353,7 +365,7 @@
             <x>0</x>
             <y>0</y>
             <width>667</width>
-            <height>367</height>
+            <height>369</height>
            </rect>
           </property>
           <attribute name="label">
@@ -466,12 +478,15 @@
       </property>
       <item>
        <widget class="QPushButton" name="validate_code_button">
-        <property name="text">
+        <property name="toolTip">
          <string>Validate model</string>
+        </property>
+        <property name="text">
+         <string/>
         </property>
         <property name="icon">
          <iconset resource="../../../Icons/icons.qrc">
-          <normaloff>:/Icons/icons/accept.png</normaloff>:/Icons/icons/accept.png</iconset>
+          <normaloff>:/Icons/icons/calculator.png</normaloff>:/Icons/icons/calculator.png</iconset>
         </property>
        </widget>
       </item>
@@ -490,8 +505,11 @@
       </item>
       <item>
        <widget class="QPushButton" name="apply_button">
+        <property name="toolTip">
+         <string>Accept changes</string>
+        </property>
         <property name="text">
-         <string>Apply changes</string>
+         <string/>
         </property>
         <property name="icon">
          <iconset resource="../../../Icons/icons.qrc">

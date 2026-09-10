@@ -6029,10 +6029,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         special_table.horizontalHeader().setStretchLastSection(True)
         special_index: int = self.ui.tab_widget.indexOf(self.ui.special_settings_page)
         if self._special_structural_model.rowCount() > 0:
-            self.ui.tab_widget.setTabIcon(
-                special_index,
-                QtGui.QIcon(":/Icons/icons/edit.png"),
-            )
+            pass
         else:
             self.ui.tab_widget.removeTab(special_index)
 
@@ -6041,9 +6038,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         general_index: int = self.ui.tab_widget.indexOf(self.ui.general_page)
         dae_index: int = self.ui.tab_widget.indexOf(self.ui.dae_model_page)
         latex_index: int = self.ui.tab_widget.indexOf(self.ui.latex_page)
-        self.ui.tab_widget.setTabIcon(general_index, QtGui.QIcon(":/Icons/icons/gear.png"))
-        self.ui.tab_widget.setTabIcon(dae_index, QtGui.QIcon(":/Icons/icons/equation.png"))
-        self.ui.tab_widget.setTabIcon(latex_index, QtGui.QIcon(":/Icons/icons/download.png"))
+
         self.ui.tab_widget.setCurrentWidget(self.ui.general_page)
 
     def _configure_add_symbol_dialog(self) -> None:
