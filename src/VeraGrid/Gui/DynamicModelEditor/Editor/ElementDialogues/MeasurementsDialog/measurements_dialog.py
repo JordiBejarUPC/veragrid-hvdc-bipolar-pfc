@@ -17,6 +17,118 @@ from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.enumerations import BlockType, DeviceType, VarPowerFlowReferenceType
 
 
+def get_measurement_group_comment(block_type: BlockType) -> str:
+    """Return the tree comment shown for one measurement group.
+
+    :param block_type: Measurement block type represented by the parent row.
+    :return: Human-readable group description.
+    """
+    if block_type is BlockType.MEASUREMENTS_VOLTAGE_FROM_POLAR:
+        comment: str = "AC voltage meter signals computed from Vm and Va."
+    elif block_type is BlockType.MEASUREMENTS_VOLTAGE_FROM_DC:
+        comment = "DC voltage meter signals computed from Vdc."
+    elif block_type is BlockType.MEASUREMENTS_CURRENT_FROM_PQ:
+        comment = "AC current meter signals computed from P, Q, Vm, and Va."
+    elif block_type is BlockType.MEASUREMENTS_CURRENT_FROM_DC:
+        comment = "DC current meter signal computed from P and Vdc."
+    elif block_type is BlockType.MEASUREMENTS_VOLTAGE_ANGLE:
+        comment = "Direct bus voltage state references."
+    elif block_type is BlockType.MEASUREMENTS_P_Q:
+        comment = "Direct active and reactive power references."
+    else:
+        comment = "Measurement references."
+
+    return comment
+
+
+def get_measurement_reference_comment(reference: VarPowerFlowReferenceType) -> str:
+    """Return the tree comment shown for one measurement reference.
+
+    :param reference: Measurement reference represented by a child row.
+    :return: Human-readable reference description.
+    """
+    if reference is VarPowerFlowReferenceType.Vm:
+        comment: str = "Output-only bus voltage magnitude in p.u."
+    elif reference is VarPowerFlowReferenceType.Va:
+        comment = "Output-only bus voltage angle in rad."
+    elif reference is VarPowerFlowReferenceType.Vdc:
+        comment = "Output-only DC bus voltage magnitude in p.u."
+    elif reference is VarPowerFlowReferenceType.P:
+        comment = "Input-only active power injection in p.u."
+    elif reference is VarPowerFlowReferenceType.Q:
+        comment = "Input-only reactive power injection in p.u."
+    elif reference is VarPowerFlowReferenceType.U:
+        comment = "Voltage magnitude meter output in p.u."
+    elif reference is VarPowerFlowReferenceType.UR:
+        comment = "Voltage real-component meter output in p.u."
+    elif reference is VarPowerFlowReferenceType.UI:
+        comment = "Voltage imaginary-component meter output in p.u."
+    elif reference is VarPowerFlowReferenceType.UR_A:
+        comment = "Phase A voltage real-component output in p.u."
+    elif reference is VarPowerFlowReferenceType.UR_B:
+        comment = "Phase B voltage real-component output in p.u."
+    elif reference is VarPowerFlowReferenceType.UR_C:
+        comment = "Phase C voltage real-component output in p.u."
+    elif reference is VarPowerFlowReferenceType.UI_A:
+        comment = "Phase A voltage imaginary-component output in p.u."
+    elif reference is VarPowerFlowReferenceType.UI_B:
+        comment = "Phase B voltage imaginary-component output in p.u."
+    elif reference is VarPowerFlowReferenceType.UI_C:
+        comment = "Phase C voltage imaginary-component output in p.u."
+    elif reference is VarPowerFlowReferenceType.IR:
+        comment = "Current real-component meter output in p.u."
+    elif reference is VarPowerFlowReferenceType.II:
+        comment = "Current imaginary-component meter output in p.u."
+    elif reference is VarPowerFlowReferenceType.IR_A:
+        comment = "Phase A current real-component output in p.u."
+    elif reference is VarPowerFlowReferenceType.IR_B:
+        comment = "Phase B current real-component output in p.u."
+    elif reference is VarPowerFlowReferenceType.IR_C:
+        comment = "Phase C current real-component output in p.u."
+    elif reference is VarPowerFlowReferenceType.II_A:
+        comment = "Phase A current imaginary-component output in p.u."
+    elif reference is VarPowerFlowReferenceType.II_B:
+        comment = "Phase B current imaginary-component output in p.u."
+    elif reference is VarPowerFlowReferenceType.II_C:
+        comment = "Phase C current imaginary-component output in p.u."
+    elif reference is VarPowerFlowReferenceType.I_DC:
+        comment = "DC current meter output in p.u."
+    else:
+        comment = reference.name
+
+    return comment
+
+
+def is_measurement_reference_input(reference: VarPowerFlowReferenceType) -> bool:
+    """Return whether a measurement reference is constrained to inputs.
+
+    :param reference: Measurement reference to classify.
+    :return: True when the reference must be routed as an input.
+    """
+    if reference is VarPowerFlowReferenceType.P:
+        is_input: bool = True
+    elif reference is VarPowerFlowReferenceType.Q:
+        is_input = True
+    else:
+        is_input = False
+
+    return is_input
+
+
+def get_measurement_reference_direction_text(reference: VarPowerFlowReferenceType) -> str:
+    """Return the fixed I/O direction label for one reference.
+
+    :param reference: Measurement reference to classify.
+    :return: User-facing direction text.
+    """
+    if is_measurement_reference_input(reference):
+        direction_text: str = "Input"
+    else:
+        direction_text = "Output"
+
+    return direction_text
+
+
 class MeasurementsDialog(QtWidgets.QDialog):
     """Select one bus and configure the interface of one RMS measurement block."""
 
@@ -136,7 +248,7 @@ class MeasurementsDialog(QtWidgets.QDialog):
         for block_type, references in self._active_measurement_vars_dict.items():
             parent_item: QtWidgets.QTreeWidgetItem = QtWidgets.QTreeWidgetItem(
                 self.ui.measurement_tree,
-                list((block_type.name, "", "Measurement type")),
+                list((block_type.name, "", get_measurement_group_comment(block_type))),
             )
             parent_item.setData(0, QtCore.Qt.ItemDataRole.UserRole, block_type)
             parent_item.setFlags(
@@ -150,12 +262,15 @@ class MeasurementsDialog(QtWidgets.QDialog):
             for reference in references:
                 child_item: QtWidgets.QTreeWidgetItem = QtWidgets.QTreeWidgetItem(
                     parent_item,
-                    list((reference.name, "Output", "Checked I/O means input")),
+                    list((
+                        reference.name,
+                        get_measurement_reference_direction_text(reference),
+                        get_measurement_reference_comment(reference),
+                    )),
                 )
                 child_item.setData(0, QtCore.Qt.ItemDataRole.UserRole, reference)
                 child_item.setFlags(
-                    child_item.flags()
-                    | QtCore.Qt.ItemFlag.ItemIsUserCheckable
+                    QtCore.Qt.ItemFlag.ItemIsEnabled
                     | QtCore.Qt.ItemFlag.ItemIsSelectable
                 )
                 child_item.setCheckState(1, QtCore.Qt.CheckState.Unchecked)
@@ -256,12 +371,14 @@ class MeasurementsDialog(QtWidgets.QDialog):
             self._selected_block_type = selected_block_type
             self._input_references = list()
             self._output_references = list()
+            requested_references: List[VarPowerFlowReferenceType] = list()
 
             if input_references is not None:
                 reference: VarPowerFlowReferenceType
                 for reference in input_references:
-                    if reference in available_references and reference not in self._input_references:
+                    if reference not in self._input_references:
                         self._input_references.append(reference)
+                        requested_references.append(reference)
                     else:
                         pass
             else:
@@ -270,17 +387,17 @@ class MeasurementsDialog(QtWidgets.QDialog):
             reference: VarPowerFlowReferenceType
             if output_references is not None:
                 for reference in output_references:
-                    if (reference in available_references
-                            and reference not in self._input_references
+                    if (reference not in self._input_references
                             and reference not in self._output_references):
                         self._output_references.append(reference)
+                        requested_references.append(reference)
                     else:
                         pass
             else:
                 pass
 
-            if len(self._input_references) == 0 and len(self._output_references) == 0:
-                self._output_references = list(available_references)
+            if len(requested_references) == 0:
+                requested_references = list(available_references)
             else:
                 pass
 
@@ -290,29 +407,30 @@ class MeasurementsDialog(QtWidgets.QDialog):
             for top_index in range(self.ui.measurement_tree.topLevelItemCount()):
                 parent_item: QtWidgets.QTreeWidgetItem = self.ui.measurement_tree.topLevelItem(top_index)
                 block_type_data: object = parent_item.data(0, QtCore.Qt.ItemDataRole.UserRole)
-                if block_type_data is selected_block_type:
-                    parent_item.setCheckState(0, QtCore.Qt.CheckState.Checked)
-                    parent_item.setExpanded(True)
-                    selected_item = parent_item
+                if isinstance(block_type_data, BlockType):
+                    group_has_selected_reference: bool = block_type_data is selected_block_type
                     child_index: int
                     for child_index in range(parent_item.childCount()):
                         child_item: QtWidgets.QTreeWidgetItem = parent_item.child(child_index)
                         reference_data: object = child_item.data(0, QtCore.Qt.ItemDataRole.UserRole)
-                        if reference_data in self._input_references:
-                            child_item.setCheckState(1, QtCore.Qt.CheckState.Checked)
-                            child_item.setText(1, "Input")
+                        if reference_data in requested_references:
+                            group_has_selected_reference = True
                         else:
-                            child_item.setCheckState(1, QtCore.Qt.CheckState.Unchecked)
-                            child_item.setText(1, "Output")
+                            pass
+
+                    if group_has_selected_reference:
+                        parent_item.setCheckState(0, QtCore.Qt.CheckState.Checked)
+                        parent_item.setExpanded(True)
+                        self._set_parent_children_io(parent_item=parent_item, checked=True)
+                        if selected_item is None:
+                            selected_item = parent_item
+                        else:
+                            pass
+                    else:
+                        parent_item.setCheckState(0, QtCore.Qt.CheckState.Unchecked)
+                        self._set_parent_children_io(parent_item=parent_item, checked=False)
                 else:
                     parent_item.setCheckState(0, QtCore.Qt.CheckState.Unchecked)
-                    child_index = 0
-                    for child_index in range(parent_item.childCount()):
-                        parent_item.child(child_index).setCheckState(
-                            1,
-                            QtCore.Qt.CheckState.Unchecked,
-                        )
-                        parent_item.child(child_index).setText(1, "Output")
             self._updating_tree = False
 
             if selected_item is not None:
@@ -325,7 +443,7 @@ class MeasurementsDialog(QtWidgets.QDialog):
     def tree_item_changed(self,
                           item: QtWidgets.QTreeWidgetItem,
                           column: int) -> None:
-        """Apply exclusive type selection and child I/O direction changes.
+        """Apply local group toggles and keep child directions constrained.
 
         :param item: Tree item whose check state changed.
         :param column: Changed tree column.
@@ -341,7 +459,7 @@ class MeasurementsDialog(QtWidgets.QDialog):
             pass
 
     def _apply_key_check_change(self, item: QtWidgets.QTreeWidgetItem) -> None:
-        """Select at most one key and refresh its child I/O partition.
+        """Toggle only one group's children and refresh its I/O partition.
 
         :param item: Changed top-level key item.
         :return: None.
@@ -349,40 +467,60 @@ class MeasurementsDialog(QtWidgets.QDialog):
         block_type_data: object = item.data(0, QtCore.Qt.ItemDataRole.UserRole)
         if not isinstance(block_type_data, BlockType):
             pass
-        elif item.checkState(0) == QtCore.Qt.CheckState.Checked:
-            self._select_measurement_parent_item(item)
-            self._refresh_references_from_tree()
-        elif self._selected_block_type is block_type_data:
-            self._selected_block_type = None
-            self._input_references = list()
-            self._output_references = list()
         else:
-            pass
+            self._select_measurement_parent_item(item)
+            if item.checkState(0) == QtCore.Qt.CheckState.Checked:
+                self._set_parent_children_io(parent_item=item, checked=True)
+            else:
+                self._set_parent_children_io(parent_item=item, checked=False)
+            self._refresh_references_from_tree()
 
     def _select_measurement_parent_item(self, item: QtWidgets.QTreeWidgetItem) -> None:
-        """Mark one parent row as the active measurement type.
+        """Mark one parent row as active without changing any check state.
 
         :param item: Parent tree item representing a measurement block type.
         :return: None.
         """
         block_type_data: object = item.data(0, QtCore.Qt.ItemDataRole.UserRole)
         if isinstance(block_type_data, BlockType):
-            self._updating_tree = True
-            top_index: int
-            for top_index in range(self.ui.measurement_tree.topLevelItemCount()):
-                candidate_item: QtWidgets.QTreeWidgetItem = self.ui.measurement_tree.topLevelItem(top_index)
-                if candidate_item is item:
-                    candidate_item.setCheckState(0, QtCore.Qt.CheckState.Checked)
-                    candidate_item.setExpanded(True)
-                else:
-                    candidate_item.setCheckState(0, QtCore.Qt.CheckState.Unchecked)
-            self._updating_tree = False
+            item.setExpanded(True)
             self._selected_block_type = block_type_data
         else:
             pass
 
+    def _set_parent_children_io(self,
+                                parent_item: QtWidgets.QTreeWidgetItem,
+                                checked: bool) -> None:
+        """Apply a parent inclusion toggle only to that parent's child rows.
+
+        :param parent_item: Parent item whose direct children are updated.
+        :param checked: True to include children, False to exclude them.
+        :return: None.
+        """
+        was_updating_tree: bool = self._updating_tree
+        self._updating_tree = True
+        child_index: int
+        for child_index in range(parent_item.childCount()):
+            child_item: QtWidgets.QTreeWidgetItem = parent_item.child(child_index)
+            reference_data: object = child_item.data(0, QtCore.Qt.ItemDataRole.UserRole)
+            if isinstance(reference_data, VarPowerFlowReferenceType) and checked:
+                if is_measurement_reference_input(reference_data):
+                    check_state: QtCore.Qt.CheckState = QtCore.Qt.CheckState.Checked
+                else:
+                    check_state = QtCore.Qt.CheckState.Unchecked
+                direction_text: str = get_measurement_reference_direction_text(reference_data)
+            elif isinstance(reference_data, VarPowerFlowReferenceType):
+                check_state = QtCore.Qt.CheckState.Unchecked
+                direction_text = get_measurement_reference_direction_text(reference_data)
+            else:
+                check_state = QtCore.Qt.CheckState.Unchecked
+                direction_text = ""
+            child_item.setCheckState(1, check_state)
+            child_item.setText(1, direction_text)
+        self._updating_tree = was_updating_tree
+
     def _apply_reference_io_change(self, item: QtWidgets.QTreeWidgetItem) -> None:
-        """Switch one child row between input and output.
+        """Restore one child row to its fixed input or output direction.
 
         :param item: Changed child reference item.
         :return: None.
@@ -392,14 +530,10 @@ class MeasurementsDialog(QtWidgets.QDialog):
         if parent_item is None or not isinstance(reference_data, VarPowerFlowReferenceType):
             pass
         else:
-            parent_type_data: object = parent_item.data(0, QtCore.Qt.ItemDataRole.UserRole)
-            if parent_type_data is not self._selected_block_type:
-                self._select_measurement_parent_item(parent_item)
-                self._refresh_reference_io_text(item)
-                self._refresh_references_from_tree()
-            else:
-                self._refresh_reference_io_text(item)
-                self._refresh_references_from_tree()
+            parent_item.setCheckState(0, QtCore.Qt.CheckState.Checked)
+            self._select_measurement_parent_item(parent_item)
+            self._set_parent_children_io(parent_item=parent_item, checked=True)
+            self._refresh_references_from_tree()
 
     @QtCore.Slot(QtWidgets.QTreeWidgetItem, int)
     def tree_item_clicked(self,
@@ -414,7 +548,11 @@ class MeasurementsDialog(QtWidgets.QDialog):
         if item.parent() is None:
             item.setExpanded(True)
         else:
-            pass
+            parent_item: QtWidgets.QTreeWidgetItem | None = item.parent()
+            if parent_item is not None:
+                parent_item.setCheckState(0, QtCore.Qt.CheckState.Checked)
+            else:
+                pass
 
     def _refresh_reference_io_text(self, item: QtWidgets.QTreeWidgetItem) -> None:
         """Mirror the I/O checkbox state as readable tree text.
@@ -422,10 +560,11 @@ class MeasurementsDialog(QtWidgets.QDialog):
         :param item: Child reference row whose direction text changed.
         :return: None.
         """
-        if item.checkState(1) == QtCore.Qt.CheckState.Checked:
-            direction_text: str = "Input"
+        reference_data: object = item.data(0, QtCore.Qt.ItemDataRole.UserRole)
+        if isinstance(reference_data, VarPowerFlowReferenceType):
+            direction_text: str = get_measurement_reference_direction_text(reference_data)
         else:
-            direction_text = "Output"
+            direction_text = ""
 
         if item.text(1) == direction_text:
             pass
@@ -436,24 +575,32 @@ class MeasurementsDialog(QtWidgets.QDialog):
             self._updating_tree = was_updating_tree
 
     def _refresh_references_from_tree(self) -> None:
-        """Build the input and output reference lists from the active tree row.
+        """Build the input and output reference lists from included tree rows.
 
         :return: None.
         """
+        self._selected_block_type = None
         self._input_references = list()
         self._output_references = list()
         top_index: int
         for top_index in range(self.ui.measurement_tree.topLevelItemCount()):
             parent_item: QtWidgets.QTreeWidgetItem = self.ui.measurement_tree.topLevelItem(top_index)
             parent_type_data: object = parent_item.data(0, QtCore.Qt.ItemDataRole.UserRole)
-            if parent_type_data is self._selected_block_type:
+            if (
+                    isinstance(parent_type_data, BlockType)
+                    and parent_item.checkState(0) == QtCore.Qt.CheckState.Checked
+            ):
+                if self._selected_block_type is None:
+                    self._selected_block_type = parent_type_data
+                else:
+                    pass
                 child_index: int
                 for child_index in range(parent_item.childCount()):
                     child_item: QtWidgets.QTreeWidgetItem = parent_item.child(child_index)
                     reference_data: object = child_item.data(0, QtCore.Qt.ItemDataRole.UserRole)
                     if isinstance(reference_data, VarPowerFlowReferenceType):
                         self._refresh_reference_io_text(child_item)
-                        if child_item.checkState(1) == QtCore.Qt.CheckState.Checked:
+                        if is_measurement_reference_input(reference_data):
                             self._input_references.append(reference_data)
                         else:
                             self._output_references.append(reference_data)

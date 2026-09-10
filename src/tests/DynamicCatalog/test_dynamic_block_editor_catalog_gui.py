@@ -26,9 +26,11 @@ from VeraGridEngine.Templates.InternationalStandardsCatalog import (
     get_international_standard_template_descriptors,
 )
 from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.enumerations import BlockType
 from VeraGridEngine.enumerations import DynamicSimulationMode
 from VeraGridEngine.enumerations import DeviceType
+from VeraGridEngine.enumerations import VarPowerFlowReferenceType
 
 pytestmark = pytest.mark.filterwarnings("error")
 
@@ -50,6 +52,66 @@ class _ApiStub:
         self.rms_template = None
         self.emt_template = None
         self.device_type = device_type
+
+
+class _AcceptedMeasurementsDialog:
+    """
+    Deterministic measurement dialog replacement for edit-path tests.
+    """
+
+    __slots__ = ("_bus",)
+
+    def __init__(
+            self,
+            buses: list[gce.Bus],
+            measurement_vars_dict: dict[str, dict[BlockType, list[VarPowerFlowReferenceType]]],
+            initial_bus: gce.Bus | None = None,
+            initial_block_type: BlockType | None = None,
+            initial_input_references: list[VarPowerFlowReferenceType] | None = None,
+            initial_output_references: list[VarPowerFlowReferenceType] | None = None,
+            parent: QtWidgets.QWidget | None = None,
+    ) -> None:
+        """Store the bus that the editor supplies to the modal constructor.
+
+        :param buses: Available bus list.
+        :param measurement_vars_dict: Measurement references by bus domain.
+        :param initial_bus: Initially selected bus.
+        :param initial_block_type: Initially selected measurement type.
+        :param initial_input_references: Initial input references.
+        :param initial_output_references: Initial output references.
+        :param parent: Optional parent widget.
+        :return: None.
+        """
+        assert len(measurement_vars_dict) > 0
+        assert initial_block_type is not None
+        assert initial_input_references is not None
+        assert initial_output_references is not None
+        assert parent is not None
+        if initial_bus is not None:
+            self._bus: gce.Bus = initial_bus
+        else:
+            self._bus = buses[0]
+
+    def exec(self) -> QtWidgets.QDialog.DialogCode:
+        """Return an accepted modal result.
+
+        :return: Accepted dialog code.
+        """
+        return QtWidgets.QDialog.DialogCode.Accepted
+
+    def get_user_info(
+            self,
+    ) -> tuple[gce.Bus, BlockType, list[VarPowerFlowReferenceType], list[VarPowerFlowReferenceType]]:
+        """Return one deterministic edited measurement configuration.
+
+        :return: Bus, block type, input references, and output references.
+        """
+        return (
+            self._bus,
+            BlockType.MEASUREMENTS_VOLTAGE_ANGLE,
+            list((VarPowerFlowReferenceType.Vm,)),
+            list((VarPowerFlowReferenceType.Va,)),
+        )
 
 
 def _get_app() -> QtWidgets.QApplication:
@@ -705,6 +767,129 @@ def test_change_color_handles_arithmetic_blocks(monkeypatch: pytest.MonkeyPatch)
     assert diagram_node is not None
     assert block_item.brush().color().name() == custom_color
     assert diagram_node.color == custom_color
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_measurement_block_enforces_reference_io_constraints() -> None:
+    """Force measurement references into their physical input/output side.
+
+    :return: None.
+    """
+    circuit: MultiCircuit = MultiCircuit()
+    bus: gce.Bus = gce.Bus(name="Bus 1", Vnom=10.0)
+    circuit.add_bus(bus)
+    editor: DynamicBlockEditorGUI = _build_editor(
+        mode=DynamicSimulationMode.RMS,
+        circuit=circuit,
+    )
+    p_var: Var = editor.var_factory.add_var("P", VarPowerFlowReferenceType.P, True)
+    q_var: Var = editor.var_factory.add_var("Q", VarPowerFlowReferenceType.Q, True)
+    editor.main_block.external_mapping.update(
+        dict((
+            (VarPowerFlowReferenceType.P, p_var),
+            (VarPowerFlowReferenceType.Q, q_var),
+        ))
+    )
+
+    block: Block = editor.create_measurements_block(
+        bus=bus,
+        block_type=BlockType.MEASUREMENTS_VOLTAGE_ANGLE,
+        ref_inputs=list((VarPowerFlowReferenceType.Vm, VarPowerFlowReferenceType.Va)),
+        ref_outputs=list((VarPowerFlowReferenceType.P, VarPowerFlowReferenceType.Q)),
+    )
+
+    input_references: list[VarPowerFlowReferenceType] = editor.get_measurements_dialog_refs_from_vars(block.in_vars)
+    output_references: list[VarPowerFlowReferenceType] = editor.get_measurements_dialog_refs_from_vars(block.out_vars)
+    assert input_references == list((VarPowerFlowReferenceType.P, VarPowerFlowReferenceType.Q))
+    assert output_references == list((VarPowerFlowReferenceType.Vm, VarPowerFlowReferenceType.Va))
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_measurement_color_action_survives_measurement_edit(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep a measurement item custom fill after its edit dialog rebuilds it.
+
+    :param monkeypatch: Pytest monkeypatch fixture.
+    :return: None.
+    """
+    circuit: MultiCircuit = MultiCircuit()
+    bus: gce.Bus = gce.Bus(name="Bus 1", Vnom=10.0)
+    circuit.add_bus(bus)
+    editor: DynamicBlockEditorGUI = _build_editor(
+        mode=DynamicSimulationMode.RMS,
+        circuit=circuit,
+    )
+    measurement_item: graph.MeasurementsItem | None = editor.create_measurements_block_item(
+        x_pos=10.0,
+        y_pos=20.0,
+        bus=bus,
+        block_type=BlockType.MEASUREMENTS_VOLTAGE_ANGLE,
+        ref_inputs=list(),
+        ref_outputs=list((VarPowerFlowReferenceType.Vm, VarPowerFlowReferenceType.Va)),
+    )
+    assert isinstance(measurement_item, graph.MeasurementsItem)
+    assert measurement_item.subsys is not None
+
+    custom_color: str = "#117733"
+    monkeypatch.setattr(graph.QColorDialog, "getColor", _select_catalog_test_color)
+    editor.scene.change_item_fill_color(measurement_item)
+    old_block_uid: int = measurement_item.subsys.uid
+    old_diagram_node: BlockDiagramNode | None = editor.get_diagram_node_for_block_uid(old_block_uid)
+    assert old_diagram_node is not None
+    assert measurement_item.brush().color().name() == custom_color
+    assert old_diagram_node.color == custom_color
+    assert old_diagram_node.api_object_name == bus.idtag
+
+    monkeypatch.setattr(
+        dynamic_block_editor_module,
+        "MeasurementsDialog",
+        _AcceptedMeasurementsDialog,
+    )
+    editor.open_measurements_editor(
+        source_item=measurement_item,
+        x_pos=30.0,
+        y_pos=40.0,
+    )
+
+    assert old_block_uid not in editor.diagram.node_data
+    assert editor.get_scene_item_by_block_uid(old_block_uid) is None
+    child_block: Block
+    for child_block in editor.main_block.children:
+        assert child_block.uid != old_block_uid
+
+    measurement_items: list[graph.MeasurementsItem] = list()
+    scene_item: object
+    for scene_item in editor.scene.items():
+        if isinstance(scene_item, graph.MeasurementsItem):
+            measurement_items.append(scene_item)
+        else:
+            pass
+
+    edited_item: graph.MeasurementsItem | None = None
+    candidate_item: graph.MeasurementsItem
+    for candidate_item in measurement_items:
+        if candidate_item.scenePos() == QtCore.QPointF(30.0, 40.0):
+            edited_item = candidate_item
+        else:
+            pass
+
+    assert edited_item is not None
+    assert edited_item.subsys is not None
+    edited_diagram_node: BlockDiagramNode | None = editor.get_diagram_node_for_block_uid(
+        edited_item.subsys.uid,
+    )
+    assert edited_diagram_node is not None
+    assert edited_item.brush().color().name() == custom_color
+    assert edited_diagram_node.color == custom_color
+    assert edited_diagram_node.api_object_name == bus.idtag
+    assert [var.ref for var in edited_item.subsys.in_vars] == list()
+    assert [var.ref for var in edited_item.subsys.out_vars] == list((
+        VarPowerFlowReferenceType.Vm,
+        VarPowerFlowReferenceType.Va,
+    ))
 
     editor.has_unapplied_changes = False
     editor.close()

@@ -58,7 +58,10 @@ from VeraGrid.Gui.DynamicModelEditor.Editor.block_editor import Ui_BlockEditorWi
 import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_graphics as graph
 from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import DynamicEditorEntry
 from VeraGrid.Gui.DynamicModelEditor.Editor.DynamicLibrary.dynamic_editor_library import DynamicEditorLibrary, LibraryTreeFilterProxyModel
-from VeraGrid.Gui.DynamicModelEditor.Editor.ElementDialogues.MeasurementsDialog import MeasurementsDialog
+from VeraGrid.Gui.DynamicModelEditor.Editor.ElementDialogues.MeasurementsDialog import (
+    is_measurement_reference_input,
+    MeasurementsDialog,
+)
 import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_models as dialog_models
 from VeraGrid.Gui.DynamicModelEditor.Editor.BlockProperties.dynamic_block_properties import (
     BlockStructuralEditRequest,
@@ -2535,11 +2538,23 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             block_type: BlockType
             inputs_list: List[VarPowerFlowReferenceType]
             outputs_list: List[VarPowerFlowReferenceType]
+            preserved_color: str | None = None
             bus, block_type, inputs_list, outputs_list = dialogue.get_user_info()
+            if source_item.subsys is not None:
+                diagram_node: BlockDiagramNode | None = self.get_diagram_node_for_block_uid(
+                    source_item.subsys.uid,
+                )
+                if diagram_node is not None:
+                    preserved_color = diagram_node.color
+                else:
+                    pass
+            else:
+                pass
+
             # The accepted configuration replaces the provisional graphics item,
-            # so remove that exact item through the editor-owned scene first.
-            if source_item.scene() is self.scene and source_item.subsys is not None:
-                self.scene.remove_block_item(block_uid=source_item.subsys.uid, item=source_item)
+            # so remove its scene, diagram, and symbolic model state together.
+            if source_item.scene() is self.scene:
+                self.remove_block_item(source_item)
             else:
                 pass
             self.create_measurements_block_item(
@@ -2549,6 +2564,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 block_type=block_type,
                 ref_inputs=inputs_list,
                 ref_outputs=outputs_list,
+                color=preserved_color,
             )
         else:
             pass
@@ -4126,12 +4142,23 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         block: Block = Block()
         vars_list: List[Var] = list()
         nominal_frequency = Const(self.circuit.fBase)
+        requested_references: List[VarPowerFlowReferenceType] = list()
 
         # get bus variables
         bus_vars = self.add_connection_vars(bus)
 
-        # get p and q variables
-        pq_vars = self.get_p_q_vars(bus)
+        reference: VarPowerFlowReferenceType
+        for reference in ref_inputs:
+            if reference in requested_references:
+                pass
+            else:
+                requested_references.append(reference)
+
+        for reference in ref_outputs:
+            if reference in requested_references:
+                pass
+            else:
+                requested_references.append(reference)
 
         # build measurement block
 
@@ -4146,9 +4173,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             block, vars_list = build_rms_voltage_meter_outputs_from_dc(self.var_factory, bus_vars[0],
                                                                        nominal_frequency)
         elif block_type == BlockType.MEASUREMENTS_CURRENT_FROM_PQ:
+            pq_vars = self.get_p_q_vars(bus)
             block, vars_list = build_rms_current_meter_outputs_from_pq(self.var_factory, bus_vars[0], bus_vars[1],
                                                                        pq_vars[0], pq_vars[1])
         elif block_type == BlockType.MEASUREMENTS_CURRENT_FROM_DC:
+            pq_vars = self.get_p_q_vars(bus)
             block, vars_list = build_rms_current_meter_outputs_from_dc(self.var_factory, bus_vars[0],
                                                                        pq_vars[0])
         elif block_type == BlockType.MEASUREMENTS_VOLTAGE_ANGLE:
@@ -4156,17 +4185,46 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             vars_list = bus_vars
 
         elif block_type == BlockType.MEASUREMENTS_P_Q:
+            pq_vars = self.get_p_q_vars(bus)
             block = Block()
             vars_list = pq_vars
 
+        var: Var | None
+        for var in bus_vars:
+            if var is not None and isinstance(var.ref, VarPowerFlowReferenceType):
+                dialog_reference = self.coerce_measurements_dialog_reference(var.ref)
+                if dialog_reference in requested_references and var not in vars_list:
+                    vars_list.append(var)
+                else:
+                    pass
+            else:
+                pass
+
+        if (
+                VarPowerFlowReferenceType.P in requested_references
+                or VarPowerFlowReferenceType.Q in requested_references
+        ):
+            pq_vars = self.get_p_q_vars(bus)
+            for var in pq_vars:
+                if var is not None and isinstance(var.ref, VarPowerFlowReferenceType):
+                    dialog_reference = self.coerce_measurements_dialog_reference(var.ref)
+                    if dialog_reference in requested_references and var not in vars_list:
+                        vars_list.append(var)
+                    else:
+                        pass
+                else:
+                    pass
+        else:
+            pass
+
         for var in vars_list:
-            if isinstance(var.ref, VarPowerFlowReferenceType):
+            if var is not None and isinstance(var.ref, VarPowerFlowReferenceType):
                 dialog_reference: VarPowerFlowReferenceType = self.coerce_measurements_dialog_reference(var.ref)
             else:
                 dialog_reference = VarPowerFlowReferenceType.NOTHING
-            if dialog_reference in ref_inputs:
+            if dialog_reference in requested_references and is_measurement_reference_input(dialog_reference):
                 block.in_vars.append(var)
-            elif dialog_reference in ref_outputs:
+            elif dialog_reference in requested_references:
                 block.out_vars.append(var)
             else:
                 pass
@@ -4174,11 +4232,14 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         block.name = block_type.name
         return block
 
-    def create_measurements_block_item(self, x_pos: float, y_pos: float, bus: ALL_DEV_TYPES | None = None,
+    def create_measurements_block_item(self,
+                                       x_pos: float,
+                                       y_pos: float,
+                                       bus: ALL_DEV_TYPES | None = None,
                                        block_type: BlockType = BlockType.INPUT_CONN,
                                        ref_inputs: List[VarPowerFlowReferenceType] | None = None,
-                                       ref_outputs: List[
-                                                        VarPowerFlowReferenceType] | None = None) -> graph.MeasurementsItem | None:
+                                       ref_outputs: List[VarPowerFlowReferenceType] | None = None,
+                                       color: str | None = None) -> graph.MeasurementsItem | None:
         """
         Create and place a measurements block item in the canvas scene.
 
@@ -4186,6 +4247,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param block_type:
         :param ref_inputs:
         :param ref_outputs:
+        :param color: Optional persisted fill colour to apply to the diagram node.
         :return:
         """
 
@@ -4207,6 +4269,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         count: int = self.block_counters.get(block_type, 0) + 1
 
         item_name: str = f"{block_type.name}"
+        if isinstance(bus, Bus):
+            api_object_name: str = bus.idtag
+        else:
+            api_object_name = ""
         measurements_item: graph.MeasurementsItem = graph.MeasurementsItem(editor=self,
                                                                            var_factory=self.var_factory,
                                                                            name=item_name,
@@ -4220,6 +4286,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             measurements_item.set_subsystem(block_model)
             measurements_item.position_changed_callback = self.build_position_changed_callback(block_model.uid)
             measurements_item.build_item()
+            measurements_item.recolour()
 
             # The editor block is the authoritative model container for later save/rebuild steps.
             self.main_block.add(block_model)
@@ -4235,8 +4302,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 x=x_pos,
                 y=y_pos,
                 tpe=block_type.name,
-                device_uid=block_model.uid
+                api_object_name=api_object_name,
+                device_uid=block_model.uid,
+                color=color,
             )
+            self.apply_diagram_node_color_to_block_item(measurements_item)
 
             return measurements_item
         else:
@@ -6373,8 +6443,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             return False
 
-    def remove_block_item(self,
-                          item: graph.BlockItem | graph.GenericBlockItem | graph.RoundBaseArithmeticOpItem | graph.RectBaseArithmeticOpItem | graph.PairedItem) -> None:
+    def remove_block_item(
+            self,
+            item: graph.BlockItem | graph.MeasurementsItem | graph.GenericBlockItem |
+                  graph.RoundBaseArithmeticOpItem | graph.RectBaseArithmeticOpItem | graph.PairedItem,
+    ) -> None:
         """
         Remove a block and all of its attached connections.
 
@@ -6476,8 +6549,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         for conn in connections_to_remove:
             self.remove_connection_item(conn)
 
-    def _remove_connection_interface_for_block(self,
-                                               item: graph.BlockItem | graph.GenericBlockItem | graph.RoundBaseArithmeticOpItem | graph.RectBaseArithmeticOpItem | graph.PairedItem) -> None:
+    def _remove_connection_interface_for_block(
+            self,
+            item: graph.BlockItem | graph.MeasurementsItem | graph.GenericBlockItem |
+                  graph.RoundBaseArithmeticOpItem | graph.RectBaseArithmeticOpItem | graph.PairedItem,
+    ) -> None:
         """
         Remove the saved top-level connection variable for one editor port block.
 

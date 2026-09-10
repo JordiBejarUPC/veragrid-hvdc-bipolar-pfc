@@ -4646,7 +4646,8 @@ class DiagramScene(QGraphicsScene):
         self.clear_block_items()
 
     def change_item_fill_color(self,
-                               item: BlockItem | GenericBlockItem | ConnectionItem | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem | PairedItem) -> None:
+                               item: BlockItem | MeasurementsItem | GenericBlockItem | ConnectionItem |
+                                     RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem | PairedItem) -> None:
         """Open the colour picker and apply a custom fill to the context item.
 
         :param item: Graphics item being inspected.
