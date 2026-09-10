@@ -611,7 +611,7 @@ def read_fmpy_distribution_identity() -> tuple[str, str]:
     return distribution.version, hashlib.sha256(digest_input).hexdigest()
 
 
-def _read_embedded_reference_trace(
+def read_reference_fmu_embedded_trace(
     asset: ValidatedReferenceFmuAsset,
 ) -> ReferenceFmuTrace:
     """Read the single sealed reference CSV member from validated FMU bytes.
@@ -1066,7 +1066,7 @@ def _execute_fmusim_cell(
         4 * 1024 * 1024,
     )
     if process_result.return_code == 0:
-        trace: ReferenceFmuTrace = _read_trace_csv(
+        trace: ReferenceFmuTrace = read_reference_fmu_trace_csv(
             raw_trace_path,
             oracle.observed_variable_name,
             oracle.observed_variable_type,
@@ -1076,7 +1076,7 @@ def _execute_fmusim_cell(
     return trace, process_result
 
 
-def _read_trace_csv(
+def read_reference_fmu_trace_csv(
     trace_path: Path,
     observed_variable_name: str,
     observed_variable_type: FmuVariableType,
@@ -1144,7 +1144,7 @@ def _read_trace_csv(
     return ReferenceFmuTrace(time_values, observed_values, observed_variable_type)
 
 
-def _build_regular_trace(
+def build_reference_fmu_regular_trace(
     case: ReferenceFmuCase,
     raw_trace: ReferenceFmuTrace,
 ) -> ReferenceFmuTrace:
@@ -1206,7 +1206,7 @@ def _build_regular_trace(
     )
 
 
-def _evaluate_cs_reference_trace(
+def evaluate_reference_fmu_cs_trace(
     case: ReferenceFmuCase,
     raw_trace: ReferenceFmuTrace,
     reference_trace: ReferenceFmuTrace,
@@ -1225,7 +1225,7 @@ def _evaluate_cs_reference_trace(
     :return: Error metrics, event count and terminal classifications.
     """
 
-    regular_trace: ReferenceFmuTrace = _build_regular_trace(case, raw_trace)
+    regular_trace: ReferenceFmuTrace = build_reference_fmu_regular_trace(case, raw_trace)
     if np.array_equal(regular_trace.time_seconds, reference_trace.time_seconds):
         pass
     else:
@@ -1327,8 +1327,8 @@ def _evaluate_me_pair_and_oracles(
     oracle: ReferenceFmuEventOracle = case.find_interface_oracle(
         FmuInterfaceMode.MODEL_EXCHANGE
     )
-    fmpy_regular: ReferenceFmuTrace = _build_regular_trace(case, fmpy_trace)
-    fmusim_regular: ReferenceFmuTrace = _build_regular_trace(case, fmusim_trace)
+    fmpy_regular: ReferenceFmuTrace = build_reference_fmu_regular_trace(case, fmpy_trace)
+    fmusim_regular: ReferenceFmuTrace = build_reference_fmu_regular_trace(case, fmusim_trace)
     if np.array_equal(fmpy_regular.time_seconds, fmusim_regular.time_seconds):
         pass
     else:
@@ -1818,7 +1818,7 @@ def generate_reference_fmu_comparison(
             asset_path,
         )
         validated_assets[case_index] = validated_asset
-        reference_traces[case_index] = _read_embedded_reference_trace(
+        reference_traces[case_index] = read_reference_fmu_embedded_trace(
             validated_asset
         )
 
@@ -1949,7 +1949,7 @@ def generate_reference_fmu_comparison(
                         int,
                         ReferenceFmuObservedTermination,
                         ReferenceFmuTerminalObservation,
-                    ] = _evaluate_cs_reference_trace(
+                    ] = evaluate_reference_fmu_cs_trace(
                         reference_case,
                         first_trace,
                         reference_trace,
@@ -1960,7 +1960,7 @@ def generate_reference_fmu_comparison(
                         int,
                         ReferenceFmuObservedTermination,
                         ReferenceFmuTerminalObservation,
-                    ] = _evaluate_cs_reference_trace(
+                    ] = evaluate_reference_fmu_cs_trace(
                         reference_case,
                         second_trace,
                         reference_trace,
