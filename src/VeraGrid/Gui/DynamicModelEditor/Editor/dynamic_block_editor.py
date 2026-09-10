@@ -60,12 +60,12 @@ from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import Dyn
 from VeraGrid.Gui.DynamicModelEditor.Editor.DynamicLibrary.dynamic_editor_library import DynamicEditorLibrary, LibraryTreeFilterProxyModel
 from VeraGrid.Gui.DynamicModelEditor.Editor.ElementDialogues.measurements_dialog import MeasurementsDialog
 import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_models as dialog_models
-from VeraGrid.Gui.DynamicModelEditor.Editor.BlockProperties.dynamic_block_properties import (
-    BlockStructuralEditRequest,
-    BlockVariableRenameRequest,
-    DynamicBlockPropertiesDialog,
-    DynamicBlockPropertiesDockWidget,
-)
+# from VeraGrid.Gui.DynamicModelEditor.Editor.BlockProperties.dynamic_block_properties import (
+#     BlockStructuralEditRequest,
+#     BlockVariableRenameRequest,
+#     DynamicBlockPropertiesDialog,
+#     DynamicBlockPropertiesDockWidget,
+# )
 import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_validation as valid
 from VeraGrid.Gui.DynamicModelEditor.Editor.DynamicLibrary.dynamic_editor_utilities import (
     create_block_of_type,
