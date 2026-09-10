@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VeraGridEngine.Utils.Symbolic package &mdash; VeraGrid 6.5.13 documentation</title>
+  <title>VeraGridEngine.Utils.Symbolic package &mdash; VeraGrid 6.5.26 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
@@ -15,7 +15,7 @@
   
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../../../_static/documentation_options.js?v=3377d3ec"></script>
+      <script src="../../../_static/documentation_options.js?v=c62e3d9e"></script>
       <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
       <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/js/theme.js"></script>
@@ -47,6 +47,7 @@
               <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../../../md_source/installation.html">💽 Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../md_source/user_interface.html">📊 User interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../md_source/veragrid_scripting_guide.html">📑 VeraGrid scripting guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../md_source/grid_analysis.html">🔎 Grid analysis</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../md_source/structure.html">🌁 Structure of VeraGrid</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../md_source/modelling.html">📐 Grid Modelling</a></li>
@@ -1075,7 +1076,10 @@ symbolic block and therefore survives diagram removal and block renaming.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="VeraGridEngine.Utils.Symbolic.block.normalize_dynamic_connection_intents">
 <span class="sig-prename descclassname"><span class="pre">VeraGridEngine.Utils.Symbolic.block.</span></span><span class="sig-name descname"><span class="pre">normalize_dynamic_connection_intents</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">block</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#VeraGridEngine.Utils.Symbolic.block.Block" title="VeraGridEngine.Utils.Symbolic.block.Block"><span class="pre">Block</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Utils/Symbolic/block.html#normalize_dynamic_connection_intents"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Utils.Symbolic.block.normalize_dynamic_connection_intents" title="Link to this definition"></a></dt>
-<dd><p>Keep one current typed state for each connection-intent identity.</p>
+<dd><p>Keep one current reachable typed state for each connection-intent identity.</p>
+<p>A missing root-interface phase is not considered unreachable because it can
+return after a topology change. An internal block or port outside the owned
+block tree cannot return semantically and its obsolete intent is removed.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>block</strong> – Block whose intents must be normalized.</p>
@@ -2570,6 +2574,17 @@ matrix_getter: Optional callback to extract the diagnostic matrix from a bundled
 </dl>
 </dd></dl>
 
+<dl class="py property">
+<dt class="sig sig-object py" id="VeraGridEngine.Utils.Symbolic.dynamic_connection_intent.ConnectionIntentVariable.ref">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">ref</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="VeraGridEngine.html#VeraGridEngine.enumerations.VarPowerFlowReferenceType" title="VeraGridEngine.enumerations.VarPowerFlowReferenceType"><span class="pre">VarPowerFlowReferenceType</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#VeraGridEngine.Utils.Symbolic.dynamic_connection_intent.ConnectionIntentVariable.ref" title="Link to this definition"></a></dt>
+<dd><p>Return the semantic power-flow reference carried by the variable.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Semantic variable reference or <code class="docutils literal notranslate"><span class="pre">None</span></code> when it has none.</p>
+</dd>
+</dl>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="py class">
@@ -2777,6 +2792,48 @@ that phase returns.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>Named JSON-compatible intent fields.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="VeraGridEngine.Utils.Symbolic.dynamic_connection_intent.is_legacy_suppressed_connection_intent_tombstone">
+<span class="sig-prename descclassname"><span class="pre">VeraGridEngine.Utils.Symbolic.dynamic_connection_intent.</span></span><span class="sig-name descname"><span class="pre">is_legacy_suppressed_connection_intent_tombstone</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">object</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root_block</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#VeraGridEngine.Utils.Symbolic.dynamic_connection_intent.ConnectionIntentBlock" title="VeraGridEngine.Utils.Symbolic.dynamic_connection_intent.ConnectionIntentBlock"><span class="pre">ConnectionIntentBlock</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Utils/Symbolic/dynamic_connection_intent.html#is_legacy_suppressed_connection_intent_tombstone"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Utils.Symbolic.dynamic_connection_intent.is_legacy_suppressed_connection_intent_tombstone" title="Link to this definition"></a></dt>
+<dd><p>Recognize a valid old suppression record whose internal target was deleted.</p>
+<p>Earlier editors retained suppression records after replacing an internal
+block. Those records are harmless history and should not generate an open
+warning. Malformed records and active missing connections are intentionally
+excluded so genuine persistence problems remain visible.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> – Persisted connection-intent fields.</p></li>
+<li><p><strong>root_block</strong> – Fully reconstructed root block used to resolve the target.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">True</span></code> only for a well-formed suppressed record with a missing target.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="VeraGridEngine.Utils.Symbolic.dynamic_connection_intent.reconcile_dynamic_connection_intent_target">
+<span class="sig-prename descclassname"><span class="pre">VeraGridEngine.Utils.Symbolic.dynamic_connection_intent.</span></span><span class="sig-name descname"><span class="pre">reconcile_dynamic_connection_intent_target</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">intent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#VeraGridEngine.Utils.Symbolic.dynamic_connection_intent.DynamicConnectionIntent" title="VeraGridEngine.Utils.Symbolic.dynamic_connection_intent.DynamicConnectionIntent"><span class="pre">DynamicConnectionIntent</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">root_block</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#VeraGridEngine.Utils.Symbolic.dynamic_connection_intent.ConnectionIntentBlock" title="VeraGridEngine.Utils.Symbolic.dynamic_connection_intent.ConnectionIntentBlock"><span class="pre">ConnectionIntentBlock</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Utils/Symbolic/dynamic_connection_intent.html#reconcile_dynamic_connection_intent_target"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Utils.Symbolic.dynamic_connection_intent.reconcile_dynamic_connection_intent_target" title="Link to this definition"></a></dt>
+<dd><p>Resolve an intent against a current internal target when possible.</p>
+<p>Root-interface availability is deliberately not part of this check. An
+intent must survive a temporary topology change when its external phase is
+unavailable, but it cannot be restored after its internal block or port has
+been deleted.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>intent</strong> – Runtime connection intent to inspect.</p></li>
+<li><p><strong>root_block</strong> – Root block that owns the intent collection.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">True</span></code> when the internal block and direction-specific variable exist.</p>
 </dd>
 </dl>
 </dd></dl>

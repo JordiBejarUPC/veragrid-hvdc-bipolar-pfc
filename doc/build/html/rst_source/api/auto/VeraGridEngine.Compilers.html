@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VeraGridEngine.Compilers package &mdash; VeraGrid 6.5.13 documentation</title>
+  <title>VeraGridEngine.Compilers package &mdash; VeraGrid 6.5.26 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
@@ -15,7 +15,7 @@
   
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../../../_static/documentation_options.js?v=3377d3ec"></script>
+      <script src="../../../_static/documentation_options.js?v=c62e3d9e"></script>
       <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
       <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/js/theme.js"></script>
@@ -47,6 +47,7 @@
               <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../../../md_source/installation.html">💽 Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../md_source/user_interface.html">📊 User interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../md_source/veragrid_scripting_guide.html">📑 VeraGrid scripting guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../md_source/grid_analysis.html">🔎 Grid analysis</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../md_source/structure.html">🌁 Structure of VeraGrid</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../md_source/modelling.html">📐 Grid Modelling</a></li>
@@ -433,7 +434,7 @@
 
 <dl class="py function">
 <dt class="sig sig-object py" id="VeraGridEngine.Compilers.circuit_to_data.get_fluid_p2x_data">
-<span class="sig-prename descclassname"><span class="pre">VeraGridEngine.Compilers.circuit_to_data.</span></span><span class="sig-name descname"><span class="pre">get_fluid_p2x_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.DataStructures.html#VeraGridEngine.DataStructures.fluid_p2x_data.FluidP2XData" title="VeraGridEngine.DataStructures.fluid_p2x_data.FluidP2XData"><span class="pre">FluidP2XData</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">circuit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.Devices.html#VeraGridEngine.Devices.multi_circuit.MultiCircuit" title="VeraGridEngine.Devices.multi_circuit.MultiCircuit"><span class="pre">MultiCircuit</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">plant_dict</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gen_dict</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="VeraGridEngine.DataStructures.html#VeraGridEngine.DataStructures.fluid_p2x_data.FluidP2XData" title="VeraGridEngine.DataStructures.fluid_p2x_data.FluidP2XData"><span class="pre">FluidP2XData</span></a></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Compilers/circuit_to_data.html#get_fluid_p2x_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Compilers.circuit_to_data.get_fluid_p2x_data" title="Link to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">VeraGridEngine.Compilers.circuit_to_data.</span></span><span class="sig-name descname"><span class="pre">get_fluid_p2x_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">data:</span> <span class="pre">FluidP2XData,</span> <span class="pre">circuit:</span> <span class="pre">MultiCircuit,</span> <span class="pre">plant_dict:</span> <span class="pre">Dict[str,</span> <span class="pre">int],</span> <span class="pre">gen_dict:</span> <span class="pre">Dict[str,</span> <span class="pre">int],</span> <span class="pre">logger:</span> <span class="pre">Logger</span> <span class="pre">=</span> <span class="pre">&lt;VeraGridEngine.basic_structures.Logger</span> <span class="pre">object&gt;</span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="VeraGridEngine.DataStructures.html#VeraGridEngine.DataStructures.fluid_p2x_data.FluidP2XData" title="VeraGridEngine.DataStructures.fluid_p2x_data.FluidP2XData"><span class="pre">FluidP2XData</span></a></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Compilers/circuit_to_data.html#get_fluid_p2x_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Compilers.circuit_to_data.get_fluid_p2x_data" title="Link to this definition"></a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -441,6 +442,7 @@
 <li><p><strong>circuit</strong></p></li>
 <li><p><strong>plant_dict</strong></p></li>
 <li><p><strong>gen_dict</strong></p></li>
+<li><p><strong>logger</strong></p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -469,7 +471,7 @@
 
 <dl class="py function">
 <dt class="sig sig-object py" id="VeraGridEngine.Compilers.circuit_to_data.get_fluid_pump_data">
-<span class="sig-prename descclassname"><span class="pre">VeraGridEngine.Compilers.circuit_to_data.</span></span><span class="sig-name descname"><span class="pre">get_fluid_pump_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.DataStructures.html#VeraGridEngine.DataStructures.fluid_pump_data.FluidPumpData" title="VeraGridEngine.DataStructures.fluid_pump_data.FluidPumpData"><span class="pre">FluidPumpData</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">circuit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.Devices.html#VeraGridEngine.Devices.multi_circuit.MultiCircuit" title="VeraGridEngine.Devices.multi_circuit.MultiCircuit"><span class="pre">MultiCircuit</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">plant_dict</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gen_dict</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="VeraGridEngine.DataStructures.html#VeraGridEngine.DataStructures.fluid_pump_data.FluidPumpData" title="VeraGridEngine.DataStructures.fluid_pump_data.FluidPumpData"><span class="pre">FluidPumpData</span></a></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Compilers/circuit_to_data.html#get_fluid_pump_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Compilers.circuit_to_data.get_fluid_pump_data" title="Link to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">VeraGridEngine.Compilers.circuit_to_data.</span></span><span class="sig-name descname"><span class="pre">get_fluid_pump_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">data:</span> <span class="pre">FluidPumpData,</span> <span class="pre">circuit:</span> <span class="pre">MultiCircuit,</span> <span class="pre">plant_dict:</span> <span class="pre">Dict[str,</span> <span class="pre">int],</span> <span class="pre">gen_dict:</span> <span class="pre">Dict[str,</span> <span class="pre">int],</span> <span class="pre">logger:</span> <span class="pre">Logger</span> <span class="pre">=</span> <span class="pre">&lt;VeraGridEngine.basic_structures.Logger</span> <span class="pre">object&gt;</span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="VeraGridEngine.DataStructures.html#VeraGridEngine.DataStructures.fluid_pump_data.FluidPumpData" title="VeraGridEngine.DataStructures.fluid_pump_data.FluidPumpData"><span class="pre">FluidPumpData</span></a></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Compilers/circuit_to_data.html#get_fluid_pump_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Compilers.circuit_to_data.get_fluid_pump_data" title="Link to this definition"></a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -477,6 +479,7 @@
 <li><p><strong>circuit</strong></p></li>
 <li><p><strong>plant_dict</strong></p></li>
 <li><p><strong>gen_dict</strong></p></li>
+<li><p><strong>logger</strong></p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -487,7 +490,7 @@
 
 <dl class="py function">
 <dt class="sig sig-object py" id="VeraGridEngine.Compilers.circuit_to_data.get_fluid_turbine_data">
-<span class="sig-prename descclassname"><span class="pre">VeraGridEngine.Compilers.circuit_to_data.</span></span><span class="sig-name descname"><span class="pre">get_fluid_turbine_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.DataStructures.html#VeraGridEngine.DataStructures.fluid_turbine_data.FluidTurbineData" title="VeraGridEngine.DataStructures.fluid_turbine_data.FluidTurbineData"><span class="pre">FluidTurbineData</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">circuit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.Devices.html#VeraGridEngine.Devices.multi_circuit.MultiCircuit" title="VeraGridEngine.Devices.multi_circuit.MultiCircuit"><span class="pre">MultiCircuit</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">plant_dict</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gen_dict</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="VeraGridEngine.DataStructures.html#VeraGridEngine.DataStructures.fluid_turbine_data.FluidTurbineData" title="VeraGridEngine.DataStructures.fluid_turbine_data.FluidTurbineData"><span class="pre">FluidTurbineData</span></a></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Compilers/circuit_to_data.html#get_fluid_turbine_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Compilers.circuit_to_data.get_fluid_turbine_data" title="Link to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">VeraGridEngine.Compilers.circuit_to_data.</span></span><span class="sig-name descname"><span class="pre">get_fluid_turbine_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">data:</span> <span class="pre">FluidTurbineData,</span> <span class="pre">circuit:</span> <span class="pre">MultiCircuit,</span> <span class="pre">plant_dict:</span> <span class="pre">Dict[str,</span> <span class="pre">int],</span> <span class="pre">gen_dict:</span> <span class="pre">Dict[str,</span> <span class="pre">int],</span> <span class="pre">logger:</span> <span class="pre">Logger</span> <span class="pre">=</span> <span class="pre">&lt;VeraGridEngine.basic_structures.Logger</span> <span class="pre">object&gt;</span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="VeraGridEngine.DataStructures.html#VeraGridEngine.DataStructures.fluid_turbine_data.FluidTurbineData" title="VeraGridEngine.DataStructures.fluid_turbine_data.FluidTurbineData"><span class="pre">FluidTurbineData</span></a></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Compilers/circuit_to_data.html#get_fluid_turbine_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Compilers.circuit_to_data.get_fluid_turbine_data" title="Link to this definition"></a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -495,6 +498,7 @@
 <li><p><strong>circuit</strong></p></li>
 <li><p><strong>plant_dict</strong></p></li>
 <li><p><strong>gen_dict</strong></p></li>
+<li><p><strong>logger</strong></p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -601,6 +605,25 @@
 </dd></dl>
 
 <dl class="py function">
+<dt class="sig sig-object py" id="VeraGridEngine.Compilers.circuit_to_data.get_valid_fluid_injection_indices">
+<span class="sig-prename descclassname"><span class="pre">VeraGridEngine.Compilers.circuit_to_data.</span></span><span class="sig-name descname"><span class="pre">get_valid_fluid_injection_indices</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">elm</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.Devices.Fluid.html#VeraGridEngine.Devices.Fluid.fluid_injection_template.FluidInjectionTemplate" title="VeraGridEngine.Devices.Fluid.fluid_injection_template.FluidInjectionTemplate"><span class="pre">FluidInjectionTemplate</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">plant_dict</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gen_dict</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">logger</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.html#VeraGridEngine.basic_structures.Logger" title="VeraGridEngine.basic_structures.Logger"><span class="pre">Logger</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Compilers/circuit_to_data.html#get_valid_fluid_injection_indices"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Compilers.circuit_to_data.get_valid_fluid_injection_indices" title="Link to this definition"></a></dt>
+<dd><p>Resolve the plant and generator indices for one fluid injection.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>elm</strong> – Fluid injection device.</p></li>
+<li><p><strong>plant_dict</strong> – Fluid node index by idtag.</p></li>
+<li><p><strong>gen_dict</strong> – Generator index by idtag.</p></li>
+<li><p><strong>logger</strong> – Logger receiving invalid-link errors.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Plant and generator indices, or <code class="docutils literal notranslate"><span class="pre">None</span></code> for invalid links.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="VeraGridEngine.Compilers.circuit_to_data.get_vsc_data">
 <span class="sig-prename descclassname"><span class="pre">VeraGridEngine.Compilers.circuit_to_data.</span></span><span class="sig-name descname"><span class="pre">get_vsc_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">data:</span> <span class="pre">VscData,</span> <span class="pre">circuit:</span> <span class="pre">MultiCircuit,</span> <span class="pre">bus_dict:</span> <span class="pre">Dict[Bus,</span> <span class="pre">int],</span> <span class="pre">branch_dict:</span> <span class="pre">Dict[BRANCH_TYPES,</span> <span class="pre">int],</span> <span class="pre">bus_data:</span> <span class="pre">BusData,</span> <span class="pre">bus_voltage_used:</span> <span class="pre">BoolVec,</span> <span class="pre">t_idx:</span> <span class="pre">int</span> <span class="pre">|</span> <span class="pre">None,</span> <span class="pre">opf_results:</span> <span class="pre">VALID_OPF_RESULTS</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">use_stored_guess:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False,</span> <span class="pre">control_remote_voltage:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">True,</span> <span class="pre">logger:</span> <span class="pre">Logger</span> <span class="pre">=</span> <span class="pre">&lt;VeraGridEngine.basic_structures.Logger</span> <span class="pre">object&gt;</span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Compilers/circuit_to_data.html#get_vsc_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Compilers.circuit_to_data.get_vsc_data" title="Link to this definition"></a></dt>
 <dd><p>Compile VscData for a time step or the snapshot
@@ -636,6 +659,23 @@
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>Tuple <code class="docutils literal notranslate"><span class="pre">(lower,</span> <span class="pre">upper)</span></code> with <code class="docutils literal notranslate"><span class="pre">upper</span> <span class="pre">&gt;=</span> <span class="pre">lower</span></code> enforced.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="VeraGridEngine.Compilers.circuit_to_data.resize_fluid_injection_data">
+<span class="sig-prename descclassname"><span class="pre">VeraGridEngine.Compilers.circuit_to_data.</span></span><span class="sig-name descname"><span class="pre">resize_fluid_injection_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.DataStructures.html#VeraGridEngine.DataStructures.fluid_turbine_data.FluidTurbineData" title="VeraGridEngine.DataStructures.fluid_turbine_data.FluidTurbineData"><span class="pre">FluidTurbineData</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">nelm</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Compilers/circuit_to_data.html#resize_fluid_injection_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Compilers.circuit_to_data.resize_fluid_injection_data" title="Link to this definition"></a></dt>
+<dd><p>Resize fluid injection data arrays to the valid compiled entries.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> – Fluid injection data structure.</p></li>
+<li><p><strong>nelm</strong> – Number of valid compiled entries.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>None.</p>
 </dd>
 </dl>
 </dd></dl>
