@@ -106,9 +106,9 @@
        </item>
       </layout>
      </widget>
-     <widget class="QWidget" name="tab_2">
+     <widget class="QWidget" name="dae_model_page">
       <attribute name="title">
-       <string>Code</string>
+       <string>DAE model</string>
       </attribute>
       <layout class="QVBoxLayout" name="verticalLayout">
        <item>
@@ -174,10 +174,28 @@
            </property>
           </widget>
          </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QWidget" name="dae_editor_container" native="true">
+        <layout class="QVBoxLayout" name="dae_editor_layout">
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
         </layout>
-       </item>
-       <item>
-        <widget class="QFrame" name="frame">
+       </widget>
+      </item>
+      <item>
+       <widget class="QFrame" name="frame">
          <property name="frameShape">
           <enum>QFrame::Shape::StyledPanel</enum>
          </property>
@@ -185,6 +203,19 @@
           <enum>QFrame::Shadow::Raised</enum>
          </property>
          <layout class="QHBoxLayout" name="horizontalLayout">
+          <item>
+           <widget class="QLabel" name="dae_validation_status_label">
+            <property name="text">
+             <string/>
+            </property>
+            <property name="wordWrap">
+             <bool>false</bool>
+            </property>
+            <property name="textInteractionFlags">
+             <set>Qt::TextInteractionFlag::TextSelectableByMouse</set>
+            </property>
+           </widget>
+          </item>
           <item>
            <spacer name="horizontalSpacer">
             <property name="orientation">
@@ -198,25 +229,14 @@
             </property>
            </spacer>
           </item>
-          <item>
-           <widget class="QPushButton" name="validate_code_button">
-            <property name="text">
-             <string>Validate model</string>
-            </property>
-            <property name="icon">
-             <iconset resource="../../../Icons/icons.qrc">
-              <normaloff>:/Icons/icons/accept.png</normaloff>:/Icons/icons/accept.png</iconset>
-            </property>
-           </widget>
-          </item>
          </layout>
         </widget>
        </item>
       </layout>
      </widget>
-     <widget class="QWidget" name="tab">
+     <widget class="QWidget" name="latex_page">
       <attribute name="title">
-       <string>LaTex</string>
+       <string>LaTeX rendering</string>
       </attribute>
       <layout class="QVBoxLayout" name="verticalLayout_2">
        <item>
@@ -399,6 +419,22 @@
     </widget>
    </item>
    <item>
+    <widget class="QLabel" name="status_label">
+     <property name="visible">
+      <bool>false</bool>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+     <property name="textInteractionFlags">
+      <set>Qt::TextInteractionFlag::TextSelectableByMouse</set>
+     </property>
+    </widget>
+   </item>
+   <item>
     <layout class="QHBoxLayout" name="button_layout">
      <item>
       <spacer name="button_spacer">
@@ -411,7 +447,18 @@
          <height>20</height>
         </size>
        </property>
-      </spacer>
+     </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="validate_code_button">
+       <property name="text">
+        <string>Validate model</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../../../Icons/icons.qrc">
+         <normaloff>:/Icons/icons/accept.png</normaloff>:/Icons/icons/accept.png</iconset>
+       </property>
+      </widget>
      </item>
      <item>
       <widget class="QPushButton" name="apply_button">

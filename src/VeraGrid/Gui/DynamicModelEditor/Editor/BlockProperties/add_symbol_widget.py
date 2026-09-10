@@ -118,7 +118,15 @@ class Ui_Form(object):
         self.add_symbol_button = QPushButton(self.add_symbol_group)
         self.add_symbol_button.setObjectName(u"add_symbol_button")
 
-        self.add_symbol_layout.addWidget(self.add_symbol_button, 15, 0, 1, 1)
+        self.add_symbol_layout.addWidget(self.add_symbol_button, 16, 0, 1, 1)
+
+        self.add_symbol_status_label = QLabel(self.add_symbol_group)
+        self.add_symbol_status_label.setObjectName(u"add_symbol_status_label")
+        self.add_symbol_status_label.setVisible(False)
+        self.add_symbol_status_label.setWordWrap(True)
+        self.add_symbol_status_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+
+        self.add_symbol_layout.addWidget(self.add_symbol_status_label, 15, 0, 1, 1)
 
         self.new_static_reference_label = QLabel(self.add_symbol_group)
         self.new_static_reference_label.setObjectName(u"new_static_reference_label")
@@ -174,7 +182,7 @@ class Ui_Form(object):
     # setupUi
 
     def retranslateUi(self, Form):
-        Form.setWindowTitle(QCoreApplication.translate("Form", u"Form", None))
+        Form.setWindowTitle(QCoreApplication.translate("Form", u"Add block property", None))
         self.add_symbol_group.setTitle(QCoreApplication.translate("Form", u"Add symbol to selected block", None))
         self.new_symbol_exported.setText(QCoreApplication.translate("Form", u"Output", None))
         self.new_state_derivative.setText(QCoreApplication.translate("Form", u"Create derivative variable", None))
@@ -183,6 +191,7 @@ class Ui_Form(object):
         self.new_symbol_owner_label.setText(QCoreApplication.translate("Form", u"Owner block", None))
         self.new_symbol_kind_label.setText(QCoreApplication.translate("Form", u"Type", None))
         self.add_symbol_button.setText(QCoreApplication.translate("Form", u"Add symbol", None))
+        self.add_symbol_status_label.setText("")
         self.new_static_reference_label.setText(QCoreApplication.translate("Form", u"Static device mapping", None))
 #if QT_CONFIG(tooltip)
         self.new_external_reference_label.setToolTip(QCoreApplication.translate("Form", u"Power-flow variable used to initialize this dynamic variable.", None))

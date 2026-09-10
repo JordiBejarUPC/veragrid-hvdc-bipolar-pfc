@@ -620,6 +620,34 @@ def test_side_panel_contains_only_library_while_modal_loads_block_parameters() -
     editor.close()
 
 
+def test_canvas_request_opens_restructured_block_properties() -> None:
+    """Open the Designer-backed editor through the canvas controller path.
+
+    :return: None.
+    """
+    editor: DynamicBlockEditorGUI = _build_editor(DynamicSimulationMode.EMT)
+    block_item: graph.GenericBlockItem = _build_catalog_block_item(editor, "pulse")
+    assert block_item.subsys is not None
+
+    # Double click and the ``Edit block`` context action both end at this
+    # controller method, so exercise the shared path without synthesizing a
+    # platform-dependent native mouse event.
+    editor.request_open_block_properties(block_item.subsys)
+
+    dialogue: DynamicBlockPropertiesDialog | None = editor._block_properties_dialogue
+    assert dialogue is not None
+    tab_titles: list[str] = list()
+    tab_index: int
+    for tab_index in range(dialogue._tabs.count()):
+        tab_titles.append(dialogue._tabs.tabText(tab_index))
+    assert tab_titles == list(("General options", "DAE model", "LaTeX rendering"))
+    assert editor._block_properties_dock is not None
+
+    editor.close_block_properties_dock()
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
 def test_modal_parameter_edit_preserves_non_structural_block_identity() -> None:
     """Editing a catalogue constant must not reconstruct the symbolic block."""
     editor: DynamicBlockEditorGUI = _build_editor(DynamicSimulationMode.EMT)

@@ -60,12 +60,13 @@ from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import Dyn
 from VeraGrid.Gui.DynamicModelEditor.Editor.DynamicLibrary.dynamic_editor_library import DynamicEditorLibrary, LibraryTreeFilterProxyModel
 from VeraGrid.Gui.DynamicModelEditor.Editor.ElementDialogues.measurements_dialog import MeasurementsDialog
 import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_models as dialog_models
-# from VeraGrid.Gui.DynamicModelEditor.Editor.BlockProperties.dynamic_block_properties import (
-#     BlockStructuralEditRequest,
-#     BlockVariableRenameRequest,
-#     DynamicBlockPropertiesDialog,
-#     DynamicBlockPropertiesDockWidget,
-# )
+from VeraGrid.Gui.DynamicModelEditor.Editor.BlockProperties.dynamic_block_properties import (
+    BlockStructuralEditRequest,
+    BlockVariableRenameRequest,
+    DynamicBlockPropertiesDialog,
+    DynamicBlockPropertiesDockWidget,
+    resolve_block_documentation_url,
+)
 import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_validation as valid
 from VeraGrid.Gui.DynamicModelEditor.Editor.DynamicLibrary.dynamic_editor_utilities import (
     create_block_of_type,
@@ -2212,9 +2213,47 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
+    def request_open_block_documentation(self, block: Block) -> None:
+        """
+        Open the online catalogue documentation for one diagram block.
+
+        Documentation is a canvas context-menu action because it describes the
+        original library block, not one editable field in Block properties.
+
+        :param block: Symbolic block represented by the context-menu item.
+        :return: None.
+        """
+        diagram_node: BlockDiagramNode | None = self.diagram.node_data.get(block.uid, None)
+        if diagram_node is not None:
+            block_type_name: str = diagram_node.tpe
+        else:
+            block_type_name = "CUSTOM"
+
+        documentation_url: str | None = resolve_block_documentation_url(
+            block_type_name=block_type_name,
+            block_name=block.name,
+            block=block,
+        )
+        if documentation_url is None:
+            QtWidgets.QMessageBox.information(
+                self,
+                self.tr("Block info"),
+                self.tr("No online catalogue documentation is available for this custom block."),
+            )
+        else:
+            opened: bool = QtGui.QDesktopServices.openUrl(QtCore.QUrl(documentation_url))
+            if opened:
+                pass
+            else:
+                QtWidgets.QMessageBox.warning(
+                    self,
+                    self.tr("Block info"),
+                    self.tr("The online block documentation could not be opened."),
+                )
+
     def request_open_block_properties(self, block: Block) -> None:
         """
-        Open the modal properties editor for one ordinary symbolic block.
+        Open the properties editor for one ordinary symbolic block.
 
         Root interface wrappers and connection/tool nodes are editor infrastructure,
         not user-authored equation blocks, so they do not expose this dialogue.

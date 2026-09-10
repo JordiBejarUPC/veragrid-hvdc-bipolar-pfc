@@ -1505,7 +1505,7 @@ class DynamicEventsPage(QtWidgets.QWidget):
 
         :return: None.
         """
-        self.ui.actionAddEvent.setEnabled(True)
+        self.ui.actionAdd.setEnabled(True)
         self.ui.actionRemove.setEnabled(True)
         device_events: list[DynamicEventDraft] = self.session.get_events_for_device(
             device=self.device,
@@ -1522,9 +1522,9 @@ class DynamicEventsPage(QtWidgets.QWidget):
         )
         self.ui.actionSwitchSequence.setEnabled(can_open_switch_sequence)
         if self.has_runtime_parameters():
-            self.ui.actionAddEvent.setToolTip(self.tr("Add an event and select its event group"))
+            self.ui.actionAdd.setToolTip(self.tr("Add an event and select its event group"))
         else:
-            self.ui.actionAddEvent.setToolTip(
+            self.ui.actionAdd.setToolTip(
                 self.tr("No events can be added because the dynamic model has no event parameters.")
             )
 

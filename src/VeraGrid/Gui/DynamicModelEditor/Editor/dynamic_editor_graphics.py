@@ -1798,14 +1798,17 @@ class EditableBlockNameItem(QGraphicsTextItem):
         super().focusOutEvent(event)
 
     def mouseDoubleClickEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
-        """Start inline editing when the user double-clicks the name itself.
+        """Forward a name-label double click to the complete block item.
+
+        Renaming remains available through the block context menu. Forwarding
+        here makes the documented double-click gesture consistent over both the
+        block body and its visible name, including specialized block editors.
 
         :param event: Mouse event received on the block-name label.
         :return: None.
         """
         if event.button() == Qt.MouseButton.LeftButton:
-            self.start_editing()
-            event.accept()
+            self._owner.mouseDoubleClickEvent(event)
         else:
             super().mouseDoubleClickEvent(event)
 
@@ -4743,6 +4746,8 @@ class DiagramScene(QGraphicsScene):
                 remove_action: QAction | None
                 color_action: QAction | None
                 rename_action: QAction | None
+                edit_action: QAction | None
+                block_info_action: QAction | None
 
                 # Root interface ovals are part of the device contract and can
                 # only be renamed from this menu.
@@ -4764,6 +4769,32 @@ class DiagramScene(QGraphicsScene):
                 else:
                     rename_action = None
 
+                # Ordinary symbolic blocks expose the same editor from double
+                # click and from an explicit context-menu action. Root
+                # interface variables and measurement configuration retain
+                # their specialized workflows.
+                context_block: Block | None = None
+                is_editable_block: bool = (
+                    isinstance(
+                        item,
+                        (GenericBlockItem, BlockItem,
+                         RoundBaseArithmeticOpItem, RectBaseArithmeticOpItem),
+                    )
+                    and not is_variable_item
+                    and not isinstance(item, ProtectedConnectionBlockItem)
+                    and not isinstance(item, MeasurementsItem)
+                )
+                if is_editable_block:
+                    context_block = item.subsys
+                    menu.addSeparator()
+                    edit_action = QAction(self.tr("Edit block"), menu)
+                    menu.addAction(edit_action)
+                    block_info_action = QAction(self.tr("Block info"), menu)
+                    menu.addAction(block_info_action)
+                else:
+                    edit_action = None
+                    block_info_action = None
+
                 selected_action: QAction | None = menu.exec(event.screenPos())
                 if remove_action is not None and selected_action is remove_action:
                     self.remove_context_item()
@@ -4771,6 +4802,14 @@ class DiagramScene(QGraphicsScene):
                     self.recolor_context_item()
                 elif rename_action is not None and selected_action is rename_action:
                     self.rename_context_item()
+                elif (edit_action is not None
+                      and selected_action is edit_action
+                      and context_block is not None):
+                    self.editor.request_open_block_properties(context_block)
+                elif (block_info_action is not None
+                      and selected_action is block_info_action
+                      and context_block is not None):
+                    self.editor.request_open_block_documentation(context_block)
                 else:
                     pass
 

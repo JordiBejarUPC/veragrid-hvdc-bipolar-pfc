@@ -951,13 +951,23 @@ def test_invalid_dialog_draft_does_not_mutate_block() -> None:
     block, state_variable, parameter_variable, parameter_constant = build_test_block()
     original_state_equation: object = block.state_eqs[0]
     dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(block, "GENERIC", VarFactory())
-    assert dialogue._tabs.count() == 1
-    assert dialogue._tabs.tabText(0) == "General options"
-    assert not dialogue._tabs.tabIcon(0).isNull()
+    tab_names: list[str] = list()
+    tab_index: int
+    for tab_index in range(dialogue._tabs.count()):
+        tab_names.append(dialogue._tabs.tabText(tab_index))
+    assert tab_names == list(("General options", "DAE model", "LaTeX rendering"))
+    assert not dialogue._tabs.tabIcon(dialogue._tabs.indexOf(dialogue.ui.general_page)).isNull()
+    assert dialogue._dae_editor.parentWidget() is dialogue.ui.dae_editor_container
+    assert dialogue.ui.latex_page.isAncestorOf(dialogue._latex_selection_tree)
+    assert dialogue.ui.button_layout.indexOf(dialogue._validate_code_button) + 1 == (
+        dialogue.ui.button_layout.indexOf(dialogue._apply_button)
+    )
+    property_header: QtWidgets.QHeaderView = dialogue._property_tree.header()
+    assert property_header.sectionResizeMode(0) == QtWidgets.QHeaderView.ResizeMode.ResizeToContents
+    assert property_header.sectionResizeMode(1) == QtWidgets.QHeaderView.ResizeMode.ResizeToContents
+    assert property_header.sectionResizeMode(2) == QtWidgets.QHeaderView.ResizeMode.Stretch
+    assert property_header.sectionResizeMode(3) == QtWidgets.QHeaderView.ResizeMode.ResizeToContents
     assert "retained_modes = {" in dialogue._dae_editor.toPlainText()
-    assert dialogue._block_info_button.isEnabled()
-    assert "original predefined library block" in dialogue._block_info_button.toolTip()
-    assert "may differ" in dialogue._block_info_button.toolTip()
     dialogue._dae_editor.setPlainText("state_eqs = {")
     assert dialogue._dae_editor.get_diagnostics() == list()
     dialogue._validate_code_button.click()
@@ -1688,8 +1698,8 @@ def test_validate_button_marks_a_cross_line_unmatched_opening_parenthesis() -> N
     dialogue.close()
 
 
-def test_relocating_equation_panel_preserves_pending_code_and_undo() -> None:
-    """Moving an existing panel must not rebuild the active document or its draft.
+def test_switching_designer_tabs_preserves_pending_code_and_undo() -> None:
+    """Switching Designer-owned pages must preserve the active DAE document.
 
     :return: None.
     """
@@ -1699,8 +1709,7 @@ def test_relocating_equation_panel_preserves_pending_code_and_undo() -> None:
         "GENERIC",
         VarFactory(),
     )
-    equation_panel: QtWidgets.QWidget = dialogue._equation_panel
-    assert isinstance(equation_panel, QtWidgets.QTabWidget)
+    assert dialogue._dae_editor.parentWidget() is dialogue.ui.dae_editor_container
     original_code: str = dialogue._dae_editor.toPlainText()
     owner_index: int = dialogue._equation_owner_combo.currentIndex()
 
@@ -1709,19 +1718,15 @@ def test_relocating_equation_panel_preserves_pending_code_and_undo() -> None:
     dialogue._dae_editor.insertPlainText("# Pending equation edit\n")
     pending_code: str = dialogue._dae_editor.toPlainText()
     dialogue._dae_code_search.setText("Pending equation edit")
-    equation_panel.setCurrentIndex(1)
     assert dialogue._dae_editor.document().isUndoAvailable()
 
-    # Simulate moving the tools to General options using Qt ownership only.
-    # The new container remains owned by the dialogue for normal cleanup.
-    new_host: QtWidgets.QWidget = QtWidgets.QWidget(dialogue)
-    new_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(new_host)
-    equation_panel.setParent(new_host)
-    new_layout.addWidget(equation_panel)
-    equation_panel.hide()
-    equation_panel.show()
+    # The pages are fixed by the Designer file. Merely changing pages must not
+    # rebuild or reparent the Python editor created for its DAE placeholder.
+    dialogue._tabs.setCurrentWidget(dialogue.ui.latex_page)
+    dialogue._tabs.setCurrentWidget(dialogue.ui.dae_model_page)
 
-    assert equation_panel.currentIndex() == 1
+    assert dialogue._tabs.currentWidget() is dialogue.ui.dae_model_page
+    assert dialogue._dae_editor.parentWidget() is dialogue.ui.dae_editor_container
     assert dialogue._equation_owner_combo.currentIndex() == owner_index
     assert dialogue._dae_editor.toPlainText() == pending_code
     assert dialogue._equation_buffers[owner_index].get_code() == pending_code
@@ -2256,16 +2261,13 @@ def test_rms_component_block_info_uses_native_type_after_rename(
     assert resolve_block_documentation_url(block_type.name, renamed_block.name) == expected_url
     assert resolve_block_documentation_url(block_type.name.lower(), block_type.name) == expected_url
 
-    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
-        renamed_block, block_type.name, VarFactory(),
-    )
-    try:
-        # Inspect the same button that dispatches open_block_documentation;
-        # never launch a browser or require an online documentation build.
-        assert dialogue._block_info_button.isEnabled()
-        assert dialogue._block_documentation_url == expected_url
-    finally:
-        dialogue.close()
+    # Block info is dispatched by the block's canvas context menu; the
+    # properties dialogue deliberately owns no documentation button.
+    assert resolve_block_documentation_url(
+        block_type.name,
+        renamed_block.name,
+        renamed_block,
+    ) == expected_url
 
 
 def test_custom_block_disables_online_catalogue_documentation() -> None:
@@ -2273,16 +2275,7 @@ def test_custom_block_disables_online_catalogue_documentation() -> None:
     application: QtWidgets.QApplication = get_qt_application()
     _unused_application: QtWidgets.QApplication = application
     custom_block: Block = Block(name="User-authored control model")
-    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
-        custom_block,
-        "CUSTOM",
-        VarFactory(),
-    )
-
     assert resolve_block_documentation_url("CUSTOM", custom_block.name) is None
-    assert not dialogue._block_info_button.isEnabled()
-    assert "custom block" in dialogue._block_info_button.toolTip()
-    dialogue.close()
 
 
 def test_property_tree_groups_symbols_without_migrating_unmapped_static_parameters() -> None:
@@ -2858,7 +2851,7 @@ def test_python_runtime_is_preserved_by_noop_apply() -> None:
         mode_dict=dict(((mode, mode_initial),)), procedural_logic=list((logic,)),
     )
     dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(block, "GENERIC", VarFactory())
-    assert dialogue._tabs.count() == 1
+    assert dialogue._tabs.count() == 3
     assert "hard_saturation(" in dialogue._dae_editor.toPlainText()
     dialogue.apply_changes()
     assert "applied" in dialogue._status_label.text().lower()
@@ -3326,7 +3319,12 @@ def test_lookup_and_jmarti_builders_expose_conditional_special_settings() -> Non
         tab_index: int
         for tab_index in range(dialogue._tabs.count()):
             tab_names.append(dialogue._tabs.tabText(tab_index))
-        assert tab_names == list(("General options", "Special configuration"))
+        assert tab_names == list((
+            "General options",
+            "DAE model",
+            "LaTeX rendering",
+            "Special configuration",
+        ))
         if block_type == BlockType.EMT_JMARTI_LINE:
             assert dialogue._special_structural_model.rowCount() > 20
         else:
