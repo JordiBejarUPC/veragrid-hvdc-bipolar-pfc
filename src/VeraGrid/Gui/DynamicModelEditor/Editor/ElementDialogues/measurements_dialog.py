@@ -8,8 +8,47 @@ from typing import Dict, List, Tuple
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
+from VeraGrid.Gui.general_dialogues import DeviceSelectorDialogue
 from VeraGridEngine.Devices.Substation.bus import Bus
-from VeraGridEngine.enumerations import BlockType, VarPowerFlowReferenceType
+from VeraGridEngine.Devices.types import ALL_DEV_TYPES
+from VeraGridEngine.enumerations import BlockType, DeviceType, VarPowerFlowReferenceType
+
+
+class DeviceSelectionLabel(QtWidgets.QLabel):
+    """Label that requests device selection through pointer or keyboard input."""
+
+    __slots__ = ()
+
+    clicked = QtCore.Signal()
+
+    def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
+        """Emit the selection request for a left-button click.
+
+        :param event: Incoming label mouse event.
+        :return: None.
+        """
+        if event.button() == QtCore.Qt.MouseButton.LeftButton:
+            self.clicked.emit()
+            event.accept()
+        else:
+            QtWidgets.QLabel.mousePressEvent(self, event)
+
+    def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
+        """Emit the selection request for Enter, Return or Space.
+
+        :param event: Incoming label key event.
+        :return: None.
+        """
+        selection_keys: tuple[QtCore.Qt.Key, ...] = (
+            QtCore.Qt.Key.Key_Enter,
+            QtCore.Qt.Key.Key_Return,
+            QtCore.Qt.Key.Key_Space,
+        )
+        if event.key() in selection_keys:
+            self.clicked.emit()
+            event.accept()
+        else:
+            QtWidgets.QLabel.keyPressEvent(self, event)
 
 
 class MeasurementReferenceList(QtWidgets.QListWidget):
@@ -104,7 +143,8 @@ class MeasurementsDialog(QtWidgets.QDialog):
         "_buses",
         "_measurement_vars_dict",
         "_active_measurement_vars_dict",
-        "_bus_combo",
+        "_bus_label",
+        "_selected_bus",
         "_measurement_tree",
         "_input_list",
         "_output_list",
@@ -148,7 +188,8 @@ class MeasurementsDialog(QtWidgets.QDialog):
             List[VarPowerFlowReferenceType],
         ] = dict()
 
-        self._bus_combo: QtWidgets.QComboBox = QtWidgets.QComboBox(self)
+        self._bus_label: DeviceSelectionLabel = DeviceSelectionLabel("Select bus...", self)
+        self._selected_bus: Bus | None = None
         self._measurement_tree: QtWidgets.QTreeWidget = QtWidgets.QTreeWidget(self)
         self._input_list: MeasurementReferenceList = MeasurementReferenceList(0, self)
         self._output_list: MeasurementReferenceList = MeasurementReferenceList(1, self)
@@ -158,7 +199,6 @@ class MeasurementsDialog(QtWidgets.QDialog):
         self._updating_tree: bool = False
 
         self._build_ui()
-        self._populate_buses()
         self._connect_signals()
         self._refresh_direction_lists()
         self._set_measurement_configuration_enabled(False)
@@ -170,14 +210,22 @@ class MeasurementsDialog(QtWidgets.QDialog):
         """
         main_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self)
         bus_layout: QtWidgets.QFormLayout = QtWidgets.QFormLayout()
-        # Keep the selector compact while leaving enough room for " BUS 0" and
-        # the platform-specific drop-down indicator.
-        self._bus_combo.setFixedWidth(140)
-        self._bus_combo.setSizePolicy(
+        # Present the selected bus as a compact clickable field while the full
+        # searchable device tree remains inside DeviceSelectorDialogue.
+        self._bus_label.setMinimumWidth(140)
+        self._bus_label.setMaximumWidth(260)
+        self._bus_label.setMinimumHeight(26)
+        self._bus_label.setFrameShape(QtWidgets.QFrame.Shape.Panel)
+        self._bus_label.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
+        self._bus_label.setMargin(5)
+        self._bus_label.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+        self._bus_label.setFocusPolicy(QtCore.Qt.FocusPolicy.StrongFocus)
+        self._bus_label.setToolTip("Click to select a bus")
+        self._bus_label.setSizePolicy(
             QtWidgets.QSizePolicy.Policy.Fixed,
             QtWidgets.QSizePolicy.Policy.Fixed,
         )
-        bus_layout.addRow("Bus", self._bus_combo)
+        bus_layout.addRow("Bus", self._bus_label)
         main_layout.addLayout(bus_layout)
 
         content_widget: QtWidgets.QWidget = QtWidgets.QWidget(self)
@@ -225,18 +273,6 @@ class MeasurementsDialog(QtWidgets.QDialog):
         buttons.accepted.connect(self.accept_dialog)
         buttons.rejected.connect(self.reject)
         main_layout.addWidget(buttons)
-
-    def _populate_buses(self) -> None:
-        """Populate the bus selector while retaining each concrete Bus object.
-
-        :return: None.
-        """
-        # A data-less first entry forces an explicit user choice before the
-        # bus-dependent measurement configuration can be created.
-        self._bus_combo.addItem("Select bus...", None)
-        bus: Bus
-        for bus in self._buses:
-            self._bus_combo.addItem(bus.name, bus)
 
     def _set_measurement_configuration_enabled(self, enabled: bool) -> None:
         """Enable or shade all controls that depend on the selected bus.
@@ -292,16 +328,39 @@ class MeasurementsDialog(QtWidgets.QDialog):
         self._measurement_tree.itemClicked.connect(self.on_tree_item_clicked)
         self._input_list.moveRequested.connect(self.move_reference)
         self._output_list.moveRequested.connect(self.move_reference)
-        self._bus_combo.currentIndexChanged.connect(self.on_bus_changed)
+        self._bus_label.clicked.connect(self.select_bus)
 
-    @QtCore.Slot(int)
-    def on_bus_changed(self, index: int) -> None:
-        """Rebuild the available measurement types for the selected bus domain.
+    @QtCore.Slot()
+    def select_bus(self) -> None:
+        """Open the searchable bus selector and apply an accepted selection.
 
-        :param index: Current bus-combo index.
         :return: None.
         """
-        selected_bus: object = self._bus_combo.itemData(index)
+        devices_by_type: Dict[DeviceType, List[ALL_DEV_TYPES]] = dict()
+        bus_devices: List[ALL_DEV_TYPES] = list(self._buses)
+        devices_by_type[DeviceType.BusDevice] = bus_devices
+        selector: DeviceSelectorDialogue = DeviceSelectorDialogue(
+            devices_by_type=devices_by_type,
+            allow_none=False,
+            parent=self,
+        )
+        if selector.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+            selected_device: object = selector.get_selected_device()
+            if isinstance(selected_device, Bus):
+                self.set_selected_bus(selected_device)
+            else:
+                pass
+        else:
+            pass
+
+    def set_selected_bus(self, selected_bus: Bus) -> None:
+        """Select one bus and rebuild its compatible measurement configuration.
+
+        :param selected_bus: Concrete AC or DC bus selected by the user.
+        :return: None.
+        """
+        self._selected_bus = selected_bus
+        self._bus_label.setText(selected_bus.name)
 
         # Changing the physical bus invalidates every selection made for the
         # previous domain, even when both buses happen to share that domain.
@@ -312,26 +371,23 @@ class MeasurementsDialog(QtWidgets.QDialog):
         self._output_references = list()
         self._active_measurement_vars_dict = dict()
 
-        if isinstance(selected_bus, Bus):
-            bus_domain: str
-            if selected_bus.is_dc:
-                bus_domain = "dc_bus"
-            else:
-                bus_domain = "a_c_bus"
-            domain_measurements: Dict[BlockType, List[VarPowerFlowReferenceType]] | None = (
-                self._measurement_vars_dict.get(bus_domain, None)
-            )
-            if domain_measurements is not None:
-                block_type: BlockType
-                references: List[VarPowerFlowReferenceType]
-                for block_type, references in domain_measurements.items():
-                    self._active_measurement_vars_dict[block_type] = list(references)
-                self._populate_measurement_tree()
-            else:
-                pass
-            self._set_measurement_configuration_enabled(True)
+        bus_domain: str
+        if selected_bus.is_dc:
+            bus_domain = "dc_bus"
         else:
-            self._set_measurement_configuration_enabled(False)
+            bus_domain = "a_c_bus"
+        domain_measurements: Dict[BlockType, List[VarPowerFlowReferenceType]] | None = (
+            self._measurement_vars_dict.get(bus_domain, None)
+        )
+        if domain_measurements is not None:
+            block_type: BlockType
+            references: List[VarPowerFlowReferenceType]
+            for block_type, references in domain_measurements.items():
+                self._active_measurement_vars_dict[block_type] = list(references)
+            self._populate_measurement_tree()
+        else:
+            pass
+        self._set_measurement_configuration_enabled(True)
 
         self._updating_tree = False
         self._refresh_direction_lists()
@@ -534,8 +590,7 @@ class MeasurementsDialog(QtWidgets.QDialog):
 
         :return: None.
         """
-        selected_bus: object = self._bus_combo.currentData()
-        if not isinstance(selected_bus, Bus):
+        if self._selected_bus is None:
             QtWidgets.QMessageBox.warning(self, "Measurement block", "Select one bus.")
         elif self._selected_block_type is None:
             QtWidgets.QMessageBox.warning(self, "Measurement block", "Select one measurement type.")
@@ -555,10 +610,9 @@ class MeasurementsDialog(QtWidgets.QDialog):
         :return: Selected bus, block type, input references, and output references.
         :raises RuntimeError: If queried before a complete selection exists.
         """
-        selected_bus: object = self._bus_combo.currentData()
-        if isinstance(selected_bus, Bus) and self._selected_block_type is not None:
+        if self._selected_bus is not None and self._selected_block_type is not None:
             return (
-                selected_bus,
+                self._selected_bus,
                 self._selected_block_type,
                 list(self._input_references),
                 list(self._output_references),
