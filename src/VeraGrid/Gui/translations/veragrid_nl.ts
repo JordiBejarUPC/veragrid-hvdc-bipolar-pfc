@@ -2229,6 +2229,49 @@ Weet u zeker?</translation>
     </message>
 </context>
 <context>
+    <name>DiagramScene</name>
+    <message>
+        <source>Block info</source>
+        <translation>Informatie over blok</translation>
+    </message>
+    <message>
+        <source>Edit block</source>
+        <translation type="vanished">Blok bewerken</translation>
+    </message>
+    <message>
+        <source>Change Color</source>
+        <translation>Verander kleur</translation>
+    </message>
+    <message>
+        <source>Change Name</source>
+        <translation>Naam wijzigen</translation>
+    </message>
+    <message>
+        <source>Change Variable Name</source>
+        <translation>Variabele naam wijzigen</translation>
+    </message>
+    <message>
+        <source>Duplicate</source>
+        <translation>Duplicaat</translation>
+    </message>
+    <message>
+        <source>Edit</source>
+        <translation>Bewerking</translation>
+    </message>
+    <message>
+        <source>Open internals</source>
+        <translation>Interne details openen</translation>
+    </message>
+    <message>
+        <source>Properties</source>
+        <translation>Eigenschappen</translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation>Verwijderen</translation>
+    </message>
+</context>
+<context>
     <name>DiagramsMain</name>
     <message>
         <source>Are you sure that you want to try an automatic layout?</source>
@@ -3016,7 +3059,7 @@ Weet u zeker?</translation>
         <translation>Pas structurele instellingen afzonderlijk toe van DAE-code of symbool-interface wijzigingen.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="388"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="405"/>
         <source>Block / equation group</source>
         <translation>Blok / vergelijkingsgroep</translation>
     </message>
@@ -3049,9 +3092,8 @@ Weet u zeker?</translation>
         <translation>Wijzigingen toegepast. Geavanceerde ongelijkheden/discrete/boolean logica is ongewijzigd behouden.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="323"/>
         <source>Clear</source>
-        <translation>Duidelijk</translation>
+        <translation type="vanished">Duidelijk</translation>
     </message>
     <message>
         <source>Create derivative variable</source>
@@ -3066,7 +3108,7 @@ Weet u zeker?</translation>
         <translation type="vanished">DAE-code is geldig.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="131"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="134"/>
         <source>DAE model</source>
         <translation>DAE-model</translation>
     </message>
@@ -3095,43 +3137,48 @@ Weet u zeker?</translation>
         <translation>Vergelijking PDF aangemaakt: {path}</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="158"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="188"/>
         <source>Equation owner</source>
         <translation>Vergelijking eigenaar</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="251"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="254"/>
         <source>&lt;&lt;</source>
         <translation>&lt;&lt;</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="261"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="264"/>
         <source>&gt;&gt;</source>
         <translation>&gt;&gt;</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="289"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="292"/>
         <source>LaTeX rendering</source>
         <translation>LaTeX rendering</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="343"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="333"/>
+        <source>Select None</source>
+        <translation>Geen selectie</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="360"/>
         <source>Save redered PDF</source>
         <translation>Opslaan gerenderde PDF</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="372"/>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="393"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="389"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="410"/>
         <source>Equations</source>
         <translation>Vergelijkingen</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="410"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="427"/>
         <source>LaTex source</source>
         <translation>LaTeX bron</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="509"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="529"/>
         <source>Accept changes</source>
         <translation>Wijzigingen accepteren</translation>
     </message>
@@ -3253,7 +3300,7 @@ Weet u zeker?</translation>
         <translation>Dynamische vergelijkingen opslaan als PDF</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="238"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="241"/>
         <source>Search Python code...</source>
         <translation>Python-code zoeken...</translation>
     </message>
@@ -3274,7 +3321,7 @@ Weet u zeker?</translation>
         <translation>Selecteer een geldig symbooltype.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="316"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="319"/>
         <source>Select all</source>
         <translation>Selecteer alles</translation>
     </message>
@@ -3283,12 +3330,12 @@ Weet u zeker?</translation>
         <translation>Selecteer ten minste één niet-lege vergelijkingsgroep.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="422"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="439"/>
         <source>Select equation groups to generate copyable LaTeX source.</source>
         <translation>Selecteer vergelijkingsgroepen om kopieerbare LaTeX-broncode te genereren.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="378"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="395"/>
         <source>Select the equation groups to include. Each internal block and each DAE section can be selected independently.</source>
         <translation>Selecteer de vergelijkingsgroepen om op te nemen. Elke interne cel en elke DAE-sectie kan onafhankelijk worden geselecteerd.</translation>
     </message>
@@ -3313,7 +3360,7 @@ Weet u zeker?</translation>
         <translation type="vanished">De online blokdocumentatie kon niet in de systeembrowser worden geopend.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="440"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="457"/>
         <source>These settings contain structured data used to regenerate the block. Edit sequences with valid Python tuple/list syntax.</source>
         <translation>Deze instellingen bevatten gestructureerde gegevens die worden gebruikt om de blok te regenereren. Bewerk sequenties met geldige Python-tuple/lijst-syntax.</translation>
     </message>
@@ -3346,7 +3393,7 @@ Weet u zeker?</translation>
         <translation type="vanished">+ Procedurele logica toevoegen</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="188"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="161"/>
         <source>Add one procedural behavior to the active equation owner&apos;s Python code.</source>
         <translation>Voeg een procedureel gedrag toe aan de Python-code van de actieve vergelijkingseigenaar.</translation>
     </message>
@@ -3388,7 +3435,7 @@ Weet u zeker?</translation>
         <translation type="vanished">Python-code en LaTeX-renderingshulpmiddel tonen of verbergen</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="434"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="451"/>
         <source>Special configuration</source>
         <translation>Speciale configuratie</translation>
     </message>
@@ -3401,7 +3448,7 @@ Weet u zeker?</translation>
         <translation>De geselecteerde eigenaar heeft geen Python-code buffer.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="482"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="502"/>
         <source>Validate model</source>
         <translation>Model valideren</translation>
     </message>
@@ -3831,6 +3878,13 @@ Weet u zeker?</translation>
     </message>
 </context>
 <context>
+    <name>DynamicEventGroupsTreeModel</name>
+    <message>
+        <source>Event groups</source>
+        <translation>Gebeurtenisgroepen</translation>
+    </message>
+</context>
+<context>
     <name>DynamicEventsDraftSession</name>
     <message>
         <source>An event and its events group use different simulation modes.</source>
@@ -4094,8 +4148,8 @@ Weet u zeker?</translation>
         <translation>Groepnaam:</translation>
     </message>
     <message>
-        <source>Remove '{name}' and all events in this group?</source>
-        <translation>'{name}' en alle gebeurtenissen in deze groep verwijderen?</translation>
+        <source>Remove &apos;{name}&apos; and all events in this group?</source>
+        <translation>&apos;{name}&apos; en alle gebeurtenissen in deze groep verwijderen?</translation>
     </message>
     <message>
         <source>Remove event group</source>
@@ -7035,6 +7089,44 @@ Wilt u doorgaan zonder een sjabloon?</translation>
     <message>
         <source>MATPOWER export</source>
         <translation>MATPOWER export</translation>
+    </message>
+</context>
+<context>
+    <name>MeasurementsDialog</name>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="14"/>
+        <source>Configure measurement block</source>
+        <translation>Meetblok configureren</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="38"/>
+        <source>Bus</source>
+        <translation>Bus</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="69"/>
+        <source>Click to select a bus</source>
+        <translation>Klik om een bus te selecteren</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="78"/>
+        <source>Select bus...</source>
+        <translation>Bus selecteren...</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="123"/>
+        <source>Name</source>
+        <translation>Naam</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="128"/>
+        <source>I/O</source>
+        <translation>I/O</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="133"/>
+        <source>Comment</source>
+        <translation>Opmerking</translation>
     </message>
 </context>
 <context>
@@ -16073,24 +16165,6 @@ U moet een net laden of aanmaken!</translation>
     <message>
         <source>Question</source>
         <translation>Vraag</translation>
-    </message>
-</context>
-<context>
-    <name>DiagramScene</name>
-    <message>
-        <source>Block info</source>
-        <translation>Informatie over blok</translation>
-    </message>
-    <message>
-        <source>Edit block</source>
-        <translation>Blok bewerken</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEventGroupsTreeModel</name>
-    <message>
-        <source>Event groups</source>
-        <translation>Gebeurtenisgroepen</translation>
     </message>
 </context>
 </TS>

@@ -2229,6 +2229,49 @@ Are you sure?</translation>
     </message>
 </context>
 <context>
+    <name>DiagramScene</name>
+    <message>
+        <source>Block info</source>
+        <translation>Πληροφορίες μπλοκ</translation>
+    </message>
+    <message>
+        <source>Edit block</source>
+        <translation type="vanished">Επεξεργασία μπλοκ</translation>
+    </message>
+    <message>
+        <source>Change Color</source>
+        <translation>Αλλαγή χρώματος</translation>
+    </message>
+    <message>
+        <source>Change Name</source>
+        <translation>Αλλαγή Ονόματος</translation>
+    </message>
+    <message>
+        <source>Change Variable Name</source>
+        <translation>Αλλαγή Ονόματος Μεταβλητού</translation>
+    </message>
+    <message>
+        <source>Duplicate</source>
+        <translation>Αντίγραφο</translation>
+    </message>
+    <message>
+        <source>Edit</source>
+        <translation>Εκδίδω</translation>
+    </message>
+    <message>
+        <source>Open internals</source>
+        <translation>Άνοιγμα Εσωτερικών</translation>
+    </message>
+    <message>
+        <source>Properties</source>
+        <translation>Σκηνικά θέατρου</translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation>Αφαιρώ</translation>
+    </message>
+</context>
+<context>
     <name>DiagramsMain</name>
     <message>
         <source>Are you sure that you want to try an automatic layout?</source>
@@ -3016,7 +3059,7 @@ Are you sure?</translation>
         <translation>Εφαρμόστε τις δομικές ρυθμίσεις ξεχωριστά από τον κώδικα DAE ή τις αλλαγές διεπαφής συμβόλου.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="388"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="405"/>
         <source>Block / equation group</source>
         <translation>Μπλοκ / ομάδα εξισώσεων</translation>
     </message>
@@ -3049,9 +3092,8 @@ Are you sure?</translation>
         <translation>Οι αλλαγές εφαρμόστηκαν. Η προηγμένη ανισότητα/διακριτή/boolean λογική διατηρήθηκε χωρίς αλλαγές.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="323"/>
         <source>Clear</source>
-        <translation>Σαφής</translation>
+        <translation type="vanished">Σαφής</translation>
     </message>
     <message>
         <source>Create derivative variable</source>
@@ -3066,7 +3108,7 @@ Are you sure?</translation>
         <translation type="vanished">Ο κώδικας DAE είναι έγκυρος.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="131"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="134"/>
         <source>DAE model</source>
         <translation>Μοντέλο DAE</translation>
     </message>
@@ -3095,43 +3137,48 @@ Are you sure?</translation>
         <translation>Δημιουργήθηκε PDF εξίσωσης: {path}</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="158"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="188"/>
         <source>Equation owner</source>
         <translation>Ιδιοκτήτης εξίσωσης</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="251"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="254"/>
         <source>&lt;&lt;</source>
         <translation>&lt;&lt;</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="261"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="264"/>
         <source>&gt;&gt;</source>
         <translation>&gt;&gt;</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="289"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="292"/>
         <source>LaTeX rendering</source>
         <translation>Απόδοση LaTeX</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="343"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="333"/>
+        <source>Select None</source>
+        <translation>Κανένα Επιλεγμένο</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="360"/>
         <source>Save redered PDF</source>
         <translation>Αποθήκευση αποδομένου PDF</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="372"/>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="393"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="389"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="410"/>
         <source>Equations</source>
         <translation>Εξισώσεις</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="410"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="427"/>
         <source>LaTex source</source>
         <translation>Πηγή LaTeX</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="509"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="529"/>
         <source>Accept changes</source>
         <translation>Αποδοχή αλλαγών</translation>
     </message>
@@ -3253,7 +3300,7 @@ Are you sure?</translation>
         <translation>Αποθήκευση PDF δυναμικών εξισώσεων</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="238"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="241"/>
         <source>Search Python code...</source>
         <translation>Αναζήτηση κώδικα Python...</translation>
     </message>
@@ -3274,7 +3321,7 @@ Are you sure?</translation>
         <translation>Επιλέξτε έναν έγκυρο τύπο συμβόλου.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="316"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="319"/>
         <source>Select all</source>
         <translation>Επιλέξτε όλα</translation>
     </message>
@@ -3283,12 +3330,12 @@ Are you sure?</translation>
         <translation>Επιλέξτε τουλάχιστον μία μη κενή ομάδα εξισώσεων.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="422"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="439"/>
         <source>Select equation groups to generate copyable LaTeX source.</source>
         <translation>Επιλέξτε ομάδες εξισώσεων για τη δημιουργία αντιγράφσιμου κώδικα LaTeX.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="378"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="395"/>
         <source>Select the equation groups to include. Each internal block and each DAE section can be selected independently.</source>
         <translation>Επιλέξτε τις ομάδες εξισώσεων που θέλετε να συμπεριλάβετε. Κάθε εσωτερικό μπλοκ και κάθε 섹션 DAE μπορούν να επιλεγούν ανεξάρτητα.</translation>
     </message>
@@ -3313,7 +3360,7 @@ Are you sure?</translation>
         <translation type="vanished">Η online τεκμηρίωση του μπλοκ δεν μπορούσε να ανοίξει στον φυλλομετρητή του συστήματος.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="440"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="457"/>
         <source>These settings contain structured data used to regenerate the block. Edit sequences with valid Python tuple/list syntax.</source>
         <translation>Αυτές οι ρυθμίσεις περιέχουν δομημένα δεδομένα που χρησιμοποιούνται για την επαναδημιουργία του μπλοκ. Επεξεργαστείτε τις ακολουθίες με έγκυρη σύνταξη tuple/list Python.</translation>
     </message>
@@ -3346,7 +3393,7 @@ Are you sure?</translation>
         <translation type="vanished">+ Προσθήκη διαδικαστικής λογικής</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="188"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="161"/>
         <source>Add one procedural behavior to the active equation owner&apos;s Python code.</source>
         <translation>Προσθήκη μιας διαδικαστικής συμπεριφοράς στον κώδικα Python του ενεργού ιδιοκτήτη εξίσωσης.</translation>
     </message>
@@ -3388,7 +3435,7 @@ Are you sure?</translation>
         <translation type="vanished">Εμφάνιση ή κρυφή του εργαλείου 렌더िंग κώδικα Python και LaTeX</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="434"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="451"/>
         <source>Special configuration</source>
         <translation>Ειδική διαμόρφωση</translation>
     </message>
@@ -3401,7 +3448,7 @@ Are you sure?</translation>
         <translation>Ο επιλεγμένος ιδιοκτήτης δεν έχει χώρο αποθήκευσης κώδικα Python.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="482"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="502"/>
         <source>Validate model</source>
         <translation>Επαλήθευση μοντέλου</translation>
     </message>
@@ -3831,6 +3878,13 @@ Are you sure?</translation>
     </message>
 </context>
 <context>
+    <name>DynamicEventGroupsTreeModel</name>
+    <message>
+        <source>Event groups</source>
+        <translation>Ομάδες Γεγονότων</translation>
+    </message>
+</context>
+<context>
     <name>DynamicEventsDraftSession</name>
     <message>
         <source>An event and its events group use different simulation modes.</source>
@@ -4094,8 +4148,8 @@ Are you sure?</translation>
         <translation>Όνομα ομάδας:</translation>
     </message>
     <message>
-        <source>Remove '{name}' and all events in this group?</source>
-        <translation>Θέλετε να αφαιρέσετε το '{name}' και όλα τα γεγονότα σε αυτήν την ομάδα;</translation>
+        <source>Remove &apos;{name}&apos; and all events in this group?</source>
+        <translation>Θέλετε να αφαιρέσετε το &apos;{name}&apos; και όλα τα γεγονότα σε αυτήν την ομάδα;</translation>
     </message>
     <message>
         <source>Remove event group</source>
@@ -7035,6 +7089,44 @@ Please correct the data and try again.</source>
     <message>
         <source>MATPOWER export</source>
         <translation>MATPOWER export</translation>
+    </message>
+</context>
+<context>
+    <name>MeasurementsDialog</name>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="14"/>
+        <source>Configure measurement block</source>
+        <translation>Διαμόρφωση Μπλοκ Μέτρησης</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="38"/>
+        <source>Bus</source>
+        <translation>Ζυγός</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="69"/>
+        <source>Click to select a bus</source>
+        <translation>Κάντε κλικ για επιλογή κόμβου</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="78"/>
+        <source>Select bus...</source>
+        <translation>Επιλογή Κόμβου...</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="123"/>
+        <source>Name</source>
+        <translation>Ονομα</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="128"/>
+        <source>I/O</source>
+        <translation>I/O</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="133"/>
+        <source>Comment</source>
+        <translation>Σχόλιο</translation>
     </message>
 </context>
 <context>
@@ -16073,24 +16165,6 @@ You need to load or create a grid!</source>
     <message>
         <source>Question</source>
         <translation>Ερώτηση</translation>
-    </message>
-</context>
-<context>
-    <name>DiagramScene</name>
-    <message>
-        <source>Block info</source>
-        <translation>Πληροφορίες μπλοκ</translation>
-    </message>
-    <message>
-        <source>Edit block</source>
-        <translation>Επεξεργασία μπλοκ</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEventGroupsTreeModel</name>
-    <message>
-        <source>Event groups</source>
-        <translation>Ομάδες Γεγονότων</translation>
     </message>
 </context>
 </TS>

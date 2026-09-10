@@ -2229,6 +2229,49 @@ Are you sure?</source>
     </message>
 </context>
 <context>
+    <name>DiagramScene</name>
+    <message>
+        <source>Block info</source>
+        <translation>معلومات الكتلة</translation>
+    </message>
+    <message>
+        <source>Edit block</source>
+        <translation type="vanished">تحرير الكتلة</translation>
+    </message>
+    <message>
+        <source>Change Color</source>
+        <translation>تغيير اللون</translation>
+    </message>
+    <message>
+        <source>Change Name</source>
+        <translation>تغيير الاسم</translation>
+    </message>
+    <message>
+        <source>Change Variable Name</source>
+        <translation>تغيير اسم المتغير</translation>
+    </message>
+    <message>
+        <source>Duplicate</source>
+        <translation>ينسخ</translation>
+    </message>
+    <message>
+        <source>Edit</source>
+        <translation>يحرر</translation>
+    </message>
+    <message>
+        <source>Open internals</source>
+        <translation>فتح التفاصيل الداخلية</translation>
+    </message>
+    <message>
+        <source>Properties</source>
+        <translation>ملكيات</translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation>يزيل</translation>
+    </message>
+</context>
+<context>
     <name>DiagramsMain</name>
     <message>
         <source>Are you sure that you want to try an automatic layout?</source>
@@ -3016,7 +3059,7 @@ Are you sure?</source>
         <translation>تطبيق الإعدادات الهيكلية بشكل منفصل عن تغييرات كود DAE أو واجهة الرمز.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="388"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="405"/>
         <source>Block / equation group</source>
         <translation>المجموعة / الكتلة المعادلة</translation>
     </message>
@@ -3049,9 +3092,8 @@ Are you sure?</source>
         <translation>تم تطبيق التغييرات. تم الحفاظ على المتباينات المتقدمة/المنفصلة/المنطق البولياني دون تغيير.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="323"/>
         <source>Clear</source>
-        <translation>واضح</translation>
+        <translation type="vanished">واضح</translation>
     </message>
     <message>
         <source>Create derivative variable</source>
@@ -3066,7 +3108,7 @@ Are you sure?</source>
         <translation type="vanished">كود DAE صالح.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="131"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="134"/>
         <source>DAE model</source>
         <translation>نموذج DAE</translation>
     </message>
@@ -3095,43 +3137,48 @@ Are you sure?</source>
         <translation>تم إنشاء ملف PDF للمعادلة: {path}</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="158"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="188"/>
         <source>Equation owner</source>
         <translation>مالك المعادلة</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="251"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="254"/>
         <source>&lt;&lt;</source>
         <translation>&lt;&lt;</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="261"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="264"/>
         <source>&gt;&gt;</source>
         <translation>&gt;&gt;</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="289"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="292"/>
         <source>LaTeX rendering</source>
         <translation>عرض LaTeX</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="343"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="333"/>
+        <source>Select None</source>
+        <translation>لم يتم تحديد أي شيء</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="360"/>
         <source>Save redered PDF</source>
         <translation>حفظ ملف PDF المعروض</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="372"/>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="393"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="389"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="410"/>
         <source>Equations</source>
         <translation>المعادلات</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="410"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="427"/>
         <source>LaTex source</source>
         <translation>مصدر LaTeX</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="509"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="529"/>
         <source>Accept changes</source>
         <translation>قبول التغييرات</translation>
     </message>
@@ -3253,7 +3300,7 @@ Are you sure?</source>
         <translation>حفظ معادلات ديناميكية بصيغة PDF</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="238"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="241"/>
         <source>Search Python code...</source>
         <translation>البحث في كود بايثون...</translation>
     </message>
@@ -3274,7 +3321,7 @@ Are you sure?</source>
         <translation>اختر نوع رمز صالح.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="316"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="319"/>
         <source>Select all</source>
         <translation>حدد الكل</translation>
     </message>
@@ -3283,12 +3330,12 @@ Are you sure?</source>
         <translation>اختر مجموعة معادلات واحدة على الأقل وغير فارغة.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="422"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="439"/>
         <source>Select equation groups to generate copyable LaTeX source.</source>
         <translation>اختر مجموعات المعادلات لتوليد مصدر LaTeX قابل للنسخ.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="378"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="395"/>
         <source>Select the equation groups to include. Each internal block and each DAE section can be selected independently.</source>
         <translation>اختر مجموعات المعادلات المراد تضمينها. يمكن تحديد كل كتلة داخلية وكل قسم DAE بشكل مستقل.</translation>
     </message>
@@ -3313,7 +3360,7 @@ Are you sure?</source>
         <translation type="vanished">تعذر فتح وثائق الكتلة عبر الإنترنت في متصفح النظام.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="440"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="457"/>
         <source>These settings contain structured data used to regenerate the block. Edit sequences with valid Python tuple/list syntax.</source>
         <translation>تحتوي هذه الإعدادات على بيانات منظمة تُستخدم لإعادة توليد الكتلة. قم بتحرير التسلسلات باستخدام بناء جملة بايثون (tuple/list) صالح.</translation>
     </message>
@@ -3346,7 +3393,7 @@ Are you sure?</source>
         <translation type="vanished">+ إضافة منطق إجرائي</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="188"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="161"/>
         <source>Add one procedural behavior to the active equation owner&apos;s Python code.</source>
         <translation>إضافة سلوك إجرائي إلى كود بايثون لمالك المعادلة النشط.</translation>
     </message>
@@ -3388,7 +3435,7 @@ Are you sure?</source>
         <translation type="vanished">إظهار أو إخفاء أداة عرض كود بايثون و LaTeX</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="434"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="451"/>
         <source>Special configuration</source>
         <translation>تكوين خاص</translation>
     </message>
@@ -3401,7 +3448,7 @@ Are you sure?</source>
         <translation>ليس لدى المالك المحدد مخزن كود بايثون.</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="482"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="502"/>
         <source>Validate model</source>
         <translation>التحقق من صحة النموذج</translation>
     </message>
@@ -3831,6 +3878,13 @@ Are you sure?</source>
     </message>
 </context>
 <context>
+    <name>DynamicEventGroupsTreeModel</name>
+    <message>
+        <source>Event groups</source>
+        <translation>مجموعات الأحداث</translation>
+    </message>
+</context>
+<context>
     <name>DynamicEventsDraftSession</name>
     <message>
         <source>An event and its events group use different simulation modes.</source>
@@ -4094,8 +4148,8 @@ Are you sure?</source>
         <translation>اسم المجموعة:</translation>
     </message>
     <message>
-        <source>Remove '{name}' and all events in this group?</source>
-        <translation>هل تريد إزالة '{name}' وجميع الأحداث في هذه المجموعة؟</translation>
+        <source>Remove &apos;{name}&apos; and all events in this group?</source>
+        <translation>هل تريد إزالة &apos;{name}&apos; وجميع الأحداث في هذه المجموعة؟</translation>
     </message>
     <message>
         <source>Remove event group</source>
@@ -7035,6 +7089,44 @@ Please correct the data and try again.</source>
     <message>
         <source>MATPOWER export</source>
         <translation>تصدير MATPOWER</translation>
+    </message>
+</context>
+<context>
+    <name>MeasurementsDialog</name>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="14"/>
+        <source>Configure measurement block</source>
+        <translation>تهيئة كتلة القياس</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="38"/>
+        <source>Bus</source>
+        <translation>قضيب</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="69"/>
+        <source>Click to select a bus</source>
+        <translation>انقر لتحديد الناقل</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="78"/>
+        <source>Select bus...</source>
+        <translation>تحديد الناقل...</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="123"/>
+        <source>Name</source>
+        <translation>اسم</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="128"/>
+        <source>I/O</source>
+        <translation>مدخل/مخرج</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="133"/>
+        <source>Comment</source>
+        <translation>تعليق</translation>
     </message>
 </context>
 <context>
@@ -16072,24 +16164,6 @@ You need to load or create a grid!</source>
     <message>
         <source>Question</source>
         <translation>سؤال</translation>
-    </message>
-</context>
-<context>
-    <name>DiagramScene</name>
-    <message>
-        <source>Block info</source>
-        <translation>معلومات الكتلة</translation>
-    </message>
-    <message>
-        <source>Edit block</source>
-        <translation>تحرير الكتلة</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEventGroupsTreeModel</name>
-    <message>
-        <source>Event groups</source>
-        <translation>مجموعات الأحداث</translation>
     </message>
 </context>
 </TS>

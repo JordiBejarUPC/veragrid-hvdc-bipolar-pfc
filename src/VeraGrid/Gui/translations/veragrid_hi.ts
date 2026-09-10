@@ -1669,6 +1669,49 @@ Are you sure?</source>
     </message>
 </context>
 <context>
+    <name>DiagramScene</name>
+    <message>
+        <source>Block info</source>
+        <translation>ब्लॉक जानकारी</translation>
+    </message>
+    <message>
+        <source>Edit block</source>
+        <translation type="vanished">ब्लॉक संपादित करें</translation>
+    </message>
+    <message>
+        <source>Change Color</source>
+        <translation>रंग बदलें</translation>
+    </message>
+    <message>
+        <source>Change Name</source>
+        <translation>नाम बदलें</translation>
+    </message>
+    <message>
+        <source>Change Variable Name</source>
+        <translation>चर का नाम बदलें</translation>
+    </message>
+    <message>
+        <source>Duplicate</source>
+        <translation>डुप्लिकेट करें</translation>
+    </message>
+    <message>
+        <source>Edit</source>
+        <translation>संपादित करें</translation>
+    </message>
+    <message>
+        <source>Open internals</source>
+        <translation>आंतरिक खोलें</translation>
+    </message>
+    <message>
+        <source>Properties</source>
+        <translation>गुण</translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation>हटाएँ</translation>
+    </message>
+</context>
+<context>
     <name>DiagramsMain</name>
     <message>
         <source>Are you sure that you want to try an automatic layout?</source>
@@ -2452,7 +2495,7 @@ Are you sure?</source>
         <translation>DAE-कोड या सिंबल-इंटरफ़ेस परिवर्तनों से संरचनात्मक सेटिंग्स अलग से लागू करें।</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="388"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="405"/>
         <source>Block / equation group</source>
         <translation>ब्लॉक / समीकरण समूह</translation>
     </message>
@@ -2485,9 +2528,8 @@ Are you sure?</source>
         <translation>परिवर्तन लागू किए गए। उन्नत असमानताएं/discrete/boolean तर्क अपरिवर्तित संरक्षित था।</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="323"/>
         <source>Clear</source>
-        <translation>साफ़ करें</translation>
+        <translation type="vanished">साफ़ करें</translation>
     </message>
     <message>
         <source>Create derivative variable</source>
@@ -2502,7 +2544,7 @@ Are you sure?</source>
         <translation type="vanished">DAE कोड मान्य है।</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="131"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="134"/>
         <source>DAE model</source>
         <translation>DAE मॉडल</translation>
     </message>
@@ -2531,43 +2573,48 @@ Are you sure?</source>
         <translation>समीकरण PDF बनाया गया: {path}</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="158"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="188"/>
         <source>Equation owner</source>
         <translation>समीकरण स्वामी</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="251"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="254"/>
         <source>&lt;&lt;</source>
         <translation>&lt;&lt;</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="261"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="264"/>
         <source>&gt;&gt;</source>
         <translation>&gt;&gt;</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="289"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="292"/>
         <source>LaTeX rendering</source>
         <translation>LaTeX रेंडरिंग</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="343"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="333"/>
+        <source>Select None</source>
+        <translation>कोई चयन नहीं</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="360"/>
         <source>Save redered PDF</source>
         <translation>रेंडर की गई PDF सहेजें</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="372"/>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="393"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="389"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="410"/>
         <source>Equations</source>
         <translation>समीकरण</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="410"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="427"/>
         <source>LaTex source</source>
         <translation>LaTeX स्रोत</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="509"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="529"/>
         <source>Accept changes</source>
         <translation>परिवर्तन स्वीकार करें</translation>
     </message>
@@ -2689,7 +2736,7 @@ Are you sure?</source>
         <translation>डायनेमिक समीकरणों को PDF के रूप में सहेजें</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="238"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="241"/>
         <source>Search Python code...</source>
         <translation>Python कोड खोजें...</translation>
     </message>
@@ -2710,7 +2757,7 @@ Are you sure?</source>
         <translation>एक वैध प्रतीक प्रकार का चयन करें।</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="316"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="319"/>
         <source>Select all</source>
         <translation>सभी चुनें</translation>
     </message>
@@ -2719,12 +2766,12 @@ Are you sure?</source>
         <translation>कम से कम एक गैर-खाली समीकरण समूह का चयन करें।</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="422"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="439"/>
         <source>Select equation groups to generate copyable LaTeX source.</source>
         <translation>कॉपी करने योग्य LaTeX स्रोत उत्पन्न करने के लिए समीकरण समूहों का चयन करें।</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="378"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="395"/>
         <source>Select the equation groups to include. Each internal block and each DAE section can be selected independently.</source>
         <translation>शामिल किए जाने वाले समीकरण समूहों का चयन करें। प्रत्येक आंतरिक ब्लॉक और प्रत्येक DAE अनुभाग को स्वतंत्र रूप से चुना जा सकता है।</translation>
     </message>
@@ -2749,7 +2796,7 @@ Are you sure?</source>
         <translation type="vanished">ऑनलाइन ब्लॉक दस्तावेज़ीकरण को सिस्टम ब्राउज़र में नहीं खोला जा सका।</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="440"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="457"/>
         <source>These settings contain structured data used to regenerate the block. Edit sequences with valid Python tuple/list syntax.</source>
         <translation>इन सेटिंग्स में ब्लॉक को पुनर्जीवित करने के लिए उपयोग किया जाने वाला संरचित डेटा होता है। वैध Python टपल/सूची सिंटैक्स के साथ अनुक्रम संपादित करें।</translation>
     </message>
@@ -2782,7 +2829,7 @@ Are you sure?</source>
         <translation type="vanished">+ प्रक्रियात्मक तर्क जोड़ें</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="188"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="161"/>
         <source>Add one procedural behavior to the active equation owner&apos;s Python code.</source>
         <translation>सक्रिय समीकरण मालिक के पायथन कोड में एक प्रक्रियात्मक व्यवहार जोड़ें।</translation>
     </message>
@@ -2824,7 +2871,7 @@ Are you sure?</source>
         <translation type="vanished">पायथन कोड और LaTeX रेंडरिंग टूल दिखाएं या छिपाएं</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="434"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="451"/>
         <source>Special configuration</source>
         <translation>विशेष विन्यास</translation>
     </message>
@@ -2837,7 +2884,7 @@ Are you sure?</source>
         <translation>चयनित मालिक के पास कोई पायथन-कोड बफर नहीं है।</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="482"/>
+        <location filename="../DynamicModelEditor/Editor/BlockProperties/dynamic_block_properties.ui" line="502"/>
         <source>Validate model</source>
         <translation>मॉडल मान्य करें</translation>
     </message>
@@ -3267,6 +3314,13 @@ Are you sure?</source>
     </message>
 </context>
 <context>
+    <name>DynamicEventGroupsTreeModel</name>
+    <message>
+        <source>Event groups</source>
+        <translation>इवेंट समूह</translation>
+    </message>
+</context>
+<context>
     <name>DynamicEventsDraftSession</name>
     <message>
         <source>An event and its events group use different simulation modes.</source>
@@ -3530,8 +3584,8 @@ Are you sure?</source>
         <translation>समूह का नाम:</translation>
     </message>
     <message>
-        <source>Remove '{name}' and all events in this group?</source>
-        <translation>क्या '{name}' और इस समूह में सभी इवेंट हटाएँ?</translation>
+        <source>Remove &apos;{name}&apos; and all events in this group?</source>
+        <translation>क्या &apos;{name}&apos; और इस समूह में सभी इवेंट हटाएँ?</translation>
     </message>
     <message>
         <source>Remove event group</source>
@@ -6467,6 +6521,44 @@ Please correct the data and try again.</source>
     <message>
         <source>MATPOWER export</source>
         <translation>MATPOWER निर्यात</translation>
+    </message>
+</context>
+<context>
+    <name>MeasurementsDialog</name>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="14"/>
+        <source>Configure measurement block</source>
+        <translation>मापन ब्लॉक कॉन्फ़िगर करें</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="38"/>
+        <source>Bus</source>
+        <translation>बस</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="69"/>
+        <source>Click to select a bus</source>
+        <translation>बस का चयन करने के लिए क्लिक करें</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="78"/>
+        <source>Select bus...</source>
+        <translation>बस का चयन करें...</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="123"/>
+        <source>Name</source>
+        <translation>नाम</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="128"/>
+        <source>I/O</source>
+        <translation>I/O</translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/Editor/ElementDialogues/MeasurementsDialog/measurements_dialog_ui.ui" line="133"/>
+        <source>Comment</source>
+        <translation>टिप्पणी</translation>
     </message>
 </context>
 <context>
@@ -15328,24 +15420,6 @@ You need to load or create a grid!</source>
     <message>
         <source>Question</source>
         <translation>प्रश्न</translation>
-    </message>
-</context>
-<context>
-    <name>DiagramScene</name>
-    <message>
-        <source>Block info</source>
-        <translation>ब्लॉक जानकारी</translation>
-    </message>
-    <message>
-        <source>Edit block</source>
-        <translation>ब्लॉक संपादित करें</translation>
-    </message>
-</context>
-<context>
-    <name>DynamicEventGroupsTreeModel</name>
-    <message>
-        <source>Event groups</source>
-        <translation>इवेंट समूह</translation>
     </message>
 </context>
 </TS>

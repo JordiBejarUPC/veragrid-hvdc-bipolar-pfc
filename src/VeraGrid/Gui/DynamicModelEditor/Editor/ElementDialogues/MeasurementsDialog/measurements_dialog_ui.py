@@ -17,11 +17,11 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QAbstractButton, QAbstractItemView, QApplication, QDialog,
     QDialogButtonBox, QFrame, QHBoxLayout, QHeaderView,
-    QLabel, QListWidgetItem, QSizePolicy, QSpacerItem,
-    QSplitter, QTreeWidget, QTreeWidgetItem, QVBoxLayout,
+    QLabel, QSizePolicy, QSpacerItem,
+    QTreeWidget, QTreeWidgetItem, QVBoxLayout,
     QWidget)
 
-from VeraGrid.Gui.DynamicModelEditor.Editor.ElementDialogues.MeasurementsDialog.measurement_widgets import (DeviceSelectionLabel, MeasurementReferenceList)
+from VeraGrid.Gui.DynamicModelEditor.Editor.ElementDialogues.MeasurementsDialog.measurement_widgets import DeviceSelectionLabel
 
 class Ui_MeasurementsDialog(object):
     def setupUi(self, MeasurementsDialog):
@@ -66,73 +66,20 @@ class Ui_MeasurementsDialog(object):
 
         self.verticalLayout_4.addWidget(self.frame)
 
-        self.explanation_label = QLabel(MeasurementsDialog)
-        self.explanation_label.setObjectName(u"explanation_label")
-        self.explanation_label.setWordWrap(True)
-
-        self.verticalLayout_4.addWidget(self.explanation_label)
-
-        self.splitter = QSplitter(MeasurementsDialog)
-        self.splitter.setObjectName(u"splitter")
         sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.MinimumExpanding)
         sizePolicy1.setHorizontalStretch(0)
         sizePolicy1.setVerticalStretch(0)
-        sizePolicy1.setHeightForWidth(self.splitter.sizePolicy().hasHeightForWidth())
-        self.splitter.setSizePolicy(sizePolicy1)
-        self.splitter.setOrientation(Qt.Orientation.Horizontal)
-        self.frame_2 = QFrame(self.splitter)
-        self.frame_2.setObjectName(u"frame_2")
-        self.frame_2.setFrameShape(QFrame.Shape.NoFrame)
-        self.frame_2.setFrameShadow(QFrame.Shadow.Raised)
-        self.verticalLayout = QVBoxLayout(self.frame_2)
-        self.verticalLayout.setObjectName(u"verticalLayout")
-        self.verticalLayout.setContentsMargins(0, -1, -1, -1)
-        self.measurement_tree = QTreeWidget(self.frame_2)
+        self.measurement_tree = QTreeWidget(MeasurementsDialog)
         self.measurement_tree.setObjectName(u"measurement_tree")
+        sizePolicy1.setHeightForWidth(self.measurement_tree.sizePolicy().hasHeightForWidth())
+        self.measurement_tree.setSizePolicy(sizePolicy1)
+        self.measurement_tree.setColumnCount(3)
         self.measurement_tree.setAlternatingRowColors(True)
         self.measurement_tree.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.measurement_tree.setRootIsDecorated(True)
+        self.measurement_tree.header().setStretchLastSection(False)
 
-        self.verticalLayout.addWidget(self.measurement_tree)
-
-        self.splitter.addWidget(self.frame_2)
-        self.frame_3 = QFrame(self.splitter)
-        self.frame_3.setObjectName(u"frame_3")
-        self.frame_3.setFrameShape(QFrame.Shape.NoFrame)
-        self.frame_3.setFrameShadow(QFrame.Shadow.Raised)
-        self.verticalLayout_2 = QVBoxLayout(self.frame_3)
-        self.verticalLayout_2.setObjectName(u"verticalLayout_2")
-        self.label = QLabel(self.frame_3)
-        self.label.setObjectName(u"label")
-
-        self.verticalLayout_2.addWidget(self.label)
-
-        self.input_list = MeasurementReferenceList(self.frame_3)
-        self.input_list.setObjectName(u"input_list")
-
-        self.verticalLayout_2.addWidget(self.input_list)
-
-        self.splitter.addWidget(self.frame_3)
-        self.frame_4 = QFrame(self.splitter)
-        self.frame_4.setObjectName(u"frame_4")
-        self.frame_4.setFrameShape(QFrame.Shape.NoFrame)
-        self.frame_4.setFrameShadow(QFrame.Shadow.Raised)
-        self.verticalLayout_3 = QVBoxLayout(self.frame_4)
-        self.verticalLayout_3.setObjectName(u"verticalLayout_3")
-        self.verticalLayout_3.setContentsMargins(-1, -1, 0, -1)
-        self.label_2 = QLabel(self.frame_4)
-        self.label_2.setObjectName(u"label_2")
-
-        self.verticalLayout_3.addWidget(self.label_2)
-
-        self.output_list = MeasurementReferenceList(self.frame_4)
-        self.output_list.setObjectName(u"output_list")
-
-        self.verticalLayout_3.addWidget(self.output_list)
-
-        self.splitter.addWidget(self.frame_4)
-
-        self.verticalLayout_4.addWidget(self.splitter)
+        self.verticalLayout_4.addWidget(self.measurement_tree)
 
         self.button_box = QDialogButtonBox(MeasurementsDialog)
         self.button_box.setObjectName(u"button_box")
@@ -153,10 +100,8 @@ class Ui_MeasurementsDialog(object):
         self.bus_label.setToolTip(QCoreApplication.translate("MeasurementsDialog", u"Click to select a bus", None))
 #endif // QT_CONFIG(tooltip)
         self.bus_label.setText(QCoreApplication.translate("MeasurementsDialog", u"Select bus...", None))
-        self.explanation_label.setText(QCoreApplication.translate("MeasurementsDialog", u"Check one measurement type, choose its variables, and drag variables between Outputs and Inputs.", None))
         ___qtreewidgetitem = self.measurement_tree.headerItem()
-        ___qtreewidgetitem.setText(0, QCoreApplication.translate("MeasurementsDialog", u"Measurement variables", None))
-        self.label.setText(QCoreApplication.translate("MeasurementsDialog", u"Inputs", None))
-        self.label_2.setText(QCoreApplication.translate("MeasurementsDialog", u"Outputs", None))
+        ___qtreewidgetitem.setText(2, QCoreApplication.translate("MeasurementsDialog", u"Comment", None))
+        ___qtreewidgetitem.setText(1, QCoreApplication.translate("MeasurementsDialog", u"I/O", None))
+        ___qtreewidgetitem.setText(0, QCoreApplication.translate("MeasurementsDialog", u"Name", None))
     # retranslateUi
-

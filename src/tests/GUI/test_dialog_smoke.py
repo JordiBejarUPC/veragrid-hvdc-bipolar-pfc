@@ -1369,6 +1369,106 @@ def test_dialog_smoke_inventory_is_explicit() -> None:
     assert sorted(missing_names) == list()
 
 
+def test_measurements_dialog_tree_io_column_composes_reference_directions(qt_app: QtWidgets.QApplication) -> None:
+    """
+    Check that the I/O tree column composes input and output reference lists.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    app: QtWidgets.QApplication = qt_app
+    bus: vge.Bus = vge.Bus(name="Bus 1", Vnom=110.0)
+    references: List[VarPowerFlowReferenceType] = list()
+    references.append(VarPowerFlowReferenceType.Vm)
+    references.append(VarPowerFlowReferenceType.Va)
+    ac_measurements: Dict[BlockType, List[VarPowerFlowReferenceType]] = dict()
+    ac_measurements[BlockType.MEASUREMENTS_VOLTAGE_ANGLE] = references
+    power_references: List[VarPowerFlowReferenceType] = list()
+    power_references.append(VarPowerFlowReferenceType.P)
+    power_references.append(VarPowerFlowReferenceType.Q)
+    ac_measurements[BlockType.MEASUREMENTS_P_Q] = power_references
+    measurements: Dict[str, Dict[BlockType, List[VarPowerFlowReferenceType]]] = dict()
+    measurements["a_c_bus"] = ac_measurements
+    dialog: MeasurementsDialog = MeasurementsDialog(
+        buses=list((bus,)),
+        measurement_vars_dict=measurements,
+        initial_bus=bus,
+    )
+
+    try:
+        parent_item: QtWidgets.QTreeWidgetItem = dialog.ui.measurement_tree.topLevelItem(0)
+        child_item: QtWidgets.QTreeWidgetItem = parent_item.child(0)
+        sibling_parent_item: QtWidgets.QTreeWidgetItem = dialog.ui.measurement_tree.topLevelItem(1)
+        sibling_child_item: QtWidgets.QTreeWidgetItem = sibling_parent_item.child(0)
+        reference_data: object = child_item.data(0, QtCore.Qt.ItemDataRole.UserRole)
+        assert isinstance(reference_data, VarPowerFlowReferenceType)
+        assert dialog.ui.measurement_tree.columnCount() == 3
+        assert dialog.ui.measurement_tree.headerItem().text(0) == "Name"
+        assert dialog.ui.measurement_tree.headerItem().text(1) == "I/O"
+        assert dialog.ui.measurement_tree.headerItem().text(2) == "Comment"
+        assert parent_item.text(2) == "Direct bus voltage state references."
+        assert child_item.text(2) == "Output-only bus voltage magnitude in p.u."
+        assert sibling_parent_item.text(2) == "Direct active and reactive power references."
+        assert sibling_child_item.text(2) == "Input-only active power injection in p.u."
+        assert not bool(child_item.flags() & QtCore.Qt.ItemFlag.ItemIsUserCheckable)
+        assert not bool(sibling_child_item.flags() & QtCore.Qt.ItemFlag.ItemIsUserCheckable)
+        tree_header: QtWidgets.QHeaderView = dialog.ui.measurement_tree.header()
+        assert not tree_header.stretchLastSection()
+        assert (
+            tree_header.sectionResizeMode(0)
+            == QtWidgets.QHeaderView.ResizeMode.Interactive
+        )
+        assert (
+            tree_header.sectionResizeMode(1)
+            == QtWidgets.QHeaderView.ResizeMode.Interactive
+        )
+        assert (
+            tree_header.sectionResizeMode(2)
+            == QtWidgets.QHeaderView.ResizeMode.Interactive
+        )
+
+        parent_item.setCheckState(0, QtCore.Qt.CheckState.Checked)
+        assert child_item.checkState(1) == QtCore.Qt.CheckState.Unchecked
+        assert parent_item.child(1).checkState(1) == QtCore.Qt.CheckState.Unchecked
+        assert sibling_parent_item.checkState(0) == QtCore.Qt.CheckState.Unchecked
+        assert sibling_child_item.checkState(1) == QtCore.Qt.CheckState.Unchecked
+
+        selected_bus: vge.Bus
+        selected_block_type: BlockType
+        input_references: List[VarPowerFlowReferenceType]
+        output_references: List[VarPowerFlowReferenceType]
+        selected_bus, selected_block_type, input_references, output_references = dialog.get_user_info()
+        assert selected_bus is bus
+        assert selected_block_type is BlockType.MEASUREMENTS_VOLTAGE_ANGLE
+        assert input_references == list()
+        assert output_references == references
+        assert child_item.text(1) == "Output"
+
+        sibling_parent_item.setCheckState(0, QtCore.Qt.CheckState.Checked)
+        assert child_item.checkState(1) == QtCore.Qt.CheckState.Unchecked
+        assert sibling_child_item.checkState(1) == QtCore.Qt.CheckState.Checked
+        assert sibling_parent_item.child(1).checkState(1) == QtCore.Qt.CheckState.Checked
+        selected_bus, selected_block_type, input_references, output_references = dialog.get_user_info()
+        assert selected_block_type is BlockType.MEASUREMENTS_VOLTAGE_ANGLE
+        assert input_references == power_references
+        assert output_references == references
+        assert sibling_child_item.text(1) == "Input"
+
+        parent_item.setCheckState(0, QtCore.Qt.CheckState.Unchecked)
+        assert child_item.checkState(1) == QtCore.Qt.CheckState.Unchecked
+        assert parent_item.child(1).checkState(1) == QtCore.Qt.CheckState.Unchecked
+        assert sibling_parent_item.checkState(0) == QtCore.Qt.CheckState.Checked
+        assert sibling_child_item.checkState(1) == QtCore.Qt.CheckState.Checked
+        selected_bus, selected_block_type, input_references, output_references = dialog.get_user_info()
+        assert selected_block_type is BlockType.MEASUREMENTS_P_Q
+        assert input_references == power_references
+        assert output_references == list()
+        assert child_item.text(1) == "Output"
+    finally:
+        delete_dialog_safely(dialog=dialog)
+        app.processEvents()
+
+
 def test_delete_dialog_safely_deletes_child_widgets(qt_app: QtWidgets.QApplication) -> None:
     """
     Check that dialog lifecycle cleanup invalidates child widget wrappers.

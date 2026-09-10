@@ -5,5 +5,6 @@
 """Measurement configuration dialog package."""
 
 from VeraGrid.Gui.DynamicModelEditor.Editor.ElementDialogues.MeasurementsDialog.measurements_dialog import (
+    is_measurement_reference_input,
     MeasurementsDialog,
 )
