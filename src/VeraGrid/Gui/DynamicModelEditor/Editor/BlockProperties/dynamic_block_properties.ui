@@ -335,7 +335,7 @@
             </property>
             <property name="icon">
              <iconset resource="../../../Icons/icons.qrc">
-              <normaloff>:/Icons/icons/pfdgs.png</normaloff>:/Icons/icons/pfdgs.png</iconset>
+              <normaloff>:/Icons/icons/pdf.png</normaloff>:/Icons/icons/pdf.png</iconset>
             </property>
            </widget>
           </item>
@@ -352,8 +352,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>893</width>
-            <height>486</height>
+            <width>667</width>
+            <height>367</height>
            </rect>
           </property>
           <attribute name="label">

@@ -184,7 +184,7 @@ class Ui_DynamicBlockPropertiesDialog(object):
         self.export_rendered_button = QPushButton(self.frame_4)
         self.export_rendered_button.setObjectName(u"export_rendered_button")
         icon1 = QIcon()
-        icon1.addFile(u":/Icons/icons/pfdgs.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        icon1.addFile(u":/Icons/icons/pdf.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.export_rendered_button.setIcon(icon1)
 
         self.horizontalLayout_4.addWidget(self.export_rendered_button)
@@ -196,7 +196,7 @@ class Ui_DynamicBlockPropertiesDialog(object):
         self.toolBox.setObjectName(u"toolBox")
         self.page = QWidget()
         self.page.setObjectName(u"page")
-        self.page.setGeometry(QRect(0, 0, 893, 486))
+        self.page.setGeometry(QRect(0, 0, 667, 367))
         self.verticalLayout_7 = QVBoxLayout(self.page)
         self.verticalLayout_7.setObjectName(u"verticalLayout_7")
         self.latex_selection_tree = QTreeWidget(self.page)

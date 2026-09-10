@@ -5741,49 +5741,16 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         "_symbol_model",
         "_retained_mode_model",
         "_property_tree_model",
-        "_property_tree",
-        "_property_search",
         "_expanded_property_groups",
         "_runtime_logic_drafts",
-        "_new_symbol_owner",
-        "_new_symbol_name",
-        "_new_symbol_category",
-        "_new_symbol_kind_label",
-        "_new_symbol_kind",
-        "_new_symbol_exported",
-        "_new_state_derivative",
-        "_new_variable_options",
-        "_new_parameter_value",
-        "_new_parameter_value_label",
-        "_new_external_reference",
-        "_new_external_reference_label",
-        "_new_static_reference",
-        "_new_static_reference_label",
-        "_add_symbol_button",
-        "_add_symbol_status_label",
-        "_procedural_add_button",
         "_procedural_add_menu",
         "_namespace",
-        "_tabs",
         "_equation_buffers",
-        "_equation_owner_combo",
         "_active_equation_buffer_index",
         "_loading_equation_buffer",
         "_dae_editor",
-        "_dae_code_search",
-        "_dae_search_previous_button",
-        "_dae_search_next_button",
-        "_dae_search_status",
-        "_validate_code_button",
-        "_dae_validation_status_label",
-        "_latex_selection_tree",
-        "_latex_select_all_button",
-        "_latex_clear_button",
-        "_latex_source_preview",
-        "_export_rendered_button",
         "_prepared_to_delete",
         "_draft_has_changes",
-        "_apply_button",
     )
 
     def __init__(self,
@@ -5844,8 +5811,6 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         # All edits stay detached until Apply validates the complete transaction.
         self._parameter_model: BlockParameterDraftModel = BlockParameterDraftModel(block, self)
         self._symbol_model: BlockSymbolDraftModel = BlockSymbolDraftModel(block, self)
-        self._property_tree: QtWidgets.QTreeView = self.ui.property_tree
-        self._property_search: QtWidgets.QLineEdit = self.ui.property_search
         self._expanded_property_groups: set[tuple[str, int | None]] = set()
 
         # Build one source buffer for every direct or nested equation owner.
@@ -5873,8 +5838,6 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         # container, while every surrounding control comes directly from the UI.
         self._namespace: Dict[str, Expr] = build_block_symbol_namespace(block)
         self._namespace = self._runtime_logic_drafts.build_validation_namespace(self._namespace)
-        self._tabs: QtWidgets.QTabWidget = self.ui.tab_widget
-        self._equation_owner_combo: QtWidgets.QComboBox = self.ui.equation_owner_combo
         self._active_equation_buffer_index: int = self._find_initial_equation_buffer_index()
         self._loading_equation_buffer: bool = False
         self._dae_editor: DaeCodeEditor = DaeCodeEditor(
@@ -5882,21 +5845,6 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             self._namespace,
             dark_theme=dark_theme,
         )
-        self._dae_code_search: QtWidgets.QLineEdit = self.ui.dae_code_search
-        self._dae_search_previous_button: QtWidgets.QToolButton = self.ui.dae_search_previous_button
-        self._dae_search_next_button: QtWidgets.QToolButton = self.ui.dae_search_next_button
-        self._dae_search_status: QtWidgets.QLabel = self.ui.dae_search_status
-        self._validate_code_button: QtWidgets.QPushButton = self.ui.validate_code_button
-        self._dae_validation_status_label: QtWidgets.QLabel = self.ui.dae_validation_status_label
-
-        # The rendering page is entirely Designer-owned and consumes the same
-        # detached buffers as the Python editor.
-        self._latex_selection_tree: QtWidgets.QTreeWidget = self.ui.latex_selection_tree
-        self._latex_select_all_button: QtWidgets.QPushButton = self.ui.latex_select_all_button
-        self._latex_clear_button: QtWidgets.QPushButton = self.ui.latex_clear_button
-        self._latex_source_preview: QtWidgets.QPlainTextEdit = self.ui.latex_source_preview
-        self._export_rendered_button: QtWidgets.QPushButton = self.ui.export_rendered_button
-
         # Variable, parameter, and retained-mode creation is intentionally
         # absent from the General page. The tree context menu opens this
         # Designer-owned child dialogue only when the user requests an addition.
@@ -5904,27 +5852,10 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._add_symbol_dialog.setModal(True)
         self._add_symbol_ui: Ui_AddSymbolWidget = Ui_AddSymbolWidget()
         self._add_symbol_ui.setupUi(self._add_symbol_dialog)
-        self._new_symbol_owner: QtWidgets.QComboBox = self._add_symbol_ui.new_symbol_owner
-        self._new_symbol_name: QtWidgets.QLineEdit = self._add_symbol_ui.new_symbol_name
-        self._new_symbol_category: QtWidgets.QComboBox = self._add_symbol_ui.new_symbol_category
-        self._new_symbol_kind_label: QtWidgets.QLabel = self._add_symbol_ui.new_symbol_kind_label
-        self._new_symbol_kind: QtWidgets.QComboBox = self._add_symbol_ui.new_symbol_kind
-        self._new_symbol_exported: QtWidgets.QCheckBox = self._add_symbol_ui.new_symbol_exported
-        self._new_state_derivative: QtWidgets.QCheckBox = self._add_symbol_ui.new_state_derivative
-        self._new_variable_options: QtWidgets.QWidget = self._add_symbol_ui.new_variable_options
-        self._new_parameter_value: QtWidgets.QDoubleSpinBox = self._add_symbol_ui.new_parameter_value
-        self._new_parameter_value_label: QtWidgets.QLabel = self._add_symbol_ui.new_parameter_value_label
-        self._new_external_reference: QtWidgets.QComboBox = self._add_symbol_ui.new_external_reference
-        self._new_external_reference_label: QtWidgets.QLabel = self._add_symbol_ui.new_external_reference_label
-        self._new_static_reference: QtWidgets.QComboBox = self._add_symbol_ui.new_static_reference
-        self._new_static_reference_label: QtWidgets.QLabel = self._add_symbol_ui.new_static_reference_label
-        self._add_symbol_button: QtWidgets.QPushButton = self._add_symbol_ui.add_symbol_button
-        self._add_symbol_status_label: QtWidgets.QLabel = self._add_symbol_ui.add_symbol_status_label
 
         # Procedural-logic insertion belongs to the DAE page because it edits
         # source rather than adding a property-tree row.
-        self._procedural_add_button: QtWidgets.QPushButton = self.ui.procedural_add_button
-        self._procedural_add_menu: QtWidgets.QMenu = QtWidgets.QMenu(self._procedural_add_button)
+        self._procedural_add_menu: QtWidgets.QMenu = QtWidgets.QMenu(self.ui.procedural_add_button)
         self._procedural_add_menu.setToolTipsVisible(True)
 
         # toast manager
@@ -5932,9 +5863,6 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
 
         self._prepared_to_delete: bool = False
         self._draft_has_changes: bool = False
-        self._status_label: QtWidgets.QLabel = self.ui.status_label
-        self._status_label.hide()
-        self._apply_button: QtWidgets.QPushButton = self.ui.apply_button
 
         self._configure_add_symbol_dialog()
         self._configure_procedural_menu()
@@ -5943,38 +5871,6 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._refresh_dae_language_context()
         self._clear_dae_validation_feedback()
         self.refresh_draft_state()
-
-    def show_toast(self, message: str, duration: int = 2000):
-        """
-        Show generic toast
-        :param message: Message to display
-        :param duration: duration in ms
-        """
-        self.toast_manager.show_toast(message=message, duration=duration, toast_type="veragrid")
-
-    def show_error_toast(self, message: str, duration: int = 2000):
-        """
-        Show error toast
-        :param message: Message to display
-        :param duration: duration in ms
-        """
-        self.toast_manager.show_error_toast(message=message, duration=duration)
-
-    def show_warning_toast(self, message: str, duration: int = 2000):
-        """
-        Show warning toast
-        :param message: Message to display
-        :param duration: duration in ms
-        """
-        self.toast_manager.show_warning_toast(message=message, duration=duration)
-
-    def show_info_toast(self, message: str, duration: int = 2000):
-        """
-        Show info toast
-        :param message: Message to display
-        :param duration: duration in ms
-        """
-        self.toast_manager.show_info_toast(message=message, duration=duration)
 
     def prepare_to_delete(self) -> None:
         """Detach Qt models and document resources before binary destruction.
@@ -5991,9 +5887,9 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             self._prepared_to_delete = True
             self._add_symbol_dialog.reject()
             self._dae_editor.prepare_to_delete()
-            self._property_tree.setModel(None)
-            self._latex_selection_tree.clear()
-            self._equation_owner_combo.clear()
+            self.ui.property_tree.setModel(None)
+            self.ui.latex_selection_tree.clear()
+            self.ui.equation_owner_combo.clear()
 
     def set_dark_mode(self) -> None:
         """Apply the dark palette to source editors owned by this dialogue.
@@ -6057,12 +5953,12 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self.setModal(False)
 
         # General options owns only the searchable property hierarchy.
-        self._property_tree.setModel(self._property_tree_model)
-        self._property_tree.setItemDelegateForColumn(
+        self.ui.property_tree.setModel(self._property_tree_model)
+        self.ui.property_tree.setItemDelegateForColumn(
             2,
-            BlockPropertyValueDelegate(self._property_tree),
+            BlockPropertyValueDelegate(self.ui.property_tree),
         )
-        property_header: QtWidgets.QHeaderView = self._property_tree.header()
+        property_header: QtWidgets.QHeaderView = self.ui.property_tree.header()
         configure_interactive_table_header(
             property_header,
             list((170, 100, 230, 60)),
@@ -6097,8 +5993,8 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         for buffer_index, equation_buffer in enumerate(self._equation_buffers):
             owner_block: Block = equation_buffer.get_block()
             owner_label: str = f"{owner_block.name} [{buffer_index + 1}]"
-            self._equation_owner_combo.addItem(owner_label, buffer_index)
-        self._equation_owner_combo.setCurrentIndex(self._active_equation_buffer_index)
+            self.ui.equation_owner_combo.addItem(owner_label, buffer_index)
+        self.ui.equation_owner_combo.setCurrentIndex(self._active_equation_buffer_index)
         active_buffer: BlockCodeBuffer = self._equation_buffers[self._active_equation_buffer_index]
         self._dae_editor.setPlainText(active_buffer.get_code())
         self._dae_editor.setLineWrapMode(QtWidgets.QPlainTextEdit.LineWrapMode.NoWrap)
@@ -6111,14 +6007,11 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
 
         # LaTeX rendering reads the same buffers and exposes independent block
         # and equation-section selection without duplicating the DAE editor.
-        self._latex_source_preview.setFont(self._dae_editor.font())
+        self.ui.latex_source_preview.setFont(self._dae_editor.font())
         configure_interactive_table_header(
-            self._latex_selection_tree.header(),
+            self.ui.latex_selection_tree.header(),
             list((640, 170)),
         )
-        self.ui.latex_splitter.setStretchFactor(0, 2)
-        self.ui.latex_splitter.setStretchFactor(1, 1)
-        self.ui.latex_splitter.setSizes(list((420, 230)))
         self._rebuild_latex_selection_tree()
 
         # Structured settings remain a fourth tab only for templates that
@@ -6134,24 +6027,24 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             list((320, 760)),
         )
         special_table.horizontalHeader().setStretchLastSection(True)
-        special_index: int = self._tabs.indexOf(self.ui.special_settings_page)
+        special_index: int = self.ui.tab_widget.indexOf(self.ui.special_settings_page)
         if self._special_structural_model.rowCount() > 0:
-            self._tabs.setTabIcon(
+            self.ui.tab_widget.setTabIcon(
                 special_index,
                 QtGui.QIcon(":/Icons/icons/edit.png"),
             )
         else:
-            self._tabs.removeTab(special_index)
+            self.ui.tab_widget.removeTab(special_index)
 
         # Page icons make the fixed organization scannable without adding any
         # controls to General options.
-        general_index: int = self._tabs.indexOf(self.ui.general_page)
-        dae_index: int = self._tabs.indexOf(self.ui.dae_model_page)
-        latex_index: int = self._tabs.indexOf(self.ui.latex_page)
-        self._tabs.setTabIcon(general_index, QtGui.QIcon(":/Icons/icons/gear.png"))
-        self._tabs.setTabIcon(dae_index, QtGui.QIcon(":/Icons/icons/equation.png"))
-        self._tabs.setTabIcon(latex_index, QtGui.QIcon(":/Icons/icons/download.png"))
-        self._tabs.setCurrentWidget(self.ui.general_page)
+        general_index: int = self.ui.tab_widget.indexOf(self.ui.general_page)
+        dae_index: int = self.ui.tab_widget.indexOf(self.ui.dae_model_page)
+        latex_index: int = self.ui.tab_widget.indexOf(self.ui.latex_page)
+        self.ui.tab_widget.setTabIcon(general_index, QtGui.QIcon(":/Icons/icons/gear.png"))
+        self.ui.tab_widget.setTabIcon(dae_index, QtGui.QIcon(":/Icons/icons/equation.png"))
+        self.ui.tab_widget.setTabIcon(latex_index, QtGui.QIcon(":/Icons/icons/download.png"))
+        self.ui.tab_widget.setCurrentWidget(self.ui.general_page)
 
     def _configure_add_symbol_dialog(self) -> None:
         """
@@ -6165,35 +6058,35 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         child_block: Block
         for block_index, child_block in enumerate(self._block.get_all_blocks()):
             owner_label: str = f"{child_block.name} [{block_index + 1}]"
-            self._new_symbol_owner.addItem(owner_label, child_block)
+            self._add_symbol_ui.new_symbol_owner.addItem(owner_label, child_block)
 
         # Category choices cover every addable property-tree row.
-        self._new_symbol_category.addItem(
+        self._add_symbol_ui.new_symbol_category.addItem(
             BlockSymbolCategory.VARIABLES.value,
             BlockSymbolCategory.VARIABLES,
         )
-        self._new_symbol_category.addItem(
+        self._add_symbol_ui.new_symbol_category.addItem(
             BlockSymbolCategory.PARAMETERS.value,
             BlockSymbolCategory.PARAMETERS,
         )
-        self._new_symbol_category.addItem(
+        self._add_symbol_ui.new_symbol_category.addItem(
             BlockSymbolCategory.RETAINED_MODES.value,
             BlockSymbolCategory.RETAINED_MODES,
         )
 
         # Mapping options keep the enum itself as data so downstream logic
         # never depends on translated or editable display strings.
-        self._new_external_reference.addItem(self.tr("None"), None)
+        self._add_symbol_ui.new_external_reference.addItem(self.tr("None"), None)
         external_reference: VarPowerFlowReferenceType
         for external_reference in VarPowerFlowReferenceType:
-            self._new_external_reference.addItem(
+            self._add_symbol_ui.new_external_reference.addItem(
                 f"VarPowerFlowReferenceType.{external_reference.name}",
                 external_reference,
             )
-        self._new_static_reference.addItem(self.tr("None"), None)
+        self._add_symbol_ui.new_static_reference.addItem(self.tr("None"), None)
         static_reference: ParamPowerFlowReferenceType
         for static_reference in ParamPowerFlowReferenceType:
-            self._new_static_reference.addItem(
+            self._add_symbol_ui.new_static_reference.addItem(
                 f"ParamPowerFlowReferenceType.{static_reference.name}",
                 static_reference,
             )
@@ -6230,7 +6123,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                 logic_action.setStatusTip(procedural_help)
             else:
                 pass
-        self._procedural_add_button.setMenu(self._procedural_add_menu)
+        self.ui.procedural_add_button.setMenu(self._procedural_add_menu)
 
     def _fit_add_symbol_form_to_contents(self) -> None:
         """
@@ -6250,23 +6143,23 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         :param owner: Preferred owner resolved from the clicked tree branch.
         :return: None.
         """
-        category_index: int = self._new_symbol_category.findData(category)
+        category_index: int = self._add_symbol_ui.new_symbol_category.findData(category)
         if category_index >= 0:
-            self._new_symbol_category.setCurrentIndex(category_index)
+            self._add_symbol_ui.new_symbol_category.setCurrentIndex(category_index)
         else:
             pass
         if owner is not None:
-            owner_index: int = self._new_symbol_owner.findData(owner)
+            owner_index: int = self._add_symbol_ui.new_symbol_owner.findData(owner)
             if owner_index >= 0:
-                self._new_symbol_owner.setCurrentIndex(owner_index)
+                self._add_symbol_ui.new_symbol_owner.setCurrentIndex(owner_index)
             else:
                 pass
         else:
             pass
 
-        self._new_symbol_name.clear()
-        self._add_symbol_status_label.clear()
-        self._add_symbol_status_label.hide()
+        self._add_symbol_ui.new_symbol_name.clear()
+        self._add_symbol_ui.add_symbol_status_label.clear()
+        self._add_symbol_ui.add_symbol_status_label.hide()
         self.update_new_symbol_category()
         self.update_new_symbol_controls()
         self._add_symbol_dialog.adjustSize()
@@ -6282,7 +6175,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         for group_row in range(self._property_tree_model.rowCount()):
             group: QtCore.QModelIndex = self._property_tree_model.index(group_row, 0)
             label: str = str(group.data())
-            if self._property_tree.isExpanded(group):
+            if self.ui.property_tree.isExpanded(group):
                 self._expanded_property_groups.add((label, None))
             else:
                 pass
@@ -6290,7 +6183,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             for owner_row in range(self._property_tree_model.rowCount(group)):
                 owner_index: QtCore.QModelIndex = self._property_tree_model.index(owner_row, 0, group)
                 owner: object = owner_index.data(Qt.ItemDataRole.UserRole + 1)
-                if isinstance(owner, Block) and self._property_tree.isExpanded(owner_index):
+                if isinstance(owner, Block) and self.ui.property_tree.isExpanded(owner_index):
                     self._expanded_property_groups.add((label, owner.uid))
                 else:
                     pass
@@ -6307,20 +6200,20 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         for group_row in range(self._property_tree_model.rowCount()):
             group: QtCore.QModelIndex = self._property_tree_model.index(group_row, 0)
             label: str = str(group.data())
-            self._property_tree.setFirstColumnSpanned(group_row, QtCore.QModelIndex(), True)
-            self._property_tree.setExpanded(group, (label, None) in self._expanded_property_groups)
+            self.ui.property_tree.setFirstColumnSpanned(group_row, QtCore.QModelIndex(), True)
+            self.ui.property_tree.setExpanded(group, (label, None) in self._expanded_property_groups)
             owner_row: int
             for owner_row in range(self._property_tree_model.rowCount(group)):
                 owner_index: QtCore.QModelIndex = self._property_tree_model.index(owner_row, 0, group)
                 owner: object = owner_index.data(Qt.ItemDataRole.UserRole + 1)
                 if isinstance(owner, Block):
-                    self._property_tree.setFirstColumnSpanned(owner_row, group, True)
-                    self._property_tree.setExpanded(
+                    self.ui.property_tree.setFirstColumnSpanned(owner_row, group, True)
+                    self.ui.property_tree.setExpanded(
                         owner_index, (label, owner.uid) in self._expanded_property_groups,
                     )
                 else:
                     pass
-        self.filter_properties(self._property_search.text())
+        self.filter_properties(self.ui.property_search.text())
 
     @QtCore.Slot(str)
     def filter_properties(self, search_text: str) -> None:
@@ -6363,10 +6256,10 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                                 owner_index,
                             )
                             if str(mode_index.data()) == mode_name:
-                                self._property_tree.expand(category_index)
-                                self._property_tree.expand(owner_index)
-                                self._property_tree.setCurrentIndex(mode_index)
-                                self._property_tree.scrollTo(mode_index)
+                                self.ui.property_tree.expand(category_index)
+                                self.ui.property_tree.expand(owner_index)
+                                self.ui.property_tree.setCurrentIndex(mode_index)
+                                self.ui.property_tree.scrollTo(mode_index)
                             else:
                                 pass
                     else:
@@ -6396,12 +6289,12 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             if self._property_tree_model.rowCount(index) > 0:
                 matches = self._filter_property_branch(index, query, matches)
                 if matches and len(query) > 0:
-                    self._property_tree.setExpanded(index, True)
+                    self.ui.property_tree.setExpanded(index, True)
                 else:
                     pass
             else:
                 pass
-            self._property_tree.setRowHidden(row, parent, not matches)
+            self.ui.property_tree.setRowHidden(row, parent, not matches)
             any_match = any_match or matches
         return any_match
 
@@ -6419,14 +6312,14 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         owner: object = branch.data(Qt.ItemDataRole.UserRole + 1)
         category: object = branch.data(Qt.ItemDataRole.UserRole + 2)
         if isinstance(owner, Block):
-            owner_index: int = self._new_symbol_owner.findData(owner)
-            self._new_symbol_owner.setCurrentIndex(owner_index)
+            owner_index: int = self._add_symbol_ui.new_symbol_owner.findData(owner)
+            self._add_symbol_ui.new_symbol_owner.setCurrentIndex(owner_index)
         else:
             pass
         if isinstance(category, BlockSymbolCategory):
-            category_index: int = self._new_symbol_category.findData(category)
+            category_index: int = self._add_symbol_ui.new_symbol_category.findData(category)
             if category_index >= 0:
-                self._new_symbol_category.setCurrentIndex(category_index)
+                self._add_symbol_ui.new_symbol_category.setCurrentIndex(category_index)
             else:
                 pass
         else:
@@ -6438,11 +6331,11 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
 
         :return: None.
         """
-        index: QtCore.QModelIndex = self._property_tree.currentIndex().siblingAtColumn(0)
+        index: QtCore.QModelIndex = self.ui.property_tree.currentIndex().siblingAtColumn(0)
         row: BlockSymbolDraftRow | None = self._property_tree_model.symbol_row(index)
         mode: RuntimeModeDraft | None = self._property_tree_model.retained_mode_row(index)
         if row is not None or mode is not None:
-            self._property_tree.edit(index)
+            self.ui.property_tree.edit(index)
         else:
             pass
 
@@ -6452,11 +6345,11 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
 
         :return: None.
         """
-        selected_index: QtCore.QModelIndex = self._property_tree.currentIndex()
+        selected_index: QtCore.QModelIndex = self.ui.property_tree.currentIndex()
         row: BlockSymbolDraftRow | None = self._property_tree_model.symbol_row(selected_index)
         mode: RuntimeModeDraft | None = self._property_tree_model.retained_mode_row(selected_index)
         if row is not None or mode is not None:
-            self._delete_selected_symbol(self._property_tree)
+            self._delete_selected_symbol(self.ui.property_tree)
         else:
             pass
 
@@ -6466,13 +6359,13 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
 
         :return: None.
         """
-        self._apply_button.clicked.connect(self.apply_changes)
-        self._validate_code_button.clicked.connect(self.validate_complete_dae_code)
+        self.ui.apply_button.clicked.connect(self.apply_changes)
+        self.ui.validate_code_button.clicked.connect(self.validate_complete_dae_code)
         self._dae_editor.textChanged.connect(self.on_dae_code_changed)
-        self._equation_owner_combo.currentIndexChanged.connect(self.on_equation_owner_changed)
-        self._new_symbol_category.currentIndexChanged.connect(self.update_new_symbol_category)
-        self._new_symbol_kind.currentIndexChanged.connect(self.update_new_symbol_controls)
-        self._add_symbol_button.clicked.connect(self.add_staged_symbol)
+        self.ui.equation_owner_combo.currentIndexChanged.connect(self.on_equation_owner_changed)
+        self._add_symbol_ui.new_symbol_category.currentIndexChanged.connect(self.update_new_symbol_category)
+        self._add_symbol_ui.new_symbol_kind.currentIndexChanged.connect(self.update_new_symbol_controls)
+        self._add_symbol_ui.add_symbol_button.clicked.connect(self.add_staged_symbol)
         self._procedural_add_menu.triggered.connect(self.insert_procedural_logic)
         self._symbol_model.dataChanged.connect(self.on_symbol_draft_changed)
         self._symbol_model.rowsInserted.connect(self.refresh_draft_state)
@@ -6491,33 +6384,33 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._retained_mode_model.modeNameChanged.connect(
             self.on_retained_mode_name_changed
         )
-        self._property_tree.customContextMenuRequested.connect(self.show_symbol_context_menu)
-        self._property_tree.clicked.connect(self.on_property_selected)
-        self._property_search.textChanged.connect(self.filter_properties)
+        self.ui.property_tree.customContextMenuRequested.connect(self.show_symbol_context_menu)
+        self.ui.property_tree.clicked.connect(self.on_property_selected)
+        self.ui.property_search.textChanged.connect(self.filter_properties)
         self._property_tree_model.aboutToRebuild.connect(self.remember_property_tree)
         self._property_tree_model.rebuilt.connect(self.restore_property_tree)
         self._property_tree_model.pendingNameChanged.connect(self.on_pending_symbol_renamed)
         self._property_tree_model.existingNameChangeRequested.connect(
             self.on_existing_symbol_name_change_requested
         )
-        rename_action: QtGui.QAction = QtGui.QAction(self.tr("Rename"), self._property_tree)
+        rename_action: QtGui.QAction = QtGui.QAction(self.tr("Rename"), self.ui.property_tree)
         rename_action.setShortcut(QtGui.QKeySequence(Qt.Key.Key_F2))
         rename_action.setShortcutContext(Qt.ShortcutContext.WidgetShortcut)
         rename_action.triggered.connect(self.rename_property_symbol)
-        self._property_tree.addAction(rename_action)
-        delete_action: QtGui.QAction = QtGui.QAction(self.tr("Delete"), self._property_tree)
+        self.ui.property_tree.addAction(rename_action)
+        delete_action: QtGui.QAction = QtGui.QAction(self.tr("Delete"), self.ui.property_tree)
         delete_action.setShortcut(QtGui.QKeySequence(Qt.Key.Key_Delete))
         delete_action.setShortcutContext(Qt.ShortcutContext.WidgetShortcut)
         delete_action.triggered.connect(self.delete_property_symbol)
-        self._property_tree.addAction(delete_action)
-        self._dae_code_search.textChanged.connect(self.update_dae_code_search)
-        self._dae_code_search.returnPressed.connect(self.find_next_dae_code_match)
-        self._dae_search_previous_button.clicked.connect(self.find_previous_dae_code_match)
-        self._dae_search_next_button.clicked.connect(self.find_next_dae_code_match)
-        self._latex_select_all_button.clicked.connect(self.select_all_latex_sections)
-        self._latex_clear_button.clicked.connect(self.clear_latex_sections)
-        self._latex_selection_tree.itemChanged.connect(self.on_latex_selection_changed)
-        self._export_rendered_button.clicked.connect(self.export_rendered_equations_pdf)
+        self.ui.property_tree.addAction(delete_action)
+        self.ui.dae_code_search.textChanged.connect(self.update_dae_code_search)
+        self.ui.dae_code_search.returnPressed.connect(self.find_next_dae_code_match)
+        self.ui.dae_search_previous_button.clicked.connect(self.find_previous_dae_code_match)
+        self.ui.dae_search_next_button.clicked.connect(self.find_next_dae_code_match)
+        self.ui.latex_select_all_button.clicked.connect(self.select_all_latex_sections)
+        self.ui.latex_clear_button.clicked.connect(self.clear_latex_sections)
+        self.ui.latex_selection_tree.itemChanged.connect(self.on_latex_selection_changed)
+        self.ui.export_rendered_button.clicked.connect(self.export_rendered_equations_pdf)
 
     def has_unapplied_changes(self) -> bool:
         """Return the cached transaction state exposed to the dock host.
@@ -6570,14 +6463,14 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         match_count: int = self._dae_editor.set_search_text(search_text)
         has_query: bool = len(search_text.strip()) > 0
         has_matches: bool = match_count > 0
-        self._dae_search_previous_button.setEnabled(has_matches)
-        self._dae_search_next_button.setEnabled(has_matches)
+        self.ui.dae_search_previous_button.setEnabled(has_matches)
+        self.ui.dae_search_next_button.setEnabled(has_matches)
         if not has_query:
-            self._dae_search_status.setText("")
+            self.ui.dae_code_search.setToolTip("")
         elif has_matches:
-            self._dae_search_status.setText(self.tr("1 / {count}").format(count=match_count))
+            self.ui.dae_code_search.setToolTip(self.tr("1 / {count}").format(count=match_count))
         else:
-            self._dae_search_status.setText(self.tr("No matches"))
+            self.ui.dae_code_search.setToolTip(self.tr("No matches"))
 
     @QtCore.Slot()
     def find_previous_dae_code_match(self) -> None:
@@ -6609,11 +6502,11 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         :return: None.
         """
         if match_count > 0:
-            self._dae_search_status.setText(
+            self.ui.dae_code_search.setToolTip(
                 self.tr("{active} / {count}").format(active=active_match, count=match_count)
             )
         else:
-            self._dae_search_status.setText(self.tr("No matches"))
+            self.ui.dae_code_search.setToolTip(self.tr("No matches"))
 
     def _get_latex_section_count(self,
                                  draft: BlockEquationDraft,
@@ -6642,8 +6535,8 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         """
         selected_keys: set[tuple[int, str]] = set()
         root_index: int
-        for root_index in range(self._latex_selection_tree.topLevelItemCount()):
-            old_root: QtWidgets.QTreeWidgetItem = self._latex_selection_tree.topLevelItem(root_index)
+        for root_index in range(self.ui.latex_selection_tree.topLevelItemCount()):
+            old_root: QtWidgets.QTreeWidgetItem = self.ui.latex_selection_tree.topLevelItem(root_index)
             child_index: int
             for child_index in range(old_root.childCount()):
                 old_child: QtWidgets.QTreeWidgetItem = old_root.child(child_index)
@@ -6660,8 +6553,8 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         # Rebuilding creates and checks several items. Suppress intermediate
         # change notifications so the source view is regenerated once from the
         # complete selection tree rather than from partially constructed state.
-        previous_signal_state: bool = self._latex_selection_tree.blockSignals(True)
-        self._latex_selection_tree.clear()
+        previous_signal_state: bool = self.ui.latex_selection_tree.blockSignals(True)
+        self.ui.latex_selection_tree.clear()
         buffer_index: int
         buffer: BlockCodeBuffer
         for buffer_index, buffer in enumerate(self._equation_buffers):
@@ -6674,7 +6567,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                 | Qt.ItemFlag.ItemIsUserCheckable
             )
             root_item.setCheckState(0, Qt.CheckState.Unchecked)
-            self._latex_selection_tree.addTopLevelItem(root_item)
+            self.ui.latex_selection_tree.addTopLevelItem(root_item)
             try:
                 draft: BlockEquationDraft = parse_equation_code(buffer.get_code(), self._namespace)
             except (TypeError, ValueError):
@@ -6702,7 +6595,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                 root_item.addChild(section_item)
             self._synchronize_latex_block_check_state(root_item)
             root_item.setExpanded(True)
-        self._latex_selection_tree.blockSignals(previous_signal_state)
+        self.ui.latex_selection_tree.blockSignals(previous_signal_state)
         self.refresh_latex_source_preview()
 
     def _set_latex_block_sections_check_state(self,
@@ -6769,7 +6662,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         :return: None.
         """
         if changed_column == 0:
-            previous_signal_state: bool = self._latex_selection_tree.blockSignals(True)
+            previous_signal_state: bool = self.ui.latex_selection_tree.blockSignals(True)
             parent_item: QtWidgets.QTreeWidgetItem | None = changed_item.parent()
             if parent_item is None:
                 requested_state: Qt.CheckState = changed_item.checkState(0)
@@ -6782,7 +6675,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                 self._synchronize_latex_block_check_state(changed_item)
             else:
                 self._synchronize_latex_block_check_state(parent_item)
-            self._latex_selection_tree.blockSignals(previous_signal_state)
+            self.ui.latex_selection_tree.blockSignals(previous_signal_state)
         else:
             pass
         self.refresh_latex_source_preview()
@@ -6803,7 +6696,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             latex_source: str = ""
         else:
             latex_source = build_latex_source(entries)
-        self._latex_source_preview.setPlainText(latex_source)
+        self.ui.latex_source_preview.setPlainText(latex_source)
 
     @QtCore.Slot()
     def select_all_latex_sections(self) -> None:
@@ -6812,13 +6705,13 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
 
         :return: None.
         """
-        previous_signal_state: bool = self._latex_selection_tree.blockSignals(True)
+        previous_signal_state: bool = self.ui.latex_selection_tree.blockSignals(True)
         root_index: int
-        for root_index in range(self._latex_selection_tree.topLevelItemCount()):
-            root_item: QtWidgets.QTreeWidgetItem = self._latex_selection_tree.topLevelItem(root_index)
+        for root_index in range(self.ui.latex_selection_tree.topLevelItemCount()):
+            root_item: QtWidgets.QTreeWidgetItem = self.ui.latex_selection_tree.topLevelItem(root_index)
             self._set_latex_block_sections_check_state(root_item, Qt.CheckState.Checked)
             self._synchronize_latex_block_check_state(root_item)
-        self._latex_selection_tree.blockSignals(previous_signal_state)
+        self.ui.latex_selection_tree.blockSignals(previous_signal_state)
         self.refresh_latex_source_preview()
 
     @QtCore.Slot()
@@ -6828,13 +6721,13 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
 
         :return: None.
         """
-        previous_signal_state: bool = self._latex_selection_tree.blockSignals(True)
+        previous_signal_state: bool = self.ui.latex_selection_tree.blockSignals(True)
         root_index: int
-        for root_index in range(self._latex_selection_tree.topLevelItemCount()):
-            root_item: QtWidgets.QTreeWidgetItem = self._latex_selection_tree.topLevelItem(root_index)
+        for root_index in range(self.ui.latex_selection_tree.topLevelItemCount()):
+            root_item: QtWidgets.QTreeWidgetItem = self.ui.latex_selection_tree.topLevelItem(root_index)
             self._set_latex_block_sections_check_state(root_item, Qt.CheckState.Unchecked)
             self._synchronize_latex_block_check_state(root_item)
-        self._latex_selection_tree.blockSignals(previous_signal_state)
+        self.ui.latex_selection_tree.blockSignals(previous_signal_state)
         self.refresh_latex_source_preview()
 
     def _parse_all_equation_buffers_for_export(self) -> List[BlockEquationDraft]:
@@ -6861,8 +6754,8 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         """
         entries: List[EquationExportEntry] = list()
         root_index: int
-        for root_index in range(self._latex_selection_tree.topLevelItemCount()):
-            root_item: QtWidgets.QTreeWidgetItem = self._latex_selection_tree.topLevelItem(root_index)
+        for root_index in range(self.ui.latex_selection_tree.topLevelItemCount()):
+            root_item: QtWidgets.QTreeWidgetItem = self.ui.latex_selection_tree.topLevelItem(root_index)
             child_index: int
             for child_index in range(root_item.childCount()):
                 child_item: QtWidgets.QTreeWidgetItem = root_item.child(child_index)
@@ -6972,9 +6865,8 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                 self.tr("The PDF could not be created: {message}").format(message=str(error))
             )
         else:
-            self._show_status_message(
+            self.toast_manager.show_info_toast(
                 self.tr("Equation PDF created: {path}").format(path=selected_path),
-                "color: #16825d;",
             )
 
     @QtCore.Slot(QtCore.QModelIndex, QtCore.QModelIndex, list)
@@ -7197,8 +7089,8 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         :return: None.
         """
         _unused_index: int = unused_index
-        selected_category: object = self._new_symbol_category.currentData()
-        self._new_symbol_kind.clear()
+        selected_category: object = self._add_symbol_ui.new_symbol_category.currentData()
+        self._add_symbol_ui.new_symbol_kind.clear()
         if selected_category == BlockSymbolCategory.VARIABLES:
             variable_kind: BlockSymbolKind
             for variable_kind in (
@@ -7206,17 +7098,17 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                 BlockSymbolKind.STATE,
                 BlockSymbolKind.ALGEBRAIC,
             ):
-                self._new_symbol_kind.addItem(variable_kind.value, variable_kind)
+                self._add_symbol_ui.new_symbol_kind.addItem(variable_kind.value, variable_kind)
         elif selected_category == BlockSymbolCategory.PARAMETERS:
             parameter_kind: BlockSymbolKind
             for parameter_kind in (
                 BlockSymbolKind.EVENT_PARAMETER,
                 BlockSymbolKind.PARAMETER,
             ):
-                self._new_symbol_kind.addItem(parameter_kind.value, parameter_kind)
+                self._add_symbol_ui.new_symbol_kind.addItem(parameter_kind.value, parameter_kind)
                 if parameter_kind == BlockSymbolKind.EVENT_PARAMETER:
-                    dynamic_parameter_index: int = self._new_symbol_kind.count() - 1
-                    self._new_symbol_kind.setItemData(
+                    dynamic_parameter_index: int = self._add_symbol_ui.new_symbol_kind.count() - 1
+                    self._add_symbol_ui.new_symbol_kind.setItemData(
                         dynamic_parameter_index,
                         self.tr("Parameter whose value may change during the simulation."),
                         Qt.ItemDataRole.ToolTipRole,
@@ -7224,7 +7116,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                 else:
                     pass
         elif selected_category == BlockSymbolCategory.RETAINED_MODES:
-            self._new_symbol_kind.addItem(
+            self._add_symbol_ui.new_symbol_kind.addItem(
                 self.tr("Retained mode"),
                 BlockSymbolKind.MODE_PARAMETER,
             )
@@ -7234,8 +7126,8 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         # that value in the model but do not ask the user to make a choice that
         # does not exist. Other categories restore the selector immediately.
         shows_kind_selector: bool = selected_category != BlockSymbolCategory.RETAINED_MODES
-        self._new_symbol_kind_label.setVisible(shows_kind_selector)
-        self._new_symbol_kind.setVisible(shows_kind_selector)
+        self._add_symbol_ui.new_symbol_kind_label.setVisible(shows_kind_selector)
+        self._add_symbol_ui.new_symbol_kind.setVisible(shows_kind_selector)
         self.update_new_symbol_controls()
 
     @QtCore.Slot(int)
@@ -7247,7 +7139,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         :return: None.
         """
         _unused_index: int = unused_index
-        selected_data: object = self._new_symbol_kind.currentData()
+        selected_data: object = self._add_symbol_ui.new_symbol_kind.currentData()
         if isinstance(selected_data, BlockSymbolKind):
             temporary_row: BlockSymbolDraftRow = BlockSymbolDraftRow(
                 self._block,
@@ -7262,11 +7154,11 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             # A newly declared input must therefore not offer a second,
             # conflicting power-flow initialization source.
             supports_external_reference: bool = temporary_row.supports_external_reference()
-            self._new_symbol_exported.setVisible(supports_export)
-            self._new_symbol_exported.setEnabled(supports_export)
-            self._new_state_derivative.setVisible(selected_data == BlockSymbolKind.STATE)
-            self._new_external_reference_label.setVisible(supports_external_reference)
-            self._new_external_reference.setVisible(supports_external_reference)
+            self._add_symbol_ui.new_symbol_exported.setVisible(supports_export)
+            self._add_symbol_ui.new_symbol_exported.setEnabled(supports_export)
+            self._add_symbol_ui.new_state_derivative.setVisible(selected_data == BlockSymbolKind.STATE)
+            self._add_symbol_ui.new_external_reference_label.setVisible(supports_external_reference)
+            self._add_symbol_ui.new_external_reference.setVisible(supports_external_reference)
             shows_variable_options: bool = selected_data in (
                 BlockSymbolKind.INPUT,
                 BlockSymbolKind.STATE,
@@ -7274,28 +7166,28 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             )
             shows_initial_value: bool = selected_data == BlockSymbolKind.EVENT_PARAMETER
             shows_static_mapping: bool = selected_data == BlockSymbolKind.PARAMETER
-            self._new_variable_options.setVisible(shows_variable_options)
-            self._new_parameter_value_label.setVisible(shows_initial_value)
-            self._new_parameter_value.setVisible(shows_initial_value)
-            self._new_static_reference_label.setVisible(shows_static_mapping)
-            self._new_static_reference.setVisible(shows_static_mapping)
+            self._add_symbol_ui.new_variable_options.setVisible(shows_variable_options)
+            self._add_symbol_ui.new_parameter_value_label.setVisible(shows_initial_value)
+            self._add_symbol_ui.new_parameter_value.setVisible(shows_initial_value)
+            self._add_symbol_ui.new_static_reference_label.setVisible(shows_static_mapping)
+            self._add_symbol_ui.new_static_reference.setVisible(shows_static_mapping)
             if not supports_export:
-                self._new_symbol_exported.setChecked(False)
+                self._add_symbol_ui.new_symbol_exported.setChecked(False)
             else:
                 pass
             if selected_data != BlockSymbolKind.STATE:
-                self._new_state_derivative.setChecked(False)
+                self._add_symbol_ui.new_state_derivative.setChecked(False)
             else:
                 pass
         else:
-            self._new_symbol_exported.setEnabled(False)
-            self._new_variable_options.setVisible(False)
-            self._new_parameter_value_label.setVisible(False)
-            self._new_parameter_value.setVisible(False)
-            self._new_static_reference_label.setVisible(False)
-            self._new_static_reference.setVisible(False)
-            self._new_external_reference_label.setVisible(False)
-            self._new_external_reference.setVisible(False)
+            self._add_symbol_ui.new_symbol_exported.setEnabled(False)
+            self._add_symbol_ui.new_variable_options.setVisible(False)
+            self._add_symbol_ui.new_parameter_value_label.setVisible(False)
+            self._add_symbol_ui.new_parameter_value.setVisible(False)
+            self._add_symbol_ui.new_static_reference_label.setVisible(False)
+            self._add_symbol_ui.new_static_reference.setVisible(False)
+            self._add_symbol_ui.new_external_reference_label.setVisible(False)
+            self._add_symbol_ui.new_external_reference.setVisible(False)
         # Optional rows change the native form height. Restore the complete
         # form immediately so newly revealed controls are never clipped.
         self._fit_add_symbol_form_to_contents()
@@ -7307,9 +7199,9 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
 
         :return: None.
         """
-        name: str = self._new_symbol_name.text().strip()
-        selected_data: object = self._new_symbol_kind.currentData()
-        selected_owner: object = self._new_symbol_owner.currentData()
+        name: str = self._add_symbol_ui.new_symbol_name.text().strip()
+        selected_data: object = self._add_symbol_ui.new_symbol_kind.currentData()
+        selected_owner: object = self._add_symbol_ui.new_symbol_owner.currentData()
         if len(name) == 0 or not name.isidentifier():
             self._show_validation_error(self.tr("Enter a valid Python symbol name."))
         elif not isinstance(selected_data, BlockSymbolKind):
@@ -7326,7 +7218,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             else:
                 pass
         else:
-            creates_derivative: bool = self._new_state_derivative.isChecked()
+            creates_derivative: bool = self._add_symbol_ui.new_state_derivative.isChecked()
             external_reference: VarPowerFlowReferenceType | None = (
                 self._get_selected_new_external_reference(selected_data)
             )
@@ -7334,8 +7226,8 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                 owner=selected_owner,
                 name=name,
                 kind=selected_data,
-                exported=self._new_symbol_exported.isChecked(),
-                value=self._new_parameter_value.value(),
+                exported=self._add_symbol_ui.new_symbol_exported.isChecked(),
+                value=self._add_symbol_ui.new_parameter_value.value(),
                 create_derivative=creates_derivative,
                 external_reference=external_reference,
                 static_reference=self._get_selected_new_static_reference(selected_data),
@@ -7344,7 +7236,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             # still contains placeholders that refer to that future symbol.
             # Complete semantic validation is deferred to Validate and Apply.
             self._namespace = self._build_staged_editing_namespace()
-            self._new_symbol_name.clear()
+            self._add_symbol_ui.new_symbol_name.clear()
             self._synchronize_dae_variable_declarations_for_block(selected_owner)
             initialization_inserted: bool = self._insert_default_initialization_for_new_symbol(
                 owner=selected_owner,
@@ -7532,7 +7424,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                 )
                 self._retained_mode_model.reload(self._runtime_logic_drafts)
                 self._namespace = self._build_staged_editing_namespace()
-                self._new_symbol_name.clear()
+                self._add_symbol_ui.new_symbol_name.clear()
                 if target_index == self._active_equation_buffer_index:
                     self._loading_equation_buffer = True
                     self._dae_editor.setPlainText(updated_code)
@@ -7542,7 +7434,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                     # Show that owner's buffer immediately so the new dictionary
                     # entry is visible instead of leaving an unrelated owner in the
                     # Python editor and making the successful insertion look lost.
-                    self._equation_owner_combo.setCurrentIndex(target_index)
+                    self.ui.equation_owner_combo.setCurrentIndex(target_index)
                 self._refresh_dae_language_context()
                 self._clear_dae_validation_feedback()
                 self._select_retained_mode_in_tree(owner, name)
@@ -7667,7 +7559,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                         QtGui.QTextCursor.MoveMode.KeepAnchor,
                     )
                     self._dae_editor.setTextCursor(restored_cursor)
-                    self.update_dae_code_search(self._dae_code_search.text())
+                    self.update_dae_code_search(self.ui.dae_code_search.text())
                 else:
                     pass
             else:
@@ -7691,7 +7583,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             "0.0",
         )
         if temporary_row.supports_external_reference():
-            selected_reference: object = self._new_external_reference.currentData()
+            selected_reference: object = self._add_symbol_ui.new_external_reference.currentData()
             if isinstance(selected_reference, VarPowerFlowReferenceType):
                 result: VarPowerFlowReferenceType | None = selected_reference
             else:
@@ -7709,7 +7601,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         :return: Selected mapping or ``None`` for all other symbol types.
         """
         if selected_kind == BlockSymbolKind.PARAMETER:
-            selected_reference: object = self._new_static_reference.currentData()
+            selected_reference: object = self._add_symbol_ui.new_static_reference.currentData()
             if isinstance(selected_reference, ParamPowerFlowReferenceType):
                 result: ParamPowerFlowReferenceType | None = selected_reference
             else:
@@ -7729,7 +7621,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         :param position: Click location in the property-tree viewport.
         :return: None.
         """
-        self._show_symbol_context_menu(self._property_tree, position)
+        self._show_symbol_context_menu(self.ui.property_tree, position)
 
     def _show_symbol_context_menu(self,
                                   table: QtWidgets.QAbstractItemView,
@@ -7881,9 +7773,8 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                     pass
 
             self._rename_detached_drafts(rename_pairs)
-            self._show_status_message(
+            self.toast_manager.show_info_toast(
                 self.tr("Variable renamed to '{name}'.").format(name=request.get_new_name()),
-                "color: #16825d;",
             )
         else:
             pass
@@ -8057,9 +7948,9 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             # A source preview must never present LaTeX generated from an older
             # equation draft. It is rebuilt from the new text when the user
             # changes the selection or validates the complete DAE model.
-            self._latex_source_preview.clear()
+            self.ui.latex_source_preview.clear()
             self._clear_dae_validation_feedback()
-            self.update_dae_code_search(self._dae_code_search.text())
+            self.update_dae_code_search(self.ui.dae_code_search.text())
             self.refresh_draft_state()
 
     @QtCore.Slot(int)
@@ -8070,7 +7961,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         :param combo_index: Value supplied for ``combo_index``.
         :return: None.
         """
-        selected_data: object = self._equation_owner_combo.itemData(combo_index)
+        selected_data: object = self.ui.equation_owner_combo.itemData(combo_index)
         if isinstance(selected_data, int) and 0 <= selected_data < len(self._equation_buffers):
             self._active_equation_buffer_index = selected_data
             selected_buffer: BlockCodeBuffer = self._equation_buffers[selected_data]
@@ -8079,7 +7970,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             self._refresh_dae_language_context()
             self._loading_equation_buffer = False
             self._clear_dae_validation_feedback()
-            self.update_dae_code_search(self._dae_code_search.text())
+            self.update_dae_code_search(self.ui.dae_code_search.text())
         else:
             pass
 
@@ -8205,7 +8096,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                 pass
         else:
             if invalid_index != self._active_equation_buffer_index:
-                self._equation_owner_combo.setCurrentIndex(invalid_index)
+                self.ui.equation_owner_combo.setCurrentIndex(invalid_index)
             else:
                 pass
             visible_code: str = self._equation_buffers[invalid_index].get_code()
@@ -8465,9 +8356,8 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             if rebuild_request.is_successful():
                 self.blockApplied.emit(self._block.uid)
                 self._refresh_after_apply(rebuilt_structure=True)
-                self._show_status_message(
+                self.toast_manager.show_info_toast(
                     self.tr("Block structure rebuilt with the selected settings."),
-                    "color: #16825d;",
                 )
                 return
             else:
@@ -8559,7 +8449,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             )
         else:
             status_message = self.tr("Changes applied to the editor working copy.")
-        self._show_status_message(status_message, "color: #16825d;")
+        self.toast_manager.show_info_toast(status_message)
 
     def _reload_applied_models(self) -> None:
         """Reload property models and runtime drafts from the current block.
@@ -8597,7 +8487,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             return
         else:
             active_owner: Block = self._equation_buffers[self._active_equation_buffer_index].get_block()
-            selected_add_owner: object = self._new_symbol_owner.currentData()
+            selected_add_owner: object = self._add_symbol_ui.new_symbol_owner.currentData()
 
         # Keep accepted author text for surviving owners, but never reuse a
         # buffer belonging to a removed child or a regenerated structural model.
@@ -8615,8 +8505,8 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             else:
                 pass
 
-        previous_owner_signals: bool = self._equation_owner_combo.blockSignals(True)
-        previous_add_signals: bool = self._new_symbol_owner.blockSignals(True)
+        previous_owner_signals: bool = self.ui.equation_owner_combo.blockSignals(True)
+        previous_add_signals: bool = self._add_symbol_ui.new_symbol_owner.blockSignals(True)
         self._loading_equation_buffer = True
         try:
             self._reload_applied_models()
@@ -8624,8 +8514,8 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             # Rebuild both owner selectors from the same current block order.
             # Surviving owners retain source comments and their selections.
             self._equation_buffers.clear()
-            self._equation_owner_combo.clear()
-            self._new_symbol_owner.clear()
+            self.ui.equation_owner_combo.clear()
+            self._add_symbol_ui.new_symbol_owner.clear()
             self._active_equation_buffer_index = 0
             selected_add_index: int = 0
             owner_index: int
@@ -8650,8 +8540,8 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                     pass
                 self._equation_buffers.append(refreshed_buffer)
                 owner_label: str = f"{owner.name} [{owner_index + 1}]"
-                self._equation_owner_combo.addItem(owner_label, owner_index)
-                self._new_symbol_owner.addItem(owner_label, owner)
+                self.ui.equation_owner_combo.addItem(owner_label, owner_index)
+                self._add_symbol_ui.new_symbol_owner.addItem(owner_label, owner)
                 if owner is active_owner:
                     self._active_equation_buffer_index = owner_index
                 else:
@@ -8662,8 +8552,8 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                     pass
             # Refresh the visible document and previews only once all model
             # identities are current, without firing intermediate owner changes.
-            self._equation_owner_combo.setCurrentIndex(self._active_equation_buffer_index)
-            self._new_symbol_owner.setCurrentIndex(selected_add_index)
+            self.ui.equation_owner_combo.setCurrentIndex(self._active_equation_buffer_index)
+            self._add_symbol_ui.new_symbol_owner.setCurrentIndex(selected_add_index)
             self._runtime_logic_drafts = self._build_runtime_logic_drafts_from_buffers()
             self._retained_mode_model.reload(self._runtime_logic_drafts)
             symbol_namespace: Dict[str, Expr] = self._symbol_model.build_validation_namespace(
@@ -8688,8 +8578,8 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             self._clear_dae_validation_feedback()
         finally:
             self._loading_equation_buffer = False
-            self._equation_owner_combo.blockSignals(previous_owner_signals)
-            self._new_symbol_owner.blockSignals(previous_add_signals)
+            self.ui.equation_owner_combo.blockSignals(previous_owner_signals)
+            self._add_symbol_ui.new_symbol_owner.blockSignals(previous_add_signals)
         self.refresh_draft_state()
 
     def _show_equation_buffer_diagnostics(self,
@@ -8701,9 +8591,9 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         :param diagnostics: Diagnostics to underline in that buffer.
         :return: None.
         """
-        self._tabs.setCurrentWidget(self.ui.dae_model_page)
+        self.ui.tab_widget.setCurrentWidget(self.ui.dae_model_page)
         if buffer_index != self._active_equation_buffer_index:
-            self._equation_owner_combo.setCurrentIndex(buffer_index)
+            self.ui.equation_owner_combo.setCurrentIndex(buffer_index)
         else:
             pass
         self._dae_editor.set_diagnostics(diagnostics)
@@ -8721,56 +8611,22 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         :return: None.
         """
         self._dae_editor.set_diagnostics(list())
-        self._clear_dae_validation_message()
-        self._clear_status_message()
 
     def _show_dae_validation_message(self, message: str, style_sheet: str) -> None:
-        """Display one-line DAE validation feedback beneath the editor.
+        """Display one-line DAE validation feedback as a toast.
 
         :param message: Human-readable result of validating the DAE source.
         :param style_sheet: Qt style sheet that conveys the result severity.
         :return: None.
         """
-        self._clear_status_message()
         message_parts: List[str] = message.split()
         single_line_message: str = " ".join(message_parts)
-        self._dae_validation_status_label.setStyleSheet(style_sheet)
-        self._dae_validation_status_label.setText(single_line_message)
-        # Preserve access to the complete warning if the available horizontal
-        # space is temporarily narrow because the property pane is expanded.
-        self._dae_validation_status_label.setToolTip(single_line_message)
-        self._dae_validation_status_label.show()
-
-    def _clear_dae_validation_message(self) -> None:
-        """Collapse the DAE-specific feedback row when its result is stale.
-
-        :return: None.
-        """
-        self._dae_validation_status_label.clear()
-        self._dae_validation_status_label.setToolTip("")
-        self._dae_validation_status_label.setStyleSheet("")
-        self._dae_validation_status_label.hide()
-
-    def _show_status_message(self, message: str, style_sheet: str) -> None:
-        """Display page-local feedback and allocate space only while needed.
-
-        :param message: Human-readable feedback for the latest operation.
-        :param style_sheet: Qt style sheet that conveys the feedback severity.
-        :return: None.
-        """
-        self._clear_dae_validation_message()
-        self._status_label.setStyleSheet(style_sheet)
-        self._status_label.setText(message)
-        self._status_label.show()
-
-    def _clear_status_message(self) -> None:
-        """Collapse page-local feedback after its message becomes obsolete.
-
-        :return: None.
-        """
-        self._status_label.clear()
-        self._status_label.setStyleSheet("")
-        self._status_label.hide()
+        if "#b42318" in style_sheet:
+            self.toast_manager.show_error_toast(single_line_message)
+        elif "#9a6700" in style_sheet:
+            self.toast_manager.show_warning_toast(single_line_message)
+        else:
+            self.toast_manager.show_info_toast(single_line_message)
 
     def _show_dae_validation_diagnostics(
             self,
@@ -8780,7 +8636,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         :param diagnostics: Ordered diagnostics for the visible source buffer.
         :return: None.
         """
-        self._tabs.setCurrentWidget(self.ui.dae_model_page)
+        self.ui.tab_widget.setCurrentWidget(self.ui.dae_model_page)
         self._dae_editor.set_diagnostics(diagnostics)
         if len(diagnostics) > 0:
             first_diagnostic: DaeCodeDiagnostic = diagnostics[0]
@@ -8792,7 +8648,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                 "color: #b42318;",
             )
         else:
-            self._clear_status_message()
+            pass
 
     def _show_validation_error(self, message: str) -> None:
         """
@@ -8807,12 +8663,12 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             form_message: str = self.tr("Nothing was added: {message}").format(
                 message=message,
             )
-            self._add_symbol_status_label.setStyleSheet("color: #b42318;")
-            self._add_symbol_status_label.setText(form_message)
-            self._add_symbol_status_label.show()
+            self._add_symbol_ui.add_symbol_status_label.setStyleSheet("color: #b42318;")
+            self._add_symbol_ui.add_symbol_status_label.setText(form_message)
+            self._add_symbol_ui.add_symbol_status_label.show()
         else:
             # Other model-validation failures belong beside the Python source.
-            self._tabs.setCurrentWidget(self.ui.dae_model_page)
+            self.ui.tab_widget.setCurrentWidget(self.ui.dae_model_page)
             self._show_dae_validation_message(
                 self.tr("Nothing was applied: {message}").format(message=message),
                 "color: #b42318;",
