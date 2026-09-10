@@ -1200,12 +1200,6 @@ class DynamicEventsPage(QtWidgets.QWidget):
         # UI object remains the declarative owner of widget construction.
         self.empty_model_message: QtWidgets.QLabel = self.ui.emptyModelMessage
         self.tree_view: QtWidgets.QTableView = self.ui.eventsTableView
-        self.switch_sequence_action: QtGui.QAction = self.ui.actionSwitchSequence
-        self.add_event_action: QtGui.QAction = self.ui.actionAddEvent
-        self.remove_action: QtGui.QAction = self.ui.actionRemove
-        self.new_group_action: QtGui.QAction = self.ui.actionNewGroup
-        self.clear_device_events_action: QtGui.QAction = self.ui.actionClearDeviceEvents
-        self.save_action: QtGui.QAction = self.ui.actionSave
 
         # The empty-state label overlays the table without intercepting input,
         # so existing rows remain interactive while the message is visible.
@@ -1215,7 +1209,7 @@ class DynamicEventsPage(QtWidgets.QWidget):
         )
         self.empty_model_message.setVisible(self.model_is_empty)
         self.empty_model_message.raise_()
-        self.switch_sequence_action.setVisible(self.mode == DynamicSimulationMode.EMT)
+        self.ui.actionSwitchSequence.setVisible(self.mode == DynamicSimulationMode.EMT)
 
         self.tree_model: DynamicEventsTreeModel = DynamicEventsTreeModel(
             session=session,
@@ -1250,12 +1244,12 @@ class DynamicEventsPage(QtWidgets.QWidget):
         header.resizeSection(DynamicEventsTreeModel.COLUMN_TRANSITION, 105)
         header.resizeSection(DynamicEventsTreeModel.COLUMN_END_TIME, 105)
 
-        self.add_event_action.triggered.connect(self.add_event)
-        self.remove_action.triggered.connect(self.remove_selection)
-        self.new_group_action.triggered.connect(self.create_event_group)
-        self.clear_device_events_action.triggered.connect(self.clear_device_events)
-        self.save_action.triggered.connect(self.save_changes)
-        self.switch_sequence_action.triggered.connect(self.open_switch_sequence)
+        self.ui.actionAdd.triggered.connect(self.add_event)
+        self.ui.actionRemove.triggered.connect(self.remove_selection)
+        # self.ui.actionNewGroup.triggered.connect(self.create_event_group)
+        self.ui.actionClearDeviceEvents.triggered.connect(self.clear_device_events)
+        self.ui.actionSave.triggered.connect(self.save_changes)
+        self.ui.actionSwitchSequence.triggered.connect(self.open_switch_sequence)
         self.tree_view.customContextMenuRequested.connect(self.show_context_menu)
         self.tree_model.rebuilt.connect(self._on_event_model_rebuilt)
         self.filter_model.filterChanged.connect(self._on_filter_changed)
@@ -1511,13 +1505,13 @@ class DynamicEventsPage(QtWidgets.QWidget):
 
         :return: None.
         """
-        self.add_event_action.setEnabled(True)
-        self.remove_action.setEnabled(True)
+        self.ui.actionAddEvent.setEnabled(True)
+        self.ui.actionRemove.setEnabled(True)
         device_events: list[DynamicEventDraft] = self.session.get_events_for_device(
             device=self.device,
             mode=self.mode,
         )
-        self.clear_device_events_action.setEnabled(len(device_events) > 0)
+        self.ui.actionClearDeviceEvents.setEnabled(len(device_events) > 0)
 
         mode_parameters: list[Var] = self._get_switch_mode_parameters()
         mode_groups: list[DynamicEventGroupDraft] = self.session.get_groups(self.mode)
@@ -1526,11 +1520,11 @@ class DynamicEventsPage(QtWidgets.QWidget):
             and len(mode_parameters) > 0
             and len(mode_groups) > 0
         )
-        self.switch_sequence_action.setEnabled(can_open_switch_sequence)
+        self.ui.actionSwitchSequence.setEnabled(can_open_switch_sequence)
         if self.has_runtime_parameters():
-            self.add_event_action.setToolTip(self.tr("Add an event and select its event group"))
+            self.ui.actionAddEvent.setToolTip(self.tr("Add an event and select its event group"))
         else:
-            self.add_event_action.setToolTip(
+            self.ui.actionAddEvent.setToolTip(
                 self.tr("No events can be added because the dynamic model has no event parameters.")
             )
 
