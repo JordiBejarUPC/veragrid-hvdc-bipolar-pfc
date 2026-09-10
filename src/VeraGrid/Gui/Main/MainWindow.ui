@@ -338,7 +338,10 @@
                                 </property>
                                 <property name="icon">
                                  <iconset resource="../Icons/icons.qrc">
-                                  <normaloff>:/Icons/icons/magnifying_glass2.png</normaloff>:/Icons/icons/magnifying_glass2.png</iconset>
+                                  <normaloff>:/Icons/icons/magnifying_glass.png</normaloff>:/Icons/icons/magnifying_glass.png</iconset>
+                                </property>
+                                <property name="flat">
+                                 <bool>true</bool>
                                 </property>
                                </widget>
                               </item>
@@ -1098,6 +1101,9 @@
                             <property name="icon">
                              <iconset resource="../Icons/icons.qrc">
                               <normaloff>:/Icons/icons/color_grid.png</normaloff>:/Icons/icons/color_grid.png</iconset>
+                            </property>
+                            <property name="flat">
+                             <bool>true</bool>
                             </property>
                            </widget>
                           </item>
@@ -2496,8 +2502,8 @@
                 <rect>
                  <x>0</x>
                  <y>0</y>
-                 <width>86</width>
-                 <height>88</height>
+                 <width>274</width>
+                 <height>520</height>
                 </rect>
                </property>
                <attribute name="icon">
@@ -2663,6 +2669,9 @@
                         <property name="icon">
                          <iconset resource="../Icons/icons.qrc">
                           <normaloff>:/Icons/icons/magnifying_glass.png</normaloff>:/Icons/icons/magnifying_glass.png</iconset>
+                        </property>
+                        <property name="flat">
+                         <bool>true</bool>
                         </property>
                        </widget>
                       </item>
@@ -10939,9 +10948,6 @@
            <width>24</width>
            <height>16777215</height>
           </size>
-         </property>
-         <property name="toolTip">
-          <string>Unlock the Interface</string>
          </property>
          <property name="text">
           <string/>
