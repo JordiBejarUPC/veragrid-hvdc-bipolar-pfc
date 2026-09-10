@@ -3337,9 +3337,6 @@ Are you sure?</source>
         <source>Validate model</source>
         <translation>التحقق من صحة النموذج</translation>
     </message>
-</context>
-<context>
-    <name>DynamicBlockPropertiesDockWidget</name>
     <message>
         <source>Block Properties contains changes that have not been applied. Discard those changes and close the editor?</source>
         <translation>تحتوي خصائص الكتلة على تغييرات لم يتم تطبيقها. هل تريد التخلص من هذه التغييرات وإغلاق المحرر؟</translation>

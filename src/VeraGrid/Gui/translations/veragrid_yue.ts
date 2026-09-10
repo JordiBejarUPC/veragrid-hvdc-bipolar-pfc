@@ -2775,9 +2775,6 @@ Are you sure?</source>
         <source>Validate model</source>
         <translation>驗證模型</translation>
     </message>
-</context>
-<context>
-    <name>DynamicBlockPropertiesDockWidget</name>
     <message>
         <source>Block Properties contains changes that have not been applied. Discard those changes and close the editor?</source>
         <translation>區塊屬性包含尚未應用變更。是否捨棄這些變更並關閉編輯器？</translation>

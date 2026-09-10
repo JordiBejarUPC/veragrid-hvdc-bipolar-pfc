@@ -3339,9 +3339,6 @@ Are you sure?</translation>
         <source>Validate model</source>
         <translation>Modeloa baliatu</translation>
     </message>
-</context>
-<context>
-    <name>DynamicBlockPropertiesDockWidget</name>
     <message>
         <source>Block Properties contains changes that have not been applied. Discard those changes and close the editor?</source>
         <translation>Block Properties-ean ez dago aplikatuak den dirudiak. Ez dago dirudiak eta editorea xutetzea?</translation>

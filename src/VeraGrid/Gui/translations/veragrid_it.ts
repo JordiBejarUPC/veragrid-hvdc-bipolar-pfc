@@ -3337,9 +3337,6 @@ Sei sicuro?</translation>
         <source>Validate model</source>
         <translation>Valida modello</translation>
     </message>
-</context>
-<context>
-    <name>DynamicBlockPropertiesDockWidget</name>
     <message>
         <source>Block Properties contains changes that have not been applied. Discard those changes and close the editor?</source>
         <translation>Le Proprietà del blocco contengono modifiche che non sono state applicate. Scartare queste modifiche e chiudere l&apos;editor?</translation>

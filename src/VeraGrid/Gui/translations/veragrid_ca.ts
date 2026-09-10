@@ -3339,9 +3339,6 @@ Combreu?</translation>
         <source>Validate model</source>
         <translation>Validar model</translation>
     </message>
-</context>
-<context>
-    <name>DynamicBlockPropertiesDockWidget</name>
     <message>
         <source>Block Properties contains changes that have not been applied. Discard those changes and close the editor?</source>
         <translation>Propietats del bloc conté canvis que no s&apos;han aplicats. Descartar aquests canvis i tancar l&apos;editor?</translation>

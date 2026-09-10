@@ -3347,9 +3347,6 @@ Are you sure?</source>
         <source>Validate model</source>
         <translation>모델 유효성 검사</translation>
     </message>
-</context>
-<context>
-    <name>DynamicBlockPropertiesDockWidget</name>
     <message>
         <source>Block Properties contains changes that have not been applied. Discard those changes and close the editor?</source>
         <translation>블록 속성에 적용되지 않은 변경 사항이 포함되어 있습니다. 해당 변경 사항을 폐기하고 편집기를 닫으시겠습니까?</translation>

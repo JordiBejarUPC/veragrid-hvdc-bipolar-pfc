@@ -64,7 +64,6 @@ from VeraGrid.Gui.DynamicModelEditor.Editor.BlockProperties.dynamic_block_proper
     BlockStructuralEditRequest,
     BlockVariableRenameRequest,
     DynamicBlockPropertiesDialog,
-    DynamicBlockPropertiesDockWidget,
     resolve_block_documentation_url,
 )
 import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_validation as valid
@@ -1707,13 +1706,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.setupUi(self)
 
         self._library_dock: QtWidgets.QDockWidget | None = None
-        self._block_properties_dock: DynamicBlockPropertiesDockWidget | None = None
         self._block_properties_dialogue: DynamicBlockPropertiesDialog | None = None
-        self._properties_dock_normalize_timer: QtCore.QTimer | None = QtCore.QTimer(self)
-        self._properties_dock_normalize_timer.setSingleShot(True)
-        self._properties_dock_normalize_timer.timeout.connect(
-            self.normalize_block_properties_right_dock
-        )
         self.configure_dynamic_editor_docks()
 
         # The editor owns its own toast manager so save notifications are
@@ -2376,7 +2369,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             pass
 
         if can_open:
-            previous_properties_closed: bool = self.close_block_properties_dock()
+            previous_properties_closed: bool = self.close_block_properties_dialogue()
             if not previous_properties_closed:
                 # The existing editor owns an unapplied transaction and its
                 # discard confirmation was cancelled. Do not replace it with
@@ -2399,42 +2392,13 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             dialogue.variableRenameRequested.connect(self.on_variable_rename_requested)
             dialogue.outputExportChangesRequested.connect(self.on_output_export_changes_requested)
             dialogue.symbolRemovalsRequested.connect(self.on_symbol_removals_requested)
-            properties_dock: DynamicBlockPropertiesDockWidget = DynamicBlockPropertiesDockWidget(
-                properties_widget=dialogue,
-                parent=self,
-            )
-            allowed_areas: Qt.DockWidgetArea = (
-                    Qt.DockWidgetArea.LeftDockWidgetArea
-                    | Qt.DockWidgetArea.RightDockWidgetArea
-                    | Qt.DockWidgetArea.BottomDockWidgetArea
-            )
-            properties_dock.setAllowedAreas(allowed_areas)
-            properties_dock.closed.connect(self.on_block_properties_dock_closed)
-            properties_dock.dockLocationChanged.connect(
-                self.on_block_properties_dock_location_changed
-            )
-            properties_dock.topLevelChanged.connect(
-                self.on_block_properties_dock_top_level_changed
-            )
+            dialogue.closed.connect(self.on_block_properties_dialogue_closed)
             self._block_properties_dialogue = dialogue
-            self._block_properties_dock = properties_dock
-
-            # Register a legal right-side slot so the freely movable editor can
-            # be docked back into the Dynamic Editor whenever the user chooses.
-            self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, properties_dock)
-            if self._library_dock is not None:
-                self.splitDockWidget(
-                    self._library_dock,
-                    properties_dock,
-                    Qt.Orientation.Vertical,
-                )
-            else:
-                pass
-            properties_dock.setFloating(True)
-            properties_dock.resize(1200, 700)
-            self.center_floating_block_properties_dock(properties_dock)
-            properties_dock.show()
-            properties_dock.raise_()
+            dialogue.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
+            dialogue.resize(1200, 700)
+            self.center_block_properties_dialogue(dialogue)
+            dialogue.show()
+            dialogue.raise_()
         else:
             pass
 
@@ -2535,182 +2499,47 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
         return self._library_dock
 
-    def get_block_properties_dock_widget(self) -> DynamicBlockPropertiesDockWidget | None:
-        """Return the currently open block-properties dock.
-
-        :return: Active properties dock, or ``None`` when closed.
-        """
-        return self._block_properties_dock
-
-    def center_floating_block_properties_dock(
+    def center_block_properties_dialogue(
             self,
-            properties_dock: DynamicBlockPropertiesDockWidget,
+            properties_dialogue: DynamicBlockPropertiesDialog,
     ) -> None:
-        """Center a new floating properties dock over the Dynamic Editor.
+        """Center a new properties dialogue over the Dynamic Editor.
 
-        :param properties_dock: Floating dock to position.
+        :param properties_dialogue: Properties dialogue to position.
         :return: None.
         """
         editor_top_left: QtCore.QPoint = self.mapToGlobal(QtCore.QPoint(0, 0))
-        target_x: int = editor_top_left.x() + max(0, (self.width() - properties_dock.width()) // 2)
-        target_y: int = editor_top_left.y() + max(0, (self.height() - properties_dock.height()) // 2)
+        target_x: int = editor_top_left.x() + max(0, (self.width() - properties_dialogue.width()) // 2)
+        target_y: int = editor_top_left.y() + max(0, (self.height() - properties_dialogue.height()) // 2)
         screen: QtGui.QScreen | None = self.screen()
         if screen is not None:
             available_geometry: QtCore.QRect = screen.availableGeometry()
-            maximum_x: int = available_geometry.right() - properties_dock.width() + 1
-            maximum_y: int = available_geometry.bottom() - properties_dock.height() + 1
+            maximum_x: int = available_geometry.right() - properties_dialogue.width() + 1
+            maximum_y: int = available_geometry.bottom() - properties_dialogue.height() + 1
             target_x = max(available_geometry.left(), min(target_x, maximum_x))
             target_y = max(available_geometry.top(), min(target_y, maximum_y))
         else:
             pass
-        properties_dock.move(target_x, target_y)
+        properties_dialogue.move(target_x, target_y)
 
-    @QtCore.Slot(Qt.DockWidgetArea)
-    def on_block_properties_dock_location_changed(
-            self,
-            area: Qt.DockWidgetArea,
-    ) -> None:
-        """Normalize right-side drops into a vertical Library stack.
+    def close_block_properties_dialogue(self) -> bool:
+        """Close the active property dialogue before opening another one.
 
-        :param area: New main-window dock area reported by Qt.
-        :return: None.
+        :return: Whether no dialogue remains or its close request was accepted.
         """
-        properties_dock: DynamicBlockPropertiesDockWidget | None = self._block_properties_dock
-        normalize_timer: QtCore.QTimer | None = self._properties_dock_normalize_timer
-        if properties_dock is not None and not properties_dock.isFloating():
-            self.resize_block_properties_dock_for_area(area)
-            if (normalize_timer is not None
-                    and area == Qt.DockWidgetArea.RightDockWidgetArea):
-                normalize_timer.start(0)
-            else:
-                pass
-        else:
-            pass
-
-    @QtCore.Slot(bool)
-    def on_block_properties_dock_top_level_changed(self, floating: bool) -> None:
-        """Schedule right-side normalization after a floating dock is attached.
-
-        :param floating: Whether the properties dock is currently floating.
-        :return: None.
-        """
-        properties_dock: DynamicBlockPropertiesDockWidget | None = self._block_properties_dock
-        if properties_dock is not None and not floating:
-            area: Qt.DockWidgetArea = self.dockWidgetArea(properties_dock)
-            self.on_block_properties_dock_location_changed(area)
-        else:
-            pass
-
-    def resize_block_properties_dock_for_area(
-            self,
-            area: Qt.DockWidgetArea,
-    ) -> None:
-        """Give each legal dock area a useful initial share of the editor.
-
-        Users retain the native splitter and can resize the dock afterwards.
-
-        :param area: Main-window area containing Block properties.
-        :return: None.
-        """
-        properties_dock: DynamicBlockPropertiesDockWidget | None = self._block_properties_dock
-        library_dock: QtWidgets.QDockWidget | None = self._library_dock
-        if properties_dock is not None:
-            if area == Qt.DockWidgetArea.BottomDockWidgetArea:
-                bottom_height: int = max(280, min(500, int(self.height() * 0.45)))
-                self.resizeDocks(
-                    list((properties_dock,)),
-                    list((bottom_height,)),
-                    Qt.Orientation.Vertical,
-                )
-            elif area == Qt.DockWidgetArea.LeftDockWidgetArea:
-                left_width: int = max(420, min(720, int(self.width() * 0.40)))
-                self.resizeDocks(
-                    list((properties_dock,)),
-                    list((left_width,)),
-                    Qt.Orientation.Horizontal,
-                )
-            elif area == Qt.DockWidgetArea.RightDockWidgetArea:
-                right_width: int = max(420, min(720, int(self.width() * 0.40)))
-                if library_dock is not None:
-                    self.resizeDocks(
-                        list((library_dock, properties_dock,)),
-                        list((right_width, right_width,)),
-                        Qt.Orientation.Horizontal,
-                    )
-                else:
-                    self.resizeDocks(
-                        list((properties_dock,)),
-                        list((right_width,)),
-                        Qt.Orientation.Horizontal,
-                    )
-            else:
-                pass
-        else:
-            pass
-
-    @QtCore.Slot()
-    def normalize_block_properties_right_dock(self) -> None:
-        """Force a right-side properties dock above or below the Library.
-
-        Qt nesting can otherwise place two docks side by side within the right
-        area. The user's vertical drop position selects whether Block
-        properties stays above or below the fixed Library.
-
-        :return: None.
-        """
-        properties_dock: DynamicBlockPropertiesDockWidget | None = self._block_properties_dock
-        library_dock: QtWidgets.QDockWidget | None = self._library_dock
-        if (properties_dock is not None
-                and library_dock is not None
-                and not properties_dock.isFloating()
-                and self.dockWidgetArea(properties_dock) == Qt.DockWidgetArea.RightDockWidgetArea):
-            properties_geometry: QtCore.QRect = properties_dock.geometry()
-            library_geometry: QtCore.QRect = library_dock.geometry()
-            same_horizontal_span: bool = (
-                    abs(properties_geometry.left() - library_geometry.left()) <= 2
-                    and abs(properties_geometry.right() - library_geometry.right()) <= 2
-            )
-            if same_horizontal_span:
-                pass
-            elif properties_geometry.center().y() < library_geometry.center().y():
-                self.splitDockWidget(
-                    properties_dock,
-                    library_dock,
-                    Qt.Orientation.Vertical,
-                )
-            else:
-                self.splitDockWidget(
-                    library_dock,
-                    properties_dock,
-                    Qt.Orientation.Vertical,
-                )
-        else:
-            pass
-
-    def close_block_properties_dock(self) -> bool:
-        """Close the active property dock before opening another one.
-
-        :return: Whether no dock remains or its close request was accepted.
-        """
-        properties_dock: DynamicBlockPropertiesDockWidget | None = self._block_properties_dock
-        if properties_dock is not None:
-            closed: bool = properties_dock.close()
+        properties_dialogue: DynamicBlockPropertiesDialog | None = self._block_properties_dialogue
+        if properties_dialogue is not None:
+            closed: bool = properties_dialogue.close()
         else:
             closed = True
         return closed
 
     @QtCore.Slot()
-    def on_block_properties_dock_closed(self) -> None:
-        """Forget a property dock after either Close control is used.
+    def on_block_properties_dialogue_closed(self) -> None:
+        """Forget a property dialogue after its Close control is used.
 
         :return: None.
         """
-        normalize_timer: QtCore.QTimer | None = self._properties_dock_normalize_timer
-        if normalize_timer is not None:
-            normalize_timer.stop()
-        else:
-            pass
-        self._block_properties_dock = None
         self._block_properties_dialogue = None
 
     def reset_library_tree_expansion(self) -> None:
@@ -12367,25 +12196,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         _dispose_qobject(scene)
         self.scene = None
 
-    def _dispose_block_properties_dock(self) -> None:
-        """Destroy the active block-properties dock before editor teardown.
+    def _dispose_block_properties_dialogue(self) -> None:
+        """Destroy the active block-properties dialogue before editor teardown.
 
         :return: None.
         """
-        normalize_timer: QtCore.QTimer | None = self._properties_dock_normalize_timer
-        if normalize_timer is not None:
-            normalize_timer.stop()
-            try:
-                normalize_timer.timeout.disconnect(
-                    self.normalize_block_properties_right_dock
-                )
-            except (RuntimeError, TypeError):
-                pass
-            normalize_timer.deleteLater()
-            self._properties_dock_normalize_timer = None
-        else:
-            pass
-
         properties_dialogue: DynamicBlockPropertiesDialog | None = self._block_properties_dialogue
         if properties_dialogue is not None:
             # The dialogue can outlive its editor until DeferredDelete is
@@ -12421,34 +12236,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 )
             except (RuntimeError, TypeError):
                 pass
-        else:
-            pass
-
-        properties_dock: DynamicBlockPropertiesDockWidget | None = self._block_properties_dock
-        if properties_dock is not None:
             try:
-                properties_dock.closed.disconnect(
-                    self.on_block_properties_dock_closed
+                properties_dialogue.closed.disconnect(
+                    self.on_block_properties_dialogue_closed
                 )
             except (RuntimeError, TypeError):
                 pass
-            try:
-                properties_dock.dockLocationChanged.disconnect(
-                    self.on_block_properties_dock_location_changed
-                )
-            except (RuntimeError, TypeError):
-                pass
-            try:
-                properties_dock.topLevelChanged.disconnect(
-                    self.on_block_properties_dock_top_level_changed
-                )
-            except (RuntimeError, TypeError):
-                pass
-            properties_dock.prepare_to_delete()
-            self.removeDockWidget(properties_dock)
-            properties_dock.setParent(None)
-            properties_dock.deleteLater()
-            self._block_properties_dock = None
+            properties_dialogue.prepare_to_delete()
+            properties_dialogue.setParent(None)
+            properties_dialogue.deleteLater()
             self._block_properties_dialogue = None
         else:
             pass
@@ -12488,7 +12284,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self._prepared_to_delete = True
         # Close property tooling before any of the model or scene
         # objects referenced by its signals are dismantled.
-        self._dispose_block_properties_dock()
+        self._dispose_block_properties_dialogue()
 
         # Tear down the library model before its dock starts disappearing.
         self._dispose_table_models()

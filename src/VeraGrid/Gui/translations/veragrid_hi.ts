@@ -2773,9 +2773,6 @@ Are you sure?</source>
         <source>Validate model</source>
         <translation>मॉडल मान्य करें</translation>
     </message>
-</context>
-<context>
-    <name>DynamicBlockPropertiesDockWidget</name>
     <message>
         <source>Block Properties contains changes that have not been applied. Discard those changes and close the editor?</source>
         <translation>ब्लॉक गुण में ऐसे परिवर्तन हैं जिन्हें लागू नहीं किया गया है। क्या आप उन परिवर्तनों को त्यागना और संपादक बंद करना चाहते हैं?</translation>

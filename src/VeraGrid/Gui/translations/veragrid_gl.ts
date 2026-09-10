@@ -3339,9 +3339,6 @@ Are you sure?</source>
         <source>Validate model</source>
         <translation>Validar modelo</translation>
     </message>
-</context>
-<context>
-    <name>DynamicBlockPropertiesDockWidget</name>
     <message>
         <source>Block Properties contains changes that have not been applied. Discard those changes and close the editor?</source>
         <translation>As Propiedades do Bloque contén cambios que non se aplicaron. Descartar esos cambios e cerrar o editor?</translation>

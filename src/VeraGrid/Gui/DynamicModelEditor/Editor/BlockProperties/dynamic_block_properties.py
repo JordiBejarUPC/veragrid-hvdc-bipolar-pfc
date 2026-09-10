@@ -5725,6 +5725,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
     variableRenameRequested = Signal(object)
     outputExportChangesRequested = Signal(object)
     symbolRemovalsRequested = Signal(object)
+    closed = Signal()
 
     __slots__ = (
         "ui",
@@ -5906,13 +5907,43 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._dae_editor.set_light_mode()
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
-        """Release owned Qt resources before accepting the close event.
+        """Confirm unapplied edits and release owned Qt resources.
 
         :param event: Incoming close event.
         :return: None.
         """
-        self.prepare_to_delete()
-        QtWidgets.QDialog.closeEvent(self, event)
+        requires_confirmation: bool = (
+            not self._prepared_to_delete
+            and self.has_unapplied_changes()
+        )
+        if requires_confirmation:
+            selected_button: QtWidgets.QMessageBox.StandardButton = (
+                QtWidgets.QMessageBox.warning(
+                    self,
+                    self.tr("Unsaved Block Properties changes"),
+                    self.tr(
+                        "Block Properties contains changes that have not been applied. "
+                        "Discard those changes and close the editor?"
+                    ),
+                    QtWidgets.QMessageBox.StandardButton.Discard
+                    | QtWidgets.QMessageBox.StandardButton.Cancel,
+                    QtWidgets.QMessageBox.StandardButton.Cancel,
+                )
+            )
+            discard_changes: bool = (
+                selected_button == QtWidgets.QMessageBox.StandardButton.Discard
+            )
+        else:
+            discard_changes = True
+
+        if discard_changes:
+            self.prepare_to_delete()
+            self.closed.emit()
+            QtWidgets.QDialog.closeEvent(self, event)
+        else:
+            event.ignore()
+            self.raise_()
+            self.activateWindow()
 
     def _find_initial_equation_buffer_index(self) -> int:
         """
@@ -6032,12 +6063,6 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             pass
         else:
             self.ui.tab_widget.removeTab(special_index)
-
-        # Page icons make the fixed organization scannable without adding any
-        # controls to General options.
-        general_index: int = self.ui.tab_widget.indexOf(self.ui.general_page)
-        dae_index: int = self.ui.tab_widget.indexOf(self.ui.dae_model_page)
-        latex_index: int = self.ui.tab_widget.indexOf(self.ui.latex_page)
 
         self.ui.tab_widget.setCurrentWidget(self.ui.general_page)
 
@@ -8668,204 +8693,3 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                 self.tr("Nothing was applied: {message}").format(message=message),
                 "color: #b42318;",
             )
-
-
-class DynamicBlockPropertiesDockWidget(QtWidgets.QDockWidget):
-    """Dock host that owns one block-properties editor safely.
-
-    The host supplies a native title bar with the ordinary move, dock and
-    close interactions expected from Block Properties. While floating, native
-    Qt application modality gives it the same interaction boundary as a modal
-    device editor. Native modality automatically admits every child menu,
-    completer, delegate editor and dialogue opened by Block Properties. Once
-    docked, the host becomes non-modal so the complete Dynamic Editor remains
-    usable through Qt's ordinary dock interaction.
-    Closing the host explicitly prepares the Qt-heavy child tree before Qt
-    schedules the binary widgets for deletion.
-    """
-
-    closed = Signal()
-
-    __slots__ = (
-        "_properties_widget",
-        "_prepared_to_delete",
-        "_floating",
-    )
-
-    def __init__(
-            self,
-            properties_widget: DynamicBlockPropertiesDialog,
-            parent: QtWidgets.QMainWindow,
-    ) -> None:
-        """Create a dock around one property-editor widget.
-
-        :param properties_widget: Block-property content to host.
-        :param parent: Dynamic Editor main window that owns the dock.
-        :return: None.
-        """
-        super().__init__(properties_widget.windowTitle(), parent)
-        self._properties_widget: DynamicBlockPropertiesDialog = properties_widget
-        self._prepared_to_delete: bool = False
-        self._floating: bool = False
-        self.setObjectName("dynamicBlockPropertiesDock")
-        self.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose, True)
-        self.setFeatures(
-            QtWidgets.QDockWidget.DockWidgetFeature.DockWidgetClosable
-            | QtWidgets.QDockWidget.DockWidgetFeature.DockWidgetMovable
-            | QtWidgets.QDockWidget.DockWidgetFeature.DockWidgetFloatable
-        )
-        self._properties_widget.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose, False)
-        self.setWidget(self._properties_widget)
-        self.topLevelChanged.connect(self.configure_floating_close_only_frame)
-        self.dockLocationChanged.connect(self.configure_docked_interaction_boundary)
-
-    @QtCore.Slot(bool)
-    def set_interaction_locked(self, locked: bool) -> None:
-        """Enable or remove the host's native modal interaction boundary.
-
-        Qt owns the relationship between a modal window and every auxiliary
-        control it creates. Relying on that relationship keeps completers,
-        combo-box popups, menus, tooltips and child dialogues interactive
-        without maintaining a fragile application-wide event whitelist.
-
-        :param locked: Whether Block Properties must own all VeraGrid interaction.
-        :return: None.
-        """
-        if locked:
-            self.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
-        else:
-            self.setWindowModality(QtCore.Qt.WindowModality.NonModal)
-
-    @QtCore.Slot(bool)
-    def configure_floating_close_only_frame(self, floating: bool) -> None:
-        """Match the DeviceEditor frame while the properties dock is floating.
-
-        ``TemplateDeviceEditor`` is a regular ``QDialog`` and therefore uses
-        the operating system's native close control. A floating ``QDockWidget``
-        normally keeps Qt's themed dock close subcontrol instead. Selecting a
-        native window frame with only ``WindowCloseButtonHint`` removes that
-        visual mismatch without exposing non-functional minimize controls.
-
-        :param floating: Whether the dock has become a top-level window.
-        :return: None.
-        """
-        # A floating Block Properties window owns a native modal boundary.
-        # Docking removes modality entirely so the Dynamic Editor is usable.
-        self._floating = floating
-        if floating:
-            floating_flags: Qt.WindowType = (
-                Qt.WindowType.Window
-                | Qt.WindowType.CustomizeWindowHint
-                | Qt.WindowType.WindowTitleHint
-                | Qt.WindowType.WindowSystemMenuHint
-                | Qt.WindowType.WindowCloseButtonHint
-            )
-            self.setWindowFlags(floating_flags)
-            self.set_interaction_locked(True)
-            # Updating native decorations temporarily hides the widget. Show
-            # it again before the opening code positions the floating dock.
-            self.show()
-        else:
-            # Qt restores its embedded dock title bar after reattachment.
-            self.set_interaction_locked(False)
-
-    @QtCore.Slot(Qt.DockWidgetArea)
-    def configure_docked_interaction_boundary(
-            self,
-            area: Qt.DockWidgetArea,
-    ) -> None:
-        """Remove native window modality as soon as docking completes.
-
-        ``dockLocationChanged`` provides an independent, explicit dock-state
-        notification. Handling it avoids leaving the Dynamic Editor blocked
-        if native window-frame changes delay or suppress a corresponding
-        ``topLevelChanged(False)`` notification.
-
-        :param area: Main-window dock area, or ``NoDockWidgetArea`` while floating.
-        :return: None.
-        """
-        is_docked: bool = area != Qt.DockWidgetArea.NoDockWidgetArea
-        if is_docked:
-            self._floating = False
-            self.set_interaction_locked(False)
-        else:
-            pass
-
-    def prepare_to_delete(self) -> None:
-        """Prepare the hosted Qt object tree for deterministic destruction.
-
-        :return: None.
-        """
-        if self._prepared_to_delete:
-            pass
-        else:
-            self._prepared_to_delete = True
-
-            # Detach the completer popup, event filters, models and document
-            # observers while their complete Qt ownership tree is still alive.
-            # Hiding first can enqueue popup events against Python wrappers
-            # that are destroyed later in this close cycle.
-            self._properties_widget.prepare_to_delete()
-
-            # Qt does not reliably apply a modality change to a visible native
-            # window. Hide it next so the floating dock leaves the modal stack
-            # before its DeferredDelete event is eventually processed.
-            if self._floating and self.isVisible():
-                self.hide()
-            else:
-                pass
-            self.set_interaction_locked(False)
-            try:
-                self.topLevelChanged.disconnect(self.configure_floating_close_only_frame)
-            except (RuntimeError, TypeError):
-                pass
-            try:
-                self.dockLocationChanged.disconnect(
-                    self.configure_docked_interaction_boundary
-                )
-            except (RuntimeError, TypeError):
-                pass
-
-    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
-        """Prepare the child editor and notify its owning Dynamic Editor.
-
-        :param event: Incoming dock close event.
-        :return: None.
-        """
-        requires_confirmation: bool = (
-            not self._prepared_to_delete
-            and self._properties_widget.has_unapplied_changes()
-        )
-        if requires_confirmation:
-            # The confirmation is a native child of the modal properties host,
-            # so it remains interactive without opening the rest of VeraGrid.
-            selected_button: QtWidgets.QMessageBox.StandardButton = (
-                QtWidgets.QMessageBox.warning(
-                    self,
-                    self.tr("Unsaved Block Properties changes"),
-                    self.tr(
-                        "Block Properties contains changes that have not been applied. "
-                        "Discard those changes and close the editor?"
-                    ),
-                    QtWidgets.QMessageBox.StandardButton.Discard
-                    | QtWidgets.QMessageBox.StandardButton.Cancel,
-                    QtWidgets.QMessageBox.StandardButton.Cancel,
-                )
-            )
-            discard_changes: bool = (
-                selected_button == QtWidgets.QMessageBox.StandardButton.Discard
-            )
-        else:
-            discard_changes = True
-
-        if discard_changes:
-            self.prepare_to_delete()
-            self.closed.emit()
-            QtWidgets.QDockWidget.closeEvent(self, event)
-        else:
-            event.ignore()
-            if self._floating:
-                self.raise_()
-                self.activateWindow()
-            else:
-                pass
