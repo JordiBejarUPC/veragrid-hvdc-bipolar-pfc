@@ -4750,6 +4750,39 @@ class DiagramScene(QGraphicsScene):
                 edit_action: QAction | None
                 block_info_action: QAction | None
 
+                # Ordinary symbolic blocks expose the same editor from double
+                # click and from an explicit context-menu action. Root
+                # interface variables and measurement configuration retain
+                # their specialized workflows.
+                context_block: Block | None = None
+                is_editable_block: bool = (
+                        isinstance(
+                            item,
+                            (GenericBlockItem, BlockItem,
+                             RoundBaseArithmeticOpItem, RectBaseArithmeticOpItem),
+                        )
+                        and not is_variable_item
+                        and not isinstance(item, ProtectedConnectionBlockItem)
+                        and not isinstance(item, MeasurementsItem)
+                )
+                if is_editable_block:
+                    context_block = item.subsys
+
+                    edit_action = gf.add_menu_entry(
+                        menu=menu,
+                        text=self.tr("Properties"),
+                        icon_path=":/Icons/icons/dyn_edit.png",
+                    )
+                    block_info_action = gf.add_menu_entry(
+                        menu=menu,
+                        text=self.tr("Block info"),
+                        icon_path=":/Icons/icons/grid_icon.png",
+                    )
+                    menu.addSeparator()
+                else:
+                    edit_action = None
+                    block_info_action = None
+
                 # Root interface ovals are part of the device contract and can
                 # only be renamed from this menu.
                 if is_variable_item:
@@ -4783,37 +4816,7 @@ class DiagramScene(QGraphicsScene):
                 else:
                     rename_action = None
 
-                # Ordinary symbolic blocks expose the same editor from double
-                # click and from an explicit context-menu action. Root
-                # interface variables and measurement configuration retain
-                # their specialized workflows.
-                context_block: Block | None = None
-                is_editable_block: bool = (
-                    isinstance(
-                        item,
-                        (GenericBlockItem, BlockItem,
-                         RoundBaseArithmeticOpItem, RectBaseArithmeticOpItem),
-                    )
-                    and not is_variable_item
-                    and not isinstance(item, ProtectedConnectionBlockItem)
-                    and not isinstance(item, MeasurementsItem)
-                )
-                if is_editable_block:
-                    context_block = item.subsys
-                    menu.addSeparator()
-                    edit_action = gf.add_menu_entry(
-                        menu=menu,
-                        text=self.tr("Edit block"),
-                        icon_path=":/Icons/icons/dyn_edit.png",
-                    )
-                    block_info_action = gf.add_menu_entry(
-                        menu=menu,
-                        text=self.tr("Block info"),
-                        icon_path=":/Icons/icons/grid_icon.png",
-                    )
-                else:
-                    edit_action = None
-                    block_info_action = None
+
 
                 selected_action: QAction | None = menu.exec(event.screenPos())
                 if remove_action is not None and selected_action is remove_action:

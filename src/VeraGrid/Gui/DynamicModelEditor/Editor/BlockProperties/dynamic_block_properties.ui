@@ -91,6 +91,9 @@
                <property name="contextMenuPolicy">
                 <enum>Qt::ContextMenuPolicy::CustomContextMenu</enum>
                </property>
+               <property name="frameShape">
+                <enum>QFrame::Shape::NoFrame</enum>
+               </property>
                <property name="editTriggers">
                 <set>QAbstractItemView::EditTrigger::DoubleClicked|QAbstractItemView::EditTrigger::EditKeyPressed</set>
                </property>
@@ -153,19 +156,16 @@
          </property>
          <layout class="QHBoxLayout" name="horizontalLayout_2">
           <item>
-           <widget class="QLabel" name="equation_owner_label">
-            <property name="text">
-             <string>Equation owner</string>
+           <widget class="QPushButton" name="procedural_add_button">
+            <property name="toolTip">
+             <string>Add one procedural behavior to the active equation owner's Python code.</string>
             </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QComboBox" name="equation_owner_combo">
-            <property name="minimumSize">
-             <size>
-              <width>300</width>
-              <height>0</height>
-             </size>
+            <property name="text">
+             <string/>
+            </property>
+            <property name="icon">
+             <iconset resource="../../../Icons/icons.qrc">
+              <normaloff>:/Icons/icons/plus (gray).png</normaloff>:/Icons/icons/plus (gray).png</iconset>
             </property>
            </widget>
           </item>
@@ -183,16 +183,19 @@
            </spacer>
           </item>
           <item>
-           <widget class="QPushButton" name="procedural_add_button">
-            <property name="toolTip">
-             <string>Add one procedural behavior to the active equation owner's Python code.</string>
-            </property>
+           <widget class="QLabel" name="equation_owner_label">
             <property name="text">
-             <string/>
+             <string>Equation owner</string>
             </property>
-            <property name="icon">
-             <iconset resource="../../../Icons/icons.qrc">
-              <normaloff>:/Icons/icons/plus (gray).png</normaloff>:/Icons/icons/plus (gray).png</iconset>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="equation_owner_combo">
+            <property name="minimumSize">
+             <size>
+              <width>300</width>
+              <height>0</height>
+             </size>
             </property>
            </widget>
           </item>
@@ -312,15 +315,29 @@
           </property>
           <item>
            <widget class="QPushButton" name="latex_select_all_button">
-            <property name="text">
+            <property name="statusTip">
              <string>Select all</string>
+            </property>
+            <property name="text">
+             <string/>
+            </property>
+            <property name="icon">
+             <iconset resource="../../../Icons/icons.qrc">
+              <normaloff>:/Icons/icons/check_all.png</normaloff>:/Icons/icons/check_all.png</iconset>
             </property>
            </widget>
           </item>
           <item>
            <widget class="QPushButton" name="latex_clear_button">
+            <property name="statusTip">
+             <string>Select None</string>
+            </property>
             <property name="text">
-             <string>Clear</string>
+             <string/>
+            </property>
+            <property name="icon">
+             <iconset resource="../../../Icons/icons.qrc">
+              <normaloff>:/Icons/icons/uncheck_all.png</normaloff>:/Icons/icons/uncheck_all.png</iconset>
             </property>
            </widget>
           </item>
@@ -365,7 +382,7 @@
             <x>0</x>
             <y>0</y>
             <width>667</width>
-            <height>369</height>
+            <height>371</height>
            </rect>
           </property>
           <attribute name="label">
@@ -446,6 +463,9 @@
        </item>
        <item>
         <widget class="QTableView" name="special_settings_table">
+         <property name="frameShape">
+          <enum>QFrame::Shape::NoFrame</enum>
+         </property>
          <property name="alternatingRowColors">
           <bool>true</bool>
          </property>

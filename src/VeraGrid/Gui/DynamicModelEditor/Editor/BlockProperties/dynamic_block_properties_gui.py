@@ -57,6 +57,7 @@ class Ui_DynamicBlockPropertiesDialog(object):
         self.property_tree = QTreeView(self.property_tree_panel)
         self.property_tree.setObjectName(u"property_tree")
         self.property_tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.property_tree.setFrameShape(QFrame.Shape.NoFrame)
         self.property_tree.setEditTriggers(QAbstractItemView.EditTrigger.DoubleClicked|QAbstractItemView.EditTrigger.EditKeyPressed)
         self.property_tree.setAlternatingRowColors(True)
         self.property_tree.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
@@ -87,6 +88,18 @@ class Ui_DynamicBlockPropertiesDialog(object):
         self.frame_2.setFrameShadow(QFrame.Shadow.Raised)
         self.horizontalLayout_2 = QHBoxLayout(self.frame_2)
         self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
+        self.procedural_add_button = QPushButton(self.frame_2)
+        self.procedural_add_button.setObjectName(u"procedural_add_button")
+        icon1 = QIcon()
+        icon1.addFile(u":/Icons/icons/plus (gray).png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.procedural_add_button.setIcon(icon1)
+
+        self.horizontalLayout_2.addWidget(self.procedural_add_button)
+
+        self.horizontalSpacer_2 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.horizontalLayout_2.addItem(self.horizontalSpacer_2)
+
         self.equation_owner_label = QLabel(self.frame_2)
         self.equation_owner_label.setObjectName(u"equation_owner_label")
 
@@ -97,18 +110,6 @@ class Ui_DynamicBlockPropertiesDialog(object):
         self.equation_owner_combo.setMinimumSize(QSize(300, 0))
 
         self.horizontalLayout_2.addWidget(self.equation_owner_combo)
-
-        self.horizontalSpacer_2 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-
-        self.horizontalLayout_2.addItem(self.horizontalSpacer_2)
-
-        self.procedural_add_button = QPushButton(self.frame_2)
-        self.procedural_add_button.setObjectName(u"procedural_add_button")
-        icon1 = QIcon()
-        icon1.addFile(u":/Icons/icons/plus (gray).png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.procedural_add_button.setIcon(icon1)
-
-        self.horizontalLayout_2.addWidget(self.procedural_add_button)
 
 
         self.verticalLayout.addWidget(self.frame_2)
@@ -173,11 +174,17 @@ class Ui_DynamicBlockPropertiesDialog(object):
         self.horizontalLayout_4.setContentsMargins(0, 0, 0, 0)
         self.latex_select_all_button = QPushButton(self.frame_4)
         self.latex_select_all_button.setObjectName(u"latex_select_all_button")
+        icon3 = QIcon()
+        icon3.addFile(u":/Icons/icons/check_all.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.latex_select_all_button.setIcon(icon3)
 
         self.horizontalLayout_4.addWidget(self.latex_select_all_button)
 
         self.latex_clear_button = QPushButton(self.frame_4)
         self.latex_clear_button.setObjectName(u"latex_clear_button")
+        icon4 = QIcon()
+        icon4.addFile(u":/Icons/icons/uncheck_all.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.latex_clear_button.setIcon(icon4)
 
         self.horizontalLayout_4.addWidget(self.latex_clear_button)
 
@@ -187,9 +194,9 @@ class Ui_DynamicBlockPropertiesDialog(object):
 
         self.export_rendered_button = QPushButton(self.frame_4)
         self.export_rendered_button.setObjectName(u"export_rendered_button")
-        icon3 = QIcon()
-        icon3.addFile(u":/Icons/icons/pdf.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.export_rendered_button.setIcon(icon3)
+        icon5 = QIcon()
+        icon5.addFile(u":/Icons/icons/pdf.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.export_rendered_button.setIcon(icon5)
 
         self.horizontalLayout_4.addWidget(self.export_rendered_button)
 
@@ -200,7 +207,7 @@ class Ui_DynamicBlockPropertiesDialog(object):
         self.toolBox.setObjectName(u"toolBox")
         self.page = QWidget()
         self.page.setObjectName(u"page")
-        self.page.setGeometry(QRect(0, 0, 667, 369))
+        self.page.setGeometry(QRect(0, 0, 667, 371))
         self.verticalLayout_7 = QVBoxLayout(self.page)
         self.verticalLayout_7.setObjectName(u"verticalLayout_7")
         self.latex_selection_tree = QTreeWidget(self.page)
@@ -227,9 +234,9 @@ class Ui_DynamicBlockPropertiesDialog(object):
 
         self.verticalLayout_2.addWidget(self.toolBox)
 
-        icon4 = QIcon()
-        icon4.addFile(u":/Icons/icons/new2.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.tab_widget.addTab(self.latex_page, icon4, "")
+        icon6 = QIcon()
+        icon6.addFile(u":/Icons/icons/new2.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.tab_widget.addTab(self.latex_page, icon6, "")
         self.special_settings_page = QWidget()
         self.special_settings_page.setObjectName(u"special_settings_page")
         self.special_settings_layout = QVBoxLayout(self.special_settings_page)
@@ -242,6 +249,7 @@ class Ui_DynamicBlockPropertiesDialog(object):
 
         self.special_settings_table = QTableView(self.special_settings_page)
         self.special_settings_table.setObjectName(u"special_settings_table")
+        self.special_settings_table.setFrameShape(QFrame.Shape.NoFrame)
         self.special_settings_table.setAlternatingRowColors(True)
 
         self.special_settings_layout.addWidget(self.special_settings_table)
@@ -259,9 +267,9 @@ class Ui_DynamicBlockPropertiesDialog(object):
         self.horizontalLayout_3.setContentsMargins(0, 0, 0, 0)
         self.validate_code_button = QPushButton(self.frame_3)
         self.validate_code_button.setObjectName(u"validate_code_button")
-        icon5 = QIcon()
-        icon5.addFile(u":/Icons/icons/calculator.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.validate_code_button.setIcon(icon5)
+        icon7 = QIcon()
+        icon7.addFile(u":/Icons/icons/calculator.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.validate_code_button.setIcon(icon7)
 
         self.horizontalLayout_3.addWidget(self.validate_code_button)
 
@@ -271,9 +279,9 @@ class Ui_DynamicBlockPropertiesDialog(object):
 
         self.apply_button = QPushButton(self.frame_3)
         self.apply_button.setObjectName(u"apply_button")
-        icon6 = QIcon()
-        icon6.addFile(u":/Icons/icons/accept.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.apply_button.setIcon(icon6)
+        icon8 = QIcon()
+        icon8.addFile(u":/Icons/icons/accept.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.apply_button.setIcon(icon8)
 
         self.horizontalLayout_3.addWidget(self.apply_button)
 
@@ -294,17 +302,23 @@ class Ui_DynamicBlockPropertiesDialog(object):
         DynamicBlockPropertiesDialog.setWindowTitle(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Block properties", None))
         self.property_search.setPlaceholderText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Search properties...", None))
         self.tab_widget.setTabText(self.tab_widget.indexOf(self.general_page), QCoreApplication.translate("DynamicBlockPropertiesDialog", u"General options", None))
-        self.equation_owner_label.setText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Equation owner", None))
 #if QT_CONFIG(tooltip)
         self.procedural_add_button.setToolTip(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Add one procedural behavior to the active equation owner's Python code.", None))
 #endif // QT_CONFIG(tooltip)
         self.procedural_add_button.setText("")
+        self.equation_owner_label.setText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Equation owner", None))
         self.dae_code_search.setPlaceholderText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Search Python code...", None))
         self.dae_search_previous_button.setText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"<<", None))
         self.dae_search_next_button.setText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u">>", None))
         self.tab_widget.setTabText(self.tab_widget.indexOf(self.dae_model_page), QCoreApplication.translate("DynamicBlockPropertiesDialog", u"DAE model", None))
-        self.latex_select_all_button.setText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Select all", None))
-        self.latex_clear_button.setText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Clear", None))
+#if QT_CONFIG(statustip)
+        self.latex_select_all_button.setStatusTip(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Select all", None))
+#endif // QT_CONFIG(statustip)
+        self.latex_select_all_button.setText("")
+#if QT_CONFIG(statustip)
+        self.latex_clear_button.setStatusTip(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Select None", None))
+#endif // QT_CONFIG(statustip)
+        self.latex_clear_button.setText("")
 #if QT_CONFIG(tooltip)
         self.export_rendered_button.setToolTip(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Save redered PDF", None))
 #endif // QT_CONFIG(tooltip)

@@ -5313,7 +5313,7 @@ class BlockPropertyTreeModel(QtGui.QStandardItemModel):
 
         :return: None.
         """
-        # Capture expanded branches before Qt clears the view's index state.
+        # Notify the view before replacing the owner hierarchy.
         self.aboutToRebuild.emit()
         # Remove only data rows. QStandardItemModel.clear() also removes its
         # columns, which makes QHeaderView discard the user/configured widths.
@@ -5944,6 +5944,15 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             self.raise_()
             self.activateWindow()
 
+    def showEvent(self, event: QtGui.QShowEvent) -> None:
+        """Expand the property tree after Qt creates the visible layout.
+
+        :param event: Incoming show event.
+        :return: None.
+        """
+        QtWidgets.QDialog.showEvent(self, event)
+        self.filter_properties(self.ui.property_search.text())
+
     def _find_initial_equation_buffer_index(self) -> int:
         """
         Prefer the first recursive block that contains editable equations.
@@ -6206,7 +6215,6 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                     self.ui.property_tree.setFirstColumnSpanned(owner_row, group, True)
                 else:
                     pass
-        self.ui.property_tree.expandAll()
         self.filter_properties(self.ui.property_search.text())
 
     @QtCore.Slot(str)
@@ -6217,6 +6225,22 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         :return: None.
         """
         self._filter_property_branch(QtCore.QModelIndex(), search_text.strip().casefold(), False)
+        self._expand_property_tree_branch(QtCore.QModelIndex())
+
+    def _expand_property_tree_branch(self, parent: QtCore.QModelIndex) -> None:
+        """Expand every property-tree branch below one parent index.
+
+        :param parent: Parent branch to expand recursively.
+        :return: None.
+        """
+        row: int
+        for row in range(self._property_tree_model.rowCount(parent)):
+            index: QtCore.QModelIndex = self._property_tree_model.index(row, 0, parent)
+            if self._property_tree_model.rowCount(index) > 0:
+                self.ui.property_tree.setExpanded(index, True)
+                self._expand_property_tree_branch(index)
+            else:
+                pass
 
     def _select_retained_mode_in_tree(self, owner: Block, mode_name: str) -> None:
         """Reveal and select one newly staged retained mode.
