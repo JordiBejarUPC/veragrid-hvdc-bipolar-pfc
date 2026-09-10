@@ -18,7 +18,7 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
 from PySide6.QtWidgets import (QAbstractItemView, QApplication, QComboBox, QDialog,
     QFrame, QHBoxLayout, QHeaderView, QLabel,
     QLineEdit, QPlainTextEdit, QPushButton, QSizePolicy,
-    QSpacerItem, QSplitter, QTabWidget, QTableView,
+    QSpacerItem, QTabWidget, QTableView, QToolBox,
     QToolButton, QTreeView, QTreeWidget, QTreeWidgetItem,
     QVBoxLayout, QWidget)
 from VeraGrid.Gui.Icons.icons_rc import *
@@ -27,7 +27,7 @@ class Ui_DynamicBlockPropertiesDialog(object):
     def setupUi(self, DynamicBlockPropertiesDialog):
         if not DynamicBlockPropertiesDialog.objectName():
             DynamicBlockPropertiesDialog.setObjectName(u"DynamicBlockPropertiesDialog")
-        DynamicBlockPropertiesDialog.resize(847, 682)
+        DynamicBlockPropertiesDialog.resize(701, 557)
         self.main_layout = QVBoxLayout(DynamicBlockPropertiesDialog)
         self.main_layout.setObjectName(u"main_layout")
         self.main_layout.setContentsMargins(6, 6, 6, 6)
@@ -37,6 +37,7 @@ class Ui_DynamicBlockPropertiesDialog(object):
         self.general_page.setObjectName(u"general_page")
         self.verticalLayout_3 = QVBoxLayout(self.general_page)
         self.verticalLayout_3.setObjectName(u"verticalLayout_3")
+        self.verticalLayout_3.setContentsMargins(0, 0, 0, 0)
         self.property_tools_panel = QWidget(self.general_page)
         self.property_tools_panel.setObjectName(u"property_tools_panel")
         self.verticalLayout_4 = QVBoxLayout(self.property_tools_panel)
@@ -77,56 +78,46 @@ class Ui_DynamicBlockPropertiesDialog(object):
         self.dae_model_page.setObjectName(u"dae_model_page")
         self.verticalLayout = QVBoxLayout(self.dae_model_page)
         self.verticalLayout.setObjectName(u"verticalLayout")
-        self.owner_layout = QHBoxLayout()
-        self.owner_layout.setObjectName(u"owner_layout")
-        self.equation_owner_label = QLabel(self.dae_model_page)
+        self.verticalLayout.setContentsMargins(0, 0, 0, 0)
+        self.frame_2 = QFrame(self.dae_model_page)
+        self.frame_2.setObjectName(u"frame_2")
+        self.frame_2.setFrameShape(QFrame.Shape.NoFrame)
+        self.frame_2.setFrameShadow(QFrame.Shadow.Raised)
+        self.horizontalLayout_2 = QHBoxLayout(self.frame_2)
+        self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
+        self.equation_owner_label = QLabel(self.frame_2)
         self.equation_owner_label.setObjectName(u"equation_owner_label")
 
-        self.owner_layout.addWidget(self.equation_owner_label)
+        self.horizontalLayout_2.addWidget(self.equation_owner_label)
 
-        self.equation_owner_combo = QComboBox(self.dae_model_page)
+        self.equation_owner_combo = QComboBox(self.frame_2)
         self.equation_owner_combo.setObjectName(u"equation_owner_combo")
+        self.equation_owner_combo.setMinimumSize(QSize(300, 0))
 
-        self.owner_layout.addWidget(self.equation_owner_combo)
+        self.horizontalLayout_2.addWidget(self.equation_owner_combo)
 
+        self.horizontalSpacer_2 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
-        self.verticalLayout.addLayout(self.owner_layout)
+        self.horizontalLayout_2.addItem(self.horizontalSpacer_2)
 
-        self.code_search_layout = QHBoxLayout()
-        self.code_search_layout.setObjectName(u"code_search_layout")
-        self.dae_code_search = QLineEdit(self.dae_model_page)
-        self.dae_code_search.setObjectName(u"dae_code_search")
-        self.dae_code_search.setClearButtonEnabled(True)
-
-        self.code_search_layout.addWidget(self.dae_code_search)
-
-        self.dae_search_status = QLabel(self.dae_model_page)
-        self.dae_search_status.setObjectName(u"dae_search_status")
-
-        self.code_search_layout.addWidget(self.dae_search_status)
-
-        self.dae_search_previous_button = QToolButton(self.dae_model_page)
-        self.dae_search_previous_button.setObjectName(u"dae_search_previous_button")
-        self.dae_search_previous_button.setEnabled(False)
-
-        self.code_search_layout.addWidget(self.dae_search_previous_button)
-
-        self.dae_search_next_button = QToolButton(self.dae_model_page)
-        self.dae_search_next_button.setObjectName(u"dae_search_next_button")
-        self.dae_search_next_button.setEnabled(False)
-
-        self.code_search_layout.addWidget(self.dae_search_next_button)
-
-        self.procedural_add_button = QPushButton(self.dae_model_page)
+        self.procedural_add_button = QPushButton(self.frame_2)
         self.procedural_add_button.setObjectName(u"procedural_add_button")
+        icon = QIcon()
+        icon.addFile(u":/Icons/icons/plus.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.procedural_add_button.setIcon(icon)
 
-        self.code_search_layout.addWidget(self.procedural_add_button)
+        self.horizontalLayout_2.addWidget(self.procedural_add_button)
 
 
-        self.verticalLayout.addLayout(self.code_search_layout)
+        self.verticalLayout.addWidget(self.frame_2)
 
         self.dae_editor_container = QWidget(self.dae_model_page)
         self.dae_editor_container.setObjectName(u"dae_editor_container")
+        sizePolicy = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.MinimumExpanding)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.dae_editor_container.sizePolicy().hasHeightForWidth())
+        self.dae_editor_container.setSizePolicy(sizePolicy)
         self.dae_editor_layout = QVBoxLayout(self.dae_editor_container)
         self.dae_editor_layout.setObjectName(u"dae_editor_layout")
         self.dae_editor_layout.setContentsMargins(0, 0, 0, 0)
@@ -135,18 +126,29 @@ class Ui_DynamicBlockPropertiesDialog(object):
 
         self.frame = QFrame(self.dae_model_page)
         self.frame.setObjectName(u"frame")
-        self.frame.setFrameShape(QFrame.Shape.StyledPanel)
+        self.frame.setFrameShape(QFrame.Shape.NoFrame)
         self.frame.setFrameShadow(QFrame.Shadow.Raised)
         self.horizontalLayout = QHBoxLayout(self.frame)
         self.horizontalLayout.setObjectName(u"horizontalLayout")
-        self.dae_validation_status_label = QLabel(self.frame)
-        self.dae_validation_status_label.setObjectName(u"dae_validation_status_label")
-        self.dae_validation_status_label.setWordWrap(False)
-        self.dae_validation_status_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self.dae_code_search = QLineEdit(self.frame)
+        self.dae_code_search.setObjectName(u"dae_code_search")
+        self.dae_code_search.setClearButtonEnabled(True)
 
-        self.horizontalLayout.addWidget(self.dae_validation_status_label)
+        self.horizontalLayout.addWidget(self.dae_code_search)
 
-        self.horizontalSpacer = QSpacerItem(849, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        self.dae_search_previous_button = QToolButton(self.frame)
+        self.dae_search_previous_button.setObjectName(u"dae_search_previous_button")
+        self.dae_search_previous_button.setEnabled(False)
+
+        self.horizontalLayout.addWidget(self.dae_search_previous_button)
+
+        self.dae_search_next_button = QToolButton(self.frame)
+        self.dae_search_next_button.setObjectName(u"dae_search_next_button")
+        self.dae_search_next_button.setEnabled(False)
+
+        self.horizontalLayout.addWidget(self.dae_search_next_button)
+
+        self.horizontalSpacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         self.horizontalLayout.addItem(self.horizontalSpacer)
 
@@ -158,85 +160,68 @@ class Ui_DynamicBlockPropertiesDialog(object):
         self.latex_page.setObjectName(u"latex_page")
         self.verticalLayout_2 = QVBoxLayout(self.latex_page)
         self.verticalLayout_2.setObjectName(u"verticalLayout_2")
-        self.latex_splitter = QSplitter(self.latex_page)
-        self.latex_splitter.setObjectName(u"latex_splitter")
-        self.latex_splitter.setOrientation(Qt.Orientation.Vertical)
-        self.latex_splitter.setHandleWidth(6)
-        self.latex_splitter.setChildrenCollapsible(False)
-        self.latex_selection_panel = QWidget(self.latex_splitter)
-        self.latex_selection_panel.setObjectName(u"latex_selection_panel")
-        self.latex_selection_layout = QVBoxLayout(self.latex_selection_panel)
-        self.latex_selection_layout.setObjectName(u"latex_selection_layout")
-        self.latex_selection_layout.setContentsMargins(0, 0, 0, 0)
-        self.latex_explanation_label = QLabel(self.latex_selection_panel)
-        self.latex_explanation_label.setObjectName(u"latex_explanation_label")
-        self.latex_explanation_label.setWordWrap(True)
-
-        self.latex_selection_layout.addWidget(self.latex_explanation_label)
-
-        self.latex_selection_tree = QTreeWidget(self.latex_selection_panel)
-        self.latex_selection_tree.setObjectName(u"latex_selection_tree")
-        self.latex_selection_tree.setAlternatingRowColors(True)
-
-        self.latex_selection_layout.addWidget(self.latex_selection_tree)
-
-        self.selection_button_layout = QHBoxLayout()
-        self.selection_button_layout.setObjectName(u"selection_button_layout")
-        self.latex_select_all_button = QPushButton(self.latex_selection_panel)
+        self.frame_4 = QFrame(self.latex_page)
+        self.frame_4.setObjectName(u"frame_4")
+        self.frame_4.setFrameShape(QFrame.Shape.NoFrame)
+        self.frame_4.setFrameShadow(QFrame.Shadow.Raised)
+        self.horizontalLayout_4 = QHBoxLayout(self.frame_4)
+        self.horizontalLayout_4.setObjectName(u"horizontalLayout_4")
+        self.horizontalLayout_4.setContentsMargins(0, 0, 0, 0)
+        self.latex_select_all_button = QPushButton(self.frame_4)
         self.latex_select_all_button.setObjectName(u"latex_select_all_button")
 
-        self.selection_button_layout.addWidget(self.latex_select_all_button)
+        self.horizontalLayout_4.addWidget(self.latex_select_all_button)
 
-        self.latex_clear_button = QPushButton(self.latex_selection_panel)
+        self.latex_clear_button = QPushButton(self.frame_4)
         self.latex_clear_button.setObjectName(u"latex_clear_button")
 
-        self.selection_button_layout.addWidget(self.latex_clear_button)
+        self.horizontalLayout_4.addWidget(self.latex_clear_button)
 
         self.selection_button_spacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
-        self.selection_button_layout.addItem(self.selection_button_spacer)
+        self.horizontalLayout_4.addItem(self.selection_button_spacer)
+
+        self.export_rendered_button = QPushButton(self.frame_4)
+        self.export_rendered_button.setObjectName(u"export_rendered_button")
+        icon1 = QIcon()
+        icon1.addFile(u":/Icons/icons/pfdgs.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.export_rendered_button.setIcon(icon1)
+
+        self.horizontalLayout_4.addWidget(self.export_rendered_button)
 
 
-        self.latex_selection_layout.addLayout(self.selection_button_layout)
+        self.verticalLayout_2.addWidget(self.frame_4)
 
-        self.latex_splitter.addWidget(self.latex_selection_panel)
-        self.latex_source_panel = QWidget(self.latex_splitter)
-        self.latex_source_panel.setObjectName(u"latex_source_panel")
-        self.latex_source_layout = QVBoxLayout(self.latex_source_panel)
-        self.latex_source_layout.setObjectName(u"latex_source_layout")
-        self.latex_source_layout.setContentsMargins(0, 0, 0, 0)
-        self.latex_source_label = QLabel(self.latex_source_panel)
-        self.latex_source_label.setObjectName(u"latex_source_label")
+        self.toolBox = QToolBox(self.latex_page)
+        self.toolBox.setObjectName(u"toolBox")
+        self.page = QWidget()
+        self.page.setObjectName(u"page")
+        self.page.setGeometry(QRect(0, 0, 893, 486))
+        self.verticalLayout_7 = QVBoxLayout(self.page)
+        self.verticalLayout_7.setObjectName(u"verticalLayout_7")
+        self.latex_selection_tree = QTreeWidget(self.page)
+        self.latex_selection_tree.setObjectName(u"latex_selection_tree")
+        self.latex_selection_tree.setFrameShape(QFrame.Shape.NoFrame)
+        self.latex_selection_tree.setAlternatingRowColors(True)
 
-        self.latex_source_layout.addWidget(self.latex_source_label)
+        self.verticalLayout_7.addWidget(self.latex_selection_tree)
 
-        self.latex_source_preview = QPlainTextEdit(self.latex_source_panel)
+        self.toolBox.addItem(self.page, u"Equations")
+        self.page_2 = QWidget()
+        self.page_2.setObjectName(u"page_2")
+        self.page_2.setGeometry(QRect(0, 0, 893, 477))
+        self.verticalLayout_8 = QVBoxLayout(self.page_2)
+        self.verticalLayout_8.setObjectName(u"verticalLayout_8")
+        self.latex_source_preview = QPlainTextEdit(self.page_2)
         self.latex_source_preview.setObjectName(u"latex_source_preview")
         self.latex_source_preview.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
         self.latex_source_preview.setReadOnly(True)
 
-        self.latex_source_layout.addWidget(self.latex_source_preview)
+        self.verticalLayout_8.addWidget(self.latex_source_preview)
 
-        self.export_layout = QHBoxLayout()
-        self.export_layout.setObjectName(u"export_layout")
-        self.export_spacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        self.toolBox.addItem(self.page_2, u"LaTex source")
 
-        self.export_layout.addItem(self.export_spacer)
-
-        self.export_rendered_button = QPushButton(self.latex_source_panel)
-        self.export_rendered_button.setObjectName(u"export_rendered_button")
-        icon = QIcon()
-        icon.addFile(u":/Icons/icons/download.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.export_rendered_button.setIcon(icon)
-
-        self.export_layout.addWidget(self.export_rendered_button)
-
-
-        self.latex_source_layout.addLayout(self.export_layout)
-
-        self.latex_splitter.addWidget(self.latex_source_panel)
-
-        self.verticalLayout_2.addWidget(self.latex_splitter)
+        self.verticalLayout_2.addWidget(self.toolBox)
 
         self.tab_widget.addTab(self.latex_page, "")
         self.special_settings_page = QWidget()
@@ -259,41 +244,39 @@ class Ui_DynamicBlockPropertiesDialog(object):
 
         self.main_layout.addWidget(self.tab_widget)
 
-        self.status_label = QLabel(DynamicBlockPropertiesDialog)
-        self.status_label.setObjectName(u"status_label")
-        self.status_label.setVisible(False)
-        self.status_label.setWordWrap(True)
-        self.status_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self.frame_3 = QFrame(DynamicBlockPropertiesDialog)
+        self.frame_3.setObjectName(u"frame_3")
+        self.frame_3.setFrameShape(QFrame.Shape.NoFrame)
+        self.frame_3.setFrameShadow(QFrame.Shadow.Raised)
+        self.horizontalLayout_3 = QHBoxLayout(self.frame_3)
+        self.horizontalLayout_3.setObjectName(u"horizontalLayout_3")
+        self.horizontalLayout_3.setContentsMargins(0, 0, 0, 0)
+        self.validate_code_button = QPushButton(self.frame_3)
+        self.validate_code_button.setObjectName(u"validate_code_button")
+        icon2 = QIcon()
+        icon2.addFile(u":/Icons/icons/accept.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.validate_code_button.setIcon(icon2)
 
-        self.main_layout.addWidget(self.status_label)
+        self.horizontalLayout_3.addWidget(self.validate_code_button)
 
-        self.button_layout = QHBoxLayout()
-        self.button_layout.setObjectName(u"button_layout")
         self.button_spacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
-        self.button_layout.addItem(self.button_spacer)
+        self.horizontalLayout_3.addItem(self.button_spacer)
 
-        self.validate_code_button = QPushButton(DynamicBlockPropertiesDialog)
-        self.validate_code_button.setObjectName(u"validate_code_button")
-        icon1 = QIcon()
-        icon1.addFile(u":/Icons/icons/accept.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.validate_code_button.setIcon(icon1)
-
-        self.button_layout.addWidget(self.validate_code_button)
-
-        self.apply_button = QPushButton(DynamicBlockPropertiesDialog)
+        self.apply_button = QPushButton(self.frame_3)
         self.apply_button.setObjectName(u"apply_button")
-        self.apply_button.setIcon(icon1)
+        self.apply_button.setIcon(icon2)
 
-        self.button_layout.addWidget(self.apply_button)
+        self.horizontalLayout_3.addWidget(self.apply_button)
 
 
-        self.main_layout.addLayout(self.button_layout)
+        self.main_layout.addWidget(self.frame_3)
 
 
         self.retranslateUi(DynamicBlockPropertiesDialog)
 
         self.tab_widget.setCurrentIndex(0)
+        self.toolBox.setCurrentIndex(0)
 
 
         QMetaObject.connectSlotsByName(DynamicBlockPropertiesDialog)
@@ -304,29 +287,32 @@ class Ui_DynamicBlockPropertiesDialog(object):
         self.property_search.setPlaceholderText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Search properties...", None))
         self.tab_widget.setTabText(self.tab_widget.indexOf(self.general_page), QCoreApplication.translate("DynamicBlockPropertiesDialog", u"General options", None))
         self.equation_owner_label.setText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Equation owner", None))
-        self.dae_code_search.setPlaceholderText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Search Python code...", None))
-        self.dae_search_status.setText("")
-        self.dae_search_previous_button.setText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Previous", None))
-        self.dae_search_next_button.setText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Next", None))
 #if QT_CONFIG(tooltip)
         self.procedural_add_button.setToolTip(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Add one procedural behavior to the active equation owner's Python code.", None))
 #endif // QT_CONFIG(tooltip)
-        self.procedural_add_button.setText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"+ Add procedural logic", None))
-        self.dae_validation_status_label.setText("")
+        self.procedural_add_button.setText("")
+        self.dae_code_search.setPlaceholderText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Search Python code...", None))
+        self.dae_search_previous_button.setText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"<<", None))
+        self.dae_search_next_button.setText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u">>", None))
         self.tab_widget.setTabText(self.tab_widget.indexOf(self.dae_model_page), QCoreApplication.translate("DynamicBlockPropertiesDialog", u"DAE model", None))
-        self.latex_explanation_label.setText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Select the equation groups to include. Each internal block and each DAE section can be selected independently.", None))
+        self.latex_select_all_button.setText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Select all", None))
+        self.latex_clear_button.setText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Clear", None))
+#if QT_CONFIG(tooltip)
+        self.export_rendered_button.setToolTip(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Save redered PDF", None))
+#endif // QT_CONFIG(tooltip)
+        self.export_rendered_button.setText("")
         ___qtreewidgetitem = self.latex_selection_tree.headerItem()
         ___qtreewidgetitem.setText(1, QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Equations", None))
         ___qtreewidgetitem.setText(0, QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Block / equation group", None))
-        self.latex_select_all_button.setText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Select all", None))
-        self.latex_clear_button.setText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Clear", None))
-        self.latex_source_label.setText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"LaTeX source", None))
+#if QT_CONFIG(tooltip)
+        self.latex_selection_tree.setToolTip(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Select the equation groups to include. Each internal block and each DAE section can be selected independently.", None))
+#endif // QT_CONFIG(tooltip)
+        self.toolBox.setItemText(self.toolBox.indexOf(self.page), QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Equations", None))
         self.latex_source_preview.setPlaceholderText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Select equation groups to generate copyable LaTeX source.", None))
-        self.export_rendered_button.setText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Download rendered PDF", None))
+        self.toolBox.setItemText(self.toolBox.indexOf(self.page_2), QCoreApplication.translate("DynamicBlockPropertiesDialog", u"LaTex source", None))
         self.tab_widget.setTabText(self.tab_widget.indexOf(self.latex_page), QCoreApplication.translate("DynamicBlockPropertiesDialog", u"LaTeX rendering", None))
         self.special_settings_description.setText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"These settings contain structured data used to regenerate the block. Edit sequences with valid Python tuple/list syntax.", None))
         self.tab_widget.setTabText(self.tab_widget.indexOf(self.special_settings_page), QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Special configuration", None))
-        self.status_label.setText("")
         self.validate_code_button.setText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Validate model", None))
         self.apply_button.setText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Apply changes", None))
     # retranslateUi

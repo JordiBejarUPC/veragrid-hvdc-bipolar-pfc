@@ -40,6 +40,7 @@ from VeraGrid.Gui.DynamicModelEditor.Editor.BlockProperties.dynamic_block_proper
 from VeraGrid.Gui.DynamicModelEditor.Editor.BlockProperties.add_symbol_widget import (
     Ui_Form as Ui_AddSymbolWidget,
 )
+from VeraGrid.Gui.toast_widget import ToastManager
 from VeraGridEngine.enumerations import (
     BlockType,
     BlockSymbolCategory,
@@ -5782,7 +5783,6 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         "_export_rendered_button",
         "_prepared_to_delete",
         "_draft_has_changes",
-        "_status_label",
         "_apply_button",
     )
 
@@ -5927,6 +5927,9 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._procedural_add_menu: QtWidgets.QMenu = QtWidgets.QMenu(self._procedural_add_button)
         self._procedural_add_menu.setToolTipsVisible(True)
 
+        # toast manager
+        self.toast_manager = ToastManager(parent=self, position_top=False)
+
         self._prepared_to_delete: bool = False
         self._draft_has_changes: bool = False
         self._status_label: QtWidgets.QLabel = self.ui.status_label
@@ -5940,6 +5943,38 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._refresh_dae_language_context()
         self._clear_dae_validation_feedback()
         self.refresh_draft_state()
+
+    def show_toast(self, message: str, duration: int = 2000):
+        """
+        Show generic toast
+        :param message: Message to display
+        :param duration: duration in ms
+        """
+        self.toast_manager.show_toast(message=message, duration=duration, toast_type="veragrid")
+
+    def show_error_toast(self, message: str, duration: int = 2000):
+        """
+        Show error toast
+        :param message: Message to display
+        :param duration: duration in ms
+        """
+        self.toast_manager.show_error_toast(message=message, duration=duration)
+
+    def show_warning_toast(self, message: str, duration: int = 2000):
+        """
+        Show warning toast
+        :param message: Message to display
+        :param duration: duration in ms
+        """
+        self.toast_manager.show_warning_toast(message=message, duration=duration)
+
+    def show_info_toast(self, message: str, duration: int = 2000):
+        """
+        Show info toast
+        :param message: Message to display
+        :param duration: duration in ms
+        """
+        self.toast_manager.show_info_toast(message=message, duration=duration)
 
     def prepare_to_delete(self) -> None:
         """Detach Qt models and document resources before binary destruction.
