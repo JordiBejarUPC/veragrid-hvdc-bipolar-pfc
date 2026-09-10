@@ -9801,7 +9801,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
     def center_view_on_items(self) -> None:
         """
-        Center the graphics view on the current selection or, if none exists, on all items.
+        Center and zoom the graphics view so every diagram block is visible.
 
         :return:
         """

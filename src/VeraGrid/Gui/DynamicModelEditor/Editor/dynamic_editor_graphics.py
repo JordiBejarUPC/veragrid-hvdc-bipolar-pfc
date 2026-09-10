@@ -4281,7 +4281,11 @@ class RectBaseArithmeticOpItem(QGraphicsRectItem):
 class GraphicsView(QGraphicsView):
     """Graphics view providing zoom, pan, and fit-to-content interactions."""
 
-    __slots__ = ()
+    __slots__ = (
+        "_panning",
+        "_pan_start",
+        "_pan_button",
+    )
 
     ZOOM_FACTOR: float = 1.15
     SCENE_MARGIN_FACTOR: float = 0.10
@@ -4312,6 +4316,7 @@ class GraphicsView(QGraphicsView):
         self.setRubberBandSelectionMode(Qt.ItemSelectionMode.IntersectsItemShape)
         self._panning: bool = False
         self._pan_start: QPointF = QPointF()
+        self._pan_button: Qt.MouseButton = Qt.MouseButton.NoButton
 
     def get_block_content_rect(self) -> QtCore.QRectF:
         """Return the combined scene bounds of every stable block item.
@@ -4387,10 +4392,8 @@ class GraphicsView(QGraphicsView):
         :param event: Incoming Qt graphics event.
         :return: None.
         """
-        if event.button() == Qt.MouseButton.MiddleButton:
-            self._panning = True
-            self._pan_start = event.position()
-            self.setCursor(Qt.CursorShape.ClosedHandCursor)
+        if self._should_start_canvas_pan(event=event):
+            self._start_canvas_pan(event=event)
         else:
             if event.button() == Qt.MouseButton.LeftButton and bool(
                     event.modifiers() & Qt.KeyboardModifier.ControlModifier):
@@ -4419,12 +4422,59 @@ class GraphicsView(QGraphicsView):
         :param event: Incoming Qt graphics event.
         :return: None.
         """
-        if event.button() == Qt.MouseButton.MiddleButton:
-            self._panning = False
-            self.setCursor(Qt.CursorShape.ArrowCursor)
+        if self._panning and event.button() == self._pan_button:
+            self._stop_canvas_pan()
         else:
             super().mouseReleaseEvent(event)
             self.setDragMode(QGraphicsView.DragMode.NoDrag)
+
+    def _should_start_canvas_pan(self, event: QtGui.QMouseEvent) -> bool:
+        """Return whether this mouse press should pan the canvas.
+
+        :param event: Incoming Qt graphics event.
+        :return: ``True`` when the press should begin viewport panning.
+        """
+        item_under_pointer: QGraphicsItem | None = self.itemAt(event.position().toPoint())
+        has_scrollable_area: bool = (
+            self.horizontalScrollBar().maximum() > self.horizontalScrollBar().minimum()
+            or self.verticalScrollBar().maximum() > self.verticalScrollBar().minimum()
+        )
+        if event.button() == Qt.MouseButton.MiddleButton:
+            should_start: bool = True
+        elif (
+                event.button() == Qt.MouseButton.LeftButton
+                and event.modifiers() == Qt.KeyboardModifier.NoModifier
+                and item_under_pointer is None
+                and has_scrollable_area
+        ):
+            should_start = True
+        else:
+            should_start = False
+
+        return should_start
+
+    def _start_canvas_pan(self, event: QtGui.QMouseEvent) -> None:
+        """Begin panning the canvas from one mouse press.
+
+        :param event: Mouse press starting the pan.
+        :return: None.
+        """
+        self._panning = True
+        self._pan_start = event.position()
+        self._pan_button = event.button()
+        self.setDragMode(QGraphicsView.DragMode.NoDrag)
+        self.setCursor(Qt.CursorShape.ClosedHandCursor)
+        event.accept()
+
+    def _stop_canvas_pan(self) -> None:
+        """End the active canvas pan interaction.
+
+        :return: None.
+        """
+        self._panning = False
+        self._pan_button = Qt.MouseButton.NoButton
+        self.setCursor(Qt.CursorShape.ArrowCursor)
+        self.setDragMode(QGraphicsView.DragMode.NoDrag)
 
     def apply_zoom(self, zoom_in: bool) -> None:
         """Scale the view around the pointer in the requested direction.
@@ -4450,31 +4500,21 @@ class GraphicsView(QGraphicsView):
         self.apply_zoom(False)
 
     def center_items(self) -> None:
-        """Fit selected blocks, or all blocks, inside the current viewport.
+        """Fit all diagram blocks inside the current viewport.
 
         :return: None.
         """
         scene: QGraphicsScene | None = self.scene()
-        block_items: List[QGraphicsItem] = list()
         target_items: List[QGraphicsItem] = list()
         if scene is not None:
-            target_items = scene.selectedItems()
-        else:
-            pass
-
-        if scene is not None and len(target_items) == 0:
             item: QGraphicsItem
             for item in scene.items():
                 if isinstance(item, self.BLOCK_CONTENT_TYPES):
-                    block_items.append(item)
+                    target_items.append(item)
                 else:
                     pass
-            target_items = block_items
         else:
-            target_items = [
-                item for item in target_items
-                if isinstance(item, self.BLOCK_CONTENT_TYPES)
-            ]
+            pass
 
         if len(target_items) > 0:
             target_rect: QtCore.QRectF = QtCore.QRectF()
