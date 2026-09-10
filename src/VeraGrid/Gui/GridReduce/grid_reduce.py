@@ -4,15 +4,13 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
-from typing import Set
+from typing import List, Set
 from PySide6 import QtWidgets
 from PySide6.QtGui import QClipboard
 import numpy as np
 from VeraGrid.Gui.GridReduce.grid_reduce_gui import Ui_ReduceDialog
-from VeraGrid.Gui.general_dialogues import LogsDialogue
 from VeraGrid.Gui.messages import yes_no_question, warning_msg
 from VeraGrid.Gui.gui_functions import ComboModel, get_list_model
-from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
 from VeraGrid.Session.session import SimulationSession
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
@@ -28,7 +26,7 @@ class GridReduceDialogue(QtWidgets.QDialog):
     GridMergeDialogue
     """
 
-    def __init__(self, grid: MultiCircuit, session: SimulationSession, selected_buses_set: Set[Bus]):
+    def __init__(self, grid: MultiCircuit, session: SimulationSession, selected_buses_set: Set[Bus]) -> None:
         """
         GridMergeDialogue
         :param grid: MultiCircuit instance
@@ -59,39 +57,18 @@ class GridReduceDialogue(QtWidgets.QDialog):
         )
         self.ui.busModeComboBox.setModel(bus_methods_mdl)
 
-        self._grid: MultiCircuit = grid
+        selected_bus_idtags: Set[str] = {bus.idtag for bus in selected_buses_set}
+        self._grid: MultiCircuit = grid.copy()
         self._session: SimulationSession = session
-        self._selected_buses_set: Set[Bus] = selected_buses_set
+        self._selected_buses_set: Set[Bus] = {bus for bus in self._grid.buses if bus.idtag in selected_bus_idtags}
 
-        self.did_reduce = False
+        self.did_reduce: bool = False
+        self.deleted_buses: List[Bus] = list()
+        self.deleted_bus_idtags: List[str] = list()
+        self.reduced_grid: MultiCircuit | None = None
 
         self.ui.reduceButton.clicked.connect(self.reduce_grid)
         self.ui.copyIndicesButton.clicked.connect(self.copy_indices)
-
-    def get_reduction_bus_indices(self, bus_mode: BusReductionMethod) -> IntVec:
-        """
-        Get the bus indices that the selected reduction method must delete.
-
-        :param bus_mode: Selected bus handling mode from the dialogue.
-        :type bus_mode: BusReductionMethod
-        :return: Bus indices to reduce.
-        :rtype: IntVec
-        """
-        reduction_bus_indices: IntVec
-
-        # All reduction backends receive the buses to delete. In reduce mode those are the selected buses.
-        if bus_mode == BusReductionMethod.Reduce:
-            reduction_bus_indices = np.array([self._grid.buses.index(bus)
-                                              for bus in self._selected_buses_set],
-                                             dtype=int)
-        elif bus_mode == BusReductionMethod.Keep:
-            reduction_bus_indices = np.array([idx for idx in range(self._grid.get_bus_number())
-                                              if self._grid.buses[idx] not in self._selected_buses_set],
-                                             dtype=int)
-        else:
-            raise NotImplementedError(f"BusReductionMethod not implemented: {bus_mode.value}")
-
-        return reduction_bus_indices
 
     def reduce_grid(self) -> None:
         """
@@ -99,129 +76,157 @@ class GridReduceDialogue(QtWidgets.QDialog):
         This is useful in the case you want to compose a new grid from grids that are the same.
         :return:
         """
-        if len(self._selected_buses_set):
+        self.did_reduce = False
+        self.deleted_buses = list()
+        self.deleted_bus_idtags = list()
+        self.reduced_grid = None
+        dialog_result: int = int(QtWidgets.QDialog.DialogCode.Rejected)
 
-            reduction_method: GridReductionMethod = self.ui.methodComboBox.currentData()
-            bus_mode: BusReductionMethod = self.ui.busModeComboBox.currentData()
+        try:
+            if len(self._selected_buses_set):
 
-            if bus_mode == BusReductionMethod.Reduce:
-                text = f"This will delete the selected buses and reintroduce their influence."
-            else:
-                text = "This will keep the selected buses and delete all others, reintroducing their influence."
+                reduction_method: GridReductionMethod = self.ui.methodComboBox.currentData()
+                bus_mode: BusReductionMethod = self.ui.busModeComboBox.currentData()
 
-            text += f"using the {reduction_method.value} equivalent. "
-            text += "This cannot be undone and it is dangerous if you don't know "
-            text += "what you are doing \nAre you sure?"
+                if bus_mode == BusReductionMethod.Reduce:
+                    text = f"This will delete the selected buses and reintroduce their influence."
+                else:
+                    text = "This will keep the selected buses and delete all others, reintroducing their influence."
 
-            ok = yes_no_question(
-                text=text,
-                title=self.tr("Grid reduction?"))
+                text += f"using the {reduction_method.value} equivalent. "
+                text += "This cannot be undone and it is dangerous if you don't know "
+                text += "what you are doing \nAre you sure?"
 
-            if ok:
+                ok = yes_no_question(
+                    text=text,
+                    title=self.tr("Grid reduction?"))
 
-                reduction_bus_indices: IntVec = self.get_reduction_bus_indices(bus_mode=bus_mode)
+                if ok:
+                    can_reduce: bool = True
+                    reduction_bus_indices: IntVec
 
-                if reduction_method == GridReductionMethod.DiShi:
+                    if bus_mode == BusReductionMethod.Reduce:
+                        # convert the set of buses to bus indices
+                        reduction_bus_indices = np.array([self._grid.buses.index(b)
+                                                          for b in self._selected_buses_set],
+                                                         dtype=int)
 
-                    # get the previous power flow
-                    _, pf_res = self._session.power_flow
+                    elif bus_mode == BusReductionMethod.Keep:
+                        # the other buses that are not in the set
+                        reduction_bus_indices = np.array([i for i in range(self._grid.get_bus_number())
+                                                          if self._grid.buses[i] not in self._selected_buses_set],
+                                                         dtype=int)
+                    else:
+                        raise NotImplementedError(f"BusReductionMethod not implemented: {bus_mode.value}")
 
-                    if pf_res is None:
-                        warning_msg(self.tr("Run a power flow first! or select another method"),
-                                    self.tr("Grid reduction"))
-                        return
+                    before_reduction_buses: List[Bus] = list(self._grid.buses)
+                    logger: Logger = Logger()
 
-                    # NOTE: self._grid gets reduced in-place
-                    grid_reduced, logger = di_shi_reduction(
-                        grid=self._grid,
-                        reduction_bus_indices=reduction_bus_indices,
-                        V0=pf_res.voltage
-                    )
+                    if reduction_method == GridReductionMethod.DiShi:
 
-                elif reduction_method == GridReductionMethod.Ward:
+                        # get the previous power flow
+                        _, pf_res = self._session.power_flow
 
-                    # get the previous power flow
-                    _, pf_res = self._session.power_flow
+                        if pf_res is None:
+                            warning_msg(self.tr("Run a power flow first! or select another method"),
+                                        self.tr("Grid reduction"))
+                            can_reduce = False
+                        else:
+                            # NOTE: self._grid gets reduced in-place
+                            _, logger = di_shi_reduction(
+                                grid=self._grid,
+                                reduction_bus_indices=reduction_bus_indices,
+                                V0=pf_res.voltage
+                            )
 
-                    if pf_res is None:
-                        warning_msg(self.tr("Run a power flow first! or select another method"),
-                                    self.tr("Grid reduction"))
-                        return
 
-                    # NOTE: self._grid gets reduced in-place
-                    grid_reduced, logger = ward_standard_reduction(
-                        grid=self._grid,
-                        reduction_bus_indices=reduction_bus_indices,
-                        V0=pf_res.voltage,
-                    )
+                    elif reduction_method == GridReductionMethod.Ward:
 
-                elif reduction_method == GridReductionMethod.PTDF:
+                        # get the previous power flow
+                        _, pf_res = self._session.power_flow
 
-                    # NOTE: self._grid gets reduced in-place
-                    grid_reduced, logger = ptdf_reduction(
-                        grid=self._grid,
-                        reduction_bus_indices=reduction_bus_indices,
-                    )
+                        if pf_res is None:
+                            warning_msg(self.tr("Run a power flow first! or select another method"),
+                                        self.tr("Grid reduction"))
+                            can_reduce = False
+                        else:
+                            # NOTE: self._grid gets reduced in-place
+                            _, logger = ward_standard_reduction(
+                                grid=self._grid,
+                                reduction_bus_indices=reduction_bus_indices,
+                                V0=pf_res.voltage,
+                            )
 
-                elif reduction_method == GridReductionMethod.PTDFProjected:
 
-                    # NOTE: self._grid gets reduced in-place
+                    elif reduction_method == GridReductionMethod.PTDF:
 
-                    # get the options from the linear analysis drivers (prefer TS if available)
-                    distribute_slack = True
-                    lin_drv_ts, _ = self._session.linear_power_flow_ts
-                    lin_drv, _ = self._session.linear_power_flow
+                        # NOTE: self._grid gets reduced in-place
+                        _, logger = ptdf_reduction(
+                            grid=self._grid,
+                            reduction_bus_indices=reduction_bus_indices,
+                        )
 
-                    if lin_drv_ts is not None:
-                        distribute_slack = lin_drv_ts.options.distribute_slack
+                    elif reduction_method == GridReductionMethod.PTDFProjected:
 
-                    elif lin_drv is not None:
-                        distribute_slack = lin_drv.options.distribute_slack
+                        # NOTE: self._grid gets reduced in-place
+
+                        # get the options from the linear analysis drivers (prefer TS if available)
+                        distribute_slack = True
+                        lin_drv_ts, _ = self._session.linear_power_flow_ts
+                        lin_drv, _ = self._session.linear_power_flow
+
+                        if lin_drv_ts is not None:
+                            distribute_slack = lin_drv_ts.options.distribute_slack
+
+                        elif lin_drv is not None:
+                            distribute_slack = lin_drv.options.distribute_slack
+
+                        else:
+                            distribute_slack = True
+
+                        _, logger = ptdf_reduction_projected(
+                            grid=self._grid,
+                            reduction_bus_indices=reduction_bus_indices,
+                            distribute_slack=distribute_slack
+                        )
 
                     else:
-                        pass
+                        raise NotImplementedError("Reduction method not supported")
 
-                    grid_reduced, logger = ptdf_reduction_projected(
-                        grid=self._grid,
-                        reduction_bus_indices=reduction_bus_indices,
-                        distribute_slack=distribute_slack
-                    )
+                    if can_reduce:
+                        # The engine mutates the grid in-place. Keep only buses that truly disappeared.
+                        self.logger = logger
+                        remaining_bus_idtags: Set[str] = {bus.idtag for bus in self._grid.buses}
+                        self.deleted_buses = [bus for bus in before_reduction_buses
+                                              if bus.idtag not in remaining_bus_idtags]
+                        self.deleted_bus_idtags = [bus.idtag for bus in self.deleted_buses]
+                        self.did_reduce = len(self.deleted_buses) > 0
 
-                    # grid_reduced, logger = ptdf_reduction_ree_bad(
-                    #     grid=self._grid,
-                    #     reduction_bus_indices=reduction_bus_indices,
-                    # )
-
-                    # grid_reduced, logger = ptdf_reduction_ree_less_bad(
-                    #     grid=self._grid,
-                    #     reduction_bus_indices=reduction_bus_indices,
-                    # )
-
+                        if self.did_reduce:
+                            self.reduced_grid = self._grid
+                            dialog_result = int(QtWidgets.QDialog.DialogCode.Accepted)
+                        else:
+                            dialog_result = int(QtWidgets.QDialog.DialogCode.Rejected)
+                    else:
+                        dialog_result = int(QtWidgets.QDialog.DialogCode.Rejected)
                 else:
-                    raise NotImplementedError("Reduction method not supported")
-
-                if logger.has_logs():
-                    logs_dialogue: LogsDialogue = LogsDialogue(name=self.tr("Import profiles"), logger=logger)
-                    exec_dialog_safely(dialog=logs_dialogue)
-
-                self.did_reduce = True
+                    dialog_result = int(QtWidgets.QDialog.DialogCode.Rejected)
             else:
-                pass  # not ok
+                warning_msg(self.tr("No reduction happened"), self.tr("Grid reduction"))
+                dialog_result = int(QtWidgets.QDialog.DialogCode.Rejected)
+        except Exception as exc:
+            self.logger.add_error(msg="Grid reduction failed", value=str(exc))
+            self.did_reduce = False
+            dialog_result = int(QtWidgets.QDialog.DialogCode.Rejected)
         else:
-            warning_msg(self.tr("No reduction happened"), self.tr("Grid reduction"))
+            pass
 
-        # exit
-        self.close()
+        self.done(dialog_result)
 
     def copy_indices(self) -> None:
         """
-        Copy the bus indices to delete to the clipboard.
-
-        :return: None
-        :rtype: None
+        Copy the bus indices to the clipboard
         """
-        bus_mode: BusReductionMethod = self.ui.busModeComboBox.currentData()
-        reduction_bus_indices: IntVec = self.get_reduction_bus_indices(bus_mode=bus_mode)
-        tsv_text: str = ", ".join(str(idx) for idx in reduction_bus_indices)
+        tsv_text: str = ", ".join([bus.name for bus in self._selected_buses_set])
 
         QtWidgets.QApplication.clipboard().setText(tsv_text, QClipboard.Mode.Clipboard)

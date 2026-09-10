@@ -5,7 +5,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VeraGridEngine.enumerations &mdash; VeraGrid 6.5.13 documentation</title>
+  <title>VeraGridEngine.enumerations &mdash; VeraGrid 6.5.26 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
@@ -14,7 +14,7 @@
   
       <script src="../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../../_static/documentation_options.js?v=3377d3ec"></script>
+      <script src="../../_static/documentation_options.js?v=c62e3d9e"></script>
       <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
       <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/js/theme.js"></script>
@@ -44,6 +44,7 @@
               <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../md_source/installation.html">💽 Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../md_source/user_interface.html">📊 User interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../md_source/veragrid_scripting_guide.html">📑 VeraGrid scripting guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../md_source/grid_analysis.html">🔎 Grid analysis</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../md_source/structure.html">🌁 Structure of VeraGrid</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../md_source/modelling.html">📐 Grid Modelling</a></li>
@@ -687,6 +688,41 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">InvestmentEvaluationMethod</span><span class="p">[</span><span class="n">s</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">s</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="CandidateKind">
+<a class="viewcode-back" href="../../rst_source/api/auto/VeraGridEngine.html#VeraGridEngine.enumerations.CandidateKind">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">CandidateKind</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Kinds of reinforcement produced by the candidate-investment generator.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">NewLine</span> <span class="o">=</span> <span class="s2">&quot;New line&quot;</span>
+    <span class="n">Upgrade</span> <span class="o">=</span> <span class="s2">&quot;Upgrade&quot;</span>
+    <span class="n">ShuntReactor</span> <span class="o">=</span> <span class="s2">&quot;Shunt reactor&quot;</span>
+    <span class="n">StaticGenerator</span> <span class="o">=</span> <span class="s2">&quot;Static generator&quot;</span>
+    <span class="n">Battery</span> <span class="o">=</span> <span class="s2">&quot;Battery&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+<div class="viewcode-block" id="CandidateKind.argparse">
+<a class="viewcode-back" href="../../rst_source/api/auto/VeraGridEngine.html#VeraGridEngine.enumerations.CandidateKind.argparse">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">argparse</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">        :param s:</span>
+<span class="sd">        :return:</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">CandidateKind</span><span class="p">[</span><span class="n">s</span><span class="p">]</span>
         <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">s</span></div>
 </div>
@@ -2842,6 +2878,7 @@
     <span class="n">PowerFlow</span> <span class="o">=</span> <span class="s1">&#39;PowerFlow&#39;</span>
     <span class="n">TimeSeriesPowerFlow</span> <span class="o">=</span> <span class="s1">&#39;TimeSeriesPowerFlow&#39;</span>
     <span class="n">LinearOptimalPowerFlowTimeSeries</span> <span class="o">=</span> <span class="s1">&#39;Linear OPF time series&#39;</span>
+    <span class="n">OptimalPowerFlowThenPowerFlowTimeSeries</span> <span class="o">=</span> <span class="s1">&#39;Linear OPF + Power flow time series&#39;</span>
     <span class="n">GenerationAdequacy</span> <span class="o">=</span> <span class="s2">&quot;Adequacy&quot;</span>
     <span class="n">SimpleDispatch</span> <span class="o">=</span> <span class="s2">&quot;Simple dispatch&quot;</span>
     <span class="n">FromPlugin</span> <span class="o">=</span> <span class="s1">&#39;From Plugin&#39;</span>
@@ -3676,6 +3713,7 @@
 
     <span class="c1"># Hydro OPF</span>
     <span class="n">FluidCurrentLevel</span> <span class="o">=</span> <span class="s1">&#39;Reservoir fluid level&#39;</span>
+    <span class="n">FluidValue</span> <span class="o">=</span> <span class="s1">&#39;Fluid value&#39;</span>
     <span class="n">FluidFlowIn</span> <span class="o">=</span> <span class="s1">&#39;Flow entering the node&#39;</span>
     <span class="n">FluidFlowOut</span> <span class="o">=</span> <span class="s1">&#39;Flow exiting the node&#39;</span>
     <span class="n">FluidP2XFlow</span> <span class="o">=</span> <span class="s1">&#39;Flow from the P2X&#39;</span>
@@ -6171,6 +6209,95 @@
 
 
 
+<div class="viewcode-block" id="InternationalStandardModel">
+<a class="viewcode-back" href="../../rst_source/api/auto/VeraGridEngine.html#VeraGridEngine.enumerations.InternationalStandardModel">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">InternationalStandardModel</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Identify every supported international-standard dynamic model.&quot;&quot;&quot;</span>
+
+    <span class="n">AC1A</span> <span class="o">=</span> <span class="s1">&#39;ac1a&#39;</span>
+    <span class="n">AC1C</span> <span class="o">=</span> <span class="s1">&#39;ac1c&#39;</span>
+    <span class="n">AC6A</span> <span class="o">=</span> <span class="s1">&#39;ac6a&#39;</span>
+    <span class="n">AC6C</span> <span class="o">=</span> <span class="s1">&#39;ac6c&#39;</span>
+    <span class="n">AC7B</span> <span class="o">=</span> <span class="s1">&#39;ac7b&#39;</span>
+    <span class="n">AC7C</span> <span class="o">=</span> <span class="s1">&#39;ac7c&#39;</span>
+    <span class="n">AC8B</span> <span class="o">=</span> <span class="s1">&#39;ac8b&#39;</span>
+    <span class="n">AC8C</span> <span class="o">=</span> <span class="s1">&#39;ac8c&#39;</span>
+    <span class="n">BBSEX1</span> <span class="o">=</span> <span class="s1">&#39;bbsex1&#39;</span>
+    <span class="n">BESSCBCURRENTSOURCENOPLANTCONTROL</span> <span class="o">=</span> <span class="s1">&#39;besscbcurrentsourcenoplantcontrol&#39;</span>
+    <span class="n">DC1A</span> <span class="o">=</span> <span class="s1">&#39;dc1a&#39;</span>
+    <span class="n">DC1C</span> <span class="o">=</span> <span class="s1">&#39;dc1c&#39;</span>
+    <span class="n">EXAC1</span> <span class="o">=</span> <span class="s1">&#39;exac1&#39;</span>
+    <span class="n">GOVHYDRO4</span> <span class="o">=</span> <span class="s1">&#39;govhydro4&#39;</span>
+    <span class="n">GOVSTEAM1</span> <span class="o">=</span> <span class="s1">&#39;govsteam1&#39;</span>
+    <span class="n">GOVSTEAMEU</span> <span class="o">=</span> <span class="s1">&#39;govsteameu&#39;</span>
+    <span class="n">IEEEG1</span> <span class="o">=</span> <span class="s1">&#39;ieeeg1&#39;</span>
+    <span class="n">IEEEG2</span> <span class="o">=</span> <span class="s1">&#39;ieeeg2&#39;</span>
+    <span class="n">IEEET1</span> <span class="o">=</span> <span class="s1">&#39;ieeet1&#39;</span>
+    <span class="n">IEEEX2</span> <span class="o">=</span> <span class="s1">&#39;ieeex2&#39;</span>
+    <span class="n">IEEX2A</span> <span class="o">=</span> <span class="s1">&#39;ieex2a&#39;</span>
+    <span class="n">MAXEX2</span> <span class="o">=</span> <span class="s1">&#39;maxex2&#39;</span>
+    <span class="n">OEL2C</span> <span class="o">=</span> <span class="s1">&#39;oel2c&#39;</span>
+    <span class="n">OEL3C</span> <span class="o">=</span> <span class="s1">&#39;oel3c&#39;</span>
+    <span class="n">OEL4C</span> <span class="o">=</span> <span class="s1">&#39;oel4c&#39;</span>
+    <span class="n">OEL5C</span> <span class="o">=</span> <span class="s1">&#39;oel5c&#39;</span>
+    <span class="n">PSS1AOMEGA</span> <span class="o">=</span> <span class="s1">&#39;pss1aomega&#39;</span>
+    <span class="n">PSS1APGEN</span> <span class="o">=</span> <span class="s1">&#39;pss1apgen&#39;</span>
+    <span class="n">PSS2A</span> <span class="o">=</span> <span class="s1">&#39;pss2a&#39;</span>
+    <span class="n">PSS2B</span> <span class="o">=</span> <span class="s1">&#39;pss2b&#39;</span>
+    <span class="n">PSS2C</span> <span class="o">=</span> <span class="s1">&#39;pss2c&#39;</span>
+    <span class="n">PSS3B</span> <span class="o">=</span> <span class="s1">&#39;pss3b&#39;</span>
+    <span class="n">PSS3C</span> <span class="o">=</span> <span class="s1">&#39;pss3c&#39;</span>
+    <span class="n">PSS6C</span> <span class="o">=</span> <span class="s1">&#39;pss6c&#39;</span>
+    <span class="n">PSSKUNDUR</span> <span class="o">=</span> <span class="s1">&#39;psskundur&#39;</span>
+    <span class="n">PVCURRENTSOURCEBNOPLANTCONTROL</span> <span class="o">=</span> <span class="s1">&#39;pvcurrentsourcebnoplantcontrol&#39;</span>
+    <span class="n">PVVOLTAGESOURCEANOPLANTCONTROL</span> <span class="o">=</span> <span class="s1">&#39;pvvoltagesourceanoplantcontrol&#39;</span>
+    <span class="n">PVVOLTAGESOURCEBNOPLANTCONTROL</span> <span class="o">=</span> <span class="s1">&#39;pvvoltagesourcebnoplantcontrol&#39;</span>
+    <span class="n">REECB</span> <span class="o">=</span> <span class="s1">&#39;reecb&#39;</span>
+    <span class="n">REECC</span> <span class="o">=</span> <span class="s1">&#39;reecc&#39;</span>
+    <span class="n">REGCBCS</span> <span class="o">=</span> <span class="s1">&#39;regcbcs&#39;</span>
+    <span class="n">REPCA</span> <span class="o">=</span> <span class="s1">&#39;repca&#39;</span>
+    <span class="n">SCL1C</span> <span class="o">=</span> <span class="s1">&#39;scl1c&#39;</span>
+    <span class="n">SCL2C</span> <span class="o">=</span> <span class="s1">&#39;scl2c&#39;</span>
+    <span class="n">SCRX</span> <span class="o">=</span> <span class="s1">&#39;scrx&#39;</span>
+    <span class="n">SEXS</span> <span class="o">=</span> <span class="s1">&#39;sexs&#39;</span>
+    <span class="n">ST1A</span> <span class="o">=</span> <span class="s1">&#39;st1a&#39;</span>
+    <span class="n">ST1C</span> <span class="o">=</span> <span class="s1">&#39;st1c&#39;</span>
+    <span class="n">ST4B</span> <span class="o">=</span> <span class="s1">&#39;st4b&#39;</span>
+    <span class="n">ST4C</span> <span class="o">=</span> <span class="s1">&#39;st4c&#39;</span>
+    <span class="n">ST5B</span> <span class="o">=</span> <span class="s1">&#39;st5b&#39;</span>
+    <span class="n">ST5C</span> <span class="o">=</span> <span class="s1">&#39;st5c&#39;</span>
+    <span class="n">ST6B</span> <span class="o">=</span> <span class="s1">&#39;st6b&#39;</span>
+    <span class="n">ST6C</span> <span class="o">=</span> <span class="s1">&#39;st6c&#39;</span>
+    <span class="n">ST7B</span> <span class="o">=</span> <span class="s1">&#39;st7b&#39;</span>
+    <span class="n">ST7C</span> <span class="o">=</span> <span class="s1">&#39;st7c&#39;</span>
+    <span class="n">ST9C</span> <span class="o">=</span> <span class="s1">&#39;st9c&#39;</span>
+    <span class="n">TGOV3</span> <span class="o">=</span> <span class="s1">&#39;tgov3&#39;</span>
+    <span class="n">UEL1</span> <span class="o">=</span> <span class="s1">&#39;uel1&#39;</span>
+    <span class="n">UEL2C</span> <span class="o">=</span> <span class="s1">&#39;uel2c&#39;</span>
+    <span class="n">VRKUNDUR</span> <span class="o">=</span> <span class="s1">&#39;vrkundur&#39;</span>
+    <span class="n">WPP4BCURRENTSOURCE2020</span> <span class="o">=</span> <span class="s1">&#39;wpp4bcurrentsource2020&#39;</span>
+    <span class="n">WT4ACURRENTSOURCE</span> <span class="o">=</span> <span class="s1">&#39;wt4acurrentsource&#39;</span>
+    <span class="n">WT4ACURRENTSOURCE2020</span> <span class="o">=</span> <span class="s1">&#39;wt4acurrentsource2020&#39;</span>
+    <span class="n">WT4BCURRENTSOURCE2020</span> <span class="o">=</span> <span class="s1">&#39;wt4bcurrentsource2020&#39;</span>
+    <span class="n">WT4BCURRENTSOURCE</span> <span class="o">=</span> <span class="s1">&#39;wt4bcurrentsource&#39;</span>
+    <span class="n">WT4INJECTOR</span> <span class="o">=</span> <span class="s1">&#39;wt4injector&#39;</span>
+    <span class="n">WTG4ACURRENTSOURCE</span> <span class="o">=</span> <span class="s1">&#39;wtg4acurrentsource&#39;</span>
+    <span class="n">WTG4BCURRENTSOURCE</span> <span class="o">=</span> <span class="s1">&#39;wtg4bcurrentsource&#39;</span>
+    <span class="n">IEEEVC_1981</span> <span class="o">=</span> <span class="s1">&#39;ieeevc_1981&#39;</span>
+    <span class="n">ESDC2A</span> <span class="o">=</span> <span class="s1">&#39;esdc2a&#39;</span>
+    <span class="n">FRQTPA</span> <span class="o">=</span> <span class="s1">&#39;frqtpa&#39;</span>
+    <span class="n">VTGTPA</span> <span class="o">=</span> <span class="s1">&#39;vtgtpa&#39;</span>
+    <span class="n">CIMTR1</span> <span class="o">=</span> <span class="s1">&#39;cimtr1&#39;</span>
+    <span class="n">CIMW</span> <span class="o">=</span> <span class="s1">&#39;cimw&#39;</span>
+    <span class="n">GENSAL</span> <span class="o">=</span> <span class="s1">&#39;gensal&#39;</span>
+    <span class="n">GENROU</span> <span class="o">=</span> <span class="s1">&#39;genrou&#39;</span>
+    <span class="n">GGOV1</span> <span class="o">=</span> <span class="s1">&#39;ggov1&#39;</span>
+    <span class="n">HYGOV</span> <span class="o">=</span> <span class="s1">&#39;hygov&#39;</span>
+    <span class="n">IEEL</span> <span class="o">=</span> <span class="s1">&#39;ieel&#39;</span>
+    <span class="n">TGOV1</span> <span class="o">=</span> <span class="s1">&#39;tgov1&#39;</span></div>
+
+
+
 <div class="viewcode-block" id="EmtInitializationStatus">
 <a class="viewcode-back" href="../../rst_source/api/auto/VeraGridEngine.html#VeraGridEngine.enumerations.EmtInitializationStatus">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">EmtInitializationStatus</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
@@ -6413,6 +6540,16 @@
 
     <span class="n">ID</span> <span class="o">=</span> <span class="s2">&quot;ID&quot;</span>
     <span class="n">IQ</span> <span class="o">=</span> <span class="s2">&quot;IQ&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="DynamicEditorContentType">
+<a class="viewcode-back" href="../../rst_source/api/auto/VeraGridEngine.html#VeraGridEngine.enumerations.DynamicEditorContentType">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">DynamicEditorContentType</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Identify the kind of content hosted by a dynamic workspace tab.&quot;&quot;&quot;</span>
+
+    <span class="n">MODEL</span> <span class="o">=</span> <span class="s2">&quot;Model&quot;</span>
+    <span class="n">EVENTS</span> <span class="o">=</span> <span class="s2">&quot;Events&quot;</span></div>
 
 </pre></div>
 

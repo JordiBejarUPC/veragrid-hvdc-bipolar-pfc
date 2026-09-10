@@ -840,16 +840,13 @@ class DataBaseTableMain(DiagramsMain):
 
                 self.show_info_toast(f"{len(to_be_deleted)} buses removed from the model")
 
-    def grid_reduction_from_table_selection(self):
+    def grid_reduction_from_table_selection(self) -> None:
         """
         Crop model to buses selection
         """
         selected_buses, selected_objects = self.get_selected_table_buses()
 
         if len(selected_buses):
-            # get the previous power flow
-            _, pf_res = self.session.power_flow
-
             grid_reduction_dialogue: GridReduceDialogue = GridReduceDialogue(grid=self.circuit,
                                                                              session=self.session,
                                                                              selected_buses_set=selected_buses)
@@ -857,74 +854,89 @@ class DataBaseTableMain(DiagramsMain):
             try:
                 grid_reduction_dialogue.exec()
                 did_reduce: bool = grid_reduction_dialogue.did_reduce
+                reduction_logger: bs.Logger = grid_reduction_dialogue.logger
+                reduced_grid: dev.MultiCircuit | None = grid_reduction_dialogue.reduced_grid
             finally:
                 delete_dialog_safely(dialog=grid_reduction_dialogue)
 
-            if did_reduce:
+            if did_reduce and reduced_grid is not None:
 
-                # delete from the diagrams
-                self.delete_from_all_diagrams(elements=list(selected_buses))
+                self.set_circuit(grid=reduced_grid, create_diagram=True)
 
                 # update the view
                 self.view_objects_data()
                 self.update_from_to_list_views()
                 self.update_date_dependent_combos()
+
+                if reduction_logger.has_logs():
+                    logs_dialogue: LogsDialogue = LogsDialogue(name=self.tr("Grid reduction"), logger=reduction_logger)
+                    exec_dialog_safely(dialog=logs_dialogue)
+                else:
+                    pass
             else:
                 self.show_warning_toast("No reduction done")
+                if reduction_logger.has_logs():
+                    logs_dialogue: LogsDialogue = LogsDialogue(name=self.tr("Grid reduction"), logger=reduction_logger)
+                    exec_dialog_safely(dialog=logs_dialogue)
+                else:
+                    pass
         else:
             self.show_warning_toast("Select some elements first")
 
-    def grid_reduction_from_schematic_selection(self):
+    def grid_reduction_from_schematic_selection(self) -> None:
         """
         Call the grid reduction dialogue on the schematic selection
         """
 
-        diagram_widget = self.get_selected_diagram_widget()
+        diagram_widget: SchematicWidget | GridMapWidget | None = self.get_selected_diagram_widget()
         if isinstance(diagram_widget, SchematicWidget):
-            selected_buses = diagram_widget.get_selected_buses()
-            selected_se = list()
+            self.remove_dead_graphics_from_all_diagrams()
+            selected_buses: List[Tuple[int, dev.Bus, object]] = diagram_widget.get_selected_buses()
 
         elif isinstance(diagram_widget, GridMapWidget):
-            selected_se = diagram_widget.get_selected_substations()
+            self.remove_dead_graphics_from_all_diagrams()
             selected_buses = diagram_widget.get_selected_buses()
         else:
-            return None
+            return
 
         if len(selected_buses):
-            # get the previous power flow
-            _, pf_res = self.session.power_flow
-
             selected_buses_set: Set[dev.Bus] = {bus for i, bus, graphic in selected_buses}
 
-            grid_reduction_dialogue = GridReduceDialogue(grid=self.circuit,
-                                                         session=self.session,
-                                                         selected_buses_set=selected_buses_set)
+            grid_reduction_dialogue: GridReduceDialogue = GridReduceDialogue(
+                grid=self.circuit,
+                session=self.session,
+                selected_buses_set=selected_buses_set
+            )
 
             try:
                 grid_reduction_dialogue.exec()
-                did_reduce = grid_reduction_dialogue.did_reduce
+                did_reduce: bool = grid_reduction_dialogue.did_reduce
+                reduction_logger: bs.Logger = grid_reduction_dialogue.logger
+                reduced_grid: dev.MultiCircuit | None = grid_reduction_dialogue.reduced_grid
             finally:
                 delete_dialog_safely(dialog=grid_reduction_dialogue)
 
-            if did_reduce:
-                self.delete_from_all_diagrams(elements=[bus for i, bus, graphic in selected_buses])
+            if did_reduce and reduced_grid is not None:
+                self.set_circuit(grid=reduced_grid, create_diagram=True)
+                self.show_info_toast("Done!")
+
+                if reduction_logger.has_logs():
+                    logs_dialogue: LogsDialogue = LogsDialogue(name=self.tr("Grid reduction"), logger=reduction_logger)
+                    exec_dialog_safely(dialog=logs_dialogue)
+                else:
+                    pass
             else:
-                pass
+                self.show_warning_toast("No reduction done")
+                if reduction_logger.has_logs():
+                    logs_dialogue: LogsDialogue = LogsDialogue(name=self.tr("Grid reduction"), logger=reduction_logger)
+                    exec_dialog_safely(dialog=logs_dialogue)
+                else:
+                    pass
 
-            if isinstance(diagram_widget, GridMapWidget):
-                # if this is a map, delete the elements from there
-                for se_graphics in selected_se:
-                    if se_graphics.api_object is not None:
-                        diagram_widget.delete_element_utility_function(
-                            device=se_graphics.api_object,
-                            propagate=True
-                        )
-
-            self.show_info_toast("Done!")
-            return None
+            return
         else:
             self.show_warning_toast("No selected buses :/")
-            return None
+            return
 
     def add_objects(self):
         """
