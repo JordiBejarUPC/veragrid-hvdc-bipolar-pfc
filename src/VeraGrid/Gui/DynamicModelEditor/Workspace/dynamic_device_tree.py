@@ -262,7 +262,7 @@ class DynamicDeviceTreeWidget(QtWidgets.QWidget):
             rms_model_action: QtGui.QAction = gf.add_menu_entry(
                 menu=menu,
                 text=self.tr("RMS editor"),
-                icon_path=":/Icons/icons/dyn_edit.png",
+                icon_path=":/Icons/icons/dyn.png",
                 function_ptr=self._open_rms_model_from_action,
             )
             rms_model_action.setData(QtCore.QPersistentModelIndex(index))
@@ -273,7 +273,7 @@ class DynamicDeviceTreeWidget(QtWidgets.QWidget):
             emt_model_action: QtGui.QAction = gf.add_menu_entry(
                 menu=menu,
                 text=self.tr("EMT editor"),
-                icon_path=":/Icons/icons/dyn_emt_edit.png",
+                icon_path=":/Icons/icons/dyn_emt.png",
                 function_ptr=self._open_emt_model_from_action,
             )
             emt_model_action.setData(QtCore.QPersistentModelIndex(index))
@@ -286,7 +286,7 @@ class DynamicDeviceTreeWidget(QtWidgets.QWidget):
                 rms_events_action: QtGui.QAction = gf.add_menu_entry(
                     menu=menu,
                     text=self.tr("RMS events"),
-                    icon_path=":/Icons/icons/dyn.png",
+                    icon_path=":/Icons/icons/dyn_edit.png",
                     function_ptr=self._open_rms_events_from_action,
                 )
                 rms_events_action.setData(QtCore.QPersistentModelIndex(index))
@@ -297,7 +297,7 @@ class DynamicDeviceTreeWidget(QtWidgets.QWidget):
                 emt_events_action: QtGui.QAction = gf.add_menu_entry(
                     menu=menu,
                     text=self.tr("EMT events"),
-                    icon_path=":/Icons/icons/dyn_emt.png",
+                    icon_path=":/Icons/icons/dyn_emt_edit.png",
                     function_ptr=self._open_emt_events_from_action,
                 )
                 emt_events_action.setData(QtCore.QPersistentModelIndex(index))

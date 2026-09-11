@@ -2497,6 +2497,19 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param y_pos: Scene y coordinate of the double-clicked measurement item.
         :return: None.
         """
+        # Editing replaces the measurement block and would invalidate any
+        # connections attached to its current ports. Require users to remove
+        # those connections explicitly before changing the block structure.
+        if source_item.has_connections():
+            QtWidgets.QMessageBox.warning(
+                self,
+                self.tr("Measurement block"),
+                self.tr("Remove item's connections to edit"),
+            )
+            return
+        else:
+            pass
+
         # The circuit owns the authoritative bus objects that the generated
         # measurement block must reference after the modal selection is accepted.
         buses_list: List[Bus] = list(self.circuit.buses)

@@ -3115,6 +3115,21 @@ class MeasurementsItem(QGraphicsRectItem):
         """
         self.subsys = block
 
+    def has_connections(self) -> bool:
+        """Return whether any measurement port has an attached connection.
+
+        :return: ``True`` when at least one input or output port is connected.
+        """
+        port_collection: List[PortItem]
+        port: PortItem
+        for port_collection in (self.inputs, self.outputs):
+            for port in port_collection:
+                if port.connections is not None and len(port.connections) > 0:
+                    return True
+                else:
+                    pass
+        return False
+
     def refresh_block_name(self) -> None:
         """
         Refresh the visible block name from the authoritative symbolic block.
