@@ -104,6 +104,18 @@ def restore_console_text(console: PythonConsole, text: str) -> None:
     console.setTextCursor(cursor)
 
 
+def close_active_popup() -> None:
+    """Close the active Qt popup menu if one is open.
+
+    :return: None.
+    """
+    popup_widget: QtWidgets.QWidget | None = QtWidgets.QApplication.activePopupWidget()
+    if popup_widget is not None:
+        popup_widget.close()
+    else:
+        pass
+
+
 def test_console_keeps_transcript_copyable_and_prompt_editable() -> None:
     """Verify transcript selection behaves like a console, not an editor.
 
@@ -139,6 +151,24 @@ def test_console_keeps_transcript_copyable_and_prompt_editable() -> None:
     press_key(console=console, key=QtCore.Qt.Key.Key_Delete)
     assert console.toPlainText().endswith(">>> bc")
 
+    cursor = console.textCursor()
+    cursor.setPosition(console._safe_input_start_pos())
+    cursor.setPosition(console._safe_input_start_pos() + 1, QtGui.QTextCursor.MoveMode.KeepAnchor)
+    console.setTextCursor(cursor)
+    press_key(console=console, key=QtCore.Qt.Key.Key_Delete)
+    assert console.toPlainText().endswith(">>> c")
+
+    press_modified_key(
+        console=console,
+        key=QtCore.Qt.Key.Key_Control,
+        modifiers=QtCore.Qt.KeyboardModifier.ControlModifier,
+    )
+    cursor = console.textCursor()
+    cursor.setPosition(console._safe_input_start_pos())
+    console.setTextCursor(cursor)
+    press_key(console=console, key=QtCore.Qt.Key.Key_Delete)
+    assert console.toPlainText().endswith(">>> ")
+
     press_key(console=console, key=QtCore.Qt.Key.Key_End)
     assert console.textCursor().position() == len(console.toPlainText())
 
@@ -158,12 +188,29 @@ def test_console_keeps_transcript_copyable_and_prompt_editable() -> None:
     text_before: str = console.toPlainText()
     press_key(console=console, key=QtCore.Qt.Key.Key_X, text="x")
     assert console.toPlainText().startswith("old output\n")
-    assert console.toPlainText().endswith("bcx")
+    assert console.toPlainText().endswith(">>> x")
 
     restore_console_text(console=console, text=text_before)
     select_previous_output(console=console)
     QtWidgets.QApplication.clipboard().clear()
     press_control_key(console=console, key=QtCore.Qt.Key.Key_C, text="c")
+    assert QtWidgets.QApplication.clipboard().text() == "old output"
+
+    restore_console_text(console=console, text=text_before)
+    select_previous_output(console=console)
+    press_modified_key(
+        console=console,
+        key=QtCore.Qt.Key.Key_Control,
+        modifiers=QtCore.Qt.KeyboardModifier.ControlModifier,
+    )
+    assert console.textCursor().hasSelection()
+    QtWidgets.QApplication.clipboard().clear()
+    press_modified_key(
+        console=console,
+        key=QtCore.Qt.Key.Key_C,
+        modifiers=QtCore.Qt.KeyboardModifier.ControlModifier,
+        text="c",
+    )
     assert QtWidgets.QApplication.clipboard().text() == "old output"
 
     copy_variants: list[tuple[QtCore.Qt.KeyboardModifier, str]] = list((
@@ -212,7 +259,18 @@ def test_console_keeps_transcript_copyable_and_prompt_editable() -> None:
     restore_console_text(console=console, text=text_before)
     mime_data.setText("PASTE")
     console.insertFromMimeData(mime_data)
-    assert console.toPlainText().endswith("bcPASTE")
+    assert console.toPlainText().endswith(">>> PASTE")
+
+    restore_console_text(console=console, text=text_before)
+    select_previous_output(console=console)
+    QtCore.QTimer.singleShot(0, close_active_popup)
+    context_event: QtGui.QContextMenuEvent = QtGui.QContextMenuEvent(
+        QtGui.QContextMenuEvent.Reason.Mouse,
+        QtCore.QPoint(0, 0),
+        QtCore.QPoint(0, 0),
+    )
+    console.contextMenuEvent(context_event)
+    assert console.toPlainText() == text_before
 
     console.deleteLater()
     QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)

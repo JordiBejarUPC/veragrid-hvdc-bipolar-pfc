@@ -12,9 +12,9 @@ import rlcompleter
 import traceback
 import inspect
 from PySide6.QtCore import Qt, Signal, QObject
-from PySide6.QtGui import QTextCursor, QKeySequence, QKeyEvent, QMouseEvent
+from PySide6.QtGui import QAction, QTextCursor, QKeySequence, QKeyEvent, QMouseEvent, QContextMenuEvent
 from PySide6.QtWidgets import QApplication, QMainWindow
-from PySide6.QtWidgets import QCompleter
+from PySide6.QtWidgets import QCompleter, QMenu
 from PySide6.QtCore import QStringListModel
 from VeraGrid.Gui.base_python_code_editor import BasePythonCodeEditor
 from VeraGrid.Gui.python_highlighter import PythonHighlighter
@@ -334,6 +334,21 @@ class PythonConsole(BasePythonCodeEditor):
         )
         return event.matches(QKeySequence.StandardKey.Copy) or is_control_copy
 
+    def _is_modifier_key(self, event: QKeyEvent) -> bool:
+        """
+        Check whether a key event only changes keyboard modifier state.
+
+        :param event: Incoming keyboard event.
+        :return: True when the key must not alter cursor or selection state.
+        """
+        modifier_keys: tuple[Qt.Key, ...] = (
+            Qt.Key.Key_Control,
+            Qt.Key.Key_Shift,
+            Qt.Key.Key_Alt,
+            Qt.Key.Key_Meta,
+        )
+        return event.key() in modifier_keys
+
     def _accept_completion_from_popup(self):
         popup = self._completer.popup()
         index = popup.currentIndex()
@@ -373,6 +388,10 @@ class PythonConsole(BasePythonCodeEditor):
         popup = self._completer.popup()
         if self._is_copy_event(event):
             self.copy()
+            event.accept()
+            return
+
+        if self._is_modifier_key(event):
             event.accept()
             return
 
@@ -485,6 +504,22 @@ class PythonConsole(BasePythonCodeEditor):
         super().mouseReleaseEvent(event)
         self._selecting_previous_text = False
         self._enforce_cursor()
+
+    def contextMenuEvent(self, event: QContextMenuEvent) -> None:
+        """
+        Show a console-safe context menu for protected transcript selections.
+
+        :param event: Incoming context-menu event.
+        :return: None.
+        """
+        if self._selection_crosses_prompt():
+            menu: QMenu = QMenu(self)
+            copy_action: QAction = menu.addAction(self.tr("Copy"))
+            copy_action.triggered.connect(self.copy)
+            menu.exec(event.globalPos())
+            event.accept()
+        else:
+            super().contextMenuEvent(event)
 
     def insertFromMimeData(self, source):
         # Block paste that would overwrite prompt/output
