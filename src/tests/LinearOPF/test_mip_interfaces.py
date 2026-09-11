@@ -8,6 +8,7 @@ import numpy as np
 from scipy.sparse import csc_matrix
 import VeraGridEngine.api as vg
 from VeraGridEngine.Utils.MIP.pulp_interface import add_pulp_variable
+from VeraGridEngine.Utils.MIP.pulp_interface import PulpLpModel
 from VeraGridEngine.Utils.MIP.selected_interface import lpDot1D_changes, get_model_instance
 from VeraGridEngine.enumerations import MIPFramework, MIPSolvers
 
@@ -81,6 +82,20 @@ def test_pulp_variable_helper_prefers_model_owned_api() -> None:
 
     assert variable is model.added_variable
     assert variable.name == "x"
+
+
+def test_pulp_model_accepts_constant_objective() -> None:
+    """
+    Verify zero-cost formulations can still set a valid PuLP objective.
+
+    :return: None.
+    """
+    model: PulpLpModel = PulpLpModel(solver_type=MIPSolvers.CBC)
+
+    model.minimize(0.0)
+
+    assert model.model.objective is not None
+    assert model.model.objective.value() == 0.0
 
 
 def test_issue_372_1():

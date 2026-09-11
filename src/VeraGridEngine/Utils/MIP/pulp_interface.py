@@ -10,6 +10,7 @@ other solver interface easily
 """
 from __future__ import annotations
 
+from numbers import Real
 from typing import List, Union, Callable, Any
 import subprocess
 import pulp
@@ -210,12 +211,20 @@ class PulpLpModel(AbstractLpModel):
         """
         return pulp.lpSum(cst)
 
-    def minimize(self, obj_function: LpExp):
+    def minimize(self, obj_function: LpExp | Real) -> None:
         """
         Set the objective function with minimization sense
         :param obj_function: expression to minimize
+        :return: None
         """
-        self.model.setObjective(obj=obj_function)
+        if isinstance(obj_function, Real):
+            # Some formulations legitimately collapse to a constant objective
+            # when all modeled costs are zero. PuLP needs an affine expression.
+            objective: LpExp = pulp.LpAffineExpression(obj_function)
+        else:
+            objective = obj_function
+
+        self.model.setObjective(obj=objective)
 
     def get_solver(self, show_logs: bool = False):
         """
