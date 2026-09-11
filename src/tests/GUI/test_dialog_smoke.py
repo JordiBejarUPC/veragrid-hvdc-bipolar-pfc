@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Set
 import numpy as np
 import pandas as pd
 import shiboken6
-from PySide6 import QtCore, QtGui
+from PySide6 import QtCore, QtGui, QtTest
 from PySide6 import QtWidgets
 
 import VeraGridEngine as vge
@@ -1354,6 +1354,84 @@ def test_dialog_opens_and_closes_without_blowing_up() -> None:
     :return: None.
     """
     run_dialog_smoke_suite_subprocess(timeout_s=120.0)
+
+
+def test_logs_dialogue_expands_first_column_and_colors_severity(qt_app: QtWidgets.QApplication) -> None:
+    """
+    Check the log tree keeps messages readable and severity-coded.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    logger: Logger = Logger()
+    logger.add_error(msg="Error message", device="Line 1")
+    logger.add_warning(msg="Warning message", device="Bus 2")
+    logger.add_info(msg="Info message", device="Bus 3")
+    logger.add_divergence(msg="Divergence message", device="Bus 4", value=1.0, expected_value=0.0)
+
+    dialog: LogsDialogue = LogsDialogue(name="Log", logger=logger)
+    try:
+        header: QtWidgets.QHeaderView = dialog.logs_table.header()
+        model: QtGui.QStandardItemModel = dialog.logs_table.model()
+        error_item: QtGui.QStandardItem = model.item(0, 0)
+        error_empty_item: QtGui.QStandardItem = model.item(0, 1)
+        warning_item: QtGui.QStandardItem = model.item(1, 0)
+        information_item: QtGui.QStandardItem = model.item(2, 0)
+        divergence_item: QtGui.QStandardItem = model.item(3, 0)
+        error_message_item: QtGui.QStandardItem = error_item.child(0, 0)
+        error_message_empty_item: QtGui.QStandardItem = error_item.child(0, 1)
+        error_child_item: QtGui.QStandardItem = error_message_item.child(0, 0)
+
+        assert header.sectionResizeMode(0) == QtWidgets.QHeaderView.ResizeMode.Interactive
+        assert dialog.logs_table.columnWidth(0) == 320
+        assert dialog.logs_table.selectionMode() == QtWidgets.QAbstractItemView.SelectionMode.NoSelection
+        assert dialog.logs_table.focusPolicy() == QtCore.Qt.FocusPolicy.NoFocus
+        assert error_item.background().style() != QtCore.Qt.BrushStyle.NoBrush
+        assert error_empty_item.background().style() != QtCore.Qt.BrushStyle.NoBrush
+        assert error_item.background().color().name() == "#ff0000"
+        assert error_item.foreground().color().name() == "#ffffff"
+        assert error_message_item.background().style() == QtCore.Qt.BrushStyle.NoBrush
+        assert error_message_empty_item.background().style() == QtCore.Qt.BrushStyle.NoBrush
+        assert error_child_item.background().style() == QtCore.Qt.BrushStyle.NoBrush
+        assert error_message_item.foreground().style() == QtCore.Qt.BrushStyle.NoBrush
+        assert error_child_item.foreground().style() == QtCore.Qt.BrushStyle.NoBrush
+        assert warning_item.background().color().name() == "#ff9900"
+        assert information_item.background().color().name() == "#808080"
+        assert divergence_item.background().color().name() == "#00aa00"
+
+        dialog.show()
+        dialog.accept_btn.setFocus()
+        qt_app.processEvents()
+
+        error_empty_index: QtCore.QModelIndex = model.index(0, 1)
+        error_empty_point: QtCore.QPoint = dialog.logs_table.visualRect(error_empty_index).center()
+        viewport_image: QtGui.QImage = dialog.logs_table.viewport().grab().toImage()
+        assert viewport_image.pixelColor(1, error_empty_point.y()).name() == "#ff0000"
+
+        dialog.logs_table.setStyleSheet("QTreeView::item:!selected:hover { background: rgb(64, 65, 67); }")
+        QtTest.QTest.mouseMove(dialog.logs_table.viewport(), error_empty_point)
+        qt_app.processEvents()
+
+        viewport_image = dialog.logs_table.viewport().grab().toImage()
+        assert viewport_image.pixelColor(error_empty_point).name() == "#ff0000"
+
+        row_idx: int
+        for row_idx in range(model.rowCount()):
+            column_idx: int
+            for column_idx in range(model.columnCount()):
+                group_item: QtGui.QStandardItem = model.item(row_idx, column_idx)
+                assert group_item.foreground().color().name() == "#ffffff"
+                assert group_item.background().style() != QtCore.Qt.BrushStyle.NoBrush
+
+            parent_item: QtGui.QStandardItem = model.item(row_idx, 0)
+            message_idx: int
+            for message_idx in range(parent_item.rowCount()):
+                for column_idx in range(model.columnCount()):
+                    message_item: QtGui.QStandardItem = parent_item.child(message_idx, column_idx)
+                    assert message_item.foreground().style() == QtCore.Qt.BrushStyle.NoBrush
+                    assert message_item.background().style() == QtCore.Qt.BrushStyle.NoBrush
+    finally:
+        close_dialog_for_smoke(dialog=dialog, app=qt_app)
 
 
 def test_dialog_smoke_inventory_is_explicit() -> None:
