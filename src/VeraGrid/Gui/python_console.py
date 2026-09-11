@@ -10,14 +10,83 @@ import code
 import contextlib
 import rlcompleter
 import traceback
-
+import inspect
 from PySide6.QtCore import Qt, Signal, QObject
-from PySide6.QtGui import QTextCursor
+from PySide6.QtGui import QTextCursor, QKeySequence, QKeyEvent, QMouseEvent
 from PySide6.QtWidgets import QApplication, QMainWindow
 from PySide6.QtWidgets import QCompleter
 from PySide6.QtCore import QStringListModel
 from VeraGrid.Gui.base_python_code_editor import BasePythonCodeEditor
 from VeraGrid.Gui.python_highlighter import PythonHighlighter
+
+
+def safe_get_args(target):
+    """
+    Safely inspects arguments of a function, method, or class.
+    Handles broken __repr__, __str__, or C-extension signature errors.
+    """
+    # If a class is passed, inspect its __init__ method
+    if inspect.isclass(target):
+        target = getattr(target, "__init__", target)
+
+    params_info = {}
+
+    # Attempt standard signature inspection
+    try:
+        sig = inspect.signature(target)
+        for name, param in sig.parameters.items():
+            if name == 'self':
+                continue
+
+            # Safely evaluate default value
+            if param.default is inspect.Parameter.empty:
+                default_repr = "<REQUIRED>"
+            else:
+                try:
+                    default_repr = repr(param.default)
+                except Exception as e:
+                    default_repr = f"<Error evaluating default: {type(e).__name__}>"
+
+            # Safely evaluate type annotation
+            if param.annotation is inspect.Parameter.empty:
+                annotation_repr = None
+            else:
+                try:
+                    annotation_repr = getattr(param.annotation, "__name__", str(param.annotation))
+                except Exception:
+                    annotation_repr = "<Error evaluating annotation>"
+
+            params_info[name] = {
+                "default": default_repr,
+                "annotation": annotation_repr,
+            }
+        return params_info
+
+    except (ValueError, TypeError):
+        # Fallback for C-extensions or objects without standard signatures
+        pass
+
+    # Fallback via low-level __code__ object
+    code = getattr(target, "__code__", None)
+    if code:
+        arg_count = code.co_argcount
+        var_names = code.co_varnames[:arg_count]
+        for name in var_names:
+            if name != 'self':
+                params_info[name] = {"default": "<Unknown>", "annotation": None}
+        return params_info
+
+    return {}
+
+
+# Pretty printing helper
+def describe(target):
+    args = safe_get_args(target)
+    name = getattr(target, "__qualname__", str(target))
+    print(f"Arguments for {name}:")
+    for param_name, info in args.items():
+        ann = f": {info['annotation']}" if info['annotation'] else ""
+        print(f"  - {param_name}{ann} = {info['default']}")
 
 
 class _GuiOutput(QObject):
@@ -74,6 +143,7 @@ class PythonConsole(BasePythonCodeEditor):
         self._history_index = 0
         self._buffer = []  # multiline buffer
         self._input_start_pos = 0
+        self._selecting_previous_text: bool = False
 
         # GUI-thread output marshalling
         self._gui_out = _GuiOutput()
@@ -83,6 +153,7 @@ class PythonConsole(BasePythonCodeEditor):
             locals=locals,
             write_callback=self._emit_output,
         )
+        self.add_var("describe", describe)
         self._completer = QCompleter(self)
         self._completer.setWidget(self)
         self._completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
@@ -113,10 +184,17 @@ class PythonConsole(BasePythonCodeEditor):
         BasePythonCodeEditor.set_light_mode(self)
         self._highlighter.set_light_mode()
 
-    def reset(self):
+    def reset(self) -> None:
+        """
+        Clear the visible console and discard any unfinished multiline input.
+
+        :return: None.
+        """
+        self._buffer.clear()
+        self._history_index = len(self._history)
+        self._selecting_previous_text = False
         self.document().clear()
         self._insert_prompt(primary=True)
-        self.cursorPositionChanged.connect(self._enforce_cursor)
 
     def add_var(self, name: str, val: Any) -> None:
         """
@@ -220,9 +298,20 @@ class PythonConsole(BasePythonCodeEditor):
     # Hard prompt protection
     # ----------------------------
 
-    def _enforce_cursor(self):
+    def _enforce_cursor(self) -> None:
+        """
+        Keep editing anchored after the prompt without destroying selections.
+
+        :return: None.
+        """
         safe_pos = self._safe_input_start_pos()
         c = self.textCursor()
+
+        # Mouse drag selections over previous output must remain available for
+        # copying, while plain clicks are still snapped back to the prompt.
+        if self._selecting_previous_text or c.hasSelection():
+            return
+
         if c.position() < safe_pos:
             c.setPosition(safe_pos)
             self.setTextCursor(c)
@@ -230,6 +319,20 @@ class PythonConsole(BasePythonCodeEditor):
     def _selection_crosses_prompt(self) -> bool:
         c = self.textCursor()
         return c.hasSelection() and c.selectionStart() < self._input_start_pos
+
+    def _is_copy_event(self, event: QKeyEvent) -> bool:
+        """
+        Check whether a key event requests copying selected console text.
+
+        :param event: Incoming keyboard event.
+        :return: True when the event is a platform copy shortcut.
+        """
+        keyboard_modifiers: Qt.KeyboardModifier = event.modifiers()
+        is_control_copy: bool = (
+                event.key() == Qt.Key.Key_C
+                and bool(keyboard_modifiers & Qt.KeyboardModifier.ControlModifier)
+        )
+        return event.matches(QKeySequence.StandardKey.Copy) or is_control_copy
 
     def _accept_completion_from_popup(self):
         popup = self._completer.popup()
@@ -257,11 +360,32 @@ class PythonConsole(BasePythonCodeEditor):
     # Key handling
     # ----------------------------
 
-    def keyPressEvent(self, event):
+    def keyPressEvent(self, event: QKeyEvent) -> None:
+        """
+        Handle console shortcuts, prompt protection, history and execution.
+
+        :param event: Incoming keyboard event.
+        :return: None.
+        """
         # -------------------------------------------------
         # If autocomplete popup is visible → accept / close
         # -------------------------------------------------
         popup = self._completer.popup()
+        if self._is_copy_event(event):
+            self.copy()
+            event.accept()
+            return
+
+        if self._selection_crosses_prompt():
+            # Transcript selections are copyable but never editable. Any other
+            # key resumes interaction at the live prompt, like a console.
+            cursor: QTextCursor = self.textCursor()
+            cursor.clearSelection()
+            cursor.movePosition(QTextCursor.MoveOperation.End)
+            self.setTextCursor(cursor)
+        else:
+            pass
+
         if popup.isVisible():
             if event.key() in (Qt.Key.Key_Tab, Qt.Key.Key_Return, Qt.Key.Key_Enter):
                 # Accept the current completion
@@ -290,15 +414,15 @@ class PythonConsole(BasePythonCodeEditor):
         elif event.key() == Qt.Key.Key_Tab:
             # Insert four spaces instead of a literal tab character so console
             # input always uses the requested indentation width.
-            cursor = self.textCursor()
+            cursor: QTextCursor = self.textCursor()
             cursor.insertText(self._tab_text)
             self.setTextCursor(cursor)
             return
 
         # Trigger completion popup when Ctrl + Space is pressed
         elif (
-            event.key() == Qt.Key.Key_Space
-            and event.modifiers() == Qt.KeyboardModifier.ControlModifier
+                event.key() == Qt.Key.Key_Space
+                and event.modifiers() == Qt.KeyboardModifier.ControlModifier
         ):
             # Windows reports AltGr as Ctrl+Alt on many layouts. Requiring the
             # exact Ctrl modifier keeps completion from swallowing text input
@@ -307,11 +431,6 @@ class PythonConsole(BasePythonCodeEditor):
             return
 
         c = self.textCursor()
-
-        # Prevent any edits that would touch the prompt or earlier output
-        if self._selection_crosses_prompt():
-            if event.key() in (Qt.Key.Key_Backspace, Qt.Key.Key_Delete) or event.text():
-                return
 
         if event.key() == Qt.Key.Key_Backspace:
             safe_pos = self._safe_input_start_pos()
@@ -341,12 +460,30 @@ class PythonConsole(BasePythonCodeEditor):
 
         super().keyPressEvent(event)
 
-    def mousePressEvent(self, event):
-        super().mousePressEvent(event)
-        self._enforce_cursor()
+    def mousePressEvent(self, event: QMouseEvent) -> None:
+        """
+        Start a possible output-selection gesture.
 
-    def mouseReleaseEvent(self, event):
+        :param event: Incoming mouse press event.
+        :return: None.
+        """
+        clicked_cursor: QTextCursor = self.cursorForPosition(event.pos())
+        self._selecting_previous_text = clicked_cursor.position() < self._safe_input_start_pos()
+        super().mousePressEvent(event)
+        if not self._selecting_previous_text:
+            self._enforce_cursor()
+        else:
+            pass
+
+    def mouseReleaseEvent(self, event: QMouseEvent) -> None:
+        """
+        Finish an output-selection gesture and restore prompt anchoring.
+
+        :param event: Incoming mouse release event.
+        :return: None.
+        """
         super().mouseReleaseEvent(event)
+        self._selecting_previous_text = False
         self._enforce_cursor()
 
     def insertFromMimeData(self, source):
@@ -443,6 +580,7 @@ class PythonConsole(BasePythonCodeEditor):
 
 if __name__ == "__main__":
     import numpy as np
+
 
     class ConsoleMainWindow(QMainWindow):
         def __init__(self):
