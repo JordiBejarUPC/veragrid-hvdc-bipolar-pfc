@@ -75,6 +75,36 @@ def get_pulp_available_mip_solvers() -> List[str]:
     return solvers2
 
 
+def add_pulp_variable(
+        model: pulp.LpProblem,
+        name: str,
+        low_bound: float | int,
+        up_bound: float | int,
+        category: str,
+) -> LpVar:
+    """
+    Add one PuLP variable using the newest model-owned API when available.
+
+    :param model: PuLP problem that owns the variable.
+    :param name: Variable name.
+    :param low_bound: Lower variable bound.
+    :param up_bound: Upper variable bound.
+    :param category: PuLP variable category.
+    :return: Created PuLP variable.
+    """
+    try:
+        # PuLP 4 owns variable creation from the problem object, avoiding the
+        # deprecated detached-variable constructor path.
+        variable: LpVar = model.add_variable(name=name, lowBound=low_bound, upBound=up_bound, cat=category)
+    except AttributeError:
+        # PuLP 3 has no add_variable API, so construct the variable and attach
+        # it immediately to keep the same ownership semantics.
+        variable = pulp.LpVariable(name=name, lowBound=low_bound, upBound=up_bound, cat=category)
+        model.addVariable(variable)
+
+    return variable
+
+
 class PulpLpModel(AbstractLpModel):
     """
     LPModel implementation for PuLP
@@ -135,8 +165,7 @@ class PulpLpModel(AbstractLpModel):
         :param name: name (optional)
         :return: LpVar
         """
-        var = pulp.LpVariable(name=name, lowBound=lb, upBound=ub, cat=pulp.LpInteger)
-        self.model.addVariable(var)
+        var = add_pulp_variable(model=self.model, name=name, low_bound=lb, up_bound=ub, category=pulp.LpInteger)
         return var
 
     def add_bin(self, name: str = "") -> LpVar:
@@ -145,8 +174,7 @@ class PulpLpModel(AbstractLpModel):
         :param name: name (optional)
         :return: LpVar
         """
-        var = pulp.LpVariable(name=name, lowBound=0, upBound=1, cat=pulp.LpInteger)
-        self.model.addVariable(var)
+        var = add_pulp_variable(model=self.model, name=name, low_bound=0, up_bound=1, category=pulp.LpInteger)
         return var
 
     def add_var(self, lb: float, ub: float, name: str = "") -> LpVar:
@@ -157,8 +185,7 @@ class PulpLpModel(AbstractLpModel):
         :param name: name (optional)
         :return: LpVar
         """
-        var = pulp.LpVariable(name=name, lowBound=lb, upBound=ub, cat=pulp.LpContinuous)
-        self.model.addVariable(var)
+        var = add_pulp_variable(model=self.model, name=name, low_bound=lb, up_bound=ub, category=pulp.LpContinuous)
         return var
 
     def add_cst(self, cst: LpCst | bool, name: str = "") -> Union[LpCst, int]:
@@ -311,8 +338,13 @@ class PulpLpModel(AbstractLpModel):
                 debugging_f_obj = 0
                 for i, (cst_name, cst) in enumerate(debug_model.constraints.items()):
                     # create a new slack var in the problem
-                    sl = pulp.LpVariable(name=f'Relax_{cst_name}', lowBound=0, upBound=1e20, cat=pulp.LpContinuous)
-                    debug_model.addVariable(sl)
+                    sl = add_pulp_variable(
+                        model=debug_model,
+                        name=f'Relax_{cst_name}',
+                        low_bound=0,
+                        up_bound=1e20,
+                        category=pulp.LpContinuous,
+                    )
 
                     # add the variable to the new objective function
                     debugging_f_obj += sl
@@ -351,11 +383,13 @@ class PulpLpModel(AbstractLpModel):
 
                         if abs(val) > 1e-10:
                             # add the slack in the main model
-                            sl2 = pulp.LpVariable(name=f'Relax_final_{cst_name}',
-                                                  lowBound=0,
-                                                  upBound=1e20,
-                                                  cat=pulp.LpContinuous)
-                            self.model.addVariable(sl2)
+                            sl2 = add_pulp_variable(
+                                model=self.model,
+                                name=f'Relax_final_{cst_name}',
+                                low_bound=0,
+                                up_bound=1e20,
+                                category=pulp.LpContinuous,
+                            )
                             self.relaxed_slacks.append((i, sl2, 0.0))  # the 0.0 value will be read later
 
                             # add the slack to the original objective function
