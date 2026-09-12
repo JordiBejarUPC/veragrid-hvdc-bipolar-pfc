@@ -14,7 +14,6 @@ import math
 from pathlib import Path
 import re
 import shutil
-import stat
 import subprocess
 import tempfile
 import time
@@ -31,6 +30,7 @@ import numpy as np
 
 from VeraGridEngine.enumerations import FmuInterfaceMode
 from trunk.dynamics.fmi_comparison.evidence_identity import (
+    path_is_link_or_reparse_point,
     read_regular_tree_identity,
     verify_regular_file_identity,
 )
@@ -46,25 +46,6 @@ from trunk.dynamics.fmi_comparison.reference_fmu_execution import (
     build_reference_fmu_regular_trace,
     read_reference_fmu_trace_csv,
 )
-
-
-def _path_is_link_or_reparse_point(path: Path) -> bool:
-    """Identify filesystem indirections that can escape an authenticated tree.
-
-    Windows junctions are reparse points but are not reported as symbolic links
-    by Python versions before :meth:`Path.is_junction` was introduced. Reading
-    the file attributes through ``lstat`` keeps the check compatible with every
-    Python version supported by VeraGrid and inspects the directory entry itself.
-
-    :param path: Existing filesystem entry inspected without following links.
-    :return: Whether the entry is a symbolic link or Windows reparse point.
-    """
-
-    entry_attributes: int = path.lstat().st_file_attributes
-    is_reparse_point: bool = bool(
-        entry_attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT
-    )
-    return bool(path.is_symlink() or is_reparse_point)
 
 
 class PathSimCellStatus(str, Enum):
@@ -609,13 +590,13 @@ def _validate_pathsim_config(
     output_is_safe: bool = bool(
         output_parent.exists()
         and output_parent.is_dir()
-        and not _path_is_link_or_reparse_point(output_parent)
+        and not path_is_link_or_reparse_point(output_parent)
         and not config.output_directory.exists()
     )
     system_root_is_safe: bool = bool(
         config.system_root_path.exists()
         and config.system_root_path.is_dir()
-        and not _path_is_link_or_reparse_point(config.system_root_path)
+        and not path_is_link_or_reparse_point(config.system_root_path)
         and config.system_root_path.is_absolute()
     )
     if output_is_safe and system_root_is_safe:
@@ -650,7 +631,7 @@ def _validate_pathsim_config(
     )
     python_belongs_to_runtime: bool = bool(
         resolved_python_executable == expected_python_executable
-        and not _path_is_link_or_reparse_point(config.python_executable_path)
+        and not path_is_link_or_reparse_point(config.python_executable_path)
     )
     if python_belongs_to_runtime:
         pass
@@ -783,7 +764,7 @@ def _run_pathsim_worker(
     paths_are_valid: bool = bool(
         working_directory.exists()
         and working_directory.is_dir()
-        and not _path_is_link_or_reparse_point(working_directory)
+        and not path_is_link_or_reparse_point(working_directory)
         and stdout_path.parent.exists()
         and stderr_path.parent == stdout_path.parent
         and not stdout_path.exists()
@@ -887,7 +868,7 @@ def _read_pathsim_worker_result(result_path: Path) -> PathSimWorkerResult:
         isinstance(result_path, Path)
         and result_path.exists()
         and result_path.is_file()
-        and not _path_is_link_or_reparse_point(result_path)
+        and not path_is_link_or_reparse_point(result_path)
         and result_path.stat().st_size <= 65_536
     ):
         pass
@@ -1501,7 +1482,7 @@ def _write_pathsim_manifest(
 
     regular_paths: list[Path] = list()
     for discovered_path in package_root.rglob("*"):
-        if _path_is_link_or_reparse_point(discovered_path):
+        if path_is_link_or_reparse_point(discovered_path):
             raise ValueError("PathSim package contains a symbolic link")
         else:
             if discovered_path.is_file():
@@ -1631,10 +1612,10 @@ def _verify_pathsim_package(
     root_is_valid: bool = bool(
         package_root.exists()
         and package_root.is_dir()
-        and not _path_is_link_or_reparse_point(package_root)
+        and not path_is_link_or_reparse_point(package_root)
         and manifest_path.exists()
         and manifest_path.is_file()
-        and not _path_is_link_or_reparse_point(manifest_path)
+        and not path_is_link_or_reparse_point(manifest_path)
     )
     if root_is_valid:
         pass
@@ -1839,7 +1820,7 @@ def _verify_pathsim_package(
     )
     python_belongs_to_runtime: bool = bool(
         resolved_python_executable == expected_python_executable
-        and not _path_is_link_or_reparse_point(config.python_executable_path)
+        and not path_is_link_or_reparse_point(config.python_executable_path)
     )
     if python_belongs_to_runtime:
         pass
@@ -2130,7 +2111,7 @@ def _verify_pathsim_package(
     discovered_package_names: list[str] = [""] * 35
     discovered_package_index: int = 0
     for discovered_package_path in package_root.rglob("*"):
-        if _path_is_link_or_reparse_point(discovered_package_path):
+        if path_is_link_or_reparse_point(discovered_package_path):
             raise ValueError("PathSim package contains a link")
         else:
             if discovered_package_path.is_file():
@@ -2656,10 +2637,10 @@ def _verify_pathsim_package(
     final_root_is_regular: bool = bool(
         package_root.exists()
         and package_root.is_dir()
-        and not _path_is_link_or_reparse_point(package_root)
+        and not path_is_link_or_reparse_point(package_root)
         and manifest_path.exists()
         and manifest_path.is_file()
-        and not _path_is_link_or_reparse_point(manifest_path)
+        and not path_is_link_or_reparse_point(manifest_path)
         and manifest_path.read_bytes() == manifest_bytes
     )
     if final_root_is_regular:
@@ -2669,7 +2650,7 @@ def _verify_pathsim_package(
     final_discovered_names: list[str] = [""] * 35
     final_discovered_index: int = 0
     for final_discovered_path in package_root.rglob("*"):
-        if _path_is_link_or_reparse_point(final_discovered_path):
+        if path_is_link_or_reparse_point(final_discovered_path):
             raise ValueError("PathSim package acquired a link during verification")
         else:
             if final_discovered_path.is_file():
@@ -2708,7 +2689,7 @@ def _verify_pathsim_package(
         final_file_is_regular: bool = bool(
             final_file_path.exists()
             and final_file_path.is_file()
-            and not _path_is_link_or_reparse_point(final_file_path)
+            and not path_is_link_or_reparse_point(final_file_path)
             and final_file_path.stat().st_size == final_size_bytes
         )
         if final_file_is_regular:
@@ -2720,7 +2701,7 @@ def _verify_pathsim_package(
             and hashlib.sha256(final_file_bytes).hexdigest() == final_sha256
             and final_file_path.exists()
             and final_file_path.is_file()
-            and not _path_is_link_or_reparse_point(final_file_path)
+            and not path_is_link_or_reparse_point(final_file_path)
             and final_file_path.stat().st_size == final_size_bytes
         )
         if final_file_identity_is_exact:
