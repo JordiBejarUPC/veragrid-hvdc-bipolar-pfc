@@ -70,15 +70,15 @@ def test_export_configs_accept_the_canonical_fmi_two_text(tmp_path: Path) -> Non
     assert model_exchange_config.fmi_version is FmiVersion.FMI_2_0
 
 
-@pytest.mark.parametrize("fmi_version", (FmiVersion.FMI_1_0, FmiVersion.FMI_3_0))
+@pytest.mark.parametrize("fmi_version", (FmiVersion.FMI_1_0,))
 def test_co_simulation_rejects_unconnected_version_pipelines(
     tmp_path: Path,
     fmi_version: FmiVersion,
 ) -> None:
-    """Verify Co-Simulation cannot advertise an unconnected exporter.
+    """Verify Co-Simulation rejects the unsupported FMI 1 exporter.
 
     :param tmp_path: Isolated output directory provided by pytest.
-    :param fmi_version: Recognized but currently unconnected FMI family.
+    :param fmi_version: Recognized FMI family that remains intentionally unsupported.
     :return: None.
     """
 
@@ -94,15 +94,15 @@ def test_co_simulation_rejects_unconnected_version_pipelines(
     assert output_path.exists() is False
 
 
-@pytest.mark.parametrize("fmi_version", (FmiVersion.FMI_1_0, FmiVersion.FMI_3_0))
+@pytest.mark.parametrize("fmi_version", (FmiVersion.FMI_1_0,))
 def test_model_exchange_rejects_unconnected_version_pipelines(
     tmp_path: Path,
     fmi_version: FmiVersion,
 ) -> None:
-    """Verify Model Exchange cannot advertise an unconnected exporter.
+    """Verify Model Exchange rejects the unsupported FMI 1 exporter.
 
     :param tmp_path: Isolated output directory provided by pytest.
-    :param fmi_version: Recognized but currently unconnected FMI family.
+    :param fmi_version: Recognized FMI family that remains intentionally unsupported.
     :return: None.
     """
 

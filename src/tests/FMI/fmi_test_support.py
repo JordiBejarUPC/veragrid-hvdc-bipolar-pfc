@@ -18,7 +18,7 @@ from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.IO.fmu.exporter.api import export_fmu
-from VeraGridEngine.IO.fmu.exporter.compat import Block, Const, Var
+from VeraGridEngine.IO.fmu.exporter.compat import Block, CmpOp, Comparison, Const, Var
 from VeraGridEngine.IO.fmu.exporter.config import ExportConfig as CsExportConfig, detect_target_platform as detect_cs_target_platform
 from VeraGridEngine.IO.fmu.exporter_me.api import export_fmu_me
 from VeraGridEngine.IO.fmu.exporter_me.config import ExportConfig as MeExportConfig, detect_target_platform as detect_me_target_platform
@@ -46,11 +46,13 @@ from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model, set_rms_model
+from VeraGridEngine.Utils.procedural_logic import flipflop
 from VeraGridEngine.enumerations import (
     BranchImpedanceMode,
     DynamicIntegrationMethod,
     EmtInitializationMethod,
     EmtSolverTypes,
+    FmiVersion,
     ParamPowerFlowReferenceType,
     SolverType,
     VarPowerFlowReferenceType,
@@ -208,10 +210,129 @@ def _build_test_emt_me_source_block() -> Block:
     )
 
 
-def export_test_rms_cs_fmu(output_dir: Path) -> Path:
+def export_test_fmi_three_external_discontinuity_cs_fmu(output_dir: Path) -> Path:
+    """Export the FMI 3 CS fixture driven by one external input discontinuity.
+
+    :param output_dir: Isolated output directory for the generated FMU.
+    :return: Path to the compiled FMI 3 Co-Simulation FMU.
+    """
+    state: Var = Var("x")
+    derivative: Var = Var("dx", base_var=state)
+    input_value: Var = Var("u")
+    source_block: Block = Block(
+        state_vars=list((state,)),
+        state_eqs=list((input_value,)),
+        diff_vars=list((derivative,)),
+        init_values=dict(((state, Const(0.0)),)),
+        in_vars=list((input_value,)),
+        out_vars=list((state,)),
+        name="FmiThreeExternalDiscontinuityCs",
+    )
+    unique_name: str = f"FmiThreeExternalDiscontinuityCs_{uuid.uuid4().hex[:8]}"
+    return export_fmu(
+        source_block,
+        CsExportConfig(
+            model_name=unique_name,
+            output_path=output_dir / f"{unique_name}.fmu",
+            target_platform=detect_cs_target_platform(),
+            compile_binary=True,
+            keep_build_dir=False,
+            fixed_step=1.0e-3,
+            fmi_version=FmiVersion.FMI_3_0,
+        ),
+    )
+
+
+def export_test_fmi_three_time_event_me_fmu(output_dir: Path) -> Path:
+    """Export the FMI 3 ME fixture with a scheduled ordinary time event.
+
+    :param output_dir: Isolated output directory for the generated FMU.
+    :return: Path to the compiled FMI 3 Model Exchange FMU.
+    """
+    state: Var = Var("x")
+    derivative: Var = Var("dx", base_var=state)
+    event_mode: Var = Var("event_mode")
+    global_time: Var = Var("glob_time")
+    source_block: Block = Block(
+        state_vars=list((state,)),
+        state_eqs=list((event_mode,)),
+        diff_vars=list((derivative,)),
+        init_values=dict(((state, Const(0.0)),)),
+        mode_dict=dict(((event_mode, Const(0.0)),)),
+        out_vars=list((state, event_mode)),
+        name="FmiThreeTimeEventMe",
+    )
+    source_block.procedural_logic = list((
+        flipflop(
+            boolset=Comparison(global_time, CmpOp.GE, Const(0.01)),
+            boolreset=Const(0.0),
+            output=event_mode,
+            name="time_event_latch",
+        ),
+    ))
+    unique_name: str = f"FmiThreeTimeEventMe_{uuid.uuid4().hex[:8]}"
+    return export_fmu_me(
+        source_block,
+        MeExportConfig(
+            model_name=unique_name,
+            output_path=output_dir / f"{unique_name}.fmu",
+            target_platform=detect_me_target_platform(),
+            compile_binary=True,
+            keep_build_dir=False,
+            fixed_step=1.0e-3,
+            fmi_version=FmiVersion.FMI_3_0,
+        ),
+    )
+
+
+def export_test_fmi_three_state_event_me_fmu(output_dir: Path) -> Path:
+    """Export the FMI 3 ME fixture with an importer-located zero crossing.
+
+    :param output_dir: Isolated output directory for the generated FMU.
+    :return: Path to the compiled FMI 3 Model Exchange FMU.
+    """
+    state: Var = Var("x")
+    derivative: Var = Var("dx", base_var=state)
+    event_mode: Var = Var("event_mode")
+    source_block: Block = Block(
+        state_vars=list((state,)),
+        state_eqs=list((Const(1.0),)),
+        diff_vars=list((derivative,)),
+        init_values=dict(((state, Const(0.0)),)),
+        mode_dict=dict(((event_mode, Const(0.0)),)),
+        out_vars=list((state, event_mode)),
+        name="FmiThreeStateEventMe",
+    )
+    source_block.procedural_logic = list((
+        flipflop(
+            boolset=Comparison(state, CmpOp.GE, Const(0.015)),
+            boolreset=Const(0.0),
+            output=event_mode,
+            name="state_event_latch",
+        ),
+    ))
+    unique_name: str = f"FmiThreeStateEventMe_{uuid.uuid4().hex[:8]}"
+    return export_fmu_me(
+        source_block,
+        MeExportConfig(
+            model_name=unique_name,
+            output_path=output_dir / f"{unique_name}.fmu",
+            target_platform=detect_me_target_platform(),
+            compile_binary=True,
+            keep_build_dir=False,
+            fixed_step=1.0e-3,
+            fmi_version=FmiVersion.FMI_3_0,
+        ),
+    )
+
+def export_test_rms_cs_fmu(
+    output_dir: Path,
+    fmi_version: FmiVersion = FmiVersion.FMI_2_0,
+) -> Path:
     """Export the self-contained RMS CS device FMU used by the example scripts.
 
     :param output_dir: Output directory for the generated FMU.
+    :param fmi_version: FMI generation selected for the fixture.
     :return: Generated FMU path.
     """
 
@@ -224,14 +345,19 @@ def export_test_rms_cs_fmu(output_dir: Path) -> Path:
             target_platform=detect_cs_target_platform(),
             compile_binary=True,
             keep_build_dir=False,
+            fmi_version=fmi_version,
         ),
     )
 
 
-def export_test_rms_me_fmu(output_dir: Path) -> Path:
+def export_test_rms_me_fmu(
+    output_dir: Path,
+    fmi_version: FmiVersion = FmiVersion.FMI_2_0,
+) -> Path:
     """Export the self-contained RMS ME device FMU used by the example scripts.
 
     :param output_dir: Output directory for the generated FMU.
+    :param fmi_version: FMI generation selected for the fixture.
     :return: Generated FMU path.
     """
 
@@ -244,6 +370,7 @@ def export_test_rms_me_fmu(output_dir: Path) -> Path:
             target_platform=detect_me_target_platform(),
             compile_binary=True,
             keep_build_dir=False,
+            fmi_version=fmi_version,
         ),
     )
 

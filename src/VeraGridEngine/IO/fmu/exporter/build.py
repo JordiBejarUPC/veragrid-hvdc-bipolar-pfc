@@ -11,6 +11,7 @@ import shutil
 import tempfile
 
 from VeraGridEngine.IO.fmu.compiler import FmuBinaryInterface, compile_fmu_shared_library, fmu_compiler_available
+from VeraGridEngine.enumerations import FmiVersion
 from VeraGridEngine.IO.fmu.exporter.config import ExportConfig
 from VeraGridEngine.IO.fmu.exporter.diff_to_c import render_discrete_derivative
 from VeraGridEngine.IO.fmu.exporter.expr_to_c import ExprToCVisitor
@@ -18,9 +19,6 @@ from VeraGridEngine.IO.fmu.exporter.export_ir import EquationGroup, ExportModel,
 from VeraGridEngine.IO.fmu.exporter.procedural_to_c import render_procedural_c
 from VeraGridEngine.IO.fmu.exporter.variable_map import CVariableResolver
 
-
-def _template_root() -> Path:
-    return Path(__file__).parent / "c_runtime" / "fmi2_template"
 
 
 def ensure_build_layout(cfg: ExportConfig) -> tuple[Path, Path, Path]:
@@ -40,8 +38,31 @@ def ensure_build_layout(cfg: ExportConfig) -> tuple[Path, Path, Path]:
     return root / "source", root / "build", (cfg.staging_dir or root / "staging")
 
 
-def _copy_template_tree(destination: Path) -> None:
-    shutil.copytree(_template_root(), destination, dirs_exist_ok=True)
+def _copy_template_tree(cfg: ExportConfig, destination: Path) -> None:
+    """Copy the neutral core, selected ABI adapter, and official headers.
+
+    :param cfg: Export configuration that selects the FMI generation.
+    :param destination: Build-scoped source root.
+    :return: None.
+    """
+
+    runtime_root: Path = Path(__file__).parent / "c_runtime"
+    common_root: Path = runtime_root / "common_template"
+    if cfg.fmi_version == FmiVersion.FMI_2_0:
+        version_name: str = "fmi2"
+        adapter_root: Path = runtime_root / "fmi2_adapter"
+    else:
+        if cfg.fmi_version == FmiVersion.FMI_3_0:
+            version_name = "fmi3"
+            adapter_root = runtime_root / "fmi3_adapter"
+        else:
+            raise NotImplementedError(
+                f"FMI {cfg.fmi_version.value} C runtime is not implemented"
+            )
+    c_api_root: Path = Path(__file__).parent.parent / "c_api" / version_name
+    shutil.copytree(common_root / "src", destination / "src", dirs_exist_ok=True)
+    shutil.copytree(adapter_root / "src", destination / "src", dirs_exist_ok=True)
+    shutil.copytree(c_api_root, destination / "include", dirs_exist_ok=True)
 
 
 def host_build_capable() -> bool:
@@ -137,8 +158,8 @@ def render_generated_model_h() -> str:
             "void generated_eval_outputs(ModelInstance* instance);",
             "double generated_procedural_next_event(ModelInstance* instance, double t_prev, double t_target);",
             "void generated_procedural_update(ModelInstance* instance, double t);",
-            "int generated_get_real(ModelInstance* instance, fmi2ValueReference vr, double* value);",
-            "int generated_set_real(ModelInstance* instance, fmi2ValueReference vr, double value);",
+            "int generated_get_real(ModelInstance* instance, uint32_t vr, double* value);",
+            "int generated_set_real(ModelInstance* instance, uint32_t vr, double value);",
             "",
             "#endif",
             "",
@@ -222,8 +243,14 @@ def _render_residual_lines(export_model: ExportModel, cfg: ExportConfig, visitor
 
 
 def _render_get_real(export_model: ExportModel) -> list[str]:
-    lines = ["    switch (vr) {"]
-    for variable in sorted(export_model.exposed_variables(), key=lambda item: item.value_reference or -1):
+    """Render Float64 access for exposed values and FMI 3 independent time.
+
+    :param export_model: Neutral model whose value references are rendered.
+    :return: C switch-body lines implementing Float64 reads.
+    """
+    lines: list[str] = ["    switch (vr) {"]
+    maximum_value_reference: int = -1
+    for variable in export_model.exposed_variables():
         lines.extend(
             [
                 f"        case {variable.value_reference}u:",
@@ -231,9 +258,20 @@ def _render_get_real(export_model: ExportModel) -> list[str]:
                 "            return 0;",
             ]
         )
+        if variable.value_reference is not None and variable.value_reference > maximum_value_reference:
+            maximum_value_reference = variable.value_reference
+        else:
+            pass
+    time_value_reference: int = maximum_value_reference + 1
+    lines.extend(
+        [
+            f"        case {time_value_reference}u:",
+            "            *value = instance->time;",
+            "            return 0;",
+        ]
+    )
     lines.extend(["        default:", "            return 1;", "    }"])
     return lines
-
 
 def _render_set_real(export_model: ExportModel) -> list[str]:
     lines = ["    switch (vr) {"]
@@ -294,11 +332,11 @@ def render_generated_model_c(export_model: ExportModel, cfg: ExportConfig) -> st
         "    (void)instance;",
         "}",
         "",
-        "int generated_get_real(ModelInstance* instance, fmi2ValueReference vr, double* value) {",
+        "int generated_get_real(ModelInstance* instance, uint32_t vr, double* value) {",
         *_render_get_real(export_model),
         "}",
         "",
-        "int generated_set_real(ModelInstance* instance, fmi2ValueReference vr, double value) {",
+        "int generated_set_real(ModelInstance* instance, uint32_t vr, double value) {",
         *_render_set_real(export_model),
         "}",
         "",
@@ -307,7 +345,7 @@ def render_generated_model_c(export_model: ExportModel, cfg: ExportConfig) -> st
 
 
 def emit_c_sources(export_model: ExportModel, cfg: ExportConfig, source_root: Path) -> None:
-    _copy_template_tree(source_root)
+    _copy_template_tree(cfg, source_root)
     resolver = CVariableResolver(export_model, cfg)
     _write_text(source_root / "src" / "generated_metadata.h", render_generated_metadata_h(export_model, cfg))
     _write_text(source_root / "src" / "generated_model.h", render_generated_model_h())
@@ -323,8 +361,7 @@ def write_debug_resources(export_model: ExportModel, cfg: ExportConfig, resource
 
 
 def build_shared_library(cfg: ExportConfig, source_dir: Path, build_dir: Path) -> Path:
-    """
-    Build the platform-specific shared library for one exported FMU.
+    """Build the shared library for the selected FMI generation.
 
     :param cfg: Export configuration.
     :param source_dir: Generated C source directory.
@@ -333,8 +370,19 @@ def build_shared_library(cfg: ExportConfig, source_dir: Path, build_dir: Path) -
     """
 
     source_root: Path = source_dir / "src"
+    if cfg.fmi_version == FmiVersion.FMI_2_0:
+        runtime_name: str = "runtime_fmi2.c"
+        interface: FmuBinaryInterface = FmuBinaryInterface.FMI_TWO_CO_SIMULATION
+    else:
+        if cfg.fmi_version == FmiVersion.FMI_3_0:
+            runtime_name = "runtime_fmi3.c"
+            interface = FmuBinaryInterface.FMI_THREE_CO_SIMULATION
+        else:
+            raise NotImplementedError(
+                f"FMI {cfg.fmi_version.value} Co-Simulation build is not implemented"
+            )
     source_files: tuple[Path, ...] = (
-        source_root / "runtime_fmi2.c",
+        source_root / runtime_name,
         source_root / "model_instance.c",
         source_root / "solver.c",
         source_root / "generated_model.c",
@@ -346,5 +394,5 @@ def build_shared_library(cfg: ExportConfig, source_dir: Path, build_dir: Path) -
         source_files=source_files,
         include_directories=include_directories,
         output_path=output_path,
-        interface=FmuBinaryInterface.FMI_TWO_CO_SIMULATION,
+        interface=interface,
     )

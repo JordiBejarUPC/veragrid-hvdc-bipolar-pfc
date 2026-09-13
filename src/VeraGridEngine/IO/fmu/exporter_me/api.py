@@ -16,6 +16,7 @@ from VeraGridEngine.IO.fmu.exporter_me.procedural_ir import build_logic_entries
 from VeraGridEngine.IO.fmu.exporter_me.snapshot import build_model_snapshot
 from VeraGridEngine.IO.fmu.exporter_me.validate import validate_export_model
 from VeraGridEngine.IO.fmu.exporter_me.xml_writer import write_model_description
+from VeraGridEngine.IO.fmu.export_platform import binary_directory
 
 
 def export_fmu_me(model: object, cfg: ExportConfig) -> Path:
@@ -47,12 +48,15 @@ def export_fmu_me(model: object, cfg: ExportConfig) -> Path:
         staging_root: Path = prepare_fmu_staging_dir(staging_dir)
 
         emit_c_sources(export_model, cfg, source_dir)
-        write_model_description(export_model, staging_root / "modelDescription.xml")
+        write_model_description(export_model, staging_root / "modelDescription.xml", cfg.fmi_version)
         write_debug_resources(export_model, cfg, staging_root / "resources")
 
         if cfg.compile_binary:
             library_path: Path = build_shared_library(cfg, source_dir, build_dir)
-            binaries_dir: Path = staging_root / "binaries" / cfg.target_platform.value
+            binaries_dir: Path = staging_root / "binaries" / binary_directory(
+                cfg.target_platform,
+                cfg.fmi_version,
+            )
             binaries_dir.mkdir(parents=True, exist_ok=True)
             shutil.copy2(library_path, binaries_dir / cfg.library_name)
         else:
