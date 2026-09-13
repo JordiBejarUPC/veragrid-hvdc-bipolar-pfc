@@ -241,6 +241,13 @@ def _parse_variable_type(
     variable_type: FmuVariableType = FmuVariableType.UNKNOWN
     type_node: ET.Element | None = None
     trailing_element_seen: bool = False
+    scalar_variable_types: tuple[FmuVariableType, ...] = (
+        FmuVariableType.REAL,
+        FmuVariableType.INTEGER,
+        FmuVariableType.BOOLEAN,
+        FmuVariableType.STRING,
+        FmuVariableType.ENUMERATION,
+    )
     if fmi_version_family == FmiVersion.FMI_1_0:
         trailing_element_name: str = "DirectDependency"
     else:
@@ -281,7 +288,7 @@ def _parse_variable_type(
                 raise FmuArchiveError(
                     f"ScalarVariable {variable_name!r} in {path} has unknown type {child_node.tag!r}"
                 ) from exc
-            if candidate_type == FmuVariableType.UNKNOWN:
+            if candidate_type not in scalar_variable_types:
                 raise FmuArchiveError(
                     f"ScalarVariable {variable_name!r} in {path} has unknown type {child_node.tag!r}"
                 )
