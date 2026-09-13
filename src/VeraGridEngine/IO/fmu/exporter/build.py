@@ -8,10 +8,10 @@ from pathlib import Path
 import json
 import os
 import shutil
-import subprocess
 import tempfile
 
-from VeraGridEngine.IO.fmu.exporter.config import ExportConfig, TargetPlatform
+from VeraGridEngine.IO.fmu.compiler import FmuBinaryInterface, compile_fmu_shared_library, fmu_compiler_available
+from VeraGridEngine.IO.fmu.exporter.config import ExportConfig
 from VeraGridEngine.IO.fmu.exporter.diff_to_c import render_discrete_derivative
 from VeraGridEngine.IO.fmu.exporter.expr_to_c import ExprToCVisitor
 from VeraGridEngine.IO.fmu.exporter.export_ir import EquationGroup, ExportModel, StorageSegment, VariableCategory
@@ -32,7 +32,7 @@ def ensure_build_layout(cfg: ExportConfig) -> tuple[Path, Path, Path]:
             root = Path(tempfile.mkdtemp(prefix="veragrid_fmu_build_", dir=str(cfg.output_dir)))
         else:
             # On Linux/macOS, especially under WSL mounted Windows paths, building on the
-            # host temporary filesystem avoids make/cmake clock-skew warnings.
+            # host temporary filesystem avoids clock-skew in native build tools.
             root = Path(tempfile.mkdtemp(prefix="veragrid_fmu_build_"))
     else:
         root = cfg.build_dir
@@ -44,292 +44,14 @@ def _copy_template_tree(destination: Path) -> None:
     shutil.copytree(_template_root(), destination, dirs_exist_ok=True)
 
 
-def _detect_tool_bin_dir() -> Path | None:
-    candidates: list[str | None] = list()
-    candidates.append(shutil.which("cmake"))
-    candidates.append(os.environ.get("CMAKE_ROOT"))
-    for candidate in candidates:
-        if candidate:
-            path = Path(candidate)
-            if path.is_file():
-                return path.parent
-            else:
-                if path.is_dir() and ((path / "cmake.exe").exists() or (path / "cmake").exists()):
-                    return path
-                else:
-                    pass
-        else:
-            pass
-
-    if os.name == "nt":
-        known_dirs: list[Path] = list()
-        known_dirs.append(Path("C:/Program Files/CMake/bin"))
-        known_dirs.append(Path("C:/msys64/mingw64/bin"))
-        known_dirs.append(Path("C:/msys64/ucrt64/bin"))
-        directory: Path
-        for directory in known_dirs:
-            if (directory / "cmake.exe").exists() or (directory / "cmake").exists():
-                return directory
-            else:
-                pass
-    else:
-        pass
-    return None
-
-
-def _toolchain_env() -> tuple[str, dict[str, str]]:
-    env: dict[str, str] = os.environ.copy()
-
-    # Optional explicit override
-    cmake_override: str | None = os.environ.get("VG_CMAKE")
-    if cmake_override:
-        return cmake_override, env
-    else:
-        pass
-
-    # Prefer the system installation already visible in PATH
-    cmake_cmd: str | None = shutil.which("cmake")
-    if cmake_cmd:
-        return cmake_cmd, env
-    else:
-        pass
-
-    # Fallback only if PATH does not provide cmake
-    tool_dir: Path | None = _detect_tool_bin_dir()
-    if tool_dir is not None:
-        if (tool_dir / "cmake.exe").exists():
-            return str(tool_dir / "cmake.exe"), env
-        else:
-            if (tool_dir / "cmake").exists():
-                return str(tool_dir / "cmake"), env
-            else:
-                pass
-    else:
-        pass
-
-    return "cmake", env
-
-def _compiler_search_order() -> tuple[str, ...]:
-    """
-    Return the compiler executable names searched on the current host.
-
-    :return: Ordered compiler executable names.
-    """
-
-    if os.name == "nt":
-        return ("clang", "gcc", "cc")
-    else:
-        return ("cc", "clang", "gcc")
-
-
-def _detect_c_compiler() -> tuple[str | None, dict[str, str]]:
-    """
-    Detect one host-native C compiler usable by the direct FMU build fallback.
-
-    The direct compiler path is a fallback behind CMake, so the search prefers
-    simple host-native compilers visible in ``PATH`` and only falls back to a few
-    Windows-specific known locations when running on Windows.
-
-    :return: Compiler command and environment.
-    """
-
-    env: dict[str, str] = os.environ.copy()
-
-    compiler_override: str | None = os.environ.get("VG_CC")
-    if compiler_override:
-        return compiler_override, env
-    else:
-        pass
-
-    compiler_override = os.environ.get("CC")
-    if compiler_override:
-        return compiler_override, env
-    else:
-        pass
-
-    compiler_name: str
-    for compiler_name in _compiler_search_order():
-        compiler_cmd: str | None = shutil.which(compiler_name)
-        if compiler_cmd:
-            return compiler_cmd, env
-        else:
-            pass
-
-    toolchain_bin: str | None = os.environ.get("VG_TOOLCHAIN_BIN")
-    if toolchain_bin:
-        tool_dir: Path = Path(toolchain_bin)
-        for compiler_name in _compiler_search_order():
-            compiler_candidate: Path = tool_dir / compiler_name
-            if compiler_candidate.exists():
-                return str(compiler_candidate), env
-            else:
-                compiler_candidate_exe: Path = tool_dir / f"{compiler_name}.exe"
-                if compiler_candidate_exe.exists():
-                    return str(compiler_candidate_exe), env
-                else:
-                    pass
-    else:
-        pass
-
-    if os.name == "nt":
-        candidate_dirs: list[Path] = list()
-        candidate_dirs.append(Path("C:/msys64/mingw64/bin"))
-        candidate_dirs.append(Path("C:/msys64/ucrt64/bin"))
-        tool_dir: Path
-        for tool_dir in candidate_dirs:
-            for compiler_name in _compiler_search_order():
-                compiler_candidate: Path = tool_dir / f"{compiler_name}.exe"
-                if compiler_candidate.exists():
-                    return str(compiler_candidate), env
-                else:
-                    pass
-    else:
-        pass
-
-    return None, env
-
-
 def host_build_capable() -> bool:
     """
-    Return whether the current host appears able to compile one FMU binary.
-
-    The check is intentionally lightweight because tests use it as a skip guard.
-    CMake availability is sufficient for the primary build path, while the direct
-    compiler fallback covers simpler host setups.
+    Return whether the reviewed FMI compiler archive is ready for offline use.
 
     :return: ``True`` when the host likely has a usable FMU build toolchain.
     """
 
-    cmake_cmd: str | None = shutil.which("cmake")
-    if cmake_cmd is not None:
-        return True
-    else:
-        tool_dir: Path | None = _detect_tool_bin_dir()
-        if tool_dir is not None:
-            return True
-        else:
-            compiler_cmd: str | None
-            compiler_cmd, _ = _detect_c_compiler()
-            return compiler_cmd is not None
-
-
-def _direct_build_link_flags(target_platform: TargetPlatform) -> list[str]:
-    """
-    Return the platform-specific linker flags for the direct fallback compiler path.
-
-    :param target_platform: Target FMU binary platform.
-    :return: Linker flag list.
-    """
-
-    flags: list[str] = list()
-    if target_platform == TargetPlatform.DARWIN64:
-        flags.append("-dynamiclib")
-    else:
-        flags.append("-shared")
-    return flags
-
-
-def _direct_build_compile_flags(target_platform: TargetPlatform) -> list[str]:
-    """
-    Return the common compiler flags for the direct fallback compiler path.
-
-    :param target_platform: Target FMU binary platform.
-    :return: Compiler flag list.
-    """
-
-    flags: list[str] = list()
-    flags.append("-std=c99")
-    flags.append("-O2")
-    if target_platform == TargetPlatform.WIN64:
-        pass
-    else:
-        flags.append("-fPIC")
-    return flags
-
-
-def _direct_build_math_flags(target_platform: TargetPlatform) -> list[str]:
-    """
-    Return the math-library flags for the direct fallback compiler path.
-
-    :param target_platform: Target FMU binary platform.
-    :return: Linker flag list.
-    """
-
-    flags: list[str] = list()
-    if target_platform == TargetPlatform.WIN64:
-        pass
-    else:
-        flags.append("-lm")
-    return flags
-
-
-def _direct_c_build(cfg: ExportConfig, source_dir: Path, build_dir: Path) -> Path:
-    """
-    Compile the generated FMU runtime without CMake using a host-native C compiler.
-
-    :param cfg: Export configuration.
-    :param source_dir: Generated C source directory.
-    :param build_dir: Binary output directory.
-    :return: Built shared-library path.
-    """
-
-    compiler_cmd: str | None
-    env: dict[str, str]
-    compiler_cmd, env = _detect_c_compiler()
-    if compiler_cmd is None:
-        raise FileNotFoundError("No usable host-native C compiler was found for direct FMU runtime compilation")
-    else:
-        pass
-
-    # Resolve every compiler operand before changing the child working
-    # directory so direct builds remain independent from the caller location.
-    resolved_source_dir: Path = source_dir.resolve()
-    resolved_build_dir: Path = build_dir.resolve()
-    output_path: Path = resolved_build_dir / cfg.library_name
-    compiler_path: Path = Path(compiler_cmd)
-    compiler_working_directory: Path | None
-    if compiler_path.is_absolute():
-        # MSYS2 compiler helpers load sibling runtime DLLs from the compiler
-        # directory. A scoped child cwd provides that lookup without PATH edits.
-        compiler_working_directory = compiler_path.parent
-    else:
-        compiler_working_directory = None
-    cmd: list[str] = list()
-    cmd.append(compiler_cmd)
-    cmd.extend(_direct_build_link_flags(cfg.target_platform))
-    cmd.extend(_direct_build_compile_flags(cfg.target_platform))
-    cmd.extend(["-I", str(resolved_source_dir / "include")])
-    cmd.extend(["-I", str(resolved_source_dir / "src")])
-    cmd.extend(["-o", str(output_path)])
-    cmd.append(str(resolved_source_dir / "src" / "runtime_fmi2.c"))
-    cmd.append(str(resolved_source_dir / "src" / "model_instance.c"))
-    cmd.append(str(resolved_source_dir / "src" / "solver.c"))
-    cmd.append(str(resolved_source_dir / "src" / "generated_model.c"))
-    cmd.append(str(resolved_source_dir / "src" / "generated_procedural.c"))
-    cmd.extend(_direct_build_math_flags(cfg.target_platform))
-    subprocess.run(
-        cmd,
-        check=True,
-        capture_output=True,
-        text=True,
-        env=env,
-        cwd=compiler_working_directory,
-    )
-    if not output_path.exists():
-        raise FileNotFoundError(f"Direct gcc build did not produce {output_path}")
-    else:
-        pass
-    return output_path
-
-
-def _detect_gcc() -> tuple[str | None, dict[str, str]]:
-    """
-    Backward-compatible alias for legacy tests that still import `_detect_gcc`.
-
-    :return: Compiler command and environment.
-    """
-
-    return _detect_c_compiler()
+    return fmu_compiler_available()
 
 
 def _write_text(path: Path, content: str) -> Path:
@@ -610,49 +332,19 @@ def build_shared_library(cfg: ExportConfig, source_dir: Path, build_dir: Path) -
     :return: Built shared-library path.
     """
 
-    build_dir.mkdir(parents=True, exist_ok=True)
-    cmake_cmd: str
-    env: dict[str, str]
-    cmake_cmd, env = _toolchain_env()
-    configure_cmd: list[str] = [
-        cmake_cmd,
-        "-S",
-        str(source_dir),
-        "-B",
-        str(build_dir),
-        f"-DVG_MODEL_IDENTIFIER={cfg.model_identifier}",
-    ]
-    if cfg.target_platform == TargetPlatform.WIN64:
-        cmake_generator = os.environ.get("VG_CMAKE_GENERATOR")
-        if cmake_generator:
-            configure_cmd.extend(["-G", cmake_generator])
-        else:
-            pass
-    try:
-        subprocess.run(
-            configure_cmd,
-            check=True,
-            text=True,
-            env=env,
-        )
-        subprocess.run(
-            [cmake_cmd, "--build", str(build_dir), "--config", "Release"],
-            check=True,
-            text=True,
-            env=env,
-        )
-        release_candidate = build_dir / "Release" / cfg.library_name
-        if release_candidate.exists():
-            return release_candidate
-        direct_candidate = build_dir / cfg.library_name
-        if direct_candidate.exists():
-            return direct_candidate
-        matches = list(build_dir.rglob(cfg.library_name))
-        if matches:
-            return matches[0]
-        else:
-            pass
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        pass
-
-    return _direct_c_build(cfg, source_dir, build_dir)
+    source_root: Path = source_dir / "src"
+    source_files: tuple[Path, ...] = (
+        source_root / "runtime_fmi2.c",
+        source_root / "model_instance.c",
+        source_root / "solver.c",
+        source_root / "generated_model.c",
+        source_root / "generated_procedural.c",
+    )
+    include_directories: tuple[Path, ...] = (source_dir / "include", source_root)
+    output_path: Path = build_dir / cfg.library_name
+    return compile_fmu_shared_library(
+        source_files=source_files,
+        include_directories=include_directories,
+        output_path=output_path,
+        interface=FmuBinaryInterface.FMI_TWO_CO_SIMULATION,
+    )

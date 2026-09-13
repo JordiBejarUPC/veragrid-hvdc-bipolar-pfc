@@ -7,19 +7,11 @@ from __future__ import annotations
 from pathlib import Path
 import json
 import shutil
-import subprocess
 import tempfile
 import os
 
-from VeraGridEngine.IO.fmu.exporter.build import (
-    _detect_c_compiler,
-    _direct_build_compile_flags,
-    _direct_build_link_flags,
-    _direct_build_math_flags,
-    _toolchain_env,
-)
-
-from VeraGridEngine.IO.fmu.exporter_me.config import ExportConfig, TargetPlatform
+from VeraGridEngine.IO.fmu.compiler import FmuBinaryInterface, compile_fmu_shared_library
+from VeraGridEngine.IO.fmu.exporter_me.config import ExportConfig
 from VeraGridEngine.IO.fmu.exporter_me.expr_to_c import ExprToCVisitor
 from VeraGridEngine.IO.fmu.exporter_me.export_ir import EquationGroup, ExportModel, StorageSegment, VariableCategory
 from VeraGridEngine.IO.fmu.exporter_me.procedural_to_c import render_procedural_c
@@ -39,7 +31,7 @@ def ensure_build_layout(cfg: ExportConfig) -> tuple[Path, Path, Path]:
             root = Path(tempfile.mkdtemp(prefix="veragrid_fmu_me_build_", dir=str(cfg.output_dir)))
         else:
             # On Linux/macOS, especially under WSL mounted Windows paths, building on the
-            # host temporary filesystem avoids make/cmake clock-skew warnings.
+            # host temporary filesystem avoids clock-skew in native build tools.
             root = Path(tempfile.mkdtemp(prefix="veragrid_fmu_me_build_"))
     else:
         root = cfg.build_dir
@@ -1218,69 +1210,6 @@ def write_debug_resources(export_model: ExportModel, cfg: ExportConfig, resource
         _write_text(resources_dir / "snapshot.json", json.dumps(_json_compatible(export_model.source_snapshot), indent=2, sort_keys=True))
 
 
-def _direct_c_build(cfg: ExportConfig, source_dir: Path, build_dir: Path) -> Path:
-    """
-    Compile the generated FMU runtime without CMake using a host-native C compiler.
-
-    :param cfg: Export configuration.
-    :param source_dir: Generated C source directory.
-    :param build_dir: Binary output directory.
-    :return: Built shared-library path.
-    """
-
-    compiler_cmd: str | None
-    env: dict[str, str]
-    compiler_cmd, env = _detect_c_compiler()
-    if compiler_cmd is None:
-        raise FileNotFoundError("No usable host-native C compiler was found for direct FMU runtime compilation")
-    else:
-        pass
-
-    # Resolve every compiler operand before changing the child working
-    # directory so direct builds remain independent from the caller location.
-    resolved_source_dir: Path = source_dir.resolve()
-    resolved_build_dir: Path = build_dir.resolve()
-    output_path: Path = resolved_build_dir / cfg.library_name
-    compiler_path: Path = Path(compiler_cmd)
-    compiler_working_directory: Path | None
-    if compiler_path.is_absolute():
-        # MSYS2 compiler helpers load sibling runtime DLLs from the compiler
-        # directory. A scoped child cwd provides that lookup without PATH edits.
-        compiler_working_directory = compiler_path.parent
-    else:
-        compiler_working_directory = None
-    cmd: list[str] = list()
-    cmd.append(compiler_cmd)
-    cmd.extend(_direct_build_link_flags(cfg.target_platform))
-    cmd.extend(_direct_build_compile_flags(cfg.target_platform))
-    cmd.extend(["-I", str(resolved_source_dir / "include")])
-    cmd.extend(["-I", str(resolved_source_dir / "src")])
-    cmd.extend(["-o", str(output_path)])
-    cmd.append(str(resolved_source_dir / "src" / "runtime_fmi2.c"))
-    cmd.append(str(resolved_source_dir / "src" / "model_instance.c"))
-    cmd.append(str(resolved_source_dir / "src" / "solver.c"))
-    cmd.append(str(resolved_source_dir / "src" / "generated_model.c"))
-    cmd.append(str(resolved_source_dir / "src" / "generated_procedural.c"))
-    cmd.extend(_direct_build_math_flags(cfg.target_platform))
-
-    print("Direct C compiler build starting...", flush=True)
-    print(" ".join(cmd), flush=True)
-    subprocess.run(
-        cmd,
-        check=True,
-        text=True,
-        env=env,
-        cwd=compiler_working_directory,
-    )
-    print("Direct C compiler build finished.", flush=True)
-
-    if not output_path.exists():
-        raise FileNotFoundError(f"Direct gcc build did not produce {output_path}")
-    else:
-        pass
-    return output_path
-
-
 def build_shared_library(cfg: ExportConfig, source_dir: Path, build_dir: Path) -> Path:
     """
     Build the platform-specific shared library for one exported FMI 2.0 ME runtime.
@@ -1291,54 +1220,19 @@ def build_shared_library(cfg: ExportConfig, source_dir: Path, build_dir: Path) -
     :return: Built shared-library path.
     """
 
-    build_dir.mkdir(parents=True, exist_ok=True)
-    cmake_cmd: str
-    env: dict[str, str]
-    cmake_cmd, env = _toolchain_env()
-    configure_cmd: list[str] = [
-        cmake_cmd,
-        "-S",
-        str(source_dir),
-        "-B",
-        str(build_dir),
-        f"-DVG_MODEL_IDENTIFIER={cfg.model_identifier}",
-    ]
-    if cfg.target_platform == TargetPlatform.WIN64:
-        cmake_generator = os.environ.get("VG_CMAKE_GENERATOR")
-        if cmake_generator:
-            configure_cmd.extend(["-G", cmake_generator])
-        else:
-            pass
-    else:
-        pass
-    try:
-
-        print("CMake configure starting...", flush=True)
-        print(" ".join(configure_cmd), flush=True)
-        subprocess.run(configure_cmd, check=True, text=True, env=env)
-
-        print("CMake build starting...", flush=True)
-        subprocess.run(
-            [cmake_cmd, "--build", str(build_dir), "--config", "Release"],
-            check=True,
-            text=True,
-            env=env,
-        )
-        print("CMake build finished.", flush=True)
-
-        release_candidate = build_dir / "Release" / cfg.library_name
-        if release_candidate.exists():
-            return release_candidate
-        direct_candidate = build_dir / cfg.library_name
-        if direct_candidate.exists():
-            return direct_candidate
-        matches = list(build_dir.rglob(cfg.library_name))
-        if matches:
-            return matches[0]
-        else:
-            pass
-    except (subprocess.CalledProcessError, FileNotFoundError) as exc:
-        print(f"CMake build failed: {exc}", flush=True)
-        print("Falling back to direct C compiler build...", flush=True)
-
-    return _direct_c_build(cfg, source_dir, build_dir)
+    source_root: Path = source_dir / "src"
+    source_files: tuple[Path, ...] = (
+        source_root / "runtime_fmi2.c",
+        source_root / "model_instance.c",
+        source_root / "solver.c",
+        source_root / "generated_model.c",
+        source_root / "generated_procedural.c",
+    )
+    include_directories: tuple[Path, ...] = (source_dir / "include", source_root)
+    output_path: Path = build_dir / cfg.library_name
+    return compile_fmu_shared_library(
+        source_files=source_files,
+        include_directories=include_directories,
+        output_path=output_path,
+        interface=FmuBinaryInterface.FMI_TWO_MODEL_EXCHANGE,
+    )
