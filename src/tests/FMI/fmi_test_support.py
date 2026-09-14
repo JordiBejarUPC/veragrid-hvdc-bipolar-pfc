@@ -375,10 +375,14 @@ def export_test_rms_me_fmu(
     )
 
 
-def export_test_emt_cs_fmu(output_dir: Path) -> Path:
+def export_test_emt_cs_fmu(
+    output_dir: Path,
+    fmi_version: FmiVersion = FmiVersion.FMI_2_0,
+) -> Path:
     """Export the self-contained EMT CS device FMU used by the example scripts.
 
     :param output_dir: Output directory for the generated FMU.
+    :param fmi_version: FMI generation selected for the fixture.
     :return: Generated FMU path.
     """
 
@@ -391,14 +395,19 @@ def export_test_emt_cs_fmu(output_dir: Path) -> Path:
             target_platform=detect_cs_target_platform(),
             compile_binary=True,
             keep_build_dir=False,
+            fmi_version=fmi_version,
         ),
     )
 
 
-def export_test_emt_me_fmu(output_dir: Path) -> Path:
+def export_test_emt_me_fmu(
+    output_dir: Path,
+    fmi_version: FmiVersion = FmiVersion.FMI_2_0,
+) -> Path:
     """Export the self-contained EMT ME device FMU used by the example scripts.
 
     :param output_dir: Output directory for the generated FMU.
+    :param fmi_version: FMI generation selected for the fixture.
     :return: Generated FMU path.
     """
 
@@ -411,6 +420,7 @@ def export_test_emt_me_fmu(output_dir: Path) -> Path:
             target_platform=detect_me_target_platform(),
             compile_binary=True,
             keep_build_dir=False,
+            fmi_version=fmi_version,
         ),
     )
 
@@ -686,22 +696,24 @@ def execute_test_emt_fmu_case(
         output_dir: Path,
         mode: FmuInterfaceMode,
         solver_tpe: EmtSolverTypes = EmtSolverTypes.Symbolic,
+        fmi_version: FmiVersion = FmiVersion.FMI_2_0,
 ) -> tuple[EmtSimulationDriver, Load, Path]:
     """Execute one EMT FMU integration case through the product API.
 
     :param output_dir: Isolated directory for the FMU and native staging files.
     :param mode: FMI interface mode exercised by the integration test.
     :param solver_tpe: EMT Jacobian backend exercised by the integration test.
+    :param fmi_version: FMI generation exported and reimported by the test.
     :return: Completed EMT driver, attached load, and generated FMU path.
     """
 
     output_dir.mkdir(parents=True, exist_ok=True)
     phase_a_input_name: str
     if mode == FmuInterfaceMode.CO_SIMULATION:
-        fmu_path: Path = export_test_emt_cs_fmu(output_dir)
+        fmu_path: Path = export_test_emt_cs_fmu(output_dir, fmi_version)
         phase_a_input_name = "v_a_in"
     elif mode == FmuInterfaceMode.MODEL_EXCHANGE:
-        fmu_path = export_test_emt_me_fmu(output_dir)
+        fmu_path = export_test_emt_me_fmu(output_dir, fmi_version)
         phase_a_input_name = "u"
     else:
         raise ValueError(f"Unsupported EMT FMI test mode: {mode.value}")
@@ -719,6 +731,23 @@ def execute_test_emt_fmu_case(
         pass
     else:
         raise RuntimeError("The EMT FMU integration test power flow did not converge")
+
+    # FMI 3 native calls must stay inside the established supervised worker
+    # envelope, while FMI 2 continues to use its in-process lifecycle.
+    worker_limits: FmiThreeWorkerHostLimits | None
+    if fmi_version == FmiVersion.FMI_3_0:
+        worker_limits = FmiThreeWorkerHostLimits(
+            maximum_frame_size=262144,
+            maximum_float64_values_per_request=64,
+            response_timeout_seconds=60.0,
+            graceful_join_timeout_seconds=10.0,
+            terminate_join_timeout_seconds=5.0,
+            kill_join_timeout_seconds=5.0,
+        )
+    elif fmi_version == FmiVersion.FMI_2_0:
+        worker_limits = None
+    else:
+        raise ValueError(f"Unsupported EMT FMI test version: {fmi_version.value}")
 
     request: FmuDeviceAttachmentRequest = FmuDeviceAttachmentRequest(
         fmu_path=fmu_path,
@@ -740,6 +769,7 @@ def execute_test_emt_fmu_case(
             FmuReferenceValue(VarPowerFlowReferenceType.i_C, 0.0),
         ),
         extraction_root=output_dir,
+        worker_limits=worker_limits,
     )
     attach_fmu_to_device(load, grid, request)
 
