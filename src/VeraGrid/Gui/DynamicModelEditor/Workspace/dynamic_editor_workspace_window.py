@@ -32,6 +32,7 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         "__session",
         "_accepts_new_pages",
         "_current_circuit",
+        "_prepared_to_delete",
         "device_tree_widget",
         "ui",
         "editor_tabs",
@@ -53,15 +54,20 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         self.__session: DynamicEditorWorkspaceSession = session
         self._accepts_new_pages: bool = True
         self._current_circuit: MultiCircuit | None = None
+        self._prepared_to_delete: bool = False
         self.ui: Ui_DynamicEditorWorkspaceWindow = Ui_DynamicEditorWorkspaceWindow()
         self.ui.setupUi(self)
 
         # Replace the workspace-owned search/tree pair with the shared dynamic
         # device widget used by every dynamic editing workflow.
-        self.ui.verticalLayout_2.removeWidget(self.ui.frame_2)
-        self.ui.frame_2.setParent(None)
-        self.ui.verticalLayout_2.removeWidget(self.ui.treeView)
-        self.ui.treeView.setParent(None)
+        old_filter_frame: QtWidgets.QFrame = self.ui.frame_2
+        old_tree_view: QtWidgets.QTreeView = self.ui.treeView
+        self.ui.verticalLayout_2.removeWidget(old_filter_frame)
+        old_filter_frame.setParent(None)
+        old_filter_frame.deleteLater()
+        self.ui.verticalLayout_2.removeWidget(old_tree_view)
+        old_tree_view.setParent(None)
+        old_tree_view.deleteLater()
         self.device_tree_widget: DynamicDeviceTreeWidget = DynamicDeviceTreeWidget(
             parent=self.ui.treeFrame,
         )
@@ -719,6 +725,82 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
             page_to_dispose.setParent(None)
             page_to_dispose.deleteLater()
 
+    def prepare_to_delete(self) -> None:
+        """
+        Release workspace-owned dynamic-editor widgets before Qt destroys them.
+
+        :return: None.
+        """
+        if self._prepared_to_delete:
+            return
+        else:
+            pass
+
+        self._prepared_to_delete = True
+        self._accepts_new_pages = False
+
+        # Disconnect routing signals before child widgets are detached. Queued
+        # tab/tree actions must not reopen pages during the teardown pass.
+        try:
+            self.editor_tabs.tabCloseRequested.disconnect(self.close_tab_at)
+        except (RuntimeError, TypeError):
+            pass
+        try:
+            self.editor_tabs.currentChanged.disconnect(self._on_current_tab_changed)
+        except (RuntimeError, TypeError):
+            pass
+        try:
+            self.editor_tabs.tabDragStarted.disconnect(self._on_tab_drag_started)
+        except (RuntimeError, TypeError):
+            pass
+        try:
+            self.editor_tabs.detachRequested.disconnect(self._on_tab_detach_requested)
+        except (RuntimeError, TypeError):
+            pass
+        try:
+            self.editor_tabs.reattachRequested.disconnect(self._on_tab_reattach_requested)
+        except (RuntimeError, TypeError):
+            pass
+        try:
+            self.device_tree_widget.entryPageRequested.disconnect(self._open_device_tree_entry)
+        except (RuntimeError, TypeError):
+            pass
+        try:
+            self.ui.actionview_tree.triggered.disconnect(self.show_hide_tree)
+        except (RuntimeError, TypeError):
+            pass
+        try:
+            self.ui.actionRMS_Editor.triggered.disconnect(self.open_rms_editor_entry)
+        except (RuntimeError, TypeError):
+            pass
+        try:
+            self.ui.actionRMS_Events.triggered.disconnect(self.open_rms_events_entry)
+        except (RuntimeError, TypeError):
+            pass
+        try:
+            self.ui.actionEMT_Editor.triggered.disconnect(self.open_emt_editor_entry)
+        except (RuntimeError, TypeError):
+            pass
+        try:
+            self.ui.actionEMT_Events.triggered.disconnect(self.open_emt_events_entry)
+        except (RuntimeError, TypeError):
+            pass
+
+        # Pages own the high-risk editor scene/model subtrees. Dispose them
+        # before deleting the tab host that presents their Qt widgets.
+        self._dispose_all_pages()
+
+        self.device_tree_widget.prepare_to_delete()
+        self.ui.verticalLayout_2.removeWidget(self.device_tree_widget)
+        self.device_tree_widget.setParent(None)
+        self.device_tree_widget.deleteLater()
+
+        self.ui.editorFrameLayout.removeWidget(self.editor_tabs)
+        self.editor_tabs.setParent(None)
+        self.editor_tabs.deleteLater()
+
+        self._current_circuit = None
+
     def close_for_project_replacement(self) -> None:
         """Close this workspace after session-wide guards were accepted.
 
@@ -729,11 +811,7 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
 
         :return: None.
         """
-        # Stop routing new pages to the old circuit before releasing any editor
-        # object that still retains its device and symbolic working tree.
-        self._accepts_new_pages = False
-        self._dispose_all_pages()
-        self.device_tree_widget.prepare_to_delete()
+        self.prepare_to_delete()
 
         # With no pages left, the regular close event can unregister and delete
         # the top-level workspace without displaying the page guards again.
@@ -746,16 +824,17 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         :param event: Qt close event.
         :return: None.
         """
-        pages_to_close: list[DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage] = list(self.pages_iter())
-        if not self.session.can_close_pages(pages=pages_to_close, parent=self):
-            event.ignore()
-            return
-        else:
+        if self._prepared_to_delete:
             pass
+        else:
+            pages_to_close: list[DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage] = list(self.pages_iter())
+            if not self.session.can_close_pages(pages=pages_to_close, parent=self):
+                event.ignore()
+                return
+            else:
+                pass
 
-        self._accepts_new_pages = False
-        self._dispose_all_pages()
-        self.device_tree_widget.prepare_to_delete()
+            self.prepare_to_delete()
 
         self.session.unregister_workspace(self)
         event.accept()

@@ -253,6 +253,43 @@ def test_project_replacement_closes_all_detached_dynamic_editor_workspaces() -> 
     _reset_dynamic_editor_workspaces()
 
 
+def test_workspace_prepare_to_delete_detaches_runtime_widgets() -> None:
+    """Detach workspace-owned runtime widgets before Qt final deletion.
+
+    :return: None.
+    """
+    _get_app()
+    _reset_dynamic_editor_workspaces()
+    circuit: gce.MultiCircuit
+    load: gce.Load
+    _entry: DynamicEditorEntry
+    circuit, load, _entry = _build_load_entry()
+    workspace: DynamicEditorWorkspaceWindow = _build_workspace()
+
+    page: DynamicEditorTab | None = workspace.open_dynamic_editor_for(
+        load,
+        circuit,
+        preferred_mode=DynamicSimulationMode.RMS,
+    )
+    assert page is not None
+    editor_tabs: QtWidgets.QTabWidget = workspace.editor_tabs
+    device_tree: QtWidgets.QWidget = workspace.device_tree_widget
+
+    workspace.prepare_to_delete()
+
+    assert not workspace.is_available_for_pages()
+    assert workspace.ui.editorTabs.count() == 0
+    assert page.editor is None
+    assert editor_tabs.parent() is None
+    assert device_tree.parent() is None
+    assert shiboken6.isValid(editor_tabs)
+    assert shiboken6.isValid(device_tree)
+
+    workspace.close()
+    workspace.deleteLater()
+    _reset_dynamic_editor_workspaces()
+
+
 def test_workspace_opens_rms_editor_for_dc_bus_load() -> None:
     _get_app()
     _reset_dynamic_editor_workspaces()
