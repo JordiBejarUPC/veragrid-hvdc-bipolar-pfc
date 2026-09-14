@@ -858,6 +858,23 @@ def parse_structural_setting_value(prop: TemplateProp, value_text: str) -> objec
         raise ValueError(f"Unsupported structural setting '{prop.name}'")
 
 
+def disconnect_qobject_from_receiver(sender: QtCore.QObject | None,
+                                     receiver: QtCore.QObject) -> None:
+    """Disconnect all signals from one sender to one receiver when possible.
+
+    :param sender: Qt signal owner.
+    :param receiver: Qt object that owns the receiving slots.
+    :return: None.
+    """
+    if sender is not None:
+        try:
+            sender.disconnect(receiver)
+        except (RuntimeError, TypeError):
+            pass
+    else:
+        pass
+
+
 def split_structural_template_properties(builder: TemplateDefinition) -> tuple[List[TemplateProp], List[TemplateProp]]:
     """Split simple general options from complex special settings.
 
@@ -5335,6 +5352,19 @@ class BlockPropertyTreeModel(QtGui.QStandardItemModel):
         self._structure.dataChanged.connect(self.refresh_values)
         self.rebuild()
 
+    def prepare_to_delete(self) -> None:
+        """Disconnect source models before this tree model is deleted.
+
+        :return: None.
+        """
+        # The tree model subscribes to several sibling source models. Break
+        # those receiver links explicitly so a later GC pass cannot keep this
+        # Python-backed model alive through queued model/view notifications.
+        disconnect_qobject_from_receiver(self._symbols, self)
+        disconnect_qobject_from_receiver(self._parameters, self)
+        disconnect_qobject_from_receiver(self._modes, self)
+        disconnect_qobject_from_receiver(self._structure, self)
+
     def append_source_row(self, parent_item: QtGui.QStandardItem,
                           source_index: QtCore.QModelIndex) -> None:
         """Attach an unpopulated display row referencing an existing draft.
@@ -5928,11 +5958,59 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             pass
         else:
             self._prepared_to_delete = True
+            self._disconnect_child_signals()
+            self._property_tree_model.prepare_to_delete()
             self._add_symbol_dialog.reject()
+            self._add_symbol_dialog.setParent(None)
+            self._add_symbol_dialog.deleteLater()
+            self._procedural_add_menu.clear()
+            self._procedural_add_menu.setParent(None)
+            self._procedural_add_menu.deleteLater()
             self._dae_editor.prepare_to_delete()
+            self.ui.dae_editor_layout.removeWidget(self._dae_editor)
+            self._dae_editor.setParent(None)
+            self._dae_editor.deleteLater()
+            self.ui.property_tree.closePersistentEditor(self.ui.property_tree.currentIndex())
+            self.ui.property_tree.setItemDelegateForColumn(2, None)
             self.ui.property_tree.setModel(None)
+            self.ui.special_settings_table.closePersistentEditor(
+                self.ui.special_settings_table.currentIndex()
+            )
+            self.ui.special_settings_table.setItemDelegateForColumn(1, None)
+            self.ui.special_settings_table.setModel(None)
             self.ui.latex_selection_tree.clear()
+            self.ui.latex_source_preview.clear()
             self.ui.equation_owner_combo.clear()
+            self._add_symbol_ui.new_symbol_owner.clear()
+            self._add_symbol_ui.new_symbol_category.clear()
+            self._add_symbol_ui.new_symbol_kind.clear()
+            self._add_symbol_ui.new_external_reference.clear()
+            self._add_symbol_ui.new_static_reference.clear()
+            self._property_tree_model.setParent(None)
+            self._property_tree_model.deleteLater()
+            self._retained_mode_model.setParent(None)
+            self._retained_mode_model.deleteLater()
+            self._symbol_model.setParent(None)
+            self._symbol_model.deleteLater()
+            self._parameter_model.setParent(None)
+            self._parameter_model.deleteLater()
+            self._special_structural_model.setParent(None)
+            self._special_structural_model.deleteLater()
+            self._general_structural_model.setParent(None)
+            self._general_structural_model.deleteLater()
+
+    def _disconnect_child_signals(self) -> None:
+        """Disconnect child signals targeting this dialog before deletion.
+
+        :return: None.
+        """
+        # Qt keeps signal/slot links in C++ objects. Each Designer child that
+        # emits into this dialog must drop that receiver before the child tree
+        # is queued for deletion.
+        child: QtCore.QObject
+        for child in self.findChildren(QtCore.QObject):
+            disconnect_qobject_from_receiver(child, self)
+        disconnect_qobject_from_receiver(self._property_tree_model, self)
 
     def set_dark_mode(self) -> None:
         """Apply the dark palette to source editors owned by this dialogue.

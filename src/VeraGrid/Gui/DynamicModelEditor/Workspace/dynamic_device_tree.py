@@ -35,6 +35,7 @@ class DynamicDeviceTreeWidget(QtWidgets.QWidget):
         "_preferred_double_click_mode",
         "_model",
         "_proxy",
+        "_prepared_to_delete",
         "search_line_edit",
         "tree_view",
     )
@@ -49,6 +50,7 @@ class DynamicDeviceTreeWidget(QtWidgets.QWidget):
         QtWidgets.QWidget.__init__(self, parent)
         self._circuit: MultiCircuit | None = None
         self._preferred_double_click_mode: DynamicSimulationMode = DynamicSimulationMode.RMS
+        self._prepared_to_delete: bool = False
         self._model: QtGui.QStandardItemModel = QtGui.QStandardItemModel(self)
         self._proxy: QtCore.QSortFilterProxyModel = QtCore.QSortFilterProxyModel(self)
         self._proxy.setRecursiveFilteringEnabled(True)
@@ -74,6 +76,37 @@ class DynamicDeviceTreeWidget(QtWidgets.QWidget):
         self.search_line_edit.textChanged.connect(self.apply_filter)
         self.tree_view.doubleClicked.connect(self._on_double_clicked)
         self.tree_view.customContextMenuRequested.connect(self._show_context_menu)
+
+    def prepare_to_delete(self) -> None:
+        """Detach tree models and signal links before workspace deletion.
+
+        :return: None.
+        """
+        if self._prepared_to_delete:
+            return
+        else:
+            pass
+
+        self._prepared_to_delete = True
+        try:
+            self.search_line_edit.textChanged.disconnect(self.apply_filter)
+        except (RuntimeError, TypeError):
+            pass
+        try:
+            self.tree_view.doubleClicked.disconnect(self._on_double_clicked)
+        except (RuntimeError, TypeError):
+            pass
+        try:
+            self.tree_view.customContextMenuRequested.disconnect(self._show_context_menu)
+        except (RuntimeError, TypeError):
+            pass
+
+        # The view owns indexes from the proxy while the proxy owns indexes
+        # from the source model. Detach in visible-to-source order.
+        self.tree_view.setModel(None)
+        self._proxy.setSourceModel(None)
+        self._model.clear()
+        self._circuit = None
 
     def set_circuit(self, circuit: MultiCircuit | None) -> None:
         """Bind the tree to a circuit and rebuild its entries.

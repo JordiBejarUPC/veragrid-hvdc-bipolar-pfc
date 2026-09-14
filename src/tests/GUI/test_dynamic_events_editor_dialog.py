@@ -10,6 +10,7 @@ from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_page import DynamicEv
 from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_support import collect_block_runtime_event_parameters
 from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import DynamicEditorEntry
 from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import build_dynamic_editor_entry
+from VeraGrid.Gui.object_proxy_model import ObjectModelFilterProxy
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var
@@ -108,6 +109,44 @@ def test_event_page_uses_focused_objects_model_and_adds_real_event() -> None:
     assert len(circuit.rms_events) == 1
     assert circuit.rms_events[0].group is page.selected_group
     assert circuit.rms_events[0].parameter is parameter
+    page.prepare_to_delete()
+    page.deleteLater()
+
+
+def test_event_page_rebuild_disposes_previous_table_models() -> None:
+    """Changing event groups must detach the previous table model pair.
+
+    :return: None.
+    """
+    application: QtWidgets.QApplication = get_qt_application()
+    _unused_application: QtWidgets.QApplication = application
+    circuit: vge.MultiCircuit
+    load: vge.Load
+    parameter: Var
+    _group: vge.RmsEventsGroup
+    entry: DynamicEditorEntry
+    circuit, load, parameter, _group, entry = build_dynamic_target()
+    page: DynamicEventsPage = DynamicEventsPage(
+        entry=entry,
+        device=load,
+        mode=DynamicSimulationMode.RMS,
+        parameters=list((parameter,)),
+        mode_parameter_uids=set(),
+        model_is_empty=False,
+    )
+    assert page.objects_model is not None
+    assert page.filter_model is not None
+    old_objects_model: QtCore.QAbstractTableModel = page.objects_model
+    old_filter_model: ObjectModelFilterProxy = page.filter_model
+
+    page.selected_group = None
+    page._rebuild_events_table()
+
+    assert old_filter_model.sourceModel() is None
+    assert old_filter_model.parent() is None
+    assert QtCore.QObject.parent(old_objects_model) is None
+    assert page.objects_model is not old_objects_model
+    assert page.filter_model is not old_filter_model
     page.prepare_to_delete()
     page.deleteLater()
 

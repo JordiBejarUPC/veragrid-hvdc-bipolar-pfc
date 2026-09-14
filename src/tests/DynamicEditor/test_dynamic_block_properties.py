@@ -2318,6 +2318,47 @@ def test_property_tree_edits_values_mappings_and_outputs_transactionally() -> No
     application.processEvents()
 
 
+def test_block_properties_prepare_to_delete_detaches_live_view_editors() -> None:
+    """Teardown must detach active property-tree editors before Qt destruction.
+
+    :return: None.
+    """
+    application: QtWidgets.QApplication = get_qt_application()
+    state: Var = Var("x")
+    static: Var = Var("rated")
+    block: Block = Block(
+        name="tree_teardown",
+        state_vars=list((state,)),
+        parameters=dict(((static, Const(10.0)),)),
+        api_obj_mapping=dict(((ParamPowerFlowReferenceType.Pl0, static),)),
+    )
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
+        block,
+        "GENERIC",
+        VarFactory(),
+    )
+    dialogue.show()
+    static_index: QtCore.QModelIndex = find_property_index(dialogue, "rated").siblingAtColumn(2)
+
+    dialogue.ui.property_tree.openPersistentEditor(static_index)
+    application.processEvents()
+
+    assert len(dialogue.ui.property_tree.findChildren(QtWidgets.QComboBox)) > 0
+
+    dialogue.prepare_to_delete()
+
+    assert dialogue.ui.property_tree.model() is None
+    assert dialogue.ui.special_settings_table.model() is None
+    assert dialogue.ui.equation_owner_combo.count() == 0
+    assert dialogue._add_symbol_ui.new_symbol_owner.count() == 0
+
+    QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
+    application.processEvents()
+
+    assert dialogue.ui.property_tree.findChildren(QtWidgets.QComboBox) == list()
+    dialogue.close()
+
+
 def test_new_dynamic_parameter_value_binds_applied_identity() -> None:
     """A numeric event-parameter value must bind the real Var after Apply.
 

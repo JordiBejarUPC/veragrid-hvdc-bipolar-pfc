@@ -168,6 +168,7 @@ class DynamicEventsPage(QtWidgets.QWidget):
         "objects_model", "filter_model", "tree_view", "groups_tree_view",
         "empty_model_message", "switch_sequence_action", "add_event_action",
         "remove_action", "new_group_action", "clear_device_events_action",
+        "_prepared_to_delete",
     )
 
     def __init__(self,
@@ -200,6 +201,7 @@ class DynamicEventsPage(QtWidgets.QWidget):
         self.selected_group: RmsEventsGroup | EmtEventsGroup | None = None
         self.objects_model: ObjectsModel | None = None
         self.filter_model: ObjectModelFilterProxy | None = None
+        self._prepared_to_delete: bool = False
         self.toast_manager: ToastManager = ToastManager(parent=self, position_top=False)
 
         self.ui: Ui_DynamicEventsPage = Ui_DynamicEventsPage()
@@ -283,8 +285,46 @@ class DynamicEventsPage(QtWidgets.QWidget):
 
         :return: None.
         """
+        if self._prepared_to_delete:
+            return
+        else:
+            pass
+
+        self._prepared_to_delete = True
+        selection_model: QtCore.QItemSelectionModel | None = self.groups_tree_view.selectionModel()
+        if selection_model is not None:
+            try:
+                selection_model.currentChanged.disconnect(self._on_group_selected)
+            except (RuntimeError, TypeError):
+                pass
+        else:
+            pass
+        try:
+            self.add_event_action.triggered.disconnect(self.add_event)
+        except (RuntimeError, TypeError):
+            pass
+        try:
+            self.remove_action.triggered.disconnect(self.remove_selection)
+        except (RuntimeError, TypeError):
+            pass
+        try:
+            self.new_group_action.triggered.disconnect(self.add_event_group)
+        except (RuntimeError, TypeError):
+            pass
+        try:
+            self.clear_device_events_action.triggered.disconnect(self.clear_device_events)
+        except (RuntimeError, TypeError):
+            pass
+        try:
+            self.switch_sequence_action.triggered.disconnect(self.open_switch_sequence)
+        except (RuntimeError, TypeError):
+            pass
         self.tree_view.setModel(None)
         self.groups_tree_view.setModel(None)
+        self._clear_events_table_models()
+        self.group_model.setParent(None)
+        self.group_model.deleteLater()
+        self.selected_group = None
 
     def set_dark_mode(self) -> None:
         """Refresh both event views after a dark-theme change.
@@ -371,6 +411,8 @@ class DynamicEventsPage(QtWidgets.QWidget):
 
         :return: None.
         """
+        self.tree_view.setModel(None)
+        self._clear_events_table_models()
         if self.selected_group is not None:
             events: List[RmsEvent | EmtEvent] = self.group_model.get_group_events(group=self.selected_group)
         else:
@@ -409,6 +451,30 @@ class DynamicEventsPage(QtWidgets.QWidget):
         )
         self.filter_model = ObjectModelFilterProxy(mdl=self.objects_model, parent=self)
         self.tree_view.setModel(self.filter_model)
+
+    def _clear_events_table_models(self) -> None:
+        """Dispose the current event table proxy and source model.
+
+        :return: None.
+        """
+        # Group changes rebuild the table model. Delete the old model pair
+        # immediately so stale object-table widgets cannot survive until a
+        # background simulation happens to run Python garbage collection.
+        filter_model: ObjectModelFilterProxy | None = self.filter_model
+        objects_model: ObjectsModel | None = self.objects_model
+        if filter_model is not None:
+            filter_model.setSourceModel(None)
+            filter_model.setParent(None)
+            filter_model.deleteLater()
+            self.filter_model = None
+        else:
+            pass
+        if objects_model is not None:
+            objects_model.setParent(None)
+            objects_model.deleteLater()
+            self.objects_model = None
+        else:
+            pass
 
     def _selected_event(self) -> RmsEvent | EmtEvent | None:
         """Return the real event selected in the generic table.

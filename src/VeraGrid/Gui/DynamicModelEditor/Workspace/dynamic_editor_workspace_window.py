@@ -733,6 +733,7 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         # object that still retains its device and symbolic working tree.
         self._accepts_new_pages = False
         self._dispose_all_pages()
+        self.device_tree_widget.prepare_to_delete()
 
         # With no pages left, the regular close event can unregister and delete
         # the top-level workspace without displaying the page guards again.
@@ -754,6 +755,7 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
 
         self._accepts_new_pages = False
         self._dispose_all_pages()
+        self.device_tree_widget.prepare_to_delete()
 
         self.session.unregister_workspace(self)
         event.accept()
