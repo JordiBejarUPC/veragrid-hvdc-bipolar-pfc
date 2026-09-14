@@ -24,16 +24,16 @@ def gslv_linear_matrices(circuit: MultiCircuit,
                               use_time_series=False,
                               override_branch_controls=override_branch_controls)
 
-    options = pg.LinearAnalysisOptions(distributeSlack=distributed_slack,
-                                       correctValues=correctValues,
-                                       ptdfThreshold=0.001,
-                                       lodfThreshold=0.001)
+    options = pg.LinearAnalysisOptions(distribute_slack=distributed_slack,
+                                       correct_values=correctValues,
+                                       ptdf_threshold=0.001,
+                                       lodf_threshold=0.001)
 
     logger = pg.Logger()
     nc = pg.compile(grid=gslv_circuit, logger=logger, t_idx=0)
 
     results = pg.LinearAnalysis(nc=nc,
-                                distributed_slack_=distributed_slack,
-                                correct_values_=correctValues, )
+                                distributed_slack=distributed_slack,
+                                correct_values=correctValues)
 
     return results
