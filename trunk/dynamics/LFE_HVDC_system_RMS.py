@@ -190,7 +190,7 @@ for vsc in (vsc_1, vsc_2):
 zbase_dc = dc_kv * dc_kv / sbase
 grid.add_dc_line(vge.DcLine(
     name="HVDC_Line", bus_from=dc_1, bus_to=dc_2,
-    r=0.01, rate=sbase,
+    r=0.03, rate=sbase,
 ))
 
 # ----------------------------------------------------------------------------------------------------------------------
