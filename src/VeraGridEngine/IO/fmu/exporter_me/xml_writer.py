@@ -23,7 +23,66 @@ def emit_model_description(
     :return: UTF-8 XML text containing the complete model description.
     """
     model_variables: list[ExportVariable] = list(export_model.xml_variables())
-    if fmi_version == FmiVersion.FMI_3_0:
+    if fmi_version == FmiVersion.FMI_1_0:
+        xml_index_by_uid: dict[int, int] = dict()
+        for index, variable in enumerate(model_variables, start=1):
+            xml_index_by_uid[variable.uid] = index
+        root = Element(
+            "fmiModelDescription",
+            dict(
+                fmiVersion="1.0",
+                modelName=export_model.model_name,
+                modelIdentifier=export_model.model_identifier,
+                guid=export_model.guid,
+                generationTool="veragrid_fmu_me_export",
+                variableNamingConvention="flat",
+                numberOfContinuousStates=str(
+                    export_model.counts.get("states", 0)
+                ),
+                numberOfEventIndicators=str(
+                    export_model.counts.get("event_indicators", 0)
+                ),
+            ),
+        )
+        SubElement(
+            root,
+            "DefaultExperiment",
+            dict(
+                startTime="0.0",
+                tolerance=format(export_model.relative_tolerance, ".17g"),
+            ),
+        )
+        model_variables_element = SubElement(root, "ModelVariables")
+        for variable in model_variables:
+            if variable.causality in ("input", "output"):
+                fmi_one_causality: str = variable.causality
+            else:
+                fmi_one_causality = "internal"
+            if variable.causality == "parameter" or variable.variability in (
+                "fixed",
+                "tunable",
+            ):
+                fmi_one_variability: str = "parameter"
+            else:
+                fmi_one_variability = variable.variability
+            attrs: dict[str, str] = dict(
+                name=variable.name,
+                valueReference=str(variable.value_reference),
+                causality=fmi_one_causality,
+                variability=fmi_one_variability,
+            )
+            scalar = SubElement(model_variables_element, "ScalarVariable", attrs)
+            real_attrs: dict[str, str] = dict()
+            if variable.start is not None:
+                real_attrs["start"] = format(variable.start, ".17g")
+            else:
+                pass
+            if variable.nominal is not None:
+                real_attrs["nominal"] = format(variable.nominal, ".17g")
+            else:
+                pass
+            SubElement(scalar, "Real", real_attrs)
+    elif fmi_version == FmiVersion.FMI_3_0:
         root = Element(
             "fmiModelDescription",
             dict(

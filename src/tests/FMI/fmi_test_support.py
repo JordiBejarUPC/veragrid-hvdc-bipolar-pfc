@@ -564,6 +564,7 @@ def execute_test_rms_fmu_case(
         static_active_power_mw: float = 10.0,
         static_reactive_power_mvar: float = 1.0,
         rms_tolerance: float = 1.0e-6,
+        fmi_version: FmiVersion = FmiVersion.FMI_2_0,
 ) -> tuple[RmsSimulationDriver, Load, Path]:
     """Execute one RMS FMU integration case through the product API.
 
@@ -581,6 +582,7 @@ def execute_test_rms_fmu_case(
     :param static_active_power_mw: Load active power used by the initial power flow.
     :param static_reactive_power_mvar: Load reactive power used by the initial power flow.
     :param rms_tolerance: RMS nonlinear convergence tolerance for this fixture.
+    :param fmi_version: FMI generation used by a locally exported fixture.
     :return: Completed RMS driver, attached load, and generated FMU path.
     """
 
@@ -588,13 +590,13 @@ def execute_test_rms_fmu_case(
     input_bindings: tuple[FmuRefBinding, ...]
     if mode == FmuInterfaceMode.CO_SIMULATION:
         if source_fmu_path is None:
-            fmu_path: Path = export_test_rms_cs_fmu(output_dir)
+            fmu_path: Path = export_test_rms_cs_fmu(output_dir, fmi_version)
         else:
             fmu_path = source_fmu_path.resolve()
         input_bindings = tuple()
     elif mode == FmuInterfaceMode.MODEL_EXCHANGE:
         if source_fmu_path is None:
-            fmu_path = export_test_rms_me_fmu(output_dir)
+            fmu_path = export_test_rms_me_fmu(output_dir, fmi_version)
         else:
             fmu_path = source_fmu_path.resolve()
         input_bindings = (
@@ -732,8 +734,8 @@ def execute_test_emt_fmu_case(
     else:
         raise RuntimeError("The EMT FMU integration test power flow did not converge")
 
-    # FMI 3 native calls must stay inside the established supervised worker
-    # envelope, while FMI 2 continues to use its in-process lifecycle.
+    # FMI 3 native calls stay inside the supervised worker envelope, while
+    # the legacy FMI 1/2 runtimes retain their in-process lifecycle.
     worker_limits: FmiThreeWorkerHostLimits | None
     if fmi_version == FmiVersion.FMI_3_0:
         worker_limits = FmiThreeWorkerHostLimits(
@@ -744,7 +746,7 @@ def execute_test_emt_fmu_case(
             terminate_join_timeout_seconds=5.0,
             kill_join_timeout_seconds=5.0,
         )
-    elif fmi_version == FmiVersion.FMI_2_0:
+    elif fmi_version in (FmiVersion.FMI_1_0, FmiVersion.FMI_2_0):
         worker_limits = None
     else:
         raise ValueError(f"Unsupported EMT FMI test version: {fmi_version.value}")

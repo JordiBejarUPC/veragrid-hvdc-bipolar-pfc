@@ -20,8 +20,10 @@ from clang_tool_chain_bins import ToolMatch
 
 
 class FmuBinaryInterface(Enum):
-    """Identify the FMI 2 binary interface whose entry points must be exported."""
+    """Identify the FMI binary interface whose entry points must be exported."""
 
+    FMI_ONE_CO_SIMULATION = "fmi_one_co_simulation"
+    FMI_ONE_MODEL_EXCHANGE = "fmi_one_model_exchange"
     FMI_TWO_CO_SIMULATION = "fmi_two_co_simulation"
     FMI_TWO_MODEL_EXCHANGE = "fmi_two_model_exchange"
     FMI_THREE_CO_SIMULATION = "fmi_three_co_simulation"
@@ -519,13 +521,60 @@ def _validate_binary_header(output_path: Path, objdump_path: Path, package_platf
         raise RuntimeError("The FMU shared library has an unexpected format or machine architecture")
 
 
-def _required_fmi_symbols(interface: FmuBinaryInterface) -> tuple[str, ...]:
+def _required_fmi_symbols(
+    interface: FmuBinaryInterface,
+    model_identifier: str | None = None,
+) -> tuple[str, ...]:
     """Return the complete required symbol inventory for one FMI interface.
 
     :param interface: FMI binary interface being packaged.
+    :param model_identifier: Explicit FMI 1 symbol prefix, when required.
     :return: Immutable required symbol inventory.
     """
 
+    fmi_one_co_simulation_suffixes: tuple[str, ...] = (
+        "fmiGetTypesPlatform", "fmiGetVersion", "fmiSetDebugLogging",
+        "fmiInstantiateSlave", "fmiInitializeSlave", "fmiTerminateSlave",
+        "fmiResetSlave", "fmiFreeSlaveInstance", "fmiSetReal",
+        "fmiSetInteger", "fmiSetBoolean", "fmiSetString", "fmiGetReal",
+        "fmiGetInteger", "fmiGetBoolean", "fmiGetString",
+        "fmiSetRealInputDerivatives", "fmiGetRealOutputDerivatives",
+        "fmiCancelStep", "fmiDoStep", "fmiGetStatus", "fmiGetRealStatus",
+        "fmiGetIntegerStatus", "fmiGetBooleanStatus", "fmiGetStringStatus",
+    )
+    fmi_one_model_exchange_suffixes: tuple[str, ...] = (
+        "fmiGetModelTypesPlatform", "fmiGetVersion", "fmiSetDebugLogging",
+        "fmiInstantiateModel", "fmiFreeModelInstance", "fmiSetTime",
+        "fmiSetContinuousStates", "fmiCompletedIntegratorStep", "fmiSetReal",
+        "fmiSetInteger", "fmiSetBoolean", "fmiSetString", "fmiGetReal",
+        "fmiGetInteger", "fmiGetBoolean", "fmiGetString", "fmiInitialize",
+        "fmiGetDerivatives", "fmiGetEventIndicators", "fmiEventUpdate",
+        "fmiGetContinuousStates", "fmiGetNominalContinuousStates",
+        "fmiGetStateValueReferences", "fmiTerminate",
+    )
+    if interface in (
+        FmuBinaryInterface.FMI_ONE_CO_SIMULATION,
+        FmuBinaryInterface.FMI_ONE_MODEL_EXCHANGE,
+    ):
+        if model_identifier is not None and len(model_identifier) > 0:
+            pass
+        else:
+            raise ValueError(
+                "FMI 1 symbol validation requires an explicit model identifier"
+            )
+        if interface == FmuBinaryInterface.FMI_ONE_CO_SIMULATION:
+            fmi_one_suffixes: tuple[str, ...] = fmi_one_co_simulation_suffixes
+        else:
+            fmi_one_suffixes = fmi_one_model_exchange_suffixes
+        prefixed_symbols: list[str] = [""] * len(fmi_one_suffixes)
+        suffix_index: int
+        for suffix_index in range(len(fmi_one_suffixes)):
+            prefixed_symbols[suffix_index] = (
+                model_identifier + "_" + fmi_one_suffixes[suffix_index]
+            )
+        required_symbols: tuple[str, ...] = tuple(prefixed_symbols)
+    else:
+        required_symbols = tuple()
     fmi_three_symbols: tuple[str, ...] = (
         "fmi3GetVersion",
         "fmi3SetDebugLogging",
@@ -610,39 +659,48 @@ def _required_fmi_symbols(interface: FmuBinaryInterface) -> tuple[str, ...]:
         "fmi2SetBoolean", "fmi2SetString", "fmi2GetFMUstate", "fmi2SetFMUstate", "fmi2FreeFMUstate",
         "fmi2SerializedFMUstateSize", "fmi2SerializeFMUstate", "fmi2DeSerializeFMUstate", "fmi2GetDirectionalDerivative",
     )
-    if interface == FmuBinaryInterface.FMI_TWO_CO_SIMULATION:
-        interface_symbols: tuple[str, ...] = (
-            "fmi2SetRealInputDerivatives", "fmi2GetRealOutputDerivatives", "fmi2DoStep", "fmi2CancelStep", "fmi2GetStatus",
-            "fmi2GetRealStatus", "fmi2GetIntegerStatus", "fmi2GetBooleanStatus", "fmi2GetStringStatus",
-        )
-        required_symbols: tuple[str, ...] = fmi_two_common_symbols + interface_symbols
+    if len(required_symbols) > 0:
+        pass
     else:
-        if interface == FmuBinaryInterface.FMI_TWO_MODEL_EXCHANGE:
-            interface_symbols = (
-                "fmi2EnterEventMode", "fmi2NewDiscreteStates", "fmi2EnterContinuousTimeMode", "fmi2CompletedIntegratorStep",
-                "fmi2SetTime", "fmi2SetContinuousStates", "fmi2GetDerivatives", "fmi2GetEventIndicators",
-                "fmi2GetContinuousStates", "fmi2GetNominalsOfContinuousStates",
+        if interface == FmuBinaryInterface.FMI_TWO_CO_SIMULATION:
+            interface_symbols: tuple[str, ...] = (
+                "fmi2SetRealInputDerivatives", "fmi2GetRealOutputDerivatives", "fmi2DoStep", "fmi2CancelStep", "fmi2GetStatus",
+                "fmi2GetRealStatus", "fmi2GetIntegerStatus", "fmi2GetBooleanStatus", "fmi2GetStringStatus",
             )
             required_symbols = fmi_two_common_symbols + interface_symbols
         else:
-            if (
-                interface == FmuBinaryInterface.FMI_THREE_CO_SIMULATION
-                or interface == FmuBinaryInterface.FMI_THREE_MODEL_EXCHANGE
-            ):
-                required_symbols = fmi_three_symbols
+            if interface == FmuBinaryInterface.FMI_TWO_MODEL_EXCHANGE:
+                interface_symbols = (
+                    "fmi2EnterEventMode", "fmi2NewDiscreteStates", "fmi2EnterContinuousTimeMode", "fmi2CompletedIntegratorStep",
+                    "fmi2SetTime", "fmi2SetContinuousStates", "fmi2GetDerivatives", "fmi2GetEventIndicators",
+                    "fmi2GetContinuousStates", "fmi2GetNominalsOfContinuousStates",
+                )
+                required_symbols = fmi_two_common_symbols + interface_symbols
             else:
-                raise RuntimeError("The FMI binary interface is unsupported")
+                if (
+                    interface == FmuBinaryInterface.FMI_THREE_CO_SIMULATION
+                    or interface == FmuBinaryInterface.FMI_THREE_MODEL_EXCHANGE
+                ):
+                    required_symbols = fmi_three_symbols
+                else:
+                    raise RuntimeError("The FMI binary interface is unsupported")
     if len(required_symbols) == len(set(required_symbols)):
         return required_symbols
     else:
         raise RuntimeError("The required FMI symbol inventory contains duplicates")
 
-def _missing_exported_symbols(symbol_text: str, interface: FmuBinaryInterface, package_platform: str) -> tuple[str, ...]:
+def _missing_exported_symbols(
+    symbol_text: str,
+    interface: FmuBinaryInterface,
+    package_platform: str,
+    model_identifier: str | None = None,
+) -> tuple[str, ...]:
     """Compare an ``llvm-nm`` inventory with the required FMI interface.
 
     :param symbol_text: ``llvm-nm --format=posix`` output.
     :param interface: FMI binary interface being packaged.
     :param package_platform: Reviewed package platform name.
+    :param model_identifier: Explicit FMI 1 symbol prefix, when required.
     :return: Required symbols absent from the binary.
     """
 
@@ -661,7 +719,7 @@ def _missing_exported_symbols(symbol_text: str, interface: FmuBinaryInterface, p
             pass
     missing_symbols: list[str] = list()
     required_symbol: str
-    for required_symbol in _required_fmi_symbols(interface):
+    for required_symbol in _required_fmi_symbols(interface, model_identifier):
         if required_symbol in exported_symbols:
             pass
         else:
@@ -669,19 +727,31 @@ def _missing_exported_symbols(symbol_text: str, interface: FmuBinaryInterface, p
     return tuple(missing_symbols)
 
 
-def _validate_exported_symbols(output_path: Path, nm_path: Path, interface: FmuBinaryInterface, package_platform: str) -> None:
+def _validate_exported_symbols(
+    output_path: Path,
+    nm_path: Path,
+    interface: FmuBinaryInterface,
+    package_platform: str,
+    model_identifier: str | None = None,
+) -> None:
     """Require the complete FMI symbol inventory for one interface.
 
     :param output_path: Compiled shared library.
     :param nm_path: Absolute build-scoped ``llvm-nm`` executable.
     :param interface: FMI binary interface being packaged.
     :param package_platform: Reviewed package platform name.
+    :param model_identifier: Explicit FMI 1 symbol prefix, when required.
     :return: None.
     """
 
     inspection: subprocess.CompletedProcess[str] = subprocess.run((str(nm_path), "--defined-only", "--extern-only", "--format=posix", str(output_path)), check=False, capture_output=True, text=True)
     if inspection.returncode == 0:
-        missing_symbols: tuple[str, ...] = _missing_exported_symbols(inspection.stdout, interface, package_platform)
+        missing_symbols: tuple[str, ...] = _missing_exported_symbols(
+            inspection.stdout,
+            interface,
+            package_platform,
+            model_identifier,
+        )
     else:
         diagnostic: str = (inspection.stdout + "\n" + inspection.stderr)[-4000:]
         raise RuntimeError("Unable to inspect the FMU exported symbols:\n" + diagnostic)
@@ -835,13 +905,20 @@ def _validate_runtime_dependencies(output_path: Path, objdump_path: Path, packag
         raise RuntimeError("The FMU binary failed dependency validation: " + "; ".join(violations))
 
 
-def compile_fmu_shared_library(source_files: tuple[Path, ...], include_directories: tuple[Path, ...], output_path: Path, interface: FmuBinaryInterface) -> Path:
-    """Compile and validate one host-native FMI 2 shared library.
+def compile_fmu_shared_library(
+    source_files: tuple[Path, ...],
+    include_directories: tuple[Path, ...],
+    output_path: Path,
+    interface: FmuBinaryInterface,
+    model_identifier: str | None = None,
+) -> Path:
+    """Compile and validate one host-native FMI shared library.
 
     :param source_files: Ordered generated C translation units.
     :param include_directories: Ordered generated and runtime include roots.
     :param output_path: Expected host-native shared-library path.
     :param interface: FMI interface whose complete symbols must be present.
+    :param model_identifier: Explicit FMI 1 symbol prefix, when required.
     :return: Validated shared-library path.
     """
 
@@ -897,6 +974,12 @@ def compile_fmu_shared_library(source_files: tuple[Path, ...], include_directori
     else:
         raise FileNotFoundError("Clang completed without producing the FMI shared library")
     _validate_binary_header(output_path, objdump_path, package_platform, package_arch)
-    _validate_exported_symbols(output_path, nm_path, interface, package_platform)
+    _validate_exported_symbols(
+        output_path,
+        nm_path,
+        interface,
+        package_platform,
+        model_identifier,
+    )
     _validate_runtime_dependencies(output_path, objdump_path, package_platform)
     return output_path

@@ -14,7 +14,7 @@ import pytest
 from VeraGridEngine.IO.fmu.exporter.compat import Block, Const, Var
 from VeraGridEngine.IO.fmu.importer.bindings import FmuImportConfig
 from VeraGridEngine.IO.fmu.importer.emt_boundary import CompositeEmtBoundaryUpdater
-from VeraGridEngine.IO.fmu.importer.errors import FmuModeError
+from VeraGridEngine.IO.fmu.importer.errors import FmuImportError, FmuModeError
 from VeraGridEngine.IO.fmu.importer.model_exchange import (
     FmuMeDomain,
     FmuMeDeviceAdapter,
@@ -28,7 +28,10 @@ from VeraGridEngine.IO.fmu.importer.model_description import FmuInterfaceMode
 from VeraGridEngine.IO.fmu.importer.runtime_coordinator import (
     FmiThreeModelExchangeCoordinator,
 )
-from VeraGridEngine.IO.fmu.importer.runtime_host import FmiTwoEventUpdate
+from VeraGridEngine.IO.fmu.importer.runtime_host import (
+    FmiOneEventUpdate,
+    FmiTwoEventUpdate,
+)
 from VeraGridEngine.IO.fmu.importer.runtime_profile import FmuMeEvaluationBudget
 from VeraGridEngine.IO.fmu.importer.runtime_worker_host import FmiThreeWorkerHostLimits
 from VeraGridEngine.IO.fmu.importer.runtime_protocol import (
@@ -690,16 +693,104 @@ def _build_mock_backward_euler_adapter(
         input_variable_names=("decay_rate",),
         output_variable_names=tuple(),
         output_bindings=tuple(),
+        state_variable_names=("state",),
         maximum_event_iterations=2,
     )
     adapter.solver_policy = active_policy
     adapter.runtime_host = None
     adapter.fmi_three_coordinator = coordinator
     adapter.localized_state_event_time = None
+    adapter._fmi_one_state_value_references = tuple()
     adapter.fmi_two_next_event_time = None
     adapter.pending_candidate_input_values = None
     adapter.fmi_two_accepted_input_values = (1.0,)
     return adapter, coordinator
+
+
+def test_fmi_one_event_update_converges_and_refreshes_changed_states() -> None:
+    """Converge FMI 1 event iteration and refresh state values when declared."""
+
+    adapter: FmuMeDeviceAdapter
+    coordinator: Mock
+    adapter, coordinator = _build_mock_backward_euler_adapter()
+    runtime_host: Mock = Mock()
+    runtime_host.get_continuous_states.return_value = [2.0]
+    runtime_host.event_update_fmi_one.return_value = FmiOneEventUpdate(
+        iteration_converged=True,
+        state_value_references_changed=False,
+        state_values_changed=False,
+        terminate_simulation=False,
+        next_event_time=None,
+    )
+    adapter.runtime_host = runtime_host
+    adapter.fmi_three_coordinator = None
+    adapter.state_vector = np.array([1.0], dtype=float)
+    adapter._settle_fmi_one_event(
+        event_update=FmiOneEventUpdate(
+            iteration_converged=False,
+            state_value_references_changed=False,
+            state_values_changed=True,
+            terminate_simulation=False,
+            next_event_time=1.0,
+        ),
+        entry_time=0.0,
+        evaluation_budget=FmuMeEvaluationBudget(3),
+    )
+    assert adapter.get_state_vector().tolist() == [2.0]
+    assert adapter.fmi_two_next_event_time is None
+    runtime_host.get_continuous_states.assert_called_once()
+    runtime_host.event_update_fmi_one.assert_called_once()
+
+
+def test_fmi_one_event_update_refreshes_state_value_references() -> None:
+    """Refresh FMI 1 state identities when the event information requests it."""
+
+    adapter: FmuMeDeviceAdapter
+    coordinator: Mock
+    adapter, coordinator = _build_mock_backward_euler_adapter()
+    runtime_host: Mock = Mock()
+    runtime_host.get_state_value_references.return_value = (17,)
+    adapter.runtime_host = runtime_host
+    adapter.fmi_three_coordinator = None
+    adapter._settle_fmi_one_event(
+        event_update=FmiOneEventUpdate(
+            iteration_converged=True,
+            state_value_references_changed=True,
+            state_values_changed=False,
+            terminate_simulation=False,
+            next_event_time=2.0,
+        ),
+        entry_time=1.0,
+        evaluation_budget=FmuMeEvaluationBudget(1),
+    )
+    assert adapter._fmi_one_state_value_references == (17,)
+    assert adapter.fmi_two_next_event_time == 2.0
+    runtime_host.get_state_value_references.assert_called_once()
+
+
+def test_fmi_one_event_update_stops_on_termination_request() -> None:
+    """Close an FMI 1 runtime immediately when event information terminates."""
+
+    adapter: FmuMeDeviceAdapter
+    coordinator: Mock
+    adapter, coordinator = _build_mock_backward_euler_adapter()
+    runtime_host: Mock = Mock()
+    adapter.runtime_host = runtime_host
+    adapter.fmi_three_coordinator = None
+    with pytest.raises(FmuImportError, match="requested simulation termination"):
+        adapter._settle_fmi_one_event(
+            event_update=FmiOneEventUpdate(
+                iteration_converged=True,
+                state_value_references_changed=False,
+                state_values_changed=False,
+                terminate_simulation=True,
+                next_event_time=None,
+            ),
+            entry_time=0.0,
+            evaluation_budget=FmuMeEvaluationBudget(1),
+        )
+    runtime_host.close.assert_called_once()
+    assert adapter.runtime_host is None
 
 
 def _evaluate_linear_test_event_indicator(

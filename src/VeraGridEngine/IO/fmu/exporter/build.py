@@ -48,17 +48,21 @@ def _copy_template_tree(cfg: ExportConfig, destination: Path) -> None:
 
     runtime_root: Path = Path(__file__).parent / "c_runtime"
     common_root: Path = runtime_root / "common_template"
-    if cfg.fmi_version == FmiVersion.FMI_2_0:
-        version_name: str = "fmi2"
-        adapter_root: Path = runtime_root / "fmi2_adapter"
+    if cfg.fmi_version == FmiVersion.FMI_1_0:
+        version_name: str = "fmi1/co_simulation"
+        adapter_root: Path = runtime_root / "fmi1_adapter"
     else:
-        if cfg.fmi_version == FmiVersion.FMI_3_0:
-            version_name = "fmi3"
-            adapter_root = runtime_root / "fmi3_adapter"
+        if cfg.fmi_version == FmiVersion.FMI_2_0:
+            version_name = "fmi2"
+            adapter_root = runtime_root / "fmi2_adapter"
         else:
-            raise NotImplementedError(
-                f"FMI {cfg.fmi_version.value} C runtime is not implemented"
-            )
+            if cfg.fmi_version == FmiVersion.FMI_3_0:
+                version_name = "fmi3"
+                adapter_root = runtime_root / "fmi3_adapter"
+            else:
+                raise NotImplementedError(
+                    f"FMI {cfg.fmi_version.value} C runtime is not implemented"
+                )
     c_api_root: Path = Path(__file__).parent.parent / "c_api" / version_name
     shutil.copytree(common_root / "src", destination / "src", dirs_exist_ok=True)
     shutil.copytree(adapter_root / "src", destination / "src", dirs_exist_ok=True)
@@ -118,6 +122,7 @@ def render_generated_metadata_h(export_model: ExportModel, cfg: ExportConfig) ->
         "",
         f"#define VG_MODEL_NAME \"{export_model.model_name}\"",
         f"#define VG_MODEL_IDENTIFIER \"{export_model.model_identifier}\"",
+        f"#define VG_MODEL_IDENTIFIER_TOKEN {export_model.model_identifier}",
         f"#define VG_MODEL_GUID \"{export_model.guid}\"",
         f"#define VG_NUM_STATES {export_model.counts.get('states', 0)}",
         f"#define VG_NUM_ALGEBRAICS {export_model.counts.get('algebraics', 0)}",
@@ -370,17 +375,21 @@ def build_shared_library(cfg: ExportConfig, source_dir: Path, build_dir: Path) -
     """
 
     source_root: Path = source_dir / "src"
-    if cfg.fmi_version == FmiVersion.FMI_2_0:
-        runtime_name: str = "runtime_fmi2.c"
-        interface: FmuBinaryInterface = FmuBinaryInterface.FMI_TWO_CO_SIMULATION
+    if cfg.fmi_version == FmiVersion.FMI_1_0:
+        runtime_name: str = "runtime_fmi1.c"
+        interface: FmuBinaryInterface = FmuBinaryInterface.FMI_ONE_CO_SIMULATION
     else:
-        if cfg.fmi_version == FmiVersion.FMI_3_0:
-            runtime_name = "runtime_fmi3.c"
-            interface = FmuBinaryInterface.FMI_THREE_CO_SIMULATION
+        if cfg.fmi_version == FmiVersion.FMI_2_0:
+            runtime_name = "runtime_fmi2.c"
+            interface = FmuBinaryInterface.FMI_TWO_CO_SIMULATION
         else:
-            raise NotImplementedError(
-                f"FMI {cfg.fmi_version.value} Co-Simulation build is not implemented"
-            )
+            if cfg.fmi_version == FmiVersion.FMI_3_0:
+                runtime_name = "runtime_fmi3.c"
+                interface = FmuBinaryInterface.FMI_THREE_CO_SIMULATION
+            else:
+                raise NotImplementedError(
+                    f"FMI {cfg.fmi_version.value} Co-Simulation build is not implemented"
+                )
     source_files: tuple[Path, ...] = (
         source_root / runtime_name,
         source_root / "model_instance.c",
@@ -395,4 +404,9 @@ def build_shared_library(cfg: ExportConfig, source_dir: Path, build_dir: Path) -
         include_directories=include_directories,
         output_path=output_path,
         interface=interface,
+        model_identifier=(
+            cfg.model_identifier
+            if cfg.fmi_version == FmiVersion.FMI_1_0
+            else None
+        ),
     )

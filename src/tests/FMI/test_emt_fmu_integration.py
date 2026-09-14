@@ -39,7 +39,7 @@ from tests.FMI.fmi_test_support import (
 
 @pytest.mark.skipif(not host_build_capable(), reason="No usable host build toolchain available")
 def test_emt_fmu_co_simulation_runs_end_to_end(tmp_path: Path) -> None:
-    """Compare FMI 2 and FMI 3 CS through the complete EMT product path.
+    """Compare FMI 1, FMI 2, and FMI 3 CS through the EMT product path.
 
     :param tmp_path: Isolated FMU and native staging directory supplied by pytest.
     :return: None.
@@ -47,9 +47,12 @@ def test_emt_fmu_co_simulation_runs_end_to_end(tmp_path: Path) -> None:
 
     pytest.importorskip("fmpy")
     versions: tuple[FmiVersion, ...] = (
+        FmiVersion.FMI_1_0,
         FmiVersion.FMI_2_0,
         FmiVersion.FMI_3_0,
     )
+    fmi_one_time: np.ndarray | None = None
+    fmi_one_currents: np.ndarray | None = None
     fmi_two_time: np.ndarray | None = None
     fmi_two_currents: np.ndarray | None = None
     fmi_three_time: np.ndarray | None = None
@@ -128,24 +131,39 @@ def test_emt_fmu_co_simulation_runs_end_to_end(tmp_path: Path) -> None:
             rtol=0.0,
             atol=1.0e-12,
         )
-        if fmi_version == FmiVersion.FMI_2_0:
-            fmi_two_time = time_seconds
-            fmi_two_currents = currents
+        if fmi_version == FmiVersion.FMI_1_0:
+            fmi_one_time = time_seconds
+            fmi_one_currents = currents
         else:
-            if fmi_version == FmiVersion.FMI_3_0:
-                fmi_three_time = time_seconds
-                fmi_three_currents = currents
+            if fmi_version == FmiVersion.FMI_2_0:
+                fmi_two_time = time_seconds
+                fmi_two_currents = currents
             else:
-                raise AssertionError(f"Unexpected FMI version: {fmi_version.value}")
+                if fmi_version == FmiVersion.FMI_3_0:
+                    fmi_three_time = time_seconds
+                    fmi_three_currents = currents
+                else:
+                    raise AssertionError(
+                        f"Unexpected FMI version: {fmi_version.value}"
+                    )
         assert fmu_path.exists()
         assert tuple(run_directory.glob("veragrid_fmu_stage_*")) == tuple()
 
     if (
-        fmi_two_time is not None
+        fmi_one_time is not None
+        and fmi_one_currents is not None
+        and fmi_two_time is not None
         and fmi_two_currents is not None
         and fmi_three_time is not None
         and fmi_three_currents is not None
     ):
+        assert bool(np.array_equal(fmi_one_time, fmi_two_time))
+        np.testing.assert_allclose(
+            fmi_one_currents,
+            fmi_two_currents,
+            rtol=0.0,
+            atol=1.0e-12,
+        )
         assert bool(np.array_equal(fmi_two_time, fmi_three_time))
         np.testing.assert_allclose(
             fmi_two_currents,
@@ -163,7 +181,7 @@ def test_emt_fmu_model_exchange_runs_end_to_end(
     tmp_path: Path,
     solver_tpe: EmtSolverTypes,
 ) -> None:
-    """Compare FMI 2 and FMI 3 ME through one EMT solver backend.
+    """Compare FMI 1, FMI 2, and FMI 3 ME through one EMT solver backend.
 
     :param tmp_path: Isolated FMU and native staging directory supplied by pytest.
     :param solver_tpe: EMT Jacobian backend under test.
@@ -172,9 +190,12 @@ def test_emt_fmu_model_exchange_runs_end_to_end(
 
     pytest.importorskip("fmpy")
     versions: tuple[FmiVersion, ...] = (
+        FmiVersion.FMI_1_0,
         FmiVersion.FMI_2_0,
         FmiVersion.FMI_3_0,
     )
+    fmi_one_time: np.ndarray | None = None
+    fmi_one_currents: np.ndarray | None = None
     fmi_two_time: np.ndarray | None = None
     fmi_two_currents: np.ndarray | None = None
     fmi_three_time: np.ndarray | None = None
@@ -313,24 +334,39 @@ def test_emt_fmu_model_exchange_runs_end_to_end(
                 assert input_var is matching_input_vars[0]
                 assert input_var.ref == reference
 
-        if fmi_version == FmiVersion.FMI_2_0:
-            fmi_two_time = time_seconds
-            fmi_two_currents = currents
+        if fmi_version == FmiVersion.FMI_1_0:
+            fmi_one_time = time_seconds
+            fmi_one_currents = currents
         else:
-            if fmi_version == FmiVersion.FMI_3_0:
-                fmi_three_time = time_seconds
-                fmi_three_currents = currents
+            if fmi_version == FmiVersion.FMI_2_0:
+                fmi_two_time = time_seconds
+                fmi_two_currents = currents
             else:
-                raise AssertionError(f"Unexpected FMI version: {fmi_version.value}")
+                if fmi_version == FmiVersion.FMI_3_0:
+                    fmi_three_time = time_seconds
+                    fmi_three_currents = currents
+                else:
+                    raise AssertionError(
+                        f"Unexpected FMI version: {fmi_version.value}"
+                    )
         assert fmu_path.exists()
         assert tuple(run_directory.glob("veragrid_fmu_stage_*")) == tuple()
 
     if (
-        fmi_two_time is not None
+        fmi_one_time is not None
+        and fmi_one_currents is not None
+        and fmi_two_time is not None
         and fmi_two_currents is not None
         and fmi_three_time is not None
         and fmi_three_currents is not None
     ):
+        assert bool(np.array_equal(fmi_one_time, fmi_two_time))
+        np.testing.assert_allclose(
+            fmi_one_currents,
+            fmi_two_currents,
+            rtol=0.0,
+            atol=1.0e-12,
+        )
         assert bool(np.array_equal(fmi_two_time, fmi_three_time))
         np.testing.assert_allclose(
             fmi_two_currents,

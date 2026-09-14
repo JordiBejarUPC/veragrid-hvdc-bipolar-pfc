@@ -90,7 +90,7 @@ def binary_directory(target_platform: TargetPlatform, fmi_version: FmiVersion) -
     :return: Standard relative binary-directory name.
     """
 
-    if fmi_version == FmiVersion.FMI_2_0:
+    if fmi_version in (FmiVersion.FMI_1_0, FmiVersion.FMI_2_0):
         if target_platform == TargetPlatform.WIN64:
             directory_name: str = "win64"
         else:

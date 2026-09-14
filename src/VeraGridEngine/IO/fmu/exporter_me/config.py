@@ -160,10 +160,11 @@ class ExportConfig:
         :return: None.
         """
 
-        # Version recognition and exporter capability are separate contracts.
-        # Keep the existing FMI 2 pipeline fail-closed until another version's
-        # XML, ABI, runtime, and packaging implementation is connected.
-        if self.fmi_version == FmiVersion.FMI_2_0 or self.fmi_version == FmiVersion.FMI_3_0:
+        if self.fmi_version in (
+            FmiVersion.FMI_1_0,
+            FmiVersion.FMI_2_0,
+            FmiVersion.FMI_3_0,
+        ):
             pass
         else:
             raise NotImplementedError(

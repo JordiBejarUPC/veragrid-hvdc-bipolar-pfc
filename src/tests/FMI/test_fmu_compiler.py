@@ -215,10 +215,27 @@ def test_binary_header_matching(
 
 
 def test_fmi_symbol_inventories_are_complete_and_distinct() -> None:
-    """Own complete, nonempty, interface-specific FMI 2 symbol sets.
+    """Own complete, nonempty, interface-specific FMI symbol sets.
 
     :return: None.
     """
+
+    fmi_one_cs_symbols: tuple[str, ...] = _required_fmi_symbols(
+        FmuBinaryInterface.FMI_ONE_CO_SIMULATION,
+        "CertifiedModel",
+    )
+    fmi_one_me_symbols: tuple[str, ...] = _required_fmi_symbols(
+        FmuBinaryInterface.FMI_ONE_MODEL_EXCHANGE,
+        "CertifiedModel",
+    )
+    assert len(fmi_one_cs_symbols) == 25
+    assert len(fmi_one_me_symbols) == 24
+    assert "CertifiedModel_fmiDoStep" in fmi_one_cs_symbols
+    assert "CertifiedModel_fmiDoStep" not in fmi_one_me_symbols
+    assert "CertifiedModel_fmiGetDerivatives" in fmi_one_me_symbols
+    assert "CertifiedModel_fmiGetDerivatives" not in fmi_one_cs_symbols
+    with pytest.raises(ValueError, match="explicit model identifier"):
+        _required_fmi_symbols(FmuBinaryInterface.FMI_ONE_CO_SIMULATION)
 
     cs_symbols: tuple[str, ...] = _required_fmi_symbols(FmuBinaryInterface.FMI_TWO_CO_SIMULATION)
     me_symbols: tuple[str, ...] = _required_fmi_symbols(FmuBinaryInterface.FMI_TWO_MODEL_EXCHANGE)
@@ -231,6 +248,16 @@ def test_fmi_symbol_inventories_are_complete_and_distinct() -> None:
 
     darwin_inventory: str = "\n".join("_" + symbol + " T 0 0" for symbol in cs_symbols)
     assert _missing_exported_symbols(darwin_inventory, FmuBinaryInterface.FMI_TWO_CO_SIMULATION, "darwin") == tuple()
+
+    fmi_one_inventory: str = "\n".join(
+        "_" + symbol + " T 0 0" for symbol in fmi_one_cs_symbols
+    )
+    assert _missing_exported_symbols(
+        fmi_one_inventory,
+        FmuBinaryInterface.FMI_ONE_CO_SIMULATION,
+        "darwin",
+        "CertifiedModel",
+    ) == tuple()
 
 
 @pytest.mark.parametrize(
@@ -303,7 +330,7 @@ def test_compiler_rejects_missing_source(tmp_path: Path) -> None:
 
 @pytest.mark.skipif(not fmu_compiler_available(), reason="The reviewed compiler archive has not been provisioned on this host")
 def test_compiler_rejects_binary_without_fmi_symbols(tmp_path: Path) -> None:
-    """Compile a valid shared library and reject its absent FMI 2 contract.
+    """Compile a valid shared library and reject its absent FMI 1 contract.
 
     :param tmp_path: Isolated source, build, and output directory from pytest.
     :return: None.
@@ -324,7 +351,13 @@ def test_compiler_rejects_binary_without_fmi_symbols(tmp_path: Path) -> None:
                 pytest.fail("The provisioned compiler reports an unsupported host")
                 library_suffix = ""
     with pytest.raises(RuntimeError, match="missing required symbols"):
-        compile_fmu_shared_library((source_path,), (tmp_path,), tmp_path / ("not_an_fmu" + library_suffix), FmuBinaryInterface.FMI_TWO_CO_SIMULATION)
+        compile_fmu_shared_library(
+            (source_path,),
+            (tmp_path,),
+            tmp_path / ("not_an_fmu" + library_suffix),
+            FmuBinaryInterface.FMI_ONE_CO_SIMULATION,
+            "MissingSymbols",
+        )
 
 
 def test_availability_rejects_corrupted_cached_archive(tmp_path: Path) -> None:
