@@ -13,7 +13,7 @@ from VeraGridEngine.basic_structures import (
     IntVec,
     Logger,
 )
-from VeraGridEngine.enumerations import SolverType
+from VeraGridEngine.enumerations import BranchImpedanceMode, SolverType
 import numpy as np
 import time
 from typing import TYPE_CHECKING, Union
@@ -36,6 +36,9 @@ def get_gslv_pf_options(opt: PowerFlowOptions) -> "pg.PowerFlowOptions":
                    SolverType.LACPF: pg.SolverType.LACPF,
                    SolverType.FASTDECOUPLED: pg.SolverType.FASTDECOUPLED
                    }
+    branch_impedance_mode_dict = {BranchImpedanceMode.Specified: pg.BranchImpedanceMode.Specified,
+                                  BranchImpedanceMode.Upper: pg.BranchImpedanceMode.Upper,
+                                  BranchImpedanceMode.Lower: pg.BranchImpedanceMode.Lower}
 
     if opt.solver_type in solver_dict.keys():
         solver_type = solver_dict[opt.solver_type]
@@ -64,7 +67,6 @@ def get_gslv_pf_options(opt: PowerFlowOptions) -> "pg.PowerFlowOptions":
     initialize_with_existing_solution: bool = False, 
     tolerance: float = 1e-06, 
     max_iter: int = 25, 
-    max_outer_loop_iter: int = 100, 
     control_Q: bool = True, 
     control_taps_modules: bool = True, 
     control_taps_phase: bool = True, 
@@ -88,19 +90,23 @@ def get_gslv_pf_options(opt: PowerFlowOptions) -> "pg.PowerFlowOptions":
         initialize_with_existing_solution=opt.use_stored_guess,
         tolerance=opt.tolerance,
         max_iter=opt.max_iter,
-        control_Q=opt.control_Q,
+        limit_i_vsc=opt.limit_i_vsc,
+        control_q=opt.control_Q,
         control_taps_modules=opt.control_taps_modules,
         control_taps_phase=opt.control_taps_phase,
         control_remote_voltage=opt.control_remote_voltage,
         orthogonalize_controls=opt.orthogonalize_controls,
-        apply_temperature_correction=opt.orthogonalize_controls,
-        branch_impedance_tolerance_mode=pg.BranchImpedanceMode.Specified,
+        apply_temperature_correction=opt.apply_temperature_correction,
+        branch_impedance_tolerance_mode=branch_impedance_mode_dict[opt.branch_impedance_tolerance_mode],
         distributed_slack=opt.distributed_slack,
         ignore_single_node_islands=opt.ignore_single_node_islands,
         trust_radius=opt.trust_radius,
         backtracking_parameter=opt.backtracking_parameter,
         use_stored_guess=opt.use_stored_guess,
-        generate_report=opt.generate_report
+        initialize_angles=opt.initialize_angles,
+        generate_report=opt.generate_report,
+        controls_start_tolerance=opt.controls_start_tolerance,
+        use_autodiff_jacobian=opt.use_autodiff_jacobian,
     )
 
 def gslv_pf(circuit: MultiCircuit,
