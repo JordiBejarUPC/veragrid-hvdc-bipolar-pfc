@@ -549,3 +549,13 @@ toolchain are authenticated external prerequisites and are never copied into
 VeraGrid or into the evidence package. This lane proves the recorded Windows
 FMI 1.0 CS path; it does not claim unmodified-upstream runtime, certification,
 multiplatform support or numerical equivalence with VeraGrid.
+
+## Simulink first-order commercial replay
+
+`simulink_first_order` owns the maintained licensed Simulink replay for the
+normalized first-order fixture across FMI 1.0, 2.0, and 3.0, Co-Simulation and
+Model Exchange. Its Python and MATLAB recipes are tracked here; every FMU,
+Simulink model, trace, receipt, and figure is generated in a caller-selected
+external directory. See `simulink_first_order/README.md` for the authenticated
+end-to-end procedure and the distinction between historical lineage and a
+fresh replay.
