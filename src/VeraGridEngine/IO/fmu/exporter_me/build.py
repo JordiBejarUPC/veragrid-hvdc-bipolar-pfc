@@ -10,7 +10,7 @@ import shutil
 import tempfile
 import os
 
-from VeraGridEngine.IO.fmu.compiler import FmuBinaryInterface, compile_fmu_shared_library
+from VeraGridEngine.IO.fmu.compiler import FmuBinaryInterface, FmuCompilerSession, compile_fmu_shared_library
 from VeraGridEngine.enumerations import FmiVersion
 from VeraGridEngine.IO.fmu.exporter_me.config import ExportConfig
 from VeraGridEngine.IO.fmu.exporter_me.expr_to_c import ExprToCVisitor
@@ -414,12 +414,18 @@ def write_debug_resources(export_model: ExportModel, cfg: ExportConfig, resource
         _write_text(resources_dir / "snapshot.json", json.dumps(_json_compatible(export_model.source_snapshot), indent=2, sort_keys=True))
 
 
-def build_shared_library(cfg: ExportConfig, source_dir: Path, build_dir: Path) -> Path:
+def build_shared_library(
+    cfg: ExportConfig,
+    source_dir: Path,
+    build_dir: Path,
+    compiler_session: FmuCompilerSession | None = None,
+) -> Path:
     """Build the shared library for the selected FMI generation.
 
     :param cfg: Export configuration.
     :param source_dir: Generated C source directory.
     :param build_dir: Binary output directory.
+    :param compiler_session: Optional caller-owned sequential compiler session.
     :return: Built shared-library path.
     """
 
@@ -458,4 +464,5 @@ def build_shared_library(cfg: ExportConfig, source_dir: Path, build_dir: Path) -
             if cfg.fmi_version == FmiVersion.FMI_1_0
             else None
         ),
+        compiler_session=compiler_session,
     )

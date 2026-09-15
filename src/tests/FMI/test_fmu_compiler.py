@@ -4,8 +4,13 @@
 # SPDX-License-Identifier: MPL-2.0
 from pathlib import Path, PurePosixPath
 import hashlib
+import inspect
+import os
+import pickle
 import platform
 import shutil
+import threading
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 import clang_tool_chain_bins
@@ -13,10 +18,13 @@ from clang_tool_chain_bins import ToolMatch
 
 from VeraGridEngine.IO.fmu.compiler import (
     FmuBinaryInterface,
+    FmuCompilerSession,
     _archive_matches,
     _binary_header_matches,
     _compile_command,
     _compiler_available,
+    _close_owned_compiler_session,
+    _create_compiler_session_tools,
     _download_verified_archive,
     _expand_verified_archive,
     _host_toolchain_selection,
@@ -29,6 +37,54 @@ from VeraGridEngine.IO.fmu.compiler import (
     compile_fmu_shared_library,
     fmu_compiler_available,
 )
+
+
+def _write_complete_fmi_two_cs_stub(source_path: Path) -> None:
+    """Write a minimal C translation unit exporting every FMI 2 CS symbol.
+
+    :param source_path: Destination C source path.
+    :return: None.
+    """
+
+    symbols: tuple[str, ...] = _required_fmi_symbols(FmuBinaryInterface.FMI_TWO_CO_SIMULATION)
+    lines: list[str] = [
+        "#if defined(_WIN32)",
+        "#define VG_EXPORT __declspec(dllexport)",
+        "#else",
+        "#define VG_EXPORT __attribute__((visibility(\"default\")))",
+        "#endif",
+    ]
+    symbol: str
+    for symbol in symbols:
+        lines.append("VG_EXPORT int " + symbol + "(void) { return 0; }")
+    source_path.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+
+
+def _build_synthetic_session_for_cleanup_failure(tmp_path: Path) -> FmuCompilerSession:
+    """Build a non-executing session state whose workspace removal fails.
+
+    :param tmp_path: Isolated test directory.
+    :return: Session object used only for lifecycle guard tests.
+    """
+
+    workspace_path: Path = tmp_path / "workspace-is-a-file"
+    workspace_path.write_bytes(b"not a directory")
+    compiler_session: FmuCompilerSession = FmuCompilerSession.__new__(FmuCompilerSession)
+    compiler_session._workspace_root = workspace_path
+    compiler_session._compiler_path = workspace_path
+    compiler_session._linker_path = workspace_path
+    compiler_session._nm_path = workspace_path
+    compiler_session._objdump_path = workspace_path
+    compiler_session._package_platform = "win"
+    compiler_session._package_arch = "mingw-x86_64"
+    compiler_session._target_triple = "x86_64-w64-windows-gnu"
+    compiler_session._library_suffix = ".dll"
+    compiler_session._tool_hashes = ("", "", "", "")
+    compiler_session._creator_pid = os.getpid()
+    compiler_session._creator_thread = threading.current_thread()
+    compiler_session._compile_active = False
+    compiler_session._closed = False
+    return compiler_session
 
 
 @pytest.mark.parametrize(
@@ -530,3 +586,249 @@ def test_compiler_rejects_foreign_library_suffix(tmp_path: Path) -> None:
             tmp_path / ("model" + foreign_suffix),
             FmuBinaryInterface.FMI_TWO_CO_SIMULATION,
         )
+
+
+@pytest.mark.skipif(not fmu_compiler_available(), reason="The reviewed compiler archive has not been provisioned on this host")
+def test_compiler_session_reuses_one_extraction_and_closes(tmp_path: Path) -> None:
+    """Compile twice through one extraction and remove it exactly once.
+
+    :param tmp_path: Isolated source and binary directory.
+    :return: None.
+    """
+
+    source_path: Path = tmp_path / "complete.c"
+    _write_complete_fmi_two_cs_stub(source_path)
+    library_suffix: str = _host_toolchain_selection(platform.system().lower(), platform.machine().lower())[4]
+    compiler_session: FmuCompilerSession = FmuCompilerSession()
+    workspace_root: Path = compiler_session._workspace_root
+    try:
+        first_path: Path = compiler_session.compile_shared_library(
+            (source_path,), (tmp_path,), tmp_path / ("first" + library_suffix), FmuBinaryInterface.FMI_TWO_CO_SIMULATION,
+        )
+        second_path: Path = compiler_session.compile_shared_library(
+            (source_path,), (tmp_path,), tmp_path / ("second" + library_suffix), FmuBinaryInterface.FMI_TWO_CO_SIMULATION,
+        )
+        assert first_path.is_file()
+        assert second_path.is_file()
+        assert workspace_root.is_dir()
+    finally:
+        compiler_session.close()
+    assert not workspace_root.exists()
+    compiler_session.close()
+    assert compiler_session._closed
+
+
+def test_compiler_session_rejects_use_after_close(tmp_path: Path) -> None:
+    """Reject a compile before touching inputs when the session is closed.
+
+    :param tmp_path: Isolated synthetic state directory.
+    :return: None.
+    """
+
+    compiler_session: FmuCompilerSession = _build_synthetic_session_for_cleanup_failure(tmp_path)
+    compiler_session._closed = True
+    with pytest.raises(RuntimeError, match="closed"):
+        compiler_session.compile_shared_library(tuple(), tuple(), tmp_path / "unused.dll", FmuBinaryInterface.FMI_TWO_CO_SIMULATION)
+
+
+def test_compiler_session_rejects_cross_thread_use_and_close(tmp_path: Path) -> None:
+    """Reject compile and close from a different Thread object.
+
+    :param tmp_path: Isolated synthetic state directory.
+    :return: None.
+    """
+
+    compiler_session: FmuCompilerSession = _build_synthetic_session_for_cleanup_failure(tmp_path)
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        compile_future = executor.submit(
+            compiler_session.compile_shared_library,
+            tuple(), tuple(), tmp_path / "unused.dll", FmuBinaryInterface.FMI_TWO_CO_SIMULATION,
+        )
+        close_future = executor.submit(compiler_session.close)
+        with pytest.raises(RuntimeError, match="creating process and thread"):
+            compile_future.result()
+        with pytest.raises(RuntimeError, match="creating process and thread"):
+            close_future.result()
+
+
+def test_compiler_session_rejects_pid_mismatch(tmp_path: Path) -> None:
+    """Reject an inherited session whose creator process differs.
+
+    :param tmp_path: Isolated synthetic state directory.
+    :return: None.
+    """
+
+    compiler_session: FmuCompilerSession = _build_synthetic_session_for_cleanup_failure(tmp_path)
+    compiler_session._creator_pid = os.getpid() + 1
+    with pytest.raises(RuntimeError, match="creating process and thread"):
+        compiler_session.close()
+
+
+def test_compiler_session_rejects_serialization(tmp_path: Path) -> None:
+    """Reject pickle transport of process-local executable ownership.
+
+    :param tmp_path: Isolated synthetic state directory.
+    :return: None.
+    """
+
+    compiler_session: FmuCompilerSession = _build_synthetic_session_for_cleanup_failure(tmp_path)
+    with pytest.raises(TypeError, match="cannot be serialized"):
+        pickle.dumps(compiler_session)
+
+
+def test_compiler_session_rejects_tool_identity_drift(tmp_path: Path) -> None:
+    """Reject a tool whose bytes changed after initial authentication.
+
+    :param tmp_path: Isolated synthetic tool directory.
+    :return: None.
+    """
+
+    compiler_session: FmuCompilerSession = _build_synthetic_session_for_cleanup_failure(tmp_path)
+    compiler_session._workspace_root.unlink()
+    compiler_session._workspace_root.mkdir()
+    tool_paths: list[Path] = [compiler_session._workspace_root / ("tool" + str(index)) for index in range(4)]
+    tool_path: Path
+    for tool_path in tool_paths:
+        tool_path.write_bytes(b"reviewed")
+    compiler_session._compiler_path, compiler_session._linker_path, compiler_session._nm_path, compiler_session._objdump_path = tool_paths
+    tool_hash: str = hashlib.sha256(b"reviewed").hexdigest()
+    compiler_session._tool_hashes = (tool_hash, tool_hash, tool_hash, tool_hash)
+    compiler_session._assert_tools_unchanged()
+    tool_paths[0].write_bytes(b"changed")
+    with pytest.raises(RuntimeError, match="changed"):
+        compiler_session._assert_tools_unchanged()
+
+
+def test_compiler_session_rejects_symlinked_tool(tmp_path: Path) -> None:
+    """Reject a tool path replaced by a symbolic link.
+
+    :param tmp_path: Isolated synthetic tool directory.
+    :return: None.
+    """
+
+    compiler_session: FmuCompilerSession = _build_synthetic_session_for_cleanup_failure(tmp_path)
+    compiler_session._workspace_root.unlink()
+    compiler_session._workspace_root.mkdir()
+    target_path: Path = compiler_session._workspace_root / "target"
+    link_path: Path = compiler_session._workspace_root / "link"
+    target_path.write_bytes(b"reviewed")
+    try:
+        link_path.symlink_to(target_path)
+    except OSError:
+        pytest.skip("This host does not permit test symbolic links")
+    compiler_session._compiler_path = link_path
+    compiler_session._linker_path = target_path
+    compiler_session._nm_path = target_path
+    compiler_session._objdump_path = target_path
+    tool_hash: str = hashlib.sha256(b"reviewed").hexdigest()
+    compiler_session._tool_hashes = (tool_hash, tool_hash, tool_hash, tool_hash)
+    with pytest.raises(RuntimeError, match="no longer trusted"):
+        compiler_session._assert_tools_unchanged()
+
+
+def test_compiler_session_rejects_reentry_and_close_during_compile(tmp_path: Path) -> None:
+    """Reject reentry and cleanup while the session is marked active.
+
+    :param tmp_path: Isolated synthetic state directory.
+    :return: None.
+    """
+
+    compiler_session: FmuCompilerSession = _build_synthetic_session_for_cleanup_failure(tmp_path)
+    compiler_session._compile_active = True
+    with pytest.raises(RuntimeError, match="reentered"):
+        compiler_session.compile_shared_library(tuple(), tuple(), tmp_path / "unused.dll", FmuBinaryInterface.FMI_TWO_CO_SIMULATION)
+    with pytest.raises(RuntimeError, match="during compilation"):
+        compiler_session.close()
+
+
+def test_compiler_session_cleanup_failure_is_retriable(tmp_path: Path) -> None:
+    """Keep cleanup retryable until the exact workspace is absent.
+
+    :param tmp_path: Isolated synthetic state directory.
+    :return: None.
+    """
+
+    compiler_session: FmuCompilerSession = _build_synthetic_session_for_cleanup_failure(tmp_path)
+    with pytest.raises(OSError):
+        compiler_session.close()
+    assert not compiler_session._closed
+    compiler_session._workspace_root.unlink()
+    compiler_session._workspace_root.mkdir()
+    compiler_session.close()
+    assert compiler_session._closed
+
+
+def test_owned_session_cleanup_failure_preserves_primary_error(tmp_path: Path) -> None:
+    """Raise the work error from cleanup when both operations fail.
+
+    :param tmp_path: Isolated synthetic state directory.
+    :return: None.
+    """
+
+    compiler_session: FmuCompilerSession = _build_synthetic_session_for_cleanup_failure(tmp_path)
+    primary_error: ValueError = ValueError("primary compilation failure")
+    with pytest.raises(ValueError, match="primary compilation failure") as captured:
+        _close_owned_compiler_session(compiler_session, primary_error)
+    assert isinstance(captured.value.__cause__, OSError)
+
+
+@pytest.mark.skipif(not fmu_compiler_available(), reason="The reviewed compiler archive has not been provisioned on this host")
+def test_compiler_session_remains_reusable_after_compile_failure(tmp_path: Path) -> None:
+    """Clear active state after failure so a valid compile can follow.
+
+    :param tmp_path: Isolated source and binary directory.
+    :return: None.
+    """
+
+    source_path: Path = tmp_path / "model.c"
+    source_path.write_text("this is invalid C\n", encoding="utf-8")
+    library_suffix: str = _host_toolchain_selection(platform.system().lower(), platform.machine().lower())[4]
+    compiler_session: FmuCompilerSession = FmuCompilerSession()
+    try:
+        with pytest.raises(RuntimeError, match="Clang failed"):
+            compiler_session.compile_shared_library(
+                (source_path,), (tmp_path,), tmp_path / ("invalid" + library_suffix), FmuBinaryInterface.FMI_TWO_CO_SIMULATION,
+            )
+        assert not compiler_session._compile_active
+        _write_complete_fmi_two_cs_stub(source_path)
+        valid_path: Path = compiler_session.compile_shared_library(
+            (source_path,), (tmp_path,), tmp_path / ("valid" + library_suffix), FmuBinaryInterface.FMI_TWO_CO_SIMULATION,
+        )
+        assert valid_path.is_file()
+    finally:
+        compiler_session.close()
+
+
+def test_compiler_session_initialization_failure_cleans_workspace(tmp_path: Path) -> None:
+    """Remove the private root when archive authentication fails during init.
+
+    :param tmp_path: Isolated session parent and corrupt cache.
+    :return: None.
+    """
+
+    session_parent: Path = tmp_path / "sessions"
+    session_parent.mkdir()
+    cache_root: Path = tmp_path / "cache"
+    cache_root.mkdir()
+    selection: tuple[str, str, str, str, str, str, str] = _host_toolchain_selection(platform.system().lower(), platform.machine().lower())
+    compiler_match: ToolMatch = clang_tool_chain_bins.resolve_one(
+        "clang", index_path=_toolchain_index_path(), platform=selection[0], arch=selection[1], version=selection[2], component="clang",
+    )
+    archive_name: str = "clang-" + selection[0] + "-" + selection[1] + "-" + selection[5][:16] + ".tar.zst"
+    (cache_root / archive_name).write_bytes(b"corrupt")
+    assert compiler_match.archive_sha256 == selection[5]
+    with pytest.raises(RuntimeError, match="SHA-256 validation"):
+        _create_compiler_session_tools(session_parent, cache_root)
+    assert list(session_parent.iterdir()) == list()
+
+
+def test_compiler_session_initialization_and_cleanup_failure_preserves_primary_error() -> None:
+    """Require Python 3.8-compatible primary-from-cleanup constructor logic.
+
+    :return: None.
+    """
+
+    source_text: str = inspect.getsource(_create_compiler_session_tools)
+    assert "raise initialization_error from cleanup_error" in source_text
+    assert "add_note" not in source_text
+    assert "ExceptionGroup" not in source_text

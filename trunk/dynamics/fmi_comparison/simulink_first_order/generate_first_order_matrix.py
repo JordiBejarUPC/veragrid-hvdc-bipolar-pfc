@@ -21,6 +21,7 @@ import VeraGridEngine
 import VeraGridEngine.IO.fmu.exporter.api as cs_exporter_api
 import VeraGridEngine.IO.fmu.exporter_me.api as me_exporter_api
 from VeraGridEngine.enumerations import FmiVersion
+from VeraGridEngine.IO.fmu.compiler import FmuCompilerSession
 from VeraGridEngine.IO.fmu.exporter.api import export_fmu
 from VeraGridEngine.IO.fmu.exporter.compat import Block, Const, Var
 from VeraGridEngine.IO.fmu.exporter.config import (
@@ -400,201 +401,214 @@ def main() -> None:
             be_input = 0.0
         be_x[be_index + 1] = (be_x[be_index] + 0.01 * be_input) / 1.01
 
-    version: FmiVersion
-    interface: str
-    for version in versions:
-        for interface in interfaces:
-            cell_id: str = f"fmi{version.value.replace('.', '')}_{interface}"
-            model_name: str = (
-                f"VGFirstOrder{arguments.expected_head[:12]}_{cell_id.upper()}"
-            )
-            fmu_path: Path = fmu_dir / f"{model_name}.fmu"
-            cell: dict[str, object] = {
-                "cell_id": cell_id,
-                "fmi_version_requested": version.value,
-                "interface_requested": interface,
-                "model_name_requested": model_name,
-                "status": "FAIL",
-            }
-            try:
-                if interface == "cs":
-                    generated_path: Path = export_fmu(
-                        build_first_order_block(),
-                        CsExportConfig(
-                            model_name=model_name,
-                            output_path=fmu_path,
-                            target_platform=detect_cs_target_platform(),
-                            compile_binary=True,
-                            keep_build_dir=True,
-                            fixed_step=0.001,
-                            build_dir=build_root / cell_id,
-                            staging_dir=staging_root / cell_id,
-                            fmi_version=version,
-                        ),
-                    )
-                    fmi_type: str = "CoSimulation"
-                elif interface == "me":
-                    generated_path = export_fmu_me(
-                        build_first_order_block(),
-                        MeExportConfig(
-                            model_name=model_name,
-                            output_path=fmu_path,
-                            target_platform=detect_me_target_platform(),
-                            compile_binary=True,
-                            keep_build_dir=True,
-                            fixed_step=0.001,
-                            build_dir=build_root / cell_id,
-                            staging_dir=staging_root / cell_id,
-                            fmi_version=version,
-                        ),
-                    )
-                    fmi_type = "ModelExchange"
-                else:
-                    raise RuntimeError(f"Unsupported interface {interface}")
-
-                model_description: object = read_model_description(
-                    str(generated_path), validate=True
+    compiler_session: FmuCompilerSession = FmuCompilerSession()
+    try:
+        version: FmiVersion
+        interface: str
+        for version in versions:
+            for interface in interfaces:
+                cell_id: str = f"fmi{version.value.replace('.', '')}_{interface}"
+                model_name: str = (
+                    f"VGFirstOrder{arguments.expected_head[:12]}_{cell_id.upper()}"
                 )
-                if interface == "cs":
-                    declared_interface: object = model_description.coSimulation
-                else:
-                    declared_interface = model_description.modelExchange
-                if declared_interface is None:
-                    raise RuntimeError("Expected FMI interface is absent")
-                else:
-                    pass
-                model_identifier: str = str(declared_interface.modelIdentifier)
-                if model_identifier in model_identifiers:
-                    raise RuntimeError(f"Duplicate model identifier {model_identifier}")
-                else:
-                    model_identifiers.add(model_identifier)
+                fmu_path: Path = fmu_dir / f"{model_name}.fmu"
+                cell: dict[str, object] = {
+                    "cell_id": cell_id,
+                    "fmi_version_requested": version.value,
+                    "interface_requested": interface,
+                    "model_name_requested": model_name,
+                    "status": "FAIL",
+                }
+                try:
+                    if interface == "cs":
+                        generated_path: Path = export_fmu(
+                            build_first_order_block(),
+                            CsExportConfig(
+                                model_name=model_name,
+                                output_path=fmu_path,
+                                target_platform=detect_cs_target_platform(),
+                                compile_binary=True,
+                                keep_build_dir=True,
+                                fixed_step=0.001,
+                                build_dir=build_root / cell_id,
+                                staging_dir=staging_root / cell_id,
+                                fmi_version=version,
+                            ),
+                            compiler_session,
+                        )
+                        fmi_type: str = "CoSimulation"
+                    elif interface == "me":
+                        generated_path = export_fmu_me(
+                            build_first_order_block(),
+                            MeExportConfig(
+                                model_name=model_name,
+                                output_path=fmu_path,
+                                target_platform=detect_me_target_platform(),
+                                compile_binary=True,
+                                keep_build_dir=True,
+                                fixed_step=0.001,
+                                build_dir=build_root / cell_id,
+                                staging_dir=staging_root / cell_id,
+                                fmi_version=version,
+                            ),
+                            compiler_session,
+                        )
+                        fmi_type = "ModelExchange"
+                    else:
+                        raise RuntimeError(f"Unsupported interface {interface}")
 
-                input_names: list[str] = list()
-                output_names: list[str] = list()
-                variable: object
-                for variable in model_description.modelVariables:
-                    if str(variable.causality) == "input":
-                        input_names.append(str(variable.name))
-                    elif str(variable.causality) == "output":
-                        output_names.append(str(variable.name))
+                    model_description: object = read_model_description(
+                        str(generated_path), validate=True
+                    )
+                    if interface == "cs":
+                        declared_interface: object = model_description.coSimulation
+                    else:
+                        declared_interface = model_description.modelExchange
+                    if declared_interface is None:
+                        raise RuntimeError("Expected FMI interface is absent")
                     else:
                         pass
-                if input_names != ["u"] or output_names != ["x"]:
-                    raise RuntimeError(
-                        f"Unexpected variables inputs={input_names} outputs={output_names}"
-                    )
-                else:
-                    pass
+                    model_identifier: str = str(declared_interface.modelIdentifier)
+                    if model_identifier in model_identifiers:
+                        raise RuntimeError(f"Duplicate model identifier {model_identifier}")
+                    else:
+                        model_identifiers.add(model_identifier)
 
-                with zipfile.ZipFile(generated_path, "r") as archive:
-                    archive_members: list[str] = archive.namelist()
-                binary_members: list[str] = list()
-                archive_member: str
-                for archive_member in archive_members:
-                    if archive_member.lower().startswith("binaries/") and archive_member.lower().endswith(".dll"):
-                        binary_members.append(archive_member)
+                    input_names: list[str] = list()
+                    output_names: list[str] = list()
+                    variable: object
+                    for variable in model_description.modelVariables:
+                        if str(variable.causality) == "input":
+                            input_names.append(str(variable.name))
+                        elif str(variable.causality) == "output":
+                            output_names.append(str(variable.name))
+                        else:
+                            pass
+                    if input_names != ["u"] or output_names != ["x"]:
+                        raise RuntimeError(
+                            f"Unexpected variables inputs={input_names} outputs={output_names}"
+                        )
                     else:
                         pass
-                if len(binary_members) == 0:
-                    raise RuntimeError("FMU archive contains no Windows DLL")
-                else:
-                    pass
 
-                raw_result: np.ndarray = simulate_fmu(
-                    filename=str(generated_path),
-                    validate=True,
-                    start_time=0.0,
-                    stop_time=1.2,
-                    solver="Euler",
-                    step_size=0.001,
-                    output_interval=0.001,
-                    record_events=True,
-                    fmi_type=fmi_type,
-                    input=input_table,
-                    output=["x"],
-                )
-                normalized_x: np.ndarray = np.empty(1201, dtype=np.float64)
-                missing_boundaries: list[float] = list()
-                boundary_index: int
-                for boundary_index in range(1201):
-                    boundary: float = float(target_time[boundary_index])
-                    matches: np.ndarray = np.flatnonzero(
-                        np.isclose(raw_result["time"], boundary, rtol=0.0, atol=5.0e-13)
-                    )
-                    if matches.size == 0:
-                        missing_boundaries.append(boundary)
-                        normalized_x[boundary_index] = np.nan
+                    with zipfile.ZipFile(generated_path, "r") as archive:
+                        archive_members: list[str] = archive.namelist()
+                    binary_members: list[str] = list()
+                    archive_member: str
+                    for archive_member in archive_members:
+                        if archive_member.lower().startswith("binaries/") and archive_member.lower().endswith(".dll"):
+                            binary_members.append(archive_member)
+                        else:
+                            pass
+                    if len(binary_members) == 0:
+                        raise RuntimeError("FMU archive contains no Windows DLL")
                     else:
-                        normalized_x[boundary_index] = float(raw_result["x"][int(matches[-1])])
-                finite: bool = bool(np.all(np.isfinite(normalized_x)))
-                if interface == "cs":
-                    primary_error: float = float(np.max(np.abs(normalized_x - be_x)))
-                    primary_tolerance: float = 2.0e-10
-                else:
-                    primary_error = float(np.max(np.abs(normalized_x - analytic_x)))
-                    primary_tolerance = 4.0e-3
-                local_pass: bool = bool(
-                    len(missing_boundaries) == 0
-                    and finite
-                    and primary_error <= primary_tolerance
-                )
+                        pass
 
-                trace_path: Path = trace_dir / f"{cell_id}.csv"
-                np.savetxt(
-                    trace_path,
-                    np.column_stack((target_time, normalized_x, analytic_x, be_x)),
-                    delimiter=",",
-                    header="time,x,analytic_x,backward_euler_x",
-                    comments="",
-                    fmt="%.17g",
-                )
-                fmu_digest: hashlib._Hash = hashlib.sha256()
-                with generated_path.open("rb") as fmu_stream:
-                    while True:
-                        fmu_chunk: bytes = fmu_stream.read(1024 * 1024)
-                        if fmu_chunk == b"":
-                            break
+                    raw_result: np.ndarray = simulate_fmu(
+                        filename=str(generated_path),
+                        validate=True,
+                        start_time=0.0,
+                        stop_time=1.2,
+                        solver="Euler",
+                        step_size=0.001,
+                        output_interval=0.001,
+                        record_events=True,
+                        fmi_type=fmi_type,
+                        input=input_table,
+                        output=["x"],
+                    )
+                    normalized_x: np.ndarray = np.empty(1201, dtype=np.float64)
+                    missing_boundaries: list[float] = list()
+                    boundary_index: int
+                    for boundary_index in range(1201):
+                        boundary: float = float(target_time[boundary_index])
+                        matches: np.ndarray = np.flatnonzero(
+                            np.isclose(raw_result["time"], boundary, rtol=0.0, atol=5.0e-13)
+                        )
+                        if matches.size == 0:
+                            missing_boundaries.append(boundary)
+                            normalized_x[boundary_index] = np.nan
                         else:
-                            fmu_digest.update(fmu_chunk)
-                trace_digest: hashlib._Hash = hashlib.sha256()
-                with trace_path.open("rb") as trace_stream:
-                    while True:
-                        trace_chunk: bytes = trace_stream.read(1024 * 1024)
-                        if trace_chunk == b"":
-                            break
-                        else:
-                            trace_digest.update(trace_chunk)
-                cell.update(
-                    {
-                        "fmi_version": str(model_description.fmiVersion),
-                        "interface": interface,
-                        "model_identifier": model_identifier,
-                        "input_names": input_names,
-                        "output_names": output_names,
-                        "binary_members": sorted(binary_members),
-                        "fmu_path": str(generated_path),
-                        "fmu_name": generated_path.name,
-                        "fmu_sha256": fmu_digest.hexdigest(),
-                        "fmu_size_bytes": int(generated_path.stat().st_size),
-                        "local_trace_path": str(trace_path),
-                        "local_trace_sha256": trace_digest.hexdigest(),
-                        "raw_record_count": int(raw_result.shape[0]),
-                        "normalized_record_count": 1201,
-                        "missing_boundaries": missing_boundaries,
-                        "finite": finite,
-                        "local_primary_reference": "backward_euler" if interface == "cs" else "analytic_continuous",
-                        "local_primary_max_abs_error": primary_error,
-                        "local_primary_tolerance": primary_tolerance,
-                        "local_solver": "FMU internal backward Euler" if interface == "cs" else "FMPy Euler smoke only",
-                        "status": "PASS" if local_pass else "FAIL",
-                    }
-                )
-            except Exception as exception:
-                cell["error_type"] = type(exception).__name__
-                cell["error_message"] = str(exception)
-                cell["traceback"] = traceback.format_exc()
-            cells.append(cell)
-            print(f"{cell_id}: {cell['status']}", flush=True)
+                            normalized_x[boundary_index] = float(raw_result["x"][int(matches[-1])])
+                    finite: bool = bool(np.all(np.isfinite(normalized_x)))
+                    if interface == "cs":
+                        primary_error: float = float(np.max(np.abs(normalized_x - be_x)))
+                        primary_tolerance: float = 2.0e-10
+                    else:
+                        primary_error = float(np.max(np.abs(normalized_x - analytic_x)))
+                        primary_tolerance = 4.0e-3
+                    local_pass: bool = bool(
+                        len(missing_boundaries) == 0
+                        and finite
+                        and primary_error <= primary_tolerance
+                    )
+
+                    trace_path: Path = trace_dir / f"{cell_id}.csv"
+                    np.savetxt(
+                        trace_path,
+                        np.column_stack((target_time, normalized_x, analytic_x, be_x)),
+                        delimiter=",",
+                        header="time,x,analytic_x,backward_euler_x",
+                        comments="",
+                        fmt="%.17g",
+                    )
+                    fmu_digest: hashlib._Hash = hashlib.sha256()
+                    with generated_path.open("rb") as fmu_stream:
+                        while True:
+                            fmu_chunk: bytes = fmu_stream.read(1024 * 1024)
+                            if fmu_chunk == b"":
+                                break
+                            else:
+                                fmu_digest.update(fmu_chunk)
+                    trace_digest: hashlib._Hash = hashlib.sha256()
+                    with trace_path.open("rb") as trace_stream:
+                        while True:
+                            trace_chunk: bytes = trace_stream.read(1024 * 1024)
+                            if trace_chunk == b"":
+                                break
+                            else:
+                                trace_digest.update(trace_chunk)
+                    cell.update(
+                        {
+                            "fmi_version": str(model_description.fmiVersion),
+                            "interface": interface,
+                            "model_identifier": model_identifier,
+                            "input_names": input_names,
+                            "output_names": output_names,
+                            "binary_members": sorted(binary_members),
+                            "fmu_path": str(generated_path),
+                            "fmu_name": generated_path.name,
+                            "fmu_sha256": fmu_digest.hexdigest(),
+                            "fmu_size_bytes": int(generated_path.stat().st_size),
+                            "local_trace_path": str(trace_path),
+                            "local_trace_sha256": trace_digest.hexdigest(),
+                            "raw_record_count": int(raw_result.shape[0]),
+                            "normalized_record_count": 1201,
+                            "missing_boundaries": missing_boundaries,
+                            "finite": finite,
+                            "local_primary_reference": "backward_euler" if interface == "cs" else "analytic_continuous",
+                            "local_primary_max_abs_error": primary_error,
+                            "local_primary_tolerance": primary_tolerance,
+                            "local_solver": "FMU internal backward Euler" if interface == "cs" else "FMPy Euler smoke only",
+                            "status": "PASS" if local_pass else "FAIL",
+                        }
+                    )
+                except Exception as exception:
+                    cell["error_type"] = type(exception).__name__
+                    cell["error_message"] = str(exception)
+                    cell["traceback"] = traceback.format_exc()
+                cells.append(cell)
+                print(f"{cell_id}: {cell['status']}", flush=True)
+
+    except BaseException as primary_error:
+        try:
+            compiler_session.close()
+        except BaseException as cleanup_error:
+            raise primary_error from cleanup_error
+        raise
+    else:
+        compiler_session.close()
 
     pass_count: int = 0
     recorded_cell: dict[str, object]

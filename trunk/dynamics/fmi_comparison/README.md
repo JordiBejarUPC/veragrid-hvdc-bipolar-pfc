@@ -4,6 +4,12 @@ This package owns reproducible FMI examples and interoperability evidence. It is
 kept under `trunk` because it is benchmark material, not part of the
 `VeraGridEngine` runtime API.
 
+Commercial first-order replays are maintained beside the open-source lanes.
+The [PowerFactory FMI 2/3 CS/ME recipe](powerfactory_first_order/README.md)
+reuses the same `0.1 dx/dt=u-x` fixture and retained Simulink lineage, keeps
+licensed/runtime artifacts outside Git, and records FMI 1 as not applicable to
+the installed PowerFactory 2025 SP4 importer.
+
 The device runner exports and executes four native cases through the public
 product interfaces:
 

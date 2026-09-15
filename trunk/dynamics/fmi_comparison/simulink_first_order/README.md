@@ -94,5 +94,5 @@ Open-source/toolchain and method evidence precede this commercial phase. A
 fresh PASS here supports only this normalized fixture on the recorded licensed
 host. It is not an FMI certification-authority result, physical-device
 validation, bit-identical cross-toolchain reproduction, multiplatform evidence,
-or evidence for PowerFactory, Modelica, or PSCAD. PowerFactory is a separate
-future commercial lane.
+or evidence for PowerFactory, Modelica, or PSCAD. PowerFactory is maintained
+as a separate commercial lane in `../powerfactory_first_order`.

@@ -17,13 +17,19 @@ from VeraGridEngine.IO.fmu.exporter_me.snapshot import build_model_snapshot
 from VeraGridEngine.IO.fmu.exporter_me.validate import validate_export_model
 from VeraGridEngine.IO.fmu.exporter_me.xml_writer import write_model_description
 from VeraGridEngine.IO.fmu.export_platform import binary_directory
+from VeraGridEngine.IO.fmu.compiler import FmuCompilerSession
 
 
-def export_fmu_me(model: object, cfg: ExportConfig) -> Path:
+def export_fmu_me(
+    model: object,
+    cfg: ExportConfig,
+    compiler_session: FmuCompilerSession | None = None,
+) -> Path:
     """Export one model as a compiled Model Exchange FMU.
 
     :param model: VeraGrid model that owns the symbolic export block.
     :param cfg: Model Exchange export and build configuration.
+    :param compiler_session: Optional caller-owned sequential compiler session.
     :return: Path of the packaged FMU archive.
     """
 
@@ -52,7 +58,7 @@ def export_fmu_me(model: object, cfg: ExportConfig) -> Path:
         write_debug_resources(export_model, cfg, staging_root / "resources")
 
         if cfg.compile_binary:
-            library_path: Path = build_shared_library(cfg, source_dir, build_dir)
+            library_path: Path = build_shared_library(cfg, source_dir, build_dir, compiler_session)
             binaries_dir: Path = staging_root / "binaries" / binary_directory(
                 cfg.target_platform,
                 cfg.fmi_version,

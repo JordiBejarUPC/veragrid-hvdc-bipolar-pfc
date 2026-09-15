@@ -13,6 +13,7 @@ import platform
 import shutil
 import subprocess
 import tempfile
+import threading
 import urllib.request
 
 import clang_tool_chain_bins
@@ -352,10 +353,14 @@ def _provision_toolchain(build_dir: Path, cache_root: Path) -> Path:
     return _expand_verified_archive(archive_path, expected_sha256, build_dir)
 
 
-def _resolve_toolchain_tools(build_dir: Path) -> tuple[Path, Path, Path, Path, str, str, str, str]:
+def _resolve_toolchain_tools(
+    build_dir: Path,
+    cache_root: Path | None = None,
+) -> tuple[Path, Path, Path, Path, str, str, str, str]:
     """Resolve the compiler, linker, and inspectors in a fresh verified tree.
 
     :param build_dir: Private directory owned by the current FMU export.
+    :param cache_root: Optional reviewed-archive cache root selected by a compiler session.
     :return: Absolute tools followed by platform, architecture, target, suffix.
     """
 
@@ -378,10 +383,11 @@ def _resolve_toolchain_tools(build_dir: Path) -> tuple[Path, Path, Path, Path, s
         linker,
     ) = _host_toolchain_selection(system_name, machine_name)
     index_path: Path = _toolchain_index_path()
-    toolchain_root: Path = _provision_toolchain(
-        build_dir,
-        _toolchain_cache_root(),
-    ).resolve()
+    if cache_root is None:
+        selected_cache_root: Path = _toolchain_cache_root()
+    else:
+        selected_cache_root = cache_root
+    toolchain_root: Path = _provision_toolchain(build_dir, selected_cache_root).resolve()
     tool_names: tuple[str, ...] = ("clang", linker, "llvm-nm", "llvm-objdump")
     resolved_tools: list[Path | None] = list((None, None, None, None))
     tool_index: int
@@ -421,6 +427,50 @@ def _resolve_toolchain_tools(build_dir: Path) -> tuple[Path, Path, Path, Path, s
         )
     else:
         raise RuntimeError("The reviewed compiler tool set is incomplete")
+
+
+def _create_compiler_session_tools(
+    workspace_parent: Path,
+    cache_root: Path,
+) -> tuple[Path, Path, Path, Path, Path, str, str, str, str, tuple[str, ...]]:
+    """Create one private compiler workspace and authenticate its tool paths.
+
+    :param workspace_parent: Existing parent for the session-owned temporary root.
+    :param cache_root: Persistent authenticated archive cache to consume.
+    :return: Workspace, four tools, host metadata, and ordered tool digests.
+    """
+
+    workspace_root: Path = Path(tempfile.mkdtemp(prefix="veragrid_fmu_compiler_session_", dir=workspace_parent))
+    try:
+        resolved: tuple[Path, Path, Path, Path, str, str, str, str] = _resolve_toolchain_tools(
+            workspace_root,
+            cache_root,
+        )
+        tool_paths: tuple[Path, ...] = resolved[:4]
+        tool_hashes: list[str] = [""] * len(tool_paths)
+        tool_index: int
+        tool_path: Path
+        for tool_index, tool_path in enumerate(tool_paths):
+            with tool_path.open("rb") as tool_stream:
+                tool_hashes[tool_index] = hashlib.file_digest(tool_stream, "sha256").hexdigest()
+    except BaseException as initialization_error:
+        try:
+            shutil.rmtree(workspace_root)
+        except BaseException as cleanup_error:
+            raise initialization_error from cleanup_error
+        raise
+    return (
+        workspace_root,
+        resolved[0],
+        resolved[1],
+        resolved[2],
+        resolved[3],
+        resolved[4],
+        resolved[5],
+        resolved[6],
+        resolved[7],
+        tuple(tool_hashes),
+    )
 
 
 def _compile_command(compiler_path: Path, linker_path: Path, source_files: tuple[Path, ...], include_directories: tuple[Path, ...], output_path: Path, package_platform: str, target_triple: str) -> tuple[str, ...]:
@@ -905,12 +955,231 @@ def _validate_runtime_dependencies(output_path: Path, objdump_path: Path, packag
         raise RuntimeError("The FMU binary failed dependency validation: " + "; ".join(violations))
 
 
+class FmuCompilerSession:
+    """Own one authenticated compiler extraction for a sequential FMI batch."""
+
+    __slots__ = (
+        "_workspace_root", "_compiler_path", "_linker_path", "_nm_path",
+        "_objdump_path", "_package_platform", "_package_arch", "_target_triple",
+        "_library_suffix", "_tool_hashes", "_creator_pid", "_creator_thread",
+        "_compile_active", "_closed",
+    )
+
+    def __init__(self) -> None:
+        """Create and authenticate one private compiler session.
+
+        :return: None.
+        """
+
+        self._creator_pid: int = os.getpid()
+        self._creator_thread: threading.Thread = threading.current_thread()
+        self._compile_active: bool = False
+        self._closed: bool = False
+        (
+            self._workspace_root,
+            self._compiler_path,
+            self._linker_path,
+            self._nm_path,
+            self._objdump_path,
+            self._package_platform,
+            self._package_arch,
+            self._target_triple,
+            self._library_suffix,
+            self._tool_hashes,
+        ) = _create_compiler_session_tools(Path(tempfile.gettempdir()), _toolchain_cache_root())
+
+    def __reduce_ex__(self, protocol: int) -> object:
+        """Reject serialization because tool ownership is process-local.
+
+        :param protocol: Pickle protocol requested by the caller.
+        :return: This method never returns.
+        """
+
+        if protocol >= 0:
+            raise TypeError("FMI compiler sessions cannot be serialized")
+        else:
+            raise TypeError("Invalid serialization protocol for FMI compiler session")
+
+    def _assert_owner(self) -> None:
+        """Require the creating process and exact creating thread object.
+
+        :return: None.
+        """
+
+        if os.getpid() == self._creator_pid and threading.current_thread() is self._creator_thread:
+            pass
+        else:
+            raise RuntimeError("FMI compiler session use is restricted to its creating process and thread")
+
+    def _assert_tools_unchanged(self) -> None:
+        """Reauthenticate all executable tools before each compilation.
+
+        :return: None.
+        """
+
+        tool_paths: tuple[Path, ...] = (
+            self._compiler_path,
+            self._linker_path,
+            self._nm_path,
+            self._objdump_path,
+        )
+        tool_index: int
+        tool_path: Path
+        for tool_index, tool_path in enumerate(tool_paths):
+            canonical_tool: Path = tool_path.resolve()
+            valid_path: bool = bool(
+                not tool_path.is_symlink()
+                and tool_path.is_file()
+                and canonical_tool.is_relative_to(self._workspace_root.resolve())
+            )
+            if valid_path:
+                with tool_path.open("rb") as tool_stream:
+                    actual_hash: str = hashlib.file_digest(tool_stream, "sha256").hexdigest()
+                if actual_hash == self._tool_hashes[tool_index]:
+                    pass
+                else:
+                    raise RuntimeError("An FMI compiler session tool changed after authentication")
+            else:
+                raise RuntimeError("An FMI compiler session tool path is no longer trusted")
+
+    def close(self) -> None:
+        """Remove the exact session-owned extraction and mark the session closed.
+
+        :return: None.
+        """
+
+        self._assert_owner()
+        if self._compile_active:
+            raise RuntimeError("Cannot close an FMI compiler session during compilation")
+        else:
+            pass
+        if self._closed:
+            return
+        else:
+            if self._workspace_root.exists():
+                shutil.rmtree(self._workspace_root)
+            else:
+                pass
+        if self._workspace_root.exists():
+            raise RuntimeError("FMI compiler session cleanup did not remove its workspace")
+        else:
+            self._closed = True
+
+    def compile_shared_library(
+        self,
+        source_files: tuple[Path, ...],
+        include_directories: tuple[Path, ...],
+        output_path: Path,
+        interface: FmuBinaryInterface,
+        model_identifier: str | None = None,
+    ) -> Path:
+        """Compile and validate one library through this authenticated session.
+
+        :param source_files: Ordered generated C translation units.
+        :param include_directories: Ordered generated and runtime include roots.
+        :param output_path: Expected host-native shared-library path.
+        :param interface: FMI interface whose complete symbols must be present.
+        :param model_identifier: Explicit FMI 1 symbol prefix, when required.
+        :return: Validated shared-library path.
+        """
+
+        self._assert_owner()
+        if self._closed:
+            raise RuntimeError("Cannot use a closed FMI compiler session")
+        else:
+            pass
+        if self._compile_active:
+            raise RuntimeError("FMI compiler session compilation cannot be reentered")
+        else:
+            pass
+        if len(source_files) > 0 and len(include_directories) > 0:
+            pass
+        else:
+            raise ValueError("FMI compilation requires source files and include directories")
+        source_file: Path
+        for source_file in source_files:
+            if source_file.is_file():
+                pass
+            else:
+                raise FileNotFoundError("FMI compilation source is missing: " + str(source_file))
+        include_directory: Path
+        for include_directory in include_directories:
+            if include_directory.is_dir():
+                pass
+            else:
+                raise FileNotFoundError("FMI compilation include directory is missing: " + str(include_directory))
+        self._assert_tools_unchanged()
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        if output_path.suffix.lower() == self._library_suffix:
+            pass
+        else:
+            raise ValueError("The requested FMU binary suffix does not match the native host")
+        self._compile_active = True
+        try:
+            command: tuple[str, ...] = _compile_command(
+                self._compiler_path,
+                self._linker_path,
+                source_files,
+                include_directories,
+                output_path,
+                self._package_platform,
+                self._target_triple,
+            )
+            compilation: subprocess.CompletedProcess[str] = subprocess.run(
+                command,
+                check=False,
+                capture_output=True,
+                text=True,
+                cwd=output_path.parent,
+            )
+            if compilation.returncode == 0:
+                pass
+            else:
+                diagnostic: str = (compilation.stdout + "\n" + compilation.stderr)[-4000:]
+                raise RuntimeError("Clang failed to compile the FMI shared library:\n" + diagnostic)
+            if output_path.is_file():
+                pass
+            else:
+                raise FileNotFoundError("Clang completed without producing the FMI shared library")
+            _validate_binary_header(output_path, self._objdump_path, self._package_platform, self._package_arch)
+            _validate_exported_symbols(output_path, self._nm_path, interface, self._package_platform, model_identifier)
+            _validate_runtime_dependencies(output_path, self._objdump_path, self._package_platform)
+            return output_path
+        finally:
+            self._compile_active = False
+
+
+def _close_owned_compiler_session(
+    compiler_session: FmuCompilerSession,
+    primary_error: BaseException | None,
+) -> None:
+    """Close an owned session without replacing an earlier work failure.
+
+    :param compiler_session: Session owned by the current wrapper.
+    :param primary_error: Earlier compilation failure, when present.
+    :return: None.
+    """
+
+    try:
+        compiler_session.close()
+    except BaseException as cleanup_error:
+        if primary_error is None:
+            raise
+        else:
+            raise primary_error from cleanup_error
+    if primary_error is None:
+        pass
+    else:
+        raise primary_error
+
+
 def compile_fmu_shared_library(
     source_files: tuple[Path, ...],
     include_directories: tuple[Path, ...],
     output_path: Path,
     interface: FmuBinaryInterface,
     model_identifier: str | None = None,
+    compiler_session: FmuCompilerSession | None = None,
 ) -> Path:
     """Compile and validate one host-native FMI shared library.
 
@@ -919,67 +1188,23 @@ def compile_fmu_shared_library(
     :param output_path: Expected host-native shared-library path.
     :param interface: FMI interface whose complete symbols must be present.
     :param model_identifier: Explicit FMI 1 symbol prefix, when required.
+    :param compiler_session: Optional authenticated extraction reused by an explicit batch.
     :return: Validated shared-library path.
     """
 
-    if len(source_files) > 0 and len(include_directories) > 0:
-        pass
-    else:
-        raise ValueError("FMI compilation requires source files and include directories")
-    source_file: Path
-    for source_file in source_files:
-        if source_file.is_file():
-            pass
+    if compiler_session is None:
+        owned_session: FmuCompilerSession = FmuCompilerSession()
+        try:
+            result_path: Path = owned_session.compile_shared_library(
+                source_files, include_directories, output_path, interface, model_identifier,
+            )
+        except BaseException as primary_error:
+            _close_owned_compiler_session(owned_session, primary_error)
+            raise RuntimeError("Unreachable compiler-session failure path")
         else:
-            raise FileNotFoundError("FMI compilation source is missing: " + str(source_file))
-    include_directory: Path
-    for include_directory in include_directories:
-        if include_directory.is_dir():
-            pass
-        else:
-            raise FileNotFoundError("FMI compilation include directory is missing: " + str(include_directory))
-
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    compiler_path: Path
-    linker_path: Path
-    nm_path: Path
-    objdump_path: Path
-    package_platform: str
-    package_arch: str
-    target_triple: str
-    library_suffix: str
-    (
-        compiler_path,
-        linker_path,
-        nm_path,
-        objdump_path,
-        package_platform,
-        package_arch,
-        target_triple,
-        library_suffix,
-    ) = _resolve_toolchain_tools(output_path.parent)
-    if output_path.suffix.lower() == library_suffix:
-        pass
+            _close_owned_compiler_session(owned_session, None)
+            return result_path
     else:
-        raise ValueError("The requested FMU binary suffix does not match the native host")
-    command: tuple[str, ...] = _compile_command(compiler_path, linker_path, source_files, include_directories, output_path, package_platform, target_triple)
-    compilation: subprocess.CompletedProcess[str] = subprocess.run(command, check=False, capture_output=True, text=True, cwd=output_path.parent)
-    if compilation.returncode == 0:
-        pass
-    else:
-        diagnostic: str = (compilation.stdout + "\n" + compilation.stderr)[-4000:]
-        raise RuntimeError("Clang failed to compile the FMI shared library:\n" + diagnostic)
-    if output_path.is_file():
-        pass
-    else:
-        raise FileNotFoundError("Clang completed without producing the FMI shared library")
-    _validate_binary_header(output_path, objdump_path, package_platform, package_arch)
-    _validate_exported_symbols(
-        output_path,
-        nm_path,
-        interface,
-        package_platform,
-        model_identifier,
-    )
-    _validate_runtime_dependencies(output_path, objdump_path, package_platform)
-    return output_path
+        return compiler_session.compile_shared_library(
+            source_files, include_directories, output_path, interface, model_identifier,
+        )
