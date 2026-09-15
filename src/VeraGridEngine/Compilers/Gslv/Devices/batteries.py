@@ -85,7 +85,7 @@ def convert_battery(k: int,
         idtag=elm.idtag,
         code=elm.code,
         P=elm.P,
-        Q=elm.Q,
+        Q=0.0,
         power_factor=elm.Pf,
         vset=elm.Vset,
         active=elm.active,
@@ -169,7 +169,8 @@ def convert_battery(k: int,
             default_val=elm.P,
         )
 
-    fill_profile(gen.Q, elm.Q_prof, use_time_series, time_indices, n_time, elm.Q)
+    # The pre-solve NumericalCircuit keeps battery reactive injection at zero; Q is solved through controls/limits.
+    gen.Q.fill(0.0)
     fill_profile(gen.power_factor, elm.Pf_prof, use_time_series, time_indices, n_time, elm.Pf)
 
     gen.Pmin = fill_profile(gen.Pmin, elm.Pmin_prof, use_time_series, time_indices, n_time, elm.Pmin)

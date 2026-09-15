@@ -14,7 +14,24 @@ from VeraGridEngine.Compilers.Gslv.activation import (
 from VeraGridEngine.Compilers.Gslv.common import fill_profile
 from VeraGridEngine.Devices.Branches.vsc import VSC
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
+from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.basic_structures import IntVec
+from VeraGridEngine.enumerations import ConverterFaultControlType
+
+
+def convert_vsc_bus_reference(elm: Bus | BranchParent | None, bus_dict: Dict[str, "pg.Bus"]) -> "pg.Bus | None":
+    """
+    Convert an optional VeraGrid bus reference to a GSLV bus reference.
+
+    :param elm: VeraGrid bus reference.
+    :param bus_dict: GSLV bus lookup by VeraGrid idtag.
+    :return: Matching GSLV bus or ``None``.
+    """
+    if isinstance(elm, Bus):
+        return bus_dict[elm.idtag]
+    else:
+        return None
 
 
 def convert_vsc(elm: VSC,
@@ -40,7 +57,7 @@ def convert_vsc(elm: VSC,
         idtag=elm.idtag,
         code=str(elm.code),
         active=elm.active,
-        rate=9999.0,
+        rate=elm.rate,
         kdp=elm.control1_val_droop,
         alpha1=elm.alpha1,
         alpha2=elm.alpha2,
@@ -50,6 +67,7 @@ def convert_vsc(elm: VSC,
         overload_cost=elm.Cost,
         contingency_factor=elm.contingency_factor,
         protection_rating_factor=elm.protection_rating_factor,
+        contingency_enabled=elm.contingency_enabled,
         monitor_loading=elm.monitor_loading,
         capex=elm.capex,
         opex=elm.opex,
@@ -58,8 +76,28 @@ def convert_vsc(elm: VSC,
         control2=converter_control_type_dict[elm.control2],
         control1_val=elm.control1_val,
         control2_val=elm.control2_val,
-        control1_dev=bus_dict.get(elm.control1_dev, None),
-        control2_dev=bus_dict.get(elm.control2_dev, None),
+        control1_dev=convert_vsc_bus_reference(elm.control1_dev, bus_dict),
+        control2_dev=convert_vsc_bus_reference(elm.control2_dev, bus_dict),
+        bus_dc_n=convert_vsc_bus_reference(elm.bus_dc_n, bus_dict),
+        control1_val_min=elm.control1_val_min,
+        control1_val_max=elm.control1_val_max,
+        control1_val_droop=elm.control1_val_droop,
+        control1_droop_val=elm.control1_droop_val,
+        control1_droop_val_min=elm.control1_droop_val_min,
+        control1_droop_val_max=elm.control1_droop_val_max,
+        control2_val_min=elm.control2_val_min,
+        control2_val_max=elm.control2_val_max,
+        control2_val_droop=elm.control2_val_droop,
+        control2_droop_val=elm.control2_droop_val,
+        control2_droop_val_min=elm.control2_droop_val_min,
+        control2_droop_val_max=elm.control2_droop_val_max,
+        min_ac_voltage=elm.min_ac_voltage,
+        ysvs=elm.ysvs,
+        x=elm.x,
+        y=elm.y,
+        fault_control=elm.fault_control != ConverterFaultControlType.Standard,
+        cost=elm.Cost,
+        design_rate=elm.design_rate,
     )
 
     fill_profile(vsc.active, elm.active_prof, use_time_series, time_indices, n_time, elm.active)
