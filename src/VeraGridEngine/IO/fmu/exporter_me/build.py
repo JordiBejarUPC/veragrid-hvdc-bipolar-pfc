@@ -310,6 +310,17 @@ def _render_set_real(export_model: ExportModel) -> list[str]:
                     "            return 0;",
                 ]
             )
+        elif variable.category == VariableCategory.STATE:
+            # Importers apply exact continuous-state starts through the generic
+            # real setter before the external Model Exchange solver takes ownership.
+            lines.extend(
+                [
+                    f"        case {variable.value_reference}u:",
+                    "            if (instance->initialized) return 1;",
+                    f"            {target} = value;",
+                    "            return 0;",
+                ]
+            )
     lines.extend(["        default:", "            return 1;", "    }"])
     return lines
 
