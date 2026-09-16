@@ -90,6 +90,7 @@ def get_objects_dictionary() -> Dict[str, ALL_DEV_TYPES]:
 
         'wires': devices.Wire(),
         'overhead_line_types': devices.OverheadLineType(),
+        'underground_cable_constructions': devices.UndergroundCableType(),
         'underground_cable_types': devices.UndergroundLineType(),
         'sequence_line_types': devices.SequenceLineType(),
         'dc_cable_types': devices.DcCableType(),
@@ -701,6 +702,9 @@ def veragrid_object_to_json(elm: ALL_DEV_TYPES,
             data[name] = obj.to_list()
 
         elif prop.tpe == SubObjectType.ListOfWires:
+            data[name] = obj.to_list()
+
+        elif prop.tpe == SubObjectType.ListOfCables:
             data[name] = obj.to_list()
 
         elif prop.tpe == SubObjectType.TapChanger:
@@ -1368,6 +1372,40 @@ def search_and_apply_json_profile(json_entry: Dict[str, Dict[str, Union[str, Uni
                                   collection=collection)
 
 
+def _convert_legacy_cable_properties(json_entry: Dict[str, Any]) -> Dict[str, Any]:
+    """Read the two supported layers from old cable construction vectors.
+
+    :param json_entry: Native cable construction record, old or scalar format.
+    :return: Record with scalar inputs; explicit scalar fields take precedence.
+    """
+    converted: Dict[str, Any] = json_entry.copy()
+    legacy_fields: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
+        ('thIns', ('thIns',)),
+        ('crho', ('crho_core', 'crho_sheath')),
+        ('Cf', ('Cf_core', 'Cf_sheath')),
+        ('my', ('my_core', 'my_sheath')),
+        ('cepsr', ('cepsr_core_sheath', 'cepsr_outer')),
+        ('ctand', ('ctand_core_sheath', 'ctand_outer')),
+    )
+    legacy_name: str
+    scalar_names: Tuple[str, ...]
+    for legacy_name, scalar_names in legacy_fields:
+        legacy_value: Any = json_entry.get(legacy_name, None)
+        if isinstance(legacy_value, (list, tuple, np.ndarray)):
+            # The former third entry was not part of the two-layer calculation.
+            index: int
+            scalar_name: str
+            for index, scalar_name in enumerate(scalar_names):
+                if index < len(legacy_value) and (scalar_name == legacy_name or scalar_name not in json_entry):
+                    converted[scalar_name] = legacy_value[index]
+                else:
+                    pass
+        else:
+            # New scalar records need no conversion.
+            pass
+    return converted
+
+
 def parse_object_type_from_json(template_elm: ALL_DEV_TYPES,
                                 data_list: List[Dict[str, Dict[str, str]]],
                                 elements_dict_by_type: Dict[DeviceType, Dict[str, ALL_DEV_TYPES]],
@@ -1389,6 +1427,11 @@ def parse_object_type_from_json(template_elm: ALL_DEV_TYPES,
     devices: List[ALL_DEV_TYPES] = list()
 
     for json_entry in data_list:
+        if template_elm.device_type == DeviceType.UndergroundCableTypeDevice:
+            # Upgrade only legacy cable records before the generic scalar parser.
+            json_entry = _convert_legacy_cable_properties(json_entry=json_entry)
+        else:
+            pass
         idtag = json_entry['idtag']
         elm: ALL_DEV_TYPES = type(template_elm)(idtag=idtag)
         elm.disable_auto_updates()
@@ -1487,6 +1530,15 @@ def parse_object_type_from_json(template_elm: ALL_DEV_TYPES,
                                     list_of_wires: devices.ListOfWires = elm.get_snapshot_value(prop=gc_prop)
                                     list_of_wires.parse(data=property_value,
                                                         wire_dict=elements_dict_by_type[DeviceType.WireDevice])
+
+                                elif gc_prop.tpe == SubObjectType.ListOfCables:
+
+                                    # Fill cable systems after their physical cable catalogue is available.
+                                    list_of_cables: devices.ListOfCables = elm.get_snapshot_value(prop=gc_prop)
+                                    list_of_cables.parse(
+                                        data=property_value,
+                                        cable_dict=elements_dict_by_type[DeviceType.UndergroundCableTypeDevice],
+                                    )
 
 
                                 elif gc_prop.tpe == SubObjectType.ImpedanceTripletList:

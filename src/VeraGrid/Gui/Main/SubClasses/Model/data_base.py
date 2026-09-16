@@ -32,6 +32,7 @@ from VeraGrid.Gui.Analysis.object_plot_analysis import object_histogram_analysis
 from VeraGrid.Gui.messages import yes_no_question, warning_msg, info_msg
 from VeraGrid.Gui.Main.SubClasses.Model.diagrams import DiagramsMain
 from VeraGrid.Gui.DeviceEditors.TowerBuilder.LineBuilderDialogue import TowerBuilderGUI
+from VeraGrid.Gui.DeviceEditors.UndergroundCableBuilder.underground_cable_builder import UndergroundCableBuilderGUI
 from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, exec_dialog_safely, is_dialog_available
 from VeraGrid.Gui.matplotlib_dialog import show_matplotlib_figure
 from VeraGrid.Gui.FmuTemplateEditor.fmu_template_editor import FmuTemplateEditorDialog
@@ -1631,6 +1632,12 @@ class DataBaseTableMain(DiagramsMain):
                 obj = dev.UndergroundLineType(name=name)
                 self.circuit.add_underground_line(obj)
 
+            elif elm_type == DeviceType.UndergroundCableTypeDevice:
+
+                name = f'Underground cable {len(self.circuit.underground_cable_constructions) + 1}'
+                obj = dev.UndergroundCableType(name=name)
+                self.circuit.add_underground_cable(obj)
+
             elif elm_type == DeviceType.DcCableTypeDevice:
 
                 name = f'DC cable {len(self.circuit.dc_cable_types) + 1}'
@@ -1801,6 +1808,16 @@ class DataBaseTableMain(DiagramsMain):
             tower_builder_window.setModal(True)
             tower_builder_window.resize(int(1.81 * 700.0), 700)
             exec_dialog_safely(dialog=tower_builder_window)
+
+        elif elm.device_type == DeviceType.UnderGroundLineDevice:
+            cable_builder_window: UndergroundCableBuilderGUI = UndergroundCableBuilderGUI(
+                system=elm,
+                cables_catalogue=self.circuit.underground_cable_constructions,
+                parent=self,
+            )
+            cable_builder_window.setModal(True)
+            cable_builder_window.resize(int(1.81 * 700.0), 700)
+            exec_dialog_safely(dialog=cable_builder_window)
 
         elif elm.device_type == DeviceType.RmsModelTemplateDevice:
             self.open_dynamic_editor(api_object=elm, circuit=self.circuit,

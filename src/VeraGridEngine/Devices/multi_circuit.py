@@ -806,6 +806,7 @@ class MultiCircuit(Assets):
                 'bus_bars',
                 'overhead_line_types',
                 'wire_types',
+                'underground_cable_constructions',
                 'underground_cable_types',
                 'dc_cable_types',
                 'sequence_line_types',
@@ -3473,6 +3474,9 @@ class MultiCircuit(Assets):
 
         for tpe in data.underground_cable_types:
             self.add_underground_line(tpe)
+
+        for tpe in data.underground_cable_constructions:
+            self.add_underground_cable(tpe)
 
         for tpe in data.dc_cable_types:
             self.add_dc_cable_type(tpe)

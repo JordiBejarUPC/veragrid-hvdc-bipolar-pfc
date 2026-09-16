@@ -3,6 +3,8 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
+from typing import Any
+
 import VeraGridEngine.api as gce
 from VeraGridEngine import WindingType, ShuntConnectionType
 from VeraGridEngine.Simulations.PowerFlow3ph.Formulations.pf_basic_formulation_3ph import expandVoltage3ph
@@ -14,6 +16,27 @@ def test_expand_voltage_3ph_initializes_neutrals_uniformly():
     expanded = expandVoltage3ph(voltage)
 
     assert np.allclose(expanded[0::4], 1e-4 * np.exp(1j * np.angle(voltage)))
+
+
+def test_three_phase_power_flow_propagates_reduced_bus_voltages() -> None:
+    """Return the representative voltage at every bus joined by an ideal switch.
+
+    :return: None.
+    """
+    grid: gce.MultiCircuit = gce.MultiCircuit()
+    bus_from: gce.Bus = grid.add_bus(gce.Bus(name="From", is_slack=True))
+    bus_to: gce.Bus = grid.add_bus(gce.Bus(name="To"))
+    generator: gce.Generator = gce.Generator(vset=1.0)
+    switch: gce.Switch = gce.Switch(name="Switch", bus_from=bus_from, bus_to=bus_to)
+    grid.add_generator(bus=bus_from, api_obj=generator)
+    grid.add_switch(switch)
+
+    results: Any = gce.power_flow3ph(grid=grid)
+
+    assert np.isclose(results.voltage_N[1], results.voltage_N[0])
+    assert np.isclose(results.voltage_A[1], results.voltage_A[0])
+    assert np.isclose(results.voltage_B[1], results.voltage_B[0])
+    assert np.isclose(results.voltage_C[1], results.voltage_C[0])
 
 
 def test_ieee_13_bus_feeder_driver():

@@ -74,6 +74,8 @@ from VeraGridEngine.IO.dgs.dgs_objects import (
     StaVmea,
     StaVt,
     TypAsmo,
+    TypCab,
+    TypCabsys,
     TypCon,
     TypCt,
     TypFuse,
@@ -231,6 +233,8 @@ class DgsCircuit:
         TypAsmo,
         TypCt,
         TypFuse,
+        TypCab,
+        TypCabsys,
         TypCon,
         TypGeo,
         TypLne,
@@ -321,6 +325,8 @@ class DgsCircuit:
         self.typasmos: List[TypAsmo] = list()
         self.typcts: List[TypCt] = list()
         self.typfuses: List[TypFuse] = list()
+        self.typcabs: List[TypCab] = list()
+        self.typcabsys: List[TypCabsys] = list()
         self.typcons: List[TypCon] = list()
         self.typgeos: List[TypGeo] = list()
         self.typlnes: List[TypLne] = list()
@@ -401,6 +407,8 @@ class DgsCircuit:
             TypAsmo: self.typasmos,
             TypCt: self.typcts,
             TypFuse: self.typfuses,
+            TypCab: self.typcabs,
+            TypCabsys: self.typcabsys,
             TypCon: self.typcons,
             TypGeo: self.typgeos,
             TypLne: self.typlnes,

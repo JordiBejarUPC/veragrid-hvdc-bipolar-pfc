@@ -98,6 +98,7 @@ device_type_icons = {
     "Catalogue": ":/Icons/icons/Catalogue.png",
     DeviceType.WireDevice.value: ":/Icons/icons/ac_line.png",
     DeviceType.OverheadLineTypeDevice.value: ":/Icons/icons/tower.png",
+    DeviceType.UndergroundCableTypeDevice.value: ":/Icons/icons/ac_line.png",
     DeviceType.UnderGroundLineDevice.value: ":/Icons/icons/ac_line.png",
     DeviceType.SequenceLineDevice.value: ":/Icons/icons/ac_line.png",
     DeviceType.TransformerTypeDevice.value: ":/Icons/icons/to_transformer.png",

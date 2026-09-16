@@ -415,9 +415,14 @@ def multi_island_pf_nc_3ph(nc: NumericalCircuit,
         Sbus_input=Sbus_input,
     )
 
-    # expand voltages if there was a bus topology reduction
-    # if nc.topology_performed:
-    #     results.voltage = nc.propagate_bus_result(results.voltage)
+    # Restore the voltage of buses represented by another bus after reducing ideal links.
+    if nc.topology_performed:
+        results.voltage_N = nc.propagate_bus_result(results.voltage_N)
+        results.voltage_A = nc.propagate_bus_result(results.voltage_A)
+        results.voltage_B = nc.propagate_bus_result(results.voltage_B)
+        results.voltage_C = nc.propagate_bus_result(results.voltage_C)
+    else:
+        pass
 
     # do the reactive power partition and store the values
     # __split_reactive_power_into_devices(nc=nc, Qbus=results.Sbus.imag, results=results)

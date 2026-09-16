@@ -70,7 +70,7 @@ gmr_s = ro_s * np.exp(
     (3.0 * ri_s**2 - ro_s**2) / (4.0 * (ro_s**2 - ri_s**2))
     - (ri_s**4 / (ro_s**2 - ri_s**2)**2) * np.log(ro_s / ri_s)
 ) # Geometric mean radius of the sheath [m]
-gmr = np.array([gmr_c, gmr_c, gmr_c, gmr_s, gmr_s, gmr_s]) # Geometric mean radius's vector [Ω/km]
+gmr = np.array([gmr_c, gmr_c, gmr_c, gmr_s, gmr_s, gmr_s]) # Geometric mean radius's vector [m]
 
 d_ab = np.sqrt((x1 - x2)**2 + (y1 - y2)**2)
 d_bc = np.sqrt((x2 - x3)**2 + (y2 - y3)**2)
@@ -106,7 +106,7 @@ Z_cc = Z_series[0:phases, 0:phases]
 Z_ww = Z_series[phases:, phases:]
 Z_cw = Z_series[0:phases, phases:]
 Z_wc = Z_series[phases:, 0:phases]
-Z_abc = Z_cc - Z_cw @ np.linalg.inv(Z_ww) @ Z_wc
+Z_abc = Z_cc - Z_cw @ np.linalg.solve(Z_ww, Z_wc)
 print('Z_abc =', np.round(Z_abc,5))
 
 # Applying Fortescue transformation to obtain the sequence impedance [Ω/km]:
@@ -129,7 +129,7 @@ SHUNT ADMITTANCE MATRIX
 '''
 epsilon_insulation = 2.3 # Relative permittivity of the insulation
 epsilon_oversheath = 2.5 # Relative permittivity of the oversheath
-epsilon_0 = 8.854 * 10**(-12) # Permittivity of the free space [F/m]
+epsilon_0 = 8.854187817e-12 # Permittivity of the free space [F/m]
 
 r_c = 6.35809 # Conductor radius [mm]
 r_insulation = r_c + 7.103906 # Insulation radius [mm]
