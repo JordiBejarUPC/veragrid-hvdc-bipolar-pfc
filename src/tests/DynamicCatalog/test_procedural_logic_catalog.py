@@ -8,7 +8,9 @@ from VeraGridEngine.enumerations import ProceduralLogicType
 from VeraGridEngine.Templates.ProceduralLogicCatalog import (
     ProceduralBlockTemplateDescriptor,
     build_procedural_block_catalog_template,
-    get_procedural_block_template_descriptors,
+)
+from VeraGrid.Gui.DynamicModelEditor.Editor.DynamicLibrary.dynamic_editor_library import (
+    get_dynamic_library_procedural_descriptors,
 )
 from VeraGridEngine.Utils.procedural_logic import ProceduralLogicBase
 from VeraGridEngine.Utils.Symbolic.block import Block
@@ -36,7 +38,7 @@ def test_procedural_catalog_covers_every_concrete_engine_type_once() -> None:
     :return: None.
     """
     descriptors: list[ProceduralBlockTemplateDescriptor] = list(
-        get_procedural_block_template_descriptors()
+        get_dynamic_library_procedural_descriptors()
     )
     descriptor_types: list[ProceduralLogicType] = list(
         descriptor.logic_tpe for descriptor in descriptors
@@ -57,7 +59,7 @@ def test_procedural_catalog_materializes_declared_ports_and_behavior() -> None:
     :return: None.
     """
     descriptor: ProceduralBlockTemplateDescriptor
-    for descriptor in get_procedural_block_template_descriptors():
+    for descriptor in get_dynamic_library_procedural_descriptors():
         template: EmtModelTemplate = build_procedural_block_catalog_template(
             descriptor=descriptor,
             var_factory=VarFactory(),
@@ -82,7 +84,7 @@ def test_procedural_catalog_allocates_fresh_symbolic_identities() -> None:
     """
     var_factory: VarFactory = VarFactory()
     descriptor: ProceduralBlockTemplateDescriptor = list(
-        get_procedural_block_template_descriptors()
+        get_dynamic_library_procedural_descriptors()
     )[0]
     first_template: EmtModelTemplate = build_procedural_block_catalog_template(
         descriptor=descriptor,

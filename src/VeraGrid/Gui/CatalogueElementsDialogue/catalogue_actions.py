@@ -11,6 +11,10 @@ from typing import Callable, Tuple, Any
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGrid.Gui.DynamicModelEditor.Editor.DynamicLibrary.dynamic_editor_library import (
+    LibraryDeviceTemplateSpec,
+    build_dynamic_library_device_template,
+)
 
 
 class CatalogueActionKind(Enum):
@@ -44,6 +48,7 @@ class CatalogueAction:
         '_power_text',
         '_unique_key',
         '_function_ptr',
+        '_device_template_spec',
     )
 
     def __init__(self,
@@ -53,7 +58,8 @@ class CatalogueAction:
                  voltage_text: str,
                  power_text: str,
                  unique_key: str,
-                 function_ptr: Callable[..., Any] | None = None) -> None:
+                 function_ptr: Callable[..., Any] | None = None,
+                 device_template_spec: LibraryDeviceTemplateSpec | None = None) -> None:
         """
         Constructor.
 
@@ -64,6 +70,7 @@ class CatalogueAction:
         :param power_text: Display power info (column 2).
         :param unique_key: Stable key to help avoid duplicates.
         :param function_ptr: Callable used for deferred RMS/EMT creation.
+        :param device_template_spec: Canonical Library device registration.
         """
         self._kind = kind
         self._args = args
@@ -72,6 +79,7 @@ class CatalogueAction:
         self._power_text = str(power_text)
         self._unique_key = str(unique_key)
         self._function_ptr = function_ptr
+        self._device_template_spec: LibraryDeviceTemplateSpec | None = device_template_spec
 
     @property
     def kind(self) -> CatalogueActionKind:
@@ -170,7 +178,12 @@ class CatalogueAction:
         :param circuit: Circuit instance.
         :return: None
         """
-        if self._function_ptr is None:
+        if self._device_template_spec is not None:
+            obj: object | None = build_dynamic_library_device_template(
+                spec=self._device_template_spec,
+                var_factory=circuit.var_factory,
+            )
+        elif self._function_ptr is None:
             obj = None
         else:
             obj = self._function_ptr(*self._args)
@@ -191,7 +204,12 @@ class CatalogueAction:
         :param circuit: Circuit instance.
         :return: None
         """
-        if self._function_ptr is None:
+        if self._device_template_spec is not None:
+            obj: object | None = build_dynamic_library_device_template(
+                spec=self._device_template_spec,
+                var_factory=circuit.var_factory,
+            )
+        elif self._function_ptr is None:
             obj = None
         else:
             obj = self._function_ptr(*self._args)

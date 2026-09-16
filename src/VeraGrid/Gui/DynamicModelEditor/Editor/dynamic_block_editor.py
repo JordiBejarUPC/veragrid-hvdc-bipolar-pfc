@@ -57,7 +57,12 @@ from VeraGridEngine.Utils.Symbolic.dynamic_connection_intent import (DynamicConn
 from VeraGrid.Gui.DynamicModelEditor.Editor.block_editor import Ui_BlockEditorWindow
 import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_graphics as graph
 from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import DynamicEditorEntry
-from VeraGrid.Gui.DynamicModelEditor.Editor.DynamicLibrary.dynamic_editor_library import DynamicEditorLibrary, LibraryTreeFilterProxyModel
+from VeraGrid.Gui.DynamicModelEditor.Editor.DynamicLibrary.dynamic_editor_library import (
+    DynamicEditorLibrary,
+    LibraryDeviceTemplateSpec,
+    LibraryTreeFilterProxyModel,
+    build_dynamic_library_device_template,
+)
 from VeraGrid.Gui.DynamicModelEditor.Editor.ElementDialogues.MeasurementsDialog import (
     is_measurement_reference_input,
     MeasurementsDialog,
@@ -209,6 +214,7 @@ DynamicLibraryPayload: TypeAlias = (
     | BasicBlockTemplateDescriptor
     | ProceduralBlockTemplateDescriptor
     | InternationalStandardTemplateDescriptor
+    | LibraryDeviceTemplateSpec
     | RmsModelTemplate
     | EmtModelTemplate
     | FmuTemplate
@@ -2945,35 +2951,44 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.libraryTreeView.collapseAll()
         self.ui.libraryTreeView.expandToDepth(1)
 
-        # Keep the catalog roots visible while folding their named groups.
-        # Users can then open only the behavior or model family they need.
-        top_level_row: int
-        for top_level_row in range(self.library_proxy_model.rowCount()):
-            top_level_index: QtCore.QModelIndex = self.library_proxy_model.index(
-                top_level_row,
+        # International standards now live below Devices and individual
+        # control families. Fold every occurrence recursively while leaving
+        # the enclosing canonical branches visible.
+        self._collapse_international_standard_branches(QtCore.QModelIndex())
+
+    def _collapse_international_standard_branches(
+            self,
+            parent_index: QtCore.QModelIndex,
+    ) -> None:
+        """Collapse every nested international-standard branch recursively.
+
+        :param parent_index: Proxy-model parent whose children are inspected.
+        :return: None.
+        """
+        row_index: int
+        for row_index in range(self.library_proxy_model.rowCount(parent_index)):
+            child_index: QtCore.QModelIndex = self.library_proxy_model.index(
+                row_index,
                 0,
+                parent_index,
             )
-            top_level_label: str = str(
-                self.library_proxy_model.data(
-                    top_level_index,
-                    QtCore.Qt.ItemDataRole.DisplayRole,
-                )
-            )
-            if top_level_label in ("Procedural logic", "International standards"):
+            child_label: str = str(self.library_proxy_model.data(
+                child_index,
+                QtCore.Qt.ItemDataRole.DisplayRole,
+            ))
+            if child_label == "International standards":
+                self.ui.libraryTreeView.collapse(child_index)
+            elif child_label == "Procedural logic":
                 group_row: int
-                for group_row in range(
-                        self.library_proxy_model.rowCount(top_level_index)
-                ):
-                    group_index: QtCore.QModelIndex = (
-                        self.library_proxy_model.index(
-                            group_row,
-                            0,
-                            top_level_index,
-                        )
+                for group_row in range(self.library_proxy_model.rowCount(child_index)):
+                    group_index: QtCore.QModelIndex = self.library_proxy_model.index(
+                        group_row,
+                        0,
+                        child_index,
                     )
                     self.ui.libraryTreeView.collapse(group_index)
             else:
-                pass
+                self._collapse_international_standard_branches(child_index)
 
     def on_library_search_text_changed(self, text: str) -> None:
         """
@@ -3015,6 +3030,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         BasicBlockTemplateDescriptor,
                         ProceduralBlockTemplateDescriptor,
                         InternationalStandardTemplateDescriptor,
+                        LibraryDeviceTemplateSpec,
                         RmsModelTemplate,
                         EmtModelTemplate,
                         FmuTemplate,
@@ -3055,6 +3071,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             if isinstance(payload,
                           (BlockType, BasicBlockTemplateDescriptor, ProceduralBlockTemplateDescriptor,
                            InternationalStandardTemplateDescriptor,
+                           LibraryDeviceTemplateSpec,
                            RmsModelTemplate, EmtModelTemplate, FmuTemplate)):
                 return payload
             else:
@@ -4739,6 +4756,30 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         elif isinstance(payload, BlockType) and payload == BlockType.FROM_GOTO:
             items = self.create_signal_pair_item(x_pos=x_pos, y_pos=y_pos)
             return items[0] if items else None
+
+        elif isinstance(payload, LibraryDeviceTemplateSpec):
+            if isinstance(payload.source, BlockType):
+                # Reuse the established BlockType insertion path so structural
+                # wizards, transformer winding defaults, and item drawings stay
+                # identical after the Library registration is centralized.
+                return self.create_library_payload_item(
+                    payload=payload.source,
+                    x_pos=x_pos,
+                    y_pos=y_pos,
+                )
+            else:
+                device_template: RmsModelTemplate | EmtModelTemplate | None = build_dynamic_library_device_template(
+                    spec=payload,
+                    var_factory=self.var_factory,
+                )
+                if device_template is not None:
+                    return self.create_template_block_item(
+                        template=device_template,
+                        x_pos=x_pos,
+                        y_pos=y_pos,
+                    )
+                else:
+                    return None
 
         elif isinstance(payload, BlockType) and payload == BlockType.INPUT_CONN:
             return self.create_measurements_block_item(x_pos=x_pos, y_pos=y_pos)

@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
+import math
 import uuid
 
 from typing import Dict, List, Optional, Sequence
@@ -16,18 +17,31 @@ from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.fmu_template import FmuTemplate
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
+from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Templates.BasicBlockCatalog import BasicBlockTemplateDescriptor, \
     get_editor_ready_basic_block_catalog_descriptors
 from VeraGridEngine.Templates.BasicBlockCatalog.catalog import build_basic_block_catalog_branch_skeleton
 from VeraGridEngine.Templates.ProceduralLogicCatalog import (
+    ProceduralBlockParameterSpec,
     ProceduralBlockTemplateDescriptor,
-    get_procedural_block_template_descriptors,
 )
 from VeraGridEngine.Templates.InternationalStandardsCatalog import (
     InternationalStandardTemplateDescriptor,
-    get_international_standard_template_descriptors,
+    load_international_standard_template,
 )
-from VeraGridEngine.enumerations import BlockType
+from VeraGridEngine.enumerations import (
+    BlockType,
+    DynamicDeviceTemplateType,
+    InternationalStandardModel,
+    ProceduralLogicType,
+)
+from VeraGrid.Gui.DynamicModelEditor.Editor.DynamicLibrary.dynamic_editor_utilities import (
+    create_block_of_type,
+    create_default_template_builder,
+)
+from VeraGridEngine.Templates.template_definition import TemplateDefinition
+from VeraGridEngine.Utils.Symbolic.block import Block
+import VeraGridEngine.Templates as tem
 
 
 def _new_uid() -> int:
@@ -55,6 +69,65 @@ class LibraryLeafSpec:
         self.label: str = label
         self.payload: object = payload
         self.search_text: str = search_text
+
+
+class LibraryDeviceTemplateSpec:
+    """Describe one complete reusable device model owned by the Library."""
+
+    __slots__ = (
+        "label",
+        "source",
+        "mode",
+        "device_type",
+        "category_path",
+        "unique_key",
+        "search_text",
+        "compatible_device_types",
+    )
+
+    def __init__(
+            self,
+            label: str,
+            source: DynamicDeviceTemplateType | BlockType | InternationalStandardTemplateDescriptor,
+            mode: DynamicSimulationMode,
+            device_type: DeviceType,
+            category_path: tuple[str, ...],
+            unique_key: str,
+            search_text: str = "",
+            compatible_device_types: tuple[DeviceType, ...] | None = None,
+    ) -> None:
+        """Store one canonical device-template registration.
+
+        :param label: Human-facing Library and catalogue label.
+        :param source: Typed materialization identifier.
+        :param mode: Dynamic simulation domain.
+        :param device_type: Physical device type accepting the template.
+        :param category_path: Path below the ``Devices`` branch.
+        :param unique_key: Stable key persisted by catalogue imports.
+        :param search_text: Optional additional filter terms.
+        :param compatible_device_types: Physical device types that may use the
+            same registered drawing without duplicating the Library entry.
+        :return: None.
+        """
+        self.label: str = label
+        self.source: DynamicDeviceTemplateType | BlockType | InternationalStandardTemplateDescriptor = source
+        self.mode: DynamicSimulationMode = mode
+        self.device_type: DeviceType = device_type
+        self.category_path: tuple[str, ...] = category_path
+        self.unique_key: str = unique_key
+        self.search_text: str = search_text
+        if compatible_device_types is None:
+            self.compatible_device_types: tuple[DeviceType, ...] = (device_type,)
+        else:
+            self.compatible_device_types = compatible_device_types
+
+    def is_compatible_with(self, device_type: DeviceType) -> bool:
+        """Check whether this drawing can model one physical device type.
+
+        :param device_type: Physical editor host under consideration.
+        :return: ``True`` when the registered drawing is compatible.
+        """
+        return device_type in self.compatible_device_types
 
 
 class DynamicsLibraryTreeModel(QtGui.QStandardItemModel):
@@ -216,12 +289,6 @@ class DynamicEditorLibrary:
         "block_role",
         "mime_type",
         "LIBRARY_SEARCH_TEXT_ROLE",
-        "common_emt_device_blocks",
-        "common_emt_fault_blocks",
-        "common_rms_device_blocks",
-        "control_rms_related_blocks",
-        "device_rms_related_blocks",
-        "device_emt_related_blocks",
         "tree_structure",
         "library_model",
     )
@@ -245,116 +312,22 @@ class DynamicEditorLibrary:
         self.mime_type: str = "application/x-veragrid-dynamics-block"
         self.LIBRARY_SEARCH_TEXT_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 502
 
-        # Library categories:
+        # Build one projection of the canonical mode library for the active
+        # physical device. The catalogue uses the same builders without this
+        # device filter, so availability cannot drift between the two views.
+        active_device_type: DeviceType = (
+            self.api_object.device_type if self.api_object is not None else DeviceType.NoDevice
+        )
+        self.tree_structure: Dict[str, object] = build_dynamic_library_structure(
+            mode=mode,
+            device_type=active_device_type,
+        )
 
-        # emt common
-        self.common_emt_device_blocks: List[LibraryLeafSpec] = list((LibraryLeafSpec("Generic", BlockType.GENERIC), LibraryLeafSpec("Voltage source EMT", BlockType.VOLTAGE_SOURCE_EMT), LibraryLeafSpec("Current source EMT", BlockType.CURRENT_SOURCE_EMT), LibraryLeafSpec("Controlled voltage source EMT", BlockType.CONTROLLED_VOLTAGE_SOURCE_EMT), LibraryLeafSpec("Controlled current source EMT", BlockType.CONTROLLED_CURRENT_SOURCE_EMT), LibraryLeafSpec("DC voltage source EMT", BlockType.DC_VOLTAGE_SOURCE_EMT), LibraryLeafSpec("DC current source EMT", BlockType.DC_CURRENT_SOURCE_EMT), LibraryLeafSpec("Controlled DC voltage source EMT", BlockType.CONTROLLED_DC_VOLTAGE_SOURCE_EMT), LibraryLeafSpec("Controlled DC current source EMT", BlockType.CONTROLLED_DC_CURRENT_SOURCE_EMT), LibraryLeafSpec("Balanced 3-phase voltage source EMT", BlockType.BALANCED_3PH_VOLTAGE_SOURCE_EMT), LibraryLeafSpec("Balanced 3-phase current source EMT", BlockType.BALANCED_3PH_CURRENT_SOURCE_EMT), LibraryLeafSpec("Controlled balanced 3-phase voltage source EMT",
-                            BlockType.CONTROLLED_BALANCED_3PH_VOLTAGE_SOURCE_EMT), LibraryLeafSpec("Controlled balanced 3-phase current source EMT",
-                            BlockType.CONTROLLED_BALANCED_3PH_CURRENT_SOURCE_EMT), LibraryLeafSpec("Arbitrary waveform voltage source EMT", BlockType.ARBITRARY_WAVEFORM_VOLTAGE_SOURCE_EMT), LibraryLeafSpec("Arbitrary waveform current source EMT", BlockType.ARBITRARY_WAVEFORM_CURRENT_SOURCE_EMT), LibraryLeafSpec("Step voltage source EMT", BlockType.STEP_VOLTAGE_SOURCE_EMT), LibraryLeafSpec("Step current source EMT", BlockType.STEP_CURRENT_SOURCE_EMT), LibraryLeafSpec("Ramp voltage source EMT", BlockType.RAMP_VOLTAGE_SOURCE_EMT), LibraryLeafSpec("Ramp current source EMT", BlockType.RAMP_CURRENT_SOURCE_EMT), LibraryLeafSpec("Double exponential current source EMT", BlockType.DOUBLE_EXPONENTIAL_CURRENT_SOURCE_EMT), LibraryLeafSpec("Heidler current source EMT", BlockType.HEIDLER_CURRENT_SOURCE_EMT), LibraryLeafSpec("CIGRE surge current source EMT", BlockType.CIGRE_SURGE_CURRENT_SOURCE_EMT), LibraryLeafSpec("Switch EMT", BlockType.SWITCH_EMT), LibraryLeafSpec("Ground EMT", BlockType.GROUND_EMT), LibraryLeafSpec("Grounding Link EMT", BlockType.GROUNDING_LINK_EMT), LibraryLeafSpec("Nonlinear Resistor EMT", BlockType.NONLINEAR_RESISTOR_EMT), LibraryLeafSpec("RLC Combo", BlockType.RLC_COMBO_EMT), LibraryLeafSpec("R load", BlockType.R_LOAD_EMT), LibraryLeafSpec("L load", BlockType.L_LOAD_EMT), LibraryLeafSpec("C load", BlockType.C_LOAD_EMT), LibraryLeafSpec("DC load", BlockType.DC_LOAD_EMT),))
-
-        # emt fault
-        self.common_emt_fault_blocks: List[LibraryLeafSpec] = list((LibraryLeafSpec("Fault EMT", BlockType.FAULT_EMT),))
-
-        # common rms
-        self.common_rms_device_blocks: List[LibraryLeafSpec] = list((
-                                                                     LibraryLeafSpec("Pll transformer", BlockType.PLL_TRANSFORM_RMS),
-                                                                     LibraryLeafSpec("Pi current controller", BlockType.PI_CURRENT_CONTROLLER),
-                                                                     LibraryLeafSpec("Pi power controller", BlockType.PI_POWER_CONTROLLER),
-                                                                     ))
-
-        # Keep the configurable controls separate from electrical devices.
-        # Typed leaves use the same drag registration and native builders as
-        # the rest of the restructured library.
-        self.control_rms_related_blocks: Dict[DeviceType, List[LibraryLeafSpec]] = dict((
-            (DeviceType.VscDevice, list((
-                LibraryLeafSpec("PLL explicit PI", BlockType.VSC_PLL_RMS),
-                LibraryLeafSpec("Vdc / P control", BlockType.VSC_ACTIVE_CONTROL_RMS),
-                LibraryLeafSpec("Qac / Vac control", BlockType.VSC_REACTIVE_CONTROL_RMS),
-                LibraryLeafSpec("Current limiter", BlockType.VSC_CURRENT_LIMITER_RMS),
-                LibraryLeafSpec(
-                    "d-axis current PI controller", BlockType.VSC_VD_HAT_RMS,
-                    search_text="d-axis current PI controller inner loop voltage correction vd hat vd_hat y_vd_hat",
-                ),
-                LibraryLeafSpec(
-                    "q-axis current PI controller", BlockType.VSC_VQ_HAT_RMS,
-                    search_text="q-axis current PI controller inner loop voltage correction vq hat vq_hat y_vq_hat",
-                ),
-            ))),
+        self.tree_structure["Tools"] = list((
+            LibraryLeafSpec("Signal Pair", BlockType.FROM_GOTO),
+            LibraryLeafSpec("Measurements", BlockType.INPUT_CONN),
+            LibraryLeafSpec("Generic Device", BlockType.GENERIC),
         ))
-
-        # devices rms
-        self.device_rms_related_blocks: Dict[DeviceType, List[LibraryLeafSpec]] = dict(((DeviceType.GeneratorDevice, list((LibraryLeafSpec("Voltage source", BlockType.VOLTAGE_SOURCE_RMS),
-                                                                                                                           LibraryLeafSpec("Generator basic", BlockType.GENRAW),
-                                                                                                                           LibraryLeafSpec("Generator QEC", BlockType.GENQEC),
-                                                                                                                           LibraryLeafSpec("Governor", BlockType.GOV_RMS),
-                                                                                                                           LibraryLeafSpec("Stabilizer", BlockType.STAB_RMS),
-                                                                                                                           LibraryLeafSpec("Exciter", BlockType.EXCITER_RMS),))),
-                                                                                        (DeviceType.VscDevice, list((LibraryLeafSpec("Gfl converter", BlockType.GFL_CONVERTER_RMS),
-                                                                                                                     LibraryLeafSpec("Complete GFL VSC hvdc", BlockType.GFL_VSC_HVDC_RMS),
-                                                                                                                     LibraryLeafSpec("Converter electrical equations", BlockType.VSC_ELECTRICAL_RMS),
-                                                                                                                     LibraryLeafSpec("DC-link capacitor", BlockType.VSC_DC_LINK_RMS),))),
-                                                                                        (DeviceType.LineDevice, list((LibraryLeafSpec("Line", BlockType.LINE_RMS),))),
-                                                                                        (DeviceType.DCLineDevice, list((LibraryLeafSpec("DC line", BlockType.DC_LINE_RMS),))),
-                                                                                        (DeviceType.Transformer2WDevice, list((LibraryLeafSpec("Transformer 2W", BlockType.TRANSFORMER_2W_RMS),))),
-                                                                                        (DeviceType.LoadDevice, list((LibraryLeafSpec("Load", BlockType.LOAD_RMS),))) ))
-        # devices emt
-        self.device_emt_related_blocks: Dict[DeviceType, List[LibraryLeafSpec]] = dict(((DeviceType.GeneratorDevice, list((LibraryLeafSpec("Generator", BlockType.EMT_GENERATOR),
-                                                                                                                           LibraryLeafSpec("Thevenin eq. generator", BlockType.EMT_THEVENIN),
-                                                                                                                           LibraryLeafSpec("Governor", BlockType.GOV_EMT),
-                                                                                                                           LibraryLeafSpec("Stabilizer", BlockType.STAB_EMT),
-                                                                                                                           LibraryLeafSpec("Exciter", BlockType.EXCITER_EMT),
-                                                                                                                           LibraryLeafSpec("PV power plant", BlockType.PV_POWER_PLANT_EMT),
-                                                                                                                           LibraryLeafSpec("PV ", BlockType.PV_EMT),))),
-                                                                                        (DeviceType.BatteryDevice, list((LibraryLeafSpec("BESS ", BlockType.BESS_EMT),
-                                                                                                                         LibraryLeafSpec("Battery ", BlockType.BATTERY_EMT),))),
-                                                                                        (DeviceType.LineDevice, list((LibraryLeafSpec("Emt pi line", BlockType.EMT_PI_LINE),
-                                                                                                                      LibraryLeafSpec("Emt Bergeron line", BlockType.EMT_BERGERON_LINE),
-                                                                                                                      LibraryLeafSpec("Emt JMarti line", BlockType.EMT_JMARTI_LINE),))),
-                                                                                        (DeviceType.DCLineDevice, list((LibraryLeafSpec("Emt DC line", BlockType.EMT_DC_LINE),))),
-                                                                                        (DeviceType.LoadDevice, list((LibraryLeafSpec("Exponential load", BlockType.EXP_LOAD_EMT),
-                                                                                                                      LibraryLeafSpec("ZIP load", BlockType.ZIP_LOAD_EMT),
-                                                                                                                      LibraryLeafSpec("Induction motor", BlockType.INDUCTION_MOTOR_EMT),))),
-                                                                                        (DeviceType.Transformer2WDevice, list((LibraryLeafSpec("Transformer", BlockType.TRAFO_EMT),
-                                                                                                                               LibraryLeafSpec("XFMR Transformer", BlockType.XFMR_TRANSFORMER),))),
-                                                                                        (DeviceType.Transformer3WDevice, list((LibraryLeafSpec("Transformer", BlockType.TRAFO_EMT),
-                                                                                                                               LibraryLeafSpec("XFMR Transformer", BlockType.XFMR_TRANSFORMER),))),
-                                                                                        (DeviceType.TransformerTypeDevice, list((LibraryLeafSpec("Transformer", BlockType.TRAFO_EMT),
-                                                                                                                                 LibraryLeafSpec("XFMR Transformer", BlockType.XFMR_TRANSFORMER),))),
-                                                                                        (DeviceType.VscDevice, list((LibraryLeafSpec("Complete pseudo-EMT VSC", BlockType.COMPLETE_PSEUDO_VSC_EMT),))),))
-
-        # Build tree structure
-        self.tree_structure: Dict[str, object] = dict()
-        if mode == DynamicSimulationMode.RMS:
-            self.tree_structure["Basic"] = build_basic_library_branch()
-            self.tree_structure["Basic_devices"] = list(self.common_rms_device_blocks)
-            self.tree_structure["Devices"] = self.device_rms_related_blocks.get(
-                self.api_object.device_type if self.api_object is not None else DeviceType.NoDevice, dict())
-            # Only expose VSC-specific controls for a VSC editor; keep other
-            # devices and the EMT branch unchanged by the RMS registrations.
-            rms_controls: List[LibraryLeafSpec] = self.control_rms_related_blocks.get(
-                self.api_object.device_type if self.api_object is not None else DeviceType.NoDevice, list())
-            if len(rms_controls) > 0:
-                self.tree_structure["Control blocks"] = list(rms_controls)
-            else:
-                pass
-            self.tree_structure["Procedural logic"] = build_procedural_library_branch()
-            self.tree_structure["International standards"] = build_international_standards_library_branch()
-
-        elif mode == DynamicSimulationMode.EMT:
-            self.tree_structure["Basic"] = build_basic_library_branch()
-            specific_emt_blocks: List[LibraryLeafSpec] = list(
-                self.device_emt_related_blocks.get(
-                    self.api_object.device_type if self.api_object is not None else DeviceType.NoDevice, list()))
-            self.tree_structure["Devices"] = list(self.common_emt_device_blocks + specific_emt_blocks)
-            self.tree_structure["Faults"] = list(self.common_emt_fault_blocks)
-            self.tree_structure["Procedural logic"] = build_procedural_library_branch()
-
-        else:
-            pass
-
-        self.tree_structure["Tools"] = list((LibraryLeafSpec("Signal Pair", BlockType.FROM_GOTO),
-                                                                LibraryLeafSpec("Measurements", BlockType.INPUT_CONN),
-                                                                LibraryLeafSpec("Generic Device", BlockType.GENERIC)))
 
         if self.templates_list:
             self.tree_structure["Templates"] = dict((("Available", [LibraryLeafSpec(template.name, template, template.name) for template in
@@ -452,6 +425,803 @@ class DynamicEditorLibrary:
                 raise TypeError(f"Unsupported library branch data type {type(branch_data)!r}")
 
 
+def _build_native_device_spec(
+        label: str,
+        source: DynamicDeviceTemplateType | BlockType,
+        mode: DynamicSimulationMode,
+        device_type: DeviceType,
+        category_name: str,
+        unique_key: str,
+        compatible_device_types: tuple[DeviceType, ...] | None = None,
+) -> LibraryDeviceTemplateSpec:
+    """Build one native device registration with a canonical Library path.
+
+    :param label: Visible device-template label.
+    :param source: Typed native materialization source.
+    :param mode: Dynamic simulation domain.
+    :param device_type: Compatible physical device type.
+    :param category_name: Category below ``Devices/Native``.
+    :param unique_key: Stable catalogue identity.
+    :param compatible_device_types: Physical device types sharing this entry.
+    :return: Complete device-template specification.
+    """
+    return LibraryDeviceTemplateSpec(
+        label=label,
+        source=source,
+        mode=mode,
+        device_type=device_type,
+        category_path=("Native", category_name),
+        unique_key=unique_key,
+        compatible_device_types=compatible_device_types,
+    )
+
+
+def build_rms_native_device_specs() -> List[LibraryDeviceTemplateSpec]:
+    """Build every native RMS device entry in canonical Library order.
+
+    :return: Complete native RMS device specifications.
+    """
+    return list((
+        _build_native_device_spec("Complete generator", DynamicDeviceTemplateType.RMS_COMPLETE_GENERATOR,
+                                  DynamicSimulationMode.RMS, DeviceType.GeneratorDevice,
+                                  "Generators and sources", DynamicDeviceTemplateType.RMS_COMPLETE_GENERATOR.value),
+        _build_native_device_spec("Generator QEC", BlockType.GENQEC,
+                                  DynamicSimulationMode.RMS, DeviceType.GeneratorDevice,
+                                  "Generators and sources", DynamicDeviceTemplateType.RMS_GENQEC.value),
+        _build_native_device_spec("Generator basic", BlockType.GENRAW,
+                                  DynamicSimulationMode.RMS, DeviceType.GeneratorDevice,
+                                  "Generators and sources", DynamicDeviceTemplateType.RMS_GENROW.value),
+        _build_native_device_spec("Voltage source", BlockType.VOLTAGE_SOURCE_RMS,
+                                  DynamicSimulationMode.RMS, DeviceType.GeneratorDevice,
+                                  "Generators and sources", DynamicDeviceTemplateType.RMS_VOLTAGE_SOURCE.value),
+        _build_native_device_spec("PVD1", DynamicDeviceTemplateType.RMS_PVD1,
+                                  DynamicSimulationMode.RMS, DeviceType.GeneratorDevice,
+                                  "Generators and sources", DynamicDeviceTemplateType.RMS_PVD1.value),
+        _build_native_device_spec("PVD1 complete", DynamicDeviceTemplateType.RMS_PVD1_COMPLETE,
+                                  DynamicSimulationMode.RMS, DeviceType.GeneratorDevice,
+                                  "Generators and sources", DynamicDeviceTemplateType.RMS_PVD1_COMPLETE.value),
+        _build_native_device_spec("PVD1 DC MPPT", DynamicDeviceTemplateType.RMS_PVD1_DC_MPPT,
+                                  DynamicSimulationMode.RMS, DeviceType.GeneratorDevice,
+                                  "Generators and sources", DynamicDeviceTemplateType.RMS_PVD1_DC_MPPT.value),
+        _build_native_device_spec("PVD1 DC-link MPPT", DynamicDeviceTemplateType.RMS_PVD1_DC_LINK_MPPT,
+                                  DynamicSimulationMode.RMS, DeviceType.GeneratorDevice,
+                                  "Generators and sources", DynamicDeviceTemplateType.RMS_PVD1_DC_LINK_MPPT.value),
+        _build_native_device_spec("PVD1 DC-link BESS", DynamicDeviceTemplateType.RMS_PVD1_DC_LINK_BESS,
+                                  DynamicSimulationMode.RMS, DeviceType.BatteryDevice,
+                                  "Batteries", DynamicDeviceTemplateType.RMS_PVD1_DC_LINK_BESS.value),
+        _build_native_device_spec("ESD1", DynamicDeviceTemplateType.RMS_ESD1,
+                                  DynamicSimulationMode.RMS, DeviceType.BatteryDevice,
+                                  "Batteries", DynamicDeviceTemplateType.RMS_ESD1.value),
+        _build_native_device_spec("Line", BlockType.LINE_RMS,
+                                  DynamicSimulationMode.RMS, DeviceType.LineDevice,
+                                  "Lines", DynamicDeviceTemplateType.RMS_LINE.value),
+        _build_native_device_spec("DC line", BlockType.DC_LINE_RMS,
+                                  DynamicSimulationMode.RMS, DeviceType.DCLineDevice,
+                                  "DC lines", DynamicDeviceTemplateType.RMS_DC_LINE.value),
+        _build_native_device_spec("Transformer 2W", BlockType.TRANSFORMER_2W_RMS,
+                                  DynamicSimulationMode.RMS, DeviceType.Transformer2WDevice,
+                                  "Transformers", DynamicDeviceTemplateType.RMS_TRANSFORMER_2W.value),
+        _build_native_device_spec("Load", BlockType.LOAD_RMS,
+                                  DynamicSimulationMode.RMS, DeviceType.LoadDevice,
+                                  "Loads and motors", DynamicDeviceTemplateType.RMS_LOAD.value),
+        _build_native_device_spec("Shunt", DynamicDeviceTemplateType.RMS_SHUNT,
+                                  DynamicSimulationMode.RMS, DeviceType.ShuntDevice,
+                                  "Loads and shunts", DynamicDeviceTemplateType.RMS_SHUNT.value),
+        _build_native_device_spec("GFL converter", BlockType.GFL_CONVERTER_RMS,
+                                  DynamicSimulationMode.RMS, DeviceType.VscDevice,
+                                  "Converters and VSC", DynamicDeviceTemplateType.RMS_GFL_CONVERTER.value),
+        _build_native_device_spec("Complete GFL VSC HVDC", BlockType.GFL_VSC_HVDC_RMS,
+                                  DynamicSimulationMode.RMS, DeviceType.VscDevice,
+                                  "Converters and VSC", DynamicDeviceTemplateType.RMS_HVDC_VSC_GFL.value),
+    ))
+
+
+def build_emt_native_device_specs() -> List[LibraryDeviceTemplateSpec]:
+    """Build every native EMT device entry in canonical Library order.
+
+    :return: Complete native EMT device specifications.
+    """
+    specs: List[LibraryDeviceTemplateSpec] = list((
+        _build_native_device_spec("Complete generator", DynamicDeviceTemplateType.EMT_COMPLETE_GENERATOR,
+                                  DynamicSimulationMode.EMT, DeviceType.GeneratorDevice,
+                                  "Generators and sources", DynamicDeviceTemplateType.EMT_COMPLETE_GENERATOR.value),
+        _build_native_device_spec("Thevenin generator", BlockType.EMT_THEVENIN,
+                                  DynamicSimulationMode.EMT, DeviceType.GeneratorDevice,
+                                  "Generators and sources", DynamicDeviceTemplateType.EMT_THEVENIN_GENERATOR.value),
+        _build_native_device_spec("Ideal converter", DynamicDeviceTemplateType.EMT_IDEAL_CONVERTER,
+                                  DynamicSimulationMode.EMT, DeviceType.VscDevice,
+                                  "Converters and VSC", DynamicDeviceTemplateType.EMT_IDEAL_CONVERTER.value),
+        _build_native_device_spec("Full pseudo converter", BlockType.COMPLETE_PSEUDO_VSC_EMT,
+                                  DynamicSimulationMode.EMT, DeviceType.VscDevice,
+                                  "Converters and VSC", DynamicDeviceTemplateType.EMT_FULL_PSEUDO_CONVERTER.value),
+        _build_native_device_spec("Switched converter", DynamicDeviceTemplateType.EMT_SWITCHED_CONVERTER,
+                                  DynamicSimulationMode.EMT, DeviceType.VscDevice,
+                                  "Converters and VSC", DynamicDeviceTemplateType.EMT_SWITCHED_CONVERTER.value),
+        _build_native_device_spec("VSC Grid-Forming (GFM)", DynamicDeviceTemplateType.EMT_GFM,
+                                  DynamicSimulationMode.EMT, DeviceType.VscDevice,
+                                  "Converters and VSC", DynamicDeviceTemplateType.EMT_GFM.value),
+        _build_native_device_spec("BESS", BlockType.BESS_EMT,
+                                  DynamicSimulationMode.EMT, DeviceType.BatteryDevice,
+                                  "Batteries", DynamicDeviceTemplateType.EMT_BESS.value),
+        _build_native_device_spec("PV plant grid following", BlockType.PV_EMT,
+                                  DynamicSimulationMode.EMT, DeviceType.GeneratorDevice,
+                                  "Generators and sources", DynamicDeviceTemplateType.EMT_PV_GRID_FOLLOWING.value),
+        _build_native_device_spec("DC load", BlockType.DC_LOAD_EMT,
+                                  DynamicSimulationMode.EMT, DeviceType.LoadDevice,
+                                  "Loads and motors", DynamicDeviceTemplateType.EMT_DC_LOAD.value),
+        _build_native_device_spec("Exponential load (ABC)", BlockType.EXP_LOAD_EMT,
+                                  DynamicSimulationMode.EMT, DeviceType.LoadDevice,
+                                  "Loads and motors", DynamicDeviceTemplateType.EMT_EXPONENTIAL_LOAD_ABC.value),
+        _build_native_device_spec("ZIP load (ABC)", BlockType.ZIP_LOAD_EMT,
+                                  DynamicSimulationMode.EMT, DeviceType.LoadDevice,
+                                  "Loads and motors", DynamicDeviceTemplateType.EMT_ZIP_LOAD_ABC.value),
+        _build_native_device_spec("Single cage induction motor",
+                                  DynamicDeviceTemplateType.EMT_SINGLE_CAGE_INDUCTION_MOTOR,
+                                  DynamicSimulationMode.EMT, DeviceType.LoadDevice,
+                                  "Loads and motors",
+                                  DynamicDeviceTemplateType.EMT_SINGLE_CAGE_INDUCTION_MOTOR.value),
+        _build_native_device_spec("Double cage induction motor",
+                                  DynamicDeviceTemplateType.EMT_DOUBLE_CAGE_INDUCTION_MOTOR,
+                                  DynamicSimulationMode.EMT, DeviceType.LoadDevice,
+                                  "Loads and motors",
+                                  DynamicDeviceTemplateType.EMT_DOUBLE_CAGE_INDUCTION_MOTOR.value),
+        _build_native_device_spec("Shunt R (ABC)", BlockType.R_LOAD_EMT,
+                                  DynamicSimulationMode.EMT, DeviceType.LoadDevice,
+                                  "Loads and shunts", DynamicDeviceTemplateType.EMT_SHUNT_R_ABC.value),
+        _build_native_device_spec("Shunt L (ABC)", BlockType.L_LOAD_EMT,
+                                  DynamicSimulationMode.EMT, DeviceType.LoadDevice,
+                                  "Loads and shunts", DynamicDeviceTemplateType.EMT_SHUNT_L_ABC.value),
+        _build_native_device_spec("Shunt C (ABC)", BlockType.C_LOAD_EMT,
+                                  DynamicSimulationMode.EMT, DeviceType.LoadDevice,
+                                  "Loads and shunts", DynamicDeviceTemplateType.EMT_SHUNT_C_ABC.value),
+        _build_native_device_spec("PI line (ABC)", BlockType.EMT_PI_LINE,
+                                  DynamicSimulationMode.EMT, DeviceType.LineDevice,
+                                  "Lines", DynamicDeviceTemplateType.EMT_PI_LINE_ABC.value),
+        _build_native_device_spec("Bergeron line (ABC)", BlockType.EMT_BERGERON_LINE,
+                                  DynamicSimulationMode.EMT, DeviceType.LineDevice,
+                                  "Lines", DynamicDeviceTemplateType.EMT_BERGERON_LINE_ABC.value),
+        _build_native_device_spec("DC line", BlockType.EMT_DC_LINE,
+                                  DynamicSimulationMode.EMT, DeviceType.DCLineDevice,
+                                  "DC lines", DynamicDeviceTemplateType.EMT_DC_LINE.value),
+        _build_native_device_spec("Transformer", BlockType.TRAFO_EMT,
+                                  DynamicSimulationMode.EMT, DeviceType.Transformer2WDevice,
+                                  "Transformers", DynamicDeviceTemplateType.EMT_TRANSFORMER.value,
+                                  (DeviceType.Transformer2WDevice, DeviceType.Transformer3WDevice,
+                                   DeviceType.TransformerTypeDevice)),
+        _build_native_device_spec("XFMR", BlockType.XFMR_TRANSFORMER,
+                                  DynamicSimulationMode.EMT, DeviceType.Transformer2WDevice,
+                                  "Transformers", DynamicDeviceTemplateType.EMT_XFMR.value,
+                                  (DeviceType.Transformer2WDevice, DeviceType.Transformer3WDevice,
+                                   DeviceType.TransformerTypeDevice)),
+    ))
+
+    block_entries: tuple[tuple[str, BlockType, DeviceType, str], ...] = (
+        ("Simple generator", BlockType.EMT_GENERATOR, DeviceType.GeneratorDevice, "Generators and sources"),
+        ("Voltage source EMT", BlockType.VOLTAGE_SOURCE_EMT, DeviceType.GeneratorDevice, "Generators and sources"),
+        ("Current source EMT", BlockType.CURRENT_SOURCE_EMT, DeviceType.GeneratorDevice, "Generators and sources"),
+        ("Controlled voltage source EMT", BlockType.CONTROLLED_VOLTAGE_SOURCE_EMT,
+         DeviceType.GeneratorDevice, "Generators and sources"),
+        ("Controlled current source EMT", BlockType.CONTROLLED_CURRENT_SOURCE_EMT,
+         DeviceType.GeneratorDevice, "Generators and sources"),
+        ("Balanced 3-phase voltage source EMT", BlockType.BALANCED_3PH_VOLTAGE_SOURCE_EMT,
+         DeviceType.GeneratorDevice, "Generators and sources"),
+        ("Balanced 3-phase current source EMT", BlockType.BALANCED_3PH_CURRENT_SOURCE_EMT,
+         DeviceType.GeneratorDevice, "Generators and sources"),
+        ("Controlled balanced 3-phase voltage source EMT", BlockType.CONTROLLED_BALANCED_3PH_VOLTAGE_SOURCE_EMT,
+         DeviceType.GeneratorDevice, "Generators and sources"),
+        ("Controlled balanced 3-phase current source EMT", BlockType.CONTROLLED_BALANCED_3PH_CURRENT_SOURCE_EMT,
+         DeviceType.GeneratorDevice, "Generators and sources"),
+        ("Arbitrary waveform voltage source EMT", BlockType.ARBITRARY_WAVEFORM_VOLTAGE_SOURCE_EMT,
+         DeviceType.GeneratorDevice, "Generators and sources"),
+        ("Arbitrary waveform current source EMT", BlockType.ARBITRARY_WAVEFORM_CURRENT_SOURCE_EMT,
+         DeviceType.GeneratorDevice, "Generators and sources"),
+        ("Step voltage source EMT", BlockType.STEP_VOLTAGE_SOURCE_EMT,
+         DeviceType.GeneratorDevice, "Generators and sources"),
+        ("Step current source EMT", BlockType.STEP_CURRENT_SOURCE_EMT,
+         DeviceType.GeneratorDevice, "Generators and sources"),
+        ("Ramp voltage source EMT", BlockType.RAMP_VOLTAGE_SOURCE_EMT,
+         DeviceType.GeneratorDevice, "Generators and sources"),
+        ("Ramp current source EMT", BlockType.RAMP_CURRENT_SOURCE_EMT,
+         DeviceType.GeneratorDevice, "Generators and sources"),
+        ("Double exponential current source EMT", BlockType.DOUBLE_EXPONENTIAL_CURRENT_SOURCE_EMT,
+         DeviceType.GeneratorDevice, "Generators and sources"),
+        ("Heidler current source EMT", BlockType.HEIDLER_CURRENT_SOURCE_EMT,
+         DeviceType.GeneratorDevice, "Generators and sources"),
+        ("CIGRE surge current source EMT", BlockType.CIGRE_SURGE_CURRENT_SOURCE_EMT,
+         DeviceType.GeneratorDevice, "Generators and sources"),
+        ("PV power plant", BlockType.PV_POWER_PLANT_EMT,
+         DeviceType.GeneratorDevice, "Generators and sources"),
+        ("Battery", BlockType.BATTERY_EMT, DeviceType.BatteryDevice, "Batteries"),
+        ("JMarti line", BlockType.EMT_JMARTI_LINE, DeviceType.LineDevice, "Lines"),
+        ("Switch EMT", BlockType.SWITCH_EMT, DeviceType.SwitchDevice, "Switches"),
+        ("Ground EMT", BlockType.GROUND_EMT, DeviceType.LoadDevice, "Loads and shunts"),
+        ("Grounding link EMT", BlockType.GROUNDING_LINK_EMT, DeviceType.LoadDevice, "Loads and shunts"),
+        ("Nonlinear resistor EMT", BlockType.NONLINEAR_RESISTOR_EMT, DeviceType.LoadDevice, "Loads and shunts"),
+        ("RLC combo", BlockType.RLC_COMBO_EMT, DeviceType.LoadDevice, "Loads and shunts"),
+        ("DC voltage source EMT", BlockType.DC_VOLTAGE_SOURCE_EMT,
+         DeviceType.GeneratorDevice, "Generators and sources"),
+        ("DC current source EMT", BlockType.DC_CURRENT_SOURCE_EMT,
+         DeviceType.GeneratorDevice, "Generators and sources"),
+        ("Controlled DC voltage source EMT", BlockType.CONTROLLED_DC_VOLTAGE_SOURCE_EMT,
+         DeviceType.GeneratorDevice, "Generators and sources"),
+        ("Controlled DC current source EMT", BlockType.CONTROLLED_DC_CURRENT_SOURCE_EMT,
+         DeviceType.GeneratorDevice, "Generators and sources"),
+    )
+    entry: tuple[str, BlockType, DeviceType, str]
+    for entry in block_entries:
+        label: str = entry[0]
+        block_type: BlockType = entry[1]
+        device_type: DeviceType = entry[2]
+        category_name: str = entry[3]
+        specs.append(_build_native_device_spec(
+            label=label,
+            source=block_type,
+            mode=DynamicSimulationMode.EMT,
+            device_type=device_type,
+            category_name=category_name,
+            unique_key=f"emt:native:{block_type.name}",
+        ))
+    return specs
+
+
+def _international_standard_label(model: InternationalStandardModel) -> str:
+    """Return the established visible label for one standard model.
+
+    :param model: International-standard model identifier.
+    :return: Human-facing Library label.
+    """
+    if model == InternationalStandardModel.PSS1AOMEGA:
+        label: str = "PSS1A (omega input)"
+    elif model == InternationalStandardModel.PSS1APGEN:
+        label = "PSS1A (Pgen input)"
+    elif model == InternationalStandardModel.IEEEVC_1981:
+        label = "IEEEVC 1981"
+    elif model == InternationalStandardModel.PSSKUNDUR:
+        label = "PSS Kundur"
+    elif model == InternationalStandardModel.REGCBCS:
+        label = "REGCbCS"
+    elif model == InternationalStandardModel.WT4ACURRENTSOURCE:
+        label = "WT4A current source"
+    elif model == InternationalStandardModel.WT4ACURRENTSOURCE2020:
+        label = "WT4A current source 2020"
+    elif model == InternationalStandardModel.WT4BCURRENTSOURCE:
+        label = "WT4B current source"
+    elif model == InternationalStandardModel.WT4BCURRENTSOURCE2020:
+        label = "WT4B current source 2020"
+    elif model == InternationalStandardModel.WT4INJECTOR:
+        label = "WT4 injector"
+    elif model == InternationalStandardModel.WTG4ACURRENTSOURCE:
+        label = "WTG4A current source"
+    elif model == InternationalStandardModel.WTG4BCURRENTSOURCE:
+        label = "WTG4B current source"
+    elif model == InternationalStandardModel.WPP4BCURRENTSOURCE2020:
+        label = "WPP4B current source 2020"
+    elif model == InternationalStandardModel.PVCURRENTSOURCEBNOPLANTCONTROL:
+        label = "PV current source B (no plant control)"
+    elif model == InternationalStandardModel.PVVOLTAGESOURCEANOPLANTCONTROL:
+        label = "PV voltage source A (no plant control)"
+    elif model == InternationalStandardModel.PVVOLTAGESOURCEBNOPLANTCONTROL:
+        label = "PV voltage source B (no plant control)"
+    elif model == InternationalStandardModel.BESSCBCURRENTSOURCENOPLANTCONTROL:
+        label = "BESSCB current source (no plant control)"
+    else:
+        label = model.name
+    return label
+
+
+def _append_international_standard_group(
+        descriptors: List[InternationalStandardTemplateDescriptor],
+        models: tuple[InternationalStandardModel, ...],
+        category_name: str,
+        module_folder: str,
+        device_type: DeviceType | None,
+) -> None:
+    """Append one ordered international-standard family to the local registry.
+
+    :param descriptors: Destination descriptor list.
+    :param models: Ordered model identifiers in the family.
+    :param category_name: Canonical standard family name.
+    :param module_folder: Engine implementation subpackage.
+    :param device_type: Complete device type, or ``None`` for controls.
+    :return: None.
+    """
+    model: InternationalStandardModel
+    for model in models:
+        descriptors.append(InternationalStandardTemplateDescriptor(
+            model=model,
+            display_label=_international_standard_label(model=model),
+            category_path=(category_name,),
+            module_folder=module_folder,
+            device_type=device_type,
+        ))
+
+
+def get_dynamic_library_international_standard_descriptors() -> Sequence[InternationalStandardTemplateDescriptor]:
+    """Return the international-standard inventory owned by the GUI Library.
+
+    :return: Immutable descriptors in canonical family order.
+    """
+    descriptors: List[InternationalStandardTemplateDescriptor] = list()
+    _append_international_standard_group(
+        descriptors, (InternationalStandardModel.GENSAL, InternationalStandardModel.GENROU),
+        "Synchronous machines", "synchronous_machines", DeviceType.GeneratorDevice)
+
+    # Induction models have different physical hosts and are registered
+    # explicitly so the editor projection can filter them correctly.
+    descriptors.append(InternationalStandardTemplateDescriptor(
+        InternationalStandardModel.CIMTR1, "CIMTR1", ("Induction machines",),
+        "induction_machines", DeviceType.GeneratorDevice))
+    descriptors.append(InternationalStandardTemplateDescriptor(
+        InternationalStandardModel.CIMW, "CIMW", ("Induction machines",),
+        "induction_machines", DeviceType.LoadDevice))
+
+    _append_international_standard_group(
+        descriptors,
+        (InternationalStandardModel.GGOV1, InternationalStandardModel.GOVHYDRO4,
+         InternationalStandardModel.GOVSTEAM1, InternationalStandardModel.GOVSTEAMEU,
+         InternationalStandardModel.HYGOV, InternationalStandardModel.IEEEG1,
+         InternationalStandardModel.IEEEG2, InternationalStandardModel.TGOV1,
+         InternationalStandardModel.TGOV3),
+        "Governors", "governors", None)
+    _append_international_standard_group(
+        descriptors,
+        (InternationalStandardModel.AC1A, InternationalStandardModel.AC1C,
+         InternationalStandardModel.AC6A, InternationalStandardModel.AC6C,
+         InternationalStandardModel.AC7B, InternationalStandardModel.AC7C,
+         InternationalStandardModel.AC8B, InternationalStandardModel.AC8C,
+         InternationalStandardModel.BBSEX1, InternationalStandardModel.DC1A,
+         InternationalStandardModel.DC1C, InternationalStandardModel.ESDC2A,
+         InternationalStandardModel.EXAC1, InternationalStandardModel.IEEET1,
+         InternationalStandardModel.IEEEX2, InternationalStandardModel.IEEX2A,
+         InternationalStandardModel.SCRX, InternationalStandardModel.SEXS,
+         InternationalStandardModel.ST1A, InternationalStandardModel.ST1C,
+         InternationalStandardModel.ST4B, InternationalStandardModel.ST4C,
+         InternationalStandardModel.ST5B, InternationalStandardModel.ST5C,
+         InternationalStandardModel.ST6B, InternationalStandardModel.ST6C,
+         InternationalStandardModel.ST7B, InternationalStandardModel.ST7C,
+         InternationalStandardModel.ST9C, InternationalStandardModel.VRKUNDUR,
+         InternationalStandardModel.IEEEVC_1981),
+        "Excitation systems", "excitation_systems", None)
+    _append_international_standard_group(
+        descriptors,
+        (InternationalStandardModel.IEEL, InternationalStandardModel.MAXEX2,
+         InternationalStandardModel.OEL2C, InternationalStandardModel.OEL3C,
+         InternationalStandardModel.OEL4C, InternationalStandardModel.OEL5C,
+         InternationalStandardModel.SCL1C, InternationalStandardModel.SCL2C,
+         InternationalStandardModel.UEL1, InternationalStandardModel.UEL2C),
+        "Excitation limiters", "excitation_limiters", None)
+    _append_international_standard_group(
+        descriptors,
+        (InternationalStandardModel.PSS1AOMEGA, InternationalStandardModel.PSS1APGEN,
+         InternationalStandardModel.PSS2A, InternationalStandardModel.PSS2B,
+         InternationalStandardModel.PSS2C, InternationalStandardModel.PSS3B,
+         InternationalStandardModel.PSS3C, InternationalStandardModel.PSS6C,
+         InternationalStandardModel.PSSKUNDUR),
+        "Power system stabilizers", "power_system_stabilizers", None)
+    _append_international_standard_group(
+        descriptors,
+        (InternationalStandardModel.REECB, InternationalStandardModel.REECC,
+         InternationalStandardModel.REGCBCS, InternationalStandardModel.REPCA),
+        "Renewable controls", "renewable_controls", None)
+    _append_international_standard_group(
+        descriptors,
+        (InternationalStandardModel.WT4ACURRENTSOURCE, InternationalStandardModel.WT4ACURRENTSOURCE2020,
+         InternationalStandardModel.WT4BCURRENTSOURCE, InternationalStandardModel.WT4BCURRENTSOURCE2020,
+         InternationalStandardModel.WT4INJECTOR, InternationalStandardModel.WTG4ACURRENTSOURCE,
+         InternationalStandardModel.WTG4BCURRENTSOURCE, InternationalStandardModel.WPP4BCURRENTSOURCE2020),
+        "Wind generation", "wind_generation", DeviceType.GeneratorDevice)
+    _append_international_standard_group(
+        descriptors,
+        (InternationalStandardModel.PVCURRENTSOURCEBNOPLANTCONTROL,
+         InternationalStandardModel.PVVOLTAGESOURCEANOPLANTCONTROL,
+         InternationalStandardModel.PVVOLTAGESOURCEBNOPLANTCONTROL),
+        "Solar PV generation", "solar_pv_generation", DeviceType.GeneratorDevice)
+    _append_international_standard_group(
+        descriptors, (InternationalStandardModel.BESSCBCURRENTSOURCENOPLANTCONTROL,),
+        "Battery energy storage", "battery_energy_storage", DeviceType.BatteryDevice)
+    _append_international_standard_group(
+        descriptors, (InternationalStandardModel.FRQTPA, InternationalStandardModel.VTGTPA),
+        "Protection relays", "protection_relays", None)
+    return tuple(descriptors)
+
+
+def get_dynamic_library_procedural_descriptors() -> Sequence[ProceduralBlockTemplateDescriptor]:
+    """Return the procedural inventory and ordering owned by the GUI Library.
+
+    :return: Immutable procedural descriptors in canonical category order.
+    """
+    return tuple((
+        ProceduralBlockTemplateDescriptor(ProceduralLogicType.FixedSample, "Fixed sample",
+                                          ("Sampling and history",), ("condition",), ("y",), tuple()),
+        ProceduralBlockTemplateDescriptor(ProceduralLogicType.SampledValue, "Sampled value",
+                                          ("Sampling and history",), ("u",), ("y",), tuple()),
+        ProceduralBlockTemplateDescriptor(ProceduralLogicType.TimeDelay, "Time delay",
+                                          ("Sampling and history",), ("u",), ("y",),
+                                          (ProceduralBlockParameterSpec("delay", 0.0),)),
+        ProceduralBlockTemplateDescriptor(ProceduralLogicType.MovingAverage, "Moving average",
+                                          ("Sampling and history",), ("u",), ("y",),
+                                          (ProceduralBlockParameterSpec("delay", 0.0),
+                                           ProceduralBlockParameterSpec("window", 0.01))),
+        ProceduralBlockTemplateDescriptor(ProceduralLogicType.HardSaturation, "Hard saturation",
+                                          ("Limits and latches",), ("u",), ("y",),
+                                          (ProceduralBlockParameterSpec("minimum", -1.0),
+                                           ProceduralBlockParameterSpec("maximum", 1.0))),
+        ProceduralBlockTemplateDescriptor(ProceduralLogicType.GradientLimiter, "Gradient limiter",
+                                          ("Limits and latches",), ("u",), ("y",),
+                                          (ProceduralBlockParameterSpec("lower_rate", -1.0),
+                                           ProceduralBlockParameterSpec("upper_rate", 1.0))),
+        ProceduralBlockTemplateDescriptor(ProceduralLogicType.FlipFlop, "Flip-flop",
+                                          ("Limits and latches",), ("set", "reset"), ("y",), tuple()),
+        ProceduralBlockTemplateDescriptor(ProceduralLogicType.AnalogFlipFlop, "Analog flip-flop",
+                                          ("Limits and latches",), ("u", "set", "reset"), ("y",), tuple()),
+        ProceduralBlockTemplateDescriptor(ProceduralLogicType.PickupDropoff, "Pickup/dropoff",
+                                          ("Limits and latches",), ("condition",), ("y",),
+                                          (ProceduralBlockParameterSpec("pickup_delay", 0.0),
+                                           ProceduralBlockParameterSpec("dropoff_delay", 0.0))),
+        ProceduralBlockTemplateDescriptor(ProceduralLogicType.DelayedThresholdLatch,
+                                          "Delayed threshold latch", ("Limits and latches",),
+                                          ("monitored",), ("y",), tuple()),
+        ProceduralBlockTemplateDescriptor(ProceduralLogicType.ConditionalDiagnostic,
+                                          "Conditional diagnostic", ("Events and diagnostics",),
+                                          ("condition",), tuple(), tuple()),
+        ProceduralBlockTemplateDescriptor(ProceduralLogicType.DelayedSwitchEvent,
+                                          "Delayed switch event", ("Events and diagnostics",),
+                                          ("guard", "trigger"), ("closed",),
+                                          (ProceduralBlockParameterSpec("delay", 0.0),), True),
+        ProceduralBlockTemplateDescriptor(ProceduralLogicType.ResetOnRisingEdge,
+                                          "Reset on rising edge", ("Events and diagnostics",),
+                                          ("condition", "value"), ("y",), tuple()),
+        ProceduralBlockTemplateDescriptor(ProceduralLogicType.StartupHandover,
+                                          "Startup handover", ("Events and diagnostics",),
+                                          tuple(), ("enabled",),
+                                          (ProceduralBlockParameterSpec("enable_time", 0.0),)),
+        ProceduralBlockTemplateDescriptor(ProceduralLogicType.ValveState, "Valve state",
+                                          ("Switching and modulation",),
+                                          ("valve_voltage", "valve_current"), ("state",),
+                                          (ProceduralBlockParameterSpec("valve_type", 0.0),
+                                           ProceduralBlockParameterSpec("gate", 0.0),
+                                           ProceduralBlockParameterSpec("antiparallel", 1.0),
+                                           ProceduralBlockParameterSpec("voltage_epsilon", 1.0e-9),
+                                           ProceduralBlockParameterSpec("current_epsilon", 1.0e-9))),
+        ProceduralBlockTemplateDescriptor(ProceduralLogicType.ThreePhaseCarrierPwm,
+                                          "Three-phase carrier PWM", ("Switching and modulation",),
+                                          ("modulation_a", "modulation_b", "modulation_c"),
+                                          ("gate_a", "gate_b", "gate_c"),
+                                          (ProceduralBlockParameterSpec("switching_frequency", 2.0 * math.pi * 1000.0),
+                                           ProceduralBlockParameterSpec("carrier_phase", 0.0))),
+        ProceduralBlockTemplateDescriptor(ProceduralLogicType.ThreePhaseCarrierSampledModulation,
+                                          "Three-phase sampled modulation", ("Switching and modulation",),
+                                          ("modulation_a", "modulation_b", "modulation_c"),
+                                          ("sample_a", "sample_b", "sample_c"),
+                                          (ProceduralBlockParameterSpec("switching_frequency", 2.0 * math.pi * 1000.0),
+                                           ProceduralBlockParameterSpec("carrier_phase", 0.0))),
+    ))
+
+
+def build_rms_control_library_branch() -> Dict[str, object]:
+    """Build the categorized RMS control branch, including standards.
+
+    :return: Nested RMS control branch.
+    """
+    branch: Dict[str, object] = dict()
+    native_controls: tuple[tuple[tuple[str, ...], LibraryLeafSpec], ...] = (
+        (("PLL", "Native"), LibraryLeafSpec("PLL transformer", BlockType.PLL_TRANSFORM_RMS)),
+        (("PLL", "Native"), LibraryLeafSpec("PLL explicit PI", BlockType.VSC_PLL_RMS)),
+        (("Governors", "Native"), LibraryLeafSpec("Governor", BlockType.GOV_RMS)),
+        (("Exciters", "Native"), LibraryLeafSpec("Exciter", BlockType.EXCITER_RMS)),
+        (("Stabilizers", "Native"), LibraryLeafSpec("Stabilizer", BlockType.STAB_RMS)),
+        (("Active power and Vdc", "Native"), LibraryLeafSpec("PI power controller", BlockType.PI_POWER_CONTROLLER)),
+        (("Active power and Vdc", "Native"), LibraryLeafSpec("Vdc / P control", BlockType.VSC_ACTIVE_CONTROL_RMS)),
+        (("Reactive power and voltage", "Native"), LibraryLeafSpec("Qac / Vac control", BlockType.VSC_REACTIVE_CONTROL_RMS)),
+        (("Current control", "Native"), LibraryLeafSpec("PI current controller", BlockType.PI_CURRENT_CONTROLLER)),
+        (("Current control", "Native"), LibraryLeafSpec("d-axis current PI controller", BlockType.VSC_VD_HAT_RMS,
+                                                         "d-axis current PI controller vd hat vd_hat y_vd_hat")),
+        (("Current control", "Native"), LibraryLeafSpec("q-axis current PI controller", BlockType.VSC_VQ_HAT_RMS,
+                                                         "q-axis current PI controller vq hat vq_hat y_vq_hat")),
+        (("Current control", "Native"), LibraryLeafSpec("Converter electrical equations", BlockType.VSC_ELECTRICAL_RMS)),
+        (("Current control", "Native"), LibraryLeafSpec("DC-link capacitor", BlockType.VSC_DC_LINK_RMS)),
+        (("Limiters", "Native"), LibraryLeafSpec("Current limiter", BlockType.VSC_CURRENT_LIMITER_RMS)),
+    )
+    native_entry: tuple[tuple[str, ...], LibraryLeafSpec]
+    for native_entry in native_controls:
+        insert_library_leaf(branch, native_entry[0], native_entry[1])
+
+    standard_category_map: tuple[tuple[str, str], ...] = (
+        ("Governors", "Governors"),
+        ("Excitation systems", "Exciters"),
+        ("Excitation limiters", "Limiters"),
+        ("Power system stabilizers", "Stabilizers"),
+        ("Renewable controls", "Renewable controls"),
+        ("Protection relays", "Protection"),
+    )
+    descriptor: InternationalStandardTemplateDescriptor
+    for descriptor in get_dynamic_library_international_standard_descriptors():
+        if descriptor.device_type is None:
+            destination_name: str | None = None
+            mapping_entry: tuple[str, str]
+            for mapping_entry in standard_category_map:
+                if descriptor.category_path[0] == mapping_entry[0]:
+                    destination_name = mapping_entry[1]
+                else:
+                    pass
+            if destination_name is not None:
+                insert_library_leaf(
+                    branch, (destination_name, "International standards"),
+                    LibraryLeafSpec(descriptor.display_label, descriptor, descriptor.search_text))
+            else:
+                pass
+        else:
+            pass
+    return branch
+
+
+def build_emt_control_library_branch() -> Dict[str, object]:
+    """Build the categorized EMT control branch.
+
+    :return: Nested EMT control branch.
+    """
+    return dict((
+        ("Governors", dict((("Native", list((LibraryLeafSpec("Governor", BlockType.GOV_EMT),))),))),
+        ("Exciters", dict((("Native", list((LibraryLeafSpec("Exciter", BlockType.EXCITER_EMT),))),))),
+        ("Stabilizers", dict((("Native", list((LibraryLeafSpec("Stabilizer", BlockType.STAB_EMT),))),))),
+    ))
+
+
+def build_device_library_branch(
+        mode: DynamicSimulationMode,
+        device_type: DeviceType | None,
+) -> Dict[str, object]:
+    """Build the complete or device-filtered canonical ``Devices`` branch.
+
+    :param mode: Dynamic simulation domain.
+    :param device_type: Physical device filter, or ``None`` for all devices.
+    :return: Nested device branch used by both editor and catalogue.
+    """
+    branch: Dict[str, object] = dict()
+    if mode == DynamicSimulationMode.RMS:
+        native_specs: List[LibraryDeviceTemplateSpec] = build_rms_native_device_specs()
+    elif mode == DynamicSimulationMode.EMT:
+        native_specs = build_emt_native_device_specs()
+    else:
+        native_specs = list()
+
+    spec: LibraryDeviceTemplateSpec
+    for spec in native_specs:
+        if device_type is None or spec.is_compatible_with(device_type=device_type):
+            insert_library_leaf(
+                branch, spec.category_path,
+                LibraryLeafSpec(spec.label, spec, spec.search_text))
+        else:
+            pass
+
+    if mode == DynamicSimulationMode.RMS:
+        descriptor: InternationalStandardTemplateDescriptor
+        for descriptor in get_dynamic_library_international_standard_descriptors():
+            if descriptor.device_type is not None:
+                if device_type is None or descriptor.device_type == device_type:
+                    standard_spec: LibraryDeviceTemplateSpec = LibraryDeviceTemplateSpec(
+                        label=descriptor.display_label,
+                        source=descriptor,
+                        mode=DynamicSimulationMode.RMS,
+                        device_type=descriptor.device_type,
+                        category_path=("International standards", str(descriptor.category_path[0])),
+                        unique_key=f"rms:international:{descriptor.template_key}",
+                        search_text=descriptor.search_text,
+                    )
+                    insert_library_leaf(
+                        branch, standard_spec.category_path,
+                        LibraryLeafSpec(standard_spec.label, standard_spec, standard_spec.search_text))
+                else:
+                    pass
+            else:
+                pass
+    else:
+        pass
+    return branch
+
+
+def build_dynamic_library_structure(
+        mode: DynamicSimulationMode,
+        device_type: DeviceType,
+) -> Dict[str, object]:
+    """Build one editor projection from the canonical Library registrations.
+
+    :param mode: Dynamic simulation domain.
+    :param device_type: Physical device whose internal model is edited.
+    :return: Ordered top-level Library tree structure.
+    """
+    structure: Dict[str, object] = dict()
+    structure["Basic"] = build_basic_library_branch()
+    structure["Devices"] = build_device_library_branch(mode=mode, device_type=device_type)
+    if mode == DynamicSimulationMode.RMS:
+        structure["Controls"] = build_rms_control_library_branch()
+    elif mode == DynamicSimulationMode.EMT:
+        structure["Controls"] = build_emt_control_library_branch()
+        structure["Faults"] = list((LibraryLeafSpec("Fault EMT", BlockType.FAULT_EMT),))
+    else:
+        pass
+    structure["Procedural logic"] = build_procedural_library_branch()
+    return structure
+
+
+def _collect_device_specs_from_branch(
+        branch_data: object,
+        specs: List[LibraryDeviceTemplateSpec],
+) -> None:
+    """Collect canonical device specifications from one recursive branch.
+
+    :param branch_data: Nested branch or leaf list.
+    :param specs: Destination device specification list.
+    :return: None.
+    """
+    if isinstance(branch_data, dict):
+        child_data: object
+        for child_data in branch_data.values():
+            _collect_device_specs_from_branch(child_data, specs)
+    elif isinstance(branch_data, list):
+        leaf: LibraryLeafSpec
+        for leaf in sorted(branch_data, key=_library_leaf_label_sort_key):
+            if isinstance(leaf.payload, LibraryDeviceTemplateSpec):
+                specs.append(leaf.payload)
+            else:
+                pass
+    else:
+        raise TypeError(f"Unsupported device branch data type {type(branch_data)!r}")
+
+
+def get_dynamic_library_device_specs(mode: DynamicSimulationMode) -> List[LibraryDeviceTemplateSpec]:
+    """Return every descendant of the canonical mode ``Devices`` branch.
+
+    :param mode: Dynamic simulation domain.
+    :return: Device-template specifications in Library branch order.
+    """
+    device_branch: Dict[str, object] = build_device_library_branch(mode=mode, device_type=None)
+    specs: List[LibraryDeviceTemplateSpec] = list()
+    _collect_device_specs_from_branch(device_branch, specs)
+    return specs
+
+
+def build_dynamic_library_device_template(
+        spec: LibraryDeviceTemplateSpec,
+        var_factory: VarFactory,
+) -> RmsModelTemplate | EmtModelTemplate | None:
+    """Materialize one complete device template from its Library registration.
+
+    :param spec: Canonical device-template specification.
+    :param var_factory: Factory allocating the symbolic variables.
+    :return: Fresh RMS or EMT template, or ``None`` when unsupported.
+    """
+    source: DynamicDeviceTemplateType | BlockType | InternationalStandardTemplateDescriptor = spec.source
+    if isinstance(source, InternationalStandardTemplateDescriptor):
+        template: RmsModelTemplate | EmtModelTemplate | None = load_international_standard_template(
+            descriptor=source,
+            var_factory=var_factory,
+        )
+    elif isinstance(source, BlockType):
+        builder: TemplateDefinition | None = create_default_template_builder(
+            var_factory=var_factory,
+            block_type=source,
+            item_name=spec.label,
+            api_object=None,
+        )
+        built_object: object | None
+        if builder is not None:
+            built_object = builder.eval()
+        else:
+            built_object = create_block_of_type(
+                var_factory=var_factory,
+                block_type=source,
+                item_name=spec.label,
+                api_object=None,
+            )
+        if isinstance(built_object, (RmsModelTemplate, EmtModelTemplate)):
+            template = built_object
+        elif isinstance(built_object, Block):
+            if spec.mode == DynamicSimulationMode.RMS:
+                rms_template: RmsModelTemplate = RmsModelTemplate()
+                rms_template.name = spec.label
+                rms_template.tpe = spec.device_type
+                rms_template.block = built_object
+                template = rms_template
+            elif spec.mode == DynamicSimulationMode.EMT:
+                emt_template: EmtModelTemplate = EmtModelTemplate()
+                emt_template.name = spec.label
+                emt_template.tpe = spec.device_type
+                emt_template.block = built_object
+                template = emt_template
+            else:
+                template = None
+        else:
+            template = None
+    elif source == DynamicDeviceTemplateType.RMS_COMPLETE_GENERATOR:
+        template = tem.get_complete_generator_template_rms(var_factory)
+    elif source == DynamicDeviceTemplateType.RMS_GENQEC:
+        template = tem.get_genqec_rms(var_factory)
+    elif source == DynamicDeviceTemplateType.RMS_GENROW:
+        template = tem.get_genrow_rms_template(var_factory)
+    elif source == DynamicDeviceTemplateType.RMS_LINE:
+        template = tem.get_line_rms_template(var_factory)
+    elif source == DynamicDeviceTemplateType.RMS_DC_LINE:
+        template = tem.build_dc_line_rms_v2(var_factory)
+    elif source == DynamicDeviceTemplateType.RMS_LOAD:
+        template = tem.get_load_rms_template(var_factory)
+    elif source == DynamicDeviceTemplateType.RMS_TRANSFORMER_2W:
+        template = tem.get_transformer2w_rms(var_factory)
+    elif source == DynamicDeviceTemplateType.RMS_SHUNT:
+        template = tem.get_shunt_template(var_factory)
+    elif source == DynamicDeviceTemplateType.RMS_PVD1:
+        template = tem.get_pvd1_rms_template(var_factory)
+    elif source == DynamicDeviceTemplateType.RMS_PVD1_COMPLETE:
+        template = tem.get_pvd1_complete_rms_template(var_factory)
+    elif source == DynamicDeviceTemplateType.RMS_PVD1_DC_MPPT:
+        template = tem.get_pvd1_dc_mppt_rms_template(var_factory)
+    elif source == DynamicDeviceTemplateType.RMS_PVD1_DC_LINK_MPPT:
+        template = tem.get_pvd1_dc_link_mppt_rms_template(var_factory)
+    elif source == DynamicDeviceTemplateType.RMS_PVD1_DC_LINK_BESS:
+        template = tem.get_pvd1_dc_link_bess_rms_template(var_factory)
+    elif source == DynamicDeviceTemplateType.RMS_ESD1:
+        template = tem.get_esd1_rms_template(var_factory)
+    elif source == DynamicDeviceTemplateType.RMS_VOLTAGE_SOURCE:
+        template = tem.VoltageSourceBuild(var_factory)
+    elif source == DynamicDeviceTemplateType.RMS_GFL_CONVERTER:
+        template = tem.get_gfl_converter_rms(var_factory)
+    elif source == DynamicDeviceTemplateType.RMS_HVDC_VSC_GFL:
+        template = tem.build_hvdc_vsc_gfl_rms(var_factory)
+    elif source == DynamicDeviceTemplateType.EMT_COMPLETE_GENERATOR:
+        template = tem.get_complete_generator_template_emt(var_factory)
+    elif source == DynamicDeviceTemplateType.EMT_THEVENIN_GENERATOR:
+        template = tem.get_generator_thevenin_rl_emt_template_with_ref(var_factory)
+    elif source == DynamicDeviceTemplateType.EMT_IDEAL_CONVERTER:
+        template = tem.get_emt_ideal_converter(var_factory)
+    elif source == DynamicDeviceTemplateType.EMT_FULL_PSEUDO_CONVERTER:
+        template = tem.get_full_pseudo_emt_converter(var_factory)
+    elif source == DynamicDeviceTemplateType.EMT_SWITCHED_CONVERTER:
+        template = tem.get_switched_emt_converter(var_factory)
+    elif source == DynamicDeviceTemplateType.EMT_DC_LOAD:
+        template = tem.get_dc_load_emt_template(var_factory)
+    elif source == DynamicDeviceTemplateType.EMT_DC_LINE:
+        template = tem.get_dc_line_with_power_input_emt_template(var_factory)
+    elif source == DynamicDeviceTemplateType.EMT_TRANSFORMER:
+        template = tem.get_transformer_emt_template(var_factory)
+    elif source == DynamicDeviceTemplateType.EMT_XFMR:
+        template = tem.get_xfmr_emt_template(var_factory)
+    elif source == DynamicDeviceTemplateType.EMT_SHUNT_C_ABC:
+        template = tem.get_shunt_c_emt_template(var_factory, True, True, True)
+    elif source == DynamicDeviceTemplateType.EMT_SHUNT_L_ABC:
+        template = tem.get_shunt_l_emt_template(var_factory, True, True, True)
+    elif source == DynamicDeviceTemplateType.EMT_SHUNT_R_ABC:
+        template = tem.get_shunt_r_emt_template(var_factory, True, True, True)
+    elif source == DynamicDeviceTemplateType.EMT_EXPONENTIAL_LOAD_ABC:
+        template = tem.get_exponential_load_emt(var_factory, True, True, True)
+    elif source == DynamicDeviceTemplateType.EMT_ZIP_LOAD_ABC:
+        template = tem.get_load_ZIP_emt_template(var_factory, True, True, True)
+    elif source == DynamicDeviceTemplateType.EMT_PI_LINE_ABC:
+        template = tem.get_pi_line_emt_template(var_factory, False, True, True, True)
+    elif source == DynamicDeviceTemplateType.EMT_BERGERON_LINE_ABC:
+        template = tem.get_bergeron_line_emt_template(var_factory, False, True, True, True)
+    elif source == DynamicDeviceTemplateType.EMT_SINGLE_CAGE_INDUCTION_MOTOR:
+        template = tem.get_induction_motor_single_cage_emt_template(var_factory)
+    elif source == DynamicDeviceTemplateType.EMT_DOUBLE_CAGE_INDUCTION_MOTOR:
+        template = tem.get_induction_motor_double_cage_emt_template(var_factory)
+    elif source == DynamicDeviceTemplateType.EMT_BESS:
+        template = tem.get_bess_avm_grid_following_emt_template(var_factory)
+    elif source == DynamicDeviceTemplateType.EMT_PV_GRID_FOLLOWING:
+        template = tem.get_pv_avm_grid_following_emt_template(var_factory)
+    elif source == DynamicDeviceTemplateType.EMT_GFM:
+        template = tem.get_gfm_emt_template(var_factory)
+    else:
+        template = None
+
+    if template is not None:
+        # A device registration is authoritative for host compatibility even
+        # when the underlying block builder is also usable as a control block.
+        template.tpe = spec.device_type
+        template.code = spec.unique_key
+    else:
+        pass
+    return template
+
+
 def build_basic_library_branch() -> Dict[str, object]:
     """
     Build the nested Basic branch used by both RMS and EMT editors.
@@ -496,38 +1266,15 @@ def build_basic_library_branch() -> Dict[str, object]:
 def build_procedural_library_branch() -> Dict[str, object]:
     """Build the complete native procedural-logic branch.
 
-    The Engine descriptor registry is authoritative for available behaviors,
-    port surfaces and search terms. The GUI only translates that typed data
-    into the recursive Library structure.
+    The descriptor inventory and its ordering are owned locally by this
+    Library module. Engine code remains responsible only for materializing the
+    selected typed behavior.
 
     :return: Nested branch data shared by RMS and EMT editors.
     """
     branch: Dict[str, object] = dict()
     descriptor: ProceduralBlockTemplateDescriptor
-    for descriptor in get_procedural_block_template_descriptors():
-        insert_library_leaf(
-            branch=branch,
-            category_path=tuple(descriptor.category_path),
-            leaf=LibraryLeafSpec(
-                label=descriptor.display_label,
-                payload=descriptor,
-                search_text=descriptor.search_text,
-            ),
-        )
-    return branch
-
-
-def build_international_standards_library_branch() -> Dict[str, object]:
-    """Build the categorized international-standard RMS model branch.
-
-    The Engine catalog owns the model inventory and family ordering. The GUI
-    only converts its typed descriptors into draggable library leaves.
-
-    :return: Nested branch data used by the RMS Dynamic Editor library.
-    """
-    branch: Dict[str, object] = dict()
-    descriptor: InternationalStandardTemplateDescriptor
-    for descriptor in get_international_standard_template_descriptors():
+    for descriptor in get_dynamic_library_procedural_descriptors():
         insert_library_leaf(
             branch=branch,
             category_path=tuple(descriptor.category_path),
@@ -564,6 +1311,8 @@ def is_supported_library_payload(item_data: object) -> bool:
     elif isinstance(item_data, ProceduralBlockTemplateDescriptor):
         return True
     elif isinstance(item_data, InternationalStandardTemplateDescriptor):
+        return True
+    elif isinstance(item_data, LibraryDeviceTemplateSpec):
         return True
     elif isinstance(item_data, (RmsModelTemplate, EmtModelTemplate, FmuTemplate)):
         return True
@@ -622,6 +1371,11 @@ def build_library_item_description(payload: object) -> str:
             pass
     elif isinstance(payload, InternationalStandardTemplateDescriptor):
         description = f"International-standard RMS model: {payload.model.value}"
+    elif isinstance(payload, LibraryDeviceTemplateSpec):
+        if isinstance(payload.source, InternationalStandardTemplateDescriptor):
+            description = f"International-standard {payload.mode.value} device model: {payload.source.model.value}"
+        else:
+            description = f"Built-in {payload.mode.value} device model for {payload.device_type.value}"
     elif isinstance(payload, RmsModelTemplate):
         if len(payload.comment) > 0:
             description = payload.comment
@@ -804,7 +1558,7 @@ def set_library_branch_icon(item: QtGui.QStandardItem, branch_label: str) -> Non
             icon_path = ":/Icons/icons/short_circuit_plus.png"
         elif branch_label == "Devices":
             icon_path = ":/Icons/icons/dyn_gray.png"
-        elif branch_label == "Control blocks":
+        elif branch_label == "Controls":
             icon_path = ":/Icons/icons/control_pc.png"
         else:
             icon_path = ":/Icons/icons/tree.png"
@@ -828,6 +1582,14 @@ def set_library_item_icon(item: QtGui.QStandardItem, payload: object) -> None:
         item.setIcon(QtGui.QIcon(device_type_icons[DeviceType.RmsModelTemplateDevice.value]))
     elif isinstance(payload, InternationalStandardTemplateDescriptor):
         item.setIcon(QtGui.QIcon(device_type_icons[DeviceType.RmsModelTemplateDevice.value]))
+    elif isinstance(payload, LibraryDeviceTemplateSpec):
+        icon_path: str | None = device_type_icons.get(payload.device_type.value, None)
+        if icon_path is not None:
+            item.setIcon(QtGui.QIcon(icon_path))
+        elif payload.mode == DynamicSimulationMode.RMS:
+            item.setIcon(QtGui.QIcon(device_type_icons[DeviceType.RmsModelTemplateDevice.value]))
+        else:
+            item.setIcon(QtGui.QIcon(device_type_icons[DeviceType.EmtModelTemplateDevice.value]))
     elif isinstance(payload, (EmtModelTemplate, BasicBlockTemplateDescriptor, ProceduralBlockTemplateDescriptor)):
         item.setIcon(QtGui.QIcon(device_type_icons[DeviceType.EmtModelTemplateDevice.value]))
     elif isinstance(payload, BlockType):

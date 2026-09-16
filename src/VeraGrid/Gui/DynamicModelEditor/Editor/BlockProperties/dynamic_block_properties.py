@@ -80,7 +80,9 @@ from VeraGridEngine.Utils.procedural_logic import ProceduralLogicBase
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Templates.ProceduralLogicCatalog import (
     ProceduralBlockTemplateDescriptor,
-    get_procedural_block_template_descriptors,
+)
+from VeraGrid.Gui.DynamicModelEditor.Editor.DynamicLibrary.dynamic_editor_library import (
+    get_dynamic_library_procedural_descriptors,
 )
 from VeraGridEngine.Templates.template_definition import TemplateDefinition, TemplateProp
 from VeraGridEngine.Utils.Symbolic.block import Block
@@ -4967,7 +4969,7 @@ def resolve_block_documentation_url(
         if isinstance(procedural_entry, ProceduralLogicBase):
             relative_path = None
             procedural_descriptor: ProceduralBlockTemplateDescriptor
-            for procedural_descriptor in get_procedural_block_template_descriptors():
+            for procedural_descriptor in get_dynamic_library_procedural_descriptors():
                 if procedural_descriptor.logic_tpe == procedural_entry.logic_tpe:
                     relative_path = procedural_descriptor.documentation_relative_path
                     break
@@ -6230,7 +6232,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         """
         current_group_label: str | None = None
         procedural_descriptor: ProceduralBlockTemplateDescriptor
-        for procedural_descriptor in get_procedural_block_template_descriptors():
+        for procedural_descriptor in get_dynamic_library_procedural_descriptors():
             group_label: str = procedural_descriptor.category_path[0]
             if group_label != current_group_label:
                 self._procedural_add_menu.addSection(self.tr(group_label))
