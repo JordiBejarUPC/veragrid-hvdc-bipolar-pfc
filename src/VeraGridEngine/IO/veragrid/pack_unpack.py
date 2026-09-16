@@ -1373,7 +1373,8 @@ def parse_object_type_from_json(template_elm: ALL_DEV_TYPES,
                                 elements_dict_by_type: Dict[DeviceType, Dict[str, ALL_DEV_TYPES]],
                                 time_profile: pd.DatetimeIndex,
                                 block_parser: BlockParser,
-                                logger: Logger):
+                                logger: Logger,
+                                text_func: Union[Callable, None] = None ):
     """
 
     :param template_elm:
@@ -1382,13 +1383,19 @@ def parse_object_type_from_json(template_elm: ALL_DEV_TYPES,
     :param time_profile:
     :param block_parser:
     :param logger:
+    :param text_func:
     :return:
     """
     # dictionary to be filled with this type of objects
     devices_dict: Dict[str, ALL_DEV_TYPES] = dict()
-    devices: List[ALL_DEV_TYPES] = list()
+    parsed_devices: List[ALL_DEV_TYPES] = list()
+    tpe_key = template_elm.device_type.value
+    obj_num = len(data_list)
+    for obj_i, json_entry in enumerate(data_list):
 
-    for json_entry in data_list:
+        if text_func is not None:
+            text_func(f"Parsing {tpe_key} model data ({obj_i}/{obj_num})")
+
         idtag = json_entry['idtag']
         elm: ALL_DEV_TYPES = type(template_elm)(idtag=idtag)
         elm.disable_auto_updates()
@@ -1397,7 +1404,6 @@ def parse_object_type_from_json(template_elm: ALL_DEV_TYPES,
         if time_profile is not None:
             elm.ensure_profiles_exist(index=time_profile)
 
-        # for property_name_, property_value in json_entry.items():
         for property_name, gc_prop in template_elm.registered_properties.items():
 
             # Resolve the property from the JSON declaration.
@@ -1654,8 +1660,8 @@ def parse_object_type_from_json(template_elm: ALL_DEV_TYPES,
 
         # save the element in the dictionary for later
         devices_dict[elm.idtag] = elm
-        devices.append(elm)
-    return devices, devices_dict
+        parsed_devices.append(elm)
+    return parsed_devices, devices_dict
 
 
 def handle_legacy_jsons(model_data: Dict[str, List],
@@ -1861,6 +1867,7 @@ def parse_veragrid_data(data: VERAGRID_FILE_TYPE,
             block_parser.parse_consts(symbolic_data["consts"])
             block_parser.parse_vars(symbolic_data["vars"])
             block_parser.parse_diff_vars(symbolic_data["diff_vars"])
+
             if "connections" in symbolic_data:
                 block_parser.parse_connections(symbolic_data["connections"])
             # BlockParser owns compatibility with all historical dynamics
@@ -1914,7 +1921,8 @@ def parse_veragrid_data(data: VERAGRID_FILE_TYPE,
                         elements_dict_by_type=elements_dict_by_type,
                         time_profile=circuit.time_profile,
                         block_parser=block_parser,
-                        logger=logger
+                        logger=logger,
+                        text_func=text_func
                     )
 
                     # set/augment the dictionary per type for later
