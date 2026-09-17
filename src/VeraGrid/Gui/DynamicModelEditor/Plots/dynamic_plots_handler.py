@@ -7,6 +7,7 @@ from enum import Enum
 from typing import Dict, List, Sequence, Set, Optional, Protocol, Union
 import numpy as np
 import pandas as pd
+from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from PySide6 import QtCore, QtGui, QtWidgets
 
@@ -1388,18 +1389,10 @@ def _parameter_name_matches(candidate_name: str, requested_name: str) -> bool:
         if normalized_alias_name == normalized_requested_name:
             return True
         else:
-            # Some parameter entries still carry the visible source-tree label in
-            # ``variable_custom_name`` while older fixtures or fallback paths may
-            # store the canonical name in ``variable_name``. A final prefix match
-            # keeps semantically identical simple names such as ``omega`` and
-            # ``omega_ref`` aligned without introducing uid-based identity.
-            if normalized_requested_name.startswith(normalized_candidate_name):
-                return True
-            else:
-                if normalized_candidate_name.startswith(normalized_requested_name):
-                    return True
-                else:
-                    return False
+            # Prefix matching is intentionally rejected: parameters such as
+            # ``omega`` and ``omega_ref`` are different signals and must never
+            # be rebound merely because one canonical name starts with another.
+            return False
 
 
 def _build_parameter_alias_name(parameter_name: str) -> str:
@@ -1787,13 +1780,16 @@ def _apply_step_event_to_parameter_series(time_axis: np.ndarray,
     :param event_item: Dynamic event to apply.
     :return: None.
 
-    A step event replaces the parameter value from the event time onward. The
-    whole suffix must be updated so later events start from the correct already-
-    modified trace.
+    A step event replaces the parameter value strictly after the event sample.
+    This matches the solver boundary convention: the sample aligned with the
+    event still belongs to the pre-event branch.
     """
     event_time: float = float(event_item.time)
     event_value: float = float(event_item.value)
-    affected_mask: np.ndarray = time_axis >= event_time
+    alignment_tolerance: float = 10.0 * np.finfo(float).eps * max(1.0, abs(event_time))
+    affected_mask: np.ndarray = time_axis > event_time
+    aligned_mask: np.ndarray = np.abs(time_axis - event_time) <= alignment_tolerance
+    affected_mask[aligned_mask] = False
     y_values[affected_mask] = event_value
 
 
@@ -2116,7 +2112,9 @@ def _get_runtime_parameter_scalar_from_block(model: Block,
                     if isinstance(mapped_value, (int, float, np.integer, np.floating)):
                         return float(mapped_value)
                     else:
-                        return None
+                        # The mapping can be declared on a wrapper while its
+                        # value lives in another block contract. Keep searching.
+                        pass
                 else:
                     pass
             else:
@@ -2133,9 +2131,9 @@ def _get_runtime_parameter_scalar_from_block(model: Block,
                         if isinstance(direct_value.value, (int, float, np.integer, np.floating)):
                             return float(direct_value.value)
                         else:
-                            return None
+                            pass
                     else:
-                        return None
+                        pass
             else:
                 pass
 
@@ -2155,14 +2153,14 @@ def _get_runtime_parameter_scalar_from_block(model: Block,
                             if isinstance(init_value.value, (int, float, np.integer, np.floating)):
                                 return float(init_value.value)
                             else:
-                                return None
+                                pass
                         else:
-                            return None
+                            pass
                 else:
                     if isinstance(event_value, (int, float, np.integer, np.floating)):
                         return float(event_value)
                     else:
-                        return None
+                        pass
             else:
                 pass
 
@@ -2174,9 +2172,9 @@ def _get_runtime_parameter_scalar_from_block(model: Block,
                     if isinstance(init_value.value, (int, float, np.integer, np.floating)):
                         return float(init_value.value)
                     else:
-                        return None
+                        pass
                 else:
-                    return None
+                    pass
             else:
                 pass
 
@@ -5111,6 +5109,206 @@ class DynamicsResultsHandler:
         gr_idx: int = self.group_idx[group_name]
         self.results.plot_var(var=var, group_idx=gr_idx)
 
+    def _plot_parameter_entry_on_axis(self,
+                                      axis: Axes,
+                                      entry: DynamicPlotEntry,
+                                      label: str) -> bool:
+        """Render one parameter with explicit constant, step, and ramp segments.
+
+        Matplotlib line interpolation is unsuitable for discontinuous parameter
+        changes because it draws a diagonal between adjacent samples. Constants
+        and holds are therefore rendered with ``hlines``, steps with ``vlines``,
+        and ramps with an explicit diagonal segment.
+
+        :param axis: Matplotlib axis receiving the parameter trace.
+        :param entry: Persistent parameter plot entry.
+        :param label: Legend label for the trace.
+        :return: ``True`` when a numerical trace was rendered.
+        """
+        parameter_plot_data: tuple[np.ndarray, np.ndarray] | None = self._get_parameter_plot_data(entry=entry)
+        if parameter_plot_data is None:
+            return False
+        else:
+            pass
+
+        time_values: np.ndarray = parameter_plot_data[0]
+        sampled_values: np.ndarray = parameter_plot_data[1]
+        if len(time_values) == 0 or len(sampled_values) == 0:
+            return False
+        else:
+            pass
+
+        if self.circuit is not None:
+            matching_events: List[RmsEvent | EmtEvent] = _get_dynamic_events_for_plot_entry(
+                circuit=self.circuit,
+                entry=entry,
+            )
+        else:
+            matching_events = list()
+
+        minimum_time: float = float(time_values[0])
+        maximum_time: float = float(time_values[-1])
+        if len(matching_events) == 0:
+            if maximum_time > minimum_time:
+                axis.hlines(
+                    y=float(sampled_values[0]),
+                    xmin=minimum_time,
+                    xmax=maximum_time,
+                    label=label,
+                )
+            else:
+                axis.plot(time_values, sampled_values, marker="o", label=label)
+            return True
+        else:
+            pass
+
+        initial_value: float | None = None
+        if self.results is not None:
+            event_group_index: int | None = _find_matching_event_group_index(
+                group_idtags=self._get_group_idtags(results=self.results),
+                group_names=self._get_group_names(results=self.results),
+                entry=entry,
+            )
+            if event_group_index is not None:
+                initial_value = self.results.get_initial_parameter_value(
+                    group_idx=event_group_index,
+                    device_idtag=entry.device_idtag,
+                    parameter_name=entry.variable_name,
+                )
+            else:
+                pass
+        else:
+            pass
+
+        if initial_value is None:
+            initial_value = float(sampled_values[0])
+        else:
+            pass
+
+        # One explicit colour keeps the independent line collections visually
+        # grouped as one parameter series.
+        colour_index: int = (len(axis.lines) + len(axis.collections)) % 10
+        series_colour: str = "C" + str(colour_index)
+        current_time: float = minimum_time
+        current_value: float = float(initial_value)
+        label_attached: bool = False
+        event_item: RmsEvent | EmtEvent
+
+        for event_item in matching_events:
+            raw_start_time: float = float(event_item.time)
+            if raw_start_time <= maximum_time:
+                start_time: float = max(minimum_time, raw_start_time)
+
+                if start_time > current_time:
+                    segment_label: str = "_nolegend_"
+                    if not label_attached:
+                        segment_label = label
+                        label_attached = True
+                    else:
+                        pass
+                    axis.hlines(
+                        y=current_value,
+                        xmin=current_time,
+                        xmax=start_time,
+                        colors=series_colour,
+                        label=segment_label,
+                    )
+                else:
+                    pass
+
+                if event_item.transition_type == DynamicEventTransitionType.Ramp and event_item.end_time is not None:
+                    raw_end_time: float = float(event_item.end_time)
+                    if raw_end_time > raw_start_time:
+                        end_time: float = min(maximum_time, raw_end_time)
+                        if end_time > start_time:
+                            ramp_fraction: float = (end_time - raw_start_time) / (raw_end_time - raw_start_time)
+                            ramp_fraction = min(1.0, max(0.0, ramp_fraction))
+                            end_value: float = current_value + ramp_fraction * (
+                                float(event_item.value) - current_value
+                            )
+                            segment_label = "_nolegend_"
+                            if not label_attached:
+                                segment_label = label
+                                label_attached = True
+                            else:
+                                pass
+                            axis.plot(
+                                np.array([start_time, end_time], dtype=float),
+                                np.array([current_value, end_value], dtype=float),
+                                color=series_colour,
+                                label=segment_label,
+                            )
+                            current_time = end_time
+                            current_value = end_value
+                        else:
+                            pass
+
+                        if raw_end_time <= maximum_time:
+                            current_value = float(event_item.value)
+                            current_time = max(current_time, raw_end_time)
+                        else:
+                            pass
+                    else:
+                        target_value: float = float(event_item.value)
+                        segment_label = "_nolegend_"
+                        if not label_attached:
+                            segment_label = label
+                            label_attached = True
+                        else:
+                            pass
+                        axis.vlines(
+                            x=start_time,
+                            ymin=current_value,
+                            ymax=target_value,
+                            colors=series_colour,
+                            label=segment_label,
+                        )
+                        current_time = start_time
+                        current_value = target_value
+                else:
+                    target_value = float(event_item.value)
+                    segment_label = "_nolegend_"
+                    if not label_attached:
+                        segment_label = label
+                        label_attached = True
+                    else:
+                        pass
+                    axis.vlines(
+                        x=start_time,
+                        ymin=current_value,
+                        ymax=target_value,
+                        colors=series_colour,
+                        label=segment_label,
+                    )
+                    current_time = start_time
+                    current_value = target_value
+            else:
+                break
+
+        if current_time < maximum_time:
+            segment_label = "_nolegend_"
+            if not label_attached:
+                segment_label = label
+                label_attached = True
+            else:
+                pass
+            axis.hlines(
+                y=current_value,
+                xmin=current_time,
+                xmax=maximum_time,
+                colors=series_colour,
+                label=segment_label,
+            )
+        else:
+            pass
+
+        if not label_attached:
+            axis.plot(time_values, sampled_values, color=series_colour, label=label)
+        else:
+            pass
+
+        return True
+
     def plot_group(self, plot_group_name: str) -> bool:
         """
         Plot all variables stored in one plot group.
@@ -5146,12 +5344,14 @@ class DynamicsResultsHandler:
 
         figure = Figure(figsize=(12, 8))
         axis = figure.add_subplot(111)
+        plotted_anything: bool = False
 
         variable: DynamicResultSeries | DynamicPlotEntry | Var
         for variable in variables:
             x_values: Optional[np.ndarray] = None
             y_values: Optional[np.ndarray] = None
             label: str = ""
+            variable_plotted: bool = False
 
             if isinstance(variable, DynamicResultSeries):
                 x_values, y_values = self._get_series_plot_data(series=variable)
@@ -5165,14 +5365,11 @@ class DynamicsResultsHandler:
                     pass
 
                 if variable.entry_kind == DynamicPlotEntryKind.PARAMETER:
-                    parameter_plot_data: tuple[np.ndarray, np.ndarray] | None = self._get_parameter_plot_data(
-                        entry=variable
+                    variable_plotted = self._plot_parameter_entry_on_axis(
+                        axis=axis,
+                        entry=variable,
+                        label=label,
                     )
-                    if parameter_plot_data is not None:
-                        x_values, y_values = parameter_plot_data
-                    else:
-                        x_values = self.results.time_array
-                        y_values = None
                 else:
                     x_values = self.results.time_array
                     y_values = None
@@ -5196,10 +5393,16 @@ class DynamicsResultsHandler:
 
             if x_values is not None and y_values is not None:
                 axis.plot(x_values, y_values, label=label)
+                variable_plotted = True
             else:
                 pass
 
-        if len(axis.lines) > 0:
+            if variable_plotted:
+                plotted_anything = True
+            else:
+                pass
+
+        if plotted_anything:
             axis.legend()
             axis.set_xlabel("Time [s]")
             axis.set_title(plot_group_name)
@@ -5603,13 +5806,13 @@ class DynamicsResultsHandler:
                     else:
                         pass
 
-                if len(exported_variables) > 0:
-                    if isinstance(device, (DynamicDevice, DynamicBusDevice)):
-                        model_block: Block = _get_pre_simulation_block(device=device, simulation_type=self.plot_simulation_type)
-                        parameters = collect_dynamic_model_plot_parameters(model=model_block)
-                    else:
-                        parameters = list()
+                if isinstance(device, (DynamicDevice, DynamicBusDevice)):
+                    model_block: Block = _get_pre_simulation_block(device=device, simulation_type=self.plot_simulation_type)
+                    parameters = collect_dynamic_model_plot_parameters(model=model_block)
+                else:
+                    parameters = list()
 
+                if len(exported_variables) > 0 or len(parameters) > 0:
                     filtered_devices[device] = DynamicDeviceEntryCollection(
                         variables=exported_variables,
                         parameters=parameters,
@@ -5621,6 +5824,45 @@ class DynamicsResultsHandler:
                 filtered_tree_data[device_tpe] = filtered_devices
             else:
                 pass
+
+        # A configured dynamic device can expose only parameters and therefore
+        # be absent from the runtime variable metadata. Merge those declarative
+        # devices so static parameters remain selectable after simulation too.
+        if self.circuit is not None:
+            declarative_tree_data: Dict[DeviceType, Dict[ALL_DEV_TYPES, DynamicDeviceEntryCollection]] = (
+                build_pre_simulation_dynamic_tree_data(
+                    circuit=self.circuit,
+                    simulation_type=self.plot_simulation_type,
+                )
+            )
+            declarative_device_tpe: DeviceType
+            declarative_devices: Dict[ALL_DEV_TYPES, DynamicDeviceEntryCollection]
+            for declarative_device_tpe, declarative_devices in declarative_tree_data.items():
+                filtered_devices = filtered_tree_data.get(declarative_device_tpe, dict())
+                declarative_device: ALL_DEV_TYPES
+                declarative_entries: DynamicDeviceEntryCollection
+                for declarative_device, declarative_entries in declarative_devices.items():
+                    existing_entries: DynamicDeviceEntryCollection | None = filtered_devices.get(
+                        declarative_device,
+                        None,
+                    )
+                    if existing_entries is None:
+                        if len(declarative_entries.get_parameters()) > 0:
+                            filtered_devices[declarative_device] = DynamicDeviceEntryCollection(
+                                variables=list(),
+                                parameters=declarative_entries.get_parameters(),
+                            )
+                        else:
+                            pass
+                    else:
+                        pass
+
+                if len(filtered_devices) > 0:
+                    filtered_tree_data[declarative_device_tpe] = filtered_devices
+                else:
+                    pass
+        else:
+            pass
 
         return filtered_tree_data
 
@@ -5876,15 +6118,15 @@ class DynamicsResultsHandler:
         :param entry: Persistent parameter plot entry.
         :return: ``True`` when the parameter was resolved and plotted.
         """
-        parameter_plot_data: tuple[np.ndarray, np.ndarray] | None = self._get_parameter_plot_data(entry=entry)
-        if parameter_plot_data is not None:
-            x_values: np.ndarray = parameter_plot_data[0]
-            y_values: np.ndarray = parameter_plot_data[1]
-            label: str = _build_parameter_plot_entry_label(entry=entry)
-
-            figure = Figure(figsize=(12, 8))
-            axis = figure.add_subplot(111)
-            axis.plot(x_values, y_values, label=label)
+        label: str = _build_parameter_plot_entry_label(entry=entry)
+        figure = Figure(figsize=(12, 8))
+        axis = figure.add_subplot(111)
+        plotted: bool = self._plot_parameter_entry_on_axis(
+            axis=axis,
+            entry=entry,
+            label=label,
+        )
+        if plotted:
             axis.set_title(entry.variable_name)
             axis.set_xlabel("Time [s]")
             axis.legend()

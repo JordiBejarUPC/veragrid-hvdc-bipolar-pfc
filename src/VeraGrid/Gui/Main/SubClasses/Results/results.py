@@ -305,7 +305,16 @@ class ResultsMain(SimulationsMain):
                     index=source_index
                 )
                 if parameter_entry is not None:
-                    self.dynamic_results_handler.plot_parameter_entry(entry=parameter_entry)
+                    parameter_was_plotted: bool = self.dynamic_results_handler.plot_parameter_entry(
+                        entry=parameter_entry
+                    )
+                    if parameter_was_plotted:
+                        pass
+                    else:
+                        warning_msg(
+                            self.tr("The selected parameter has no numerical value in these dynamic results."),
+                            self.tr("Dynamic parameter unavailable"),
+                        )
                     return None
                 else:
                     pass
