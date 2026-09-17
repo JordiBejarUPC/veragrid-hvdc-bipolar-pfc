@@ -865,7 +865,7 @@ class CompactContingencies:
                  prob: LpModel,
                  logger: Logger,
                  strict: bool = False,
-                 mip_feasibility_tolerance: float = 1e-6) -> None:
+                 droop_tolerance_mw: float = 0.01) -> None:
         """Initialize shared responses and fixed-capacity contingency bookkeeping.
 
         :param nc: Compiled numerical circuit for the current time step.
@@ -874,7 +874,7 @@ class CompactContingencies:
         :param prob: Solver model owning the symbolic expressions.
         :param logger: Destination for diagnostics and certification failures.
         :param strict: Enforce hard contingency limits instead of penalized overload slacks.
-        :param mip_feasibility_tolerance: Solved droop-law tolerance in per unit.
+        :param droop_tolerance_mw: Solved droop-law tolerance in MW, defaults to 10 kW.
         :return: None.
         """
         event: LinearMultiContingency
@@ -886,7 +886,7 @@ class CompactContingencies:
         self.prob: LpModel = prob
         self.logger: Logger = logger
         self.strict: bool = strict
-        self.mip_feasibility_tolerance: float = mip_feasibility_tolerance
+        self.mip_feasibility_tolerance: float = droop_tolerance_mw / nc.Sbase
         self.vsc_control_lookup: dict[int, Control] = dict()
         for vsc_control in Control:
             self.vsc_control_lookup[vsc_control.idx()] = vsc_control

@@ -1288,14 +1288,8 @@ def add_linear_branches_formulation(t_idx: int,
             if branch_vars.monitor_logic[t_idx, m]:
 
                 if abs(loading[m]) > 1.0 or slack_all_limits:
-                    if abs(loading[m]) > 1.0:
-                        logger.add_error("Base overload on sensitive branch, limit relaxed with a penalized slack",
-                                         device=f"{m}: {branch_data_t.names[m]}",
-                                         value=f"{loading[m] * 100} %")
-                    else:
-                        pass  # slack_all_limits retry
-
-                    # The limit is relaxed with a heavily penalized slack
+                    # Allow penalized relaxation while controls seek to resolve the overload.
+                    # Report actual slack after solving; an initial overload is not a result.
                     pos_sl: LpVar = prob.add_var(0, 1e20, join("base_flow_pos_sl_", [t_idx, m], "_"))
                     neg_sl: LpVar = prob.add_var(0, 1e20, join("base_flow_neg_sl_", [t_idx, m], "_"))
                     branch_vars.flow_slacks_pos[t_idx, m] = pos_sl
