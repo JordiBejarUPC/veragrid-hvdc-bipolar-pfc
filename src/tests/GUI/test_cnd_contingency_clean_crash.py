@@ -15,7 +15,7 @@ from VeraGrid.Gui.Main.VeraGridMain import VeraGridMainGUI
 from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely
 from VeraGrid.Session.file_handler import FileOpenThread
 from VeraGrid.Session.session import GcThread
-from VeraGridEngine.enumerations import SimulationTypes
+from VeraGridEngine.enumerations import EngineType, SimulationTypes
 from tests.GUI.conftest import ModalDialogAutoCloser
 
 
@@ -114,6 +114,11 @@ def run_cnd_contingency_gui_flow(message_queue: Any) -> None:
 
         assert gui.circuit.get_bus_number() > 0
         assert len(gui.circuit.contingency_groups) > 0
+
+        engine_index: int = gui.ui.engineComboBox.findData(EngineType.VeraGrid)
+        assert engine_index >= 0
+        gui.ui.engineComboBox.setCurrentIndex(engine_index)
+        app.processEvents()
 
         message_queue.put("running OPF")
         gui.ui.actionOPF.trigger()
