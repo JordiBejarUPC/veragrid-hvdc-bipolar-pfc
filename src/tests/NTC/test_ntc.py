@@ -2183,7 +2183,7 @@ def test_ntc_ts_worst_contingency_report_expands_with_clustering() -> None:
     res.Sf[:, 0] = np.array([10.0, 20.0, 5.0])
     res.alpha[:, 0] = np.array([0.1, 0.2, 0.0])
     res.alpha_n1_worst[:, 0] = np.array([0.3, 0.4, 0.0])
-    res.monitor_logic[:, 0] = np.array([1, 1, 0])
+    res.monitor_logic[:, 0] = np.array([1, 1, 1])
     res.worst_contingency_idx[:, 0] = np.array([0, 0, -1])
     res.worst_contingency_flow[:, 0] = np.array([12.0, 25.0, 5.0])
     res.worst_contingency_loading[:, 0] = np.array([0.24, 0.50, 0.10])
@@ -2212,6 +2212,11 @@ def test_ntc_ts_worst_contingency_report_expands_with_clustering() -> None:
     assert table.data_c[4, flow_n1_col] == 25.0
     # cluster 2 has no worse N-1, so the table reports the N flow
     assert table.data_c[8, flow_n1_col] == 5.0
+
+    res.monitor_logic[8:, 0] = False
+    monitored_table = res.mdl(ResultTypes.ContingencyFlowsReport)
+    assert monitored_table.r == 8
+    assert list(monitored_table.data_c[:, t_idx_col]) == list(range(8))
 
 
 def test_ntc_worst_contingency_is_the_other_tie() -> None:
@@ -2302,6 +2307,7 @@ def test_ntc_ts_report_keeps_only_rows_above_loading_threshold() -> None:
         time_indices=np.array([0, 1]),
     )
     res.loading_threshold_to_report = 98.0
+    res.monitor_logic[:, :] = 1
     res.contingency_rates[:] = np.array([100.0, 100.0])
     res.Sf[:, :] = 10.0
     res.worst_contingency_idx[:, :] = 0
@@ -2324,6 +2330,16 @@ def test_ntc_ts_report_keeps_only_rows_above_loading_threshold() -> None:
     res.loading_threshold_to_report = 0.0
     full_table = res.mdl(ResultTypes.ContingencyFlowsReport)
     assert full_table.r == 4
+
+    res.monitor_logic[0, 1] = False
+    res.loading_threshold_to_report = 98.0
+    monitored_table = res.mdl(ResultTypes.ContingencyFlowsReport)
+    assert monitored_table.r == 1
+    assert monitored_table.data_c[0, br_col] == 'heavy'
+    assert monitored_table.data_c[0, t_col] == 1
+
+    res.monitor_logic[:, :] = False
+    assert res.mdl(ResultTypes.ContingencyFlowsReport).r == 0
 
 
 if __name__ == '__main__':
