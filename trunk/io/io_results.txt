@@ -1,0 +1,58 @@
+/home/santi/Git/eRoots/VeraGrid/.venv/bin/python /home/santi/Git/eRoots/VeraGrid/trunk/io/faster_io_example.py
+Benchmarking 78 files in '/home/santi/Escritorio/future_model.veragrid' across Execution Strategies...
+
+[SingleThread + zipfile (std) + json               ] 160.849s | 1.00x baseline
+[SingleThread + zipfile (std) + orjson             ] 101.987s | 1.58x baseline
+[SingleThread + zipfile (std) + msgspec            ] 92.716s | 1.73x baseline
+[SingleThread + zipfile_deflate64 + json           ] 156.364s | 1.03x baseline
+[SingleThread + zipfile_deflate64 + orjson         ] 104.262s | 1.54x baseline
+[SingleThread + zipfile_deflate64 + msgspec        ] 93.897s | 1.71x baseline
+[ThreadPool + zipfile (std) + json                 ] 155.376s | 1.04x baseline
+[ThreadPool + zipfile (std) + orjson               ] 103.262s | 1.56x baseline
+[ThreadPool + zipfile (std) + msgspec              ] 94.565s | 1.70x baseline
+[ThreadPool + zipfile_deflate64 + json             ] 156.350s | 1.03x baseline
+[ThreadPool + zipfile_deflate64 + orjson           ] 103.336s | 1.56x baseline
+[ThreadPool + zipfile_deflate64 + msgspec          ] 92.783s | 1.73x baseline
+[TwoPhase(PreRead) + zipfile (std) + json          ] 157.449s | 1.02x baseline
+[TwoPhase(PreRead) + zipfile (std) + orjson        ] 104.064s | 1.55x baseline
+[TwoPhase(PreRead) + zipfile (std) + msgspec       ] 94.368s | 1.70x baseline
+[TwoPhase(PreRead) + zipfile_deflate64 + json      ] 157.758s | 1.02x baseline
+[TwoPhase(PreRead) + zipfile_deflate64 + orjson    ] 104.749s | 1.54x baseline
+[TwoPhase(PreRead) + zipfile_deflate64 + msgspec   ] 95.655s | 1.68x baseline
+[ProcessPool + zipfile (std) + json                ] 150.681s | 1.07x baseline
+[ProcessPool + zipfile (std) + orjson              ] 112.141s | 1.43x baseline
+[ProcessPool + zipfile (std) + msgspec             ] 105.863s | 1.52x baseline
+[ProcessPool + zipfile_deflate64 + json            ] 150.695s | 1.07x baseline
+[ProcessPool + zipfile_deflate64 + orjson          ] 112.101s | 1.43x baseline
+[ProcessPool + zipfile_deflate64 + msgspec         ] 107.536s | 1.50x baseline
+
+======================================================================
+Combo / Strategy                                    | Time (s) | Speedup
+======================================================================
+SingleThread + zipfile (std) + msgspec              | 92.716   | 1.73x
+ThreadPool + zipfile_deflate64 + msgspec            | 92.783   | 1.73x
+SingleThread + zipfile_deflate64 + msgspec          | 93.897   | 1.71x
+TwoPhase(PreRead) + zipfile (std) + msgspec         | 94.368   | 1.70x
+ThreadPool + zipfile (std) + msgspec                | 94.565   | 1.70x
+TwoPhase(PreRead) + zipfile_deflate64 + msgspec     | 95.655   | 1.68x
+SingleThread + zipfile (std) + orjson               | 101.987  | 1.58x
+ThreadPool + zipfile (std) + orjson                 | 103.262  | 1.56x
+ThreadPool + zipfile_deflate64 + orjson             | 103.336  | 1.56x
+TwoPhase(PreRead) + zipfile (std) + orjson          | 104.064  | 1.55x
+SingleThread + zipfile_deflate64 + orjson           | 104.262  | 1.54x
+TwoPhase(PreRead) + zipfile_deflate64 + orjson      | 104.749  | 1.54x
+ProcessPool + zipfile (std) + msgspec               | 105.863  | 1.52x
+ProcessPool + zipfile_deflate64 + msgspec           | 107.536  | 1.50x
+ProcessPool + zipfile_deflate64 + orjson            | 112.101  | 1.43x
+ProcessPool + zipfile (std) + orjson                | 112.141  | 1.43x
+ProcessPool + zipfile (std) + json                  | 150.681  | 1.07x
+ProcessPool + zipfile_deflate64 + json              | 150.695  | 1.07x
+ThreadPool + zipfile (std) + json                   | 155.376  | 1.04x
+ThreadPool + zipfile_deflate64 + json               | 156.350  | 1.03x
+SingleThread + zipfile_deflate64 + json             | 156.364  | 1.03x
+TwoPhase(PreRead) + zipfile (std) + json            | 157.449  | 1.02x
+TwoPhase(PreRead) + zipfile_deflate64 + json        | 157.758  | 1.02x
+SingleThread + zipfile (std) + json                 | 160.849  | 1.00x
+======================================================================
+
+Process finished with exit code 0
