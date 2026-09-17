@@ -466,13 +466,13 @@ class DiagramsMain(CompiledArraysMain):
 
                 # if the ask, checkbox is checked, then ask
                 if self.ui.ask_before_appliying_layout_checkBox.isChecked():
-                    reply = QtWidgets.QMessageBox.question(self,
-                                                           self.tr("Message"),
-                                                           self.tr("Are you sure that you want to try an automatic layout?"),
-                                                           QtWidgets.QMessageBox.StandardButton.Yes,
-                                                           QtWidgets.QMessageBox.StandardButton.No)
+                    reply: bool = yes_no_question(
+                        text=self.tr("Are you sure that you want to try an automatic layout?"),
+                        title=self.tr("Message"),
+                        parent=self,
+                    )
 
-                    if reply == QtWidgets.QMessageBox.StandardButton.Yes.value:
+                    if reply:
                         do_it = True
                     else:
                         do_it = False

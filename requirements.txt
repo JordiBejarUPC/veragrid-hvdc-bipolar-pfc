@@ -38,11 +38,6 @@ packaging>=25.0
 brotli>=1.2.0
 fmpy>=0.3.26
 psycopg[binary]>=3.3
-clang-tool-chain-bins==0.4.6
-fasteners==0.20
-json5==0.15.0
-zstandard==0.25.0
-pyzstd==0.19.1
-zccache==1.13.22
+clang-tool-chain
 llvmlite
 mcp>=2.2.0,<3

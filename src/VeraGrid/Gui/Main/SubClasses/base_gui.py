@@ -42,7 +42,7 @@ from VeraGrid.Gui.messages import yes_no_question, warning_msg, info_msg, error_
 from VeraGrid.Gui.FileDialogues.LoadCatalogue.catalogue_dialogue import CatalogueGUI
 from VeraGrid.Gui.Main.MainWindow import Ui_mainWindow, QMainWindow
 from VeraGrid.Session.session import SimulationSession, GcThread
-from VeraGrid.Session.server_driver import RemoteJobDriver
+from VeraGrid.Session.server_driver import RemoteJobDriver, ServerDriver
 from VeraGrid.Gui.SigmaAnalysis.sigma_analysis_dialogue import SigmaAnalysisGUI
 from VeraGrid.Gui.SyncDialogue.sync_dialogue import SyncDialogueWindow
 from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_editor import DynamicBlockEditorGUI
@@ -751,6 +751,8 @@ class BaseMainGui(QMainWindow):
                     thread.cancel()
                 elif isinstance(thread, RemoteJobDriver):
                     thread.cancel()
+                elif isinstance(thread, ServerDriver):
+                    thread.cancel()
                 else:
                     pass
 
@@ -1376,12 +1378,13 @@ class BaseMainGui(QMainWindow):
         @return:
         """
 
-        reply = QtWidgets.QMessageBox.question(self, 'Message',
-                                               self.tr('Are you sure that you want to cancel the simulation?'),
-                                               QtWidgets.QMessageBox.StandardButton.Yes,
-                                               QtWidgets.QMessageBox.StandardButton.No)
+        reply: bool = yes_no_question(
+            text=self.tr('Are you sure that you want to cancel the simulation?'),
+            title='Message',
+            parent=self,
+        )
 
-        if reply == QtWidgets.QMessageBox.StandardButton.Yes.value:
+        if reply:
             # send the cancel state to whatever it is being executed
 
             for drv in self.get_all_threads():

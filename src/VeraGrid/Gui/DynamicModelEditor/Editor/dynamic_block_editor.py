@@ -13159,14 +13159,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-        reply = QtWidgets.QMessageBox.question(
-            parent if parent is not None else self,
-            self.tr("Unsaved changes"),
-            self.tr("There are unapplied changes. Do you want to close without applying them?"),
-            QtWidgets.QMessageBox.StandardButton.Yes,
-            QtWidgets.QMessageBox.StandardButton.No,
+        return yes_no_question(
+            text=self.tr("There are unapplied changes. Do you want to close without applying them?"),
+            title=self.tr("Unsaved changes"),
+            parent=parent if parent is not None else self,
         )
-        return reply == QtWidgets.QMessageBox.StandardButton.Yes
 
     def _dispose_table_models(self) -> None:
         """

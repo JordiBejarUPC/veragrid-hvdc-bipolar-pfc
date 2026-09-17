@@ -1026,12 +1026,9 @@ class ResultsMain(SimulationsMain):
                 quit_msg = self.tr("Do you want to delete the results driver {study_name}?").format(
                     study_name=study_type.value
                 )
-                reply = QtWidgets.QMessageBox.question(self, self.tr("Message"),
-                                                       quit_msg,
-                                                       QtWidgets.QMessageBox.StandardButton.Yes,
-                                                       QtWidgets.QMessageBox.StandardButton.No)
+                reply: bool = yes_no_question(text=quit_msg, title=self.tr("Message"), parent=self)
 
-                if reply == QtWidgets.QMessageBox.StandardButton.Yes.value:
+                if reply:
                     if study_type == SimulationTypes.RmsDynamic_run or study_type == SimulationTypes.EmtDynamic_run:
                         if study_type in self.dynamic_results_handlers:
                             del self.dynamic_results_handlers[study_type]

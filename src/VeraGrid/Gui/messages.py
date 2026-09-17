@@ -89,11 +89,12 @@ def error_msg(text: str, title: str | None = None) -> int:
     return exec_dialog_safely(dialog=msg)
 
 
-def yes_no_question(text: str, title: str | None = None) -> bool:
+def yes_no_question(text: str, title: str | None = None, parent: QtWidgets.QWidget | None = None) -> bool:
     """
     Question message
     :param text:
     :param title:
+    :param parent: Optional owner window for the question box.
     :return: True / False
     """
     default_title: str = QCoreApplication.translate("messages", "Question")
@@ -101,17 +102,18 @@ def yes_no_question(text: str, title: str | None = None) -> bool:
         window_title: str = default_title
     else:
         window_title = title
-    buttonReply = QtWidgets.QMessageBox.question(
-        None,
-        window_title,
-        text,
-        QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
-        QtWidgets.QMessageBox.StandardButton.No
-    )
+    msg: CenteredMessageBox = CenteredMessageBox(parent)
+    msg.setIcon(QtWidgets.QMessageBox.Icon.Question)
+    msg.setWindowTitle(window_title)
+    msg.setText(text)
+    msg.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Yes |
+                           QtWidgets.QMessageBox.StandardButton.No)
+    msg.setDefaultButton(QtWidgets.QMessageBox.StandardButton.No)
+    button_reply: int = exec_dialog_safely(dialog=msg)
     yes_button: QtWidgets.QMessageBox.StandardButton = QtWidgets.QMessageBox.StandardButton.Yes
-    if buttonReply == yes_button:
+    if button_reply == yes_button:
         result: bool = True
     else:
-        result = buttonReply == yes_button.value
+        result = button_reply == yes_button.value
 
     return result

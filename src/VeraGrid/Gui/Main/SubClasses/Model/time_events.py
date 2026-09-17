@@ -96,11 +96,9 @@ class TimeEventsMain(DataBaseTableMain):
 
         if self.circuit.time_profile is not None:
             quit_msg = "Are you sure that you want to delete the profiles?"
-            reply = QtWidgets.QMessageBox.question(self, self.tr('Message'), quit_msg,
-                                                   QtWidgets.QMessageBox.StandardButton.Yes,
-                                                   QtWidgets.QMessageBox.StandardButton.No)
+            reply: bool = yes_no_question(text=quit_msg, title=self.tr('Message'), parent=self)
 
-            if reply == QtWidgets.QMessageBox.StandardButton.Yes.value:
+            if reply:
                 self.circuit.delete_profiles()
                 self.ui.profiles_tableView.setModel(None)
                 self.update_date_dependent_combos()
@@ -419,11 +417,9 @@ class TimeEventsMain(DataBaseTableMain):
                 msg = "Are you sure that you want to overwrite the values " + magnitude_to + \
                       " with the values of " + magnitude_from + "?"
 
-                reply = QtWidgets.QMessageBox.question(self, self.tr('Message'), msg,
-                                                       QtWidgets.QMessageBox.StandardButton.Yes,
-                                                       QtWidgets.QMessageBox.StandardButton.No)
+                reply: bool = yes_no_question(text=msg, title=self.tr('Message'), parent=self)
 
-                if reply == QtWidgets.QMessageBox.StandardButton.Yes.value:
+                if reply:
                     objects: List[ALL_DEV_TYPES] = self.circuit.get_elements_by_type(dev_type)
 
                     # Assign profiles

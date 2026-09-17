@@ -277,11 +277,9 @@ class IoMain(ScenariosMain):
                     else:
                         quit_msg = self.tr("Are you sure that you want to quit the current grid and open a new one?"
                                            "\n If the process is cancelled the grid will remain.")
-                        reply = QtWidgets.QMessageBox.question(self, self.tr('Message'), quit_msg,
-                                                               QtWidgets.QMessageBox.StandardButton.Yes,
-                                                               QtWidgets.QMessageBox.StandardButton.No)
+                        reply: bool = yes_no_question(text=quit_msg, title=self.tr('Message'), parent=self)
 
-                        if reply == QtWidgets.QMessageBox.StandardButton.Yes.value:
+                        if reply:
                             self.open_file_now(filenames=file_names)
                 else:
                     # Just open the file
@@ -353,11 +351,9 @@ class IoMain(ScenariosMain):
         """
         if self.circuit.valid_for_simulation() > 0:
             quit_msg = self.tr("Are you sure that you want to quit the current grid and create a new one?")
-            reply = QtWidgets.QMessageBox.question(self, self.tr('Message'), quit_msg,
-                                                   QtWidgets.QMessageBox.StandardButton.Yes,
-                                                   QtWidgets.QMessageBox.StandardButton.No)
+            reply: bool = yes_no_question(text=quit_msg, title=self.tr('Message'), parent=self)
 
-            if reply == QtWidgets.QMessageBox.StandardButton.Yes.value:
+            if reply:
                 self.new_project_now(create_default_diagrams=True)
 
     def open_file(self) -> None:
@@ -373,11 +369,9 @@ class IoMain(ScenariosMain):
             if self.circuit.valid_for_simulation() > 0:
                 quit_msg = self.tr("Are you sure that you want to quit the current grid and open a new one?"
                                    "\n If the process is cancelled the grid will remain.")
-                reply = QtWidgets.QMessageBox.question(self, self.tr('Message'), quit_msg,
-                                                       QtWidgets.QMessageBox.StandardButton.Yes,
-                                                       QtWidgets.QMessageBox.StandardButton.No)
+                reply: bool = yes_no_question(text=quit_msg, title=self.tr('Message'), parent=self)
 
-                if reply == QtWidgets.QMessageBox.StandardButton.Yes.value:
+                if reply:
                     self.open_file_threaded()
                 else:
                     pass
@@ -832,6 +826,7 @@ class IoMain(ScenariosMain):
                 previous_circuit=self.circuit,
                 options=options
             )
+            self.open_file_thread_object.setParent(self)
 
             # make connections
             self.open_file_thread_object.progress_signal.connect(self.ui.progressBar.setValue)
@@ -1305,6 +1300,7 @@ class IoMain(ScenariosMain):
                 file_name=filename,
                 options=options2
             )
+            self.save_file_thread_object.setParent(self)
 
             # make connections
             self.save_file_thread_object.progress_signal.connect(self.ui.progressBar.setValue)
@@ -1372,13 +1368,13 @@ class IoMain(ScenariosMain):
         if generator_applied:
 
             if self.circuit.valid_for_simulation() > 0:
-                reply = QtWidgets.QMessageBox.question(self, self.tr('Message'),
-                                                       self.tr('Are you sure that you want to delete '
-                                                               'the current grid and replace it?'),
-                                                       QtWidgets.QMessageBox.StandardButton.Yes,
-                                                       QtWidgets.QMessageBox.StandardButton.No)
+                reply: bool = yes_no_question(
+                    text=self.tr('Are you sure that you want to delete the current grid and replace it?'),
+                    title=self.tr('Message'),
+                    parent=self,
+                )
 
-                if reply == QtWidgets.QMessageBox.StandardButton.No:
+                if not reply:
                     return
 
             self.circuit = generated_circuit
@@ -1481,6 +1477,7 @@ class IoMain(ScenariosMain):
                 self.export_all_thread_object = exprtdrv.ExportAllThread(circuit=self.circuit,
                                                                          drivers_list=available_results,
                                                                          file_name=filename)
+                self.export_all_thread_object.setParent(self)
 
                 self.export_all_thread_object.progress_signal.connect(self.ui.progressBar.setValue)
                 self.export_all_thread_object.progress_text.connect(self.ui.progress_label.setText)

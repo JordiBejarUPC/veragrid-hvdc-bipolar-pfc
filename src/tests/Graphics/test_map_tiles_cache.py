@@ -1,4 +1,4 @@
-from VeraGrid.Gui.Diagrams.MapWidget.Tiles.tiles import Tiles
+from VeraGrid.Gui.Diagrams.MapWidget.Tiles.tiles import TileCallbackBridge, Tiles
 from PySide6 import QtCore
 from PySide6 import QtWidgets
 from PySide6.QtGui import QColor, QImage, QPixmap
@@ -101,7 +101,7 @@ class _TileCacheSuccessStub(dict):
 
 
 class _TilesStub:
-    __slots__ = ("cache", "queued_requests", "callback", "callback_calls", "error_tile")
+    __slots__ = ("cache", "queued_requests", "callback", "callback_calls", "error_tile", "_shutdown")
 
     def __init__(self, cache: dict, error_tile: object) -> None:
         self.cache = cache
@@ -109,6 +109,7 @@ class _TilesStub:
         self.callback_calls: list[tuple[int, float, float, object, bool]] = list()
         self.callback = self.record_callback
         self.error_tile = error_tile
+        self._shutdown: bool = False
 
     def record_callback(self, level: int, x: float, y: float, image: object, available: bool) -> None:
         """
@@ -160,3 +161,20 @@ def test_successful_tiles_keep_normal_write_through_cache_path() -> None:
     assert cache.set_calls[0][1].isNull() is False
     assert stub.queued_requests == dict()
     assert stub.callback_calls == [(3, 4.0, 5.0, cache.set_calls[0][1], True)]
+
+
+def test_tile_callback_bridge_ignores_results_after_detach() -> None:
+    """
+    A queued worker result must be harmless after its tile owner is released.
+    """
+    ensure_qapplication()
+    image: object = object()
+    cache: _TileCacheErrorStub = _TileCacheErrorStub()
+    stub: _TilesStub = _TilesStub(cache=cache, error_tile=image)
+    bridge: TileCallbackBridge = TileCallbackBridge(tiles=stub)  # type: ignore[arg-type]
+
+    bridge.detach()
+    bridge.tile_is_available(level=3, x=4.0, y=5.0, image_data=b"", error=True)
+
+    assert cache == dict()
+    assert stub.callback_calls == list()
