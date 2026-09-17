@@ -4,10 +4,10 @@
 # Changes belong in the .ui file and must be regenerated with update_gui_file.py.
 
 from PySide6.QtCore import QCoreApplication, QMetaObject, QSize, Qt
-from PySide6.QtGui import QAction, QIcon
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (QFrame, QHBoxLayout, QLineEdit, QPushButton,
-                               QSizePolicy, QSpacerItem, QSplitter, QToolBar,
-                               QTreeView, QVBoxLayout, QWidget)
+                               QSizePolicy, QSpacerItem, QSplitter, QTreeView,
+                               QVBoxLayout, QWidget)
 from VeraGrid.Gui.Icons.icons_rc import *
 
 
@@ -25,28 +25,10 @@ class Ui_DynamicPlotsPage(object):
         else:
             pass
         DynamicPlotsPage.resize(900, 560)
-        self.actionAddPlot = QAction(DynamicPlotsPage)
-        self.actionAddPlot.setObjectName(u"actionAddPlot")
-        add_icon = QIcon()
-        add_icon.addFile(u":/Icons/icons/plus.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.actionAddPlot.setIcon(add_icon)
-        self.actionRemove = QAction(DynamicPlotsPage)
-        self.actionRemove.setObjectName(u"actionRemove")
-        remove_icon = QIcon()
-        remove_icon.addFile(u":/Icons/icons/minus.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.actionRemove.setIcon(remove_icon)
         self.mainLayout = QVBoxLayout(DynamicPlotsPage)
         self.mainLayout.setSpacing(0)
         self.mainLayout.setObjectName(u"mainLayout")
         self.mainLayout.setContentsMargins(0, 0, 0, 0)
-        self.plotsToolBar = QToolBar(DynamicPlotsPage)
-        self.plotsToolBar.setObjectName(u"plotsToolBar")
-        self.plotsToolBar.setMovable(False)
-        self.plotsToolBar.setIconSize(QSize(24, 24))
-        self.plotsToolBar.setFloatable(False)
-        self.plotsToolBar.addAction(self.actionAddPlot)
-        self.plotsToolBar.addAction(self.actionRemove)
-        self.mainLayout.addWidget(self.plotsToolBar)
         self.searchFrame = QFrame(DynamicPlotsPage)
         self.searchFrame.setObjectName(u"searchFrame")
         search_size_policy = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
@@ -79,6 +61,18 @@ class Ui_DynamicPlotsPage(object):
             QSizePolicy.Policy.Minimum,
         )
         self.searchLayout.addItem(self.searchHorizontalSpacer)
+        self.addDynamicPlotButton = QPushButton(self.searchFrame)
+        self.addDynamicPlotButton.setObjectName(u"addDynamicPlotButton")
+        add_icon = QIcon()
+        add_icon.addFile(u":/Icons/icons/plus (gray).png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.addDynamicPlotButton.setIcon(add_icon)
+        self.searchLayout.addWidget(self.addDynamicPlotButton)
+        self.deleteDynamicPlotButton = QPushButton(self.searchFrame)
+        self.deleteDynamicPlotButton.setObjectName(u"deleteDynamicPlotButton")
+        remove_icon = QIcon()
+        remove_icon.addFile(u":/Icons/icons/minus (gray).png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.deleteDynamicPlotButton.setIcon(remove_icon)
+        self.searchLayout.addWidget(self.deleteDynamicPlotButton)
         self.mainLayout.addWidget(self.searchFrame)
         self.plotsSplitter = QSplitter(DynamicPlotsPage)
         self.plotsSplitter.setObjectName(u"plotsSplitter")
@@ -100,12 +94,12 @@ class Ui_DynamicPlotsPage(object):
         :return: None.
         """
         DynamicPlotsPage.setWindowTitle(QCoreApplication.translate("DynamicPlotsPage", u"Dynamic Plots", None))
-        self.actionAddPlot.setText(QCoreApplication.translate("DynamicPlotsPage", u"Add plot", None))
-        self.actionAddPlot.setToolTip(QCoreApplication.translate("DynamicPlotsPage", u"Create a persistent dynamic plot", None))
-        self.actionRemove.setText(QCoreApplication.translate("DynamicPlotsPage", u"Remove", None))
-        self.actionRemove.setToolTip(QCoreApplication.translate("DynamicPlotsPage", u"Remove the selected plot or variable", None))
         self.searchLineEdit.setPlaceholderText(QCoreApplication.translate("DynamicPlotsPage", u"Type to search devices or variables", None))
         self.searchButton.setToolTip(QCoreApplication.translate("DynamicPlotsPage", u"Filter devices and variables", None))
         self.searchButton.setText("")
+        self.addDynamicPlotButton.setToolTip(QCoreApplication.translate("DynamicPlotsPage", u"Create a persistent dynamic plot", None))
+        self.addDynamicPlotButton.setText("")
+        self.deleteDynamicPlotButton.setToolTip(QCoreApplication.translate("DynamicPlotsPage", u"Remove the selected plot or variable", None))
+        self.deleteDynamicPlotButton.setText("")
         self.availableVariablesTreeView.setToolTip(QCoreApplication.translate("DynamicPlotsPage", u"Drag a variable or parameter to a dynamic plot", None))
         self.plotsTreeView.setToolTip(QCoreApplication.translate("DynamicPlotsPage", u"Persistent dynamic plots for this simulation family", None))

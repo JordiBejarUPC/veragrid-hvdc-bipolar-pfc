@@ -143,8 +143,8 @@ class DynamicPlotsPage(QtWidgets.QWidget):
 
         :return: None.
         """
-        self.ui.actionAddPlot.triggered.connect(self.add_plot_group)
-        self.ui.actionRemove.triggered.connect(self.delete_plot_entry)
+        self.ui.addDynamicPlotButton.clicked.connect(self.add_plot_group)
+        self.ui.deleteDynamicPlotButton.clicked.connect(self.delete_plot_entry)
         self.ui.searchButton.clicked.connect(self.apply_search)
         self.ui.searchLineEdit.returnPressed.connect(self.apply_search)
         self.ui.plotsTreeView.customContextMenuRequested.connect(self.show_plots_context_menu)
