@@ -46,7 +46,8 @@ def worst_contingency_report_table(time_array: Union[DateVec, None],
     """
     Build the long form worst-contingency table with one row per kept (time, branch).
 
-    A row is kept only when its N-1 loading is at least ``loading_threshold_pct``.
+    A row is kept only when the branch is monitored and its N-1 loading is at
+    least ``loading_threshold_pct``.
     That is the NTC "loading threshold to report" option. It avoids allocating
     an object cell for every branch of every hour.
 
@@ -76,7 +77,9 @@ def worst_contingency_report_table(time_array: Union[DateVec, None],
 
     # worst_loading is already p.u. of the contingency rate, including the N-state
     loading_pct: np.ndarray = np.asarray(worst_loading, dtype=float) * 100.0
-    keep: np.ndarray = loading_pct >= float(loading_threshold_pct)
+    # Apply the same per hour monitoring flags displayed in the monitored column.
+    keep: np.ndarray = ((loading_pct >= float(loading_threshold_pct))
+                        & np.asarray(monitor_logic, dtype=bool))
     kept: np.ndarray = np.argwhere(keep)
     n_rows: int = int(kept.shape[0])
 

@@ -3078,6 +3078,7 @@ class ResultTypes(Enum):
 
     # Clustering
     ClusteringReport = 'Clustering time series report'
+    ClusteringMembershipReport = 'Clustering hour assignments report'
 
     # RMS Simulation
 
