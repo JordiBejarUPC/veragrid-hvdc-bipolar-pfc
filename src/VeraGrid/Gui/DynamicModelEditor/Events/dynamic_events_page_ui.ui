@@ -20,7 +20,6 @@
      <property name="floatable"><bool>false</bool></property>
      <addaction name="actionNewGroup"/>
      <addaction name="separator"/>
-     <addaction name="actionSwitchSequence"/>
      <addaction name="actionAddEvent"/>
      <addaction name="actionRemove"/>
     </widget>
@@ -130,10 +129,6 @@
   <action name="actionNewGroup">
    <property name="text"><string>Add Events Group</string></property>
    <property name="toolTip"><string>Create an event group</string></property>
-  </action>
-  <action name="actionSwitchSequence">
-   <property name="text"><string>Switch Sequence Wizard</string></property>
-   <property name="toolTip"><string>Create an EMT switch opening and reclosing event sequence</string></property>
   </action>
   <action name="actionAddEvent">
    <property name="icon">

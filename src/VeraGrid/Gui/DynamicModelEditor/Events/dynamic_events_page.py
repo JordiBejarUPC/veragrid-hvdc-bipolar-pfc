@@ -98,7 +98,6 @@ class DynamicEventsPage(QtWidgets.QWidget):
         self.ui.actionNewGroup.triggered.connect(self.add_event_group)
         self.ui.actionAddEvent.triggered.connect(self.add_event)
         self.ui.actionRemove.triggered.connect(self.remove_selection)
-        self.ui.actionSwitchSequence.triggered.connect(self.open_switch_sequence)
         self.ui.parametersSearchButton.clicked.connect(self.apply_parameters_search)
         self.ui.parametersSearchLineEdit.returnPressed.connect(self.apply_parameters_search)
         self.ui.eventsSearchButton.clicked.connect(self.apply_events_search)
@@ -107,7 +106,6 @@ class DynamicEventsPage(QtWidgets.QWidget):
         self.handler.eventAdded.connect(self._on_event_added)
         self.handler.modelAboutToBeRebuilt.connect(self._save_event_column_widths)
         self.handler.modelRebuilt.connect(self._on_model_rebuilt)
-        self.ui.actionSwitchSequence.setVisible(self.mode == DynamicSimulationMode.EMT)
         self._select_first_group()
         self.update_actions()
 
@@ -450,12 +448,6 @@ class DynamicEventsPage(QtWidgets.QWidget):
         selected_event: RmsEvent | EmtEvent | None = self._selected_event()
         self.ui.actionAddEvent.setEnabled(selected_group is not None and self.handler.first_candidate() is not None)
         self.ui.actionRemove.setEnabled(selected_group is not None or selected_event is not None)
-        switch_candidates: List[DynamicEventParameterCandidate] = self._switch_candidates()
-        self.ui.actionSwitchSequence.setEnabled(
-            self.mode == DynamicSimulationMode.EMT
-            and len(switch_candidates) > 0
-            and len(self.circuit.emt_events_groups) > 0
-        )
 
     def _switch_candidates(self) -> List[DynamicEventParameterCandidate]:
         """Return EMT switch-state parameters from every eligible device.
