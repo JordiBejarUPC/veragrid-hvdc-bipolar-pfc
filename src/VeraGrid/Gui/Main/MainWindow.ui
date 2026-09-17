@@ -12822,7 +12822,7 @@ QProgressBar::chunk{
   <action name="actionAdd_rms_event_to_selected">
    <property name="icon">
     <iconset resource="../Icons/icons.qrc">
-     <normaloff>:/Icons/icons/dyn_add.png</normaloff>:/Icons/icons/dyn_add.png</iconset>
+     <normaloff>:/Icons/icons/dyn_edit.png</normaloff>:/Icons/icons/dyn_edit.png</iconset>
    </property>
    <property name="text">
     <string>Add RMS event</string>
@@ -13153,7 +13153,7 @@ QProgressBar::chunk{
   <action name="actionAdd_emt_event_to_selected">
    <property name="icon">
     <iconset resource="../Icons/icons.qrc">
-     <normaloff>:/Icons/icons/dyn_emt_add.png</normaloff>:/Icons/icons/dyn_emt_add.png</iconset>
+     <normaloff>:/Icons/icons/dyn_emt_edit.png</normaloff>:/Icons/icons/dyn_emt_edit.png</iconset>
    </property>
    <property name="text">
     <string>Add EMT event</string>
