@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from VeraGrid.Gui.Main.SubClasses.Results.dynamics_results_handler import _build_parameter_plot_data_from_events
+from VeraGrid.Gui.DynamicModelEditor.Plots.dynamic_plots_handler import _build_parameter_plot_data_from_events
 from VeraGridEngine.Devices.Events.dynamic_plot_entry import DynamicPlotEntry
 from VeraGridEngine.Devices.Events.rms_event import RmsEvent
 from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup

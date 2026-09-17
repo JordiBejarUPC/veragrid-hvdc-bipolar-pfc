@@ -6,7 +6,7 @@ import numpy as np
 from PySide6 import QtCore
 from PySide6 import QtWidgets
 
-from VeraGrid.Gui.Main.SubClasses.Results.dynamics_results_handler import (
+from VeraGrid.Gui.DynamicModelEditor.Plots.dynamic_plots_handler import (
     DynamicsResultsHandler,
     DynamicPlotCandidate,
     DynamicPlotParameter,

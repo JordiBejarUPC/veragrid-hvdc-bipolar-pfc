@@ -8,6 +8,7 @@ import shiboken6
 
 from VeraGrid.Gui.DynamicModelEditor.Workspace.Tabs.dynamic_editor_tab import DynamicEditorTab
 from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_page import DynamicEventsPage
+from VeraGrid.Gui.DynamicModelEditor.Plots.dynamic_plots_page import DynamicPlotsPage
 from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_workspace_window import DynamicEditorWorkspaceWindow
 from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import DynamicEditorEntry
 from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import build_dynamic_editor_entry
@@ -398,10 +399,51 @@ def test_workspace_hosts_model_and_events_tabs_with_contextual_toolbar() -> None
         workspace.ui.actionRMS_Events,
         workspace.ui.actionEMT_Editor,
         workspace.ui.actionEMT_Events,
+        workspace.ui.actionRMS_Plots,
+        workspace.ui.actionEMT_Plots,
     )
     workspace.editor_tabs.setCurrentWidget(model_page)
     assert all(action.isVisible() for action in toolbar_actions)
     workspace.editor_tabs.setCurrentWidget(events_page)
     assert all(action.isVisible() for action in toolbar_actions)
+
+    _reset_dynamic_editor_workspaces()
+
+
+def test_workspace_hosts_one_global_plots_tab_per_simulation_family() -> None:
+    """Open circuit-wide plot pages without requiring a contextual device entry.
+
+    :return: None.
+    """
+    _get_app()
+    _reset_dynamic_editor_workspaces()
+    circuit: gce.MultiCircuit
+    load: gce.Load
+    entry: DynamicEditorEntry
+    circuit, load, entry = _build_load_entry()
+    workspace: DynamicEditorWorkspaceWindow = _build_workspace()
+    workspace._set_workspace_circuit(circuit=circuit)
+
+    rms_page: DynamicPlotsPage = workspace.open_dynamic_plots_for(
+        circuit=circuit,
+        mode=DynamicSimulationMode.RMS,
+    )
+    reopened_rms_page: DynamicPlotsPage = workspace.open_dynamic_plots_for(
+        circuit=circuit,
+        mode=DynamicSimulationMode.RMS,
+    )
+    emt_page: DynamicPlotsPage = workspace.open_dynamic_plots_for(
+        circuit=circuit,
+        mode=DynamicSimulationMode.EMT,
+    )
+
+    assert rms_page is reopened_rms_page
+    assert emt_page is not rms_page
+    assert rms_page.get_dynamic_editor_entry() is None
+    assert emt_page.get_dynamic_editor_entry() is None
+    assert workspace.editor_tabs.count() == 2
+    assert workspace.ui.actionRMS_Plots.isEnabled()
+    assert workspace.ui.actionEMT_Plots.isEnabled()
+    assert load is entry.api_object
 
     _reset_dynamic_editor_workspaces()

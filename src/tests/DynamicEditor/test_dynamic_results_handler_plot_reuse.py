@@ -5,7 +5,7 @@ from typing import Dict, List, Sequence, Tuple
 import numpy as np
 from PySide6 import QtCore
 
-from VeraGrid.Gui.Main.SubClasses.Results.dynamics_results_handler import DynamicsResultsHandler
+from VeraGrid.Gui.DynamicModelEditor.Plots.dynamic_plots_handler import DynamicsResultsHandler
 from VeraGridEngine.Devices.Events.dynamic_plot import DynamicPlot
 from VeraGridEngine.Devices.Events.dynamic_plot_entry import DynamicPlotEntry
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
