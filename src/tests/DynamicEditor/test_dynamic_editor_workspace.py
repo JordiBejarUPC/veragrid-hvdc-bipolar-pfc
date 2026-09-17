@@ -378,20 +378,24 @@ def test_workspace_hosts_model_and_events_tabs_with_contextual_toolbar() -> None
         circuit=circuit,
         preferred_mode=DynamicSimulationMode.RMS,
     )
-    events_page: DynamicEventsPage | None = workspace.open_dynamic_events_for(
-        api_object=load,
+    events_page: DynamicEventsPage = workspace.open_dynamic_events_for(
+        circuit=circuit,
+        mode=DynamicSimulationMode.RMS,
+        target_workspace=workspace,
+    )
+    reopened_events_page: DynamicEventsPage = workspace.open_dynamic_events_for(
         circuit=circuit,
         mode=DynamicSimulationMode.RMS,
         target_workspace=workspace,
     )
 
     assert model_page is not None
-    assert events_page is not None
+    assert events_page is reopened_events_page
     assert entry.session_key(DynamicSimulationMode.RMS) in workspace.session._session_pages
-    assert events_page in workspace.session._event_pages
+    assert workspace.session._event_pages[(id(circuit), DynamicSimulationMode.RMS)] is events_page
     assert workspace.editor_tabs.count() == 2
     assert workspace.editor_tabs.tabText(workspace.index_of_page(model_page)).endswith("[RMS model]")
-    assert workspace.editor_tabs.tabText(workspace.index_of_page(events_page)).endswith("[RMS events]")
+    assert workspace.editor_tabs.tabText(workspace.index_of_page(events_page)) == "RMS Events"
 
     toolbar_actions: tuple[QtGui.QAction, ...] = (
         workspace.ui.actionview_tree,

@@ -671,20 +671,18 @@ class BaseMainGui(QMainWindow):
 
     def open_dynamic_events(
             self,
-            api_object: ALL_DEV_TYPES,
             circuit: MultiCircuit,
             mode: DynamicSimulationMode,
             target_workspace: DynamicEditorWorkspaceWindow | None = None,
             show_tree: bool = False,
-    ) -> DynamicEventsPage | None:
-        """Open a device event page in the shared dynamic workspace.
+    ) -> DynamicEventsPage:
+        """Open a circuit-wide events page in the shared dynamic workspace.
 
-        :param api_object: Device whose events will be edited.
         :param circuit: Circuit that owns the device and event assets.
         :param mode: RMS or EMT event family requested by the caller.
         :param target_workspace: Preferred destination workspace.
         :param show_tree: Whether the destination workspace must expose its device tree.
-        :return: Open events page, or ``None`` when the device is unsupported.
+        :return: Open global events page.
         """
         workspace: DynamicEditorWorkspaceWindow | None = target_workspace
         if workspace is None:
@@ -699,7 +697,6 @@ class BaseMainGui(QMainWindow):
             workspace.raise_()
             workspace.activateWindow()
         return workspace.open_dynamic_events_for(
-            api_object=api_object,
             circuit=circuit,
             mode=mode,
             target_workspace=workspace,

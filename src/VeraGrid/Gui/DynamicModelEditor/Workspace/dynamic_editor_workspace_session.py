@@ -10,19 +10,15 @@ from typing import List, Dict, Tuple, TYPE_CHECKING
 from PySide6 import QtCore, QtWidgets
 
 from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_page import DynamicEventsPage
-from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_support import collect_dynamic_events_page_parameters
 from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGrid.Gui.DynamicModelEditor.Plots.dynamic_plots_page import DynamicPlotsPage
 from VeraGrid.Gui.DynamicModelEditor.Workspace.Tabs.dynamic_editor_tab import DynamicEditorTab
 from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import DynamicEditorEntry
 from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import build_dynamic_editor_entry
-from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import entry_supports_dynamic_events
 from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import get_block_for_entry
 from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import get_templates_for_entry
-from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
-from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.enumerations import DynamicSimulationMode, DynEditorGraphicsModes
 
 if TYPE_CHECKING:
@@ -74,7 +70,7 @@ class DynamicEditorWorkspaceSession(QtCore.QObject):
         super().__init__()
         self._open_workspaces: List[DynamicEditorWorkspaceWindow] = list()
         self._session_pages: Dict[str, DynamicEditorTab] = dict()
-        self._event_pages: List[DynamicEventsPage] = list()
+        self._event_pages: Dict[tuple[int, DynamicSimulationMode], DynamicEventsPage] = dict()
         self._plot_pages: Dict[tuple[int, DynamicSimulationMode], DynamicPlotsPage] = dict()
         self._last_mode_by_key_base: Dict[str, DynamicSimulationMode] = dict()
         self._last_active_workspace: DynamicEditorWorkspaceWindow | None = None
@@ -357,7 +353,7 @@ class DynamicEditorWorkspaceSession(QtCore.QObject):
             if workspace_page is not None:
                 if isinstance(workspace_page, DynamicEventsPage):
                     event_page: DynamicEventsPage
-                    for event_page in self._event_pages:
+                    for event_page in self._event_pages.values():
                         self.refresh_open_page_title(event_page)
                 else:
                     self.refresh_open_page_title(workspace_page)
@@ -467,62 +463,38 @@ class DynamicEditorWorkspaceSession(QtCore.QObject):
 
     def create_events_page(
             self,
-            entry: DynamicEditorEntry,
+            circuit: MultiCircuit,
             mode: DynamicSimulationMode,
-    ) -> DynamicEventsPage | None:
-        """Create one events page backed by the shared circuit transaction.
+    ) -> DynamicEventsPage:
+        """Create one circuit-wide events page.
 
-        :param entry: Device entry whose events will be displayed.
+        :param circuit: Circuit whose complete event family is edited.
         :param mode: RMS or EMT event family to open.
-        :return: New events page, or ``None`` for non-device entries.
+        :return: New global events page.
         """
-        if not isinstance(entry.api_object, EditableDevice) or not entry_supports_dynamic_events(entry):
-            return None
-        else:
-            pass
-        parameters: list[Var]
-        mode_parameter_uids: set[int]
-        model_is_empty: bool
-        parameters, mode_parameter_uids, model_is_empty = collect_dynamic_events_page_parameters(
-            entry=entry,
-            mode=mode,
-        )
         page: DynamicEventsPage = DynamicEventsPage(
-            entry=entry,
-            device=entry.api_object,
+            circuit=circuit,
             mode=mode,
-            parameters=parameters,
-            mode_parameter_uids=mode_parameter_uids,
-            model_is_empty=model_is_empty,
         )
         self.connect_page_signals(page=page)
         self._retained_pages.append(page)
         return page
 
-    def open_events_entry(
+    def open_events_page(
             self,
-            entry: DynamicEditorEntry,
+            circuit: MultiCircuit,
             mode: DynamicSimulationMode,
             target_workspace: "DynamicEditorWorkspaceWindow | None" = None,
-    ) -> DynamicEventsPage | None:
-        """Open or focus one unique device and mode events page.
+    ) -> DynamicEventsPage:
+        """Open or focus the unique circuit-wide page for one event family.
 
-        :param entry: Device entry whose events will be edited.
+        :param circuit: Circuit whose complete events are edited.
         :param mode: RMS or EMT event family to open.
         :param target_workspace: Preferred workspace receiving a new page.
-        :return: Open events page, or ``None`` when unsupported.
+        :return: Open global events page.
         """
-        if mode not in entry.available_modes:
-            return None
-        else:
-            pass
-        existing_page: DynamicEventsPage | None = None
-        candidate_page: DynamicEventsPage
-        for candidate_page in self._event_pages:
-            if candidate_page.entry.key_base == entry.key_base and candidate_page.mode == mode:
-                existing_page = candidate_page
-            else:
-                pass
+        page_key: tuple[int, DynamicSimulationMode] = (id(circuit), mode)
+        existing_page: DynamicEventsPage | None = self._event_pages.get(page_key, None)
         if existing_page is not None:
             workspace: DynamicEditorWorkspaceWindow | None = self.workspace_for_page(existing_page)
             if workspace is None:
@@ -543,36 +515,11 @@ class DynamicEditorWorkspaceSession(QtCore.QObject):
             raise RuntimeError("DynamicEditorWorkspaceSession requires an existing workspace")
         else:
             pass
-        page: DynamicEventsPage | None = self.create_events_page(entry=entry, mode=mode)
-        if page is None:
-            return None
-        else:
-            pass
-        self._event_pages.append(page)
+        page: DynamicEventsPage = self.create_events_page(circuit=circuit, mode=mode)
+        self._event_pages[page_key] = page
         workspace.add_editor_page(page, self.build_page_tab_title(page), activate=True)
         self._last_active_workspace = workspace
         return page
-
-    def open_dynamic_events_for(
-            self,
-            api_object: ALL_DEV_TYPES,
-            circuit: MultiCircuit,
-            mode: DynamicSimulationMode,
-            target_workspace: "DynamicEditorWorkspaceWindow | None" = None,
-    ) -> DynamicEventsPage | None:
-        """Resolve a device and open its RMS or EMT events page.
-
-        :param api_object: Device selected by the caller.
-        :param circuit: Circuit that owns the device and event assets.
-        :param mode: RMS or EMT event family requested by the caller.
-        :param target_workspace: Preferred workspace receiving a new page.
-        :return: Open events page, or ``None`` for unsupported objects.
-        """
-        entry: DynamicEditorEntry | None = build_dynamic_editor_entry(api_object=api_object, circuit=circuit)
-        if entry is None:
-            return None
-        else:
-            return self.open_events_entry(entry=entry, mode=mode, target_workspace=target_workspace)
 
     def create_plots_page(self,
                           circuit: MultiCircuit,
@@ -671,14 +618,11 @@ class DynamicEditorWorkspaceSession(QtCore.QObject):
         if isinstance(page, DynamicPlotsPage):
             page_key: tuple[int, DynamicSimulationMode] = (id(page.circuit), page.mode)
             self._plot_pages.pop(page_key, None)
+        elif isinstance(page, DynamicEventsPage):
+            event_page_key: tuple[int, DynamicSimulationMode] = (id(page.circuit), page.mode)
+            self._event_pages.pop(event_page_key, None)
         elif entry is not None and mode is not None:
-            if isinstance(page, DynamicEventsPage):
-                if page in self._event_pages:
-                    self._event_pages.remove(page)
-                else:
-                    pass
-            else:
-                self._session_pages.pop(entry.session_key(mode), None)
+            self._session_pages.pop(entry.session_key(mode), None)
         else:
             pass
 

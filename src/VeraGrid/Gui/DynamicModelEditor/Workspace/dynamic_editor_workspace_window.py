@@ -99,6 +99,8 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         self.ui.actionEMT_Events.triggered.connect(self.open_emt_events_entry)
         self.ui.actionRMS_Plots.triggered.connect(self.open_rms_plots_editor)
         self.ui.actionEMT_Plots.triggered.connect(self.open_emt_plots_editor)
+        self.ui.actionRMS_Events.setEnabled(False)
+        self.ui.actionEMT_Events.setEnabled(False)
         self.ui.actionRMS_Plots.setEnabled(False)
         self.ui.actionEMT_Plots.setEnabled(False)
 
@@ -235,18 +237,16 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
 
     def open_dynamic_events_for(
             self,
-            api_object: ALL_DEV_TYPES,
             circuit: MultiCircuit,
             mode: DynamicSimulationMode,
             target_workspace: "DynamicEditorWorkspaceWindow | None" = None,
-    ) -> DynamicEventsPage | None:
-        """Open one device's RMS or EMT events in this workspace family.
+    ) -> DynamicEventsPage:
+        """Open the circuit-wide RMS or EMT events page.
 
-        :param api_object: Device whose events will be edited.
         :param circuit: Circuit that owns the device and event assets.
         :param mode: RMS or EMT event family requested by the caller.
         :param target_workspace: Preferred destination workspace.
-        :return: Open events page, or ``None`` when unsupported.
+        :return: Open global events page.
         """
         target: DynamicEditorWorkspaceWindow = target_workspace if target_workspace is not None else self
         if not target.is_available_for_pages():
@@ -254,8 +254,7 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         else:
             pass
         target._set_workspace_circuit(circuit=circuit)
-        return self.session.open_dynamic_events_for(
-            api_object=api_object,
+        return self.session.open_events_page(
             circuit=circuit,
             mode=mode,
             target_workspace=target,
@@ -335,6 +334,8 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
             pass
         self._current_circuit = circuit
         self.device_tree_widget.set_circuit(circuit)
+        self.ui.actionRMS_Events.setEnabled(True)
+        self.ui.actionEMT_Events.setEnabled(True)
         self.ui.actionRMS_Plots.setEnabled(True)
         self.ui.actionEMT_Plots.setEnabled(True)
 
@@ -434,8 +435,6 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         )
         if valid_request and content_type == DynamicEditorContentType.MODEL:
             self.open_entry(entry, preferred_mode=mode, target_workspace=self)
-        elif valid_request and content_type == DynamicEditorContentType.EVENTS:
-            self.session.open_events_entry(entry=entry, mode=mode, target_workspace=self)
         else:
             pass
 
@@ -464,26 +463,34 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
             pass
 
     def open_emt_events_entry(self, _checked: bool = False) -> None:
-        """Open the EMT events editor for the selected device.
+        """Open the circuit-wide EMT events editor.
 
         :param _checked: QAction checked state supplied by Qt.
         :return: None.
         """
-        entry: DynamicEditorEntry | None = self._selected_dynamic_entry()
-        if entry is not None:
-            self.session.open_events_entry(entry, mode=DynamicSimulationMode.EMT, target_workspace=self)
+        del _checked
+        if self._current_circuit is not None:
+            self.open_dynamic_events_for(
+                circuit=self._current_circuit,
+                mode=DynamicSimulationMode.EMT,
+                target_workspace=self,
+            )
         else:
             pass
 
     def open_rms_events_entry(self, _checked: bool = False) -> None:
-        """Open the RMS events editor for the selected device.
+        """Open the circuit-wide RMS events editor.
 
         :param _checked: QAction checked state supplied by Qt.
         :return: None.
         """
-        entry: DynamicEditorEntry | None = self._selected_dynamic_entry()
-        if entry is not None:
-            self.session.open_events_entry(entry, mode=DynamicSimulationMode.RMS, target_workspace=self)
+        del _checked
+        if self._current_circuit is not None:
+            self.open_dynamic_events_for(
+                circuit=self._current_circuit,
+                mode=DynamicSimulationMode.RMS,
+                target_workspace=self,
+            )
         else:
             pass
 

@@ -146,8 +146,9 @@
    <addaction name="actionview_tree"/>
    <addaction name="separator"/>
    <addaction name="actionRMS_Editor"/>
-   <addaction name="actionRMS_Events"/>
    <addaction name="actionEMT_Editor"/>
+   <addaction name="separator"/>
+   <addaction name="actionRMS_Events"/>
    <addaction name="actionEMT_Events"/>
    <addaction name="separator"/>
    <addaction name="actionRMS_Plots"/>
@@ -173,6 +174,9 @@
    <property name="text">
     <string>RMS Editor</string>
    </property>
+   <property name="toolTip">
+    <string>Open the RMS editor for the selected device</string>
+   </property>
    <property name="menuRole">
     <enum>QAction::MenuRole::NoRole</enum>
    </property>
@@ -184,6 +188,9 @@
    </property>
    <property name="text">
     <string>EMT Editor</string>
+   </property>
+   <property name="toolTip">
+    <string>Open the EMT editor for the selected device</string>
    </property>
    <property name="menuRole">
     <enum>QAction::MenuRole::NoRole</enum>
@@ -197,6 +204,9 @@
    <property name="text">
     <string>RMS Events</string>
    </property>
+   <property name="toolTip">
+    <string>Open the RMS events editor</string>
+   </property>
    <property name="menuRole">
     <enum>QAction::MenuRole::NoRole</enum>
    </property>
@@ -208,6 +218,9 @@
    </property>
    <property name="text">
     <string>EMT Events</string>
+   </property>
+   <property name="toolTip">
+    <string>Open the EMT events editor</string>
    </property>
    <property name="menuRole">
     <enum>QAction::MenuRole::NoRole</enum>

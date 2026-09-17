@@ -39,7 +39,7 @@ class Ui_DynamicPlotsPage(object):
         self.searchFrame.setFrameShape(QFrame.Shape.NoFrame)
         self.searchLayout = QHBoxLayout(self.searchFrame)
         self.searchLayout.setObjectName(u"searchLayout")
-        self.searchLayout.setContentsMargins(0, 4, 0, 4)
+        self.searchLayout.setContentsMargins(2, 4, 0, 4)
         self.searchLineEdit = QLineEdit(self.searchFrame)
         self.searchLineEdit.setObjectName(u"searchLineEdit")
         self.searchLineEdit.setMinimumSize(QSize(240, 0))

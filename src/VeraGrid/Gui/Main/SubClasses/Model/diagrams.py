@@ -3377,9 +3377,8 @@ class DiagramsMain(CompiledArraysMain):
     def _open_dynamic_events_editor(self, mode: DynamicSimulationMode) -> None:
         """Open the requested events content in the unified dynamic workspace.
 
-        Exactly one selected device opens directly in an RMS or EMT events tab.
-        Zero or multiple selections expose the same workspace device tree so
-        the user can select one of its four model and events actions.
+        Events are circuit-wide assets, so the selected diagram elements do not
+        constrain the editor contents or determine its tab identity.
 
         :param mode: RMS or EMT family preferred by the triggering action.
         :return: None.
@@ -3387,24 +3386,11 @@ class DiagramsMain(CompiledArraysMain):
         if not self.circuit.valid_for_simulation():
             return
         else:
-            selected_devices: List[ALL_DEV_TYPES] = self.get_selected_devices()
-        if len(selected_devices) == 1 and isinstance(selected_devices[0], EditableDevice):
-            initial_device: EditableDevice | None = selected_devices[0]
-        else:
-            initial_device = None
-
-        if initial_device is not None:
             self.open_dynamic_events(
-                api_object=initial_device,
                 circuit=self.circuit,
                 mode=mode,
                 show_tree=False,
             )
-        else:
-            # Without one unambiguous diagram target, expose the unified device
-            # tree. Its four context actions let the user choose both model or
-            # events content and the RMS or EMT family.
-            self.display_dynamic_models_editor()
 
     def add_short_circuit_events(self):
         """
