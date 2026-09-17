@@ -81,6 +81,7 @@ class LibraryDeviceTemplateSpec:
         "device_type",
         "category_path",
         "unique_key",
+        "description",
         "search_text",
         "compatible_device_types",
     )
@@ -93,6 +94,7 @@ class LibraryDeviceTemplateSpec:
             device_type: DeviceType,
             category_path: tuple[str, ...],
             unique_key: str,
+            description: str,
             search_text: str = "",
             compatible_device_types: tuple[DeviceType, ...] | None = None,
     ) -> None:
@@ -104,6 +106,7 @@ class LibraryDeviceTemplateSpec:
         :param device_type: Physical device type accepting the template.
         :param category_path: Path below the ``Devices`` branch.
         :param unique_key: Stable key persisted by catalogue imports.
+        :param description: Human-facing explanation of the model behavior.
         :param search_text: Optional additional filter terms.
         :param compatible_device_types: Physical device types that may use the
             same registered drawing without duplicating the Library entry.
@@ -115,6 +118,7 @@ class LibraryDeviceTemplateSpec:
         self.device_type: DeviceType = device_type
         self.category_path: tuple[str, ...] = category_path
         self.unique_key: str = unique_key
+        self.description: str = description
         self.search_text: str = search_text
         if compatible_device_types is None:
             self.compatible_device_types: tuple[DeviceType, ...] = (device_type,)
@@ -413,7 +417,7 @@ class DynamicEditorLibrary:
                         item.setToolTip(procedural_tooltip)
                     elif isinstance(leaf.payload, InternationalStandardTemplateDescriptor):
                         item.setToolTip(
-                            f"{leaf.payload.display_label} — international-standard RMS model. "
+                            f"{leaf.payload.display_label} — {leaf_description}. "
                             "Drag onto the canvas or double-click to insert."
                         )
                     else:
@@ -423,6 +427,164 @@ class DynamicEditorLibrary:
                     branch_item.appendRow(list((item, leaf_description_item)))
             else:
                 raise TypeError(f"Unsupported library branch data type {type(branch_data)!r}")
+
+
+def build_native_device_description(
+        source: DynamicDeviceTemplateType | BlockType,
+        label: str,
+) -> str:
+    """Return the functional description of one native device template.
+
+    Descriptions live beside the native-device registry rather than in the
+    tree rendering code. This keeps the same text available to the Library,
+    catalogue dialogue, tooltips, and search without materializing a model.
+
+    :param source: Typed native materialization source.
+    :param label: Human-facing template label used by related source variants.
+    :return: Functional description of the complete device template.
+    """
+    if source == DynamicDeviceTemplateType.RMS_COMPLETE_GENERATOR:
+        description: str = (
+            "Complete synchronous-generator RMS model with GENQEC machine, exciter, governor, and stabilizer"
+        )
+    elif source == BlockType.GENQEC:
+        description = "Synchronous-generator GENQEC RMS model with quadratic magnetic saturation"
+    elif source == BlockType.GENRAW:
+        description = "Round-rotor synchronous-generator GENROU/GENROW RMS machine model"
+    elif source == BlockType.VOLTAGE_SOURCE_RMS:
+        description = "Ideal voltage-source RMS model for a generator or external-grid equivalent"
+    elif source == DynamicDeviceTemplateType.RMS_PVD1:
+        description = "PVD1 photovoltaic generator RMS model with inverter electrical controls"
+    elif source == DynamicDeviceTemplateType.RMS_PVD1_COMPLETE:
+        description = "Complete PVD1 photovoltaic RMS model with inverter, plant, and DC-side controls"
+    elif source == DynamicDeviceTemplateType.RMS_PVD1_DC_MPPT:
+        description = "PVD1 photovoltaic RMS model with a DC source and maximum-power-point tracking"
+    elif source == DynamicDeviceTemplateType.RMS_PVD1_DC_LINK_MPPT:
+        description = "PVD1 photovoltaic RMS model with DC-link dynamics and maximum-power-point tracking"
+    elif source == DynamicDeviceTemplateType.RMS_PVD1_DC_LINK_BESS:
+        description = "PVD1 battery-storage RMS model with inverter and DC-link dynamics"
+    elif source == DynamicDeviceTemplateType.RMS_ESD1:
+        description = "ESD1 battery energy-storage RMS model with active and reactive power controls"
+    elif source == BlockType.LINE_RMS:
+        description = "AC transmission-line RMS model using a pi-equivalent network"
+    elif source == BlockType.DC_LINE_RMS:
+        description = "DC transmission-line RMS model using a series resistance-inductance branch"
+    elif source == BlockType.TRANSFORMER_2W_RMS:
+        description = "Ideal two-winding transformer RMS model"
+    elif source == BlockType.LOAD_RMS:
+        description = "Static constant-power load RMS model initialized from the solved operating point"
+    elif source == DynamicDeviceTemplateType.RMS_SHUNT:
+        description = "Constant-admittance shunt RMS model"
+    elif source == BlockType.GFL_CONVERTER_RMS:
+        description = "Grid-following voltage-source converter RMS model with PLL and current control"
+    elif source == BlockType.GFL_VSC_HVDC_RMS:
+        description = "Complete grid-following VSC-HVDC terminal RMS model with AC and DC controls"
+    elif source == DynamicDeviceTemplateType.EMT_COMPLETE_GENERATOR:
+        description = "Complete three-phase synchronous-generator EMT model with machine and controls"
+    elif source == BlockType.EMT_THEVENIN:
+        description = "Three-phase Thevenin generator EMT model behind a series resistance-inductance impedance"
+    elif source == DynamicDeviceTemplateType.EMT_IDEAL_CONVERTER:
+        description = "Averaged ideal voltage-source converter EMT model without semiconductor switching"
+    elif source == BlockType.COMPLETE_PSEUDO_VSC_EMT:
+        description = "Complete averaged voltage-source converter EMT model with pseudo-switching behavior"
+    elif source == DynamicDeviceTemplateType.EMT_SWITCHED_CONVERTER:
+        description = "Explicitly switched three-phase voltage-source converter EMT model"
+    elif source == DynamicDeviceTemplateType.EMT_GFM:
+        description = "Grid-forming voltage-source converter EMT model with voltage and frequency control"
+    elif source == BlockType.BESS_EMT:
+        description = "Battery energy-storage EMT model with averaged grid-following converter controls"
+    elif source == BlockType.PV_EMT:
+        description = "Photovoltaic plant EMT model with averaged grid-following converter controls"
+    elif source == BlockType.DC_LOAD_EMT:
+        description = "Dynamic DC load EMT model connected to a DC network"
+    elif source == BlockType.EXP_LOAD_EMT:
+        description = "Three-phase exponential load EMT model with voltage-dependent active and reactive power"
+    elif source == BlockType.ZIP_LOAD_EMT:
+        description = "Three-phase ZIP load EMT model combining constant impedance, current, and power"
+    elif source == DynamicDeviceTemplateType.EMT_SINGLE_CAGE_INDUCTION_MOTOR:
+        description = "Three-phase single-cage induction-motor EMT model"
+    elif source == DynamicDeviceTemplateType.EMT_DOUBLE_CAGE_INDUCTION_MOTOR:
+        description = "Three-phase double-cage induction-motor EMT model"
+    elif source == BlockType.R_LOAD_EMT:
+        description = "Three-phase resistive shunt EMT model with independently selectable phases"
+    elif source == BlockType.L_LOAD_EMT:
+        description = "Three-phase inductive shunt EMT model with independently selectable phases"
+    elif source == BlockType.C_LOAD_EMT:
+        description = "Three-phase capacitive shunt EMT model with independently selectable phases"
+    elif source == BlockType.EMT_PI_LINE:
+        description = "Three-phase lumped-parameter pi-section transmission-line EMT model"
+    elif source == BlockType.EMT_BERGERON_LINE:
+        description = "Three-phase distributed-parameter Bergeron travelling-wave line EMT model"
+    elif source == BlockType.EMT_DC_LINE:
+        description = "DC transmission-line EMT model with electrical dynamics and power input"
+    elif source == BlockType.TRAFO_EMT:
+        description = "Three-phase two-winding transformer EMT model with winding electrical dynamics"
+    elif source == BlockType.XFMR_TRANSFORMER:
+        description = "XFMR three-phase transformer EMT model with configurable winding connections"
+    elif source == BlockType.EMT_GENERATOR:
+        description = "Simple three-phase synchronous-generator EMT model"
+    elif source == BlockType.VOLTAGE_SOURCE_EMT:
+        description = "Single-phase sinusoidal voltage-source EMT model"
+    elif source == BlockType.CURRENT_SOURCE_EMT:
+        description = "Single-phase sinusoidal current-source EMT model"
+    elif source == BlockType.CONTROLLED_VOLTAGE_SOURCE_EMT:
+        description = "Single-phase EMT voltage source driven by an external control signal"
+    elif source == BlockType.CONTROLLED_CURRENT_SOURCE_EMT:
+        description = "Single-phase EMT current source driven by an external control signal"
+    elif source == BlockType.BALANCED_3PH_VOLTAGE_SOURCE_EMT:
+        description = "Balanced three-phase sinusoidal voltage-source EMT model"
+    elif source == BlockType.BALANCED_3PH_CURRENT_SOURCE_EMT:
+        description = "Balanced three-phase sinusoidal current-source EMT model"
+    elif source == BlockType.CONTROLLED_BALANCED_3PH_VOLTAGE_SOURCE_EMT:
+        description = "Balanced three-phase EMT voltage source driven by external control signals"
+    elif source == BlockType.CONTROLLED_BALANCED_3PH_CURRENT_SOURCE_EMT:
+        description = "Balanced three-phase EMT current source driven by external control signals"
+    elif source == BlockType.ARBITRARY_WAVEFORM_VOLTAGE_SOURCE_EMT:
+        description = "EMT voltage source defined by an arbitrary time-domain waveform"
+    elif source == BlockType.ARBITRARY_WAVEFORM_CURRENT_SOURCE_EMT:
+        description = "EMT current source defined by an arbitrary time-domain waveform"
+    elif source == BlockType.STEP_VOLTAGE_SOURCE_EMT:
+        description = "EMT voltage source that applies a configurable step waveform"
+    elif source == BlockType.STEP_CURRENT_SOURCE_EMT:
+        description = "EMT current source that applies a configurable step waveform"
+    elif source == BlockType.RAMP_VOLTAGE_SOURCE_EMT:
+        description = "EMT voltage source that applies a configurable ramp waveform"
+    elif source == BlockType.RAMP_CURRENT_SOURCE_EMT:
+        description = "EMT current source that applies a configurable ramp waveform"
+    elif source == BlockType.DOUBLE_EXPONENTIAL_CURRENT_SOURCE_EMT:
+        description = "EMT impulse-current source using a double-exponential waveform"
+    elif source == BlockType.HEIDLER_CURRENT_SOURCE_EMT:
+        description = "EMT lightning-current source using the Heidler impulse function"
+    elif source == BlockType.CIGRE_SURGE_CURRENT_SOURCE_EMT:
+        description = "EMT lightning-current source using the CIGRE surge waveform"
+    elif source == BlockType.PV_POWER_PLANT_EMT:
+        description = "Three-phase photovoltaic power-plant EMT model with converter interface"
+    elif source == BlockType.BATTERY_EMT:
+        description = "Battery EMT model with state-of-charge and DC electrical dynamics"
+    elif source == BlockType.EMT_JMARTI_LINE:
+        description = "Frequency-dependent JMarti travelling-wave transmission-line EMT model"
+    elif source == BlockType.SWITCH_EMT:
+        description = "Controlled ideal electrical switch EMT model"
+    elif source == BlockType.GROUND_EMT:
+        description = "Electrical ground reference for an EMT network"
+    elif source == BlockType.GROUNDING_LINK_EMT:
+        description = "Configurable grounding connection between an EMT node and ground"
+    elif source == BlockType.NONLINEAR_RESISTOR_EMT:
+        description = "Nonlinear resistor EMT model defined by its voltage-current characteristic"
+    elif source == BlockType.RLC_COMBO_EMT:
+        description = "Configurable resistor-inductor-capacitor branch for an EMT network"
+    elif source == BlockType.DC_VOLTAGE_SOURCE_EMT:
+        description = "Ideal constant DC voltage-source EMT model"
+    elif source == BlockType.DC_CURRENT_SOURCE_EMT:
+        description = "Ideal constant DC current-source EMT model"
+    elif source == BlockType.CONTROLLED_DC_VOLTAGE_SOURCE_EMT:
+        description = "DC voltage-source EMT model driven by an external control signal"
+    elif source == BlockType.CONTROLLED_DC_CURRENT_SOURCE_EMT:
+        description = "DC current-source EMT model driven by an external control signal"
+    else:
+        description = f"{label} complete dynamic-device template"
+
+    return description
 
 
 def _build_native_device_spec(
@@ -452,6 +614,7 @@ def _build_native_device_spec(
         device_type=device_type,
         category_path=("Native", category_name),
         unique_key=unique_key,
+        description=build_native_device_description(source=source, label=label),
         compatible_device_types=compatible_device_types,
     )
 
@@ -707,6 +870,137 @@ def _international_standard_label(model: InternationalStandardModel) -> str:
     else:
         label = model.name
     return label
+
+
+def build_international_standard_description(model: InternationalStandardModel) -> str:
+    """Return the functional description of an international-standard model.
+
+    The descriptor registry is intentionally lightweight and does not build
+    every symbolic template merely to read its comment. This function mirrors
+    the model-level meaning needed by the Library while keeping tree creation
+    fast and deterministic.
+
+    :param model: International-standard model identifier.
+    :return: Functional description shown in the Library and its tooltips.
+    """
+    label: str = _international_standard_label(model=model)
+    if model == InternationalStandardModel.GENSAL:
+        description: str = "GENSAL salient-pole synchronous-machine RMS model"
+    elif model == InternationalStandardModel.GENROU:
+        description = "GENROU round-rotor synchronous-machine RMS model"
+    elif model == InternationalStandardModel.CIMTR1:
+        description = "CIMTR1 induction-generator RMS model"
+    elif model == InternationalStandardModel.CIMW:
+        description = "CIMW induction-motor RMS model for a dynamic load"
+    elif model == InternationalStandardModel.GGOV1:
+        description = "GGOV1 general-purpose turbine-governor model for synchronous generation"
+    elif model in tuple((InternationalStandardModel.GOVHYDRO4, InternationalStandardModel.HYGOV)):
+        description = f"{label} hydro-turbine governor model for synchronous generation"
+    elif model in tuple((InternationalStandardModel.GOVSTEAM1, InternationalStandardModel.GOVSTEAMEU)):
+        description = f"{label} steam-turbine governor model for synchronous generation"
+    elif model in tuple((InternationalStandardModel.IEEEG1, InternationalStandardModel.IEEEG2)):
+        description = f"{label} IEEE turbine-governor model for synchronous generation"
+    elif model in tuple((InternationalStandardModel.TGOV1, InternationalStandardModel.TGOV3)):
+        description = f"{label} turbine-governor model for synchronous generation"
+    elif model == InternationalStandardModel.IEEEVC_1981:
+        description = "IEEEVC 1981 terminal-voltage compensation model for a synchronous generator"
+    elif model == InternationalStandardModel.VRKUNDUR:
+        description = "Kundur automatic voltage regulator model for a synchronous generator"
+    elif model in tuple((
+            InternationalStandardModel.AC1A,
+            InternationalStandardModel.AC1C,
+            InternationalStandardModel.AC6A,
+            InternationalStandardModel.AC6C,
+            InternationalStandardModel.AC7B,
+            InternationalStandardModel.AC7C,
+            InternationalStandardModel.AC8B,
+            InternationalStandardModel.AC8C,
+            InternationalStandardModel.BBSEX1,
+            InternationalStandardModel.DC1A,
+            InternationalStandardModel.DC1C,
+            InternationalStandardModel.ESDC2A,
+            InternationalStandardModel.EXAC1,
+            InternationalStandardModel.IEEET1,
+            InternationalStandardModel.IEEEX2,
+            InternationalStandardModel.IEEX2A,
+            InternationalStandardModel.SCRX,
+            InternationalStandardModel.SEXS,
+            InternationalStandardModel.ST1A,
+            InternationalStandardModel.ST1C,
+            InternationalStandardModel.ST4B,
+            InternationalStandardModel.ST4C,
+            InternationalStandardModel.ST5B,
+            InternationalStandardModel.ST5C,
+            InternationalStandardModel.ST6B,
+            InternationalStandardModel.ST6C,
+            InternationalStandardModel.ST7B,
+            InternationalStandardModel.ST7C,
+            InternationalStandardModel.ST9C,
+    )):
+        description = f"{label} automatic voltage regulator and excitation-system model for a synchronous generator"
+    elif model == InternationalStandardModel.IEEL:
+        description = "IEEL excitation limiter model for a synchronous generator"
+    elif model == InternationalStandardModel.MAXEX2:
+        description = "MAXEX2 maximum-excitation limiter model for a synchronous generator"
+    elif model in tuple((InternationalStandardModel.OEL2C, InternationalStandardModel.OEL3C,
+                         InternationalStandardModel.OEL4C, InternationalStandardModel.OEL5C)):
+        description = f"{label} over-excitation limiter model protecting a synchronous generator field winding"
+    elif model in tuple((InternationalStandardModel.SCL1C, InternationalStandardModel.SCL2C)):
+        description = f"{label} stator-current limiter model for a synchronous generator"
+    elif model in tuple((InternationalStandardModel.UEL1, InternationalStandardModel.UEL2C)):
+        description = f"{label} under-excitation limiter model for a synchronous generator"
+    elif model == InternationalStandardModel.PSS1AOMEGA:
+        description = "PSS1A power-system stabilizer using rotor-speed deviation as its input"
+    elif model == InternationalStandardModel.PSS1APGEN:
+        description = "PSS1A power-system stabilizer using generator active power as its input"
+    elif model in tuple((InternationalStandardModel.PSS2A, InternationalStandardModel.PSS2B,
+                         InternationalStandardModel.PSS2C)):
+        description = f"{label} dual-input power-system stabilizer for damping electromechanical oscillations"
+    elif model in tuple((InternationalStandardModel.PSS3B, InternationalStandardModel.PSS3C,
+                         InternationalStandardModel.PSS6C)):
+        description = f"{label} power-system stabilizer for damping generator electromechanical oscillations"
+    elif model == InternationalStandardModel.PSSKUNDUR:
+        description = "Kundur power-system stabilizer for damping generator electromechanical oscillations"
+    elif model == InternationalStandardModel.REECB:
+        description = "WECC REECB renewable-energy electrical control model"
+    elif model == InternationalStandardModel.REECC:
+        description = "WECC REECC renewable-energy electrical control model"
+    elif model == InternationalStandardModel.REGCBCS:
+        description = "WECC REGCbCS current-source converter control model for renewable generation"
+    elif model == InternationalStandardModel.REPCA:
+        description = "WECC REPCA plant-level active- and reactive-power controller for renewable generation"
+    elif model == InternationalStandardModel.WT4ACURRENTSOURCE:
+        description = "WECC type-4A wind-turbine generator RMS current-source model"
+    elif model == InternationalStandardModel.WT4ACURRENTSOURCE2020:
+        description = "2020 WECC type-4A wind-turbine generator RMS current-source model"
+    elif model == InternationalStandardModel.WT4BCURRENTSOURCE:
+        description = "WECC type-4B wind-turbine generator RMS current-source model"
+    elif model == InternationalStandardModel.WT4BCURRENTSOURCE2020:
+        description = "2020 WECC type-4B wind-turbine generator RMS current-source model"
+    elif model == InternationalStandardModel.WT4INJECTOR:
+        description = "WECC type-4 wind-turbine RMS current-injection model"
+    elif model == InternationalStandardModel.WTG4ACURRENTSOURCE:
+        description = "WECC WTG4A type-4 wind-turbine generator RMS current-source model"
+    elif model == InternationalStandardModel.WTG4BCURRENTSOURCE:
+        description = "WECC WTG4B type-4 wind-turbine generator RMS current-source model"
+    elif model == InternationalStandardModel.WPP4BCURRENTSOURCE2020:
+        description = "2020 WECC type-4B wind-power-plant RMS current-source model"
+    elif model == InternationalStandardModel.PVCURRENTSOURCEBNOPLANTCONTROL:
+        description = "Photovoltaic generator RMS current-source B model without plant-level control"
+    elif model == InternationalStandardModel.PVVOLTAGESOURCEANOPLANTCONTROL:
+        description = "Photovoltaic generator RMS voltage-source A model without plant-level control"
+    elif model == InternationalStandardModel.PVVOLTAGESOURCEBNOPLANTCONTROL:
+        description = "Photovoltaic generator RMS voltage-source B model without plant-level control"
+    elif model == InternationalStandardModel.BESSCBCURRENTSOURCENOPLANTCONTROL:
+        description = "WECC BESSCB battery energy-storage RMS current-source model without plant-level control"
+    elif model == InternationalStandardModel.FRQTPA:
+        description = "FRQTPA frequency trip relay model for generator protection"
+    elif model == InternationalStandardModel.VTGTPA:
+        description = "VTGTPA voltage trip relay model for generator protection"
+    else:
+        description = f"{label} international-standard RMS dynamic model"
+
+    return description
 
 
 def _append_international_standard_group(
@@ -1006,6 +1300,7 @@ def build_device_library_branch(
                         device_type=descriptor.device_type,
                         category_path=("International standards", str(descriptor.category_path[0])),
                         unique_key=f"rms:international:{descriptor.template_key}",
+                        description=build_international_standard_description(model=descriptor.model),
                         search_text=descriptor.search_text,
                     )
                     insert_library_leaf(
@@ -1379,12 +1674,9 @@ def build_library_item_description(payload: object) -> str:
         else:
             pass
     elif isinstance(payload, InternationalStandardTemplateDescriptor):
-        description = f"International-standard RMS model: {payload.model.value}"
+        description = build_international_standard_description(model=payload.model)
     elif isinstance(payload, LibraryDeviceTemplateSpec):
-        if isinstance(payload.source, InternationalStandardTemplateDescriptor):
-            description = f"International-standard {payload.mode.value} device model: {payload.source.model.value}"
-        else:
-            description = f"Built-in {payload.mode.value} device model for {payload.device_type.value}"
+        description = payload.description
     elif isinstance(payload, RmsModelTemplate):
         if len(payload.comment) > 0:
             description = payload.comment
