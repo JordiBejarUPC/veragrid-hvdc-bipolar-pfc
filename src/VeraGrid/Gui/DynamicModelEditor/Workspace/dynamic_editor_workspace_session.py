@@ -335,6 +335,10 @@ class DynamicEditorWorkspaceSession(QtCore.QObject):
         :return: None.
         """
         page.dirtyStateChanged.connect(self._on_page_dirty_state_changed)
+        if isinstance(page, DynamicEditorTab):
+            page.dynamicPlotDefinitionsChanged.connect(self.notify_dynamic_plots_changed)
+        else:
+            pass
 
     def _on_page_dirty_state_changed(self, _dirty: bool) -> None:
         """
@@ -654,6 +658,13 @@ class DynamicEditorWorkspaceSession(QtCore.QObject):
         try:
             page.dirtyStateChanged.disconnect(self._on_page_dirty_state_changed)
         except (RuntimeError, TypeError):
+            pass
+        if isinstance(page, DynamicEditorTab):
+            try:
+                page.dynamicPlotDefinitionsChanged.disconnect(self.notify_dynamic_plots_changed)
+            except (RuntimeError, TypeError):
+                pass
+        else:
             pass
         entry = _get_page_entry(page)
         mode = get_page_mode(page)

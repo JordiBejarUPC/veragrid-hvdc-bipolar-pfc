@@ -420,7 +420,7 @@ def test_emt_editor_exposes_basic_block_catalog_under_basic() -> None:
     _assert_index_has_icon(const_index)
     assert (
         source_model.data(const_index.siblingAtColumn(1), QtCore.Qt.ItemDataRole.DisplayRole)
-        == "Native mathematical block"
+        == "Produces a configurable constant signal"
     )
     assert moving_average_index.isValid()
     _assert_index_has_icon(moving_average_index)

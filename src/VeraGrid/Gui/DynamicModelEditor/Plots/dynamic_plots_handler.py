@@ -2,13 +2,17 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
+import colorsys
 import json
 from enum import Enum
 from typing import Dict, List, Sequence, Set, Optional, Protocol, Union
 import numpy as np
 import pandas as pd
 from matplotlib.axes import Axes
+from matplotlib.collections import Collection
+from matplotlib.colors import to_hex, to_rgba
 from matplotlib.figure import Figure
+from matplotlib.lines import Line2D
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from VeraGrid.Gui.Icons.icon_associations import device_type_icons
@@ -397,6 +401,31 @@ class DynamicPlotCandidate:
         :return: Canonical variable or parameter name.
         """
         return self._variable_name
+
+    def get_device_idtag(self) -> str:
+        """
+        Get the stable identifier of the device that owns this candidate.
+
+        :return: Owning device identifier.
+        """
+        return self._device_idtag
+
+    def get_event_group_idtag(self) -> str:
+        """
+        Get the stable event-group identifier carried by this candidate.
+
+        :return: Event-group identifier, or an empty string for the provisional
+            candidate used before any event group exists.
+        """
+        return self._event_group_idtag
+
+    def get_event_group_name(self) -> str:
+        """
+        Get the visible event-group name carried by this candidate.
+
+        :return: Event-group name, or an empty string for a provisional candidate.
+        """
+        return self._event_group_name
 
     def get_tree_leaf_label(self, has_multiple_sources: bool) -> str:
         """
@@ -1517,6 +1546,90 @@ def _build_relative_time_axis(time_array: np.ndarray | pd.DatetimeIndex) -> np.n
                 pass
 
     return relative_time_axis
+
+
+def _get_next_available_plot_colour(axis: Axes) -> str:
+    """Return a curve colour not already used by an axis.
+
+    Matplotlib advances separate colour cycles for lines and collections.
+    Dynamic parameters use both kinds of artist, so relying on those implicit
+    cycles can assign the same first colour to curves created through different
+    rendering paths. The occupied colours are therefore normalized and checked
+    together before selecting the next default colour.
+
+    :param axis: Plot axis whose existing curve colours must be respected.
+    :return: Matplotlib-compatible colour absent from the current axis.
+    """
+    used_colours: Set[tuple[float, float, float, float]] = set()
+
+    # Lines cover regular variables and ramp segments.
+    line: Line2D
+    for line in axis.lines:
+        line_colour: tuple[float, float, float, float] = to_rgba(line.get_color())
+        used_colours.add(line_colour)
+
+    # Collections cover horizontal holds, vertical steps, and scatter-like
+    # artists. Both edge and face colours are inspected because the active
+    # representation depends on the collection subtype.
+    collection: Collection
+    for collection in axis.collections:
+        edge_colours: np.ndarray = collection.get_edgecolors()
+        edge_index: int
+        for edge_index in range(len(edge_colours)):
+            edge_rgba: np.ndarray = edge_colours[edge_index]
+            edge_colour: tuple[float, float, float, float] = (
+                float(edge_rgba[0]),
+                float(edge_rgba[1]),
+                float(edge_rgba[2]),
+                float(edge_rgba[3]),
+            )
+            used_colours.add(edge_colour)
+
+        face_colours: np.ndarray = collection.get_facecolors()
+        face_index: int
+        for face_index in range(len(face_colours)):
+            face_rgba: np.ndarray = face_colours[face_index]
+            face_colour: tuple[float, float, float, float] = (
+                float(face_rgba[0]),
+                float(face_rgba[1]),
+                float(face_rgba[2]),
+                float(face_rgba[3]),
+            )
+            used_colours.add(face_colour)
+
+    # Prefer Matplotlib's ten standard curve colours while each remains free.
+    default_colour_index: int
+    for default_colour_index in range(10):
+        default_colour: str = "C" + str(default_colour_index)
+        default_rgba: tuple[float, float, float, float] = to_rgba(default_colour)
+        if default_rgba not in used_colours:
+            return default_colour
+        else:
+            pass
+
+    # More than ten simultaneous curves need additional deterministic colours.
+    # Golden-angle hue spacing prevents exact repetitions without storing a
+    # process-wide palette or coupling colour choice to the addition source.
+    generated_colour_index: int = 0
+    generated_colour: str = ""
+    colour_is_available: bool = False
+    while not colour_is_available:
+        hue: float = (float(generated_colour_index) * 0.6180339887498949) % 1.0
+        rgb_colour: tuple[float, float, float] = colorsys.hsv_to_rgb(hue, 0.72, 0.85)
+        generated_rgba: tuple[float, float, float, float] = (
+            rgb_colour[0],
+            rgb_colour[1],
+            rgb_colour[2],
+            1.0,
+        )
+        if generated_rgba not in used_colours:
+            generated_colour = to_hex(generated_rgba, keep_alpha=False)
+            colour_is_available = True
+        else:
+            pass
+        generated_colour_index += 1
+
+    return generated_colour
 
 
 def collect_dynamic_model_plot_variables(model: Block,
@@ -3338,6 +3451,40 @@ class DynamicsResultsHandler:
         )
         return updated_candidate
 
+    def _find_candidate_event_group(self,
+                                    candidate: DynamicPlotCandidate) -> RmsEventsGroup | EmtEventsGroup | None:
+        """
+        Resolve the current event-group asset already selected by a candidate.
+
+        Candidates built from the RMS/EMT Plots tree and the Dynamic Editor
+        already carry the exact event-group chosen by the user. Resolving that
+        identity before the missing-group fallback prevents a later insertion
+        from being silently redirected to the first event group in the circuit.
+
+        :param candidate: Candidate whose persisted source must be preserved.
+        :return: Matching event-group asset, or ``None`` when the candidate is
+            provisional or its source no longer exists.
+        """
+        candidate_group_idtag: str = candidate.get_event_group_idtag()
+        candidate_group_name: str = candidate.get_event_group_name()
+        group_asset: RmsEventsGroup | EmtEventsGroup
+        for group_asset in self._get_pre_simulation_group_assets():
+            same_idtag: bool = (
+                candidate_group_idtag != ""
+                and str(group_asset.idtag) == candidate_group_idtag
+            )
+            same_name_without_idtag: bool = (
+                candidate_group_idtag == ""
+                and candidate_group_name != ""
+                and str(group_asset.name) == candidate_group_name
+            )
+            if same_idtag or same_name_without_idtag:
+                return group_asset
+            else:
+                pass
+
+        return None
+
     def _ensure_event_group_for_candidate(self,
                                           candidate: DynamicPlotCandidate) -> DynamicPlotCandidate | None:
         """
@@ -3347,11 +3494,26 @@ class DynamicsResultsHandler:
         :return: Candidate bound to a valid event-group asset, or ``None`` when cancelled.
         """
         if self.circuit is not None:
-            group_asset: RmsEventsGroup | EmtEventsGroup | None = ensure_dynamic_plot_event_group(
-                circuit=self.circuit,
-                simulation_type=candidate._simulation_type,
-                parent=self.dialog_parent,
+            # A source-specific candidate must retain the exact group selected
+            # in RMS/EMT Plots or in the Dynamic Editor. Only a provisional
+            # candidate with no source is allowed to enter the creation/reuse
+            # fallback for circuits that do not have an event group yet.
+            group_asset: RmsEventsGroup | EmtEventsGroup | None = self._find_candidate_event_group(
+                candidate=candidate,
             )
+            candidate_has_source: bool = (
+                candidate.get_event_group_idtag() != ""
+                or candidate.get_event_group_name() != ""
+            )
+            if group_asset is None and not candidate_has_source:
+                group_asset = ensure_dynamic_plot_event_group(
+                    circuit=self.circuit,
+                    simulation_type=candidate._simulation_type,
+                    parent=self.dialog_parent,
+                )
+            else:
+                pass
+
             if group_asset is not None:
                 # Rebuilding the full pre-simulation source tree here collapses
                 # the user's current tree expansion during the drag workflow.
@@ -4095,6 +4257,134 @@ class DynamicsResultsHandler:
 
         return None
 
+    def get_pre_simulation_candidates_for_symbol(
+            self,
+            device: ALL_DEV_TYPES,
+            variable: Var,
+            entry_kind: DynamicPlotEntryKind,
+            allow_external_device: bool,
+    ) -> List[DynamicPlotCandidate]:
+        """
+        Resolve the plot candidates for one symbol selected in the Dynamic Editor.
+
+        The Dynamic Editor works with a cloned block tree, while this handler
+        indexes the model currently assigned to the circuit device. Resolution
+        therefore uses the stable device identity and accepts an exact mutable
+        UID first, followed by the non-mutable symbolic identity. A connection
+        can carry a variable owned by another device, such as a bus voltage
+        entering a branch model. In that case the caller may accept the single
+        external owner found by the existing source-tree index. Parameter
+        resolution always uses the selected device because parameters are not
+        transmitted by diagram connections.
+
+        :param device: Circuit device whose dynamic model owns the symbol.
+        :param variable: Variable or parameter selected by the user.
+        :param entry_kind: Whether the symbol is a result variable or parameter.
+        :param allow_external_device: Whether a variable may resolve to one
+            unambiguous owner other than ``device``.
+        :return: Source-specific candidates in event-group order.
+        """
+        resolved_candidates: List[DynamicPlotCandidate] = list()
+        device_idtag: str = str(device.idtag)
+
+        if entry_kind == DynamicPlotEntryKind.VARIABLE:
+            # Prefer the exact UID used by the configured model. Cloned editor
+            # documents preserve it, so this is both fast and unambiguous.
+            indexed_entries: List[DynamicResultSeries | DynamicPlotCandidate] = self.series_by_var_uid.get(
+                variable.uid,
+                list(),
+            )
+            exact_candidates: List[DynamicPlotCandidate] = list()
+            indexed_entry: DynamicResultSeries | DynamicPlotCandidate
+            for indexed_entry in indexed_entries:
+                if isinstance(indexed_entry, DynamicPlotCandidate):
+                    exact_candidates.append(indexed_entry)
+                    if indexed_entry._device_idtag == device_idtag:
+                        resolved_candidates.append(indexed_entry)
+                    else:
+                        pass
+                else:
+                    pass
+
+            if len(resolved_candidates) == 0 and allow_external_device:
+                # The same variable UID may occur once per event group, but all
+                # those candidates must identify one physical owner. Refuse an
+                # ambiguous cross-device match instead of silently binding the
+                # arrow to an unrelated result series.
+                external_device_idtags: Set[str] = set()
+                exact_candidate: DynamicPlotCandidate
+                for exact_candidate in exact_candidates:
+                    external_device_idtags.add(exact_candidate._device_idtag)
+                if len(external_device_idtags) == 1:
+                    resolved_candidates.extend(exact_candidates)
+                else:
+                    pass
+            else:
+                pass
+
+            if len(resolved_candidates) == 0:
+                # A reconstructed working tree may retain only the immutable
+                # identity. Search the already-built index without inventing a
+                # second definition of which variables are plottable.
+                identity_candidates: List[DynamicPlotCandidate] = list()
+                candidate_entries: List[DynamicResultSeries | DynamicPlotCandidate]
+                for candidate_entries in self.series_by_var_uid.values():
+                    candidate_entry: DynamicResultSeries | DynamicPlotCandidate
+                    for candidate_entry in candidate_entries:
+                        if isinstance(candidate_entry, DynamicPlotCandidate):
+                            candidate_var: Var | None = candidate_entry.get_var()
+                            matches_device: bool = candidate_entry._device_idtag == device_idtag
+                            matches_identity: bool = (
+                                candidate_var is not None
+                                and candidate_var.non_mutable_uid == variable.non_mutable_uid
+                            )
+                            if matches_identity:
+                                identity_candidates.append(candidate_entry)
+                                if matches_device:
+                                    resolved_candidates.append(candidate_entry)
+                                else:
+                                    pass
+                            else:
+                                pass
+                        else:
+                            pass
+
+                if len(resolved_candidates) == 0 and allow_external_device:
+                    external_device_idtags = set()
+                    identity_candidate: DynamicPlotCandidate
+                    for identity_candidate in identity_candidates:
+                        external_device_idtags.add(identity_candidate._device_idtag)
+                    if len(external_device_idtags) == 1:
+                        resolved_candidates.extend(identity_candidates)
+                    else:
+                        pass
+                else:
+                    pass
+            else:
+                pass
+        elif entry_kind == DynamicPlotEntryKind.PARAMETER:
+            # Parameters are indexed by device and canonical symbolic name so
+            # equal names on different devices never collide.
+            parameter_key: str = _build_parameter_candidate_chain_key(
+                device_tpe=device.device_type,
+                device_state_id=_get_device_state_id(device=device),
+                parameter_canonical_name=variable.name,
+            )
+            parameter_entries: List[DynamicPlotCandidate] = self.candidates_by_parameter_key.get(
+                parameter_key,
+                list(),
+            )
+            parameter_entry: DynamicPlotCandidate
+            for parameter_entry in parameter_entries:
+                if parameter_entry._device_idtag == device_idtag:
+                    resolved_candidates.append(parameter_entry)
+                else:
+                    pass
+        else:
+            pass
+
+        return resolved_candidates
+
     def get_plot_group_name_from_index(self, index: QtCore.QModelIndex) -> str | None:
         """
         Get the plot-group name represented by a plots-tree index.
@@ -4717,6 +5007,37 @@ class DynamicsResultsHandler:
             else:
                 return self._ask_user_for_xy_drop_role(group=group, candidate_label=candidate_label)
 
+    def get_interactive_role_for_candidate(
+            self,
+            group_name: str,
+            candidate: DynamicPlotCandidate,
+    ) -> DynamicPlotEntryRole | None:
+        """
+        Resolve the destination role for a candidate selected outside the plot tree.
+
+        Time-series plots always receive a curve. X-Y plots reuse the same
+        empty-slot and replacement dialogue used when a source-tree entry is
+        dropped on the plot group, so every insertion path enforces identical
+        two-axis semantics.
+
+        :param group_name: Target plot-group name.
+        :param candidate: Candidate selected in the Dynamic Editor.
+        :return: Curve or axis role, or ``None`` when the group is unavailable
+            or the user cancels the X-Y selection.
+        """
+        group: DynamicsPlotGroup | None = self.plot_groups.get_group(name=group_name)
+        if group is not None:
+            candidate_label: str = candidate.get_plot_label(
+                has_multiple_sources=self.has_multiple_sources(),
+            )
+            return self._get_drop_role_for_group(
+                group=group,
+                drop_index=QtCore.QModelIndex(),
+                candidate_label=candidate_label,
+            )
+        else:
+            return None
+
     def add_series_to_group_with_role(self,
                                       group_name: str,
                                       series_key: DynamicResultSeriesKey,
@@ -4910,6 +5231,30 @@ class DynamicsResultsHandler:
         :param role: Slot role to replace.
         :return: ``True`` when replaced.
         """
+        # Reject a candidate already used by either axis before deleting the
+        # destination asset. Doing this preflight first prevents a failed
+        # duplicate assignment from clearing the other valid X-Y slot.
+        candidate_signature: tuple[str, str, str, str, str, str] = (
+            str(candidate._simulation_type.value),
+            str(candidate._event_group_idtag),
+            str(candidate._device_type.value),
+            str(candidate._device_idtag),
+            str(candidate._variable_name),
+            str(candidate._result_path_kind),
+        )
+        existing_group_entry: DynamicResultSeries | DynamicPlotEntry | Var
+        for existing_group_entry in group.get_series():
+            if isinstance(existing_group_entry, DynamicPlotEntry):
+                existing_signature: tuple[str, str, str, str, str, str] = (
+                    self._build_asset_entry_binding_signature(entry=existing_group_entry)
+                )
+                if existing_signature == candidate_signature:
+                    return False
+                else:
+                    pass
+            else:
+                pass
+
         self._delete_entry_assets_for_role(group_name=group_name, role=role)
         asset_entry: DynamicPlotEntry | None = self._append_asset_entry_for_candidate(group_name=group_name,
                                                                                       candidate=candidate,
@@ -5112,7 +5457,8 @@ class DynamicsResultsHandler:
     def _plot_parameter_entry_on_axis(self,
                                       axis: Axes,
                                       entry: DynamicPlotEntry,
-                                      label: str) -> bool:
+                                      label: str,
+                                      series_colour: str) -> bool:
         """Render one parameter with explicit constant, step, and ramp segments.
 
         Matplotlib line interpolation is unsuitable for discontinuous parameter
@@ -5123,6 +5469,7 @@ class DynamicsResultsHandler:
         :param axis: Matplotlib axis receiving the parameter trace.
         :param entry: Persistent parameter plot entry.
         :param label: Legend label for the trace.
+        :param series_colour: Colour shared by every segment of the trace.
         :return: ``True`` when a numerical trace was rendered.
         """
         parameter_plot_data: tuple[np.ndarray, np.ndarray] | None = self._get_parameter_plot_data(entry=entry)
@@ -5154,10 +5501,11 @@ class DynamicsResultsHandler:
                     y=float(sampled_values[0]),
                     xmin=minimum_time,
                     xmax=maximum_time,
+                    colors=series_colour,
                     label=label,
                 )
             else:
-                axis.plot(time_values, sampled_values, marker="o", label=label)
+                axis.plot(time_values, sampled_values, marker="o", color=series_colour, label=label)
             return True
         else:
             pass
@@ -5185,10 +5533,9 @@ class DynamicsResultsHandler:
         else:
             pass
 
-        # One explicit colour keeps the independent line collections visually
+        # The caller allocates one colour against every artist already present
+        # on the axis. Reusing it here keeps holds, steps, and ramps visually
         # grouped as one parameter series.
-        colour_index: int = (len(axis.lines) + len(axis.collections)) % 10
-        series_colour: str = "C" + str(colour_index)
         current_time: float = minimum_time
         current_value: float = float(initial_value)
         label_attached: bool = False
@@ -5353,6 +5700,10 @@ class DynamicsResultsHandler:
             label: str = ""
             variable_plotted: bool = False
 
+            # Allocate from the artists already rendered, so additions from
+            # variables, parameters, and legacy paths share one colour space.
+            series_colour: str = _get_next_available_plot_colour(axis=axis)
+
             if isinstance(variable, DynamicResultSeries):
                 x_values, y_values = self._get_series_plot_data(series=variable)
                 label = variable.get_plot_label(has_multiple_sources=self.has_multiple_sources())
@@ -5369,6 +5720,7 @@ class DynamicsResultsHandler:
                         axis=axis,
                         entry=variable,
                         label=label,
+                        series_colour=series_colour,
                     )
                 else:
                     x_values = self.results.time_array
@@ -5392,7 +5744,7 @@ class DynamicsResultsHandler:
                 y_values = None
 
             if x_values is not None and y_values is not None:
-                axis.plot(x_values, y_values, label=label)
+                axis.plot(x_values, y_values, color=series_colour, label=label)
                 variable_plotted = True
             else:
                 pass
@@ -6121,10 +6473,12 @@ class DynamicsResultsHandler:
         label: str = _build_parameter_plot_entry_label(entry=entry)
         figure = Figure(figsize=(12, 8))
         axis = figure.add_subplot(111)
+        series_colour: str = _get_next_available_plot_colour(axis=axis)
         plotted: bool = self._plot_parameter_entry_on_axis(
             axis=axis,
             entry=entry,
             label=label,
+            series_colour=series_colour,
         )
         if plotted:
             axis.set_title(entry.variable_name)

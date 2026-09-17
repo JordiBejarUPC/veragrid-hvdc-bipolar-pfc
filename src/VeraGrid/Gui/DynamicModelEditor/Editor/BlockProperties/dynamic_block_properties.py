@@ -5801,6 +5801,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
     variableRenameRequested = Signal(object)
     outputExportChangesRequested = Signal(object)
     symbolRemovalsRequested = Signal(object)
+    addToPlotRequested = Signal(object, object, object)
     closed = Signal()
 
     __slots__ = (
@@ -7797,8 +7798,27 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         )
         menu.addSeparator()
 
+        add_to_plot_action: QtGui.QAction | None
         rename_action: QtGui.QAction | None
         delete_action: QtGui.QAction | None
+        if source_row is not None:
+            selected_variable: Var | None = source_row.get_variable()
+            add_to_plot_action = gf.add_menu_entry(
+                menu=menu,
+                text=self.tr("Add to plot..."),
+                icon_path=":/Icons/icons/rms_plots.png",
+            )
+            add_to_plot_action.setEnabled(selected_variable is not None)
+            if selected_variable is None:
+                add_to_plot_action.setToolTip(
+                    self.tr("Apply the new symbol before adding it to a plot")
+                )
+            else:
+                pass
+            menu.addSeparator()
+        else:
+            add_to_plot_action = None
+
         if source_row is not None or source_mode is not None:
             rename_action = gf.add_menu_entry(
                 menu=menu,
@@ -7823,6 +7843,17 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             self.show_add_symbol_dialog(BlockSymbolCategory.PARAMETERS, owner)
         elif selected_action is add_retained_mode_action:
             self.show_add_symbol_dialog(BlockSymbolCategory.RETAINED_MODES, owner)
+        elif add_to_plot_action is not None and selected_action is add_to_plot_action:
+            selected_variable = source_row.get_variable() if source_row is not None else None
+            if selected_variable is not None and source_row is not None:
+                global_position: QtCore.QPoint = table.viewport().mapToGlobal(position)
+                self.addToPlotRequested.emit(
+                    selected_variable,
+                    source_row.get_kind(),
+                    global_position,
+                )
+            else:
+                pass
         elif rename_action is not None and selected_action is rename_action:
             self.rename_property_symbol()
         elif delete_action is not None and selected_action is delete_action:
