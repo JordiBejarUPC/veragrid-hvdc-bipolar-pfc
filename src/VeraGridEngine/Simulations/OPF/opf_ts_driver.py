@@ -721,8 +721,9 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
                 result_time_indices: IntVec = np.array([0], dtype=int)
             else:
                 use_time_series = True
-                source_time_indices = np.array(self.time_indices, dtype=int)
                 result_time_indices = np.arange(0, len(self.time_indices), dtype=int)
+                # GSLV returns compact result matrices for the requested time window.
+                source_time_indices = result_time_indices
 
             if self.options.solver == SolverType.LINEAR_OPF:
                 self.report_text('Running Linear OPF with GSLV...')
