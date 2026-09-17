@@ -1229,7 +1229,16 @@ def build_basic_library_branch() -> Dict[str, object]:
     :return: Nested branch data consumed by :class:`DynamicEditorLibrary`.
     """
     # build native branch
-    native_branch: Dict[str, object] = dict((("Arithmetic", list((LibraryLeafSpec("Const", BlockType.CONST), LibraryLeafSpec("Gain", BlockType.GAIN), LibraryLeafSpec("Sum", BlockType.SUM), LibraryLeafSpec("Product", BlockType.PRODUCT), LibraryLeafSpec("Abs", BlockType.ABS),))), ("Arrays and matrices", list((LibraryLeafSpec("Inverse Lookup array (linear)", BlockType.INVERSE_LOOKUP_ARRAY), LibraryLeafSpec("Lookup array (linear)", BlockType.LOOKUP_ARRAY_LINEAR), LibraryLeafSpec("Lookup array (spline)", BlockType.LOOKUP_ARRAY_SPLINE), LibraryLeafSpec("Lookup matrix (linear)", BlockType.LOOKUP_MATRIX_LINEAR), LibraryLeafSpec("Lookup matrix (spline)", BlockType.LOOKUP_MATRIX_SPLINE),))),))
+    native_branch: Dict[str, object] = dict((("Arithmetic", list((LibraryLeafSpec("Const", BlockType.CONST),
+                                                                  LibraryLeafSpec("Gain", BlockType.GAIN),
+                                                                  LibraryLeafSpec("Sum", BlockType.SUM),
+                                                                  LibraryLeafSpec("Product", BlockType.PRODUCT),
+                                                                  LibraryLeafSpec("Abs", BlockType.ABS),))),
+                                             ("Arrays and matrices", list((LibraryLeafSpec("Inverse Lookup array (linear)", BlockType.INVERSE_LOOKUP_ARRAY),
+                                                                           LibraryLeafSpec("Lookup array (linear)", BlockType.LOOKUP_ARRAY_LINEAR),
+                                                                           LibraryLeafSpec("Lookup array (spline)", BlockType.LOOKUP_ARRAY_SPLINE),
+                                                                           LibraryLeafSpec("Lookup matrix (linear)", BlockType.LOOKUP_MATRIX_LINEAR),
+                                                                           LibraryLeafSpec("Lookup matrix (spline)", BlockType.LOOKUP_MATRIX_SPLINE),))),))
 
     # build catalogue branch
     branch: Dict[str, object] = build_basic_block_catalog_branch_skeleton()

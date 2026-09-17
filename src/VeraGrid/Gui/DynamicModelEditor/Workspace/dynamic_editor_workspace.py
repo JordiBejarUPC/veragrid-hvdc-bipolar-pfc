@@ -153,9 +153,9 @@ class Ui_DynamicEditorWorkspaceWindow(object):
         self.actionRMS_Events.setText(QCoreApplication.translate("DynamicEditorWorkspaceWindow", u"RMS Events", None))
         self.actionEMT_Events.setText(QCoreApplication.translate("DynamicEditorWorkspaceWindow", u"EMT Events", None))
         self.actionRMS_Plots.setText(QCoreApplication.translate("DynamicEditorWorkspaceWindow", u"RMS Plots", None))
-        self.actionRMS_Plots.setToolTip(QCoreApplication.translate("DynamicEditorWorkspaceWindow", u"Open the RMS plots editor for all devices", None))
+        self.actionRMS_Plots.setToolTip(QCoreApplication.translate("DynamicEditorWorkspaceWindow", u"Open the RMS plots editor", None))
         self.actionEMT_Plots.setText(QCoreApplication.translate("DynamicEditorWorkspaceWindow", u"EMT Plots", None))
-        self.actionEMT_Plots.setToolTip(QCoreApplication.translate("DynamicEditorWorkspaceWindow", u"Open the EMT plots editor for all devices", None))
+        self.actionEMT_Plots.setToolTip(QCoreApplication.translate("DynamicEditorWorkspaceWindow", u"Open the EMT plots editor", None))
         self.searchInTreeLineEdit.setPlaceholderText(QCoreApplication.translate("DynamicEditorWorkspaceWindow", u"Type to search the device", None))
         self.toolBar.setWindowTitle(QCoreApplication.translate("DynamicEditorWorkspaceWindow", u"toolBar", None))
     # retranslateUi

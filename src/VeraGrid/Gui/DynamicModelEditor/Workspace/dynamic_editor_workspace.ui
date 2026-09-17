@@ -219,7 +219,7 @@
      <normaloff>:/Icons/icons/rms_plots.png</normaloff>:/Icons/icons/rms_plots.png</iconset>
    </property>
    <property name="text"><string>RMS Plots</string></property>
-   <property name="toolTip"><string>Open the RMS plots editor for all devices</string></property>
+   <property name="toolTip"><string>Open the RMS plots editor</string></property>
    <property name="menuRole"><enum>QAction::MenuRole::NoRole</enum></property>
   </action>
   <action name="actionEMT_Plots">
@@ -228,7 +228,7 @@
      <normaloff>:/Icons/icons/emt_plots.png</normaloff>:/Icons/icons/emt_plots.png</iconset>
    </property>
    <property name="text"><string>EMT Plots</string></property>
-   <property name="toolTip"><string>Open the EMT plots editor for all devices</string></property>
+   <property name="toolTip"><string>Open the EMT plots editor</string></property>
    <property name="menuRole"><enum>QAction::MenuRole::NoRole</enum></property>
   </action>
  </widget>
