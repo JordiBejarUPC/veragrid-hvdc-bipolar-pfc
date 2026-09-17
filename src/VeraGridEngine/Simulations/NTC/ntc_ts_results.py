@@ -170,6 +170,14 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
             clustering_results=clustering_results,
             study_results_type=StudyResultsType.NetTransferCapacityTimeSeries)
 
+        if clustering_results is not None:
+            self.available_results[ResultTypes.FlowReports].insert(
+                self.available_results[ResultTypes.FlowReports].index(ResultTypes.ContingencyFlowsReport) + 1,
+                ResultTypes.ContingencyFlowsRepresentativeReport
+            )
+        else:
+            pass  # Representative hours exist only for clustered simulations.
+
         nt = len(time_indices)
         m = len(branch_names)
         n = len(bus_names)
@@ -255,13 +263,12 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
         if self.strict_formulation:
             return total
         else:
-            n_clustered: int = 0
-            for item in self.contingency_flows_list:
-                t_probe: int = int(item[0])
-                if t_probe + 1 > n_clustered:
-                    n_clustered = t_probe + 1
-                else:
-                    pass
+            # Size by simulated hours, not by the last recorded contingency row:
+            # a final hour with no relaxation entries still needs its zero slot.
+            if self.clustering_results is not None:
+                n_clustered: int = len(self.clustering_results.time_indices)
+            else:
+                n_clustered = n_total
 
             if n_clustered == 0:
                 return total
@@ -592,6 +599,37 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
                 ntc=self.inter_area_flows,
                 contingency_rates=self.contingency_rates,
                 loading_threshold_pct=self.loading_threshold_to_report
+            )
+
+        elif (result_type == ResultTypes.ContingencyFlowsRepresentativeReport
+              and self.clustering_results is not None):
+            representative_indices: IntVec = self.clustering_results.time_indices
+            # The GUI normally expands arrays to the original calendar. API callers
+            # may retain reduced arrays; both must produce the same representative view.
+            if len(self.inter_area_flows) == len(self.clustering_results.time_array):
+                selected_rows: IntVec = representative_indices
+            else:
+                selected_rows = np.arange(len(representative_indices), dtype=int)
+            total_slack: Vec = self.get_total_slack_mw()
+            return worst_contingency_report_table(
+                time_array=self.clustering_results.time_array[representative_indices],
+                branch_names=self.branch_names,
+                group_names=self.contingency_group_names,
+                group_device_names=self.contingency_group_device_names,
+                worst_idx=self.worst_contingency_idx[selected_rows],
+                worst_flow=self.worst_contingency_flow[selected_rows],
+                worst_loading=self.worst_contingency_loading[selected_rows],
+                alpha=self.alpha[selected_rows],
+                alpha_n1=self.alpha_n1_worst[selected_rows],
+                monitor_logic=self.monitor_logic[selected_rows],
+                flow_n=np.real(self.Sf[selected_rows]),
+                ntc=self.inter_area_flows[selected_rows],
+                contingency_rates=self.contingency_rates,
+                loading_threshold_pct=self.loading_threshold_to_report,
+                total_slack_mw=total_slack[selected_rows],
+                time_percentage=self.clustering_results.sampled_probabilities * 100.0,
+                original_time_indices=representative_indices,
+                result_type=result_type
             )
 
         else:

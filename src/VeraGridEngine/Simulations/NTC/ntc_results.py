@@ -42,7 +42,11 @@ def worst_contingency_report_table(time_array: Union[DateVec, None],
                                    flow_n: np.ndarray,
                                    ntc: np.ndarray,
                                    contingency_rates: Vec,
-                                   loading_threshold_pct: float) -> ResultsTable:
+                                   loading_threshold_pct: float,
+                                   total_slack_mw: Vec | None = None,
+                                   time_percentage: Vec | None = None,
+                                   original_time_indices: IntVec | None = None,
+                                   result_type: ResultTypes = ResultTypes.ContingencyFlowsReport) -> ResultsTable:
     """
     Build the long form worst-contingency table with one row per kept (time, branch).
 
@@ -65,6 +69,10 @@ def worst_contingency_report_table(time_array: Union[DateVec, None],
     :param ntc: NTC of each time index (MW)
     :param contingency_rates: branch contingency ratings (MW)
     :param loading_threshold_pct: keep rows whose N-1 loading is at least this percent
+    :param total_slack_mw: optional total thermal slack per representative hour
+    :param time_percentage: optional cluster probabilities expressed as percentages
+    :param original_time_indices: optional original-series indices for the displayed hours
+    :param result_type: report title to display
     :return: results table
     """
     n_g: int = len(group_names)
@@ -101,6 +109,14 @@ def worst_contingency_report_table(time_array: Union[DateVec, None],
             'Flow N (MW)', 'Flow N-1 (MW)', 'Loading N-1 (%)'
         ]
 
+    include_cluster_details: bool = total_slack_mw is not None and time_percentage is not None
+    if include_cluster_details:
+        ntc_column: int = columns.index('NTC (MW)')
+        columns[ntc_column + 1:ntc_column + 1] = list(('Total slack (MW)', 'Time percentage (%)'))
+        n_cols += 2
+    else:
+        pass  # Keep the existing full-hour and snapshot report columns.
+
     data: np.ndarray = np.empty((n_rows, n_cols), dtype=object)
     index: np.ndarray = np.empty(n_rows, dtype=object)
 
@@ -134,7 +150,10 @@ def worst_contingency_report_table(time_array: Union[DateVec, None],
         mon_flag: bool = monitored_flag_from_logic(monitor_logic[h, m])
 
         if include_time:
-            data[row_i, 0] = h
+            if original_time_indices is not None:
+                data[row_i, 0] = int(original_time_indices[h])
+            else:
+                data[row_i, 0] = h
             data[row_i, 1] = time_val
             col0: int = 2
         else:
@@ -145,18 +164,25 @@ def worst_contingency_report_table(time_array: Union[DateVec, None],
         data[row_i, col0 + 2] = c_name
         data[row_i, col0 + 3] = c_dev
         data[row_i, col0 + 4] = np.round(ntc_h, 4)
-        data[row_i, col0 + 5] = np.round(float(alpha[h, m]), 6)
-        data[row_i, col0 + 6] = np.round(float(alpha_n1[h, m]), 6)
-        data[row_i, col0 + 7] = np.round(flow_n_m, 4)
-        data[row_i, col0 + 8] = np.round(flow_n1_m, 4)
-        data[row_i, col0 + 9] = np.round(loading_n1_m, 4)
+        next_col: int = col0 + 5
+        if include_cluster_details:
+            data[row_i, next_col] = np.round(float(total_slack_mw[h]), 4)
+            data[row_i, next_col + 1] = np.round(float(time_percentage[h]), 6)
+            next_col += 2
+        else:
+            pass  # No cluster weights are attached to the expanded report.
+        data[row_i, next_col] = np.round(float(alpha[h, m]), 6)
+        data[row_i, next_col + 1] = np.round(float(alpha_n1[h, m]), 6)
+        data[row_i, next_col + 2] = np.round(flow_n_m, 4)
+        data[row_i, next_col + 3] = np.round(flow_n1_m, 4)
+        data[row_i, next_col + 4] = np.round(loading_n1_m, 4)
         index[row_i] = ""
 
     return ResultsTable(
         data=data,
         index=index,
         columns=columns,
-        title=str(ResultTypes.ContingencyFlowsReport.value),
+        title=str(result_type.value),
         ylabel='',
         xlabel='',
         units='',
