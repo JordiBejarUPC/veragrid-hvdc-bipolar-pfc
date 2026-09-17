@@ -4227,6 +4227,8 @@ class Ui_mainWindow(object):
 
         self.label_45 = QLabel(self.frame_113)
         self.label_45.setObjectName(u"label_45")
+        self.label_45.setMinimumSize(QSize(0, 26))
+        self.label_45.setMaximumSize(QSize(16777215, 26))
 
         self.gridLayout_32.addWidget(self.label_45, 6, 0, 1, 1)
 
@@ -4284,6 +4286,7 @@ class Ui_mainWindow(object):
         self.label_50 = QLabel(self.frame_113)
         self.label_50.setObjectName(u"label_50")
         self.label_50.setMinimumSize(QSize(0, 26))
+        self.label_50.setMaximumSize(QSize(16777215, 26))
 
         self.gridLayout_32.addWidget(self.label_50, 7, 0, 1, 1)
 
@@ -4389,7 +4392,7 @@ class Ui_mainWindow(object):
         self.emt_sss_build_type_comboBox.setObjectName(u"emt_sss_build_type_comboBox")
         self.emt_sss_build_type_comboBox.setMinimumSize(QSize(200, 0))
 
-        self.gridLayout_5.addWidget(self.emt_sss_build_type_comboBox, 12, 3, 1, 1)
+        self.gridLayout_5.addWidget(self.emt_sss_build_type_comboBox, 13, 3, 1, 1)
 
         self.emt_ss_assessment_time_spinBox = QDoubleSpinBox(self.frame_116)
         self.emt_ss_assessment_time_spinBox.setObjectName(u"emt_ss_assessment_time_spinBox")
@@ -4399,7 +4402,7 @@ class Ui_mainWindow(object):
         self.emt_ss_assessment_time_spinBox.setSingleStep(0.010000000000000)
         self.emt_ss_assessment_time_spinBox.setValue(0.000000000000000)
 
-        self.gridLayout_5.addWidget(self.emt_ss_assessment_time_spinBox, 9, 3, 1, 1)
+        self.gridLayout_5.addWidget(self.emt_ss_assessment_time_spinBox, 10, 3, 1, 1)
 
         self.emt_sim_time_spinBox = QDoubleSpinBox(self.frame_116)
         self.emt_sim_time_spinBox.setObjectName(u"emt_sim_time_spinBox")
@@ -4414,7 +4417,7 @@ class Ui_mainWindow(object):
         self.label_37 = QLabel(self.frame_116)
         self.label_37.setObjectName(u"label_37")
 
-        self.gridLayout_5.addWidget(self.label_37, 12, 0, 1, 2)
+        self.gridLayout_5.addWidget(self.label_37, 13, 0, 1, 2)
 
         self.tolerance_emt_spinBox = QSpinBox(self.frame_116)
         self.tolerance_emt_spinBox.setObjectName(u"tolerance_emt_spinBox")
@@ -4424,9 +4427,9 @@ class Ui_mainWindow(object):
 
         self.gridLayout_5.addWidget(self.tolerance_emt_spinBox, 4, 3, 1, 1)
 
-        self.verticalSpacer_26 = QSpacerItem(18, 149, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+        self.verticalSpacer_26 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
-        self.gridLayout_5.addItem(self.verticalSpacer_26, 13, 2, 1, 1)
+        self.gridLayout_5.addItem(self.verticalSpacer_26, 14, 2, 1, 1)
 
         self.label_440 = QLabel(self.frame_116)
         self.label_440.setObjectName(u"label_440")
@@ -4456,12 +4459,12 @@ class Ui_mainWindow(object):
         self.emt_small_signal_modes_number_spinBox.setObjectName(u"emt_small_signal_modes_number_spinBox")
         self.emt_small_signal_modes_number_spinBox.setDecimals(0)
 
-        self.gridLayout_5.addWidget(self.emt_small_signal_modes_number_spinBox, 11, 3, 1, 1)
+        self.gridLayout_5.addWidget(self.emt_small_signal_modes_number_spinBox, 12, 3, 1, 1)
 
         self.label_60 = QLabel(self.frame_116)
         self.label_60.setObjectName(u"label_60")
 
-        self.gridLayout_5.addWidget(self.label_60, 10, 0, 1, 2)
+        self.gridLayout_5.addWidget(self.label_60, 11, 0, 1, 2)
 
         self.label_438 = QLabel(self.frame_116)
         self.label_438.setObjectName(u"label_438")
@@ -4489,22 +4492,29 @@ class Ui_mainWindow(object):
         self.line_66.setLineWidth(4)
         self.line_66.setFrameShape(QFrame.Shape.HLine)
 
-        self.gridLayout_5.addWidget(self.line_66, 8, 0, 1, 4)
+        self.gridLayout_5.addWidget(self.line_66, 9, 0, 1, 4)
 
         self.label_437 = QLabel(self.frame_116)
         self.label_437.setObjectName(u"label_437")
 
-        self.gridLayout_5.addWidget(self.label_437, 9, 0, 1, 3)
+        self.gridLayout_5.addWidget(self.label_437, 10, 0, 1, 3)
 
         self.label_436 = QLabel(self.frame_116)
         self.label_436.setObjectName(u"label_436")
 
         self.gridLayout_5.addWidget(self.label_436, 6, 0, 1, 2)
 
+        self.emt_small_signal_alignment_label = QLabel(self.frame_116)
+        self.emt_small_signal_alignment_label.setObjectName(u"emt_small_signal_alignment_label")
+        self.emt_small_signal_alignment_label.setMinimumSize(QSize(0, 26))
+        self.emt_small_signal_alignment_label.setMaximumSize(QSize(16777215, 26))
+
+        self.gridLayout_5.addWidget(self.emt_small_signal_alignment_label, 7, 0, 1, 1)
+
         self.label_56 = QLabel(self.frame_116)
         self.label_56.setObjectName(u"label_56")
 
-        self.gridLayout_5.addWidget(self.label_56, 11, 0, 1, 1)
+        self.gridLayout_5.addWidget(self.label_56, 12, 0, 1, 1)
 
         self.label_431 = QLabel(self.frame_116)
         self.label_431.setObjectName(u"label_431")
@@ -4516,7 +4526,7 @@ class Ui_mainWindow(object):
         self.label_431.setFont(font3)
         self.label_431.setAlignment(Qt.AlignmentFlag.AlignBottom|Qt.AlignmentFlag.AlignLeading|Qt.AlignmentFlag.AlignLeft)
 
-        self.gridLayout_5.addWidget(self.label_431, 7, 1, 1, 3)
+        self.gridLayout_5.addWidget(self.label_431, 8, 1, 1, 3)
 
         self.label_430 = QLabel(self.frame_116)
         self.label_430.setObjectName(u"label_430")
@@ -4527,7 +4537,7 @@ class Ui_mainWindow(object):
         self.label_430.setPixmap(QPixmap(u":/Icons/icons/ss_emt_icon.png"))
         self.label_430.setScaledContents(True)
 
-        self.gridLayout_5.addWidget(self.label_430, 7, 0, 1, 1)
+        self.gridLayout_5.addWidget(self.label_430, 8, 0, 1, 1)
 
         self.emt_problem_comboBox = QComboBox(self.frame_116)
         self.emt_problem_comboBox.addItem("")
@@ -4541,7 +4551,7 @@ class Ui_mainWindow(object):
         self.emt_sss_target_period_spinBox.setDecimals(4)
         self.emt_sss_target_period_spinBox.setSingleStep(0.010000000000000)
 
-        self.gridLayout_5.addWidget(self.emt_sss_target_period_spinBox, 10, 3, 1, 1)
+        self.gridLayout_5.addWidget(self.emt_sss_target_period_spinBox, 11, 3, 1, 1)
 
         self.emt_h_spinBox = QDoubleSpinBox(self.frame_116)
         self.emt_h_spinBox.setObjectName(u"emt_h_spinBox")
@@ -6965,6 +6975,7 @@ class Ui_mainWindow(object):
         self.label_435.setText(QCoreApplication.translate("mainWindow", u"Simulation time", None))
         self.label_437.setText(QCoreApplication.translate("mainWindow", u"Assessment time", None))
         self.label_436.setText(QCoreApplication.translate("mainWindow", u"Time step", None))
+        self.emt_small_signal_alignment_label.setText("")
         self.label_56.setText(QCoreApplication.translate("mainWindow", u"Modes", None))
         self.label_431.setText(QCoreApplication.translate("mainWindow", u"EMT Small-Signal", None))
         self.label_430.setText("")
