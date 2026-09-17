@@ -174,6 +174,7 @@ class ServerDriver(QThread):
         self.logger = Logger()
 
         self.data_model = JobsModel()
+        self.data_model.setParent(self)
 
         self._loaded_certificate = False
         self._certificate_path = get_certificate_path()

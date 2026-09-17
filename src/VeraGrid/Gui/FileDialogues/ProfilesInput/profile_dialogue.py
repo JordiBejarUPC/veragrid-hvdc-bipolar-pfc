@@ -12,14 +12,14 @@ from enum import Enum
 from difflib import SequenceMatcher
 import numpy as np
 import pandas as pd
-from PySide6 import QtWidgets, QtCore
+from PySide6 import QtWidgets, QtCore, QtGui
 from matplotlib import pyplot as plt
 
 from VeraGrid.Gui.general_dialogues import LogsDialogue
 from VeraGrid.Gui.gui_functions import ComboModel, get_list_model
 from VeraGrid.Gui.FileDialogues.ProfilesInput.profiles_from_data_gui import Ui_Dialog
 from VeraGrid.Gui.FileDialogues.ProfilesInput.excel_dialog import ExcelDialog
-from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, exec_dialog_safely
+from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, delete_dialogs_safely, exec_dialog_safely
 from VeraGrid.Gui.matplotlib_dialog import show_matplotlib_figure
 from VeraGrid.Gui.messages import error_msg, info_msg
 from VeraGrid.Gui.toast_widget import ToastManager
@@ -547,7 +547,7 @@ class ProfileInputGUI(QtWidgets.QDialog):
                 # select the sheet from the file
                 excel_dialogue: ExcelDialog = ExcelDialog(self, filename)
                 try:
-                    excel_dialogue.exec()
+                    exec_dialog_safely(dialog=excel_dialogue)
                     sheet_index: int | None = excel_dialogue.excel_sheet
                 finally:
                     delete_dialog_safely(dialog=excel_dialogue)
@@ -732,6 +732,26 @@ class ProfileInputGUI(QtWidgets.QDialog):
                 self.toast_manager.show_warning_toast("No profile selected :/")
         else:
             self.toast_manager.show_warning_toast("No data loaded :/")
+
+    def done(self, result: int) -> None:
+        """
+        Close retained plot windows before completing profile input.
+
+        :param result: Qt dialog result code.
+        :return: None.
+        """
+        delete_dialogs_safely(dialogs=self._open_plot_dialogs)
+        QtWidgets.QDialog.done(self, result)
+
+    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
+        """
+        Close retained plot windows before closing profile input.
+
+        :param event: Qt close event.
+        :return: None.
+        """
+        delete_dialogs_safely(dialogs=self._open_plot_dialogs)
+        QtWidgets.QDialog.closeEvent(self, event)
 
     def display_associations(self) -> None:
         """

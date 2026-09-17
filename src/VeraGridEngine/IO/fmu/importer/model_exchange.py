@@ -48,6 +48,7 @@ from VeraGridEngine.IO.fmu.importer.co_simulation import (
 )
 from VeraGridEngine.IO.fmu.importer.model_description import FmuInterfaceMode, FmuModelDescription, FmuVariableDescription, read_fmu_model_description
 from VeraGridEngine.IO.fmu.importer.runtime_host import (
+    FmiOneEventUpdate,
     FmiTwoEventUpdate,
     FmuRuntimeHost,
     open_fmu_runtime_host,
@@ -311,6 +312,7 @@ class FmuMeDeviceAdapter:
         "pending_accepted_readable_values",
         "pending_accepted_event_indicators",
         "localized_state_event_time",
+        "_fmi_one_state_value_references",
         "fmi_two_next_event_time",
         "fmi_two_accepted_input_values",
         "fmi_two_accepted_derivative_values",
@@ -362,6 +364,7 @@ class FmuMeDeviceAdapter:
         self.pending_accepted_readable_values: tuple[float, ...] | None = None
         self.pending_accepted_event_indicators: tuple[float, ...] | None = None
         self.localized_state_event_time: float | None = None
+        self._fmi_one_state_value_references: tuple[int, ...] = tuple()
         self.fmi_two_next_event_time: float | None = None
         self.fmi_two_accepted_input_values: tuple[float, ...] | None = None
         self.fmi_two_accepted_derivative_values: tuple[float, ...] | None = None
@@ -676,6 +679,130 @@ class FmuMeDeviceAdapter:
                 "FMI 2 Model Exchange Event Mode exceeded its iteration bound"
             )
 
+    def _apply_fmi_one_event_update(
+        self,
+        event_update: FmiOneEventUpdate,
+        entry_time: float,
+        evaluation_budget: FmuMeEvaluationBudget,
+    ) -> bool:
+        """Apply one complete FMI 1 event-info result to adapter state.
+
+        :param event_update: Detached FMI 1 event information.
+        :param entry_time: Exact time at which event iteration started.
+        :param evaluation_budget: Shared initialization or step call budget.
+        :return: Whether the FMI 1 event iteration has converged.
+        :raises FmuImportError: If the FMU requests termination.
+        :raises FmuModeError: If refreshed state metadata is inconsistent.
+        """
+
+        if self.runtime_host is not None:
+            runtime_host: FmuRuntimeHost = self.runtime_host
+        else:
+            raise FmuModeError("FMI 1 event update requires an initialized host")
+        normalized_entry_time: float = float(entry_time)
+        if math.isfinite(normalized_entry_time):
+            pass
+        else:
+            raise ValueError("FMI 1 event entry time must be finite")
+        if event_update.terminate_simulation:
+            # Termination is terminal in the owning simulation. Release the
+            # native instance immediately so no later solver probe can use it.
+            runtime_host.close()
+            self.runtime_host = None
+            raise FmuImportError(
+                "FMI 1 Model Exchange requested simulation termination"
+            )
+        else:
+            pass
+        if event_update.state_value_references_changed:
+            evaluation_budget.consume()
+            refreshed_references: tuple[int, ...] = (
+                runtime_host.get_state_value_references()
+            )
+            if len(refreshed_references) == len(self.spec.state_variable_names):
+                self._fmi_one_state_value_references = refreshed_references
+            else:
+                raise FmuModeError(
+                    "FMI 1 refreshed state references do not match the "
+                    "declared continuous-state count"
+                )
+        else:
+            pass
+        if event_update.state_values_changed:
+            evaluation_budget.consume()
+            refreshed_state_values: np.ndarray = np.array(
+                runtime_host.get_continuous_states(),
+                dtype=float,
+            )
+            states_are_valid: bool = (
+                refreshed_state_values.size == len(self.spec.state_variable_names)
+                and bool(np.all(np.isfinite(refreshed_state_values)))
+            )
+            if states_are_valid:
+                self.state_vector = refreshed_state_values
+            else:
+                raise FmuModeError(
+                    "FMI 1 refreshed continuous states are not finite or do "
+                    "not match the declared state count"
+                )
+        else:
+            pass
+        if event_update.next_event_time is not None:
+            normalized_next_event_time: float = float(event_update.next_event_time)
+            if (
+                math.isfinite(normalized_next_event_time)
+                and normalized_next_event_time > normalized_entry_time
+            ):
+                self.fmi_two_next_event_time = normalized_next_event_time
+            else:
+                raise FmuModeError(
+                    "FMI 1 nextEventTime must be finite and follow event entry"
+                )
+        else:
+            self.fmi_two_next_event_time = None
+        return event_update.iteration_converged
+
+    def _settle_fmi_one_event(
+        self,
+        event_update: FmiOneEventUpdate,
+        entry_time: float,
+        evaluation_budget: FmuMeEvaluationBudget,
+    ) -> None:
+        """Converge one FMI 1 initialization or event-update sequence.
+
+        :param event_update: First FMI 1 event-info result in the sequence.
+        :param entry_time: Exact time at which the sequence started.
+        :param evaluation_budget: Shared initialization or step call budget.
+        :return: None.
+        :raises FmuModeError: If the event fixpoint exceeds its bound.
+        """
+
+        active_update: FmiOneEventUpdate = event_update
+        converged: bool = False
+        event_iteration: int
+        for event_iteration in range(self.spec.maximum_event_iterations):
+            converged = self._apply_fmi_one_event_update(
+                event_update=active_update,
+                entry_time=entry_time,
+                evaluation_budget=evaluation_budget,
+            )
+            if converged:
+                break
+            else:
+                if self.runtime_host is not None:
+                    evaluation_budget.consume()
+                    active_update = self.runtime_host.event_update_fmi_one()
+                else:
+                    raise FmuModeError(
+                        "FMI 1 event iteration lost its initialized host"
+                    )
+        if converged:
+            pass
+        else:
+            raise FmuModeError(
+                "FMI 1 Model Exchange event update exceeded its iteration bound"
+            )
+
     def initialize(
         self,
         start_time: float,
@@ -749,18 +876,47 @@ class FmuMeDeviceAdapter:
                 input_bindings=self.spec.input_bindings,
                 output_bindings=self.spec.output_bindings,
             )
-            # FMI 2 keeps the established in-process runtime until its own
+            # FMI 1/2 keep the established in-process runtime until their own
             # isolation increment is explicitly designed.
             self.runtime_host = open_fmu_runtime_host(self.spec.config)
             active_budget.consume()
-            self.runtime_host.initialize(
-                start_time=start_time,
-                start_values=start_values_payload,
+            initial_event_update: FmiOneEventUpdate | None = (
+                self.runtime_host.initialize(
+                    start_time=start_time,
+                    start_values=start_values_payload,
+                )
             )
-            self._settle_fmi_two_event_mode(
-                entry_time=start_time,
-                evaluation_budget=active_budget,
-            )
+            if self.runtime_host.metadata.fmi_version_family == FmiVersion.FMI_1_0:
+                if initial_event_update is not None:
+                    active_budget.consume()
+                    initial_state_references: tuple[int, ...] = (
+                        self.runtime_host.get_state_value_references()
+                    )
+                    if len(initial_state_references) == len(
+                        self.spec.state_variable_names
+                    ):
+                        self._fmi_one_state_value_references = (
+                            initial_state_references
+                        )
+                    else:
+                        raise FmuModeError(
+                            "FMI 1 initial state references do not match the "
+                            "declared continuous-state count"
+                        )
+                    self._settle_fmi_one_event(
+                        event_update=initial_event_update,
+                        entry_time=start_time,
+                        evaluation_budget=active_budget,
+                    )
+                else:
+                    raise FmuModeError(
+                        "FMI 1 Model Exchange initialization lost event information"
+                    )
+            else:
+                self._settle_fmi_two_event_mode(
+                    entry_time=start_time,
+                    evaluation_budget=active_budget,
+                )
             active_budget.consume()
             self.state_vector = np.array(
                 self.runtime_host.get_continuous_states(),
@@ -1690,6 +1846,10 @@ class FmuMeDeviceAdapter:
                             completed_step_requested_event = enter_event_mode
                     else:
                         pass
+                    runtime_is_fmi_one: bool = (
+                        runtime_host.metadata.fmi_version_family
+                        == FmiVersion.FMI_1_0
+                    )
                     time_event_is_due: bool = (
                         self.fmi_two_next_event_time is not None
                         and self.pending_time is not None
@@ -1711,12 +1871,23 @@ class FmuMeDeviceAdapter:
                             raise FmuModeError(
                                 "FMI 2 event acceptance lost its candidate time"
                             )
-                        active_budget.consume()
-                        runtime_host.enter_event_mode()
-                        self._settle_fmi_two_event_mode(
-                            entry_time=accepted_event_time,
-                            evaluation_budget=active_budget,
-                        )
+                        if runtime_is_fmi_one:
+                            active_budget.consume()
+                            first_event_update: FmiOneEventUpdate = (
+                                runtime_host.event_update_fmi_one()
+                            )
+                            self._settle_fmi_one_event(
+                                event_update=first_event_update,
+                                entry_time=accepted_event_time,
+                                evaluation_budget=active_budget,
+                            )
+                        else:
+                            active_budget.consume()
+                            runtime_host.enter_event_mode()
+                            self._settle_fmi_two_event_mode(
+                                entry_time=accepted_event_time,
+                                evaluation_budget=active_budget,
+                            )
                         active_budget.consume()
                         post_event_states: np.ndarray = np.array(
                             runtime_host.get_continuous_states(),
@@ -2515,24 +2686,31 @@ def _build_state_variable_names(metadata: FmuModelDescription) -> tuple[str, ...
     """
 
     state_variable_names: list[str] = list()
-    if metadata.fmi_version_family == FmiVersion.FMI_3_0:
-        state_variable: FmuVariableDescription
-        for state_variable in metadata.get_state_variables():
-            # FMI 3 resolves the derivative relationship through the state's
-            # value reference while parsing the authoritative metadata.
-            state_variable_names.append(state_variable.name)
+    if metadata.fmi_version_family == FmiVersion.FMI_1_0:
+        state_index: int
+        for state_index in range(metadata.number_of_continuous_states):
+            # FMI 1 owns state identity through the runtime
+            # fmiGetStateValueReferences call, not through XML derivative links.
+            state_variable_names.append(f"__fmi_one_state_{state_index}")
     else:
-        derivative_variable: FmuVariableDescription
-        for derivative_variable in metadata.get_derivative_variables():
-            derivative_index: int | None = derivative_variable.derivative_index
-            if derivative_index is not None:
-                # FMI 1/2 derivative indices are 1-based positions in the
-                # ordered model-variable sequence.
-                state_variable_names.append(
-                    metadata.variables[derivative_index - 1].name
-                )
-            else:
-                pass
+        if metadata.fmi_version_family == FmiVersion.FMI_3_0:
+            state_variable: FmuVariableDescription
+            for state_variable in metadata.get_state_variables():
+                # FMI 3 resolves the derivative relationship through the state's
+                # value reference while parsing the authoritative metadata.
+                state_variable_names.append(state_variable.name)
+        else:
+            derivative_variable: FmuVariableDescription
+            for derivative_variable in metadata.get_derivative_variables():
+                derivative_index: int | None = derivative_variable.derivative_index
+                if derivative_index is not None:
+                    # FMI 2 derivative indices are 1-based positions in the
+                    # ordered model-variable sequence.
+                    state_variable_names.append(
+                        metadata.variables[derivative_index - 1].name
+                    )
+                else:
+                    pass
     return tuple(state_variable_names)
 
 
@@ -2625,7 +2803,10 @@ def build_fmu_me_device_spec(
 
     metadata: FmuModelDescription = read_fmu_model_description(config.fmu_path)
     float64_profile: FmiThreeWorkerFloat64Profile | None
-    if metadata.fmi_version_family == FmiVersion.FMI_2_0:
+    if metadata.fmi_version_family in (
+        FmiVersion.FMI_1_0,
+        FmiVersion.FMI_2_0,
+    ):
         resolved_mode: FmuInterfaceMode = config.resolve_execution_mode(metadata)
         float64_profile = None
         has_fmi_three_configuration: bool = (
@@ -2693,7 +2874,10 @@ def build_fmu_me_device_spec(
                     input_variable_name
                 )
                 input_causality: str = input_variable.causality or "local"
-                if metadata.fmi_version_family == FmiVersion.FMI_2_0:
+                if metadata.fmi_version_family in (
+                    FmiVersion.FMI_1_0,
+                    FmiVersion.FMI_2_0,
+                ):
                     input_variability: str = (
                         input_variable.variability or "continuous"
                     )

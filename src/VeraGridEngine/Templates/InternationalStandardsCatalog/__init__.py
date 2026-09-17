@@ -7,7 +7,5 @@
 
 from VeraGridEngine.Templates.InternationalStandardsCatalog.international_standards_catalog import (
     InternationalStandardTemplateDescriptor,
-    get_international_standard_device_template_descriptors,
-    get_international_standard_template_descriptors,
     load_international_standard_template,
 )

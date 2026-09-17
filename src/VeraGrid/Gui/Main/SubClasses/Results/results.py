@@ -7,7 +7,7 @@ from PySide6 import QtCore, QtWidgets, QtGui
 from matplotlib import pyplot as plt
 from typing import Union, Dict
 
-from VeraGrid.Gui.Main.SubClasses.Results.dynamics_results_handler import (
+from VeraGrid.Gui.DynamicModelEditor.Plots.dynamic_plots_handler import (
     DynamicsResultsHandler)
 from VeraGrid.Gui.table_view_header_wrap import HeaderViewWithWordWrap
 import VeraGrid.Gui.gui_functions as gf
@@ -15,12 +15,12 @@ from VeraGrid.Gui.messages import error_msg, warning_msg, yes_no_question
 from VeraGrid.Gui.Main.SubClasses.simulations import SimulationsMain
 from VeraGrid.Gui.results_model import ResultsModel
 from VeraGrid.Gui.general_dialogues import fill_tree_from_logs
-from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely
+from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, exec_dialog_safely
 from VeraGrid.Gui.matplotlib_dialog import show_matplotlib_figure
 import VeraGridEngine.Utils.Filtering as flt
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.enumerations import (ResultTypes, SimulationTypes, PlotSimulationType, DynamicPlotEntryKind,
-                                         DynamicPlotMode, ResultTablePlotType)
+                                         DynamicPlotMode, DynamicSimulationMode, ResultTablePlotType)
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.Simulations.Rms.rms_results import RmsResults
 from VeraGridEngine.Simulations.EMT.emt_results import EmtResults
@@ -61,8 +61,6 @@ class ResultsMain(SimulationsMain):
         self.ui.addDynamicPlotButton.clicked.connect(self.add_dynamic_plot_group)
         self.ui.deleteDynamicPlotButton.clicked.connect(self.delete_dynamic_plot_entry)
         self.ui.dynamicsTablePlotButton.clicked.connect(self.plot_dynamic_plot_entry)
-        self.ui.prepareRmsDynamicPlotsButton.clicked.connect(self.prepare_rms_dynamic_plots)
-        self.ui.prepareEmtDynamicPlotsButton.clicked.connect(self.prepare_emt_dynamic_plots)
         self.ui.saveResultsLogsButton.clicked.connect(self.save_results_logs)
 
         # tree-click
@@ -99,6 +97,17 @@ class ResultsMain(SimulationsMain):
         self.ui.dynamicsPlotsTreeView.setDragDropMode(QtWidgets.QAbstractItemView.DragDropMode.DropOnly)
         self.ui.dynamicsPlotsTreeView.setDefaultDropAction(QtCore.Qt.DropAction.CopyAction)
 
+        # Results never acts as the pre-simulation editor. Keep its Dynamics tab
+        # hidden until the selected study owns actual RMS or EMT result arrays.
+        dynamics_tab_index: int = self.ui.resultsTabWidget.indexOf(self.ui.tab_5)
+        if dynamics_tab_index >= 0:
+            self.ui.resultsTabWidget.setTabVisible(dynamics_tab_index, False)
+        else:
+            pass
+        self.dynamic_editor_workspace_session.dynamicPlotsChanged.connect(
+            self._on_external_dynamic_plot_assets_changed
+        )
+
     def results_tree_view_click(self, index: QtGui.QStandardItem):
         """
         Display the simulation results on the result's table
@@ -115,12 +124,14 @@ class ResultsMain(SimulationsMain):
                 # set the logs
                 self.current_results_logger = None
                 self.ui.resultsLogsTreeView.setModel(None)
+                self.clear_dynamic_results_view()
                 return
 
             if driver.results is None:
                 # set the logs
                 self.current_results_logger = None
                 self.ui.resultsLogsTreeView.setModel(None)
+                self.clear_dynamic_results_view()
                 return
 
             # set the logs
@@ -144,7 +155,9 @@ class ResultsMain(SimulationsMain):
                 else:
                     self._refresh_dynamic_tree_models(expand_plots_when_empty=True, clear_table=False)
 
-                self.ui.resultsTabWidget.setCurrentIndex(1)
+                self._set_dynamic_results_tab_visible(visible=True)
+                dynamics_tab_index: int = self.ui.resultsTabWidget.indexOf(self.ui.tab_5)
+                self.ui.resultsTabWidget.setCurrentIndex(dynamics_tab_index)
 
 
             elif driver.tpe == SimulationTypes.EmtDynamic_run:
@@ -158,7 +171,9 @@ class ResultsMain(SimulationsMain):
                     self.ui.dynamicsPlotsTreeView.update()
                 else:
                     self._refresh_dynamic_tree_models(expand_plots_when_empty=True, clear_table=False)
-                self.ui.resultsTabWidget.setCurrentIndex(1)
+                self._set_dynamic_results_tab_visible(visible=True)
+                dynamics_tab_index = self.ui.resultsTabWidget.indexOf(self.ui.tab_5)
+                self.ui.resultsTabWidget.setCurrentIndex(dynamics_tab_index)
 
             else:
                 # Go to the Table tab
@@ -220,6 +235,7 @@ class ResultsMain(SimulationsMain):
             # set the logs
             self.current_results_logger = None
             self.ui.resultsLogsTreeView.setModel(None)
+            self.clear_dynamic_results_view()
 
     def get_results_tree_study_type(self, item: QtGui.QStandardItem | None) -> SimulationTypes | None:
         """
@@ -289,7 +305,16 @@ class ResultsMain(SimulationsMain):
                     index=source_index
                 )
                 if parameter_entry is not None:
-                    self.dynamic_results_handler.plot_parameter_entry(entry=parameter_entry)
+                    parameter_was_plotted: bool = self.dynamic_results_handler.plot_parameter_entry(
+                        entry=parameter_entry
+                    )
+                    if parameter_was_plotted:
+                        pass
+                    else:
+                        warning_msg(
+                            self.tr("The selected parameter has no numerical value in these dynamic results."),
+                            self.tr("Dynamic parameter unavailable"),
+                        )
                     return None
                 else:
                     pass
@@ -484,6 +509,7 @@ class ResultsMain(SimulationsMain):
                                                                                    new_name=new_name)
                     if renamed:
                         self.ui.dynamicsPlotsTreeView.update()
+                        self._notify_current_dynamic_plot_assets_changed()
                     else:
                         self.show_warning_toast(self.tr("The plot group name is empty or already exists."))
                 else:
@@ -533,6 +559,7 @@ class ResultsMain(SimulationsMain):
                     )
                     if renamed:
                         self.ui.dynamicsPlotsTreeView.update()
+                        self._notify_current_dynamic_plot_assets_changed()
                     else:
                         self.show_warning_toast(self.tr("The variable name is empty or could not be changed."))
                 else:
@@ -594,7 +621,7 @@ class ResultsMain(SimulationsMain):
             layout.addWidget(mode_combo)
             layout.addWidget(buttons)
             try:
-                accepted: bool = dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted
+                accepted: bool = exec_dialog_safely(dialog=dialog) == QtWidgets.QDialog.DialogCode.Accepted
                 if accepted:
                     group_name: str = name_edit.text()
                     selected_mode_data: object = mode_combo.currentData()
@@ -606,6 +633,7 @@ class ResultsMain(SimulationsMain):
                     created: bool = self.dynamic_results_handler.create_plot_group(name=group_name, mode=selected_mode)
                     if created:
                         self.ui.dynamicsPlotsTreeView.expandAll()
+                        self._notify_current_dynamic_plot_assets_changed()
                     else:
                         self.show_warning_toast(self.tr("The plot group name is empty or already exists."))
                 else:
@@ -627,6 +655,7 @@ class ResultsMain(SimulationsMain):
                 deleted: bool = self.dynamic_results_handler.delete_plot_entry_from_index(index=selected_indexes[0])
                 if deleted:
                     self.ui.dynamicsPlotsTreeView.update()
+                    self._notify_current_dynamic_plot_assets_changed()
                 else:
                     self.show_warning_toast(self.tr("The selected dynamic plot entry could not be deleted."))
             else:
@@ -697,6 +726,9 @@ class ResultsMain(SimulationsMain):
             handler.dialog_parent = self
             self.dynamic_results_handlers[study_type] = handler
             handler.get_plots_model().rowsInserted.connect(self.expand_dynamic_plots_tree)
+            handler.get_plots_model().plotDefinitionsChanged.connect(
+                self._notify_current_dynamic_plot_assets_changed
+            )
             return handler
 
         elif type(handler.results) == type(results):
@@ -714,43 +746,63 @@ class ResultsMain(SimulationsMain):
             handler.dialog_parent = self
             self.dynamic_results_handlers[study_type] = handler
             handler.get_plots_model().rowsInserted.connect(self.expand_dynamic_plots_tree)
+            handler.get_plots_model().plotDefinitionsChanged.connect(
+                self._notify_current_dynamic_plot_assets_changed
+            )
             return handler
 
-    def _show_pre_simulation_dynamic_plot_editor(self, simulation_type: PlotSimulationType) -> None:
-        """
-        Open the dynamic plot editor for one simulation family without results.
+    def _set_dynamic_results_tab_visible(self, visible: bool) -> None:
+        """Show or hide the result-only Dynamics tab.
 
-        :param simulation_type: Simulation family identifier.
-        :return: Nothing.
+        :param visible: Whether actual dynamic results are currently available.
+        :return: None.
         """
-        handler: DynamicsResultsHandler = DynamicsResultsHandler(
-            results=None,
-            circuit=self.circuit,
-            simulation_type=simulation_type,
-            dialog_parent=self,
-        )
-        self.dynamic_results_handler = handler
+        dynamics_tab_index: int = self.ui.resultsTabWidget.indexOf(self.ui.tab_5)
+        if dynamics_tab_index >= 0:
+            self.ui.resultsTabWidget.setTabVisible(dynamics_tab_index, visible)
+        else:
+            pass
 
-        # The same Dynamics tab is reused in pre-simulation mode so the user can
-        # prepare persistent plot definitions before any runtime result arrays exist.
-        self._refresh_dynamic_tree_models(expand_plots_when_empty=True, clear_table=True)
-        self.ui.resultsTabWidget.setCurrentIndex(1)
+    def _notify_current_dynamic_plot_assets_changed(self) -> None:
+        """Broadcast plot assets changed from the active Results handler.
 
-    def prepare_rms_dynamic_plots(self) -> None:
+        :return: None.
         """
-        Open the pre-simulation RMS dynamic plot editor.
+        if self.dynamic_results_handler is not None:
+            plot_type: PlotSimulationType = self.dynamic_results_handler.plot_simulation_type
+            if plot_type == PlotSimulationType.RMS:
+                mode: DynamicSimulationMode = DynamicSimulationMode.RMS
+            else:
+                mode = DynamicSimulationMode.EMT
+            self.dynamic_editor_workspace_session.notify_dynamic_plots_changed(
+                mode=mode,
+                source=self,
+            )
+        else:
+            pass
 
-        :return: Nothing.
-        """
-        self._show_pre_simulation_dynamic_plot_editor(simulation_type=PlotSimulationType.RMS)
+    @QtCore.Slot(object, object)
+    def _on_external_dynamic_plot_assets_changed(self, mode: object, source: object) -> None:
+        """Reload Results plot groups changed in the global Plots Editor.
 
-    def prepare_emt_dynamic_plots(self) -> None:
+        :param mode: RMS or EMT family whose persistent assets changed.
+        :param source: GUI object that originated the change.
+        :return: None.
         """
-        Open the pre-simulation EMT dynamic plot editor.
-
-        :return: Nothing.
-        """
-        self._show_pre_simulation_dynamic_plot_editor(simulation_type=PlotSimulationType.EMT)
+        handler: DynamicsResultsHandler | None = self.dynamic_results_handler
+        if handler is not None and source is not self and isinstance(mode, DynamicSimulationMode):
+            handler_is_matching_family: bool = (
+                (mode == DynamicSimulationMode.RMS and handler.plot_simulation_type == PlotSimulationType.RMS)
+                or (mode == DynamicSimulationMode.EMT and handler.plot_simulation_type == PlotSimulationType.EMT)
+            )
+            if handler_is_matching_family:
+                handler.refresh_plot_definitions()
+                self.ui.dynamicsPlotsTreeView.update()
+                self.ui.dynamicsTableView.setModel(None)
+            else:
+                pass
+        else:
+            pass
 
     def plot_results(self) -> None:
         """
@@ -974,12 +1026,9 @@ class ResultsMain(SimulationsMain):
                 quit_msg = self.tr("Do you want to delete the results driver {study_name}?").format(
                     study_name=study_type.value
                 )
-                reply = QtWidgets.QMessageBox.question(self, self.tr("Message"),
-                                                       quit_msg,
-                                                       QtWidgets.QMessageBox.StandardButton.Yes,
-                                                       QtWidgets.QMessageBox.StandardButton.No)
+                reply: bool = yes_no_question(text=quit_msg, title=self.tr("Message"), parent=self)
 
-                if reply == QtWidgets.QMessageBox.StandardButton.Yes.value:
+                if reply:
                     if study_type == SimulationTypes.RmsDynamic_run or study_type == SimulationTypes.EmtDynamic_run:
                         if study_type in self.dynamic_results_handlers:
                             del self.dynamic_results_handlers[study_type]
@@ -1016,6 +1065,7 @@ class ResultsMain(SimulationsMain):
 
         # Leave the dynamics tab and go back to the normal results table tab
         self.ui.resultsTabWidget.setCurrentIndex(0)
+        self._set_dynamic_results_tab_visible(visible=False)
 
     def copy_opf_to_profiles(self):
         """

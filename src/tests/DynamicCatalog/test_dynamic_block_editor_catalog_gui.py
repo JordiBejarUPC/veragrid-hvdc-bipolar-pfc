@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import gc
 import sys
 
 import pytest
@@ -12,24 +11,28 @@ import VeraGridEngine.api as gce
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGrid.Gui.DynamicModelEditor.Editor.BlockProperties import DynamicBlockPropertiesDialog
-from VeraGrid.Gui.DynamicModelEditor.Editor.DynamicLibrary.dynamic_editor_library import DynamicEditorLibrary
+from VeraGrid.Gui.DynamicModelEditor.Editor.DynamicLibrary.dynamic_editor_library import (
+    DynamicEditorLibrary,
+    LibraryDeviceTemplateSpec,
+    get_dynamic_library_international_standard_descriptors,
+    get_dynamic_library_procedural_descriptors,
+)
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagramNode
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Templates.BasicBlockCatalog import BasicBlockTemplateDescriptor
 from VeraGridEngine.Templates.BasicBlockCatalog import get_basic_block_catalog_descriptor_by_key
 from VeraGridEngine.Templates.ProceduralLogicCatalog import (
     ProceduralBlockTemplateDescriptor,
-    get_procedural_block_template_descriptors,
 )
 from VeraGridEngine.Templates.InternationalStandardsCatalog import (
     InternationalStandardTemplateDescriptor,
-    get_international_standard_template_descriptors,
 )
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.enumerations import BlockType
 from VeraGridEngine.enumerations import DynamicSimulationMode
 from VeraGridEngine.enumerations import DeviceType
+from VeraGridEngine.enumerations import InternationalStandardModel
 from VeraGridEngine.enumerations import VarPowerFlowReferenceType
 
 pytestmark = pytest.mark.filterwarnings("error")
@@ -136,12 +139,9 @@ def _select_catalog_test_color() -> QtGui.QColor:
 
 def _collect_pending_resources() -> None:
     """
-    Flush any leaked resources from earlier tests before this GUI test runs.
+    Keep the test hook available without invoking Python's garbage collector.
     """
-
-    for generation in (0, 1, 2):
-        gc.collect(generation=generation)
-
+    return None
 
 def _find_index_by_label(model: QtCore.QAbstractItemModel,
                          label: str,
@@ -184,6 +184,30 @@ def _collect_leaf_labels(model: QtCore.QAbstractItemModel,
             labels.extend(_collect_leaf_labels(model, index))
 
     return labels
+
+
+def _collect_leaf_payloads(
+        model: QtCore.QAbstractItemModel,
+        payload_role: int,
+        parent: QtCore.QModelIndex = QtCore.QModelIndex(),
+) -> list[object]:
+    """Collect every typed leaf payload below one model index.
+
+    :param model: Tree model being inspected.
+    :param payload_role: Item-data role containing the Library payload.
+    :param parent: Root below which leaves are collected.
+    :return: Ordered leaf payloads.
+    """
+    payloads: list[object] = list()
+    row: int
+    for row in range(model.rowCount(parent)):
+        index: QtCore.QModelIndex = model.index(row, 0, parent)
+        if model.rowCount(index) == 0:
+            payload: object = model.data(index, payload_role)
+            payloads.append(payload)
+        else:
+            payloads.extend(_collect_leaf_payloads(model, payload_role, index))
+    return payloads
 
 
 def _count_descriptor_leaves(editor: DynamicBlockEditorGUI,
@@ -392,7 +416,7 @@ def test_emt_editor_exposes_basic_block_catalog_under_basic() -> None:
     _assert_index_has_icon(const_index)
     assert (
         source_model.data(const_index.siblingAtColumn(1), QtCore.Qt.ItemDataRole.DisplayRole)
-        == "Native mathematical block"
+        == "Produces a configurable constant signal"
     )
     assert moving_average_index.isValid()
     _assert_index_has_icon(moving_average_index)
@@ -490,7 +514,7 @@ def test_proxy_drag_payload_materializes_catalog_template() -> None:
 
 
 @pytest.mark.parametrize("mode", (DynamicSimulationMode.RMS, DynamicSimulationMode.EMT))
-def test_procedural_logic_branch_exposes_every_engine_descriptor(
+def test_procedural_logic_branch_exposes_every_library_descriptor(
         mode: DynamicSimulationMode,
 ) -> None:
     """RMS and EMT libraries must expose the same native procedural primitives.
@@ -505,7 +529,7 @@ def test_procedural_logic_branch_exposes_every_engine_descriptor(
     )
     assert procedural_root.isValid()
     descriptor: ProceduralBlockTemplateDescriptor
-    for descriptor in get_procedural_block_template_descriptors():
+    for descriptor in get_dynamic_library_procedural_descriptors():
         source_index: QtCore.QModelIndex = _find_index_by_label(
             editor.library.library_model,
             descriptor.display_label,
@@ -527,7 +551,7 @@ def test_procedural_library_double_click_materializes_canvas_block() -> None:
     """
     editor: DynamicBlockEditorGUI = _build_editor(DynamicSimulationMode.EMT)
     descriptor: ProceduralBlockTemplateDescriptor = list(
-        get_procedural_block_template_descriptors()
+        get_dynamic_library_procedural_descriptors()
     )[0]
     procedural_root: QtCore.QModelIndex = _find_index_by_label(
         editor.library.library_model,
@@ -555,44 +579,66 @@ def test_procedural_library_double_click_materializes_canvas_block() -> None:
 
 
 def test_rms_library_exposes_every_international_standard_descriptor() -> None:
-    """Expose every categorized international-standard leaf only in RMS mode.
+    """Place every standard exactly once in Devices or categorized Controls.
 
     :return: None.
     """
-    rms_editor: DynamicBlockEditorGUI = _build_editor(DynamicSimulationMode.RMS)
-    standards_root: QtCore.QModelIndex = _find_index_by_label(
-        rms_editor.library.library_model,
-        "International standards",
-    )
-    assert standards_root.isValid()
-    standards_proxy_root: QtCore.QModelIndex = rms_editor.library_proxy_model.mapFromSource(
-        standards_root
-    )
-    assert rms_editor.ui.libraryTreeView.isExpanded(standards_proxy_root)
-
-    category_row: int
-    for category_row in range(rms_editor.library_proxy_model.rowCount(standards_proxy_root)):
-        category_proxy_index: QtCore.QModelIndex = rms_editor.library_proxy_model.index(
-            category_row,
-            0,
-            standards_proxy_root,
+    collected_models: list[InternationalStandardModel] = list()
+    device_type: DeviceType
+    for device_type in (
+            DeviceType.GeneratorDevice,
+            DeviceType.LoadDevice,
+            DeviceType.BatteryDevice,
+    ):
+        rms_library: DynamicEditorLibrary = DynamicEditorLibrary(
+            api_object=_ApiStub(device_type=device_type),
+            mode=DynamicSimulationMode.RMS,
+            templates_list=list(),
         )
-        assert not rms_editor.ui.libraryTreeView.isExpanded(category_proxy_index)
-
-    descriptor: InternationalStandardTemplateDescriptor
-    for descriptor in get_international_standard_template_descriptors():
-        source_index: QtCore.QModelIndex = _find_index_by_label(
-            rms_editor.library.library_model,
-            descriptor.display_label,
-            standards_root,
+        devices_root: QtCore.QModelIndex = _find_index_by_label(
+            rms_library.library_model,
+            "Devices",
         )
-        assert source_index.isValid(), descriptor.display_label
-        payload: object = source_index.data(rms_editor.block_role)
-        assert isinstance(payload, InternationalStandardTemplateDescriptor)
-        assert payload.model == descriptor.model
+        assert devices_root.isValid()
+        device_payload: object
+        for device_payload in _collect_leaf_payloads(
+                rms_library.library_model,
+                rms_library.block_role,
+                devices_root,
+        ):
+            if isinstance(device_payload, LibraryDeviceTemplateSpec) and isinstance(
+                    device_payload.source,
+                    InternationalStandardTemplateDescriptor,
+            ):
+                collected_models.append(device_payload.source.model)
+            else:
+                pass
 
-    rms_editor.has_unapplied_changes = False
-    rms_editor.close()
+        if device_type == DeviceType.GeneratorDevice:
+            controls_root: QtCore.QModelIndex = _find_index_by_label(
+                rms_library.library_model,
+                "Controls",
+            )
+            assert controls_root.isValid()
+            control_payload: object
+            for control_payload in _collect_leaf_payloads(
+                    rms_library.library_model,
+                    rms_library.block_role,
+                    controls_root,
+            ):
+                if isinstance(control_payload, InternationalStandardTemplateDescriptor):
+                    collected_models.append(control_payload.model)
+                else:
+                    pass
+        else:
+            pass
+
+    expected_models: list[InternationalStandardModel] = list(
+        descriptor.model
+        for descriptor in get_dynamic_library_international_standard_descriptors()
+    )
+    assert len(collected_models) == len(set(collected_models))
+    assert set(collected_models) == set(expected_models)
 
     emt_editor: DynamicBlockEditorGUI = _build_editor(DynamicSimulationMode.EMT)
     emt_standards_root: QtCore.QModelIndex = _find_index_by_label(
@@ -617,9 +663,9 @@ def test_controls_removed_from_catalogue_remain_in_dynamic_library() -> None:
     )
     generator_labels: set[str] = set(_collect_leaf_labels(generator_library.library_model))
     expected_generator_controls: set[str] = set((
-        "Pll transformer",
-        "Pi current controller",
-        "Pi power controller",
+        "PLL transformer",
+        "PI current controller",
+        "PI power controller",
         "Governor",
         "Stabilizer",
         "Exciter",
@@ -632,7 +678,7 @@ def test_controls_removed_from_catalogue_remain_in_dynamic_library() -> None:
         templates_list=list(),
     )
     vsc_labels: set[str] = set(_collect_leaf_labels(vsc_library.library_model))
-    assert "Gfl converter" in vsc_labels
+    assert "GFL converter" in vsc_labels
     application.processEvents()
 
 
@@ -641,25 +687,30 @@ def test_international_standard_library_payload_materializes_canvas_block() -> N
 
     :return: None.
     """
-    editor: DynamicBlockEditorGUI = _build_editor(DynamicSimulationMode.RMS)
+    editor: DynamicBlockEditorGUI = _build_editor(
+        DynamicSimulationMode.RMS,
+        api_object=_ApiStub(device_type=DeviceType.GeneratorDevice),
+    )
     descriptor: InternationalStandardTemplateDescriptor = list(
-        get_international_standard_template_descriptors()
+        get_dynamic_library_international_standard_descriptors()
     )[0]
-    standards_root: QtCore.QModelIndex = _find_index_by_label(
+    devices_root: QtCore.QModelIndex = _find_index_by_label(
         editor.library.library_model,
-        "International standards",
+        "Devices",
     )
     source_index: QtCore.QModelIndex = _find_index_by_label(
         editor.library.library_model,
         descriptor.display_label,
-        standards_root,
+        devices_root,
     )
     proxy_index: QtCore.QModelIndex = editor.library_proxy_model.mapFromSource(source_index)
     mime_data: QtCore.QMimeData = editor.library_proxy_model.mimeData(list((proxy_index,)))
     payload: object = editor.get_library_payload_from_mime_data(mime_data)
     children_before: int = len(editor.main_block.children)
 
-    assert isinstance(payload, InternationalStandardTemplateDescriptor)
+    assert isinstance(payload, LibraryDeviceTemplateSpec)
+    assert isinstance(payload.source, InternationalStandardTemplateDescriptor)
+    assert payload.source.model == descriptor.model
     block_item: object = editor.create_library_payload_item(payload, 10.0, 20.0)
     assert isinstance(block_item, graph.GenericBlockItem)
     assert len(editor.main_block.children) == children_before + 1
@@ -1014,21 +1065,42 @@ def test_parameter_modal_separates_runtime_modes_for_pulse_block() -> None:
 
 
 def test_line_emt_editor_exposes_jmarti_device_block() -> None:
-    circuit = gce.MultiCircuit(Sbase=25.0, fbase=60.0)
-    bus0 = gce.Bus(name="BusLineDevice0", Vnom=13.8)
-    bus1 = gce.Bus(name="BusLineDevice1", Vnom=13.8)
-    line = gce.Line(name="LineDeviceGui", bus_from=bus0, bus_to=bus1)
-    editor = _build_editor(DynamicSimulationMode.EMT, api_object=line, circuit=circuit)
-    leaf_labels = _collect_leaf_labels(editor.library.library_model)
+    """Keep every EMT line drawing exactly once below ``Devices``.
 
-    assert "Emt pi line" in leaf_labels
-    assert "Emt Bergeron line" in leaf_labels
-    assert "Emt JMarti line" in leaf_labels
+    :return: None.
+    """
+    circuit: gce.MultiCircuit = gce.MultiCircuit(Sbase=25.0, fbase=60.0)
+    bus0: gce.Bus = gce.Bus(name="BusLineDevice0", Vnom=13.8)
+    bus1: gce.Bus = gce.Bus(name="BusLineDevice1", Vnom=13.8)
+    line: gce.Line = gce.Line(name="LineDeviceGui", bus_from=bus0, bus_to=bus1)
+    editor: DynamicBlockEditorGUI = _build_editor(
+        DynamicSimulationMode.EMT,
+        api_object=line,
+        circuit=circuit,
+    )
+    devices_root: QtCore.QModelIndex = _find_index_by_label(
+        editor.library.library_model,
+        "Devices",
+    )
+    assert devices_root.isValid()
+    leaf_labels: list[str] = _collect_leaf_labels(
+        editor.library.library_model,
+        devices_root,
+    )
+
+    expected_line_labels: tuple[str, ...] = (
+        "PI line (ABC)",
+        "Bergeron line (ABC)",
+        "JMarti line",
+    )
+    expected_label: str
+    for expected_label in expected_line_labels:
+        assert leaf_labels.count(expected_label) == 1
 
     editor.has_unapplied_changes = False
     editor.close()
 
-#
+
 def test_ground_emt_block_is_available_from_library() -> None:
     editor = _build_editor(DynamicSimulationMode.EMT)
     block_item = editor.create_library_payload_item(BlockType.GROUND_EMT, 10.0, 20.0)

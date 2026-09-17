@@ -54,7 +54,7 @@ from VeraGrid.Gui.Diagrams.MapWidget.Substation.substation_graphic_item import S
 from VeraGrid.Gui.ShortCircuitEditor.short_circuit_selector import ShortCircuitSelector
 from VeraGrid.Gui.general_dialogues import (CheckListDialogue, StartEndSelectionDialogue,
                                             InputNumberDialogue)
-from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely
+from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, exec_dialog_safely
 
 ALL_EDITORS = Union[SchematicWidget, GridMapWidget, BaseDiagramWidget]
 ALL_EDITORS_NONE = Union[None, SchematicWidget, GridMapWidget]
@@ -466,13 +466,13 @@ class DiagramsMain(CompiledArraysMain):
 
                 # if the ask, checkbox is checked, then ask
                 if self.ui.ask_before_appliying_layout_checkBox.isChecked():
-                    reply = QtWidgets.QMessageBox.question(self,
-                                                           self.tr("Message"),
-                                                           self.tr("Are you sure that you want to try an automatic layout?"),
-                                                           QtWidgets.QMessageBox.StandardButton.Yes,
-                                                           QtWidgets.QMessageBox.StandardButton.No)
+                    reply: bool = yes_no_question(
+                        text=self.tr("Are you sure that you want to try an automatic layout?"),
+                        title=self.tr("Message"),
+                        parent=self,
+                    )
 
-                    if reply == QtWidgets.QMessageBox.StandardButton.Yes.value:
+                    if reply:
                         do_it = True
                     else:
                         do_it = False
@@ -605,7 +605,7 @@ class DiagramsMain(CompiledArraysMain):
 
                 start_end_dialogue_window.setModal(True)
                 try:
-                    start_end_dialogue_window.exec()
+                    exec_dialog_safely(dialog=start_end_dialogue_window)
                     is_accepted: bool = start_end_dialogue_window.is_accepted
                     start_value: int = start_end_dialogue_window.start_value
                     end_value: int = start_end_dialogue_window.end_value
@@ -2564,7 +2564,7 @@ class DiagramsMain(CompiledArraysMain):
                                           title=self.tr('Vicinity diagram'),
                                           text=self.tr('Select the expansion level'))
 
-                if dlg.exec():
+                if exec_dialog_safely(dialog=dlg):
                     diagram = make_vicinity_diagram(circuit=self.circuit,
                                                     root_bus=root_bus,
                                                     max_level=dlg.value)
@@ -2598,7 +2598,7 @@ class DiagramsMain(CompiledArraysMain):
                                       bus_name=root_bus.name,
                                   ))
 
-        if dlg.exec():
+        if exec_dialog_safely(dialog=dlg):
             diagram = make_vicinity_diagram(circuit=self.circuit,
                                             root_bus=root_bus,
                                             max_level=dlg.value)
@@ -2736,7 +2736,7 @@ class DiagramsMain(CompiledArraysMain):
             )
 
             try:
-                new_se_dlg.exec()
+                exec_dialog_safely(dialog=new_se_dlg)
                 show_substations: bool = new_se_dlg.selected(DeviceType.SubstationDevice.value)
                 show_lines: bool = new_se_dlg.selected(DeviceType.LineDevice.value)
                 show_dc_lines: bool = new_se_dlg.selected(DeviceType.DCLineDevice.value)
@@ -3234,7 +3234,7 @@ class DiagramsMain(CompiledArraysMain):
                                                                                group_text=group_text)
                 contingency_checks_diag.setModal(True)
                 try:
-                    contingency_checks_diag.exec()
+                    exec_dialog_safely(dialog=contingency_checks_diag)
                     is_accepted: bool = contingency_checks_diag.is_accepted
                     selected_indices: list[int] = list(contingency_checks_diag.selected_indices)
                     selected_group_text: str = contingency_checks_diag.get_group_text()
@@ -3281,7 +3281,7 @@ class DiagramsMain(CompiledArraysMain):
                                                                       group_text=group_text)
                 ra_checks_diag.setModal(True)
                 try:
-                    ra_checks_diag.exec()
+                    exec_dialog_safely(dialog=ra_checks_diag)
                     is_accepted: bool = ra_checks_diag.is_accepted
                     selected_indices: list[int] = list(ra_checks_diag.selected_indices)
                     selected_group_text: str = ra_checks_diag.get_group_text()
@@ -3331,7 +3331,7 @@ class DiagramsMain(CompiledArraysMain):
                                                                               group_text=group_name)
                 investment_checks_diag.setModal(True)
                 try:
-                    investment_checks_diag.exec()
+                    exec_dialog_safely(dialog=investment_checks_diag)
                     is_accepted: bool = investment_checks_diag.is_accepted
                     selected_indices: list[int] = list(investment_checks_diag.selected_indices)
                     selected_group_text: str = investment_checks_diag.get_group_text()
@@ -3377,9 +3377,8 @@ class DiagramsMain(CompiledArraysMain):
     def _open_dynamic_events_editor(self, mode: DynamicSimulationMode) -> None:
         """Open the requested events content in the unified dynamic workspace.
 
-        Exactly one selected device opens directly in an RMS or EMT events tab.
-        Zero or multiple selections expose the same workspace device tree so
-        the user can select one of its four model and events actions.
+        Events are circuit-wide assets, so the selected diagram elements do not
+        constrain the editor contents or determine its tab identity.
 
         :param mode: RMS or EMT family preferred by the triggering action.
         :return: None.
@@ -3387,24 +3386,11 @@ class DiagramsMain(CompiledArraysMain):
         if not self.circuit.valid_for_simulation():
             return
         else:
-            selected_devices: List[ALL_DEV_TYPES] = self.get_selected_devices()
-        if len(selected_devices) == 1 and isinstance(selected_devices[0], EditableDevice):
-            initial_device: EditableDevice | None = selected_devices[0]
-        else:
-            initial_device = None
-
-        if initial_device is not None:
             self.open_dynamic_events(
-                api_object=initial_device,
                 circuit=self.circuit,
                 mode=mode,
                 show_tree=False,
             )
-        else:
-            # Without one unambiguous diagram target, expose the unified device
-            # tree. Its four context actions let the user choose both model or
-            # events content and the RMS or EMT family.
-            self.display_dynamic_models_editor()
 
     def add_short_circuit_events(self):
         """
@@ -3420,7 +3406,7 @@ class DiagramsMain(CompiledArraysMain):
 
                 sc_selector_dialogue: ShortCircuitSelector = ShortCircuitSelector()
                 try:
-                    sc_selector_dialogue.exec()
+                    exec_dialog_safely(dialog=sc_selector_dialogue)
 
                     if sc_selector_dialogue.was_accepted:
 
@@ -3458,7 +3444,7 @@ class DiagramsMain(CompiledArraysMain):
                                                                           parent=self)
             object_select_window.setModal(True)
             try:
-                object_select_window.exec()
+                exec_dialog_safely(dialog=object_select_window)
                 selected_object: object | None = object_select_window.selected_object
             finally:
                 delete_dialog_safely(dialog=object_select_window)
@@ -3479,7 +3465,7 @@ class DiagramsMain(CompiledArraysMain):
                                                       parent=self)
             object_select_window.setModal(True)
             try:
-                object_select_window.exec()
+                exec_dialog_safely(dialog=object_select_window)
                 selected_object = object_select_window.selected_object
             finally:
                 delete_dialog_safely(dialog=object_select_window)
@@ -3499,7 +3485,7 @@ class DiagramsMain(CompiledArraysMain):
                                                       parent=self)
             object_select_window.setModal(True)
             try:
-                object_select_window.exec()
+                exec_dialog_safely(dialog=object_select_window)
                 selected_object = object_select_window.selected_object
             finally:
                 delete_dialog_safely(dialog=object_select_window)
@@ -3526,7 +3512,7 @@ class DiagramsMain(CompiledArraysMain):
                                                                   parent=self)
         object_select_window.setModal(True)
         try:
-            object_select_window.exec()
+            exec_dialog_safely(dialog=object_select_window)
             selected_object: object | None = object_select_window.selected_object
         finally:
             delete_dialog_safely(dialog=object_select_window)
@@ -3548,7 +3534,7 @@ class DiagramsMain(CompiledArraysMain):
                                                       parent=self)
             object_select_window.setModal(True)
             try:
-                object_select_window.exec()
+                exec_dialog_safely(dialog=object_select_window)
                 selected_object = object_select_window.selected_object
             finally:
                 delete_dialog_safely(dialog=object_select_window)
@@ -3566,7 +3552,7 @@ class DiagramsMain(CompiledArraysMain):
                                                       parent=self)
             object_select_window.setModal(True)
             try:
-                object_select_window.exec()
+                exec_dialog_safely(dialog=object_select_window)
                 selected_object = object_select_window.selected_object
             finally:
                 delete_dialog_safely(dialog=object_select_window)
@@ -3584,7 +3570,7 @@ class DiagramsMain(CompiledArraysMain):
                                                       parent=self)
             object_select_window.setModal(True)
             try:
-                object_select_window.exec()
+                exec_dialog_safely(dialog=object_select_window)
                 selected_object = object_select_window.selected_object
             finally:
                 delete_dialog_safely(dialog=object_select_window)
@@ -3608,7 +3594,7 @@ class DiagramsMain(CompiledArraysMain):
                                                 parent=self)
         object_select_window.setModal(True)
         try:
-            object_select_window.exec()
+            exec_dialog_safely(dialog=object_select_window)
             selected_object = object_select_window.selected_object
         finally:
             delete_dialog_safely(dialog=object_select_window)
@@ -3655,7 +3641,7 @@ class DiagramsMain(CompiledArraysMain):
                                                 parent=self)
         object_select_window.setModal(True)
         try:
-            object_select_window.exec()
+            exec_dialog_safely(dialog=object_select_window)
             selected_object = object_select_window.selected_object
         finally:
             delete_dialog_safely(dialog=object_select_window)
@@ -3946,7 +3932,7 @@ class DiagramsMain(CompiledArraysMain):
         )
 
         try:
-            select_bus_dlg.exec()
+            exec_dialog_safely(dialog=select_bus_dlg)
             selected_buses: List[dev.Bus] = select_bus_dlg.get_selected_buses()
         finally:
             delete_dialog_safely(dialog=select_bus_dlg)
@@ -4219,7 +4205,7 @@ class DiagramsMain(CompiledArraysMain):
                                       title=self.tr('Rotate diagram'),
                                       text=self.tr('Rotation angle (degrees)'))
 
-            if dlg.exec():
+            if exec_dialog_safely(dialog=dlg):
                 diagram_widget.rotate(dlg.value)
 
     def preset_1(self):

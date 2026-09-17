@@ -594,10 +594,6 @@ class Ui_mainWindow(object):
         icon78.addFile(u":/Icons/icons/dyn.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.actionRun_Dynamic_RMS_Simulation.setIcon(icon78)
         self.actionRun_Dynamic_RMS_Simulation.setMenuRole(QAction.MenuRole.TextHeuristicRole)
-        self.actionPrepare_RMS_Dynamic_Plots = QAction(mainWindow)
-        self.actionPrepare_RMS_Dynamic_Plots.setObjectName(u"actionPrepare_RMS_Dynamic_Plots")
-        self.actionPrepare_RMS_Dynamic_Plots.setIcon(icon78)
-        self.actionPrepare_RMS_Dynamic_Plots.setMenuRole(QAction.MenuRole.TextHeuristicRole)
         self.actionRun_Small_Signal_RMS_Simulation = QAction(mainWindow)
         self.actionRun_Small_Signal_RMS_Simulation.setObjectName(u"actionRun_Small_Signal_RMS_Simulation")
         icon79 = QIcon()
@@ -607,7 +603,7 @@ class Ui_mainWindow(object):
         self.actionAdd_rms_event_to_selected = QAction(mainWindow)
         self.actionAdd_rms_event_to_selected.setObjectName(u"actionAdd_rms_event_to_selected")
         icon80 = QIcon()
-        icon80.addFile(u":/Icons/icons/dyn_add.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        icon80.addFile(u":/Icons/icons/dyn_edit.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.actionAdd_rms_event_to_selected.setIcon(icon80)
         self.actionAdd_rms_event_to_selected.setFont(font1)
         self.actionAdd_rms_event_to_selected.setMenuRole(QAction.MenuRole.NoRole)
@@ -725,10 +721,6 @@ class Ui_mainWindow(object):
         icon97.addFile(u":/Icons/icons/dyn_emt.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.actionRun_Dynamic_EMT_Simulation.setIcon(icon97)
         self.actionRun_Dynamic_EMT_Simulation.setMenuRole(QAction.MenuRole.TextHeuristicRole)
-        self.actionPrepare_EMT_Dynamic_Plots = QAction(mainWindow)
-        self.actionPrepare_EMT_Dynamic_Plots.setObjectName(u"actionPrepare_EMT_Dynamic_Plots")
-        self.actionPrepare_EMT_Dynamic_Plots.setIcon(icon97)
-        self.actionPrepare_EMT_Dynamic_Plots.setMenuRole(QAction.MenuRole.TextHeuristicRole)
         self.actionRun_Small_Signal_EMT_Simulation = QAction(mainWindow)
         self.actionRun_Small_Signal_EMT_Simulation.setObjectName(u"actionRun_Small_Signal_EMT_Simulation")
         icon98 = QIcon()
@@ -755,7 +747,7 @@ class Ui_mainWindow(object):
         self.actionAdd_emt_event_to_selected = QAction(mainWindow)
         self.actionAdd_emt_event_to_selected.setObjectName(u"actionAdd_emt_event_to_selected")
         icon101 = QIcon()
-        icon101.addFile(u":/Icons/icons/dyn_emt_add.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        icon101.addFile(u":/Icons/icons/dyn_emt_edit.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.actionAdd_emt_event_to_selected.setIcon(icon101)
         self.actionSet_model_x_y_based_on_lat_lon = QAction(mainWindow)
         self.actionSet_model_x_y_based_on_lat_lon.setObjectName(u"actionSet_model_x_y_based_on_lat_lon")
@@ -1954,11 +1946,15 @@ class Ui_mainWindow(object):
         self.horizontalLayout_2.setContentsMargins(0, 0, 0, 0)
         self.search_results_lineEdit = QLineEdit(self.frame_8)
         self.search_results_lineEdit.setObjectName(u"search_results_lineEdit")
+        self.search_results_lineEdit.setMinimumSize(QSize(240, 0))
+        self.search_results_lineEdit.setMaximumSize(QSize(240, 16777215))
 
         self.horizontalLayout_2.addWidget(self.search_results_lineEdit)
 
         self.search_results_Button = QPushButton(self.frame_8)
         self.search_results_Button.setObjectName(u"search_results_Button")
+        self.search_results_Button.setMinimumSize(QSize(32, 0))
+        self.search_results_Button.setMaximumSize(QSize(32, 16777215))
         self.search_results_Button.setIcon(icon61)
         self.search_results_Button.setFlat(True)
 
@@ -2064,27 +2060,19 @@ class Ui_mainWindow(object):
         self.horizontalLayout_15.setContentsMargins(6, 0, 6, 0)
         self.search_dynamic_objects_lineEdit = QLineEdit(self.frame_3)
         self.search_dynamic_objects_lineEdit.setObjectName(u"search_dynamic_objects_lineEdit")
+        self.search_dynamic_objects_lineEdit.setMinimumSize(QSize(240, 0))
         self.search_dynamic_objects_lineEdit.setMaximumSize(QSize(240, 16777215))
 
         self.horizontalLayout_15.addWidget(self.search_dynamic_objects_lineEdit)
 
         self.search_dynamic_objects_Button = QPushButton(self.frame_3)
         self.search_dynamic_objects_Button.setObjectName(u"search_dynamic_objects_Button")
+        self.search_dynamic_objects_Button.setMinimumSize(QSize(32, 0))
+        self.search_dynamic_objects_Button.setMaximumSize(QSize(32, 16777215))
         self.search_dynamic_objects_Button.setIcon(icon61)
+        self.search_dynamic_objects_Button.setFlat(True)
 
         self.horizontalLayout_15.addWidget(self.search_dynamic_objects_Button)
-
-        self.prepareRmsDynamicPlotsButton = QPushButton(self.frame_3)
-        self.prepareRmsDynamicPlotsButton.setObjectName(u"prepareRmsDynamicPlotsButton")
-        self.prepareRmsDynamicPlotsButton.setIcon(icon78)
-
-        self.horizontalLayout_15.addWidget(self.prepareRmsDynamicPlotsButton)
-
-        self.prepareEmtDynamicPlotsButton = QPushButton(self.frame_3)
-        self.prepareEmtDynamicPlotsButton.setObjectName(u"prepareEmtDynamicPlotsButton")
-        self.prepareEmtDynamicPlotsButton.setIcon(icon97)
-
-        self.horizontalLayout_15.addWidget(self.prepareEmtDynamicPlotsButton)
 
         self.horizontalSpacer_15 = QSpacerItem(248, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
@@ -4239,6 +4227,8 @@ class Ui_mainWindow(object):
 
         self.label_45 = QLabel(self.frame_113)
         self.label_45.setObjectName(u"label_45")
+        self.label_45.setMinimumSize(QSize(0, 26))
+        self.label_45.setMaximumSize(QSize(16777215, 26))
 
         self.gridLayout_32.addWidget(self.label_45, 6, 0, 1, 1)
 
@@ -4296,6 +4286,7 @@ class Ui_mainWindow(object):
         self.label_50 = QLabel(self.frame_113)
         self.label_50.setObjectName(u"label_50")
         self.label_50.setMinimumSize(QSize(0, 26))
+        self.label_50.setMaximumSize(QSize(16777215, 26))
 
         self.gridLayout_32.addWidget(self.label_50, 7, 0, 1, 1)
 
@@ -4401,7 +4392,7 @@ class Ui_mainWindow(object):
         self.emt_sss_build_type_comboBox.setObjectName(u"emt_sss_build_type_comboBox")
         self.emt_sss_build_type_comboBox.setMinimumSize(QSize(200, 0))
 
-        self.gridLayout_5.addWidget(self.emt_sss_build_type_comboBox, 12, 3, 1, 1)
+        self.gridLayout_5.addWidget(self.emt_sss_build_type_comboBox, 13, 3, 1, 1)
 
         self.emt_ss_assessment_time_spinBox = QDoubleSpinBox(self.frame_116)
         self.emt_ss_assessment_time_spinBox.setObjectName(u"emt_ss_assessment_time_spinBox")
@@ -4411,7 +4402,7 @@ class Ui_mainWindow(object):
         self.emt_ss_assessment_time_spinBox.setSingleStep(0.010000000000000)
         self.emt_ss_assessment_time_spinBox.setValue(0.000000000000000)
 
-        self.gridLayout_5.addWidget(self.emt_ss_assessment_time_spinBox, 9, 3, 1, 1)
+        self.gridLayout_5.addWidget(self.emt_ss_assessment_time_spinBox, 10, 3, 1, 1)
 
         self.emt_sim_time_spinBox = QDoubleSpinBox(self.frame_116)
         self.emt_sim_time_spinBox.setObjectName(u"emt_sim_time_spinBox")
@@ -4426,7 +4417,7 @@ class Ui_mainWindow(object):
         self.label_37 = QLabel(self.frame_116)
         self.label_37.setObjectName(u"label_37")
 
-        self.gridLayout_5.addWidget(self.label_37, 12, 0, 1, 2)
+        self.gridLayout_5.addWidget(self.label_37, 13, 0, 1, 2)
 
         self.tolerance_emt_spinBox = QSpinBox(self.frame_116)
         self.tolerance_emt_spinBox.setObjectName(u"tolerance_emt_spinBox")
@@ -4436,9 +4427,9 @@ class Ui_mainWindow(object):
 
         self.gridLayout_5.addWidget(self.tolerance_emt_spinBox, 4, 3, 1, 1)
 
-        self.verticalSpacer_26 = QSpacerItem(18, 149, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+        self.verticalSpacer_26 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
-        self.gridLayout_5.addItem(self.verticalSpacer_26, 13, 2, 1, 1)
+        self.gridLayout_5.addItem(self.verticalSpacer_26, 14, 2, 1, 1)
 
         self.label_440 = QLabel(self.frame_116)
         self.label_440.setObjectName(u"label_440")
@@ -4468,12 +4459,12 @@ class Ui_mainWindow(object):
         self.emt_small_signal_modes_number_spinBox.setObjectName(u"emt_small_signal_modes_number_spinBox")
         self.emt_small_signal_modes_number_spinBox.setDecimals(0)
 
-        self.gridLayout_5.addWidget(self.emt_small_signal_modes_number_spinBox, 11, 3, 1, 1)
+        self.gridLayout_5.addWidget(self.emt_small_signal_modes_number_spinBox, 12, 3, 1, 1)
 
         self.label_60 = QLabel(self.frame_116)
         self.label_60.setObjectName(u"label_60")
 
-        self.gridLayout_5.addWidget(self.label_60, 10, 0, 1, 2)
+        self.gridLayout_5.addWidget(self.label_60, 11, 0, 1, 2)
 
         self.label_438 = QLabel(self.frame_116)
         self.label_438.setObjectName(u"label_438")
@@ -4501,22 +4492,29 @@ class Ui_mainWindow(object):
         self.line_66.setLineWidth(4)
         self.line_66.setFrameShape(QFrame.Shape.HLine)
 
-        self.gridLayout_5.addWidget(self.line_66, 8, 0, 1, 4)
+        self.gridLayout_5.addWidget(self.line_66, 9, 0, 1, 4)
 
         self.label_437 = QLabel(self.frame_116)
         self.label_437.setObjectName(u"label_437")
 
-        self.gridLayout_5.addWidget(self.label_437, 9, 0, 1, 3)
+        self.gridLayout_5.addWidget(self.label_437, 10, 0, 1, 3)
 
         self.label_436 = QLabel(self.frame_116)
         self.label_436.setObjectName(u"label_436")
 
         self.gridLayout_5.addWidget(self.label_436, 6, 0, 1, 2)
 
+        self.emt_small_signal_alignment_label = QLabel(self.frame_116)
+        self.emt_small_signal_alignment_label.setObjectName(u"emt_small_signal_alignment_label")
+        self.emt_small_signal_alignment_label.setMinimumSize(QSize(0, 26))
+        self.emt_small_signal_alignment_label.setMaximumSize(QSize(16777215, 26))
+
+        self.gridLayout_5.addWidget(self.emt_small_signal_alignment_label, 7, 0, 1, 1)
+
         self.label_56 = QLabel(self.frame_116)
         self.label_56.setObjectName(u"label_56")
 
-        self.gridLayout_5.addWidget(self.label_56, 11, 0, 1, 1)
+        self.gridLayout_5.addWidget(self.label_56, 12, 0, 1, 1)
 
         self.label_431 = QLabel(self.frame_116)
         self.label_431.setObjectName(u"label_431")
@@ -4528,7 +4526,7 @@ class Ui_mainWindow(object):
         self.label_431.setFont(font3)
         self.label_431.setAlignment(Qt.AlignmentFlag.AlignBottom|Qt.AlignmentFlag.AlignLeading|Qt.AlignmentFlag.AlignLeft)
 
-        self.gridLayout_5.addWidget(self.label_431, 7, 1, 1, 3)
+        self.gridLayout_5.addWidget(self.label_431, 8, 1, 1, 3)
 
         self.label_430 = QLabel(self.frame_116)
         self.label_430.setObjectName(u"label_430")
@@ -4539,7 +4537,7 @@ class Ui_mainWindow(object):
         self.label_430.setPixmap(QPixmap(u":/Icons/icons/ss_emt_icon.png"))
         self.label_430.setScaledContents(True)
 
-        self.gridLayout_5.addWidget(self.label_430, 7, 0, 1, 1)
+        self.gridLayout_5.addWidget(self.label_430, 8, 0, 1, 1)
 
         self.emt_problem_comboBox = QComboBox(self.frame_116)
         self.emt_problem_comboBox.addItem("")
@@ -4553,7 +4551,7 @@ class Ui_mainWindow(object):
         self.emt_sss_target_period_spinBox.setDecimals(4)
         self.emt_sss_target_period_spinBox.setSingleStep(0.010000000000000)
 
-        self.gridLayout_5.addWidget(self.emt_sss_target_period_spinBox, 10, 3, 1, 1)
+        self.gridLayout_5.addWidget(self.emt_sss_target_period_spinBox, 11, 3, 1, 1)
 
         self.emt_h_spinBox = QDoubleSpinBox(self.frame_116)
         self.emt_h_spinBox.setObjectName(u"emt_h_spinBox")
@@ -5999,10 +5997,6 @@ class Ui_mainWindow(object):
 #if QT_CONFIG(tooltip)
         self.actionRun_Dynamic_RMS_Simulation.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p><span style=\" font-weight:700;\">RMS Simulation</span></p><p>Run a dynamic RMS simulation</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
-        self.actionPrepare_RMS_Dynamic_Plots.setText(QCoreApplication.translate("mainWindow", u"Prepare RMS dynamic plots", None))
-#if QT_CONFIG(tooltip)
-        self.actionPrepare_RMS_Dynamic_Plots.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p><span style=\" font-weight:700;\">Prepare RMS dynamic plots</span></p><p>Open the RMS dynamic plot editor before running the simulation</p></body></html>", None))
-#endif // QT_CONFIG(tooltip)
         self.actionRun_Small_Signal_RMS_Simulation.setText(QCoreApplication.translate("mainWindow", u"Small-Signal RMS Simulation", None))
         self.actionRun_Small_Signal_RMS_Simulation.setIconText(QCoreApplication.translate("mainWindow", u"Small-Signal RMS Simulation", None))
 #if QT_CONFIG(tooltip)
@@ -6048,10 +6042,6 @@ class Ui_mainWindow(object):
         self.actionRun_Dynamic_EMT_Simulation.setText(QCoreApplication.translate("mainWindow", u"Dynamic EMT Simulation", None))
 #if QT_CONFIG(tooltip)
         self.actionRun_Dynamic_EMT_Simulation.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p><span style=\" font-weight:700;\">EMT Simulation</span></p><p>Run a dynamic EMT simulation</p></body></html>", None))
-#endif // QT_CONFIG(tooltip)
-        self.actionPrepare_EMT_Dynamic_Plots.setText(QCoreApplication.translate("mainWindow", u"Prepare EMT dynamic plots", None))
-#if QT_CONFIG(tooltip)
-        self.actionPrepare_EMT_Dynamic_Plots.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p><span style=\" font-weight:700;\">Prepare EMT dynamic plots</span></p><p>Open the EMT dynamic plot editor before running the simulation</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
         self.actionRun_Small_Signal_EMT_Simulation.setText(QCoreApplication.translate("mainWindow", u"Small-Signal EMT Simulation", None))
         self.actionRun_Small_Signal_EMT_Simulation.setIconText(QCoreApplication.translate("mainWindow", u"Small-Signal EMT Simulation", None))
@@ -6414,14 +6404,6 @@ class Ui_mainWindow(object):
         self.search_dynamic_objects_Button.setToolTip(QCoreApplication.translate("mainWindow", u"Smart search", None))
 #endif // QT_CONFIG(tooltip)
         self.search_dynamic_objects_Button.setText("")
-#if QT_CONFIG(tooltip)
-        self.prepareRmsDynamicPlotsButton.setToolTip(QCoreApplication.translate("mainWindow", u"Open the RMS pre-simulation dynamic plot editor", None))
-#endif // QT_CONFIG(tooltip)
-        self.prepareRmsDynamicPlotsButton.setText("")
-#if QT_CONFIG(tooltip)
-        self.prepareEmtDynamicPlotsButton.setToolTip(QCoreApplication.translate("mainWindow", u"Open the EMT pre-simulation dynamic plot editor", None))
-#endif // QT_CONFIG(tooltip)
-        self.prepareEmtDynamicPlotsButton.setText("")
 #if QT_CONFIG(tooltip)
         self.addDynamicPlotButton.setToolTip(QCoreApplication.translate("mainWindow", u"Add new plot", None))
 #endif // QT_CONFIG(tooltip)
@@ -6993,6 +6975,7 @@ class Ui_mainWindow(object):
         self.label_435.setText(QCoreApplication.translate("mainWindow", u"Simulation time", None))
         self.label_437.setText(QCoreApplication.translate("mainWindow", u"Assessment time", None))
         self.label_436.setText(QCoreApplication.translate("mainWindow", u"Time step", None))
+        self.emt_small_signal_alignment_label.setText("")
         self.label_56.setText(QCoreApplication.translate("mainWindow", u"Modes", None))
         self.label_431.setText(QCoreApplication.translate("mainWindow", u"EMT Small-Signal", None))
         self.label_430.setText("")

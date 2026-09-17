@@ -9,12 +9,25 @@ from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Templates.InternationalStandardsCatalog import (
     InternationalStandardTemplateDescriptor,
-    get_international_standard_device_template_descriptors,
-    get_international_standard_template_descriptors,
     load_international_standard_template,
+)
+from VeraGrid.Gui.DynamicModelEditor.Editor.DynamicLibrary.dynamic_editor_library import (
+    get_dynamic_library_international_standard_descriptors,
 )
 from VeraGridEngine.Templates.Rms.international_standards import InternationalStandardModel
 from VeraGridEngine.enumerations import DeviceType
+
+
+def get_library_device_standard_descriptors() -> list[InternationalStandardTemplateDescriptor]:
+    """Return standards registered as complete devices by the GUI Library.
+
+    :return: Device-compatible international-standard descriptors.
+    """
+    return list(
+        descriptor
+        for descriptor in get_dynamic_library_international_standard_descriptors()
+        if descriptor.device_type is not None
+    )
 
 
 def test_international_standards_catalog_covers_every_model_once() -> None:
@@ -23,7 +36,7 @@ def test_international_standards_catalog_covers_every_model_once() -> None:
     :return: None.
     """
     descriptors: list[InternationalStandardTemplateDescriptor] = list(
-        get_international_standard_template_descriptors()
+        get_dynamic_library_international_standard_descriptors()
     )
     catalog_models: list[InternationalStandardModel] = list(
         descriptor.model for descriptor in descriptors
@@ -47,7 +60,7 @@ def test_international_standards_catalog_paths_match_model_packages() -> None:
     assert root_python_files == set(("__init__.py",))
 
     descriptor: InternationalStandardTemplateDescriptor
-    for descriptor in get_international_standard_template_descriptors():
+    for descriptor in get_dynamic_library_international_standard_descriptors():
         model_path: Path = standards_root / Path(descriptor.module_relative_path)
         assert model_path.is_file(), descriptor.module_relative_path
         assert len(descriptor.category_path) == 1
@@ -59,7 +72,7 @@ def test_international_standard_device_catalog_excludes_control_families() -> No
     :return: None.
     """
     device_descriptors: list[InternationalStandardTemplateDescriptor] = list(
-        get_international_standard_device_template_descriptors()
+        get_library_device_standard_descriptors()
     )
     device_models: set[InternationalStandardModel] = set(
         descriptor.model for descriptor in device_descriptors
@@ -90,7 +103,7 @@ def test_international_standard_device_catalog_excludes_control_families() -> No
 
     control_descriptors: list[InternationalStandardTemplateDescriptor] = list(
         descriptor
-        for descriptor in get_international_standard_template_descriptors()
+        for descriptor in get_dynamic_library_international_standard_descriptors()
         if descriptor.model not in device_models
     )
     for descriptor in control_descriptors:
@@ -103,7 +116,7 @@ def test_international_standard_descriptor_materializes_rms_template() -> None:
     :return: None.
     """
     descriptor: InternationalStandardTemplateDescriptor = list(
-        get_international_standard_template_descriptors()
+        get_dynamic_library_international_standard_descriptors()
     )[0]
     template: RmsModelTemplate = load_international_standard_template(
         descriptor=descriptor,
@@ -138,7 +151,7 @@ def test_imported_model_interfaces_and_symbol_names_are_editor_safe() -> None:
         (InternationalStandardModel.PSS2C, 3, 1),
     )
     descriptors: list[InternationalStandardTemplateDescriptor] = list(
-        get_international_standard_template_descriptors()
+        get_dynamic_library_international_standard_descriptors()
     )
     model: InternationalStandardModel
     expected_input_count: int
@@ -180,7 +193,7 @@ def test_every_international_standard_exposes_inputs_and_outputs() -> None:
     :return: None.
     """
     descriptors: list[InternationalStandardTemplateDescriptor] = list(
-        get_international_standard_template_descriptors()
+        get_dynamic_library_international_standard_descriptors()
     )
     descriptor: InternationalStandardTemplateDescriptor
 

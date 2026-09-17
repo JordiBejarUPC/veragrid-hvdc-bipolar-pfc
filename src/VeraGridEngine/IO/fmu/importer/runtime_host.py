@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from ctypes import c_double
+from ctypes import c_double, c_uint
 import math
 import os
 from pathlib import Path
@@ -30,6 +30,7 @@ from VeraGridEngine.enumerations import FmiVersion, FmuVariableType
 
 try:
     import fmpy
+    import fmpy.fmi1
     import fmpy.fmi2
 except ModuleNotFoundError:
     fmpy = None
@@ -45,6 +46,45 @@ def _require_fmpy_module() -> Any:
         raise FmuDependencyError("FMPy is required to execute imported FMUs")
     else:
         return fmpy
+
+
+def _construct_fmi_one_runtime(
+    runtime_tpe: type,
+    guid: str,
+    model_identifier: str,
+    extracted_dir: Path,
+    instance_name: str,
+) -> Any:
+    """Construct an FMPy FMI 1 runtime while retaining native ownership.
+
+    FMPy loads the shared library before resolving every prefixed symbol. The
+    caller-visible object is therefore allocated first so a partial constructor
+    failure can still unload the library deterministically on Windows.
+
+    :param runtime_tpe: FMPy FMI 1 runtime class for the selected interface.
+    :param guid: FMI 1 GUID from inspected metadata.
+    :param model_identifier: Prefix and native-library identifier.
+    :param extracted_dir: Private staged FMU directory.
+    :param instance_name: FMI instance name.
+    :return: Fully constructed FMPy FMI 1 runtime object.
+    """
+
+    runtime: Any = runtime_tpe.__new__(runtime_tpe)
+    try:
+        runtime_tpe.__init__(
+            runtime,
+            guid=guid,
+            modelIdentifier=model_identifier,
+            unzipDirectory=str(extracted_dir),
+            instanceName=instance_name,
+        )
+    except Exception:
+        try:
+            runtime.freeLibrary()
+        except (AttributeError, OSError):
+            pass
+        raise
+    return runtime
 
 
 def _construct_fmi_two_runtime(
@@ -90,6 +130,54 @@ def _construct_fmi_two_runtime(
             pass
         raise
     return runtime
+
+
+class FmiOneEventUpdate:
+    """Store one complete FMI 1 initialization or event-update result.
+
+    :param iteration_converged: Whether event iteration has converged.
+    :param state_value_references_changed: Whether state identities changed.
+    :param state_values_changed: Whether continuous-state values changed.
+    :param terminate_simulation: Whether the FMU requested termination.
+    :param next_event_time: Raw next event time when an upcoming event exists.
+    """
+
+    __slots__ = (
+        "iteration_converged",
+        "state_value_references_changed",
+        "state_values_changed",
+        "terminate_simulation",
+        "next_event_time",
+    )
+
+    def __init__(
+        self,
+        iteration_converged: bool,
+        state_value_references_changed: bool,
+        state_values_changed: bool,
+        terminate_simulation: bool,
+        next_event_time: float | None,
+    ) -> None:
+        """Normalize all lifecycle-relevant FMI 1 event information.
+
+        :param iteration_converged: Native iteration-converged flag.
+        :param state_value_references_changed: Native reference-change flag.
+        :param state_values_changed: Native state-value-change flag.
+        :param terminate_simulation: Native termination flag.
+        :param next_event_time: Native next time event, or ``None``.
+        :return: None.
+        """
+
+        self.iteration_converged: bool = bool(iteration_converged)
+        self.state_value_references_changed: bool = bool(
+            state_value_references_changed
+        )
+        self.state_values_changed: bool = bool(state_values_changed)
+        self.terminate_simulation: bool = bool(terminate_simulation)
+        if next_event_time is None:
+            self.next_event_time: float | None = None
+        else:
+            self.next_event_time = float(next_event_time)
 
 
 class FmiTwoEventUpdate:
@@ -212,17 +300,17 @@ class FmuRuntimeHost:
         start_values: dict[str, float] | None = None,
         integer_start_variable_names: tuple[str, ...] = tuple(),
         integer_start_values: tuple[int, ...] = tuple(),
-    ) -> None:
+    ) -> FmiOneEventUpdate | None:
         """Initialize the FMI runtime after instantiation.
 
         :param start_time: FMU start time.
         :param stop_time: Optional FMU stop time.
         :param start_values: Optional scalar-variable start values.
-        :param integer_start_variable_names: Ordered FMI 2 Integer variables to
+        :param integer_start_variable_names: Ordered FMI 1/2 Integer variables to
             initialize.
         :param integer_start_values: Ordered signed Int32 values paired with
             ``integer_start_variable_names``.
-        :return: None.
+        :return: FMI 1 ME initialization event information, otherwise ``None``.
         """
 
         tolerance: float | None = self.config.relative_tolerance
@@ -235,30 +323,69 @@ class FmuRuntimeHost:
             )
         )
 
-        # The FMI initialization phase is where initial parameters and inputs must be injected.
+        initialization_update: FmiOneEventUpdate | None = None
+        # FMI 1 and FMI 2 use different initialization state machines. Values
+        # are still applied through the shared typed scalar accessors.
         try:
-            self.runtime.setupExperiment(
-                tolerance=tolerance,
-                startTime=start_time,
-                stopTime=stop_time,
-            )
-            self.runtime.enterInitializationMode()
-            if start_values is not None:
-                if len(start_values) > 0:
-                    self.set_real(start_values)
+            if self.metadata.fmi_version_family == FmiVersion.FMI_1_0:
+                if self.mode == FmuInterfaceMode.MODEL_EXCHANGE:
+                    self.runtime.setTime(start_time)
                 else:
                     pass
+                if start_values is not None:
+                    if len(start_values) > 0:
+                        self.set_real(start_values)
+                    else:
+                        pass
+                else:
+                    pass
+                if len(integer_value_references) > 0:
+                    self.runtime.setInteger(
+                        list(integer_value_references),
+                        list(validated_integer_values),
+                    )
+                else:
+                    pass
+                if self.mode == FmuInterfaceMode.CO_SIMULATION:
+                    self.runtime.initialize(tStart=start_time, stopTime=stop_time)
+                else:
+                    event_info: tuple[bool, bool, bool, bool, bool, float] = (
+                        self.runtime.initialize(
+                            toleranceControlled=tolerance is not None,
+                            relativeTolerance=0.0 if tolerance is None else tolerance,
+                        )
+                    )
+                    initialization_update = FmiOneEventUpdate(
+                        iteration_converged=event_info[0],
+                        state_value_references_changed=event_info[1],
+                        state_values_changed=event_info[2],
+                        terminate_simulation=event_info[3],
+                        next_event_time=float(event_info[5]) if event_info[4] else None,
+                    )
             else:
-                pass
-            if len(integer_value_references) > 0:
-                self.runtime.setInteger(
-                    list(integer_value_references),
-                    list(validated_integer_values),
+                self.runtime.setupExperiment(
+                    tolerance=tolerance,
+                    startTime=start_time,
+                    stopTime=stop_time,
                 )
-            else:
-                pass
-            self.runtime.exitInitializationMode()
+                self.runtime.enterInitializationMode()
+                if start_values is not None:
+                    if len(start_values) > 0:
+                        self.set_real(start_values)
+                    else:
+                        pass
+                else:
+                    pass
+                if len(integer_value_references) > 0:
+                    self.runtime.setInteger(
+                        list(integer_value_references),
+                        list(validated_integer_values),
+                    )
+                else:
+                    pass
+                self.runtime.exitInitializationMode()
             self.initialized = True
+            return initialization_update
         except Exception:
             # A partially initialized native instance cannot be reused safely.
             self.close()
@@ -517,7 +644,32 @@ class FmuRuntimeHost:
         """
 
         if self.mode == FmuInterfaceMode.CO_SIMULATION:
-            self.runtime.doStep(currentCommunicationPoint=current_time, communicationStepSize=step_size)
+            if math.isfinite(current_time) and math.isfinite(step_size) and step_size > 0.0:
+                pass
+            else:
+                raise FmuModeError(
+                    "FMI Co-Simulation steps require finite time and positive finite size"
+                )
+            try:
+                raw_status: object = self.runtime.doStep(
+                    currentCommunicationPoint=current_time,
+                    communicationStepSize=step_size,
+                )
+                if raw_status is None:
+                    pass
+                else:
+                    status: int = int(raw_status)
+                    if status == 0 or status == 1:
+                        pass
+                    else:
+                        self.close()
+                        raise FmuModeError(
+                            "FMI 1 synchronous doStep returned terminal status "
+                            f"{status}; retry and pending completion are not supported"
+                        )
+            except Exception:
+                self.close()
+                raise
         else:
             raise FmuModeError("do_step() is only valid for Co-Simulation FMUs")
 
@@ -553,7 +705,7 @@ class FmuRuntimeHost:
         """
 
         if self.mode == FmuInterfaceMode.MODEL_EXCHANGE:
-            return int(self.model_description.numberOfContinuousStates)
+            return self.metadata.number_of_continuous_states
         else:
             raise FmuModeError("get_continuous_state_count() is only valid for Model Exchange FMUs")
 
@@ -564,7 +716,7 @@ class FmuRuntimeHost:
         """
 
         if self.mode == FmuInterfaceMode.MODEL_EXCHANGE:
-            number_of_states: int = int(self.model_description.numberOfContinuousStates)
+            number_of_states: int = self.metadata.number_of_continuous_states
             if number_of_states > 0:
                 state_buffer = (c_double * number_of_states)()
                 self.runtime.getContinuousStates(state_buffer, number_of_states)
@@ -585,7 +737,7 @@ class FmuRuntimeHost:
         """
 
         if self.mode == FmuInterfaceMode.MODEL_EXCHANGE:
-            number_of_states: int = int(self.model_description.numberOfContinuousStates)
+            number_of_states: int = self.metadata.number_of_continuous_states
             if number_of_states > 0:
                 derivative_buffer = (c_double * number_of_states)()
                 self.runtime.getDerivatives(derivative_buffer, number_of_states)
@@ -624,7 +776,7 @@ class FmuRuntimeHost:
                         indicator_values[indicator_index] = indicator_value
                     else:
                         raise FmuModeError(
-                            "FMI 2 event indicators must be finite"
+                            "FMI 1/2 event indicators must be finite"
                         )
                 return indicator_values
             else:
@@ -635,16 +787,19 @@ class FmuRuntimeHost:
             )
 
     def needs_completed_integrator_step(self) -> bool:
-        """Return whether the FMI 2 model requires completed-step notification.
+        """Return whether the FMI 1/2 model requires completed-step notification.
 
         :return: Inverse of completedIntegratorStepNotNeeded.
         """
 
         if self.mode == FmuInterfaceMode.MODEL_EXCHANGE:
-            completed_step_not_needed: bool = bool(
-                self.model_description.modelExchange.completedIntegratorStepNotNeeded
-            )
-            return not completed_step_not_needed
+            if self.metadata.fmi_version_family == FmiVersion.FMI_1_0:
+                return True
+            else:
+                completed_step_not_needed: bool = bool(
+                    self.model_description.modelExchange.completedIntegratorStepNotNeeded
+                )
+                return not completed_step_not_needed
         else:
             raise FmuModeError(
                 "needs_completed_integrator_step() is only valid for Model Exchange FMUs"
@@ -657,12 +812,74 @@ class FmuRuntimeHost:
         """
 
         if self.mode == FmuInterfaceMode.MODEL_EXCHANGE:
-            enter_event_mode: bool
-            terminate_simulation: bool
-            enter_event_mode, terminate_simulation = self.runtime.completedIntegratorStep()
-            return bool(enter_event_mode), bool(terminate_simulation)
+            if self.metadata.fmi_version_family == FmiVersion.FMI_1_0:
+                call_event_update: bool = bool(self.runtime.completedIntegratorStep())
+                return call_event_update, False
+            else:
+                enter_event_mode: bool
+                terminate_simulation: bool
+                enter_event_mode, terminate_simulation = self.runtime.completedIntegratorStep()
+                return bool(enter_event_mode), bool(terminate_simulation)
         else:
             raise FmuModeError("completed_integrator_step() is only valid for Model Exchange FMUs")
+
+    def event_update_fmi_one(self) -> FmiOneEventUpdate:
+        """Perform one FMI 1 event iteration and detach its event information.
+
+        :return: Complete typed FMI 1 event-update result.
+        :raises FmuModeError: If the host is not an FMI 1 Model Exchange runtime.
+        """
+
+        if (
+            self.mode == FmuInterfaceMode.MODEL_EXCHANGE
+            and self.metadata.fmi_version_family == FmiVersion.FMI_1_0
+        ):
+            event_info: tuple[bool, bool, bool, bool, bool, float] = (
+                self.runtime.eventUpdate(intermediateResults=False)
+            )
+            return FmiOneEventUpdate(
+                iteration_converged=event_info[0],
+                state_value_references_changed=event_info[1],
+                state_values_changed=event_info[2],
+                terminate_simulation=event_info[3],
+                next_event_time=float(event_info[5]) if event_info[4] else None,
+            )
+        else:
+            raise FmuModeError(
+                "event_update_fmi_one() requires an FMI 1 Model Exchange runtime"
+            )
+
+    def get_state_value_references(self) -> tuple[int, ...]:
+        """Read and validate the FMI 1 continuous-state value references.
+
+        :return: Ordered distinct UInt32 state value references.
+        :raises FmuModeError: If the host is not FMI 1 ME or references are invalid.
+        """
+
+        if (
+            self.mode == FmuInterfaceMode.MODEL_EXCHANGE
+            and self.metadata.fmi_version_family == FmiVersion.FMI_1_0
+        ):
+            state_count: int = self.metadata.number_of_continuous_states
+            if state_count > 0:
+                reference_buffer = (c_uint * state_count)()
+                self.runtime.getStateValueReferences(reference_buffer, state_count)
+                references: list[int] = [0] * state_count
+                reference_index: int
+                for reference_index in range(state_count):
+                    references[reference_index] = int(reference_buffer[reference_index])
+                if len(set(references)) == state_count:
+                    return tuple(references)
+                else:
+                    raise FmuModeError(
+                        "FMI 1 state value references must remain distinct"
+                    )
+            else:
+                return tuple()
+        else:
+            raise FmuModeError(
+                "get_state_value_references() requires an FMI 1 Model Exchange runtime"
+            )
 
     def enter_event_mode(self) -> None:
         """Enter FMI Event Mode for a Model Exchange FMU.
@@ -670,7 +887,10 @@ class FmuRuntimeHost:
         :return: None.
         """
 
-        if self.mode == FmuInterfaceMode.MODEL_EXCHANGE:
+        if (
+            self.mode == FmuInterfaceMode.MODEL_EXCHANGE
+            and self.metadata.fmi_version_family == FmiVersion.FMI_2_0
+        ):
             self.runtime.enterEventMode()
         else:
             raise FmuModeError("enter_event_mode() is only valid for Model Exchange FMUs")
@@ -681,7 +901,10 @@ class FmuRuntimeHost:
         :return: Typed event information detached from the FMPy structure.
         """
 
-        if self.mode == FmuInterfaceMode.MODEL_EXCHANGE:
+        if (
+            self.mode == FmuInterfaceMode.MODEL_EXCHANGE
+            and self.metadata.fmi_version_family == FmiVersion.FMI_2_0
+        ):
             event_info: tuple[bool, bool, bool, bool, bool, float] = (
                 self.runtime.newDiscreteStates()
             )
@@ -705,7 +928,10 @@ class FmuRuntimeHost:
         :return: None.
         """
 
-        if self.mode == FmuInterfaceMode.MODEL_EXCHANGE:
+        if (
+            self.mode == FmuInterfaceMode.MODEL_EXCHANGE
+            and self.metadata.fmi_version_family == FmiVersion.FMI_2_0
+        ):
             self.runtime.enterContinuousTimeMode()
         else:
             raise FmuModeError("enter_continuous_time_mode() is only valid for Model Exchange FMUs")
@@ -771,22 +997,25 @@ class FmuRuntimeHost:
 
 
 def open_fmu_runtime_host(config: FmuImportConfig) -> FmuRuntimeHost:
-    """Instantiate an FMI 2.0 runtime from a content-bound private snapshot.
+    """Instantiate an FMI 1/2 runtime from a content-bound private snapshot.
 
     :param config: Runtime configuration for the FMU host.
     :return: Open runtime host.
-    :raises FmuModeError: If the FMU is not an FMI 2 model.
+    :raises FmuModeError: If the FMU is outside the in-process FMI 1/2 profile.
     """
 
     metadata: FmuModelDescription = read_fmu_model_description(config.fmu_path)
-    # This in-process FMPy owner is intentionally limited to FMI 2. FMI 3 is
+    # This in-process FMPy owner is intentionally limited to FMI 1/2. FMI 3 is
     # executed only through the bounded worker session, so reject it before
     # dependency checks, native validation, or private staging side effects.
-    if metadata.fmi_version_family == FmiVersion.FMI_2_0:
+    if (
+        metadata.fmi_version_family == FmiVersion.FMI_1_0
+        or metadata.fmi_version_family == FmiVersion.FMI_2_0
+    ):
         pass
     else:
         raise FmuModeError(
-            f"FmuRuntimeHost supports FMI 2 execution only, got FMI {metadata.fmi_version}"
+            f"FmuRuntimeHost supports FMI 1/2 execution only, got FMI {metadata.fmi_version}"
         )
     mode: FmuInterfaceMode = config.resolve_execution_mode(metadata)
     fmpy_module: Any = _require_fmpy_module()
@@ -814,7 +1043,6 @@ def open_fmu_runtime_host(config: FmuImportConfig) -> FmuRuntimeHost:
     working_directory_before_load: Path = Path.cwd()
 
     try:
-        fmi2_module: Any = fmpy_module.fmi2
         model_description: Any = fmpy_module.read_model_description(str(extracted_dir))
 
         # FMPy parses the staged XML independently. Both parsers must agree
@@ -828,6 +1056,18 @@ def open_fmu_runtime_host(config: FmuImportConfig) -> FmuRuntimeHost:
             pass
         else:
             raise FmuArchiveError("FMPy metadata differs from the inspected FMU metadata")
+        if mode == FmuInterfaceMode.MODEL_EXCHANGE:
+            if (
+                int(model_description.numberOfContinuousStates)
+                == metadata.number_of_continuous_states
+            ):
+                pass
+            else:
+                raise FmuArchiveError(
+                    "FMPy continuous-state count differs from inspected FMU metadata"
+                )
+        else:
+            pass
         if mode == FmuInterfaceMode.CO_SIMULATION:
             if (
                 model_description.coSimulation is not None
@@ -852,29 +1092,58 @@ def open_fmu_runtime_host(config: FmuImportConfig) -> FmuRuntimeHost:
         # before the FMPy constructor can load its native library.
         revalidate_fmu_staging_area(staging_area)
 
-        # The FMI runtime implementation depends on the selected execution mode.
-        if mode == FmuInterfaceMode.CO_SIMULATION:
-            runtime = _construct_fmi_two_runtime(
-                runtime_tpe=fmi2_module.FMU2Slave,
-                guid=model_description.guid,
-                model_identifier=model_identifier,
-                extracted_dir=extracted_dir,
-                instance_name=model_description.modelName,
-            )
-        else:
-            if mode == FmuInterfaceMode.MODEL_EXCHANGE:
-                runtime = _construct_fmi_two_runtime(
-                    runtime_tpe=fmi2_module.FMU2Model,
+        # The FMI runtime implementation depends on both family and interface.
+        if metadata.fmi_version_family == FmiVersion.FMI_1_0:
+            fmi1_module: Any = fmpy_module.fmi1
+            if mode == FmuInterfaceMode.CO_SIMULATION:
+                runtime = _construct_fmi_one_runtime(
+                    runtime_tpe=fmi1_module.FMU1Slave,
                     guid=model_description.guid,
                     model_identifier=model_identifier,
                     extracted_dir=extracted_dir,
                     instance_name=model_description.modelName,
                 )
             else:
-                raise FmuModeError(f"Unsupported FMI mode {mode.value}")
+                if mode == FmuInterfaceMode.MODEL_EXCHANGE:
+                    runtime = _construct_fmi_one_runtime(
+                        runtime_tpe=fmi1_module.FMU1Model,
+                        guid=model_description.guid,
+                        model_identifier=model_identifier,
+                        extracted_dir=extracted_dir,
+                        instance_name=model_description.modelName,
+                    )
+                else:
+                    raise FmuModeError(f"Unsupported FMI mode {mode.value}")
+        else:
+            fmi2_module: Any = fmpy_module.fmi2
+            if mode == FmuInterfaceMode.CO_SIMULATION:
+                runtime = _construct_fmi_two_runtime(
+                    runtime_tpe=fmi2_module.FMU2Slave,
+                    guid=model_description.guid,
+                    model_identifier=model_identifier,
+                    extracted_dir=extracted_dir,
+                    instance_name=model_description.modelName,
+                )
+            else:
+                if mode == FmuInterfaceMode.MODEL_EXCHANGE:
+                    runtime = _construct_fmi_two_runtime(
+                        runtime_tpe=fmi2_module.FMU2Model,
+                        guid=model_description.guid,
+                        model_identifier=model_identifier,
+                        extracted_dir=extracted_dir,
+                        instance_name=model_description.modelName,
+                    )
+                else:
+                    raise FmuModeError(f"Unsupported FMI mode {mode.value}")
 
         # The FMU instance is created immediately so callers always receive a ready-to-init host.
-        runtime.instantiate(visible=config.visible, loggingOn=config.debug_logging)
+        if (
+            metadata.fmi_version_family == FmiVersion.FMI_1_0
+            and mode == FmuInterfaceMode.MODEL_EXCHANGE
+        ):
+            runtime.instantiate(loggingOn=config.debug_logging)
+        else:
+            runtime.instantiate(visible=config.visible, loggingOn=config.debug_logging)
         runtime_instantiated = True
         return FmuRuntimeHost(
             config=config,

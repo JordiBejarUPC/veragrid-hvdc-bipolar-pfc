@@ -4815,6 +4815,8 @@ class DiagramScene(QGraphicsScene):
                 block_info_action: QAction | None
                 internals_action: QAction | None
                 measurement_edit_action: QAction | None
+                add_to_plot_action: QAction | None
+                context_connection_item: ConnectionItem | None = None
 
                 # Ordinary symbolic blocks expose the same editor from double
                 # click and from an explicit context-menu action. Root
@@ -4867,6 +4869,17 @@ class DiagramScene(QGraphicsScene):
                 else:
                     measurement_edit_action = None
 
+                if isinstance(item, ConnectionItem):
+                    context_connection_item = item
+                    add_to_plot_action = gf.add_menu_entry(
+                        menu=menu,
+                        text=self.tr("Add to plot..."),
+                        icon_path=":/Icons/icons/rms_plots.png",
+                    )
+                    menu.addSeparator()
+                else:
+                    add_to_plot_action = None
+
                 # Root interface ovals are part of the device contract and can
                 # only be renamed from this menu.
                 if is_variable_item:
@@ -4909,6 +4922,14 @@ class DiagramScene(QGraphicsScene):
                     self.recolor_context_item()
                 elif rename_action is not None and selected_action is rename_action:
                     self.rename_context_item()
+                elif (add_to_plot_action is not None
+                      and selected_action is add_to_plot_action
+                      and context_connection_item is not None
+                      and self.editor is not None):
+                    self.editor.request_add_connection_to_plot(
+                        connection=context_connection_item,
+                        global_position=event.screenPos(),
+                    )
                 elif (edit_action is not None
                       and selected_action is edit_action
                       and context_block is not None):

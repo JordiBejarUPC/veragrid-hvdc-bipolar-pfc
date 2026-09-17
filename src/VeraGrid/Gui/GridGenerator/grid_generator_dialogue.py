@@ -10,6 +10,7 @@ import networkx as nx
 from PySide6 import QtWidgets
 
 from VeraGrid.Gui.GridGenerator.grid_generator_gui import Ui_MainWindow
+from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Utils.ThirdParty.SyntheticNetworks.rpgm_algo import RpgAlgorithm
@@ -62,7 +63,7 @@ class GridGeneratorGUI(QtWidgets.QDialog):
         msg.setWindowTitle(message_title)
         # msg.setDetailedText("The details are as follows:")
         msg.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
-        retval = msg.exec()
+        retval = exec_dialog_safely(dialog=msg)
 
     def fill_graph(self):
         """

@@ -12,6 +12,7 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.terminal_item import BarTerminalItem,
 from VeraGrid.Gui.Diagrams.generic_graphics import GenericDiagramWidget, ACTIVE
 from VeraGrid.Gui.messages import yes_no_question
 from VeraGrid.Gui.gui_functions import add_menu_entry, translate_context_menu_text
+from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem
 from VeraGridEngine.Devices.Fluid.fluid_path import FluidPath
 from VeraGridEngine.enumerations import DeviceType
@@ -72,7 +73,7 @@ class FluidPathGraphicItem(LineGraphicTemplateItem):
         :return: ``True`` when the editor was opened.
         """
         dialog = TemplateDeviceEditor(api_object=self.api_object, circuit=self.editor.circuit)
-        dialog.exec()
+        exec_dialog_safely(dialog=dialog)
         return True
 
     def set_api_object_color(self):

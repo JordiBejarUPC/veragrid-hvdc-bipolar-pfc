@@ -674,7 +674,10 @@ def build_fmu_cs_device_spec(
 
     metadata: FmuModelDescription = read_fmu_model_description(config.fmu_path)
     float64_profile: FmiThreeWorkerFloat64Profile | None
-    if metadata.fmi_version_family == FmiVersion.FMI_2_0:
+    if metadata.fmi_version_family in (
+        FmiVersion.FMI_1_0,
+        FmiVersion.FMI_2_0,
+    ):
         resolved_mode: FmuInterfaceMode = config.resolve_execution_mode(metadata)
         float64_profile = None
         has_fmi_three_configuration: bool = (

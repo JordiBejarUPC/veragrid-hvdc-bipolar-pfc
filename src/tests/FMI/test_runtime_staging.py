@@ -24,7 +24,10 @@ from VeraGridEngine.IO.fmu.importer.model_description import (
     FmuVariableType,
     read_fmu_model_description,
 )
-from VeraGridEngine.IO.fmu.importer.native_binary import _resolve_fmi_two_host_binary
+from VeraGridEngine.IO.fmu.importer.model_description_metadata import (
+    FmiOneCoSimulationCapabilities,
+)
+from VeraGridEngine.IO.fmu.importer.native_binary import _resolve_legacy_host_binary
 from VeraGridEngine.IO.fmu.importer.runtime_host import FmuRuntimeHost, open_fmu_runtime_host
 from VeraGridEngine.IO.fmu.importer.staging import FmuStagingArea, stage_fmu_source
 
@@ -172,7 +175,7 @@ def _write_invalid_runtime_fmu(path: Path) -> Path:
     source: Path = _co_simulation_artifact()
     platform_name: str
     library_suffix: str
-    platform_name, library_suffix = _resolve_fmi_two_host_binary()
+    platform_name, library_suffix = _resolve_legacy_host_binary()
     native_binary_entry: str = (
         f"binaries/{platform_name}/FrequencyLoadPilot{library_suffix}"
     )
@@ -722,7 +725,7 @@ def test_native_symbol_failure_unloads_library_and_cleans_staging(tmp_path: Path
 
 
 def test_unconnected_version_and_mode_fail_before_staging(tmp_path: Path) -> None:
-    """Verify incompatible FMI 2 host requests fail before side effects.
+    """Verify incompatible in-process host requests fail before side effects.
 
     :param tmp_path: Isolated fixture directory provided by pytest.
     :return: None.
@@ -730,7 +733,7 @@ def test_unconnected_version_and_mode_fail_before_staging(tmp_path: Path) -> Non
 
     fmi_three_source: Path = _write_fmi_three_fmu(tmp_path / "future.fmu")
     version_parent: Path = tmp_path / "version-runtime"
-    with pytest.raises(FmuModeError, match="supports FMI 2 execution only"):
+    with pytest.raises(FmuModeError, match="supports FMI 1/2 execution only"):
         open_fmu_runtime_host(
             FmuImportConfig(fmu_path=fmi_three_source, extraction_root=version_parent)
         )
@@ -740,7 +743,7 @@ def test_unconnected_version_and_mode_fail_before_staging(tmp_path: Path) -> Non
     # FMI-version guard must precede dependency, native, and staging calls.
     host_factory_source: str = inspect.getsource(open_fmu_runtime_host)
     guard_position: int = host_factory_source.index(
-        "FmuRuntimeHost supports FMI 2 execution only"
+        "FmuRuntimeHost supports FMI 1/2 execution only"
     )
     dependency_position: int = host_factory_source.index("_require_fmpy_module()")
     native_validation_position: int = host_factory_source.index(
@@ -761,3 +764,118 @@ def test_unconnected_version_and_mode_fail_before_staging(tmp_path: Path) -> Non
             )
         )
     assert not mode_parent.exists()
+
+
+def test_fmi_one_cs_scheduler_capability_gate_fails_before_staging(
+    tmp_path: Path,
+) -> None:
+    """Reject FMI 1 CS profiles incompatible with the existing scheduler.
+
+    :param tmp_path: Isolated source and staging parents provided by pytest.
+    :return: None.
+    """
+
+    cases: tuple[tuple[str, str, str], ...] = (
+        (
+            "fixed-step",
+            "<CoSimulation_StandAlone><Capabilities/>"
+            "</CoSimulation_StandAlone>",
+            "variable communication step support",
+        ),
+        (
+            "asynchronous",
+            "<CoSimulation_StandAlone><Capabilities "
+            'canHandleVariableCommunicationStepSize="true" '
+            'canRunAsynchronuously="true"/></CoSimulation_StandAlone>',
+            "asynchronous",
+        ),
+        (
+            "tool",
+            "<CoSimulation_Tool><Capabilities "
+            'canHandleVariableCommunicationStepSize="true"/>'
+            '<Model entryPoint="tool" type="application"/>'
+            "</CoSimulation_Tool>",
+            "original external tool",
+        ),
+    )
+    case_name: str
+    interface_xml: str
+    expected_message: str
+    for case_name, interface_xml, expected_message in cases:
+        source: Path = tmp_path / f"{case_name}.fmu"
+        xml_text: str = (
+            '<fmiModelDescription fmiVersion="1.0" modelName="Legacy" '
+            'modelIdentifier="legacy" guid="legacy-guid" '
+            'numberOfContinuousStates="0" numberOfEventIndicators="0">'
+            f"<Implementation>{interface_xml}</Implementation>"
+            "<ModelVariables/></fmiModelDescription>"
+        )
+        archive: zipfile.ZipFile
+        with zipfile.ZipFile(source, mode="w") as archive:
+            archive.writestr("modelDescription.xml", xml_text.encode("utf-8"))
+        staging_parent: Path = tmp_path / f"{case_name}-staging"
+        with pytest.raises(FmuModeError, match=expected_message):
+            open_fmu_runtime_host(
+                FmuImportConfig(fmu_path=source, extraction_root=staging_parent)
+            )
+        assert not staging_parent.exists()
+
+
+@pytest.mark.parametrize("terminal_status", (2, 5))
+def test_fmi_one_cs_rejects_discard_and_pending_statuses(
+    tmp_path: Path,
+    terminal_status: int,
+) -> None:
+    """Close FMI 1 CS deterministically on discard or pending status.
+
+    :param tmp_path: Isolated direct-host directory supplied by pytest.
+    :param terminal_status: FMI discard or pending status returned by the double.
+    :return: None.
+    """
+
+    identifiers: dict[FmuInterfaceMode, str] = dict()
+    identifiers[FmuInterfaceMode.CO_SIMULATION] = "legacy"
+    capabilities: FmiOneCoSimulationCapabilities = FmiOneCoSimulationCapabilities(
+        needs_execution_tool=False,
+        can_handle_variable_communication_step_size=True,
+        can_handle_events=False,
+        can_reject_steps=True,
+        can_interpolate_inputs=False,
+        max_output_derivative_order=0,
+        can_run_asynchronuously=False,
+        can_signal_events=False,
+        can_be_instantiated_only_once_per_process=False,
+        can_not_use_memory_management_functions=False,
+    )
+    metadata: FmuModelDescription = FmuModelDescription(
+        path=tmp_path / "status.fmu",
+        fmi_version="1.0",
+        model_name="Legacy",
+        guid="legacy-guid",
+        variable_naming_convention="flat",
+        number_of_continuous_states=0,
+        number_of_event_indicators=0,
+        interface_modes=(FmuInterfaceMode.CO_SIMULATION,),
+        model_identifiers=identifiers,
+        platforms=tuple(),
+        variables=tuple(),
+        fmi_one_co_simulation_capabilities=capabilities,
+    )
+    runtime: Mock = Mock()
+    runtime.doStep.return_value = terminal_status
+    host: FmuRuntimeHost = FmuRuntimeHost(
+        config=FmuImportConfig(fmu_path=metadata.path),
+        metadata=metadata,
+        mode=FmuInterfaceMode.CO_SIMULATION,
+        extracted_dir=tmp_path,
+        owns_extracted_dir=False,
+        model_description=object(),
+        runtime=runtime,
+    )
+    host.initialized = True
+
+    with pytest.raises(FmuModeError, match=f"terminal status {terminal_status}"):
+        host.do_step(current_time=0.0, step_size=0.001)
+    assert host.closed
+    runtime.terminate.assert_called_once_with()
+    runtime.freeInstance.assert_called_once_with()

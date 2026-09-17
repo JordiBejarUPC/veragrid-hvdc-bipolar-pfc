@@ -18,7 +18,7 @@ from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.IO.fmu.exporter.api import export_fmu
-from VeraGridEngine.IO.fmu.exporter.compat import Block, Const, Var
+from VeraGridEngine.IO.fmu.exporter.compat import Block, CmpOp, Comparison, Const, Var
 from VeraGridEngine.IO.fmu.exporter.config import ExportConfig as CsExportConfig, detect_target_platform as detect_cs_target_platform
 from VeraGridEngine.IO.fmu.exporter_me.api import export_fmu_me
 from VeraGridEngine.IO.fmu.exporter_me.config import ExportConfig as MeExportConfig, detect_target_platform as detect_me_target_platform
@@ -46,11 +46,13 @@ from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model, set_rms_model
+from VeraGridEngine.Utils.procedural_logic import flipflop
 from VeraGridEngine.enumerations import (
     BranchImpedanceMode,
     DynamicIntegrationMethod,
     EmtInitializationMethod,
     EmtSolverTypes,
+    FmiVersion,
     ParamPowerFlowReferenceType,
     SolverType,
     VarPowerFlowReferenceType,
@@ -208,10 +210,129 @@ def _build_test_emt_me_source_block() -> Block:
     )
 
 
-def export_test_rms_cs_fmu(output_dir: Path) -> Path:
+def export_test_fmi_three_external_discontinuity_cs_fmu(output_dir: Path) -> Path:
+    """Export the FMI 3 CS fixture driven by one external input discontinuity.
+
+    :param output_dir: Isolated output directory for the generated FMU.
+    :return: Path to the compiled FMI 3 Co-Simulation FMU.
+    """
+    state: Var = Var("x")
+    derivative: Var = Var("dx", base_var=state)
+    input_value: Var = Var("u")
+    source_block: Block = Block(
+        state_vars=list((state,)),
+        state_eqs=list((input_value,)),
+        diff_vars=list((derivative,)),
+        init_values=dict(((state, Const(0.0)),)),
+        in_vars=list((input_value,)),
+        out_vars=list((state,)),
+        name="FmiThreeExternalDiscontinuityCs",
+    )
+    unique_name: str = f"FmiThreeExternalDiscontinuityCs_{uuid.uuid4().hex[:8]}"
+    return export_fmu(
+        source_block,
+        CsExportConfig(
+            model_name=unique_name,
+            output_path=output_dir / f"{unique_name}.fmu",
+            target_platform=detect_cs_target_platform(),
+            compile_binary=True,
+            keep_build_dir=False,
+            fixed_step=1.0e-3,
+            fmi_version=FmiVersion.FMI_3_0,
+        ),
+    )
+
+
+def export_test_fmi_three_time_event_me_fmu(output_dir: Path) -> Path:
+    """Export the FMI 3 ME fixture with a scheduled ordinary time event.
+
+    :param output_dir: Isolated output directory for the generated FMU.
+    :return: Path to the compiled FMI 3 Model Exchange FMU.
+    """
+    state: Var = Var("x")
+    derivative: Var = Var("dx", base_var=state)
+    event_mode: Var = Var("event_mode")
+    global_time: Var = Var("glob_time")
+    source_block: Block = Block(
+        state_vars=list((state,)),
+        state_eqs=list((event_mode,)),
+        diff_vars=list((derivative,)),
+        init_values=dict(((state, Const(0.0)),)),
+        mode_dict=dict(((event_mode, Const(0.0)),)),
+        out_vars=list((state, event_mode)),
+        name="FmiThreeTimeEventMe",
+    )
+    source_block.procedural_logic = list((
+        flipflop(
+            boolset=Comparison(global_time, CmpOp.GE, Const(0.01)),
+            boolreset=Const(0.0),
+            output=event_mode,
+            name="time_event_latch",
+        ),
+    ))
+    unique_name: str = f"FmiThreeTimeEventMe_{uuid.uuid4().hex[:8]}"
+    return export_fmu_me(
+        source_block,
+        MeExportConfig(
+            model_name=unique_name,
+            output_path=output_dir / f"{unique_name}.fmu",
+            target_platform=detect_me_target_platform(),
+            compile_binary=True,
+            keep_build_dir=False,
+            fixed_step=1.0e-3,
+            fmi_version=FmiVersion.FMI_3_0,
+        ),
+    )
+
+
+def export_test_fmi_three_state_event_me_fmu(output_dir: Path) -> Path:
+    """Export the FMI 3 ME fixture with an importer-located zero crossing.
+
+    :param output_dir: Isolated output directory for the generated FMU.
+    :return: Path to the compiled FMI 3 Model Exchange FMU.
+    """
+    state: Var = Var("x")
+    derivative: Var = Var("dx", base_var=state)
+    event_mode: Var = Var("event_mode")
+    source_block: Block = Block(
+        state_vars=list((state,)),
+        state_eqs=list((Const(1.0),)),
+        diff_vars=list((derivative,)),
+        init_values=dict(((state, Const(0.0)),)),
+        mode_dict=dict(((event_mode, Const(0.0)),)),
+        out_vars=list((state, event_mode)),
+        name="FmiThreeStateEventMe",
+    )
+    source_block.procedural_logic = list((
+        flipflop(
+            boolset=Comparison(state, CmpOp.GE, Const(0.015)),
+            boolreset=Const(0.0),
+            output=event_mode,
+            name="state_event_latch",
+        ),
+    ))
+    unique_name: str = f"FmiThreeStateEventMe_{uuid.uuid4().hex[:8]}"
+    return export_fmu_me(
+        source_block,
+        MeExportConfig(
+            model_name=unique_name,
+            output_path=output_dir / f"{unique_name}.fmu",
+            target_platform=detect_me_target_platform(),
+            compile_binary=True,
+            keep_build_dir=False,
+            fixed_step=1.0e-3,
+            fmi_version=FmiVersion.FMI_3_0,
+        ),
+    )
+
+def export_test_rms_cs_fmu(
+    output_dir: Path,
+    fmi_version: FmiVersion = FmiVersion.FMI_2_0,
+) -> Path:
     """Export the self-contained RMS CS device FMU used by the example scripts.
 
     :param output_dir: Output directory for the generated FMU.
+    :param fmi_version: FMI generation selected for the fixture.
     :return: Generated FMU path.
     """
 
@@ -224,14 +345,19 @@ def export_test_rms_cs_fmu(output_dir: Path) -> Path:
             target_platform=detect_cs_target_platform(),
             compile_binary=True,
             keep_build_dir=False,
+            fmi_version=fmi_version,
         ),
     )
 
 
-def export_test_rms_me_fmu(output_dir: Path) -> Path:
+def export_test_rms_me_fmu(
+    output_dir: Path,
+    fmi_version: FmiVersion = FmiVersion.FMI_2_0,
+) -> Path:
     """Export the self-contained RMS ME device FMU used by the example scripts.
 
     :param output_dir: Output directory for the generated FMU.
+    :param fmi_version: FMI generation selected for the fixture.
     :return: Generated FMU path.
     """
 
@@ -244,14 +370,19 @@ def export_test_rms_me_fmu(output_dir: Path) -> Path:
             target_platform=detect_me_target_platform(),
             compile_binary=True,
             keep_build_dir=False,
+            fmi_version=fmi_version,
         ),
     )
 
 
-def export_test_emt_cs_fmu(output_dir: Path) -> Path:
+def export_test_emt_cs_fmu(
+    output_dir: Path,
+    fmi_version: FmiVersion = FmiVersion.FMI_2_0,
+) -> Path:
     """Export the self-contained EMT CS device FMU used by the example scripts.
 
     :param output_dir: Output directory for the generated FMU.
+    :param fmi_version: FMI generation selected for the fixture.
     :return: Generated FMU path.
     """
 
@@ -264,14 +395,19 @@ def export_test_emt_cs_fmu(output_dir: Path) -> Path:
             target_platform=detect_cs_target_platform(),
             compile_binary=True,
             keep_build_dir=False,
+            fmi_version=fmi_version,
         ),
     )
 
 
-def export_test_emt_me_fmu(output_dir: Path) -> Path:
+def export_test_emt_me_fmu(
+    output_dir: Path,
+    fmi_version: FmiVersion = FmiVersion.FMI_2_0,
+) -> Path:
     """Export the self-contained EMT ME device FMU used by the example scripts.
 
     :param output_dir: Output directory for the generated FMU.
+    :param fmi_version: FMI generation selected for the fixture.
     :return: Generated FMU path.
     """
 
@@ -284,6 +420,7 @@ def export_test_emt_me_fmu(output_dir: Path) -> Path:
             target_platform=detect_me_target_platform(),
             compile_binary=True,
             keep_build_dir=False,
+            fmi_version=fmi_version,
         ),
     )
 
@@ -427,6 +564,7 @@ def execute_test_rms_fmu_case(
         static_active_power_mw: float = 10.0,
         static_reactive_power_mvar: float = 1.0,
         rms_tolerance: float = 1.0e-6,
+        fmi_version: FmiVersion = FmiVersion.FMI_2_0,
 ) -> tuple[RmsSimulationDriver, Load, Path]:
     """Execute one RMS FMU integration case through the product API.
 
@@ -444,6 +582,7 @@ def execute_test_rms_fmu_case(
     :param static_active_power_mw: Load active power used by the initial power flow.
     :param static_reactive_power_mvar: Load reactive power used by the initial power flow.
     :param rms_tolerance: RMS nonlinear convergence tolerance for this fixture.
+    :param fmi_version: FMI generation used by a locally exported fixture.
     :return: Completed RMS driver, attached load, and generated FMU path.
     """
 
@@ -451,13 +590,13 @@ def execute_test_rms_fmu_case(
     input_bindings: tuple[FmuRefBinding, ...]
     if mode == FmuInterfaceMode.CO_SIMULATION:
         if source_fmu_path is None:
-            fmu_path: Path = export_test_rms_cs_fmu(output_dir)
+            fmu_path: Path = export_test_rms_cs_fmu(output_dir, fmi_version)
         else:
             fmu_path = source_fmu_path.resolve()
         input_bindings = tuple()
     elif mode == FmuInterfaceMode.MODEL_EXCHANGE:
         if source_fmu_path is None:
-            fmu_path = export_test_rms_me_fmu(output_dir)
+            fmu_path = export_test_rms_me_fmu(output_dir, fmi_version)
         else:
             fmu_path = source_fmu_path.resolve()
         input_bindings = (
@@ -559,22 +698,24 @@ def execute_test_emt_fmu_case(
         output_dir: Path,
         mode: FmuInterfaceMode,
         solver_tpe: EmtSolverTypes = EmtSolverTypes.Symbolic,
+        fmi_version: FmiVersion = FmiVersion.FMI_2_0,
 ) -> tuple[EmtSimulationDriver, Load, Path]:
     """Execute one EMT FMU integration case through the product API.
 
     :param output_dir: Isolated directory for the FMU and native staging files.
     :param mode: FMI interface mode exercised by the integration test.
     :param solver_tpe: EMT Jacobian backend exercised by the integration test.
+    :param fmi_version: FMI generation exported and reimported by the test.
     :return: Completed EMT driver, attached load, and generated FMU path.
     """
 
     output_dir.mkdir(parents=True, exist_ok=True)
     phase_a_input_name: str
     if mode == FmuInterfaceMode.CO_SIMULATION:
-        fmu_path: Path = export_test_emt_cs_fmu(output_dir)
+        fmu_path: Path = export_test_emt_cs_fmu(output_dir, fmi_version)
         phase_a_input_name = "v_a_in"
     elif mode == FmuInterfaceMode.MODEL_EXCHANGE:
-        fmu_path = export_test_emt_me_fmu(output_dir)
+        fmu_path = export_test_emt_me_fmu(output_dir, fmi_version)
         phase_a_input_name = "u"
     else:
         raise ValueError(f"Unsupported EMT FMI test mode: {mode.value}")
@@ -592,6 +733,23 @@ def execute_test_emt_fmu_case(
         pass
     else:
         raise RuntimeError("The EMT FMU integration test power flow did not converge")
+
+    # FMI 3 native calls stay inside the supervised worker envelope, while
+    # the legacy FMI 1/2 runtimes retain their in-process lifecycle.
+    worker_limits: FmiThreeWorkerHostLimits | None
+    if fmi_version == FmiVersion.FMI_3_0:
+        worker_limits = FmiThreeWorkerHostLimits(
+            maximum_frame_size=262144,
+            maximum_float64_values_per_request=64,
+            response_timeout_seconds=60.0,
+            graceful_join_timeout_seconds=10.0,
+            terminate_join_timeout_seconds=5.0,
+            kill_join_timeout_seconds=5.0,
+        )
+    elif fmi_version in (FmiVersion.FMI_1_0, FmiVersion.FMI_2_0):
+        worker_limits = None
+    else:
+        raise ValueError(f"Unsupported EMT FMI test version: {fmi_version.value}")
 
     request: FmuDeviceAttachmentRequest = FmuDeviceAttachmentRequest(
         fmu_path=fmu_path,
@@ -613,6 +771,7 @@ def execute_test_emt_fmu_case(
             FmuReferenceValue(VarPowerFlowReferenceType.i_C, 0.0),
         ),
         extraction_root=output_dir,
+        worker_limits=worker_limits,
     )
     attach_fmu_to_device(load, grid, request)
 

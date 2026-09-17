@@ -55,9 +55,7 @@ class FakeSelectionGui:
         self.info_messages: List[str] = list()
         self.warning_messages: List[str] = list()
         self.check_list_dialogue_cls = diagrams_module.CheckListDialogue
-        self.dynamic_event_requests: List[
-            Tuple[object, vge.MultiCircuit, DynamicSimulationMode, bool]
-        ] = list()
+        self.dynamic_event_requests: List[Tuple[vge.MultiCircuit, DynamicSimulationMode, bool]] = list()
         self.short_circuit_selector_cls = diagrams_module.ShortCircuitSelector
 
     def get_selected_devices(self) -> List[object]:
@@ -91,7 +89,6 @@ class FakeSelectionGui:
 
     def open_dynamic_events(
             self,
-            api_object: object,
             circuit: vge.MultiCircuit,
             mode: DynamicSimulationMode,
             target_workspace: object | None = None,
@@ -99,7 +96,6 @@ class FakeSelectionGui:
     ) -> None:
         """Record selected-device routing without creating a real window.
 
-        :param api_object: Device selected by the diagram action.
         :param circuit: Circuit that owns the event assets.
         :param mode: RMS or EMT events family requested by the action.
         :param target_workspace: Unused workspace compatibility argument.
@@ -107,7 +103,7 @@ class FakeSelectionGui:
         :return: None.
         """
         del target_workspace
-        self.dynamic_event_requests.append((api_object, circuit, mode, show_tree))
+        self.dynamic_event_requests.append((circuit, mode, show_tree))
 
     def show_info_toast(self, message: str, duration: int = 2000) -> None:
         """
@@ -517,7 +513,7 @@ def test_add_rms_event_to_selected_opens_unified_events_tab(qt_app: object) -> N
 
     del parameter
     del group
-    assert gui.dynamic_event_requests == list(((load, grid, DynamicSimulationMode.RMS, False),))
+    assert gui.dynamic_event_requests == list(((grid, DynamicSimulationMode.RMS, False),))
     assert len(grid.rms_events) == 0
 
 
@@ -546,5 +542,5 @@ def test_add_emt_event_to_selected_opens_unified_events_tab(qt_app: object) -> N
 
     del parameter
     del group
-    assert gui.dynamic_event_requests == list(((load, grid, DynamicSimulationMode.EMT, False),))
+    assert gui.dynamic_event_requests == list(((grid, DynamicSimulationMode.EMT, False),))
     assert len(grid.emt_events) == 0

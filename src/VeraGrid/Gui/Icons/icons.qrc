@@ -213,6 +213,8 @@
     <file>icons/piece.png</file>
     <file>icons/schematic.png</file>
     <file>icons/plot.png</file>
+    <file>icons/rms_plots.png</file>
+    <file>icons/emt_plots.png</file>
     <file>icons/import_profiles.png</file>
     <file>icons/copy2left.png</file>
     <file>icons/copy2right.png</file>

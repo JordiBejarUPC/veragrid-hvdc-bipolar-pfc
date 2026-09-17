@@ -19,7 +19,7 @@ from VeraGrid.Gui.Main.SubClasses.Model.data_base import DataBaseTableMain
 from VeraGrid.Gui.FileDialogues.ProfilesInput.models_dialogue import ModelsInputGUI
 from VeraGrid.Gui.FileDialogues.ProfilesInput.profile_dialogue import ProfileInputGUI, GeneratorsProfileOptionsDialogue
 from VeraGrid.Gui.profiles_model import ProfilesModel
-from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely
+from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, exec_dialog_safely
 from VeraGrid.Gui.matplotlib_dialog import show_matplotlib_figure
 
 
@@ -74,7 +74,7 @@ class TimeEventsMain(DataBaseTableMain):
         :return:
         """
         dlg = NewProfilesStructureDialogue()
-        if dlg.exec():
+        if exec_dialog_safely(dialog=dlg):
             steps, step_length, step_unit, time_base = dlg.get_values()
 
             self.ui.profiles_tableView.setModel(None)
@@ -96,11 +96,9 @@ class TimeEventsMain(DataBaseTableMain):
 
         if self.circuit.time_profile is not None:
             quit_msg = "Are you sure that you want to delete the profiles?"
-            reply = QtWidgets.QMessageBox.question(self, self.tr('Message'), quit_msg,
-                                                   QtWidgets.QMessageBox.StandardButton.Yes,
-                                                   QtWidgets.QMessageBox.StandardButton.No)
+            reply: bool = yes_no_question(text=quit_msg, title=self.tr('Message'), parent=self)
 
-            if reply == QtWidgets.QMessageBox.StandardButton.Yes.value:
+            if reply:
                 self.circuit.delete_profiles()
                 self.ui.profiles_tableView.setModel(None)
                 self.update_date_dependent_combos()
@@ -132,7 +130,7 @@ class TimeEventsMain(DataBaseTableMain):
 
                 profile_input_dialogue.resize(int(1.61 * 600.0), 550)  # golden ratio
                 try:
-                    profile_input_dialogue.exec()  # exec leaves the parent on hold
+                    exec_dialog_safely(dialog=profile_input_dialogue)  # exec leaves the parent on hold
 
                     # Note: the ProfileInputGUI will handle the profile assigning
                     if profile_input_dialogue.was_accepted:
@@ -149,7 +147,7 @@ class TimeEventsMain(DataBaseTableMain):
 
                                     dlg: GeneratorsProfileOptionsDialogue = GeneratorsProfileOptionsDialogue()
                                     try:
-                                        dlg.exec()
+                                        exec_dialog_safely(dialog=dlg)
                                         correct_active_profile: bool = dlg.correct_active_profile.isChecked()
                                         set_non_dispatchable: bool = dlg.set_non_dispatchable.isChecked()
                                     finally:
@@ -215,7 +213,7 @@ class TimeEventsMain(DataBaseTableMain):
 
                 start_end_dialogue_window.setModal(True)
                 try:
-                    start_end_dialogue_window.exec()
+                    exec_dialog_safely(dialog=start_end_dialogue_window)
                     start_end_accepted: bool = start_end_dialogue_window.is_accepted
                     start_value: int = start_end_dialogue_window.start_value
                     end_value: int = start_end_dialogue_window.end_value
@@ -419,11 +417,9 @@ class TimeEventsMain(DataBaseTableMain):
                 msg = "Are you sure that you want to overwrite the values " + magnitude_to + \
                       " with the values of " + magnitude_from + "?"
 
-                reply = QtWidgets.QMessageBox.question(self, self.tr('Message'), msg,
-                                                       QtWidgets.QMessageBox.StandardButton.Yes,
-                                                       QtWidgets.QMessageBox.StandardButton.No)
+                reply: bool = yes_no_question(text=msg, title=self.tr('Message'), parent=self)
 
-                if reply == QtWidgets.QMessageBox.StandardButton.Yes.value:
+                if reply:
                     objects: List[ALL_DEV_TYPES] = self.circuit.get_elements_by_type(dev_type)
 
                     # Assign profiles
@@ -458,7 +454,7 @@ class TimeEventsMain(DataBaseTableMain):
 
         dlg = TimeReIndexDialogue()
         dlg.setModal(True)
-        dlg.exec()
+        exec_dialog_safely(dialog=dlg)
 
         if dlg.is_accepted:
             self.circuit.re_index_time2(t0=dlg.date_time_editor.dateTime().toPython(),
@@ -542,7 +538,7 @@ class TimeEventsMain(DataBaseTableMain):
 
             models_input_dialogue.resize(int(1.61 * 600.0), 550)  # golden ratio
             try:
-                result = models_input_dialogue.exec()  # exec leaves the parent on hold
+                result = exec_dialog_safely(dialog=models_input_dialogue)  # exec leaves the parent on hold
                 logger = models_input_dialogue.process_logger
             finally:
                 delete_dialog_safely(dialog=models_input_dialogue)

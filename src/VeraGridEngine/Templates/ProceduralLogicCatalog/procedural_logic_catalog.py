@@ -7,7 +7,6 @@
 
 from __future__ import annotations
 
-import math
 from typing import Dict, List, Sequence
 
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
@@ -196,131 +195,6 @@ class ProceduralBlockTemplateDescriptor:
         :return: Markdown documentation path.
         """
         return f"procedural_logic/{self._logic_tpe.value}.md"
-
-
-def get_procedural_block_template_descriptors() -> Sequence[ProceduralBlockTemplateDescriptor]:
-    """Return one standalone block descriptor for every concrete Engine type.
-
-    The ordering mirrors the insertion menu in Block Properties so users see
-    the same conceptual groups whether they write Python code or compose the
-    model graphically.
-
-    :return: Immutable ordered descriptor sequence.
-    """
-    descriptors: List[ProceduralBlockTemplateDescriptor] = list()
-
-    # Sampling and history primitives expose one retained result through an
-    # ordinary algebraic output port.
-    descriptors.extend(list((
-        ProceduralBlockTemplateDescriptor(
-            ProceduralLogicType.FixedSample, "Fixed sample", ("Sampling and history",),
-            ("condition",), ("y",), tuple(),
-        ),
-        ProceduralBlockTemplateDescriptor(
-            ProceduralLogicType.SampledValue, "Sampled value", ("Sampling and history",),
-            ("u",), ("y",), tuple(),
-        ),
-        ProceduralBlockTemplateDescriptor(
-            ProceduralLogicType.TimeDelay, "Time delay", ("Sampling and history",),
-            ("u",), ("y",), (ProceduralBlockParameterSpec("delay", 0.0),),
-        ),
-        ProceduralBlockTemplateDescriptor(
-            ProceduralLogicType.MovingAverage, "Moving average", ("Sampling and history",),
-            ("u",), ("y",),
-            (ProceduralBlockParameterSpec("delay", 0.0), ProceduralBlockParameterSpec("window", 0.01)),
-        ),
-    )))
-
-    # Limits and latches keep their real arity instead of hiding control
-    # conditions behind synthetic scalar parameters.
-    descriptors.extend(list((
-        ProceduralBlockTemplateDescriptor(
-            ProceduralLogicType.HardSaturation, "Hard saturation", ("Limits and latches",),
-            ("u",), ("y",),
-            (ProceduralBlockParameterSpec("minimum", -1.0), ProceduralBlockParameterSpec("maximum", 1.0)),
-        ),
-        ProceduralBlockTemplateDescriptor(
-            ProceduralLogicType.GradientLimiter, "Gradient limiter", ("Limits and latches",),
-            ("u",), ("y",),
-            (ProceduralBlockParameterSpec("lower_rate", -1.0),
-             ProceduralBlockParameterSpec("upper_rate", 1.0)),
-        ),
-        ProceduralBlockTemplateDescriptor(
-            ProceduralLogicType.FlipFlop, "Flip-flop", ("Limits and latches",),
-            ("set", "reset"), ("y",), tuple(),
-        ),
-        ProceduralBlockTemplateDescriptor(
-            ProceduralLogicType.AnalogFlipFlop, "Analog flip-flop", ("Limits and latches",),
-            ("u", "set", "reset"), ("y",), tuple(),
-        ),
-        ProceduralBlockTemplateDescriptor(
-            ProceduralLogicType.PickupDropoff, "Pickup/dropoff", ("Limits and latches",),
-            ("condition",), ("y",),
-            (ProceduralBlockParameterSpec("pickup_delay", 0.0),
-             ProceduralBlockParameterSpec("dropoff_delay", 0.0)),
-        ),
-        ProceduralBlockTemplateDescriptor(
-            ProceduralLogicType.DelayedThresholdLatch, "Delayed threshold latch",
-            ("Limits and latches",), ("monitored",), ("y",), tuple(),
-        ),
-    )))
-
-    # Event declarations are intentionally not forced into a fictitious 1x1
-    # signal shape. Only entries with a meaningful retained state expose it.
-    descriptors.extend(list((
-        ProceduralBlockTemplateDescriptor(
-            ProceduralLogicType.ConditionalDiagnostic, "Conditional diagnostic",
-            ("Events and diagnostics",), ("condition",), tuple(), tuple(),
-        ),
-        ProceduralBlockTemplateDescriptor(
-            ProceduralLogicType.DelayedSwitchEvent, "Delayed switch event",
-            ("Events and diagnostics",), ("guard", "trigger"), ("closed",),
-            (ProceduralBlockParameterSpec("delay", 0.0),), True,
-        ),
-        ProceduralBlockTemplateDescriptor(
-            ProceduralLogicType.ResetOnRisingEdge, "Reset on rising edge",
-            ("Events and diagnostics",), ("condition", "value"), ("y",), tuple(),
-        ),
-        ProceduralBlockTemplateDescriptor(
-            ProceduralLogicType.StartupHandover, "Startup handover",
-            ("Events and diagnostics",), tuple(), ("enabled",),
-            (ProceduralBlockParameterSpec("enable_time", 0.0),),
-        ),
-    )))
-
-    # Switching blocks preserve the actual multi-phase and electrical signal
-    # surfaces required by their Engine implementations.
-    descriptors.extend(list((
-        ProceduralBlockTemplateDescriptor(
-            ProceduralLogicType.ValveState, "Valve state", ("Switching and modulation",),
-            ("valve_voltage", "valve_current"), ("state",),
-            (
-                ProceduralBlockParameterSpec("valve_type", 0.0),
-                ProceduralBlockParameterSpec("gate", 0.0),
-                ProceduralBlockParameterSpec("antiparallel", 1.0),
-                ProceduralBlockParameterSpec("voltage_epsilon", 1.0e-9),
-                ProceduralBlockParameterSpec("current_epsilon", 1.0e-9),
-            ),
-        ),
-        ProceduralBlockTemplateDescriptor(
-            ProceduralLogicType.ThreePhaseCarrierPwm, "Three-phase carrier PWM",
-            ("Switching and modulation",),
-            ("modulation_a", "modulation_b", "modulation_c"),
-            ("gate_a", "gate_b", "gate_c"),
-            (ProceduralBlockParameterSpec("switching_frequency", 2.0 * math.pi * 1000.0),
-             ProceduralBlockParameterSpec("carrier_phase", 0.0)),
-        ),
-        ProceduralBlockTemplateDescriptor(
-            ProceduralLogicType.ThreePhaseCarrierSampledModulation,
-            "Three-phase sampled modulation", ("Switching and modulation",),
-            ("modulation_a", "modulation_b", "modulation_c"),
-            ("sample_a", "sample_b", "sample_c"),
-            (ProceduralBlockParameterSpec("switching_frequency", 2.0 * math.pi * 1000.0),
-             ProceduralBlockParameterSpec("carrier_phase", 0.0)),
-        ),
-    )))
-
-    return tuple(descriptors)
 
 
 def _build_procedural_logic_entry(

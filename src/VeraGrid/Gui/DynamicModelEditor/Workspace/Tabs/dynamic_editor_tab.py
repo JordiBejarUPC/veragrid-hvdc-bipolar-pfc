@@ -190,6 +190,7 @@ class DynamicEditorTab(QtWidgets.QWidget):
     __slots__ = ()
 
     dirtyStateChanged = Signal(bool)
+    dynamicPlotDefinitionsChanged = Signal(object, object)
 
     def __init__(
             self,
@@ -462,6 +463,9 @@ class DynamicEditorTab(QtWidgets.QWidget):
         if self._editor is not None:
             self._editor.set_navigation_delegate(self)
             self._editor.dirtyStateChanged.connect(self.dirtyStateChanged)
+            self._editor.dynamicPlotDefinitionsChanged.connect(
+                self._forward_dynamic_plot_definitions_changed
+            )
             self._layout.addWidget(self._editor)
             self._refresh_breadcrumb()
         else:
@@ -491,11 +495,31 @@ class DynamicEditorTab(QtWidgets.QWidget):
             editor.dirtyStateChanged.disconnect(self.dirtyStateChanged)
         except (RuntimeError, TypeError):
             pass
+        try:
+            editor.dynamicPlotDefinitionsChanged.disconnect(
+                self._forward_dynamic_plot_definitions_changed
+            )
+        except (RuntimeError, TypeError):
+            pass
         editor.prepare_to_delete()
         self._layout.removeWidget(editor)
         editor.setParent(None)
         editor.deleteLater()
         self._editor = None
+
+    def _forward_dynamic_plot_definitions_changed(
+            self,
+            mode: object,
+            source: object,
+    ) -> None:
+        """
+        Forward an immediate plot-asset change from the hosted editor.
+
+        :param mode: RMS or EMT simulation mode emitted by the editor.
+        :param source: Editor instance that changed the persistent assets.
+        :return: None.
+        """
+        self.dynamicPlotDefinitionsChanged.emit(mode, source)
 
     def _refresh_breadcrumb(self) -> None:
         """Render the current navigation path in the breadcrumb widget.

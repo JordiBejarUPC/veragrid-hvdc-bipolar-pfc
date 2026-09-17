@@ -11,9 +11,10 @@ import pandas as pd
 import requests
 from matplotlib.axes import Axes
 from matplotlib import pyplot as plt
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 from VeraGrid.Gui.DeviceEditors.GeneratorEditor.WindPowerWizard.wind_power_wizard_gui import Ui_MainWindow
+from VeraGrid.Gui.dialog_lifecycle import delete_dialogs_safely
 from VeraGrid.Gui.matplotlib_dialog import show_matplotlib_figure
 from VeraGrid.Gui.messages import error_msg
 from VeraGrid.Gui.pandas_model import PandasModel
@@ -1024,6 +1025,26 @@ class WindFarmWizard(QtWidgets.QDialog):
         """
         self.is_accepted = self.ok
         self.accept()
+
+    def done(self, result: int) -> None:
+        """
+        Close retained plot windows before completing the wizard.
+
+        :param result: Qt dialog result code.
+        :return: None.
+        """
+        delete_dialogs_safely(dialogs=self._open_plot_dialogs)
+        QtWidgets.QDialog.done(self, result)
+
+    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
+        """
+        Close retained plot windows before closing the wizard.
+
+        :param event: Qt close event.
+        :return: None.
+        """
+        delete_dialogs_safely(dialogs=self._open_plot_dialogs)
+        QtWidgets.QDialog.closeEvent(self, event)
 
 
 if __name__ == "__main__":

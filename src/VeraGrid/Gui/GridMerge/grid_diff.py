@@ -13,6 +13,7 @@ from PySide6.QtCore import Qt
 from typing import Dict
 from VeraGrid.Gui.GridMerge.build_diff_tree import populate_tree
 from VeraGrid.Gui.GridMerge.grid_diff_gui import Ui_Dialog
+from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
 from VeraGrid.Gui.general_dialogues import LogsDialogue
 from VeraGrid.Gui.messages import error_msg, warning_msg
 
@@ -313,7 +314,7 @@ class GridDiffDialogue(QtWidgets.QDialog):
 
         if not ok:
             dlg = LogsDialogue(self.tr('The circuit has duplicated idtags and cannot be differentiated :('), self.logger)
-            dlg.exec()
+            exec_dialog_safely(dialog=dlg)
             return
 
         self._diff: MultiCircuit | None = None
@@ -407,7 +408,7 @@ class GridDiffDialogue(QtWidgets.QDialog):
                         if thread.logger.has_logs():
                             dlg = LogsDialogue(self.tr('Errors while computing the differential :('),
                                                thread.logger)
-                            dlg.exec()
+                            exec_dialog_safely(dialog=dlg)
                     else:
                         pass
 

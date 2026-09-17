@@ -14,15 +14,10 @@ from PySide6.QtGui import QClipboard
 from typing import Iterator, List, Tuple
 import packaging.version as pkg
 from VeraGrid.Gui.AboutDialogue.about_gui import Ui_AboutDialog
+from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
 from VeraGrid.__version__ import __VeraGrid_VERSION__
 from VeraGrid.update import find_latest_version, get_upgrade_command
 from VeraGridEngine.__version__ import __VeraGridEngine_VERSION__, copyright_msg, contributors_msg
-from VeraGridEngine.Compilers.Gslv.activation import (GSLV_AVAILABLE,
-                                                      GSLV_RECOMMENDED_VERSION,
-                                                      GSLV_VERSION)
-from VeraGridEngine.Compilers.circuit_to_pgm import (PGM_AVAILABLE,
-                                                     PGM_RECOMMENDED_VERSION,
-                                                     PGM_VERSION)
 
 
 def get_packages() -> Iterator[Tuple[str, str, str, str, str]]:
@@ -498,7 +493,7 @@ class AboutDialogueGuiGUI(QtWidgets.QDialog):
         msg.setWindowTitle(title)
         # msg.setDetailedText("The details are as follows:")
         msg.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
-        retval = msg.exec()
+        retval = exec_dialog_safely(dialog=msg)
 
     def copy_libs(self):
         """

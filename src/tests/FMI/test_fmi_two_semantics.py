@@ -18,7 +18,7 @@ from VeraGridEngine.IO.fmu.importer.model_description import (
     read_fmu_model_description,
 )
 from VeraGridEngine.IO.fmu.importer.model_description_metadata import (
-    FmiThreeCoSimulationCapabilities,
+    FmiOneCoSimulationCapabilities,
 )
 
 
@@ -361,6 +361,16 @@ def test_event_indicator_count_requires_unsigned_32_bit_integer(
     "type_xml",
     (
         "",
+        "<Float32/>",
+        "<Float64/>",
+        "<Int8/>",
+        "<UInt8/>",
+        "<Int16/>",
+        "<UInt16/>",
+        "<Int32/>",
+        "<UInt32/>",
+        "<Int64/>",
+        "<UInt64/>",
         "<Binary/>",
         "<Real/><Integer/>",
     ),
@@ -586,64 +596,47 @@ def test_fmi_three_namespace_rules_apply_after_version_dispatch(tmp_path: Path) 
         read_fmu_model_description(source)
 
 
-@pytest.mark.parametrize(
-    ("fmi_version", "expected_error"),
-    (
-        ("1.0", "FMI 1.0 execution is not supported yet"),
-    ),
-)
-def test_import_config_gate_rejects_unconnected_metadata_family(
-    fmi_version: str,
-    expected_error: str,
-) -> None:
-    """Verify every effectful consumer has one central FMI-family gate.
+def test_import_config_gate_accepts_connected_fmi_one_family() -> None:
+    """Verify the central mode gate accepts the supported FMI 1 CS profile.
 
-    :param fmi_version: Recognized metadata family without a connected consumer.
-    :param expected_error: Exact family-specific gate message.
     :return: None.
     """
 
+    # Supply the complete FMI 1 capability record so the gate is exercised on
+    # the supported synchronous, variable-step Stand-Alone profile.
     model_identifiers: dict[FmuInterfaceMode, str] = dict()
-    model_identifiers[FmuInterfaceMode.CO_SIMULATION] = "unconnected_model"
-    if fmi_version == "3.0":
-        guid: str | None = None
-        instantiation_token: str | None = "unconnected-token"
-        fmi_three_capabilities: FmiThreeCoSimulationCapabilities | None = (
-            FmiThreeCoSimulationCapabilities(
-                needs_execution_tool=False,
-                can_be_instantiated_only_once_per_process=False,
-                can_get_and_set_fmu_state=False,
-                can_serialize_fmu_state=False,
-                can_handle_variable_communication_step_size=False,
-                provides_intermediate_update=False,
-                might_return_early_from_do_step=False,
-                can_return_early_after_intermediate_update=False,
-                has_event_mode=False,
-                fixed_internal_step_size=None,
-            )
-        )
-    else:
-        guid = "unconnected-guid"
-        instantiation_token = None
-        fmi_three_capabilities = None
+    model_identifiers[FmuInterfaceMode.CO_SIMULATION] = "connected_fmi_one_model"
+    capabilities: FmiOneCoSimulationCapabilities = FmiOneCoSimulationCapabilities(
+        needs_execution_tool=False,
+        can_handle_variable_communication_step_size=True,
+        can_handle_events=False,
+        can_reject_steps=False,
+        can_interpolate_inputs=False,
+        max_output_derivative_order=0,
+        can_run_asynchronuously=False,
+        can_signal_events=False,
+        can_be_instantiated_only_once_per_process=False,
+        can_not_use_memory_management_functions=False,
+    )
     metadata: FmuModelDescription = FmuModelDescription(
-        path=Path("unconnected.fmu"),
-        fmi_version=fmi_version,
-        model_name="UnconnectedModel",
-        guid=guid,
+        path=Path("connected-fmi-one.fmu"),
+        fmi_version="1.0",
+        model_name="ConnectedFmiOneModel",
+        guid="connected-fmi-one-guid",
         variable_naming_convention=None,
         number_of_event_indicators=0,
         interface_modes=(FmuInterfaceMode.CO_SIMULATION,),
         model_identifiers=model_identifiers,
         platforms=tuple(),
         variables=tuple(),
-        instantiation_token=instantiation_token,
-        fmi_three_co_simulation_capabilities=fmi_three_capabilities,
+        fmi_one_co_simulation_capabilities=capabilities,
     )
     config: FmuImportConfig = FmuImportConfig(
         fmu_path=metadata.path,
         preferred_mode=FmuInterfaceMode.CO_SIMULATION,
     )
 
-    with pytest.raises(FmuModeError, match=expected_error):
-        config.resolve_execution_mode(metadata)
+    # A connected family resolves through the existing public configuration
+    # owner; no importer-specific bypass or special test path is permitted.
+    resolved_mode: FmuInterfaceMode = config.resolve_execution_mode(metadata)
+    assert resolved_mode == FmuInterfaceMode.CO_SIMULATION

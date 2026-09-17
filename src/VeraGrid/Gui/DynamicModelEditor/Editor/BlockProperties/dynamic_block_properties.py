@@ -42,6 +42,7 @@ from VeraGrid.Gui.DynamicModelEditor.Editor.BlockProperties.add_symbol_widget im
     Ui_Form as Ui_AddSymbolWidget,
 )
 from VeraGrid.Gui.toast_widget import ToastManager
+from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
 from VeraGridEngine.enumerations import (
     BlockType,
     BlockSymbolCategory,
@@ -80,7 +81,9 @@ from VeraGridEngine.Utils.procedural_logic import ProceduralLogicBase
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Templates.ProceduralLogicCatalog import (
     ProceduralBlockTemplateDescriptor,
-    get_procedural_block_template_descriptors,
+)
+from VeraGrid.Gui.DynamicModelEditor.Editor.DynamicLibrary.dynamic_editor_library import (
+    get_dynamic_library_procedural_descriptors,
 )
 from VeraGridEngine.Templates.template_definition import TemplateDefinition, TemplateProp
 from VeraGridEngine.Utils.Symbolic.block import Block
@@ -4967,7 +4970,7 @@ def resolve_block_documentation_url(
         if isinstance(procedural_entry, ProceduralLogicBase):
             relative_path = None
             procedural_descriptor: ProceduralBlockTemplateDescriptor
-            for procedural_descriptor in get_procedural_block_template_descriptors():
+            for procedural_descriptor in get_dynamic_library_procedural_descriptors():
                 if procedural_descriptor.logic_tpe == procedural_entry.logic_tpe:
                     relative_path = procedural_descriptor.documentation_relative_path
                     break
@@ -5799,6 +5802,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
     variableRenameRequested = Signal(object)
     outputExportChangesRequested = Signal(object)
     symbolRemovalsRequested = Signal(object)
+    addToPlotRequested = Signal(object, object, object)
     closed = Signal()
 
     __slots__ = (
@@ -5961,14 +5965,11 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             self._disconnect_child_signals()
             self._property_tree_model.prepare_to_delete()
             self._add_symbol_dialog.reject()
-            self._add_symbol_dialog.setParent(None)
             self._add_symbol_dialog.deleteLater()
             self._procedural_add_menu.clear()
-            self._procedural_add_menu.setParent(None)
             self._procedural_add_menu.deleteLater()
             self._dae_editor.prepare_to_delete()
             self.ui.dae_editor_layout.removeWidget(self._dae_editor)
-            self._dae_editor.setParent(None)
             self._dae_editor.deleteLater()
             self.ui.property_tree.closePersistentEditor(self.ui.property_tree.currentIndex())
             self.ui.property_tree.setItemDelegateForColumn(2, None)
@@ -5986,17 +5987,11 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             self._add_symbol_ui.new_symbol_kind.clear()
             self._add_symbol_ui.new_external_reference.clear()
             self._add_symbol_ui.new_static_reference.clear()
-            self._property_tree_model.setParent(None)
             self._property_tree_model.deleteLater()
-            self._retained_mode_model.setParent(None)
             self._retained_mode_model.deleteLater()
-            self._symbol_model.setParent(None)
             self._symbol_model.deleteLater()
-            self._parameter_model.setParent(None)
             self._parameter_model.deleteLater()
-            self._special_structural_model.setParent(None)
             self._special_structural_model.deleteLater()
-            self._general_structural_model.setParent(None)
             self._general_structural_model.deleteLater()
 
     def _disconnect_child_signals(self) -> None:
@@ -6230,7 +6225,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         """
         current_group_label: str | None = None
         procedural_descriptor: ProceduralBlockTemplateDescriptor
-        for procedural_descriptor in get_procedural_block_template_descriptors():
+        for procedural_descriptor in get_dynamic_library_procedural_descriptors():
             group_label: str = procedural_descriptor.category_path[0]
             if group_label != current_group_label:
                 self._procedural_add_menu.addSection(self.tr(group_label))
@@ -6293,7 +6288,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self.update_new_symbol_category()
         self.update_new_symbol_controls()
         self._add_symbol_dialog.adjustSize()
-        self._add_symbol_dialog.exec()
+        exec_dialog_safely(dialog=self._add_symbol_dialog)
 
     @QtCore.Slot()
     def restore_property_tree(self) -> None:
@@ -7795,8 +7790,27 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         )
         menu.addSeparator()
 
+        add_to_plot_action: QtGui.QAction | None
         rename_action: QtGui.QAction | None
         delete_action: QtGui.QAction | None
+        if source_row is not None:
+            selected_variable: Var | None = source_row.get_variable()
+            add_to_plot_action = gf.add_menu_entry(
+                menu=menu,
+                text=self.tr("Add to plot..."),
+                icon_path=":/Icons/icons/rms_plots.png",
+            )
+            add_to_plot_action.setEnabled(selected_variable is not None)
+            if selected_variable is None:
+                add_to_plot_action.setToolTip(
+                    self.tr("Apply the new symbol before adding it to a plot")
+                )
+            else:
+                pass
+            menu.addSeparator()
+        else:
+            add_to_plot_action = None
+
         if source_row is not None or source_mode is not None:
             rename_action = gf.add_menu_entry(
                 menu=menu,
@@ -7821,6 +7835,17 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             self.show_add_symbol_dialog(BlockSymbolCategory.PARAMETERS, owner)
         elif selected_action is add_retained_mode_action:
             self.show_add_symbol_dialog(BlockSymbolCategory.RETAINED_MODES, owner)
+        elif add_to_plot_action is not None and selected_action is add_to_plot_action:
+            selected_variable = source_row.get_variable() if source_row is not None else None
+            if selected_variable is not None and source_row is not None:
+                global_position: QtCore.QPoint = table.viewport().mapToGlobal(position)
+                self.addToPlotRequested.emit(
+                    selected_variable,
+                    source_row.get_kind(),
+                    global_position,
+                )
+            else:
+                pass
         elif rename_action is not None and selected_action is rename_action:
             self.rename_property_symbol()
         elif delete_action is not None and selected_action is delete_action:

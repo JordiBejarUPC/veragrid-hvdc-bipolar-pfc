@@ -21,8 +21,17 @@ from VeraGridEngine.Utils.Symbolic.rms_measurements_functions import (measuremen
                                                                       build_rms_voltage_meter_outputs_from_dc,
                                                                       build_rms_current_meter_outputs_from_pq,
                                                                       build_rms_current_meter_outputs_from_dc)
-from VeraGridEngine.enumerations import DeviceType, VarPowerFlowReferenceType, ParamPowerFlowReferenceType, \
-    DynamicSimulationMode, DynEditorGraphicsModes
+from VeraGridEngine.enumerations import (
+    BlockSymbolKind,
+    DeviceType,
+    DynamicPlotEntryKind,
+    DynamicPlotEntryRole,
+    DynamicSimulationMode,
+    DynEditorGraphicsModes,
+    ParamPowerFlowReferenceType,
+    PlotSimulationType,
+    VarPowerFlowReferenceType,
+)
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_algebraic_vars
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.Dynamic.var_factory import Connection, VarFactory
@@ -57,7 +66,12 @@ from VeraGridEngine.Utils.Symbolic.dynamic_connection_intent import (DynamicConn
 from VeraGrid.Gui.DynamicModelEditor.Editor.block_editor import Ui_BlockEditorWindow
 import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_graphics as graph
 from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import DynamicEditorEntry
-from VeraGrid.Gui.DynamicModelEditor.Editor.DynamicLibrary.dynamic_editor_library import DynamicEditorLibrary, LibraryTreeFilterProxyModel
+from VeraGrid.Gui.DynamicModelEditor.Editor.DynamicLibrary.dynamic_editor_library import (
+    DynamicEditorLibrary,
+    LibraryDeviceTemplateSpec,
+    LibraryTreeFilterProxyModel,
+    build_dynamic_library_device_template,
+)
 from VeraGrid.Gui.DynamicModelEditor.Editor.ElementDialogues.MeasurementsDialog import (
     is_measurement_reference_input,
     MeasurementsDialog,
@@ -69,7 +83,12 @@ from VeraGrid.Gui.DynamicModelEditor.Editor.BlockProperties.dynamic_block_proper
     DynamicBlockPropertiesDialog,
     resolve_block_documentation_url,
 )
-from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, is_dialog_available
+from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, exec_dialog_safely, is_dialog_available
+from VeraGrid.Gui.general_dialogues import DeviceSelectorPanel
+from VeraGrid.Gui.DynamicModelEditor.Plots.dynamic_plots_handler import (
+    DynamicPlotCandidate,
+    DynamicsResultsHandler,
+)
 import VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_validation as valid
 from VeraGrid.Gui.DynamicModelEditor.Editor.DynamicLibrary.dynamic_editor_utilities import (
     create_block_of_type,
@@ -112,6 +131,9 @@ from VeraGrid.Gui.DynamicModelEditor.Editor.RoutingQt import QtRoutingSession
 
 from VeraGrid.Gui.DynamicModelEditor.Editor.Routing.routing_graph import RoutingGraph
 from VeraGridEngine.enumerations import BlockType, RoutingAxis
+from VeraGridEngine.Devices.Events.dynamic_plot import DynamicPlot
+from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
+from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup
 from VeraGridEngine.Devices.Diagrams.block_diagram import (
     BlockDiagram, BlockDiagramConnection, BlockDiagramNode,
 )
@@ -209,6 +231,7 @@ DynamicLibraryPayload: TypeAlias = (
     | BasicBlockTemplateDescriptor
     | ProceduralBlockTemplateDescriptor
     | InternationalStandardTemplateDescriptor
+    | LibraryDeviceTemplateSpec
     | RmsModelTemplate
     | EmtModelTemplate
     | FmuTemplate
@@ -1656,6 +1679,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     __slots__ = ()
 
     dirtyStateChanged = Signal(bool)
+    dynamicPlotDefinitionsChanged = Signal(object, object)
 
     UNARY_MATH_BLOCK_TYPES: set[BlockType] = set(
         (BlockType.CONST, BlockType.GAIN, BlockType.ABS, BlockType.INTEGRATOR, BlockType.POWER, BlockType.SIN,
@@ -1720,6 +1744,16 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         # The editor owns its own toast manager so save notifications are
         # stacked above this page instead of behind it on the main window.
         self.toast_manager: ToastManager = ToastManager(parent=self, position_top=False)
+
+        # Plot assignment is a short GUI transaction shared by diagram wires
+        # and Block Properties. The editor retains the popup and its semantic
+        # selection until the user accepts or cancels the operation.
+        self._plot_selector_panel: DeviceSelectorPanel | None = None
+        self._event_group_selector_panel: DeviceSelectorPanel | None = None
+        self._plot_assignment_handler: DynamicsResultsHandler | None = None
+        self._plot_assignment_candidates: List[DynamicPlotCandidate] = list()
+        self._plot_assignment_selected_plot: DynamicPlot | None = None
+        self._plot_assignment_popup_position: QtCore.QPoint = QtCore.QPoint()
 
         if modal:
             self.setWindowModality(QtCore.Qt.WindowModality.WindowModal)
@@ -2557,7 +2591,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             parent=self,
         )
 
-        if dialogue.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+        if exec_dialog_safely(dialog=dialogue) == QtWidgets.QDialog.DialogCode.Accepted:
             bus: Bus
             block_type: BlockType
             inputs_list: List[VarPowerFlowReferenceType]
@@ -2630,6 +2664,448 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     self.tr("Block info"),
                     self.tr("The online block documentation could not be opened."),
                 )
+
+    def request_add_connection_to_plot(
+            self,
+            connection: graph.ConnectionItem,
+            global_position: QtCore.QPoint,
+    ) -> None:
+        """
+        Start plot assignment for the signal carried by a diagram connection.
+
+        :param connection: Connection selected through the scene context menu.
+        :param global_position: Screen position used to anchor the selector popup.
+        :return: None.
+        """
+        signal_var: Var | None = self.resolve_connection_signal_var(item=connection)
+        if signal_var is not None:
+            self.request_add_symbol_to_plot(
+                variable=signal_var,
+                entry_kind=DynamicPlotEntryKind.VARIABLE,
+                global_position=global_position,
+                parent_widget=self,
+                allow_external_device=True,
+            )
+        else:
+            QtWidgets.QMessageBox.information(
+                self,
+                self.tr("Add to plot"),
+                self.tr("The signal transmitted by this connection could not be resolved."),
+            )
+
+    @QtCore.Slot(object, object, object)
+    def on_block_properties_add_to_plot_requested(
+            self,
+            variable_data: object,
+            symbol_kind_data: object,
+            global_position_data: object,
+    ) -> None:
+        """
+        Start plot assignment for a selected Block Properties symbol.
+
+        :param variable_data: Existing symbolic variable selected in the tree.
+        :param symbol_kind_data: Semantic Block Properties symbol kind.
+        :param global_position_data: Screen position used to anchor the popup.
+        :return: None.
+        """
+        if isinstance(variable_data, Var) and isinstance(symbol_kind_data, BlockSymbolKind):
+            if symbol_kind_data in (BlockSymbolKind.PARAMETER, BlockSymbolKind.EVENT_PARAMETER):
+                entry_kind: DynamicPlotEntryKind = DynamicPlotEntryKind.PARAMETER
+            elif symbol_kind_data == BlockSymbolKind.MODE_PARAMETER:
+                QtWidgets.QMessageBox.information(
+                    self._block_properties_dialogue,
+                    self.tr("Add to plot"),
+                    self.tr("Runtime mode parameters are not available as dynamic plot entries."),
+                )
+                return
+            else:
+                entry_kind = DynamicPlotEntryKind.VARIABLE
+
+            if isinstance(global_position_data, QtCore.QPoint):
+                global_position: QtCore.QPoint = global_position_data
+            else:
+                global_position = QtGui.QCursor.pos()
+
+            parent_widget: QtWidgets.QWidget
+            if self._block_properties_dialogue is not None:
+                parent_widget = self._block_properties_dialogue
+            else:
+                parent_widget = self
+
+            self.request_add_symbol_to_plot(
+                variable=variable_data,
+                entry_kind=entry_kind,
+                global_position=global_position,
+                parent_widget=parent_widget,
+                allow_external_device=True,
+            )
+        else:
+            pass
+
+    def _get_plot_simulation_type(self) -> PlotSimulationType | None:
+        """
+        Convert the current editor mode to a persistent plot family.
+
+        :return: RMS or EMT plot family, or ``None`` for unsupported modes.
+        """
+        if self.mode == DynamicSimulationMode.RMS:
+            return PlotSimulationType.RMS
+        elif self.mode == DynamicSimulationMode.EMT:
+            return PlotSimulationType.EMT
+        else:
+            return None
+
+    def request_add_symbol_to_plot(
+            self,
+            variable: Var,
+            entry_kind: DynamicPlotEntryKind,
+            global_position: QtCore.QPoint,
+            parent_widget: QtWidgets.QWidget,
+            allow_external_device: bool,
+    ) -> None:
+        """
+        Open the shared device-selector popup for a plottable model symbol.
+
+        The available plots are filtered by the current simulation family.
+        Candidate resolution happens before the popup opens so unsupported or
+        unapplied symbols cannot create dangling persistent plot entries.
+
+        :param variable: Selected dynamic variable or parameter.
+        :param entry_kind: Variable or parameter plot-entry kind.
+        :param global_position: Screen position used to anchor the popup.
+        :param parent_widget: Widget that owns messages and modal follow-ups.
+        :param allow_external_device: Whether an arrow variable may be owned by
+            a connected device instead of the device being edited.
+        :return: None.
+        """
+        self.cancel_dynamic_plot_assignment()
+        plot_simulation_type: PlotSimulationType | None = self._get_plot_simulation_type()
+        if plot_simulation_type is None:
+            QtWidgets.QMessageBox.information(
+                parent_widget,
+                self.tr("Add to plot"),
+                self.tr("Dynamic plots are available only for RMS and EMT models."),
+            )
+            return
+        else:
+            pass
+
+        available_plots: List[DynamicPlot] = list()
+        plot_asset: DynamicPlot
+        for plot_asset in self.circuit.dynamic_plots:
+            if plot_asset.simulation_type == plot_simulation_type:
+                available_plots.append(plot_asset)
+            else:
+                pass
+
+        if len(available_plots) == 0:
+            QtWidgets.QMessageBox.information(
+                parent_widget,
+                self.tr("Add to plot"),
+                self.tr("No {mode} plots available. Create a plot in {mode} Plots first.").format(
+                    mode=self.mode.name,
+                ),
+            )
+            return
+        else:
+            pass
+
+        # Reuse the pre-simulation handler as the sole source of candidate
+        # eligibility and persistent-entry construction.
+        assignment_handler: DynamicsResultsHandler = DynamicsResultsHandler(
+            results=None,
+            circuit=self.circuit,
+            simulation_type=plot_simulation_type,
+            dialog_parent=parent_widget,
+        )
+        assignment_candidates: List[DynamicPlotCandidate] = (
+            assignment_handler.get_pre_simulation_candidates_for_symbol(
+                device=self.api_object,
+                variable=variable,
+                entry_kind=entry_kind,
+                allow_external_device=allow_external_device,
+            )
+        )
+        if len(assignment_candidates) == 0:
+            QtWidgets.QMessageBox.information(
+                parent_widget,
+                self.tr("Add to plot"),
+                self.tr(
+                    "This symbol is not available in dynamic results. "
+                    "Apply and save model changes before adding a new symbol to a plot."
+                ),
+            )
+            return
+        else:
+            pass
+
+        self._plot_assignment_handler = assignment_handler
+        self._plot_assignment_candidates = assignment_candidates
+        self._plot_assignment_popup_position = QtCore.QPoint(global_position)
+
+        selectable_plots: List[ALL_DEV_TYPES] = list()
+        for plot_asset in available_plots:
+            selectable_plots.append(plot_asset)
+        plots_by_type: Dict[DeviceType, List[ALL_DEV_TYPES]] = dict()
+        plots_by_type[DeviceType.DynamicPlotGroupDevice] = selectable_plots
+
+        plot_selector: DeviceSelectorPanel = DeviceSelectorPanel(
+            devices_by_type=plots_by_type,
+            allow_none=False,
+            parent=parent_widget,
+        )
+        plot_selector.selection_made.connect(self.on_dynamic_plot_selected)
+        plot_selector.selection_cancelled.connect(self.cancel_dynamic_plot_assignment)
+        self._plot_selector_panel = plot_selector
+        self._show_plot_assignment_selector(
+            selector=plot_selector,
+            global_position=global_position,
+        )
+
+    def _show_plot_assignment_selector(
+            self,
+            selector: DeviceSelectorPanel,
+            global_position: QtCore.QPoint,
+    ) -> None:
+        """
+        Show one shared selector popup fully inside the active screen.
+
+        :param selector: Existing reusable device-selector panel.
+        :param global_position: Requested top-left screen position.
+        :return: None.
+        """
+        selector.setWindowFlags(QtCore.Qt.WindowType.Popup)
+        requested_size: QtCore.QSize = QtCore.QSize(500, 400)
+        selector.resize(requested_size)
+        screen: QtGui.QScreen | None = QtGui.QGuiApplication.screenAt(global_position)
+        top_left: QtCore.QPoint = QtCore.QPoint(global_position)
+        resize_from_top: bool = False
+
+        if screen is not None:
+            available_geometry: QtCore.QRect = screen.availableGeometry()
+            if top_left.x() + requested_size.width() > available_geometry.right():
+                top_left.setX(available_geometry.right() - requested_size.width())
+            else:
+                pass
+            if top_left.x() < available_geometry.left():
+                top_left.setX(available_geometry.left())
+            else:
+                pass
+            if top_left.y() + requested_size.height() > available_geometry.bottom():
+                top_left.setY(global_position.y() - requested_size.height())
+                resize_from_top = True
+            else:
+                pass
+            if top_left.y() < available_geometry.top():
+                top_left.setY(available_geometry.top())
+                resize_from_top = False
+            else:
+                pass
+        else:
+            pass
+
+        selector.set_resize_grip_at_top(value=resize_from_top)
+        selector.move(top_left)
+        selector.show()
+        selector.raise_()
+        selector.search_box.setFocus(QtCore.Qt.FocusReason.PopupFocusReason)
+
+    def _dispose_plot_assignment_selector(self, selector: DeviceSelectorPanel | None) -> None:
+        """
+        Close and release one transient plot-assignment selector.
+
+        :param selector: Selector to dispose, if it still exists.
+        :return: None.
+        """
+        if selector is not None:
+            selector.close()
+            selector.setParent(None)
+            selector.deleteLater()
+        else:
+            pass
+
+    @QtCore.Slot()
+    def cancel_dynamic_plot_assignment(self) -> None:
+        """
+        Cancel the current plot-assignment transaction and release its popups.
+
+        :return: None.
+        """
+        plot_selector: DeviceSelectorPanel | None = self._plot_selector_panel
+        event_selector: DeviceSelectorPanel | None = self._event_group_selector_panel
+        self._plot_selector_panel = None
+        self._event_group_selector_panel = None
+        self._dispose_plot_assignment_selector(selector=plot_selector)
+        self._dispose_plot_assignment_selector(selector=event_selector)
+        self._plot_assignment_handler = None
+        self._plot_assignment_candidates.clear()
+        self._plot_assignment_selected_plot = None
+
+    @QtCore.Slot(object)
+    def on_dynamic_plot_selected(self, selected_object: object) -> None:
+        """
+        Continue assignment after the user selects a destination plot.
+
+        :param selected_object: Object returned by the shared selector panel.
+        :return: None.
+        """
+        plot_selector: DeviceSelectorPanel | None = self._plot_selector_panel
+        self._plot_selector_panel = None
+        self._dispose_plot_assignment_selector(selector=plot_selector)
+
+        if isinstance(selected_object, DynamicPlot):
+            self._plot_assignment_selected_plot = selected_object
+        else:
+            self.cancel_dynamic_plot_assignment()
+            return
+
+        if len(self._plot_assignment_candidates) == 1:
+            self._complete_dynamic_plot_assignment(candidate=self._plot_assignment_candidates[0])
+        elif len(self._plot_assignment_candidates) > 1:
+            self._show_event_group_selector_for_plot_assignment()
+        else:
+            self.cancel_dynamic_plot_assignment()
+
+    def _show_event_group_selector_for_plot_assignment(self) -> None:
+        """
+        Ask for an event-group source when a symbol has multiple candidates.
+
+        :return: None.
+        """
+        candidate_group_ids: set[str] = set()
+        candidate: DynamicPlotCandidate
+        for candidate in self._plot_assignment_candidates:
+            candidate_group_ids.add(candidate.get_event_group_idtag())
+
+        event_groups: List[ALL_DEV_TYPES] = list()
+        event_group_type: DeviceType
+        if self.mode == DynamicSimulationMode.RMS:
+            event_group_type = DeviceType.RmsEventsGroupDevice
+            rms_group: RmsEventsGroup
+            for rms_group in self.circuit.rms_events_groups:
+                if str(rms_group.idtag) in candidate_group_ids:
+                    event_groups.append(rms_group)
+                else:
+                    pass
+        elif self.mode == DynamicSimulationMode.EMT:
+            event_group_type = DeviceType.EmtEventsGroupDevice
+            emt_group: EmtEventsGroup
+            for emt_group in self.circuit.emt_events_groups:
+                if str(emt_group.idtag) in candidate_group_ids:
+                    event_groups.append(emt_group)
+                else:
+                    pass
+        else:
+            self.cancel_dynamic_plot_assignment()
+            return
+
+        if len(event_groups) == 1:
+            self.on_dynamic_plot_event_group_selected(selected_object=event_groups[0])
+        elif len(event_groups) > 1:
+            event_groups_by_type: Dict[DeviceType, List[ALL_DEV_TYPES]] = dict()
+            event_groups_by_type[event_group_type] = event_groups
+            parent_widget: QtWidgets.QWidget = self
+            if self._block_properties_dialogue is not None:
+                parent_widget = self._block_properties_dialogue
+            else:
+                pass
+            event_selector: DeviceSelectorPanel = DeviceSelectorPanel(
+                devices_by_type=event_groups_by_type,
+                allow_none=False,
+                parent=parent_widget,
+            )
+            event_selector.selection_made.connect(self.on_dynamic_plot_event_group_selected)
+            event_selector.selection_cancelled.connect(self.cancel_dynamic_plot_assignment)
+            self._event_group_selector_panel = event_selector
+            self._show_plot_assignment_selector(
+                selector=event_selector,
+                global_position=self._plot_assignment_popup_position,
+            )
+        else:
+            QtWidgets.QMessageBox.warning(
+                self,
+                self.tr("Add to plot"),
+                self.tr("No matching dynamic event group is available."),
+            )
+            self.cancel_dynamic_plot_assignment()
+
+    @QtCore.Slot(object)
+    def on_dynamic_plot_event_group_selected(self, selected_object: object) -> None:
+        """
+        Complete assignment with the candidate for the selected event group.
+
+        :param selected_object: RMS or EMT event-group asset selected by the user.
+        :return: None.
+        """
+        event_selector: DeviceSelectorPanel | None = self._event_group_selector_panel
+        self._event_group_selector_panel = None
+        self._dispose_plot_assignment_selector(selector=event_selector)
+
+        if isinstance(selected_object, (RmsEventsGroup, EmtEventsGroup)):
+            selected_group_idtag: str = str(selected_object.idtag)
+            matching_candidate: DynamicPlotCandidate | None = None
+            candidate: DynamicPlotCandidate
+            for candidate in self._plot_assignment_candidates:
+                if candidate.get_event_group_idtag() == selected_group_idtag:
+                    matching_candidate = candidate
+                else:
+                    pass
+
+            if matching_candidate is not None:
+                self._complete_dynamic_plot_assignment(candidate=matching_candidate)
+            else:
+                QtWidgets.QMessageBox.warning(
+                    self,
+                    self.tr("Add to plot"),
+                    self.tr("The selected event group does not provide this symbol."),
+                )
+                self.cancel_dynamic_plot_assignment()
+        else:
+            self.cancel_dynamic_plot_assignment()
+
+    def _complete_dynamic_plot_assignment(self, candidate: DynamicPlotCandidate) -> None:
+        """
+        Persist one selected candidate in the chosen time-series or X-Y plot.
+
+        :param candidate: Source-specific dynamic symbol candidate.
+        :return: None.
+        """
+        handler: DynamicsResultsHandler | None = self._plot_assignment_handler
+        selected_plot: DynamicPlot | None = self._plot_assignment_selected_plot
+        if handler is not None and selected_plot is not None:
+            target_role: DynamicPlotEntryRole | None = handler.get_interactive_role_for_candidate(
+                group_name=selected_plot.name,
+                candidate=candidate,
+            )
+            if target_role is not None:
+                inserted: bool = handler.add_candidate_to_group_with_role(
+                    group_name=selected_plot.name,
+                    candidate=candidate,
+                    role=target_role,
+                )
+                if inserted:
+                    # The persistent circuit assets are already updated by the
+                    # handler. Broadcast once so both plot editors and Results
+                    # rebuild their projections from the same definition.
+                    self.dynamicPlotDefinitionsChanged.emit(self.mode, self)
+                    self.toast_manager.show_info_toast(
+                        self.tr("Added {symbol} to {plot}").format(
+                            symbol=candidate.get_variable_name(),
+                            plot=selected_plot.name,
+                        )
+                    )
+                else:
+                    QtWidgets.QMessageBox.information(
+                        self,
+                        self.tr("Add to plot"),
+                        self.tr("This symbol is already present in the selected plot."),
+                    )
+            else:
+                pass
+        else:
+            pass
+
+        self.cancel_dynamic_plot_assignment()
 
     def request_open_block_properties(self, block: Block) -> None:
         """
@@ -2779,6 +3255,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             dialogue.variableRenameRequested.connect(self.on_variable_rename_requested)
             dialogue.outputExportChangesRequested.connect(self.on_output_export_changes_requested)
             dialogue.symbolRemovalsRequested.connect(self.on_symbol_removals_requested)
+            dialogue.addToPlotRequested.connect(self.on_block_properties_add_to_plot_requested)
             dialogue.closed.connect(self.on_block_properties_dialogue_closed)
             self._block_properties_dialogue = dialogue
             dialogue.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
@@ -2945,35 +3422,44 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.libraryTreeView.collapseAll()
         self.ui.libraryTreeView.expandToDepth(1)
 
-        # Keep the catalog roots visible while folding their named groups.
-        # Users can then open only the behavior or model family they need.
-        top_level_row: int
-        for top_level_row in range(self.library_proxy_model.rowCount()):
-            top_level_index: QtCore.QModelIndex = self.library_proxy_model.index(
-                top_level_row,
+        # International standards now live below Devices and individual
+        # control families. Fold every occurrence recursively while leaving
+        # the enclosing canonical branches visible.
+        self._collapse_international_standard_branches(QtCore.QModelIndex())
+
+    def _collapse_international_standard_branches(
+            self,
+            parent_index: QtCore.QModelIndex,
+    ) -> None:
+        """Collapse every nested international-standard branch recursively.
+
+        :param parent_index: Proxy-model parent whose children are inspected.
+        :return: None.
+        """
+        row_index: int
+        for row_index in range(self.library_proxy_model.rowCount(parent_index)):
+            child_index: QtCore.QModelIndex = self.library_proxy_model.index(
+                row_index,
                 0,
+                parent_index,
             )
-            top_level_label: str = str(
-                self.library_proxy_model.data(
-                    top_level_index,
-                    QtCore.Qt.ItemDataRole.DisplayRole,
-                )
-            )
-            if top_level_label in ("Procedural logic", "International standards"):
+            child_label: str = str(self.library_proxy_model.data(
+                child_index,
+                QtCore.Qt.ItemDataRole.DisplayRole,
+            ))
+            if child_label == "International standards":
+                self.ui.libraryTreeView.collapse(child_index)
+            elif child_label == "Procedural logic":
                 group_row: int
-                for group_row in range(
-                        self.library_proxy_model.rowCount(top_level_index)
-                ):
-                    group_index: QtCore.QModelIndex = (
-                        self.library_proxy_model.index(
-                            group_row,
-                            0,
-                            top_level_index,
-                        )
+                for group_row in range(self.library_proxy_model.rowCount(child_index)):
+                    group_index: QtCore.QModelIndex = self.library_proxy_model.index(
+                        group_row,
+                        0,
+                        child_index,
                     )
                     self.ui.libraryTreeView.collapse(group_index)
             else:
-                pass
+                self._collapse_international_standard_branches(child_index)
 
     def on_library_search_text_changed(self, text: str) -> None:
         """
@@ -3015,6 +3501,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         BasicBlockTemplateDescriptor,
                         ProceduralBlockTemplateDescriptor,
                         InternationalStandardTemplateDescriptor,
+                        LibraryDeviceTemplateSpec,
                         RmsModelTemplate,
                         EmtModelTemplate,
                         FmuTemplate,
@@ -3055,6 +3542,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             if isinstance(payload,
                           (BlockType, BasicBlockTemplateDescriptor, ProceduralBlockTemplateDescriptor,
                            InternationalStandardTemplateDescriptor,
+                           LibraryDeviceTemplateSpec,
                            RmsModelTemplate, EmtModelTemplate, FmuTemplate)):
                 return payload
             else:
@@ -4740,6 +5228,30 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             items = self.create_signal_pair_item(x_pos=x_pos, y_pos=y_pos)
             return items[0] if items else None
 
+        elif isinstance(payload, LibraryDeviceTemplateSpec):
+            if isinstance(payload.source, BlockType):
+                # Reuse the established BlockType insertion path so structural
+                # wizards, transformer winding defaults, and item drawings stay
+                # identical after the Library registration is centralized.
+                return self.create_library_payload_item(
+                    payload=payload.source,
+                    x_pos=x_pos,
+                    y_pos=y_pos,
+                )
+            else:
+                device_template: RmsModelTemplate | EmtModelTemplate | None = build_dynamic_library_device_template(
+                    spec=payload,
+                    var_factory=self.var_factory,
+                )
+                if device_template is not None:
+                    return self.create_template_block_item(
+                        template=device_template,
+                        x_pos=x_pos,
+                        y_pos=y_pos,
+                    )
+                else:
+                    return None
+
         elif isinstance(payload, BlockType) and payload == BlockType.INPUT_CONN:
             return self.create_measurements_block_item(x_pos=x_pos, y_pos=y_pos)
 
@@ -5186,6 +5698,66 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             return source_var, target_var
         else:
             return target_var, source_var
+
+    def resolve_connection_signal_var(self, item: graph.ConnectionItem) -> Var | None:
+        """
+        Resolve the symbolic signal transmitted by one visible connection.
+
+        Direct port-to-port connections reuse the editor's authoritative alias
+        semantics, including reversed network connectors. Legacy branching
+        connections are traced through their owner connection instead of
+        guessing from a downstream input port.
+
+        :param item: Connection selected in the diagram.
+        :return: Transmitted variable, or ``None`` when it cannot be resolved
+            unambiguously.
+        """
+        return self._resolve_connection_signal_var_recursive(item=item, visited_uids=set())
+
+    def _resolve_connection_signal_var_recursive(
+            self,
+            item: graph.ConnectionItem,
+            visited_uids: set[int],
+    ) -> Var | None:
+        """
+        Trace one direct or branched connection to its transmitted variable.
+
+        :param item: Connection currently being inspected.
+        :param visited_uids: Connection identifiers already traversed.
+        :return: Transmitted variable, or ``None`` for an invalid or cyclic route.
+        """
+        if item.uid in visited_uids:
+            return None
+        else:
+            visited_uids.add(item.uid)
+
+        source_port: graph.PortItem | graph.BranchingItem = item.source_port
+        target_port: graph.PortItem | graph.BranchingItem = item.target_port
+        if isinstance(source_port, graph.PortItem) and isinstance(target_port, graph.PortItem):
+            resolved_vars: tuple[Var, Var] | None = self._resolve_symbolic_connection_vars(
+                source_port=source_port,
+                target_port=target_port,
+            )
+            if resolved_vars is not None:
+                return resolved_vars[1]
+            else:
+                return None
+        elif isinstance(source_port, graph.BranchingItem):
+            if source_port.base_var is not None:
+                return source_port.base_var
+            else:
+                owner_connection: graph.ConnectionItem | None = source_port.owner_connection
+                if owner_connection is not None:
+                    return self._resolve_connection_signal_var_recursive(
+                        item=owner_connection,
+                        visited_uids=visited_uids,
+                    )
+                else:
+                    return None
+        elif isinstance(source_port, graph.PortItem):
+            return self._get_symbolic_var_for_port(port=source_port)
+        else:
+            return None
 
     def _propagate_alias_to_working_tree(
             self,
@@ -9933,7 +10505,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         button_box.accepted.connect(dialog.accept)
         button_box.rejected.connect(dialog.reject)
 
-        accepted: bool = dialog.exec() == QDialog.DialogCode.Accepted
+        accepted: bool = exec_dialog_safely(dialog=dialog) == QDialog.DialogCode.Accepted
         new_name: str = name_edit.text().strip()
         return accepted, new_name
 
@@ -11329,7 +11901,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         button_box.rejected.connect(dialog.reject)
 
         # Show dialog
-        dialog.exec()
+        exec_dialog_safely(dialog=dialog)
 
     def _build_connected_port_sets(self) -> tuple[set[tuple[int, int]], set[tuple[int, int]]]:
         """
@@ -11754,7 +12326,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         section_results: list[valid.ValidationSection] = self.collect_model_consistency_sections()
         dialog: valid.ValidationSectionDialog = valid.ValidationSectionDialog(section_results=section_results,
                                                                               parent=self)
-        dialog.exec()
+        exec_dialog_safely(dialog=dialog)
 
     def _iter_scene_block_items(
             self,
@@ -12587,14 +13159,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-        reply = QtWidgets.QMessageBox.question(
-            parent if parent is not None else self,
-            self.tr("Unsaved changes"),
-            self.tr("There are unapplied changes. Do you want to close without applying them?"),
-            QtWidgets.QMessageBox.StandardButton.Yes,
-            QtWidgets.QMessageBox.StandardButton.No,
+        return yes_no_question(
+            text=self.tr("There are unapplied changes. Do you want to close without applying them?"),
+            title=self.tr("Unsaved changes"),
+            parent=parent if parent is not None else self,
         )
-        return reply == QtWidgets.QMessageBox.StandardButton.Yes
 
     def _dispose_table_models(self) -> None:
         """
@@ -12695,6 +13264,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             except (RuntimeError, TypeError):
                 pass
             try:
+                properties_dialogue.addToPlotRequested.disconnect(
+                    self.on_block_properties_add_to_plot_requested
+                )
+            except (RuntimeError, TypeError):
+                pass
+            try:
                 properties_dialogue.closed.disconnect(
                     self.on_block_properties_dialogue_closed
                 )
@@ -12740,6 +13315,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             pass
 
         self._prepared_to_delete = True
+        self.cancel_dynamic_plot_assignment()
         # Close property tooling before any of the model or scene
         # objects referenced by its signals are dismantled.
         self._dispose_block_properties_dialogue()

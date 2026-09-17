@@ -322,7 +322,7 @@ class CoordinatesInputGUI(QtWidgets.QDialog):
             msg.setWindowTitle(title)
             # msg.setDetailedText("The details are as follows:")
             msg.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
-            msg.exec()
+            exec_dialog_safely(dialog=msg)
         finally:
             delete_dialog_safely(dialog=msg)
 
@@ -477,7 +477,7 @@ class CoordinatesInputGUI(QtWidgets.QDialog):
                 # select the sheet from the file
                 excel_window: ExcelDialog = ExcelDialog(self, filename)
                 try:
-                    excel_window.exec()
+                    exec_dialog_safely(dialog=excel_window)
                     sheet_index: int | None = excel_window.excel_sheet
                 finally:
                     delete_dialog_safely(dialog=excel_window)

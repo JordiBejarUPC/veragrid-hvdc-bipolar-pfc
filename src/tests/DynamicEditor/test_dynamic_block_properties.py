@@ -85,7 +85,9 @@ from VeraGridEngine.Templates.BasicBlockCatalog.predefined_blocks import generic
 from VeraGridEngine.Templates.ProceduralLogicCatalog import (
     ProceduralBlockTemplateDescriptor,
     build_procedural_block_catalog_template,
-    get_procedural_block_template_descriptors,
+)
+from VeraGrid.Gui.DynamicModelEditor.Editor.DynamicLibrary.dynamic_editor_library import (
+    get_dynamic_library_procedural_descriptors,
 )
 
 
@@ -2141,7 +2143,7 @@ def test_procedural_template_documentation_uses_engine_logic_type_after_rename()
     :return: None.
     """
     descriptor: ProceduralBlockTemplateDescriptor
-    for descriptor in get_procedural_block_template_descriptors():
+    for descriptor in get_dynamic_library_procedural_descriptors():
         template: EmtModelTemplate = build_procedural_block_catalog_template(
             descriptor=descriptor,
             var_factory=VarFactory(),

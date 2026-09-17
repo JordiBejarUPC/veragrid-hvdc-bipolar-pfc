@@ -13,6 +13,7 @@ from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.emt_results import EmtResults
 from VeraGridEngine.Simulations.EMT.emt_problem_factory import build_emt_problem
 from VeraGridEngine.Simulations.EMT.emt_solver_factory import build_emt_solver
+from VeraGridEngine.Simulations.dynamic_parameter_results import collect_declared_dynamic_parameter_values
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
 from VeraGridEngine.Simulations.PowerFlow3ph.power_flow_results_3ph import PowerFlowResults3Ph
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
@@ -20,43 +21,28 @@ from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonDiagnosticsConfig
 from VeraGridEngine.IO.fmu.importer.emt_boundary import CompositeEmtBoundaryUpdater, build_emt_boundary_updater
 from VeraGridEngine.basic_structures import Vec, StrVec
 
-from VeraGridEngine.enumerations import EngineType, SimulationTypes
+from VeraGridEngine.enumerations import EngineType, PlotSimulationType, SimulationTypes
 
 
-def _collect_emt_group_parameter_values(problem: EmtProblemDae) -> Dict[str, float]:
+def _collect_emt_group_parameter_values(problem: EmtProblemDae,
+                                        grid: MultiCircuit) -> Dict[str, float]:
     """
     Export one event-group parameter snapshot from the EMT problem.
 
     :param problem: Solved EMT problem instance.
+    :param grid: Circuit containing the configured EMT model parameters.
     :return: Parameter scalar map keyed by ``device_idtag:param_name``.
     """
-    parameter_values: Dict[str, float] = dict()
+    parameter_values: Dict[str, float] = collect_declared_dynamic_parameter_values(
+        grid=grid,
+        simulation_type=PlotSimulationType.EMT,
+        logger=problem.logger,
+    )
     event_parameter_count: int = len(problem.get_variable_parameters())
     parameter_index: int
 
-    for parameter_index in range(event_parameter_count):
-        parameter_var = problem.get_variable_parameters()[parameter_index]
-        device_idtag: str | None = problem._event_parameter_device_idtags.get(parameter_var.uid, None)
-        if device_idtag is not None:
-            parameter_key: str = str(device_idtag) + ":" + str(parameter_var.name)
-            parameter_values[parameter_key] = float(problem._event_params_values[parameter_index])
-        else:
-            pass
-
-    return parameter_values
-
-
-def _collect_emt_group_initial_parameter_values(problem: EmtProblemDae) -> Dict[str, float]:
-    """
-    Export one event-group initial parameter snapshot from the EMT problem.
-
-    :param problem: EMT problem instance before event evolution.
-    :return: Initial parameter scalar map keyed by ``device_idtag:param_name``.
-    """
-    parameter_values: Dict[str, float] = dict()
-    event_parameter_count: int = len(problem.get_variable_parameters())
-    parameter_index: int
-
+    # Runtime values are authoritative when a symbolic name is present in both
+    # constant and event-capable contracts.
     for parameter_index in range(event_parameter_count):
         parameter_var = problem.get_variable_parameters()[parameter_index]
         device_idtag: str | None = problem._event_parameter_device_idtags.get(parameter_var.uid, None)
@@ -193,6 +179,7 @@ class EmtSimulationDriver(DriverTemplate):
             uid2idx_diff=self.problem.uid2idx_diff,
             vars_glob_name2uid=self.problem.vars_glob_name2uid,
             devices_vars_info=self.problem.get_device_vars_dict(),
+            initial_parameter_value_maps=[dict() for _ in range(len(emt_events_groups))],
             parameter_value_maps=[dict() for _ in range(len(emt_events_groups))],
             has_event_group_results=has_event_group_results,
         )
@@ -246,6 +233,13 @@ class EmtSimulationDriver(DriverTemplate):
                     cancel_checker=self.is_cancel,
                 )
 
+                # EMT runtime parameters are initialized by problem/solver
+                # construction. Snapshot them now, before any event evolution.
+                self.results.initial_parameter_value_maps[group_idx] = _collect_emt_group_parameter_values(
+                    problem=problem,
+                    grid=self.grid,
+                )
+
                 boundary_updater: EmtProblemDae | CompositeEmtBoundaryUpdater = build_emt_boundary_updater(problem)
                 try:
                     # The solver uses the FMU-aware wrapper when native adapters
@@ -294,12 +288,14 @@ class EmtSimulationDriver(DriverTemplate):
                 # Persist the solver status in the shared results object so the
                 # GUI post-processing stage reports the actual simulation
                 # outcome instead of the default False placeholders.
-                self.results.initial_parameter_value_maps[group_idx] = _collect_emt_group_initial_parameter_values(problem=problem)
                 self.results.converged[group_idx] = converged
                 self.results.well_initialized[group_idx] = well_initialized
                 self.results.values[:, :, group_idx] = y
                 self.results.diff_values[:, :, group_idx] = dy
-                self.results.parameter_value_maps[group_idx] = _collect_emt_group_parameter_values(problem=problem)
+                self.results.parameter_value_maps[group_idx] = _collect_emt_group_parameter_values(
+                    problem=problem,
+                    grid=self.grid,
+                )
 
                 self.progress_signal.emit(90)
 

@@ -22,6 +22,7 @@ from VeraGridEngine.IO.fmu.importer.fmi3_model_description import (
 from VeraGridEngine.IO.fmu.versions import parse_declared_fmi_version
 from VeraGridEngine.enumerations import FmiVersion, FmuInterfaceMode, FmuVariableType
 from VeraGridEngine.IO.fmu.importer.model_description_metadata import (
+    FmiOneCoSimulationCapabilities,
     FmuModelDescription,
     FmuVariableDescription,
 )
@@ -37,8 +38,6 @@ def _validate_fmi_one_co_simulation_interface(
     path: Path,
 ) -> None:
     """Validate the required structure of one FMI 1 Co-Simulation interface.
-
-    Capability values remain metadata-only and are deliberately not stored.
 
     :param interface_node: Stand-alone or tool interface element.
     :param path: FMU source path used in diagnostics.
@@ -83,17 +82,101 @@ def _validate_fmi_one_co_simulation_interface(
             )
 
 
+def _parse_fmi_one_co_simulation_capabilities(
+    interface_node: ET.Element,
+    path: Path,
+) -> FmiOneCoSimulationCapabilities:
+    """Parse the complete FMI 1 Co-Simulation capability declaration.
+
+    :param interface_node: Validated stand-alone or tool interface element.
+    :param path: FMU source path used in diagnostics.
+    :return: Typed interface identity and XSD-defaulted capability values.
+    :raises FmuArchiveError: If a capability name or lexical value is invalid.
+    """
+
+    # The structural validator guarantees that Capabilities is the first child
+    # for both FMI 1 Co-Simulation forms.
+    capabilities_node: ET.Element = list(interface_node)[0]
+    allowed_attributes: set[str] = set((
+        "canHandleVariableCommunicationStepSize",
+        "canHandleEvents",
+        "canRejectSteps",
+        "canInterpolateInputs",
+        "maxOutputDerivativeOrder",
+        "canRunAsynchronuously",
+        "canSignalEvents",
+        "canBeInstantiatedOnlyOncePerProcess",
+        "canNotUseMemoryManagementFunctions",
+    ))
+    attribute_name: str
+    for attribute_name in capabilities_node.attrib:
+        if attribute_name in allowed_attributes:
+            pass
+        else:
+            raise FmuArchiveError(
+                f"Unknown FMI 1 Co-Simulation capability {attribute_name!r} in {path}"
+            )
+
+    boolean_values: dict[str, bool] = dict()
+    boolean_attribute: str
+    for boolean_attribute in (
+        "canHandleVariableCommunicationStepSize",
+        "canHandleEvents",
+        "canRejectSteps",
+        "canInterpolateInputs",
+        "canRunAsynchronuously",
+        "canSignalEvents",
+        "canBeInstantiatedOnlyOncePerProcess",
+        "canNotUseMemoryManagementFunctions",
+    ):
+        raw_boolean: str = capabilities_node.attrib.get(boolean_attribute, "false")
+        boolean_values[boolean_attribute] = _parse_fmi_boolean(
+            raw_boolean,
+            boolean_attribute,
+            "FMI 1 Co-Simulation Capabilities",
+            path,
+        )
+    maximum_derivative_order: int = _parse_fmi_uint32(
+        capabilities_node.attrib.get("maxOutputDerivativeOrder", "0"),
+        "maxOutputDerivativeOrder",
+        "FMI 1 Co-Simulation Capabilities",
+        path,
+    )
+    return FmiOneCoSimulationCapabilities(
+        needs_execution_tool=interface_node.tag == "CoSimulation_Tool",
+        can_handle_variable_communication_step_size=boolean_values[
+            "canHandleVariableCommunicationStepSize"
+        ],
+        can_handle_events=boolean_values["canHandleEvents"],
+        can_reject_steps=boolean_values["canRejectSteps"],
+        can_interpolate_inputs=boolean_values["canInterpolateInputs"],
+        max_output_derivative_order=maximum_derivative_order,
+        can_run_asynchronuously=boolean_values["canRunAsynchronuously"],
+        can_signal_events=boolean_values["canSignalEvents"],
+        can_be_instantiated_only_once_per_process=boolean_values[
+            "canBeInstantiatedOnlyOncePerProcess"
+        ],
+        can_not_use_memory_management_functions=boolean_values[
+            "canNotUseMemoryManagementFunctions"
+        ],
+    )
+
+
 def _parse_fmi_one_interface_modes(
     root: ET.Element,
     model_identifier: str,
     path: Path,
-) -> tuple[tuple[FmuInterfaceMode, ...], dict[FmuInterfaceMode, str]]:
+) -> tuple[
+    tuple[FmuInterfaceMode, ...],
+    dict[FmuInterfaceMode, str],
+    FmiOneCoSimulationCapabilities | None,
+]:
     """Infer the FMI 1 interface from its optional Implementation element.
 
     :param root: FMI 1 model-description root.
     :param model_identifier: Required root model identifier.
     :param path: FMU source path used in diagnostics.
-    :return: Declared interface and its model identifier.
+    :return: Declared interface, model identifier, and optional CS capabilities.
     :raises FmuArchiveError: If the interface declaration is ambiguous.
     """
 
@@ -102,6 +185,7 @@ def _parse_fmi_one_interface_modes(
         raise FmuArchiveError(f"FMI 1 Implementation element is duplicated in {path}")
     else:
         identifiers: dict[FmuInterfaceMode, str] = dict()
+        capabilities: FmiOneCoSimulationCapabilities | None = None
         if len(implementation_nodes) == 0:
             interface_mode: FmuInterfaceMode = FmuInterfaceMode.MODEL_EXCHANGE
         else:
@@ -113,10 +197,18 @@ def _parse_fmi_one_interface_modes(
                         implementation_children[0],
                         path,
                     )
+                    capabilities = _parse_fmi_one_co_simulation_capabilities(
+                        implementation_children[0],
+                        path,
+                    )
                     interface_mode = FmuInterfaceMode.CO_SIMULATION
                 else:
                     if implementation_kind == "CoSimulation_Tool":
                         _validate_fmi_one_co_simulation_interface(
+                            implementation_children[0],
+                            path,
+                        )
+                        capabilities = _parse_fmi_one_co_simulation_capabilities(
                             implementation_children[0],
                             path,
                         )
@@ -130,7 +222,7 @@ def _parse_fmi_one_interface_modes(
                     f"FMI 1 Implementation in {path} must declare exactly one interface"
                 )
         identifiers[interface_mode] = model_identifier
-        return (interface_mode,), identifiers
+        return (interface_mode,), identifiers, capabilities
 
 
 def _parse_fmi_two_interface_modes(
@@ -222,6 +314,45 @@ def _parse_fmi_two_interface_modes(
         )
 
 
+def _validate_fmi_one_variable_semantics(
+    scalar_variable_node: ET.Element,
+    variable_name: str,
+    path: Path,
+) -> tuple[str, str]:
+    """Validate and return FMI 1 causality and variability values.
+
+    :param scalar_variable_node: FMI 1 ``ScalarVariable`` element.
+    :param variable_name: Validated variable name for diagnostics.
+    :param path: FMU source path used in diagnostics.
+    :return: Effective causality and variability with XSD defaults applied.
+    :raises FmuArchiveError: If FMI 2 metadata or an invalid FMI 1 enum appears.
+    """
+
+    if "initial" in scalar_variable_node.attrib:
+        raise FmuArchiveError(
+            f"ScalarVariable {variable_name!r} in {path} declares initial outside FMI 2"
+        )
+    else:
+        pass
+    causality: str = scalar_variable_node.attrib.get("causality", "internal")
+    if causality in ("input", "output", "internal", "none"):
+        pass
+    else:
+        raise FmuArchiveError(
+            f"ScalarVariable {variable_name!r} in {path} has invalid FMI 1 causality "
+            f"{causality!r}"
+        )
+    variability: str = scalar_variable_node.attrib.get("variability", "continuous")
+    if variability in ("constant", "parameter", "discrete", "continuous"):
+        pass
+    else:
+        raise FmuArchiveError(
+            f"ScalarVariable {variable_name!r} in {path} has invalid FMI 1 variability "
+            f"{variability!r}"
+        )
+    return causality, variability
+
+
 def _parse_variable_type(
     variable_node: ET.Element,
     variable_name: str,
@@ -241,6 +372,13 @@ def _parse_variable_type(
     variable_type: FmuVariableType = FmuVariableType.UNKNOWN
     type_node: ET.Element | None = None
     trailing_element_seen: bool = False
+    scalar_variable_types: tuple[FmuVariableType, ...] = (
+        FmuVariableType.REAL,
+        FmuVariableType.INTEGER,
+        FmuVariableType.BOOLEAN,
+        FmuVariableType.STRING,
+        FmuVariableType.ENUMERATION,
+    )
     if fmi_version_family == FmiVersion.FMI_1_0:
         trailing_element_name: str = "DirectDependency"
     else:
@@ -281,7 +419,7 @@ def _parse_variable_type(
                 raise FmuArchiveError(
                     f"ScalarVariable {variable_name!r} in {path} has unknown type {child_node.tag!r}"
                 ) from exc
-            if candidate_type == FmuVariableType.UNKNOWN:
+            if candidate_type not in scalar_variable_types:
                 raise FmuArchiveError(
                     f"ScalarVariable {variable_name!r} in {path} has unknown type {child_node.tag!r}"
                 )
@@ -400,14 +538,15 @@ def _parse_variables(
             start: str | None = type_node.attrib.get("start", None)
 
             if fmi_version_family == FmiVersion.FMI_1_0:
-                causality: str | None = scalar_variable_node.attrib.get(
-                    "causality",
-                    "internal",
+                causality_value: str
+                variability_value: str
+                causality_value, variability_value = _validate_fmi_one_variable_semantics(
+                    scalar_variable_node,
+                    variable_name,
+                    path,
                 )
-                variability: str | None = scalar_variable_node.attrib.get(
-                    "variability",
-                    "continuous",
-                )
+                causality: str | None = causality_value
+                variability: str | None = variability_value
             else:
                 causality = scalar_variable_node.attrib.get("causality", None)
                 variability = scalar_variable_node.attrib.get("variability", None)
@@ -606,6 +745,8 @@ def read_fmu_model_description(
 
     interface_modes: tuple[FmuInterfaceMode, ...]
     model_identifiers: dict[FmuInterfaceMode, str]
+    fmi_one_co_simulation_capabilities: FmiOneCoSimulationCapabilities | None = None
+    number_of_continuous_states: int | None = None
     if fmi_version_family == FmiVersion.FMI_1_0:
         model_identifier: str = _read_required_attribute(
             root,
@@ -619,17 +760,17 @@ def read_fmu_model_description(
             "fmiModelDescription",
             normalized_path,
         )
-        _parse_fmi_uint32(
+        number_of_continuous_states = _parse_fmi_uint32(
             number_of_continuous_states_raw,
             "numberOfContinuousStates",
             "fmiModelDescription",
             normalized_path,
         )
-        interface_modes, model_identifiers = _parse_fmi_one_interface_modes(
-            root,
-            model_identifier,
-            normalized_path,
-        )
+        (
+            interface_modes,
+            model_identifiers,
+            fmi_one_co_simulation_capabilities,
+        ) = _parse_fmi_one_interface_modes(root, model_identifier, normalized_path)
     else:
         interface_modes, model_identifiers = _parse_fmi_two_interface_modes(
             root,
@@ -650,11 +791,13 @@ def read_fmu_model_description(
         model_name=model_name,
         guid=guid,
         variable_naming_convention=root.attrib.get("variableNamingConvention", None),
+        number_of_continuous_states=number_of_continuous_states,
         number_of_event_indicators=number_of_event_indicators,
         interface_modes=interface_modes,
         model_identifiers=model_identifiers,
         platforms=platforms,
         variables=variables,
+        fmi_one_co_simulation_capabilities=fmi_one_co_simulation_capabilities,
     )
 
 

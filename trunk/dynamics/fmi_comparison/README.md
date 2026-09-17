@@ -4,6 +4,12 @@ This package owns reproducible FMI examples and interoperability evidence. It is
 kept under `trunk` because it is benchmark material, not part of the
 `VeraGridEngine` runtime API.
 
+Commercial first-order replays are maintained beside the open-source lanes.
+The [PowerFactory FMI 2/3 CS/ME recipe](powerfactory_first_order/README.md)
+reuses the same `0.1 dx/dt=u-x` fixture and retained Simulink lineage, keeps
+licensed/runtime artifacts outside Git, and records FMI 1 as not applicable to
+the installed PowerFactory 2025 SP4 importer.
+
 The device runner exports and executes four native cases through the public
 product interfaces:
 
@@ -462,3 +468,100 @@ patches the external tool or substitutes an easier FMU. It publishes exactly
 35 files, including raw results and logs, successful traces, a four-panel
 PathSim/FMPy overlay, a complete capability matrix and a closed manifest. This
 is interoperability evidence, not FMI certification.
+
+## FMUGym orchestration comparison
+
+`run_fmugym_comparison` evaluates FMUGym 0.2.0 as an FMPy-backed Gymnasium
+wrapper. The FMI 2.0 cell runs the dynamic SMIB plant through mechanical-input
+changes and two network events; the FMI 3.0 cell runs the Reference FMUs
+Feedthrough model with a sinusoidal action. A direct FMPy process repeats the
+same action and actual communication-time sequence for each case. FMUGym's
+single-precision observations must equal the exact `float32` projection of the
+direct result, while the native difference remains within four single-precision
+rounding units.
+
+Every engine/case cell runs in a fresh Python 3.11.9 process with `-B -I`, no
+shell, and only `PROCESSOR_ARCHITECTURE`, `SystemRoot`, `TEMP` and `TMP` in the
+child environment. The complete external runtime, FMUGym wheel, interpreter,
+FMUs and staged worker are authenticated before use. Python is derived from the
+authenticated runtime root rather than discovered through `PATH`.
+
+```text
+python -m trunk.dynamics.fmi_comparison.run_fmugym_comparison \
+  --output <new-package-directory> \
+  --source-branch devel_dynamics_rebuild \
+  --source-revision <40-character-commit> \
+  --source-tree-sha256 <64-character-tree-digest> \
+  --runtime-root <authenticated-fmugym-environment> \
+  --wheel <authenticated-fmugym-wheel> \
+  --system-root <absolute-windows-system-root> \
+  --processor-architecture AMD64 \
+  --fmi2-smib <authenticated-smib-fmu> \
+  --fmi3-feedthrough <authenticated-feedthrough-fmu>
+```
+
+The package status is `COMPLETED_WITH_FINDINGS` even when both numerical cells
+pass. FMUGym accumulates binary floating-point time, checks the finite horizon
+before the step, resets after the horizon is exceeded, and still advances in
+the terminating call. The manifest retains this behavior and the measured
+drift from the ideal lattice instead of rewriting external runtime state. The
+closed package contains exactly 20 files: four run directories with a result,
+trace and two process logs, one scientific figure in PNG, SVG and PDF, and one
+manifest. This lane demonstrates Windows AMD64 FMI 2.0 and 3.0 Co-Simulation
+wrapper interoperability; it is not an independent solver, Model Exchange,
+multiplatform, or FMI certification claim.
+## train_fmu_gym learning comparison
+
+`run_train_fmu_gym_comparison` evaluates the official DLR
+`train_fmu_gym` 0.8.1 environments with their packaged FMI 2.0 and FMI 3.0
+Co-Simulation FMUs. Two isolated direct-core cells train Stable Baselines3 A2C
+for 128 steps and evaluate it for 256 deterministic steps with seed 938. The
+oracle requires all 739 policy parameters, finite observations, actions and
+rewards, and a non-zero parameter change. Two additional cells exercise the
+public `tfg train` path without patching upstream behavior.
+
+The accepted package retains four worker results and logs, the two successful
+evaluation traces, one manifest, and a 7.2 by 6.0 inch scientific figure in
+PNG, SVG and PDF. Its current status is `COMPLETED_WITH_FINDINGS`: the public
+CLI launches a child interpreter that is not bound to the selected environment
+and does not propagate that child's `ModuleNotFoundError`, despite returning
+zero. The direct training core passes for both FMI versions. This proves
+CS-backed A2C training on the recorded Windows runtime, not CLI completion,
+solver independence, multiplatform support or certification.
+
+## EnergyPlusToFMU export comparison
+
+`run_energyplus_to_fmu_comparison` starts from the official EnergyPlusToFMU
+3.1.0 source and reproduces the EnergyPlus 9.4 Schedule model as one Windows
+x86_64 FMI 1.0 Co-Simulation FMU. The authenticated compatibility patch removes
+one invalid RunPeriod access and uses the numeric IPv4 loopback address for the
+local EnergyPlus socket. The patch does not change the model equations or the
+FMI interface. The runner starts from an explicit minimal environment, calls
+the authenticated `VsDevCmd.bat`, rejects environment keys outside its
+allowlist, resolves the selected `cl.exe` and `link.exe`, and runs the derived
+exporter in an isolated process. Archive inspection rejects path traversal and
+requires exactly seven members, including the declared EPW weather resource,
+input `Q`, output `TRooMea`, and zero FMPy 0.3.31 static findings.
+
+Runtime instantiation is a separate worker. It calls FMI 1
+`fmiInstantiateSlave` first and stops immediately on a null component; no
+initialize, set, get or step call may follow a failed instantiation. The PASS
+oracle requires a complete 24-hour trajectory with 96 communication steps,
+four heat-flow plateaus, three transitions, finite output and a non-zero zone
+temperature response. The package verifier reopens the raw trace, recomputes
+its statistics and regenerates byte-identical PNG, SVG and PDF figures. No
+partial cell can be published as PASS. The EnergyPlus 9.4 executable and build
+toolchain are authenticated external prerequisites and are never copied into
+VeraGrid or into the evidence package. This lane proves the recorded Windows
+FMI 1.0 CS path; it does not claim unmodified-upstream runtime, certification,
+multiplatform support or numerical equivalence with VeraGrid.
+
+## Simulink first-order commercial replay
+
+`simulink_first_order` owns the maintained licensed Simulink replay for the
+normalized first-order fixture across FMI 1.0, 2.0, and 3.0, Co-Simulation and
+Model Exchange. Its Python and MATLAB recipes are tracked here; every FMU,
+Simulink model, trace, receipt, and figure is generated in a caller-selected
+external directory. See `simulink_first_order/README.md` for the authenticated
+end-to-end procedure and the distinction between historical lineage and a
+fresh replay.

@@ -6,11 +6,11 @@ from __future__ import annotations
 
 from enum import Enum
 from pathlib import Path
-import platform
 import re
 import uuid
 
 from VeraGridEngine.enumerations import FmiVersion
+from VeraGridEngine.IO.fmu.export_platform import TargetPlatform, detect_target_platform, library_suffix
 from VeraGridEngine.IO.fmu.versions import normalize_fmi_export_version
 
 
@@ -30,50 +30,6 @@ class IntegrationMethod(str, Enum):
     BACKWARD_EULER = "backward_euler"
     TRAPEZOIDAL = "trapezoidal"
     BDF2 = "bdf2"
-
-
-class TargetPlatform(str, Enum):
-    """
-    FMI binary folders supported by the exporter.
-    """
-
-    WIN64 = "win64"
-    LINUX64 = "linux64"
-    DARWIN64 = "darwin64"
-
-
-def detect_target_platform() -> TargetPlatform:
-    """
-    Detect the current host platform using the FMI binary-folder naming convention.
-
-    :return: Host target platform.
-    """
-
-    system_name: str = platform.system().lower()
-    if system_name == "windows":
-        return TargetPlatform.WIN64
-    else:
-        if system_name == "darwin":
-            return TargetPlatform.DARWIN64
-        else:
-            return TargetPlatform.LINUX64
-
-
-def library_suffix(target_platform: TargetPlatform) -> str:
-    """
-    Return the shared-library suffix used by one FMI binary folder.
-
-    :param target_platform: Target FMI binary platform.
-    :return: Shared-library suffix.
-    """
-
-    if target_platform == TargetPlatform.WIN64:
-        return ".dll"
-    else:
-        if target_platform == TargetPlatform.DARWIN64:
-            return ".dylib"
-        else:
-            return ".so"
 
 
 def sanitize_identifier(name: str) -> str:
@@ -217,10 +173,11 @@ class ExportConfig:
         :return: None.
         """
 
-        # Version recognition and exporter capability are separate contracts.
-        # Keep the existing FMI 2 pipeline fail-closed until another version's
-        # XML, ABI, runtime, and packaging implementation is connected.
-        if self.fmi_version == FmiVersion.FMI_2_0:
+        if self.fmi_version in (
+            FmiVersion.FMI_1_0,
+            FmiVersion.FMI_2_0,
+            FmiVersion.FMI_3_0,
+        ):
             pass
         else:
             raise NotImplementedError(

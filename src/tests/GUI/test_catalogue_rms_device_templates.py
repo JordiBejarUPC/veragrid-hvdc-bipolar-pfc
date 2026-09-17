@@ -1,4 +1,4 @@
-"""Contracts for the reusable RMS device-template catalog."""
+"""Contracts for catalogue actions derived from the dynamic Library."""
 
 from __future__ import annotations
 
@@ -8,16 +8,16 @@ from VeraGrid.Gui.CatalogueElementsDialogue.catalogue_actions import CatalogueAc
 from VeraGrid.Gui.CatalogueElementsDialogue.catalogue_elements_dialogue import (
     CatalogueElementsSelectionDialogue,
 )
-import VeraGridEngine.Templates as tem
-from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-from VeraGridEngine.Templates.InternationalStandardsCatalog import (
-    InternationalStandardTemplateDescriptor,
-    get_international_standard_device_template_descriptors,
+from VeraGrid.Gui.DynamicModelEditor.Editor.DynamicLibrary.dynamic_editor_library import (
+    LibraryDeviceTemplateSpec,
+    get_dynamic_library_device_specs,
 )
+from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.enumerations import DynamicSimulationMode
 
 
-def test_rms_catalogue_matches_supported_gui_device_templates(qt_app: QtWidgets.QApplication) -> None:
-    """Keep the GUI catalog limited to its established non-phasor devices.
+def test_rms_catalogue_matches_library_devices(qt_app: QtWidgets.QApplication) -> None:
+    """Require a one-to-one mapping between RMS Devices and catalogue actions.
 
     :param qt_app: Shared Qt application required to construct the dialog.
     :return: None.
@@ -29,73 +29,79 @@ def test_rms_catalogue_matches_supported_gui_device_templates(qt_app: QtWidgets.
         circuit=circuit,
     )
     actions: list[CatalogueAction] = dialog.build_rms_actions()
-    action_keys: set[str] = set(action.unique_key for action in actions)
-    expected_keys: set[str] = set((
-        'rms:get_complete_generator_template_rms',
-        'rms:get_genqec_rms',
-        'rms:get_genrow_rms_template',
-        'rms:get_line_rms_template',
-        'rms:build_dc_line_rms_v2',
-        'rms:get_load_rms_template',
-        'rms:get_transformer2w_rms',
-        'rms:get_shunt_template',
-        'rms:get_pvd1_rms_template',
-        'rms:get_pvd1_complete_rms_template',
-        'rms:get_pvd1_dc_mppt_rms_template',
-        'rms:get_pvd1_dc_link_mppt_rms_template',
-        'rms:get_pvd1_dc_link_bess_rms_template',
-        'rms:get_esd1_rms_template',
-        'rms:VoltageSourceBuild',
-        'rms:build_hvdc_vsc_gfl_rms',
-    ))
-    excluded_phasor_keys: set[str] = set((
-        'rms:get_line_phasor_rms_template',
-        'rms:get_load_phasor_current_rms_template',
-        'rms:get_complete_generator_template_phasor',
-        'rms:get_genqec_phasor',
-    ))
-    excluded_control_keys: set[str] = set((
-        'rms:get_governor_rms',
-        'rms:get_stabilizer_rms',
-        'rms:get_exciter_rms',
-        'rms:get_pll_transform_rms',
-        'rms:get_pi_current_controller',
-        'rms:get_pi_power_controller',
-        'rms:get_gfl_converter_rms',
-        'rms:get_empty_rms_template',
-        'rms:build_ac1a_template',
-        'rms:build_govhydro4_template',
-        'rms:build_pss2a_template',
-        'rms:build_reecb_template',
-        'rms:build_uel1_template',
-        'rms:build_frqtpa_template',
-    ))
-
-    assert action_keys == expected_keys
-    assert action_keys.isdisjoint(excluded_phasor_keys)
-    assert action_keys.isdisjoint(excluded_control_keys)
-
-    actions_by_key: dict[str, CatalogueAction] = dict(
-        (action.unique_key, action) for action in actions
-    )
-    assert actions_by_key['rms:VoltageSourceBuild'].function_ptr is tem.VoltageSourceBuild
-    assert (
-        actions_by_key['rms:build_hvdc_vsc_gfl_rms'].function_ptr
-        is tem.build_hvdc_vsc_gfl_rms
-    )
-    assert (
-        actions_by_key['rms:get_transformer2w_rms'].function_ptr
-        is tem.get_transformer2w_rms
-    )
-    assert (
-        actions_by_key['rms:build_dc_line_rms_v2'].function_ptr
-        is tem.build_dc_line_rms_v2
+    specs: list[LibraryDeviceTemplateSpec] = get_dynamic_library_device_specs(
+        mode=DynamicSimulationMode.RMS,
     )
 
-    descriptor: InternationalStandardTemplateDescriptor
-    for descriptor in get_international_standard_device_template_descriptors():
-        international_key: str = f'rms:build_{descriptor.template_key}_template'
-        assert international_key not in action_keys
+    assert list(action.unique_key for action in actions) == list(
+        spec.unique_key for spec in specs
+    )
+    assert list(action.name for action in actions) == list(spec.label for spec in specs)
+    assert all(action.voltage_text == "" for action in actions)
+    assert list(action.description_text for action in actions) == list(
+        spec.description for spec in specs
+    )
+    assert len(set(action.unique_key for action in actions)) == len(actions)
+    assert any(spec.unique_key.startswith("rms:international:") for spec in specs)
+    assert all("governor" not in action.unique_key.lower() for action in actions)
+    assert all("exciter" not in action.unique_key.lower() for action in actions)
+    assert all("stabilizer" not in action.unique_key.lower() for action in actions)
+
+    line_action: CatalogueAction | None = None
+    action: CatalogueAction
+    for action in actions:
+        if action.unique_key == "rms:get_line_rms_template":
+            line_action = action
+        else:
+            pass
+    assert line_action is not None
+    line_action.execute(circuit=circuit)
+    assert circuit.rms_models[-1].code == line_action.unique_key
+
+    dialog.close()
+    application.processEvents()
+
+
+def test_emt_catalogue_matches_library_devices(qt_app: QtWidgets.QApplication) -> None:
+    """Require a one-to-one mapping between EMT Devices and catalogue actions.
+
+    :param qt_app: Shared Qt application required to construct the dialog.
+    :return: None.
+    """
+    application: QtWidgets.QApplication = qt_app
+    circuit: MultiCircuit = MultiCircuit()
+    dialog: CatalogueElementsSelectionDialogue = CatalogueElementsSelectionDialogue(
+        parent=None,
+        circuit=circuit,
+    )
+    actions: list[CatalogueAction] = dialog.build_emt_actions()
+    specs: list[LibraryDeviceTemplateSpec] = get_dynamic_library_device_specs(
+        mode=DynamicSimulationMode.EMT,
+    )
+
+    assert list(action.unique_key for action in actions) == list(
+        spec.unique_key for spec in specs
+    )
+    assert list(action.name for action in actions) == list(spec.label for spec in specs)
+    assert all(action.voltage_text == "" for action in actions)
+    assert list(action.description_text for action in actions) == list(
+        spec.description for spec in specs
+    )
+    assert len(set(action.unique_key for action in actions)) == len(actions)
+    assert all("governor" not in action.unique_key.lower() for action in actions)
+    assert all("exciter" not in action.unique_key.lower() for action in actions)
+    assert all("stabilizer" not in action.unique_key.lower() for action in actions)
+
+    load_action: CatalogueAction | None = None
+    action: CatalogueAction
+    for action in actions:
+        if action.unique_key == "emt:get_dc_load_emt_template":
+            load_action = action
+        else:
+            pass
+    assert load_action is not None
+    load_action.execute(circuit=circuit)
+    assert circuit.emt_models[-1].code == load_action.unique_key
 
     dialog.close()
     application.processEvents()

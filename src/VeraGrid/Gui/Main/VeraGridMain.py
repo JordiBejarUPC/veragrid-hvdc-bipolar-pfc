@@ -19,6 +19,7 @@ from PySide6.QtSvg import QSvgRenderer
 from VeraGrid.Gui.i18n import ApplicationTranslator, read_saved_language
 from VeraGrid.Gui.update_gui_all import update_all_icons
 from VeraGrid.Gui.Main.SubClasses.Scripting.scripting import ScriptingMain
+from VeraGrid.Gui.messages import yes_no_question
 import VeraGrid.ThirdParty.qdarktheme as qdarktheme
 from VeraGrid.__version__ import __VeraGrid_VERSION__
 from VeraGridEngine.IO.file_system import get_create_veragrid_folder
@@ -292,11 +293,9 @@ class VeraGridMainGUI(ScriptingMain):
 
         if self.circuit.get_bus_number() > 0:
             quit_msg = self.tr("Are you sure that you want to exit VeraGrid?")
-            reply = QtWidgets.QMessageBox.question(self, self.tr("Close"), quit_msg,
-                                                   QtWidgets.QMessageBox.StandardButton.Yes,
-                                                   QtWidgets.QMessageBox.StandardButton.No)
+            reply: bool = yes_no_question(text=quit_msg, title=self.tr("Close"), parent=self)
 
-            if reply == QtWidgets.QMessageBox.StandardButton.Yes:
+            if reply:
                 # save config regardless
                 self.save_all_config()
                 ai_stopped: bool = self.shutdown_ai_dialogue_if_available()
