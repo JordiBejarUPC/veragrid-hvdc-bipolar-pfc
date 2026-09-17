@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely
+from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, exec_dialog_safely
 from VeraGrid.Gui.DynamicModelEditor.Plots.dynamic_plots_page_ui import Ui_DynamicPlotsPage
 from VeraGrid.Gui.DynamicModelEditor.Plots.dynamic_plots_handler import DynamicsResultsHandler
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
@@ -218,7 +218,7 @@ class DynamicPlotsPage(QtWidgets.QWidget):
         layout.addWidget(mode_combo)
         layout.addWidget(buttons)
         try:
-            accepted: bool = dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted
+            accepted: bool = exec_dialog_safely(dialog=dialog) == QtWidgets.QDialog.DialogCode.Accepted
             if accepted:
                 selected_mode_data: object = mode_combo.currentData()
                 selected_mode: DynamicPlotMode = DynamicPlotMode.TIME_SERIES
@@ -406,6 +406,7 @@ class DynamicPlotsPage(QtWidgets.QWidget):
             return
         else:
             self._prepared_to_delete = True
+        self.handler.close_plot_dialogs()
         try:
             self.session.dynamicPlotsChanged.disconnect(self._on_external_plot_definitions_changed)
         except (RuntimeError, TypeError):

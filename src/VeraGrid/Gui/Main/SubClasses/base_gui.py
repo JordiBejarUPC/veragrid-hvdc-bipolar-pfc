@@ -58,7 +58,7 @@ from VeraGrid.Gui.AiAgent.ai_chat_dialogue import AiChatDialogue, AiBackendState
 from VeraGrid.AI import ProviderType
 from VeraGrid.AI.mcp_client import VeraGridMcpClient
 from VeraGrid.AI.ollama import OllamaProcessManager
-from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, is_dialog_available
+from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, exec_dialog_safely, is_dialog_available
 from VeraGrid.Gui.i18n import (
     ActionShortcutState,
     ApplicationTranslator,
@@ -1481,7 +1481,7 @@ class BaseMainGui(QMainWindow):
         """
         contingency_planner_dialogue: ContingencyPlannerGUI = ContingencyPlannerGUI(parent=self, grid=self.circuit)
         try:
-            contingency_planner_dialogue.exec()
+            exec_dialog_safely(dialog=contingency_planner_dialogue)
             generated_results: bool = contingency_planner_dialogue.generated_results
             contingency_groups: list[object] = list(contingency_planner_dialogue.contingency_groups)
             contingencies: list[object] = list(contingency_planner_dialogue.contingencies)
@@ -1569,4 +1569,4 @@ class BaseMainGui(QMainWindow):
         """
         dlg = LogsDialogue(name=name, logger=logger, expand_all=expand_all)
         dlg.setModal(True)
-        dlg.exec()
+        exec_dialog_safely(dialog=dlg)

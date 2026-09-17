@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import gc
 import shutil
 import time
 from pathlib import Path
@@ -437,9 +436,6 @@ def test_tower_editor_cleanup_survives_forced_gc(qt_app: QtWidgets.QApplication)
     calculate_and_accept_tower_editor(tower=tower_second, wire=wire)
     calculate_and_accept_tower_editor(tower=tower_first, wire=wire)
 
-    gc.collect(0)
-    gc.collect(1)
-    gc.collect(2)
     app.processEvents()
     active_modal_widget: QtWidgets.QWidget | None = app.activeModalWidget()
     assert active_modal_widget is None
@@ -469,24 +465,15 @@ def test_original_honduras_tower_edit_save_and_solve(qt_app: QtWidgets.QApplicat
         assert tower_count >= 2
 
         edit_tower_from_database_row(gui=gui, app=app, row=1)
-        gc.collect(0)
-        gc.collect(1)
-        gc.collect(2)
         app.processEvents()
 
         edit_tower_from_database_row(gui=gui, app=app, row=0)
-        gc.collect(0)
-        gc.collect(1)
-        gc.collect(2)
         app.processEvents()
 
         gui.save_file_now(filename=str(working_file))
         wait_for_file_save(gui=gui, app=app, timeout_s=30.0)
         assert working_file.exists()
 
-        gc.collect(0)
-        gc.collect(1)
-        gc.collect(2)
         app.processEvents()
     finally:
         modal_closer.stop()

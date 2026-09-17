@@ -42,6 +42,7 @@ from VeraGrid.Gui.DynamicModelEditor.Editor.BlockProperties.add_symbol_widget im
     Ui_Form as Ui_AddSymbolWidget,
 )
 from VeraGrid.Gui.toast_widget import ToastManager
+from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
 from VeraGridEngine.enumerations import (
     BlockType,
     BlockSymbolCategory,
@@ -6296,7 +6297,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self.update_new_symbol_category()
         self.update_new_symbol_controls()
         self._add_symbol_dialog.adjustSize()
-        self._add_symbol_dialog.exec()
+        exec_dialog_safely(dialog=self._add_symbol_dialog)
 
     @QtCore.Slot()
     def restore_property_tree(self) -> None:

@@ -17,6 +17,7 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.winding_graphics import Wind
 from VeraGrid.Gui.Diagrams.SchematicWidget.terminal_item import RoundTerminalItem
 from VeraGrid.Gui.gui_functions import add_menu_entry, translate_context_menu_text
 from VeraGrid.Gui.messages import yes_no_question
+from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
 from VeraGridEngine.Devices.Branches.transformerNw import TransformerNW
 from VeraGridEngine.Devices.Branches.winding import Winding
 from VeraGridEngine.Devices.Substation.bus import Bus
@@ -126,7 +127,7 @@ class TransformerNWGraphicItem(GenericDiagramWidget, QGraphicsRectItem):
         :return: ``True`` when the editor was opened.
         """
         dialog = TemplateDeviceEditor(api_object=self.api_object, circuit=self.editor.circuit)
-        dialog.exec()
+        exec_dialog_safely(dialog=dialog)
         return True
 
     def get_associated_widgets(self) -> List[WindingGraphicItem | None]:

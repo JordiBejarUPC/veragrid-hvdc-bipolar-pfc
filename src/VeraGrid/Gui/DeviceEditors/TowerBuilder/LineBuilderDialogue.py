@@ -10,6 +10,7 @@ import pandas as pd
 from PySide6 import QtWidgets
 
 from VeraGrid.Gui.DeviceEditors.TowerBuilder.tower_builder import Ui_TowerBuilderDialog
+from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
 import VeraGridEngine.Devices as dev
 from VeraGrid.Gui.DeviceEditors.TowerBuilder.table_models import TowerModel, WireInTower, WiresTable, Wire
 from VeraGrid.Gui.pandas_model import PandasModel
@@ -99,7 +100,7 @@ class TowerBuilderGUI(QtWidgets.QDialog):
         msg.setWindowTitle(title)
         # msg.setDetailedText("The details are as follows:")
         msg.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
-        retval = msg.exec()
+        retval = exec_dialog_safely(dialog=msg)
 
     def name_changed(self):
         """
@@ -286,7 +287,7 @@ class TowerBuilderGUI(QtWidgets.QDialog):
 
         if not all_ok:
             logger_diag = LogsDialogue(name=self.tr('Tower computation'), logger=logs)
-            logger_diag.exec()
+            exec_dialog_safely(dialog=logger_diag)
 
     def example_1(self):
         name = '4/0 6/1 ACSR'

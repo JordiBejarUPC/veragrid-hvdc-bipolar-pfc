@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import gc
 import sys
 
 import pytest
@@ -140,12 +139,9 @@ def _select_catalog_test_color() -> QtGui.QColor:
 
 def _collect_pending_resources() -> None:
     """
-    Flush any leaked resources from earlier tests before this GUI test runs.
+    Keep the test hook available without invoking Python's garbage collector.
     """
-
-    for generation in (0, 1, 2):
-        gc.collect(generation=generation)
-
+    return None
 
 def _find_index_by_label(model: QtCore.QAbstractItemModel,
                          label: str,

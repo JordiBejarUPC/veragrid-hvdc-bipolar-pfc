@@ -21,6 +21,7 @@ from VeraGridEngine.Simulations.InvestmentsEvaluation.CandidateGeneration.candid
 from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
 from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import GridMapWidget
 from VeraGrid.Gui.general_dialogues import LogsDialogue
+from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
 from VeraGrid.Gui.messages import warning_msg
 
 if TYPE_CHECKING:
@@ -129,7 +130,6 @@ class CandidateInvestmentsWindow(QtWidgets.QDialog):
             return
 
         self.report_text.setPlainText("Running...")
-        QtGui.QGuiApplication.processEvents()
 
         if grid.has_time_series:
             options = CandidateGenerationOptions(top_n_corridors=self.top_n_spin.value(),
@@ -212,7 +212,7 @@ class CandidateInvestmentsWindow(QtWidgets.QDialog):
         self._draw_new_devices(new_devices)
 
         if logger.has_logs():
-            LogsDialogue('Candidate investment generator log', logger).exec()
+            exec_dialog_safely(dialog=LogsDialogue('Candidate investment generator log', logger))
 
         self.close()
 

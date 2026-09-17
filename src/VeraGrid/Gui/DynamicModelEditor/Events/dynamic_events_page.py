@@ -14,6 +14,7 @@ from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_handler import Dynami
 from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_page_ui import Ui_DynamicEventsPage
 from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_support import SwitchSequenceData, SwitchSequenceDialog
 from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import DynamicEditorEntry
+from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
 from VeraGrid.Gui.toast_widget import ToastManager
 from VeraGridEngine.Devices.Events.emt_event import EmtEvent
 from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup
@@ -483,7 +484,7 @@ class DynamicEventsPage(QtWidgets.QWidget):
                 events_groups=groups,
                 parent=self,
             )
-            if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+            if exec_dialog_safely(dialog=dialog) == QtWidgets.QDialog.DialogCode.Accepted:
                 sequence_data: SwitchSequenceData | None = dialog.get_typed_data()
                 if sequence_data is not None:
                     target_candidate: DynamicEventParameterCandidate | None = None

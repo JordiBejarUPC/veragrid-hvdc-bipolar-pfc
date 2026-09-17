@@ -16,7 +16,7 @@ from datetime import datetime, timedelta
 import VeraGrid.Gui.gui_functions as gf
 from VeraGrid.Gui.messages import yes_no_question
 from VeraGrid.Gui.general_dialogues import TimeReIndexDialogue
-from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely
+from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, exec_dialog_safely
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.IO.file_open import FileOpen
 from VeraGridEngine.basic_structures import Logger
@@ -896,7 +896,7 @@ class ModelsInputGUI(QtWidgets.QDialog):
         dlg: TimeReIndexDialogue = TimeReIndexDialogue()
         try:
             dlg.setModal(True)
-            dlg.exec()
+            exec_dialog_safely(dialog=dlg)
 
             if dlg.is_accepted:
                 self.grids_model.re_index_time(t0=dlg.date_time_editor.dateTime().toPython(),

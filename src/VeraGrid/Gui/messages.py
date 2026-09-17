@@ -6,6 +6,8 @@
 from PySide6 import QtWidgets
 from PySide6.QtCore import QCoreApplication, QT_TRANSLATE_NOOP
 
+from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
+
 # ponytail: keep these stock message-box titles visible to lupdate so the
 # compiled catalog always contains the "messages" context used at runtime.
 MESSAGE_TRANSLATION_KEYS: tuple[str, str, str, str] = (
@@ -46,7 +48,7 @@ def info_msg(text, title=None):
         window_title = title
     msg.setWindowTitle(window_title)
     msg.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
-    return msg.exec()
+    return exec_dialog_safely(dialog=msg)
 
 
 def warning_msg(text: str, title: str | None = None) -> int:
@@ -65,7 +67,7 @@ def warning_msg(text: str, title: str | None = None) -> int:
         window_title = title
     msg.setWindowTitle(window_title)
     msg.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
-    return msg.exec()
+    return exec_dialog_safely(dialog=msg)
 
 
 def error_msg(text: str, title: str | None = None) -> int:
@@ -84,7 +86,7 @@ def error_msg(text: str, title: str | None = None) -> int:
         window_title = title
     msg.setWindowTitle(window_title)
     msg.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
-    return msg.exec()
+    return exec_dialog_safely(dialog=msg)
 
 
 def yes_no_question(text: str, title: str | None = None) -> bool:

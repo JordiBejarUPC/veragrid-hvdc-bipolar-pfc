@@ -21,6 +21,7 @@ from VeraGridEngine.Topology.Procedural.procedural_grid_engine import Procedural
 from VeraGridEngine.basic_structures import Logger
 from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import make_diagram_from_buses, SchematicWidget
 from VeraGrid.Gui.ProceduralGrid.voltage_warning import VoltageWarningDialog
+from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
 from VeraGrid.Gui.general_dialogues import LogsDialogue, CheckListDialogue
 
 if TYPE_CHECKING:
@@ -243,7 +244,7 @@ class ProceduralGridWindow(QtWidgets.QDialog):
         if offenders:
             dlg = VoltageWarningDialog(offenders=offenders, valid_voltages=valid_voltages, parent=self)
             dlg.setModal(True)
-            dlg.exec()
+            exec_dialog_safely(dialog=dlg)
             # Voltage mismatch: do not enable Accept; user must fix inputs first
             self._invalidate_preview()
             return None
@@ -483,7 +484,7 @@ class ProceduralGridWindow(QtWidgets.QDialog):
         # Show logger if there are any entries
         if logger.has_logs():
             logs_dlg = LogsDialogue(self.tr('Procedural grid expansion log'), logger)
-            logs_dlg.exec()
+            exec_dialog_safely(dialog=logs_dlg)
         else:
             pass
 
@@ -499,7 +500,7 @@ class ProceduralGridWindow(QtWidgets.QDialog):
                                                        group_label="Investment name",
                                                        group_text=group_name)
         inv_dlg.setModal(True)
-        inv_dlg.exec()
+        exec_dialog_safely(dialog=inv_dlg)
 
         if inv_dlg.is_accepted:
             group: dev.InvestmentsGroup = dev.InvestmentsGroup(

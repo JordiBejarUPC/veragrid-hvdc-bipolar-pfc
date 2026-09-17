@@ -80,6 +80,7 @@ from VeraGrid.Gui.Diagrams.generic_graphics import ACTIVE, GenericDiagramWidget
 from VeraGrid.Gui.Diagrams.graphics_manager import ALL_GRAPHICS
 from VeraGrid.Gui.Diagrams.base_diagram_widget import BaseDiagramWidget
 from VeraGrid.Gui.general_dialogues import InputNumberDialogue
+from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
 from VeraGrid.Gui.matplotlib_dialog import show_matplotlib_figure
 import VeraGrid.Gui.Visualization.visualization as viz
 from VeraGrid.Gui.messages import error_msg, warning_msg, yes_no_question
@@ -803,7 +804,7 @@ class SchematicWidget(BaseDiagramWidget):
                                           is_int=True,
                                           title=self.tr('NW transformer'),
                                           text=self.tr('Select the number of windings'))
-                dlg.exec()
+                exec_dialog_safely(dialog=dlg)
 
                 if not dlg.is_accepted:
                     return
@@ -6441,7 +6442,7 @@ class SchematicWidget(BaseDiagramWidget):
                                   suffix=self.tr(' %'),
                                   decimals=2,
                                   default_value=50.0)
-        if dlg.exec():
+        if exec_dialog_safely(dialog=dlg):
 
             if dlg.is_accepted:
                 position = dlg.value / 100.0
@@ -6465,7 +6466,7 @@ class SchematicWidget(BaseDiagramWidget):
                                   suffix=self.tr(' %'),
                                   decimals=2,
                                   default_value=50.0)
-        if dlg.exec():
+        if exec_dialog_safely(dialog=dlg):
 
             if dlg.is_accepted:
 
@@ -6482,7 +6483,7 @@ class SchematicWidget(BaseDiagramWidget):
                                                decimals=2,
                                                default_value=1.0)
 
-                    if dlg2.exec():
+                    if exec_dialog_safely(dialog=dlg2):
 
                         if dlg2.is_accepted:
 
@@ -6972,7 +6973,7 @@ class SchematicWidget(BaseDiagramWidget):
             grid=self.circuit
         )
         vl_wizard.setModal(True)
-        vl_wizard.exec()  # waits until closed
+        exec_dialog_safely(dialog=vl_wizard)
 
         if vl_wizard.closed_ok:
             (new_buses,

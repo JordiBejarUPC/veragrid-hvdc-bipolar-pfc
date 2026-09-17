@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import gc
 import sys
 
 from PySide6 import QtCore, QtGui, QtWidgets
@@ -350,8 +349,6 @@ def test_repeated_workspace_teardown_destroys_dynamic_editor_qt_objects() -> Non
             QtCore.QEvent.Type.DeferredDelete,
         )
         app.processEvents()
-        gc.collect()
-
         assert not shiboken6.isValid(scene)
         assert not shiboken6.isValid(view)
         assert not shiboken6.isValid(editor)

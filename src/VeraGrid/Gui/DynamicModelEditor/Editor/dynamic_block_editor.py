@@ -83,7 +83,7 @@ from VeraGrid.Gui.DynamicModelEditor.Editor.BlockProperties.dynamic_block_proper
     DynamicBlockPropertiesDialog,
     resolve_block_documentation_url,
 )
-from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, is_dialog_available
+from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, exec_dialog_safely, is_dialog_available
 from VeraGrid.Gui.general_dialogues import DeviceSelectorPanel
 from VeraGrid.Gui.DynamicModelEditor.Plots.dynamic_plots_handler import (
     DynamicPlotCandidate,
@@ -2591,7 +2591,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             parent=self,
         )
 
-        if dialogue.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+        if exec_dialog_safely(dialog=dialogue) == QtWidgets.QDialog.DialogCode.Accepted:
             bus: Bus
             block_type: BlockType
             inputs_list: List[VarPowerFlowReferenceType]
@@ -10505,7 +10505,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         button_box.accepted.connect(dialog.accept)
         button_box.rejected.connect(dialog.reject)
 
-        accepted: bool = dialog.exec() == QDialog.DialogCode.Accepted
+        accepted: bool = exec_dialog_safely(dialog=dialog) == QDialog.DialogCode.Accepted
         new_name: str = name_edit.text().strip()
         return accepted, new_name
 
@@ -11901,7 +11901,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         button_box.rejected.connect(dialog.reject)
 
         # Show dialog
-        dialog.exec()
+        exec_dialog_safely(dialog=dialog)
 
     def _build_connected_port_sets(self) -> tuple[set[tuple[int, int]], set[tuple[int, int]]]:
         """
@@ -12326,7 +12326,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         section_results: list[valid.ValidationSection] = self.collect_model_consistency_sections()
         dialog: valid.ValidationSectionDialog = valid.ValidationSectionDialog(section_results=section_results,
                                                                               parent=self)
-        dialog.exec()
+        exec_dialog_safely(dialog=dialog)
 
     def _iter_scene_block_items(
             self,

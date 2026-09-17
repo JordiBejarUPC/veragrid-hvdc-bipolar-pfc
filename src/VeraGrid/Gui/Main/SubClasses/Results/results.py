@@ -15,7 +15,7 @@ from VeraGrid.Gui.messages import error_msg, warning_msg, yes_no_question
 from VeraGrid.Gui.Main.SubClasses.simulations import SimulationsMain
 from VeraGrid.Gui.results_model import ResultsModel
 from VeraGrid.Gui.general_dialogues import fill_tree_from_logs
-from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely
+from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, exec_dialog_safely
 from VeraGrid.Gui.matplotlib_dialog import show_matplotlib_figure
 import VeraGridEngine.Utils.Filtering as flt
 from VeraGridEngine.basic_structures import Logger
@@ -621,7 +621,7 @@ class ResultsMain(SimulationsMain):
             layout.addWidget(mode_combo)
             layout.addWidget(buttons)
             try:
-                accepted: bool = dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted
+                accepted: bool = exec_dialog_safely(dialog=dialog) == QtWidgets.QDialog.DialogCode.Accepted
                 if accepted:
                     group_name: str = name_edit.text()
                     selected_mode_data: object = mode_combo.currentData()

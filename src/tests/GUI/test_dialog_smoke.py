@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import ast
 import copy
-import gc
 import multiprocessing
 import queue
 import tempfile
@@ -15,6 +14,7 @@ from typing import Any, Dict, List, Set
 import numpy as np
 import pandas as pd
 import shiboken6
+from matplotlib.figure import Figure
 from PySide6 import QtCore, QtGui, QtTest
 from PySide6 import QtWidgets
 
@@ -53,6 +53,7 @@ from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_editor import DynamicB
 from VeraGrid.Gui.DynamicModelEditor.Editor.BlockProperties import DynamicBlockPropertiesDialog
 from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_editor_validation import ValidationSectionDialog
 from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_workspace_window import DynamicEditorWorkspaceWindow
+from VeraGrid.Gui.matplotlib_dialog import show_matplotlib_figure
 from VeraGrid.Gui.FileDialogues.CGMESDialogue.cgmes_export import CgmesExportDialogue
 from VeraGrid.Gui.FileDialogues.CGMESDialogue.cgmes_import import CgmesImportDialogue
 from VeraGrid.Gui.FileDialogues.CoordinatesInput.coordinates_dialogue import CoordinatesInputGUI
@@ -1179,7 +1180,7 @@ def close_extra_top_level_widgets(app: QtWidgets.QApplication, primary_dialog: Q
 
 def collect_qt_deletes(app: QtWidgets.QApplication) -> None:
     """
-    Flush Qt deferred deletes and Python cycles left by smoke constructors.
+    Flush Qt deferred deletes left by smoke constructors.
 
     :param app: Shared Qt application.
     :return: None.
@@ -1187,9 +1188,6 @@ def collect_qt_deletes(app: QtWidgets.QApplication) -> None:
     app.processEvents()
     QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
     app.processEvents()
-    gc.collect(0)
-    gc.collect(1)
-    gc.collect(2)
     QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
     app.processEvents()
 
@@ -1567,11 +1565,41 @@ def test_delete_dialog_safely_deletes_child_widgets(qt_app: QtWidgets.QApplicati
     app.processEvents()
 
     delete_dialog_safely(dialog=dialog)
+    QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
     app.processEvents()
 
     assert not shiboken6.isValid(nested_widget)
     assert not shiboken6.isValid(child_widget)
     assert not shiboken6.isValid(dialog)
+
+
+def test_matplotlib_dialog_defers_canvas_and_toolbar_deletion(qt_app: QtWidgets.QApplication) -> None:
+    """
+    Check that closing a modeless plot releases its Qt Matplotlib children.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    app: QtWidgets.QApplication = qt_app
+    owner: QtWidgets.QWidget = QtWidgets.QWidget()
+    open_dialogs: list[QtWidgets.QDialog] = list()
+    figure: Figure = Figure()
+    figure.add_subplot(111)
+    dialog = show_matplotlib_figure(figure=figure,
+                                   parent=owner,
+                                   open_dialogs=open_dialogs,
+                                   title="Plot")
+    canvas: QtWidgets.QWidget = dialog._canvas
+    toolbar: QtWidgets.QWidget = dialog._toolbar
+
+    dialog.close()
+    QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
+    app.processEvents()
+
+    assert open_dialogs == list()
+    assert not shiboken6.isValid(canvas)
+    assert not shiboken6.isValid(toolbar)
+    delete_dialog_safely(dialog=owner)
 
 
 def test_grid_reduce_accepts_before_log_display(qt_app: QtWidgets.QApplication, monkeypatch: Any) -> None:
