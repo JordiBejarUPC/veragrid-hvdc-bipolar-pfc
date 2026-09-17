@@ -43,6 +43,7 @@ class CatalogueElementsSelectionDialogue(QtWidgets.QDialog):
     _COL_NAME: int = 0
     _COL_VOLTAGE: int = 1
     _COL_POWER: int = 2
+    _COL_DESCRIPTION: int = 3
 
     _ROLE_OBJ: int = int(Qt.ItemDataRole.UserRole) + 1
     _ROLE_KIND: int = int(Qt.ItemDataRole.UserRole) + 2
@@ -69,7 +70,7 @@ class CatalogueElementsSelectionDialogue(QtWidgets.QDialog):
         self.ui.setupUi(self)
 
         self._model = QStandardItemModel()
-        self._model.setHorizontalHeaderLabels(['Element', 'Voltage', 'Power'])
+        self._model.setHorizontalHeaderLabels(list(('Element', 'Voltage', 'Power', 'Description')))
 
         self.ui.treeView.setModel(self._model)
         self.ui.treeView.setHeaderHidden(False)
@@ -214,6 +215,7 @@ class CatalogueElementsSelectionDialogue(QtWidgets.QDialog):
                                                        name=str(obj.name),
                                                        voltage_text=f"{float(obj.HV):.3g}/{float(obj.LV):.3g} kV",
                                                        power_text=f"{float(obj.Sn):.3g} MVA",
+                                                       description_text='',
                                                        unique_key=f"{obj.name}|{obj.HV}|{obj.LV}|{obj.Sn}"))
         categories['Transformer types'] = transformer_actions
 
@@ -224,6 +226,7 @@ class CatalogueElementsSelectionDialogue(QtWidgets.QDialog):
                                                  name=str(obj.name),
                                                  voltage_text=f"{float(obj.Vnom):.3g} kV",
                                                  power_text=f"{self.compute_mva_from_v_i(v_kv=float(obj.Vnom), i_ka=float(obj.Imax)):.3g} MVA",
+                                                 description_text='',
                                                  unique_key=f"{obj.name}|{obj.Vnom}|{obj.Imax}"))
         categories['Underground line types'] = cable_actions
 
@@ -234,6 +237,7 @@ class CatalogueElementsSelectionDialogue(QtWidgets.QDialog):
                                                 name=str(obj.name),
                                                 voltage_text='',
                                                 power_text='',
+                                                description_text='',
                                                 unique_key=str(obj.name)))
         categories['Wire types'] = wire_actions
 
@@ -244,6 +248,7 @@ class CatalogueElementsSelectionDialogue(QtWidgets.QDialog):
                                                     name=str(obj.name),
                                                     voltage_text=f"{float(obj.Vnom):.3g} kV",
                                                     power_text=f"{self.compute_mva_from_v_i(v_kv=float(obj.Vnom), i_ka=float(obj.Imax)):.3g} MVA",
+                                                    description_text='',
                                                     unique_key=f"{obj.name}|{obj.Vnom}|{obj.Imax}"))
         categories['Sequence line types'] = sequence_actions
 
@@ -277,6 +282,7 @@ class CatalogueElementsSelectionDialogue(QtWidgets.QDialog):
                 name=device_spec.label,
                 voltage_text='',
                 power_text='',
+                description_text=device_spec.description,
                 unique_key=device_spec.unique_key,
                 device_template_spec=device_spec,
             ))
@@ -354,10 +360,12 @@ class CatalogueElementsSelectionDialogue(QtWidgets.QDialog):
         cat_name_item = QStandardItem(str(category_name))
         cat_voltage_item = QStandardItem('')
         cat_power_item = QStandardItem('')
+        cat_description_item = QStandardItem('')
 
         cat_name_item.setEditable(False)
         cat_voltage_item.setEditable(False)
         cat_power_item.setEditable(False)
+        cat_description_item.setEditable(False)
 
         cat_name_item.setCheckable(True)
         # In PySide6, QStandardItem exposes tri-state via auto/user tristate flags.
@@ -366,7 +374,7 @@ class CatalogueElementsSelectionDialogue(QtWidgets.QDialog):
         cat_name_item.setCheckState(Qt.CheckState.Unchecked)
         cat_name_item.setData(True, self._ROLE_IS_CATEGORY)
 
-        self._model.appendRow([cat_name_item, cat_voltage_item, cat_power_item])
+        self._model.appendRow([cat_name_item, cat_voltage_item, cat_power_item, cat_description_item])
 
         # Child rows.
         for obj in objects_list:
@@ -375,19 +383,21 @@ class CatalogueElementsSelectionDialogue(QtWidgets.QDialog):
 
     def create_leaf_row(self, action: CatalogueAction) -> List[QStandardItem]:
         """
-        Create the 3-column row representing a concrete template object.
+        Create the 4-column row representing a concrete template object.
 
         :param action: CatalogueAction.
-        :return: List of 3 ``QStandardItem``.
+        :return: List of 4 ``QStandardItem``.
         """
         name_item = QStandardItem(action.name)
         voltage_item = QStandardItem(action.voltage_text)
         power_item = QStandardItem(action.power_text)
+        description_item = QStandardItem(action.description_text)
 
         # Make leaf selectable and checkable.
         name_item.setEditable(False)
         voltage_item.setEditable(False)
         power_item.setEditable(False)
+        description_item.setEditable(False)
 
         name_item.setCheckable(True)
         name_item.setCheckState(Qt.CheckState.Unchecked)
@@ -397,11 +407,12 @@ class CatalogueElementsSelectionDialogue(QtWidgets.QDialog):
         name_item.setData(int(action.kind.value), self._ROLE_KIND)
         name_item.setData(False, self._ROLE_IS_CATEGORY)
 
-        # Keep numeric columns aligned.
+        # Keep electrical values aligned while descriptions remain natural text.
         voltage_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         power_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        description_item.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
 
-        return [name_item, voltage_item, power_item]
+        return [name_item, voltage_item, power_item, description_item]
 
     # ------------------------------------------------------------------------------------------------------------------
     # Checkbox propagation

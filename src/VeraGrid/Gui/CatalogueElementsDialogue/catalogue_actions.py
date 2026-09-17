@@ -46,6 +46,7 @@ class CatalogueAction:
         '_name',
         '_voltage_text',
         '_power_text',
+        '_description_text',
         '_unique_key',
         '_function_ptr',
         '_device_template_spec',
@@ -57,6 +58,7 @@ class CatalogueAction:
                  name: str,
                  voltage_text: str,
                  power_text: str,
+                 description_text: str,
                  unique_key: str,
                  function_ptr: Callable[..., Any] | None = None,
                  device_template_spec: LibraryDeviceTemplateSpec | None = None) -> None:
@@ -66,8 +68,9 @@ class CatalogueAction:
         :param kind: Action kind.
         :param args: Explicit tuple of arguments (stored as-is).
         :param name: Display name (column 0).
-        :param voltage_text: Display voltage info (column 1).
+        :param voltage_text: Display voltage information (column 1).
         :param power_text: Display power info (column 2).
+        :param description_text: Display description (column 3).
         :param unique_key: Stable key to help avoid duplicates.
         :param function_ptr: Callable used for deferred RMS/EMT creation.
         :param device_template_spec: Canonical Library device registration.
@@ -77,6 +80,7 @@ class CatalogueAction:
         self._name = str(name)
         self._voltage_text = str(voltage_text)
         self._power_text = str(power_text)
+        self._description_text = str(description_text)
         self._unique_key = str(unique_key)
         self._function_ptr = function_ptr
         self._device_template_spec: LibraryDeviceTemplateSpec | None = device_template_spec
@@ -125,6 +129,14 @@ class CatalogueAction:
         :return: str
         """
         return self._power_text
+
+    @property
+    def description_text(self) -> str:
+        """Get the display description.
+
+        :return: Description shown in column 3.
+        """
+        return self._description_text
 
     @property
     def unique_key(self) -> str:

@@ -37,6 +37,10 @@ def test_rms_catalogue_matches_library_devices(qt_app: QtWidgets.QApplication) -
         spec.unique_key for spec in specs
     )
     assert list(action.name for action in actions) == list(spec.label for spec in specs)
+    assert all(action.voltage_text == "" for action in actions)
+    assert list(action.description_text for action in actions) == list(
+        spec.description for spec in specs
+    )
     assert len(set(action.unique_key for action in actions)) == len(actions)
     assert any(spec.unique_key.startswith("rms:international:") for spec in specs)
     assert all("governor" not in action.unique_key.lower() for action in actions)
@@ -79,6 +83,10 @@ def test_emt_catalogue_matches_library_devices(qt_app: QtWidgets.QApplication) -
         spec.unique_key for spec in specs
     )
     assert list(action.name for action in actions) == list(spec.label for spec in specs)
+    assert all(action.voltage_text == "" for action in actions)
+    assert list(action.description_text for action in actions) == list(
+        spec.description for spec in specs
+    )
     assert len(set(action.unique_key for action in actions)) == len(actions)
     assert all("governor" not in action.unique_key.lower() for action in actions)
     assert all("exciter" not in action.unique_key.lower() for action in actions)
