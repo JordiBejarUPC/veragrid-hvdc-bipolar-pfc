@@ -1769,69 +1769,115 @@ def build_library_name_list(label: str, names: Sequence[str]) -> str:
 
 
 def build_block_type_description(block_type: BlockType) -> str:
-    """Return a compact description for native enum-backed blocks.
+    """Return the functional description of a native enum-backed block.
 
     :param block_type: Native block type.
-    :return: Human-readable description.
+    :return: Human-readable explanation of the block behavior.
     """
     if block_type == BlockType.FROM_GOTO:
-        description: str = "Signal pair connector"
+        description: str = "Routes a signal between paired From and Goto connectors without a visible wire"
     elif block_type == BlockType.INPUT_CONN:
-        description = "Bus or measurement connection helper"
+        description = "Connects bus measurements or external device variables to the dynamic model"
     elif block_type == BlockType.OUTPUT_CONN:
-        description = "External mapping connection helper"
+        description = "Maps a dynamic-model signal to an external device variable"
     elif block_type == BlockType.GENERIC:
-        description = "Empty custom dynamic block"
+        description = "Empty dynamic-model template for building a custom device or control"
+    elif block_type == BlockType.PLL_TRANSFORM_RMS:
+        description = "Phase-locked loop and reference-frame transform that derives d-q voltage and frequency"
+    elif block_type == BlockType.VSC_PLL_RMS:
+        description = "Explicit-state PI phase-locked loop that tracks AC-grid angle and frequency"
+    elif block_type == BlockType.GOV_RMS:
+        description = "Generator turbine-governor RMS control that regulates mechanical power from speed error"
+    elif block_type == BlockType.EXCITER_RMS:
+        description = "Generator excitation-system RMS control that regulates terminal voltage"
+    elif block_type == BlockType.STAB_RMS:
+        description = "Generator power-system stabilizer RMS control for damping electromechanical oscillations"
+    elif block_type == BlockType.PI_POWER_CONTROLLER:
+        description = "VSC outer-loop PI controller that converts active and reactive power errors to current references"
+    elif block_type == BlockType.VSC_ACTIVE_CONTROL_RMS:
+        description = "VSC outer-loop PI control of DC voltage or active power, producing a q-axis current reference"
+    elif block_type == BlockType.VSC_REACTIVE_CONTROL_RMS:
+        description = "VSC outer-loop PI control of AC voltage or reactive power, producing a d-axis current reference"
+    elif block_type == BlockType.PI_CURRENT_CONTROLLER:
+        description = "VSC inner-loop PI controller that converts current error to a converter voltage command"
+    elif block_type == BlockType.VSC_VD_HAT_RMS:
+        description = "VSC d-axis inner current PI controller producing the d-axis voltage correction"
+    elif block_type == BlockType.VSC_VQ_HAT_RMS:
+        description = "VSC q-axis inner current PI controller producing the q-axis voltage correction"
+    elif block_type == BlockType.VSC_ELECTRICAL_RMS:
+        description = "VSC electrical RMS equations for d-q current dynamics and AC-terminal power"
+    elif block_type == BlockType.VSC_DC_LINK_RMS:
+        description = "VSC DC-link capacitor dynamics with DC voltage and terminal-power constraints"
+    elif block_type == BlockType.VSC_CURRENT_LIMITER_RMS:
+        description = "VSC current-reference magnitude limiter with q-axis priority"
+    elif block_type == BlockType.GOV_EMT:
+        description = "Generator turbine-governor EMT control that regulates mechanical power from speed error"
+    elif block_type == BlockType.EXCITER_EMT:
+        description = "Generator excitation-system EMT control that regulates field voltage"
+    elif block_type == BlockType.STAB_EMT:
+        description = "Generator stabilizer EMT control for damping electromechanical oscillations"
     elif block_type == BlockType.RLC_COMBO_EMT:
-        description = "Configurable EMT RLC branch"
+        description = "Configurable three-phase resistor-inductor-capacitor branch for an EMT network"
     elif block_type == BlockType.FAULT_EMT:
-        description = "EMT fault block"
+        description = "Configurable EMT short-circuit fault with selectable phases and ground connection"
     elif block_type == BlockType.SWITCH_EMT:
-        description = "EMT switch block"
+        description = "Controlled ideal electrical switch for opening or closing an EMT branch"
     elif block_type.name.startswith("MEASUREMENTS_"):
-        description = "Measurement block"
+        description = f"Exposes the {block_type.value} network measurement as a dynamic-model signal"
+    elif block_type == BlockType.CONST:
+        description = "Produces a configurable constant signal"
+    elif block_type == BlockType.GAIN:
+        description = "Multiplies an input signal by a configurable gain"
+    elif block_type == BlockType.SUM:
+        description = "Adds or subtracts a configurable set of input signals"
+    elif block_type == BlockType.DIVIDE:
+        description = "Divides one input signal by another"
+    elif block_type == BlockType.PRODUCT:
+        description = "Multiplies a configurable set of input signals"
+    elif block_type == BlockType.ABS:
+        description = "Returns the absolute value or magnitude of the input signal"
+    elif block_type == BlockType.INTEGRATOR:
+        description = "Integrates the input signal over simulation time"
+    elif block_type == BlockType.POWER:
+        description = "Raises the input signal to a configurable power"
+    elif block_type in tuple((BlockType.SIN, BlockType.COS, BlockType.TAN)):
+        description = f"Applies the {block_type.value} trigonometric function to the input signal"
+    elif block_type == BlockType.EXP:
+        description = "Applies the natural exponential function to the input signal"
+    elif block_type == BlockType.LOG:
+        description = "Applies the natural logarithm to the input signal"
+    elif block_type == BlockType.LOG10:
+        description = "Applies the base-10 logarithm to the input signal"
+    elif block_type == BlockType.SQRT:
+        description = "Returns the square root of the input signal"
+    elif block_type in tuple((BlockType.ASIN, BlockType.ACOS, BlockType.ATAN)):
+        description = f"Applies the inverse {block_type.value} trigonometric function to the input signal"
+    elif block_type in tuple((BlockType.SINH, BlockType.COSH, BlockType.TANH)):
+        description = f"Applies the {block_type.value} hyperbolic function to the input signal"
+    elif block_type == BlockType.REAL:
+        description = "Extracts the real component of a complex input signal"
+    elif block_type == BlockType.IMAG:
+        description = "Extracts the imaginary component of a complex input signal"
+    elif block_type == BlockType.CONJ:
+        description = "Returns the complex conjugate of the input signal"
+    elif block_type == BlockType.ANGLE:
+        description = "Returns the phase angle of a complex input signal"
+    elif block_type == BlockType.INVERSE_LOOKUP_ARRAY:
+        description = "Computes the input corresponding to a tabulated output using linear interpolation"
+    elif block_type == BlockType.LOOKUP_ARRAY_LINEAR:
+        description = "Interpolates a one-dimensional lookup table linearly"
+    elif block_type == BlockType.LOOKUP_ARRAY_SPLINE:
+        description = "Interpolates a one-dimensional lookup table with a spline"
+    elif block_type == BlockType.LOOKUP_MATRIX_LINEAR:
+        description = "Interpolates a two-dimensional lookup table linearly"
+    elif block_type == BlockType.LOOKUP_MATRIX_SPLINE:
+        description = "Interpolates a two-dimensional lookup table with a spline"
     elif block_type.name.endswith("_RMS"):
-        description = "Native RMS dynamic block"
+        description = f"RMS dynamic-model component implementing {block_type.value} behavior"
     elif block_type.name.endswith("_EMT"):
-        description = "Native EMT dynamic block"
-    elif block_type in tuple((
-            BlockType.CONST,
-            BlockType.GAIN,
-            BlockType.SUM,
-            BlockType.DIVIDE,
-            BlockType.PRODUCT,
-            BlockType.ABS,
-            BlockType.INTEGRATOR,
-            BlockType.POWER,
-            BlockType.SIN,
-            BlockType.COS,
-            BlockType.TAN,
-            BlockType.EXP,
-            BlockType.LOG,
-            BlockType.LOG10,
-            BlockType.SQRT,
-            BlockType.ASIN,
-            BlockType.ACOS,
-            BlockType.ATAN,
-            BlockType.SINH,
-            BlockType.COSH,
-            BlockType.TANH,
-            BlockType.REAL,
-            BlockType.IMAG,
-            BlockType.CONJ,
-            BlockType.ANGLE,
-    )):
-        description = "Native mathematical block"
-    elif block_type in tuple((
-            BlockType.INVERSE_LOOKUP_ARRAY,
-            BlockType.LOOKUP_ARRAY_LINEAR,
-            BlockType.LOOKUP_ARRAY_SPLINE,
-            BlockType.LOOKUP_MATRIX_LINEAR,
-            BlockType.LOOKUP_MATRIX_SPLINE,
-    )):
-        description = "Native lookup-table block"
+        description = f"EMT dynamic-model component implementing {block_type.value} behavior"
     else:
-        description = f"Native block: {block_type.value}"
+        description = f"Dynamic-model component implementing {block_type.value} behavior"
 
     return description
 
