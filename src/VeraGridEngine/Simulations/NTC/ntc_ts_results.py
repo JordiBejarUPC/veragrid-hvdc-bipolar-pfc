@@ -37,6 +37,7 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
         ResultsProperty(name='overloads', tpe=CxMat, old_names=list(), expandable=True),
         ResultsProperty(name='loading', tpe=CxMat, old_names=list(), expandable=True),
         ResultsProperty(name='losses', tpe=CxMat, old_names=list(), expandable=True),
+        ResultsProperty(name='phase_shifter_indices', tpe=IntVec, old_names=list(), expandable=False),
         ResultsProperty(name='phase_shift', tpe=CxMat, old_names=list(), expandable=True),
         ResultsProperty(name='rates', tpe=Vec, old_names=list(), expandable=False),
         ResultsProperty(name='contingency_rates', tpe=Vec, old_names=list(), expandable=False),
@@ -84,6 +85,7 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
         "loading",
         "losses",
         "phase_shift",
+        "phase_shifter_indices",
         "rates",
         "contingency_rates",
         "alpha",
@@ -206,6 +208,7 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
         self.overloads = np.zeros((nt, m), dtype=float)
         self.loading = np.zeros((nt, m), dtype=float)
         self.losses = np.zeros((nt, m), dtype=float)
+        self.phase_shifter_indices: IntVec = np.empty(0, dtype=int)
         self.phase_shift = np.zeros((nt, m), dtype=float)
         self.overloads = np.zeros((nt, m), dtype=float)
         self.rates = np.zeros(m, dtype=float)
@@ -598,7 +601,13 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
                 flow_n=np.real(self.Sf),
                 ntc=self.inter_area_flows,
                 contingency_rates=self.contingency_rates,
-                loading_threshold_pct=self.loading_threshold_to_report
+                loading_threshold_pct=self.loading_threshold_to_report,
+                vsc_names=self.vsc_names,
+                vsc_power=self.vsc_Pf,
+                hvdc_names=self.hvdc_names,
+                hvdc_power=self.hvdc_Pf,
+                phase_shifter_indices=self.phase_shifter_indices,
+                phase_shift=self.phase_shift
             )
 
         elif (result_type == ResultTypes.ContingencyFlowsRepresentativeReport
@@ -629,7 +638,13 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
                 total_slack_mw=total_slack[selected_rows],
                 time_percentage=self.clustering_results.sampled_probabilities * 100.0,
                 original_time_indices=representative_indices,
-                result_type=result_type
+                result_type=result_type,
+                vsc_names=self.vsc_names,
+                vsc_power=self.vsc_Pf[selected_rows],
+                hvdc_names=self.hvdc_names,
+                hvdc_power=self.hvdc_Pf[selected_rows],
+                phase_shifter_indices=self.phase_shifter_indices,
+                phase_shift=self.phase_shift[selected_rows]
             )
 
         else:
