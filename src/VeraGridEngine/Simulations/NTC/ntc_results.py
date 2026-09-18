@@ -75,7 +75,7 @@ def worst_contingency_report_table(time_array: Union[DateVec, None],
     :param ntc: NTC of each time index (MW)
     :param contingency_rates: branch contingency ratings (MW)
     :param loading_threshold_pct: keep rows whose N-1 loading is at least this percent
-    :param total_slack_mw: optional total thermal slack per representative hour
+    :param total_slack_mw: optional total thermal slack per displayed operating point
     :param time_percentage: optional cluster probabilities expressed as percentages
     :param original_time_indices: optional original-series indices for the displayed hours
     :param vsc_names: converter names, in stored power order
@@ -121,13 +121,19 @@ def worst_contingency_report_table(time_array: Union[DateVec, None],
             'Flow N (MW)', 'Flow N-1 (MW)', 'Loading N-1 (%)'
         ]
 
-    include_cluster_details: bool = total_slack_mw is not None and time_percentage is not None
-    if include_cluster_details:
-        ntc_column: int = columns.index('NTC (MW)')
-        columns[ntc_column + 1:ntc_column + 1] = list(('Total slack (MW)', 'Time percentage (%)'))
-        n_cols += 2
+    # Slack is useful for snapshots too. Probability exists only for clusters.
+    detail_column: int = columns.index('NTC (MW)') + 1
+    if total_slack_mw is not None:
+        columns.insert(detail_column, 'Total slack (MW)')
+        detail_column += 1
+        n_cols += 1
     else:
-        pass  # Keep the existing full-hour and snapshot report columns.
+        pass
+    if time_percentage is not None:
+        columns.insert(detail_column, 'Time percentage (%)')
+        n_cols += 1
+    else:
+        pass
 
     # Controls describe the optimized N operating point, not corrective N-1 settings.
     # Keep their columns even when a solved power or angle is zero.
@@ -195,12 +201,16 @@ def worst_contingency_report_table(time_array: Union[DateVec, None],
         data[row_i, col0 + 3] = c_dev
         data[row_i, col0 + 4] = np.round(ntc_h, 4)
         next_col: int = col0 + 5
-        if include_cluster_details:
+        if total_slack_mw is not None:
             data[row_i, next_col] = np.round(float(total_slack_mw[h]), 4)
-            data[row_i, next_col + 1] = np.round(float(time_percentage[h]), 6)
-            next_col += 2
+            next_col += 1
         else:
-            pass  # No cluster weights are attached to the expanded report.
+            pass
+        if time_percentage is not None:
+            data[row_i, next_col] = np.round(float(time_percentage[h]), 6)
+            next_col += 1
+        else:
+            pass
         data[row_i, next_col] = np.round(float(alpha[h, m]), 6)
         data[row_i, next_col + 1] = np.round(float(alpha_n1[h, m]), 6)
         data[row_i, next_col + 2] = np.round(flow_n_m, 4)
@@ -763,6 +773,7 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
             flow_n: np.ndarray = np.real(self.Sf).reshape(1, n_br)
             return worst_contingency_report_table(
                 time_array=None,
+                total_slack_mw=np.array([self.get_total_slack_mw()], dtype=float),
                 branch_names=self.branch_names,
                 group_names=self.contingency_group_names,
                 group_device_names=self.contingency_group_device_names,
