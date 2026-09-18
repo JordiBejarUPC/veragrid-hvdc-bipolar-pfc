@@ -6901,8 +6901,11 @@ class Ui_mainWindow(object):
         self.label_408.setText(QCoreApplication.translate("mainWindow", u"RMS", None))
         self.label_414.setText("")
         self.label_415.setText("")
-        self.rms_integration_method_comboBox.setItemText(0, QCoreApplication.translate("mainWindow", u"trapezoid", None))
-        self.rms_integration_method_comboBox.setItemText(1, QCoreApplication.translate("mainWindow", u"implicit euler", None))
+        self.rms_integration_method_comboBox.setItemText(0, QCoreApplication.translate("mainWindow", u"implicit euler",None))
+        self.rms_integration_method_comboBox.setItemText(1, QCoreApplication.translate("mainWindow", u"trapezoid", None))
+        self.rms_integration_method_comboBox.setItemText(2, QCoreApplication.translate("mainWindow", u"bdf2", None))
+        self.rms_integration_method_comboBox.setItemText(3, QCoreApplication.translate("mainWindow", u"euler", None))
+
 
         self.label_413.setText(QCoreApplication.translate("mainWindow", u"Initialization", None))
 #if QT_CONFIG(tooltip)
@@ -6964,6 +6967,7 @@ class Ui_mainWindow(object):
         self.label_434.setText(QCoreApplication.translate("mainWindow", u"Tolerance", None))
         self.emt_integration_method_comboBox.setItemText(0, QCoreApplication.translate("mainWindow", u"trapezoid", None))
         self.emt_integration_method_comboBox.setItemText(1, QCoreApplication.translate("mainWindow", u"implicit euler", None))
+        self.emt_integration_method_comboBox.setItemText(2, QCoreApplication.translate("mainWindow", u"bdf2",None))
 
         self.emt_integration_method_comboBox.setCurrentText(QCoreApplication.translate("mainWindow", u"trapezoid", None))
 #if QT_CONFIG(tooltip)

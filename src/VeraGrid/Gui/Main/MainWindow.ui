@@ -7965,12 +7965,22 @@
                     </property>
                     <item>
                      <property name="text">
+                      <string>implicit euler</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
                       <string>trapezoid</string>
                      </property>
                     </item>
                     <item>
                      <property name="text">
-                      <string>implicit euler</string>
+                      <string>bdf2</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
+                      <string>euler</string>
                      </property>
                     </item>
                    </widget>
@@ -8628,6 +8638,11 @@
                     <item>
                      <property name="text">
                       <string>implicit euler</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
+                      <string>bdf2</string>
                      </property>
                     </item>
                    </widget>
