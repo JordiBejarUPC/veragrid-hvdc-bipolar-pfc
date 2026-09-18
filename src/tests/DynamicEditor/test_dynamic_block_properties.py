@@ -2230,6 +2230,10 @@ def test_property_tree_groups_symbols_without_migrating_unmapped_static_paramete
     assert dialogue.ui.property_tree.model() is dialogue._property_tree_model
     assert dialogue._property_tree_model.columnCount() == 4
     assert get_property_group_names(dialogue) == list(("Parameters", "Variables"))
+    first_group_index: QtCore.QModelIndex = dialogue._property_tree_model.index(0, 0)
+    assert dialogue._property_tree_model.columnCount(first_group_index) == 4
+    first_owner_index: QtCore.QModelIndex = dialogue._property_tree_model.index(0, 0, first_group_index)
+    assert first_owner_index.siblingAtColumn(3).isValid()
     assert find_property_index(dialogue, "x").isValid()
     assert find_property_index(dialogue, "gain").siblingAtColumn(2).data() == "Missing PF mapping"
     assert parameter_variable not in block.event_dict
