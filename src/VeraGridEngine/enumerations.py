@@ -1948,7 +1948,7 @@ class DeviceType(Enum):
     ItMeasurementDevice = 'It Measurement'
 
     WireDevice = 'Wire'
-    UndergroundCableTypeDevice = 'Underground cable type'
+    UndergroundCableTypeDevice = 'Underground cable'
     DcCableTypeDevice = 'DC cable type'
     SequenceLineDevice = 'Sequence line'
     UnderGroundLineDevice = 'Underground line'
