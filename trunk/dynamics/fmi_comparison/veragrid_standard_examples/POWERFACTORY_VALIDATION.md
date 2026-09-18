@@ -5,11 +5,11 @@ in licensed DIgSILENT PowerFactory 2025 SP4. PowerFactory imports FMI 2 and
 FMI 3, CS and ME: twelve applicable standard cells. FMI 1 is
 `NOT_APPLICABLE` in this lane and remains covered by FMPy and Simulink.
 
-The present catalog is authenticated current-worktree evidence. It is not in
-the base Git tree yet, so a clean checkout cannot reproduce this campaign
-until the entire standard-example catalog, sources, scripts and documentation
-are committed together. Every receipt therefore records
-`CURRENT_UNTRACKED_WORKTREE`.
+The campaign was executed while the catalog was authenticated current-worktree
+evidence, so its immutable receipts correctly record
+`CURRENT_UNTRACKED_WORKTREE`. The complete catalog, sources, scripts and
+documentation were subsequently committed together in `e47b0b537`; that
+historical receipt label must not be rewritten after the fact.
 
 The runner authenticates every original standard FMU hash and leaves the
 canonical catalog byte-identical. Because PowerFactory 2025 SP4 calls FMI 3
@@ -140,3 +140,20 @@ recorded PowerFactory release. It is not official FMI certification and does
 not cover PowerFactory as an FMU exporter. All external callback and
 initialization derivatives are strictly importer-compatibility artifacts for
 this campaign; they are not published as canonical VeraGrid FMUs.
+
+## Authenticated outcome
+
+The licensed PowerFactory 2025 SP4 execution completed 24/24 isolated jobs:
+one CS job and three ME sensitivity jobs for every GENSAL, TGOV1 and ESDC2A
+FMI 2/3 tuple. Numerical validation passed all 12 applicable cells and all six
+FMI 2-versus-3 same-interface comparisons. It retained 24 authenticated
+validator views and accepted exactly eight documented one-tick ESDC2A input
+transitions. The 0.005 absolute and normalized limits were not relaxed.
+
+The final numerical receipt has SHA-256
+`1d4bd41c7cf37b561e98d65007d4e8b120ca97e169ac0d8400c4c826ac9cead9`.
+The figure receipt has SHA-256
+`40dbba58a7abd8e5e4490f4508603d83864419c26b9deef85dd4d74eefc8d75a`
+and binds six PNG plus six vector PDF figures. The predecessor numerical
+receipt remained bound by SHA-256
+`cd9567e23f84160db03a7503a8ef884a529786e2d6d2c3d99eb19e3ea57c7beb`.
