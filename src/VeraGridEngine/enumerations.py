@@ -696,8 +696,15 @@ class FmuVariableType(str, Enum):
     ENUMERATION = "Enumeration"
     FLOAT32 = "Float32"
     FLOAT64 = "Float64"
+    INT8 = "Int8"
+    UINT8 = "UInt8"
+    INT16 = "Int16"
+    UINT16 = "UInt16"
     INT32 = "Int32"
+    UINT32 = "UInt32"
+    INT64 = "Int64"
     UINT64 = "UInt64"
+    BINARY = "Binary"
     UNKNOWN = "Unknown"
 
 
@@ -3060,6 +3067,7 @@ class ResultTypes(Enum):
 
     BaseFlowReport = 'Ntc: Base flow report'
     ContingencyFlowsReport = 'Ntc: Contingency flow report'
+    ContingencyFlowsRepresentativeReport = 'Ntc: Representative hours contingency flow report'
     ContingencyFlowsBranchReport = 'Ntc: Contingency flow report. (Branch)'
     ContingencyFlowsGenerationReport = 'Ntc: Contingency flow report. (Generation)'
     ContingencyFlowsHvdcReport = 'Ntc: Contingency flow report. (Hvdc)'
@@ -3080,6 +3088,7 @@ class ResultTypes(Enum):
 
     # Clustering
     ClusteringReport = 'Clustering time series report'
+    ClusteringMembershipReport = 'Clustering hour assignments report'
 
     # RMS Simulation
 
@@ -4837,6 +4846,50 @@ class EmtTerminalConductor(Enum):
     PHASE_A = "phase_a"
     PHASE_B = "phase_b"
     PHASE_C = "phase_c"
+
+
+class DynamicDeviceTemplateType(Enum):
+    """Identify one built-in complete dynamic-device template."""
+
+    RMS_COMPLETE_GENERATOR = "rms:get_complete_generator_template_rms"
+    RMS_GENQEC = "rms:get_genqec_rms"
+    RMS_GENROW = "rms:get_genrow_rms_template"
+    RMS_LINE = "rms:get_line_rms_template"
+    RMS_DC_LINE = "rms:build_dc_line_rms_v2"
+    RMS_LOAD = "rms:get_load_rms_template"
+    RMS_TRANSFORMER_2W = "rms:get_transformer2w_rms"
+    RMS_SHUNT = "rms:get_shunt_template"
+    RMS_PVD1 = "rms:get_pvd1_rms_template"
+    RMS_PVD1_COMPLETE = "rms:get_pvd1_complete_rms_template"
+    RMS_PVD1_DC_MPPT = "rms:get_pvd1_dc_mppt_rms_template"
+    RMS_PVD1_DC_LINK_MPPT = "rms:get_pvd1_dc_link_mppt_rms_template"
+    RMS_PVD1_DC_LINK_BESS = "rms:get_pvd1_dc_link_bess_rms_template"
+    RMS_ESD1 = "rms:get_esd1_rms_template"
+    RMS_VOLTAGE_SOURCE = "rms:VoltageSourceBuild"
+    RMS_GFL_CONVERTER = "rms:get_gfl_converter_rms"
+    RMS_HVDC_VSC_GFL = "rms:build_hvdc_vsc_gfl_rms"
+
+    EMT_COMPLETE_GENERATOR = "emt:get_complete_generator_template_emt"
+    EMT_THEVENIN_GENERATOR = "emt:get_generator_thevenin_rl_emt_template_with_ref"
+    EMT_IDEAL_CONVERTER = "emt:get_emt_ideal_converter"
+    EMT_FULL_PSEUDO_CONVERTER = "emt:get_full_pseudo_emt_converter"
+    EMT_SWITCHED_CONVERTER = "emt:get_switched_emt_converter"
+    EMT_DC_LOAD = "emt:get_dc_load_emt_template"
+    EMT_DC_LINE = "emt:get_dc_line_emt_template"
+    EMT_TRANSFORMER = "emt:get_transformer_emt_template"
+    EMT_XFMR = "emt:get_xfmr_emt_template"
+    EMT_SHUNT_C_ABC = "emt:get_shunt_c_emt_template:abc"
+    EMT_SHUNT_L_ABC = "emt:get_shunt_l_emt_template:abc"
+    EMT_SHUNT_R_ABC = "emt:get_shunt_r_emt_template:abc"
+    EMT_EXPONENTIAL_LOAD_ABC = "emt:get_exponential_load_emt:abc"
+    EMT_ZIP_LOAD_ABC = "emt:get_load_ZIP_emt_template:abc"
+    EMT_PI_LINE_ABC = "emt:get_pi_line_emt_template:abc"
+    EMT_BERGERON_LINE_ABC = "emt:get_bergeron_line_emt_template:abc"
+    EMT_SINGLE_CAGE_INDUCTION_MOTOR = "emt:get_induction_motor_single_cage_emt_template:abc"
+    EMT_DOUBLE_CAGE_INDUCTION_MOTOR = "emt:get_induction_motor_double_cage_emt_template:abc"
+    EMT_BESS = "emt:get_bess_avm_grid_following_emt_template:abc"
+    EMT_PV_GRID_FOLLOWING = "emt:get_pv_avm_grid_following_emt_template:abc"
+    EMT_GFM = "emt:get_gfm_emt_template"
 
 
 class BlockType(Enum):

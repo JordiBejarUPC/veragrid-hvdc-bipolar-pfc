@@ -2,7 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-"""Tests for the metadata-only FMI 1 model-description parser."""
+"""Tests for the FMI 1 model-description parser and execution metadata."""
 
 from __future__ import annotations
 
@@ -11,11 +11,14 @@ from pathlib import Path
 import pytest
 
 from VeraGridEngine.IO.fmu.importer.bindings import FmuImportConfig
-from VeraGridEngine.IO.fmu.importer.errors import FmuArchiveError, FmuModeError
+from VeraGridEngine.IO.fmu.importer.errors import FmuArchiveError
 from VeraGridEngine.IO.fmu.importer.model_description import (
     FmuInterfaceMode,
     FmuModelDescription,
     read_fmu_model_description,
+)
+from VeraGridEngine.IO.fmu.importer.model_description_metadata import (
+    FmiOneCoSimulationCapabilities,
 )
 from VeraGridEngine.enumerations import FmiVersion
 
@@ -74,38 +77,53 @@ def test_fmi_one_model_exchange_metadata_is_preserved(tmp_path: Path) -> None:
     assert metadata.fmi_version_family == FmiVersion.FMI_1_0
     assert metadata.interface_modes == (FmuInterfaceMode.MODEL_EXCHANGE,)
     assert metadata.get_model_identifier(FmuInterfaceMode.MODEL_EXCHANGE) == "legacy_model"
+    assert metadata.number_of_continuous_states == 1
     assert metadata.number_of_event_indicators == 2
+    assert metadata.fmi_one_co_simulation_capabilities is None
     assert metadata.get_variable_names() == ("input", "output", "internal")
     assert metadata.variables[2].causality == "internal"
     assert metadata.variables[2].variability == "continuous"
 
     config: FmuImportConfig = FmuImportConfig(fmu_path=source)
-    with pytest.raises(FmuModeError, match="execution is not supported"):
-        config.resolve_execution_mode(metadata)
+    assert config.preferred_mode is None
 
 
 @pytest.mark.parametrize(
-    "implementation_xml",
+    ("implementation_xml", "needs_execution_tool"),
     (
         (
-            "<Implementation><CoSimulation_StandAlone><Capabilities/>"
-            "</CoSimulation_StandAlone></Implementation>"
+            (
+                "<Implementation><CoSimulation_StandAlone><Capabilities "
+                'canHandleVariableCommunicationStepSize="true" '
+                'canHandleEvents="1" canRejectSteps="true" '
+                'canInterpolateInputs="true" maxOutputDerivativeOrder="3" '
+                'canRunAsynchronuously="false" canSignalEvents="true" '
+                'canBeInstantiatedOnlyOncePerProcess="true" '
+                'canNotUseMemoryManagementFunctions="true"/>'
+                "</CoSimulation_StandAlone></Implementation>"
+            ),
+            False,
         ),
         (
-            "<Implementation><CoSimulation_Tool><Capabilities/>"
-            '<Model entryPoint="tool" type="application"/>'
-            "</CoSimulation_Tool></Implementation>"
+            (
+                "<Implementation><CoSimulation_Tool><Capabilities/>"
+                '<Model entryPoint="tool" type="application"/>'
+                "</CoSimulation_Tool></Implementation>"
+            ),
+            True,
         ),
     ),
 )
-def test_fmi_one_co_simulation_forms_are_metadata_only(
+def test_fmi_one_co_simulation_metadata_is_preserved(
     tmp_path: Path,
     implementation_xml: str,
+    needs_execution_tool: bool,
 ) -> None:
-    """Verify both FMI 1 Co-Simulation forms are identified as metadata.
+    """Verify both FMI 1 CS forms preserve identity and all capability values.
 
     :param tmp_path: Isolated fixture directory provided by pytest.
     :param implementation_xml: Valid FMI 1 Co-Simulation declaration.
+    :param needs_execution_tool: Expected implementation identity.
     :return: None.
     """
 
@@ -122,6 +140,33 @@ def test_fmi_one_co_simulation_forms_are_metadata_only(
 
     assert metadata.interface_modes == (FmuInterfaceMode.CO_SIMULATION,)
     assert metadata.get_model_identifier(FmuInterfaceMode.CO_SIMULATION) == "legacy_model"
+    capabilities: FmiOneCoSimulationCapabilities | None = (
+        metadata.fmi_one_co_simulation_capabilities
+    )
+    if capabilities is None:
+        raise AssertionError("FMI 1 Co-Simulation capabilities were not retained")
+    else:
+        assert capabilities.needs_execution_tool is needs_execution_tool
+    if needs_execution_tool:
+        assert not capabilities.can_handle_variable_communication_step_size
+        assert not capabilities.can_handle_events
+        assert not capabilities.can_reject_steps
+        assert not capabilities.can_interpolate_inputs
+        assert capabilities.max_output_derivative_order == 0
+        assert not capabilities.can_run_asynchronuously
+        assert not capabilities.can_signal_events
+        assert not capabilities.can_be_instantiated_only_once_per_process
+        assert not capabilities.can_not_use_memory_management_functions
+    else:
+        assert capabilities.can_handle_variable_communication_step_size
+        assert capabilities.can_handle_events
+        assert capabilities.can_reject_steps
+        assert capabilities.can_interpolate_inputs
+        assert capabilities.max_output_derivative_order == 3
+        assert not capabilities.can_run_asynchronuously
+        assert capabilities.can_signal_events
+        assert capabilities.can_be_instantiated_only_once_per_process
+        assert capabilities.can_not_use_memory_management_functions
 
 
 @pytest.mark.parametrize(
@@ -259,24 +304,45 @@ def test_fmi_one_implementation_must_identify_one_interface(
 
 
 def test_fmi_one_rejects_fmi_two_derivative_metadata(tmp_path: Path) -> None:
-    """Verify FMI 2 derivative metadata cannot leak into an FMI 1 variable.
+    """Verify invalid FMI 1 variable semantics fail closed in one bounded case.
 
     :param tmp_path: Isolated fixture directory provided by pytest.
     :return: None.
     """
 
-    source: Path = _write_fmi_one_document(
-        tmp_path / "derivative",
+    invalid_variables: tuple[tuple[str, str], ...] = (
         (
-            'modelName="LegacyModel" modelIdentifier="legacy_model" '
-            'guid="legacy-guid" numberOfContinuousStates="1" '
-            'numberOfEventIndicators="0"'
-        ),
-        variables_xml=(
+            "derivative",
             '<ScalarVariable name="state" valueReference="1">'
-            '<Real derivative="1"/></ScalarVariable>'
+            '<Real derivative="1"/></ScalarVariable>',
+        ),
+        (
+            "initial",
+            '<ScalarVariable name="state" valueReference="1" initial="exact">'
+            '<Real/></ScalarVariable>',
+        ),
+        (
+            "causality",
+            '<ScalarVariable name="state" valueReference="1" causality="local">'
+            '<Real/></ScalarVariable>',
+        ),
+        (
+            "variability",
+            '<ScalarVariable name="state" valueReference="1" variability="fixed">'
+            '<Real/></ScalarVariable>',
         ),
     )
-
-    with pytest.raises(FmuArchiveError, match="outside FMI 2"):
-        read_fmu_model_description(source)
+    case_name: str
+    variables_xml: str
+    for case_name, variables_xml in invalid_variables:
+        source: Path = _write_fmi_one_document(
+            tmp_path / case_name,
+            (
+                'modelName="LegacyModel" modelIdentifier="legacy_model" '
+                'guid="legacy-guid" numberOfContinuousStates="1" '
+                'numberOfEventIndicators="0"'
+            ),
+            variables_xml=variables_xml,
+        )
+        with pytest.raises(FmuArchiveError, match="outside FMI 2|invalid FMI 1"):
+            read_fmu_model_description(source)

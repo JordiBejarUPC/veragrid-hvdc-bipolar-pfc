@@ -12,8 +12,33 @@ from VeraGridEngine.Simulations.driver_template import DriverTemplate
 from VeraGridEngine.Simulations.NTC.ntc_options import OptimalNetTransferCapacityOptions
 from VeraGridEngine.Simulations.NTC.ntc_results import OptimalNetTransferCapacityResults
 from VeraGridEngine.basic_structures import Logger
-from VeraGridEngine.enumerations import SimulationTypes
-from VeraGridEngine.basic_structures import ObjVec
+from VeraGridEngine.enumerations import SimulationTypes, TapPhaseControl
+from VeraGridEngine.Devices.Parents.controllable_branch_parent import ControllableBranchParent
+from VeraGridEngine.basic_structures import ObjVec, IntVec
+
+
+def collect_phase_shifter_indices(grid: MultiCircuit, time_indices: IntVec | None = None) -> IntVec:
+    """
+    Select branches with phase-angle control in any simulated operating point.
+
+    :param grid: circuit whose branch order matches the NTC results
+    :param time_indices: simulated original time indices, or None for a snapshot
+    :return: branch indices to expose in the control columns
+    """
+    # Use configuration rather than nonzero angles: an optimized angle can be zero.
+    selected: np.ndarray = np.zeros(grid.get_branch_number(), dtype=bool)
+    branch_index: int
+    for branch_index, branch in enumerate(grid.get_branches()):
+        if isinstance(branch, ControllableBranchParent):
+            if time_indices is None:
+                selected[branch_index] = branch.tap_phase_control_mode in (TapPhaseControl.Pf, TapPhaseControl.Pt)
+            else:
+                for time_index in time_indices:
+                    mode: TapPhaseControl = branch.get_tap_phase_control_mode_at(int(time_index))
+                    selected[branch_index] |= mode in (TapPhaseControl.Pf, TapPhaseControl.Pt)
+        else:
+            pass
+    return np.flatnonzero(selected)
 
 
 def collect_contingency_group_device_names(grid: MultiCircuit) -> ObjVec:
@@ -155,6 +180,7 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
             contingency_group_names=self.grid.get_contingency_group_names()
         )
 
+        self.results.phase_shifter_indices = collect_phase_shifter_indices(self.grid)
         self.results.voltage = opf_vars.get_voltages()[0, :]
         self.results.Sbus = opf_vars.bus_vars.Pinj[0, :]
         self.results.dSbus = opf_vars.bus_vars.delta_p[0, :]

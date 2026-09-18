@@ -37,7 +37,7 @@ class FakeThreadObject:
     Minimal file-open thread used to capture the normalized input path.
     """
 
-    __slots__ = ("file_name", "options", "progress_signal", "progress_text", "done_signal", "finished", "started")
+    __slots__ = ("file_name", "options", "progress_signal", "progress_text", "done_signal", "finished", "started", "parent")
 
     def __init__(self, file_name: str | list[str], previous_circuit: Any, options: Any) -> None:
         """
@@ -56,6 +56,16 @@ class FakeThreadObject:
         self.done_signal: FakeSignal = FakeSignal()
         self.finished: FakeSignal = FakeSignal()
         self.started: bool = False
+        self.parent: Any = None
+
+    def setParent(self, parent: Any) -> None:
+        """
+        Store the owner assigned by the production Qt workflow.
+
+        :param parent: Owning GUI object.
+        :return: None.
+        """
+        self.parent = parent
 
     def start(self) -> None:
         """

@@ -10,6 +10,7 @@ from PySide6.QtCore import Qt, QRectF
 from PySide6.QtGui import QPen, QBrush
 from PySide6.QtWidgets import QMenu, QGraphicsRectItem, QGraphicsSceneContextMenuEvent
 from VeraGrid.Gui.gui_functions import add_menu_entry, translate_context_menu_text
+from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
 from VeraGrid.Gui.Diagrams.SchematicWidget.terminal_item import BarTerminalItem, RoundTerminalItem
 from VeraGrid.Gui.DeviceEditors.LineEditor.line_device_editor import LineDeviceEditorDialog
 from VeraGrid.Gui.messages import yes_no_question, warning_msg
@@ -62,7 +63,7 @@ class LineGraphicItem(LineGraphicTemplateItem):
         :return: ``True`` when the editor was opened.
         """
         dlg = LineDeviceEditorDialog(api_object=self.api_object, circuit=self.editor.circuit)
-        if dlg.exec():
+        if exec_dialog_safely(dialog=dlg):
             return True
         else:
             return True

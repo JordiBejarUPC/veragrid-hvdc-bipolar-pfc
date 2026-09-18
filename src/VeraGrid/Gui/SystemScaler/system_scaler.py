@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import shiboken6
 from PySide6.QtWidgets import QApplication
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
@@ -992,6 +992,25 @@ class SystemScaler(QtWidgets.QDialog):
         :param result: Qt dialog result code.
         :return: None.
         """
+        self.dispose_plot()
+        QtWidgets.QDialog.done(self, result)
+
+    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
+        """
+        Release the preview plot before the window closes.
+
+        :param event: Qt close event.
+        :return: None.
+        """
+        self.dispose_plot()
+        QtWidgets.QDialog.closeEvent(self, event)
+
+    def dispose_plot(self) -> None:
+        """
+        Schedule the preview canvas and toolbar for deferred deletion.
+
+        :return: None.
+        """
         if self._plot_disposed:
             pass
         else:
@@ -1020,7 +1039,6 @@ class SystemScaler(QtWidgets.QDialog):
                 self.plot_canvas.deleteLater()
             else:
                 pass
-        QtWidgets.QDialog.done(self, result)
 
     def set_checkpoints_delegates(self) -> None:
         """

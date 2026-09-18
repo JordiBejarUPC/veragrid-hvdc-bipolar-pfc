@@ -873,11 +873,11 @@ def test_fmi_three_array_accepts_annotations_before_dimensions(tmp_path: Path) -
         ),
         (
             '<Alias name="alias" description="unsupported"/>',
-            "unsupported or out-of-order child elements",
+            "out-of-order children",
         ),
         (
             '<Dimension start="3"/><Annotations/>',
-            "unsupported or out-of-order child elements",
+            "out-of-order children",
         ),
     ),
 )
@@ -1769,12 +1769,12 @@ def test_fmi3_accepts_valid_log_categories(tmp_path: Path) -> None:
         (
             '<LogCategories><Category name="x"><Annotations>unexpected'
             '<Annotation type="valid"/></Annotations></Category></LogCategories>',
-            "Annotations.*non-whitespace text",
+                "Annotations.*non-whitespace character data",
         ),
         (
             '<LogCategories><Category name="x"><Annotations>'
             '<Annotation type="valid"/>unexpected</Annotations></Category></LogCategories>',
-            "Annotations.*non-whitespace text",
+                "Annotations.*non-whitespace character data",
         ),
         (
             '<LogCategories><Category name="x"><Annotations/></Category></LogCategories>',
@@ -1939,16 +1939,16 @@ def test_fmi3_rejects_invalid_scalar_identity_and_lexical_values(
 @pytest.mark.parametrize(
     ("variable_change", "expected_error"),
     (
-        (' declaredType="DefinedFloat"/>', "attribute 'declaredType'"),
-        (' unit="rad"/>', "attribute 'unit'"),
+        (' declaredType="DefinedFloat"/>', "unknown declaredType"),
+        (' unit="rad"/>', "unknown unit"),
     ),
 )
-def test_fmi3_rejects_unrepresented_variable_metadata(
+def test_fmi3_rejects_unknown_variable_metadata_references(
     tmp_path: Path,
     variable_change: str,
     expected_error: str,
 ) -> None:
-    """Verify variable metadata is rejected before unsupported data can be lost.
+    """Verify declared metadata references fail closed when their owners are absent.
 
     :param tmp_path: Isolated fixture directory provided by pytest.
     :param variable_change: Unsupported variable XML inserted into the fixture.
@@ -1965,6 +1965,276 @@ def test_fmi3_rejects_unrepresented_variable_metadata(
         tmp_path / "unrepresented-variable",
         invalid_xml,
     )
+    with pytest.raises(FmuArchiveError, match=expected_error):
+        read_fmu_model_description(fmu_path)
+
+
+def test_fmi3_accepts_units_declared_types_bounds_and_dependencies(
+    tmp_path: Path,
+) -> None:
+    """Accept validated optional metadata without changing runtime bindings.
+
+    :param tmp_path: Isolated fixture directory provided by pytest.
+    :return: None.
+    """
+
+    optional_metadata: str = """      <UnitDefinitions>
+        <Unit name="rad">
+          <BaseUnit rad="1"/>
+          <DisplayUnit name="deg" factor="57.29577951308232"/>
+        </Unit>
+      </UnitDefinitions>
+      <TypeDefinitions>
+        <Float64Type name="Angle" unit="rad" displayUnit="deg"
+            min="-3.2" max="3.2" nominal="1"/>
+      </TypeDefinitions>
+"""
+    valid_xml: str = _scalar_fmi3_worker_profile_fixture_xml().replace(
+        "      <DefaultExperiment",
+        optional_metadata + "      <DefaultExperiment",
+        1,
+    ).replace(
+        'name="speed" valueReference="0" causality="output"',
+        'name="speed" valueReference="0" causality="output" declaredType="Angle"',
+        1,
+    ).replace(
+        '<Output valueReference="0"/>',
+        '<Output valueReference="0" dependencies="4" dependenciesKind="constant"/>',
+        1,
+    )
+    fmu_path: Path = _write_extracted_fmi3_model_description(
+        tmp_path / "valid-optional-metadata", valid_xml
+    )
+
+    metadata: FmuModelDescription = read_fmu_model_description(fmu_path)
+
+    assert metadata.variables[0].name == "speed"
+    assert metadata.variables[0].variable_type == FmuVariableType.FLOAT64
+
+
+@pytest.mark.parametrize(
+    ("output_change", "expected_error"),
+    (
+        ('dependencies="999"', "unknown valueReference 999"),
+        ('dependencies="4 4"', "duplicate dependency"),
+        ('dependencies="4" dependenciesKind="constant fixed"',
+         "dependenciesKind count"),
+        ('dependencies="4" dependenciesKind="arbitrary"', "dependency kind"),
+        ('dependenciesKind="constant"', "requires dependencies"),
+    ),
+)
+def test_fmi3_rejects_invalid_model_structure_dependencies(
+    tmp_path: Path,
+    output_change: str,
+    expected_error: str,
+) -> None:
+    """Reject unresolved, duplicate, unaligned, or non-normative dependencies.
+
+    :param tmp_path: Isolated fixture directory provided by pytest.
+    :param output_change: Dependency attributes inserted on the first output.
+    :param expected_error: Stable validation error fragment.
+    :return: None.
+    """
+
+    invalid_xml: str = _scalar_fmi3_worker_profile_fixture_xml().replace(
+        '<Output valueReference="0"/>',
+        f'<Output valueReference="0" {output_change}/>',
+        1,
+    )
+    fmu_path: Path = _write_extracted_fmi3_model_description(
+        tmp_path / "invalid-dependencies", invalid_xml
+    )
+
+    with pytest.raises(FmuArchiveError, match=expected_error):
+        read_fmu_model_description(fmu_path)
+
+
+@pytest.mark.parametrize(
+    ("attribute_text", "expected_error"),
+    (
+        ('min="2" max="1"', "min.*must not exceed max"),
+        ('nominal="0"', "nominal.*must be positive"),
+        ('nominal="NaN"', "nominal.*must be finite"),
+    ),
+)
+def test_fmi3_rejects_invalid_float_bounds(
+    tmp_path: Path,
+    attribute_text: str,
+    expected_error: str,
+) -> None:
+    """Reject inconsistent or non-finite floating-point metadata.
+
+    :param tmp_path: Isolated fixture directory provided by pytest.
+    :param attribute_text: Invalid Float64 metadata inserted into the fixture.
+    :param expected_error: Stable validation error fragment.
+    :return: None.
+    """
+
+    invalid_xml: str = _scalar_fmi3_worker_profile_fixture_xml().replace(
+        'name="speed" valueReference="0" causality="output"',
+        f'name="speed" valueReference="0" causality="output" {attribute_text}',
+        1,
+    )
+    fmu_path: Path = _write_extracted_fmi3_model_description(
+        tmp_path / "invalid-float-bounds", invalid_xml
+    )
+
+    with pytest.raises(FmuArchiveError, match=expected_error):
+        read_fmu_model_description(fmu_path)
+
+
+@pytest.mark.parametrize(
+    ("metadata_section", "speed_variable", "expected_error"),
+    (
+        (
+            '<UnitDefinitions><Unit name="rad"><BaseUnit rad="1"/></Unit>'
+            '<Unit name="rad"><BaseUnit rad="1"/></Unit></UnitDefinitions>',
+            '<Float64 name="speed" valueReference="0" causality="output" '
+            'variability="continuous" initial="calculated"/>',
+            "unit 'rad' is duplicated",
+        ),
+        (
+            '<UnitDefinitions><Unit name="rad"><BaseUnit rad="1"/>'
+            '<DisplayUnit name="deg"/></Unit></UnitDefinitions>'
+            '<TypeDefinitions><Float64Type name="Angle" unit="rad" '
+            'displayUnit="grad"/></TypeDefinitions>',
+            '<Float64 name="speed" valueReference="0" causality="output" '
+            'variability="continuous" initial="calculated"/>',
+            "references invalid display unit",
+        ),
+        (
+            '<UnitDefinitions><Unit name="rad"><BaseUnit rad="1" factor="NaN"/>'
+            '</Unit></UnitDefinitions>',
+            '<Float64 name="speed" valueReference="0" causality="output" '
+            'variability="continuous" initial="calculated"/>',
+            "factor.*must be finite",
+        ),
+        (
+            '<TypeDefinitions><Int32Type name="Count"/></TypeDefinitions>',
+            '<Float64 name="speed" valueReference="0" causality="output" '
+            'variability="continuous" initial="calculated" declaredType="Count"/>',
+            "declaredType is incompatible",
+        ),
+        (
+            '<TypeDefinitions><Int32Type name="Count" '
+            'max="2147483648"/></TypeDefinitions>',
+            '<Float64 name="speed" valueReference="0" causality="output" '
+            'variability="continuous" initial="calculated"/>',
+            "exceeds its primitive range",
+        ),
+        (
+            "",
+            '<Boolean name="speed" valueReference="0" causality="input" '
+            'variability="discrete" start="maybe"/>',
+            "attribute start.*is not a valid FMI boolean",
+        ),
+        (
+            "",
+            '<Binary name="speed" valueReference="0" causality="input" '
+            'variability="discrete"><Start value="0G"/></Binary>',
+            "invalid hex start",
+        ),
+        (
+            '<TypeDefinitions><EnumerationType name="Mode">'
+            '<Item name="off" value="1"/><Item name="on" value="1"/>'
+            '</EnumerationType></TypeDefinitions>',
+            '<Float64 name="speed" valueReference="0" causality="output" '
+            'variability="continuous" initial="calculated"/>',
+            "duplicate item",
+        ),
+        (
+            '<TypeDefinitions><Float32Type name="Gain" '
+            'max="3.5e38"/></TypeDefinitions>',
+            '<Float64 name="speed" valueReference="0" causality="output" '
+            'variability="continuous" initial="calculated"/>',
+            "exceeds Float32 range",
+        ),
+        (
+            '<UnitDefinitions>unexpected<Unit name="rad"><BaseUnit rad="1"/>'
+            '</Unit></UnitDefinitions>',
+            '<Float64 name="speed" valueReference="0" causality="output" '
+            'variability="continuous" initial="calculated"/>',
+            "UnitDefinitions.*non-whitespace character data",
+        ),
+        (
+            '<TypeDefinitions><Float64Type name="Gain"/>unexpected'
+            '</TypeDefinitions>',
+            '<Float64 name="speed" valueReference="0" causality="output" '
+            'variability="continuous" initial="calculated"/>',
+            "TypeDefinitions.*non-whitespace character data",
+        ),
+        (
+            '<UnitDefinitions><Unit name="rad"><Annotations>unexpected'
+            '<Annotation type="vendor"/></Annotations></Unit></UnitDefinitions>',
+            '<Float64 name="speed" valueReference="0" causality="output" '
+            'variability="continuous" initial="calculated"/>',
+            "Annotations for FMI 3 Unit 'rad'.*non-whitespace character data",
+        ),
+        (
+            '<UnitDefinitions><Unit name="rad"><Annotations>'
+            '<Annotation type="vendor"/>unexpected</Annotations></Unit>'
+            '</UnitDefinitions>',
+            '<Float64 name="speed" valueReference="0" causality="output" '
+            'variability="continuous" initial="calculated"/>',
+            "Annotations for FMI 3 Unit 'rad'.*non-whitespace character data",
+        ),
+        (
+            '<TypeDefinitions><Float64Type name="Gain"><Annotations>unexpected'
+            '<Annotation type="vendor"/></Annotations></Float64Type>'
+            '</TypeDefinitions>',
+            '<Float64 name="speed" valueReference="0" causality="output" '
+            'variability="continuous" initial="calculated"/>',
+            "Annotations for FMI 3 declared type 'Gain'.*non-whitespace character data",
+        ),
+        (
+            '<TypeDefinitions><Float64Type name="Gain"><Annotations>'
+            '<Annotation type="vendor"/>unexpected</Annotations></Float64Type>'
+            '</TypeDefinitions>',
+            '<Float64 name="speed" valueReference="0" causality="output" '
+            'variability="continuous" initial="calculated"/>',
+            "Annotations for FMI 3 declared type 'Gain'.*non-whitespace character data",
+        ),
+        (
+            '<TypeDefinitions><RealType name="Legacy"/></TypeDefinitions>',
+            '<Float64 name="speed" valueReference="0" causality="output" '
+            'variability="continuous" initial="calculated"/>',
+            "Unknown FMI 3 type definition",
+        ),
+    ),
+)
+def test_fmi3_rejects_invalid_unit_and_type_metadata(
+    tmp_path: Path,
+    metadata_section: str,
+    speed_variable: str,
+    expected_error: str,
+) -> None:
+    """Reject malformed units, declared types, ranges, and scalar starts.
+
+    :param tmp_path: Isolated fixture directory provided by pytest.
+    :param metadata_section: Optional unit or type metadata inserted in schema order.
+    :param speed_variable: Replacement for the fixture's first scalar variable.
+    :param expected_error: Stable validation error fragment.
+    :return: None.
+    """
+
+    original_speed_variable: str = (
+        '<Float64 name="speed" valueReference="0" causality="output"\n'
+        '            variability="continuous" initial="calculated"/>'
+    )
+    invalid_xml: str = _scalar_fmi3_worker_profile_fixture_xml().replace(
+        "      <DefaultExperiment",
+        f"      {metadata_section}\n      <DefaultExperiment",
+        1,
+    ).replace(
+        original_speed_variable,
+        speed_variable,
+        1,
+    )
+    fmu_path: Path = _write_extracted_fmi3_model_description(
+        tmp_path / "invalid-unit-or-type-metadata",
+        invalid_xml,
+    )
+
     with pytest.raises(FmuArchiveError, match=expected_error):
         read_fmu_model_description(fmu_path)
 
@@ -2017,8 +2287,6 @@ def test_fmi3_rejects_invalid_variable_semantics(
         ('<Output valueReference="0"/>', '<Output valueReference="4"/>', "output causality"),
         ('<Output valueReference="0"/>',
          '<Output valueReference="0"/><Output valueReference="0"/>', "duplicates"),
-        ('<Output valueReference="0"/>',
-         '<Output valueReference="0" dependencies="4"/>', "dependencies are outside"),
         ('        <InitialUnknown valueReference="3"/>\n', "", "initial unknowns do not match"),
     ),
 )

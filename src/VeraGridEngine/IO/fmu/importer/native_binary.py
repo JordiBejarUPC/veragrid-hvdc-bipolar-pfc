@@ -15,10 +15,10 @@ from VeraGridEngine.IO.fmu.importer.inspection import FmuInspectionReceipt
 from VeraGridEngine.enumerations import FmiVersion
 
 
-def _resolve_fmi_two_host_binary() -> tuple[str, str]:
-    """Return the FMI 2 binary directory and suffix for this Python process.
+def _resolve_legacy_host_binary() -> tuple[str, str]:
+    """Return the FMI 1/2 binary directory and suffix for this process.
 
-    FMI 2 uses legacy platform-directory names whose bitness follows the host
+    FMI 1 and FMI 2 use legacy platform-directory names whose bitness follows the host
     process. The runtime intentionally fails closed on operating systems that
     FMPy cannot load through the current VeraGrid integration.
 
@@ -26,7 +26,7 @@ def _resolve_fmi_two_host_binary() -> tuple[str, str]:
     :raises FmuModeError: If the current operating system is not supported.
     """
 
-    # FMI 2 platform names encode process bitness rather than a CPU tuple.
+    # Legacy FMI platform names encode process bitness rather than a CPU tuple.
     if sys.maxsize <= 2**32:
         bitness: str = "32"
     else:
@@ -43,7 +43,9 @@ def _resolve_fmi_two_host_binary() -> tuple[str, str]:
         platform_name = f"darwin{bitness}"
         library_suffix = ".dylib"
     else:
-        raise FmuModeError(f"FMI 2 runtime is not supported on host platform {sys.platform!r}")
+        raise FmuModeError(
+            f"FMI 1/2 runtime is not supported on host platform {sys.platform!r}"
+        )
 
     return platform_name, library_suffix
 
@@ -196,7 +198,7 @@ def validate_fmi_two_native_binary(
 
     platform_name: str
     library_suffix: str
-    platform_name, library_suffix = _resolve_fmi_two_host_binary()
+    platform_name, library_suffix = _resolve_legacy_host_binary()
     _validate_exact_native_binary(
         receipt=receipt,
         model_identifier=model_identifier,
@@ -246,10 +248,21 @@ def validate_native_binary(
     :raises FmuModeError: If the FMI family has no native preflight contract.
     """
 
-    # Keep family dispatch explicit because FMI 2 and FMI 3 use incompatible
-    # platform directory conventions. FMI 1 remains metadata-only.
-    if fmi_version_family == FmiVersion.FMI_2_0:
-        validate_fmi_two_native_binary(receipt, model_identifier)
+    # FMI 1 and FMI 2 share the standard legacy directory convention, while
+    # FMI 3 uses an architecture-system tuple.
+    if (
+        fmi_version_family == FmiVersion.FMI_1_0
+        or fmi_version_family == FmiVersion.FMI_2_0
+    ):
+        platform_name: str
+        library_suffix: str
+        platform_name, library_suffix = _resolve_legacy_host_binary()
+        _validate_exact_native_binary(
+            receipt=receipt,
+            model_identifier=model_identifier,
+            binary_platform_directory=platform_name,
+            library_suffix=library_suffix,
+        )
     else:
         if fmi_version_family == FmiVersion.FMI_3_0:
             validate_fmi_three_native_binary(receipt, model_identifier)

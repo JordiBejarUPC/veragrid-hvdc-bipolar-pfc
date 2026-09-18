@@ -12,6 +12,7 @@ from VeraGridEngine.Simulations.NTC.ntc_opf_strict import run_linear_ntc_opf_str
 from VeraGridEngine.Simulations.NTC.ntc_driver import (
     OptimalNetTransferCapacityOptions,
     collect_contingency_group_device_names,
+    collect_phase_shifter_indices,
 )
 from VeraGridEngine.Simulations.NTC.ntc_ts_results import OptimalNetTransferCapacityTimeSeriesResults
 from VeraGridEngine.Simulations.driver_template import TimeSeriesDriverTemplate
@@ -76,6 +77,7 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
             time_indices=self.time_indices,
             clustering_results=self.clustering_results,
         )
+        self.results.phase_shifter_indices = collect_phase_shifter_indices(self.grid, self.time_indices)
         self.results.strict_formulation = self.options.strict_formulation
         self.results.loading_threshold_to_report = self.options.loading_threshold_to_report
 

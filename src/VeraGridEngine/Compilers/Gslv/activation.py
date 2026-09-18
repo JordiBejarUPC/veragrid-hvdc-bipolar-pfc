@@ -23,7 +23,7 @@ from VeraGridEngine.enumerations import (
     BranchGroupTypes,
     ConverterControlType
 )
-GSLV_RECOMMENDED_VERSION: str = "0.8.5"
+GSLV_RECOMMENDED_VERSION: str = "0.8.10"
 GSLV_VERSION: str = ''
 GSLV_AVAILABLE: bool = False
 
@@ -104,6 +104,13 @@ try:
         ConverterControlType.Qac: pg.ConverterControlType.Q_ac,
         ConverterControlType.Pdc: pg.ConverterControlType.P_dc,
         ConverterControlType.Pac: pg.ConverterControlType.P_ac,
+        ConverterControlType.Pdc_angle_droop: pg.ConverterControlType.P_dc_angle_droop,
+        ConverterControlType.Pdc_droop: pg.ConverterControlType.P_dc_droop,
+        ConverterControlType.Q_droop: pg.ConverterControlType.Q_droop,
+        ConverterControlType.P_droop: pg.ConverterControlType.P_droop,
+        ConverterControlType.Imax: pg.ConverterControlType.Imax,
+        ConverterControlType.Fault1: pg.ConverterControlType.Fault1,
+        ConverterControlType.Fault2: pg.ConverterControlType.Fault2,
     }
 
     bus_type_dict = {

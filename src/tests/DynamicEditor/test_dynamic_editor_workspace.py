@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import gc
 import sys
 
 from PySide6 import QtCore, QtGui, QtWidgets
@@ -8,6 +7,7 @@ import shiboken6
 
 from VeraGrid.Gui.DynamicModelEditor.Workspace.Tabs.dynamic_editor_tab import DynamicEditorTab
 from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_page import DynamicEventsPage
+from VeraGrid.Gui.DynamicModelEditor.Plots.dynamic_plots_page import DynamicPlotsPage
 from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_workspace_window import DynamicEditorWorkspaceWindow
 from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import DynamicEditorEntry
 from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import build_dynamic_editor_entry
@@ -253,6 +253,43 @@ def test_project_replacement_closes_all_detached_dynamic_editor_workspaces() -> 
     _reset_dynamic_editor_workspaces()
 
 
+def test_workspace_prepare_to_delete_detaches_runtime_widgets() -> None:
+    """Detach workspace-owned runtime widgets before Qt final deletion.
+
+    :return: None.
+    """
+    _get_app()
+    _reset_dynamic_editor_workspaces()
+    circuit: gce.MultiCircuit
+    load: gce.Load
+    _entry: DynamicEditorEntry
+    circuit, load, _entry = _build_load_entry()
+    workspace: DynamicEditorWorkspaceWindow = _build_workspace()
+
+    page: DynamicEditorTab | None = workspace.open_dynamic_editor_for(
+        load,
+        circuit,
+        preferred_mode=DynamicSimulationMode.RMS,
+    )
+    assert page is not None
+    editor_tabs: QtWidgets.QTabWidget = workspace.editor_tabs
+    device_tree: QtWidgets.QWidget = workspace.device_tree_widget
+
+    workspace.prepare_to_delete()
+
+    assert not workspace.is_available_for_pages()
+    assert workspace.ui.editorTabs.count() == 0
+    assert page.editor is None
+    assert editor_tabs.parent() is None
+    assert device_tree.parent() is None
+    assert shiboken6.isValid(editor_tabs)
+    assert shiboken6.isValid(device_tree)
+
+    workspace.close()
+    workspace.deleteLater()
+    _reset_dynamic_editor_workspaces()
+
+
 def test_workspace_opens_rms_editor_for_dc_bus_load() -> None:
     _get_app()
     _reset_dynamic_editor_workspaces()
@@ -312,8 +349,6 @@ def test_repeated_workspace_teardown_destroys_dynamic_editor_qt_objects() -> Non
             QtCore.QEvent.Type.DeferredDelete,
         )
         app.processEvents()
-        gc.collect()
-
         assert not shiboken6.isValid(scene)
         assert not shiboken6.isValid(view)
         assert not shiboken6.isValid(editor)
@@ -340,20 +375,24 @@ def test_workspace_hosts_model_and_events_tabs_with_contextual_toolbar() -> None
         circuit=circuit,
         preferred_mode=DynamicSimulationMode.RMS,
     )
-    events_page: DynamicEventsPage | None = workspace.open_dynamic_events_for(
-        api_object=load,
+    events_page: DynamicEventsPage = workspace.open_dynamic_events_for(
+        circuit=circuit,
+        mode=DynamicSimulationMode.RMS,
+        target_workspace=workspace,
+    )
+    reopened_events_page: DynamicEventsPage = workspace.open_dynamic_events_for(
         circuit=circuit,
         mode=DynamicSimulationMode.RMS,
         target_workspace=workspace,
     )
 
     assert model_page is not None
-    assert events_page is not None
+    assert events_page is reopened_events_page
     assert entry.session_key(DynamicSimulationMode.RMS) in workspace.session._session_pages
-    assert events_page in workspace.session._event_pages
+    assert workspace.session._event_pages[(id(circuit), DynamicSimulationMode.RMS)] is events_page
     assert workspace.editor_tabs.count() == 2
     assert workspace.editor_tabs.tabText(workspace.index_of_page(model_page)).endswith("[RMS model]")
-    assert workspace.editor_tabs.tabText(workspace.index_of_page(events_page)).endswith("[RMS events]")
+    assert workspace.editor_tabs.tabText(workspace.index_of_page(events_page)) == "RMS Events"
 
     toolbar_actions: tuple[QtGui.QAction, ...] = (
         workspace.ui.actionview_tree,
@@ -361,10 +400,51 @@ def test_workspace_hosts_model_and_events_tabs_with_contextual_toolbar() -> None
         workspace.ui.actionRMS_Events,
         workspace.ui.actionEMT_Editor,
         workspace.ui.actionEMT_Events,
+        workspace.ui.actionRMS_Plots,
+        workspace.ui.actionEMT_Plots,
     )
     workspace.editor_tabs.setCurrentWidget(model_page)
     assert all(action.isVisible() for action in toolbar_actions)
     workspace.editor_tabs.setCurrentWidget(events_page)
     assert all(action.isVisible() for action in toolbar_actions)
+
+    _reset_dynamic_editor_workspaces()
+
+
+def test_workspace_hosts_one_global_plots_tab_per_simulation_family() -> None:
+    """Open circuit-wide plot pages without requiring a contextual device entry.
+
+    :return: None.
+    """
+    _get_app()
+    _reset_dynamic_editor_workspaces()
+    circuit: gce.MultiCircuit
+    load: gce.Load
+    entry: DynamicEditorEntry
+    circuit, load, entry = _build_load_entry()
+    workspace: DynamicEditorWorkspaceWindow = _build_workspace()
+    workspace._set_workspace_circuit(circuit=circuit)
+
+    rms_page: DynamicPlotsPage = workspace.open_dynamic_plots_for(
+        circuit=circuit,
+        mode=DynamicSimulationMode.RMS,
+    )
+    reopened_rms_page: DynamicPlotsPage = workspace.open_dynamic_plots_for(
+        circuit=circuit,
+        mode=DynamicSimulationMode.RMS,
+    )
+    emt_page: DynamicPlotsPage = workspace.open_dynamic_plots_for(
+        circuit=circuit,
+        mode=DynamicSimulationMode.EMT,
+    )
+
+    assert rms_page is reopened_rms_page
+    assert emt_page is not rms_page
+    assert rms_page.get_dynamic_editor_entry() is None
+    assert emt_page.get_dynamic_editor_entry() is None
+    assert workspace.editor_tabs.count() == 2
+    assert workspace.ui.actionRMS_Plots.isEnabled()
+    assert workspace.ui.actionEMT_Plots.isEnabled()
+    assert load is entry.api_object
 
     _reset_dynamic_editor_workspaces()

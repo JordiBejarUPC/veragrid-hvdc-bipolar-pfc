@@ -17,8 +17,8 @@ from VeraGridEngine.IO.fmu.importer.bindings import FmuImportConfig
 from VeraGridEngine.IO.fmu.importer.errors import FmuModeError
 from VeraGridEngine.IO.fmu.importer.inspection import FmuInspectionReceipt, inspect_fmu
 from VeraGridEngine.IO.fmu.importer.native_binary import (
+    _resolve_legacy_host_binary,
     _resolve_fmi_three_binary_platform,
-    _resolve_fmi_two_host_binary,
     resolve_fmi_three_host_binary,
     validate_fmi_three_native_binary,
     validate_fmi_two_native_binary,
@@ -160,7 +160,7 @@ def test_host_binary_contract_matches_process_platform_and_bitness() -> None:
 
     platform_name: str
     library_suffix: str
-    platform_name, library_suffix = _resolve_fmi_two_host_binary()
+    platform_name, library_suffix = _resolve_legacy_host_binary()
     if sys.maxsize <= 2**32:
         expected_bitness: str = "32"
     else:
@@ -397,7 +397,7 @@ def test_fmi_three_execution_gate_blocks_before_native_preflight_and_staging(
         extraction_root=staging_parent,
     )
 
-    with pytest.raises(FmuModeError, match="supports FMI 2 execution only"):
+    with pytest.raises(FmuModeError, match="supports FMI 1/2 execution only"):
         open_fmu_runtime_host(config)
     assert tuple(staging_parent.glob("veragrid_fmu_stage_*")) == tuple()
 
@@ -411,7 +411,7 @@ def test_exact_main_binary_is_selected_from_multi_binary_archive(tmp_path: Path)
 
     platform_name: str
     library_suffix: str
-    platform_name, library_suffix = _resolve_fmi_two_host_binary()
+    platform_name, library_suffix = _resolve_legacy_host_binary()
     expected_entry: str = f"binaries/{platform_name}/NativeModel{library_suffix}"
     source: Path = _write_fmi_two_archive(
         tmp_path / "multi-platform.fmu",
@@ -428,8 +428,8 @@ def test_exact_main_binary_is_selected_from_multi_binary_archive(tmp_path: Path)
     validate_native_binary(receipt, FmiVersion.FMI_2_0, "NativeModel")
 
 
-def test_fmi_one_native_binary_layout_is_not_inferred(tmp_path: Path) -> None:
-    """Verify version dispatch does not apply FMI 2 or FMI 3 rules to FMI 1.
+def test_fmi_one_native_binary_uses_legacy_layout(tmp_path: Path) -> None:
+    """Verify FMI 1 and FMI 2 share the exact legacy binary layout owner.
 
     :param tmp_path: Isolated fixture directory provided by pytest.
     :return: None.
@@ -437,18 +437,15 @@ def test_fmi_one_native_binary_layout_is_not_inferred(tmp_path: Path) -> None:
 
     platform_name: str
     library_suffix: str
-    platform_name, library_suffix = _resolve_fmi_two_host_binary()
+    platform_name, library_suffix = _resolve_legacy_host_binary()
     source: Path = _write_fmi_two_archive(
         tmp_path / "fmi1-dispatch.fmu",
         (f"binaries/{platform_name}/NativeModel{library_suffix}",),
     )
 
-    with pytest.raises(FmuModeError, match="native binary preflight is not supported"):
-        validate_native_binary(
-            _inspect_receipt(source),
-            FmiVersion.FMI_1_0,
-            "NativeModel",
-        )
+    receipt: FmuInspectionReceipt = _inspect_receipt(source)
+    validate_native_binary(receipt, FmiVersion.FMI_1_0, "NativeModel")
+    validate_native_binary(receipt, FmiVersion.FMI_2_0, "NativeModel")
 
 
 def test_noncanonical_main_binary_locations_fail_closed(tmp_path: Path) -> None:
@@ -460,7 +457,7 @@ def test_noncanonical_main_binary_locations_fail_closed(tmp_path: Path) -> None:
 
     platform_name: str
     library_suffix: str
-    platform_name, library_suffix = _resolve_fmi_two_host_binary()
+    platform_name, library_suffix = _resolve_legacy_host_binary()
     invalid_entries: tuple[str, ...] = (
         f"binaries/other-platform/NativeModel{library_suffix}",
         f"binaries/{platform_name}/OtherModel{library_suffix}",
@@ -519,7 +516,7 @@ def test_zip_and_directory_receipts_select_the_same_native_entry(tmp_path: Path)
 
     platform_name: str
     library_suffix: str
-    platform_name, library_suffix = _resolve_fmi_two_host_binary()
+    platform_name, library_suffix = _resolve_legacy_host_binary()
     expected_entry: str = f"binaries/{platform_name}/NativeModel{library_suffix}"
     source: Path = _write_fmi_two_archive(
         tmp_path / "portable.fmu",
@@ -560,7 +557,7 @@ def test_nested_model_identifier_fails_before_creating_staging(tmp_path: Path) -
     pytest.importorskip("fmpy")
     platform_name: str
     library_suffix: str
-    platform_name, library_suffix = _resolve_fmi_two_host_binary()
+    platform_name, library_suffix = _resolve_legacy_host_binary()
     source: Path = _write_fmi_two_archive(
         tmp_path / "nested-identifier.fmu",
         (f"binaries/{platform_name}/nested/NativeModel{library_suffix}",),

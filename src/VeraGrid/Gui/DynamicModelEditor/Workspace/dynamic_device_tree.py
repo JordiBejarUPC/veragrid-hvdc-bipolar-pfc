@@ -10,7 +10,6 @@ from PySide6 import QtCore, QtGui, QtWidgets
 import VeraGrid.Gui.gui_functions as gf
 from VeraGrid.Gui.Icons.icon_associations import device_type_icons
 from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import DynamicEditorEntry
-from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import entry_supports_dynamic_events
 from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import iter_dynamic_editor_entries
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.enumerations import DynamicEditorContentType, DynamicSimulationMode
@@ -35,6 +34,7 @@ class DynamicDeviceTreeWidget(QtWidgets.QWidget):
         "_preferred_double_click_mode",
         "_model",
         "_proxy",
+        "_prepared_to_delete",
         "search_line_edit",
         "tree_view",
     )
@@ -49,6 +49,7 @@ class DynamicDeviceTreeWidget(QtWidgets.QWidget):
         QtWidgets.QWidget.__init__(self, parent)
         self._circuit: MultiCircuit | None = None
         self._preferred_double_click_mode: DynamicSimulationMode = DynamicSimulationMode.RMS
+        self._prepared_to_delete: bool = False
         self._model: QtGui.QStandardItemModel = QtGui.QStandardItemModel(self)
         self._proxy: QtCore.QSortFilterProxyModel = QtCore.QSortFilterProxyModel(self)
         self._proxy.setRecursiveFilteringEnabled(True)
@@ -74,6 +75,37 @@ class DynamicDeviceTreeWidget(QtWidgets.QWidget):
         self.search_line_edit.textChanged.connect(self.apply_filter)
         self.tree_view.doubleClicked.connect(self._on_double_clicked)
         self.tree_view.customContextMenuRequested.connect(self._show_context_menu)
+
+    def prepare_to_delete(self) -> None:
+        """Detach tree models and signal links before workspace deletion.
+
+        :return: None.
+        """
+        if self._prepared_to_delete:
+            return
+        else:
+            pass
+
+        self._prepared_to_delete = True
+        try:
+            self.search_line_edit.textChanged.disconnect(self.apply_filter)
+        except (RuntimeError, TypeError):
+            pass
+        try:
+            self.tree_view.doubleClicked.disconnect(self._on_double_clicked)
+        except (RuntimeError, TypeError):
+            pass
+        try:
+            self.tree_view.customContextMenuRequested.disconnect(self._show_context_menu)
+        except (RuntimeError, TypeError):
+            pass
+
+        # The view owns indexes from the proxy while the proxy owns indexes
+        # from the source model. Detach in visible-to-source order.
+        self.tree_view.setModel(None)
+        self._proxy.setSourceModel(None)
+        self._model.clear()
+        self._circuit = None
 
     def set_circuit(self, circuit: MultiCircuit | None) -> None:
         """Bind the tree to a circuit and rebuild its entries.
@@ -245,7 +277,7 @@ class DynamicDeviceTreeWidget(QtWidgets.QWidget):
 
     @QtCore.Slot(QtCore.QPoint)
     def _show_context_menu(self, position: QtCore.QPoint) -> None:
-        """Show model and event actions supported by the clicked device.
+        """Show RMS and EMT model actions supported by the clicked device.
 
         :param position: Tree viewport position requested by Qt.
         :return: None.
@@ -280,32 +312,6 @@ class DynamicDeviceTreeWidget(QtWidgets.QWidget):
         else:
             pass
 
-        if entry_supports_dynamic_events(entry):
-            menu.addSeparator()
-            if DynamicSimulationMode.RMS in entry.available_modes:
-                rms_events_action: QtGui.QAction = gf.add_menu_entry(
-                    menu=menu,
-                    text=self.tr("RMS events"),
-                    icon_path=":/Icons/icons/dyn_edit.png",
-                    function_ptr=self._open_rms_events_from_action,
-                )
-                rms_events_action.setData(QtCore.QPersistentModelIndex(index))
-            else:
-                pass
-
-            if DynamicSimulationMode.EMT in entry.available_modes:
-                emt_events_action: QtGui.QAction = gf.add_menu_entry(
-                    menu=menu,
-                    text=self.tr("EMT events"),
-                    icon_path=":/Icons/icons/dyn_emt_edit.png",
-                    function_ptr=self._open_emt_events_from_action,
-                )
-                emt_events_action.setData(QtCore.QPersistentModelIndex(index))
-            else:
-                pass
-        else:
-            pass
-
         if menu.isEmpty():
             return
         else:
@@ -329,24 +335,6 @@ class DynamicDeviceTreeWidget(QtWidgets.QWidget):
         """
         self._emit_page_from_sender(DynamicSimulationMode.EMT, DynamicEditorContentType.MODEL)
 
-    @QtCore.Slot(bool)
-    def _open_rms_events_from_action(self, _checked: bool = False) -> None:
-        """Request the RMS events page for the context-menu device.
-
-        :param _checked: QAction checked state supplied by Qt.
-        :return: None.
-        """
-        self._emit_page_from_sender(DynamicSimulationMode.RMS, DynamicEditorContentType.EVENTS)
-
-    @QtCore.Slot(bool)
-    def _open_emt_events_from_action(self, _checked: bool = False) -> None:
-        """Request the EMT events page for the context-menu device.
-
-        :param _checked: QAction checked state supplied by Qt.
-        :return: None.
-        """
-        self._emit_page_from_sender(DynamicSimulationMode.EMT, DynamicEditorContentType.EVENTS)
-
     def _emit_page_from_sender(self,
                                mode: DynamicSimulationMode,
                                content_type: DynamicEditorContentType) -> None:
@@ -367,11 +355,7 @@ class DynamicDeviceTreeWidget(QtWidgets.QWidget):
             entry: DynamicEditorEntry | None = self.entry_from_index(index)
         else:
             entry = None
-        content_is_supported: bool = (
-            content_type == DynamicEditorContentType.MODEL
-            or (content_type == DynamicEditorContentType.EVENTS and entry is not None
-                and entry_supports_dynamic_events(entry))
-        )
+        content_is_supported: bool = content_type == DynamicEditorContentType.MODEL
         if entry is not None and mode in entry.available_modes and content_is_supported:
             self.entryPageRequested.emit(entry, mode, content_type)
         else:

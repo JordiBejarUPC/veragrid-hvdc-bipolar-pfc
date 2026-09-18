@@ -11,6 +11,7 @@ from typing import cast
 
 from VeraGridEngine.IO.fmu.importer.errors import FmuBindingError, FmuModeError
 from VeraGridEngine.IO.fmu.importer.model_description_metadata import (
+    FmiOneCoSimulationCapabilities,
     FmiThreeVariableDimension,
     FmuModelDescription,
     FmuVariableDescription,
@@ -1022,10 +1023,46 @@ class FmuImportConfig:
         :raises FmuModeError: If the FMI version family is unsupported.
         """
 
-        if metadata.fmi_version_family == FmiVersion.FMI_2_0:
-            return metadata.select_declared_interface(self.preferred_mode)
+        if metadata.fmi_version_family == FmiVersion.FMI_1_0:
+            interface_mode: FmuInterfaceMode = metadata.select_declared_interface(
+                self.preferred_mode
+            )
+            if interface_mode == FmuInterfaceMode.CO_SIMULATION:
+                capabilities: FmiOneCoSimulationCapabilities | None = (
+                    metadata.fmi_one_co_simulation_capabilities
+                )
+                if capabilities is None:
+                    raise FmuModeError(
+                        "FMI 1 Co-Simulation execution requires capability metadata"
+                    )
+                else:
+                    pass
+                if capabilities.needs_execution_tool:
+                    raise FmuModeError(
+                        "FMI 1 CoSimulation_Tool execution requires the original external tool"
+                    )
+                else:
+                    pass
+                if capabilities.can_handle_variable_communication_step_size:
+                    pass
+                else:
+                    raise FmuModeError(
+                        "FMI 1 Co-Simulation execution requires variable communication step support"
+                    )
+                if capabilities.can_run_asynchronuously:
+                    raise FmuModeError(
+                        "FMI 1 asynchronous Co-Simulation execution is not supported"
+                    )
+                else:
+                    pass
+            else:
+                pass
+            return interface_mode
         else:
-            if metadata.fmi_version_family == FmiVersion.FMI_3_0:
+            if (
+                metadata.fmi_version_family == FmiVersion.FMI_2_0
+                or metadata.fmi_version_family == FmiVersion.FMI_3_0
+            ):
                 return metadata.select_declared_interface(self.preferred_mode)
             else:
                 raise FmuModeError(

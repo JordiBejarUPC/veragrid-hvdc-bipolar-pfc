@@ -277,11 +277,9 @@ class IoMain(ScenariosMain):
                     else:
                         quit_msg = self.tr("Are you sure that you want to quit the current grid and open a new one?"
                                            "\n If the process is cancelled the grid will remain.")
-                        reply = QtWidgets.QMessageBox.question(self, self.tr('Message'), quit_msg,
-                                                               QtWidgets.QMessageBox.StandardButton.Yes,
-                                                               QtWidgets.QMessageBox.StandardButton.No)
+                        reply: bool = yes_no_question(text=quit_msg, title=self.tr('Message'), parent=self)
 
-                        if reply == QtWidgets.QMessageBox.StandardButton.Yes.value:
+                        if reply:
                             self.open_file_now(filenames=file_names)
                 else:
                     # Just open the file
@@ -353,11 +351,9 @@ class IoMain(ScenariosMain):
         """
         if self.circuit.valid_for_simulation() > 0:
             quit_msg = self.tr("Are you sure that you want to quit the current grid and create a new one?")
-            reply = QtWidgets.QMessageBox.question(self, self.tr('Message'), quit_msg,
-                                                   QtWidgets.QMessageBox.StandardButton.Yes,
-                                                   QtWidgets.QMessageBox.StandardButton.No)
+            reply: bool = yes_no_question(text=quit_msg, title=self.tr('Message'), parent=self)
 
-            if reply == QtWidgets.QMessageBox.StandardButton.Yes.value:
+            if reply:
                 self.new_project_now(create_default_diagrams=True)
 
     def open_file(self) -> None:
@@ -373,11 +369,9 @@ class IoMain(ScenariosMain):
             if self.circuit.valid_for_simulation() > 0:
                 quit_msg = self.tr("Are you sure that you want to quit the current grid and open a new one?"
                                    "\n If the process is cancelled the grid will remain.")
-                reply = QtWidgets.QMessageBox.question(self, self.tr('Message'), quit_msg,
-                                                       QtWidgets.QMessageBox.StandardButton.Yes,
-                                                       QtWidgets.QMessageBox.StandardButton.No)
+                reply: bool = yes_no_question(text=quit_msg, title=self.tr('Message'), parent=self)
 
-                if reply == QtWidgets.QMessageBox.StandardButton.Yes.value:
+                if reply:
                     self.open_file_threaded()
                 else:
                     pass
@@ -633,7 +627,7 @@ class IoMain(ScenariosMain):
                         grid=latest_remote_circuit.copy(),
                         diff=merged_circuit,
                     )
-                    merge_dialogue.exec()
+                    exec_dialog_safely(dialog=merge_dialogue)
 
                     if not merge_dialogue.merged_grid:
                         self.show_info_toast(self.tr("Server save cancelled."))
@@ -749,7 +743,7 @@ class IoMain(ScenariosMain):
                                          filter=self.tr("Formats ({files_types})").format(files_types=files_types))
         dialogue.setFileMode(QtWidgets.QFileDialog.FileMode.ExistingFiles)
 
-        if dialogue.exec():
+        if exec_dialog_safely(dialog=dialogue):
             filenames = dialogue.selectedFiles()
             self.open_file_now(filenames, post_function)
 
@@ -802,7 +796,7 @@ class IoMain(ScenariosMain):
             if options.file_type is None and bool_prompt_to_ask_if_unclear:
                 file_selector: FileTypeSelector = FileTypeSelector(file_name=file_name)
                 try:
-                    file_selector.exec()
+                    exec_dialog_safely(dialog=file_selector)
                     options.file_type = file_selector.file_type
                 finally:
                     delete_dialog_safely(dialog=file_selector)
@@ -832,6 +826,7 @@ class IoMain(ScenariosMain):
                 previous_circuit=self.circuit,
                 options=options
             )
+            self.open_file_thread_object.setParent(self)
 
             # make connections
             self.open_file_thread_object.progress_signal.connect(self.ui.progressBar.setValue)
@@ -970,7 +965,7 @@ class IoMain(ScenariosMain):
                         # else, show the logger if it is necessary
                         if open_logger_requires_dialog(self.open_file_thread_object.logger):
                             dlg = LogsDialogue(self.tr('Open CGMES file logger'), self.open_file_thread_object.logger)
-                            dlg.exec()
+                            exec_dialog_safely(dialog=dlg)
                         else:
                             pass
 
@@ -978,7 +973,7 @@ class IoMain(ScenariosMain):
                     # else, show the logger if it is necessary
                     if open_logger_requires_dialog(self.open_file_thread_object.logger):
                         dlg = LogsDialogue(self.tr('Open file logger'), self.open_file_thread_object.logger)
-                        dlg.exec()
+                        exec_dialog_safely(dialog=dlg)
                     else:
                         pass
 
@@ -999,7 +994,7 @@ class IoMain(ScenariosMain):
                 # else, show the logger if it is necessary
                 if len(self.open_file_thread_object.logger) > 0:
                     dlg = LogsDialogue(self.tr('Open file logger'), self.open_file_thread_object.logger)
-                    dlg.exec()
+                    exec_dialog_safely(dialog=dlg)
         else:
             # center nodes
             diagram = self.get_selected_diagram_widget()
@@ -1102,14 +1097,14 @@ class IoMain(ScenariosMain):
             if open_logger_requires_dialog(self.open_file_thread_object.logger):
                 dlg = LogsDialogue(self.tr('Open file logger'),
                                    self.open_file_thread_object.logger)
-                dlg.exec()
+                exec_dialog_safely(dialog=dlg)
             else:
                 pass
 
             if self.open_file_thread_object.valid:
 
                 merge_dlg = GridMergeDialogue(grid=self.circuit, diff=new_circuit)
-                merge_dlg.exec_()
+                exec_dialog_safely(dialog=merge_dlg)
 
                 if merge_dlg.added_grid:
                     # Create a blank diagram and add to it
@@ -1124,7 +1119,7 @@ class IoMain(ScenariosMain):
                                                   question=self.tr("How do you want to represent the merged grid?"),
                                                   answer1=self.tr("Create new diagram"),
                                                   answer2=self.tr("Add to current diagram"))
-                    dlg3.exec()
+                    exec_dialog_safely(dialog=dlg3)
 
                     if dlg3.accepted_answer == 1:
                         # Create a blank diagram and add to it
@@ -1174,7 +1169,7 @@ class IoMain(ScenariosMain):
         :return: None.
         """
         dlg = GridDiffDialogue(grid=self.circuit)
-        dlg.exec()
+        exec_dialog_safely(dialog=dlg)
 
     def save_file_as(self) -> None:
         """
@@ -1288,23 +1283,13 @@ class IoMain(ScenariosMain):
             # lock the ui
             self.LOCK()
 
-            # check not to kill threads avoiding segmentation faults
+            # A blocking save cannot be cancelled by QThread.quit(); refusing a
+            # second save keeps two serializers away from the same circuit.
             if self.save_file_thread_object is not None:
                 if self.save_file_thread_object.isRunning():
-                    ok = yes_no_question(self.tr("There is a saving procedure running.\nCancel and retry?"))
-                    if ok:
-                        self.save_file_thread_object.cancel()
-                        self.save_file_thread_object.quit()
-                        stopped: bool = self.save_file_thread_object.wait(5000)
-                        if stopped:
-                            pass
-                        else:
-                            warning_msg(self.tr("The current save is still finishing. Please retry when it is done."))
-                            self.UNLOCK()
-                            return
-                    else:
-                        self.UNLOCK()
-                        return
+                    warning_msg(self.tr("The current save is still finishing. Please retry when it is done."))
+                    self.UNLOCK()
+                    return
 
             options2 = self.get_file_save_options() if options is None else options
             options2.type_selected = type_selected
@@ -1315,6 +1300,7 @@ class IoMain(ScenariosMain):
                 file_name=filename,
                 options=options2
             )
+            self.save_file_thread_object.setParent(self)
 
             # make connections
             self.save_file_thread_object.progress_signal.connect(self.ui.progressBar.setValue)
@@ -1373,7 +1359,7 @@ class IoMain(ScenariosMain):
         grid_generator_dialogue: GridGeneratorGUI = GridGeneratorGUI(parent=self)
         grid_generator_dialogue.resize(int(1.61 * 600.0), 550)  # golden ratio
         try:
-            grid_generator_dialogue.exec()
+            exec_dialog_safely(dialog=grid_generator_dialogue)
             generator_applied: bool = grid_generator_dialogue.applied
             generated_circuit: MultiCircuit = grid_generator_dialogue.circuit
         finally:
@@ -1382,13 +1368,13 @@ class IoMain(ScenariosMain):
         if generator_applied:
 
             if self.circuit.valid_for_simulation() > 0:
-                reply = QtWidgets.QMessageBox.question(self, self.tr('Message'),
-                                                       self.tr('Are you sure that you want to delete '
-                                                               'the current grid and replace it?'),
-                                                       QtWidgets.QMessageBox.StandardButton.Yes,
-                                                       QtWidgets.QMessageBox.StandardButton.No)
+                reply: bool = yes_no_question(
+                    text=self.tr('Are you sure that you want to delete the current grid and replace it?'),
+                    title=self.tr('Message'),
+                    parent=self,
+                )
 
-                if reply == QtWidgets.QMessageBox.StandardButton.No:
+                if not reply:
                     return
 
             self.circuit = generated_circuit
@@ -1430,7 +1416,7 @@ class IoMain(ScenariosMain):
         """
         coordinates_window: CoordinatesInputGUI = CoordinatesInputGUI(grid=self.circuit, parent=self)
         try:
-            coordinates_window.exec()
+            exec_dialog_safely(dialog=coordinates_window)
             coordinates_accepted: bool = coordinates_window.was_accepted
         finally:
             delete_dialog_safely(dialog=coordinates_window)
@@ -1491,6 +1477,7 @@ class IoMain(ScenariosMain):
                 self.export_all_thread_object = exprtdrv.ExportAllThread(circuit=self.circuit,
                                                                          drivers_list=available_results,
                                                                          file_name=filename)
+                self.export_all_thread_object.setParent(self)
 
                 self.export_all_thread_object.progress_signal.connect(self.ui.progressBar.setValue)
                 self.export_all_thread_object.progress_text.connect(self.ui.progress_label.setText)
@@ -1622,7 +1609,7 @@ class IoMain(ScenariosMain):
 
             if len(logger) > 0:
                 dlg = LogsDialogue(self.tr('Contingencies import'), logger)
-                dlg.exec()
+                exec_dialog_safely(dialog=dlg)
 
     def export_contingencies(self) -> None:
         """
@@ -1654,7 +1641,7 @@ class IoMain(ScenariosMain):
         """
         if isinstance(self, QtWidgets.QWidget):
             dlg = CatalogueElementsSelectionDialogue(parent=self, circuit=self.circuit)
-            dlg.exec()
+            exec_dialog_safely(dialog=dlg)
             return None
 
         self.refresh_catalogue_dependent_views()

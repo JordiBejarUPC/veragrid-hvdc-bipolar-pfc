@@ -99,6 +99,11 @@ def _validate_annotations(
         raise FmuArchiveError(
             f"Annotations for {fmi_owner_description} in {path} cannot declare attributes"
         )
+    _validate_fmi3_element_only_content(
+        annotations_element,
+        f"Annotations for {fmi_owner_description}",
+        path,
+    )
     annotation_elements: list[ET.Element] = list(annotations_element)
     if len(annotation_elements) > 0:
         pass
@@ -482,6 +487,530 @@ def _validate_fmi3_log_categories(root: ET.Element, path: Path) -> None:
             )
 
 
+def _validate_fmi3_element_only_content(
+    element: ET.Element,
+    owner: str,
+    path: Path,
+) -> None:
+    """Reject character data outside an element-only FMI content model.
+
+    :param element: FMI element whose direct character data is inspected.
+    :param owner: Stable element description used in diagnostics.
+    :param path: FMU source path included in validation errors.
+    :return: None.
+    :raises FmuArchiveError: If direct text or a child tail is not whitespace.
+    """
+
+    direct_text: str | None = element.text
+    if direct_text is None or len(direct_text.strip()) == 0:
+        pass
+    else:
+        raise FmuArchiveError(
+            f"{owner} in {path} contains non-whitespace character data"
+        )
+    # ElementTree stores character data following a child in that child's
+    # tail. Inspect every direct child so malformed mixed content cannot hide
+    # between otherwise valid FMI metadata elements.
+    child_element: ET.Element
+    for child_element in element:
+        child_tail: str | None = child_element.tail
+        if child_tail is None or len(child_tail.strip()) == 0:
+            pass
+        else:
+            raise FmuArchiveError(
+                f"{owner} in {path} contains non-whitespace character data"
+            )
+
+
+def _parse_fmi3_bounded_integer(
+    raw_value: str,
+    attribute_name: str,
+    owner: str,
+    minimum_value: int,
+    maximum_value: int,
+    path: Path,
+) -> int:
+    """Parse one FMI integer within the primitive type's exact range.
+
+    :param raw_value: Source decimal text.
+    :param attribute_name: Attribute identified in diagnostics.
+    :param owner: FMI element that owns the attribute.
+    :param minimum_value: Inclusive primitive lower bound.
+    :param maximum_value: Inclusive primitive upper bound.
+    :param path: FMU source path included in validation errors.
+    :return: Parsed bounded integer.
+    :raises FmuArchiveError: If the lexical form or range is invalid.
+    """
+
+    normalized_value: str = raw_value.strip()
+    # Bound lexical work before integer conversion so hostile XML cannot force
+    # an arbitrarily large Python integer allocation.
+    if re.fullmatch(r"[+-]?[0-9]+", normalized_value) is not None:
+        pass
+    else:
+        raise FmuArchiveError(
+            f"{owner} attribute {attribute_name} in {path} is not an integer"
+        )
+    unsigned_digits: str = normalized_value.lstrip("+-").lstrip("0")
+    if len(unsigned_digits) == 0:
+        unsigned_digits = "0"
+    else:
+        pass
+    if len(unsigned_digits) <= 20:
+        parsed_value: int = int(normalized_value)
+    else:
+        raise FmuArchiveError(
+            f"{owner} attribute {attribute_name} in {path} exceeds its primitive range"
+        )
+    if minimum_value <= parsed_value <= maximum_value:
+        return parsed_value
+    else:
+        raise FmuArchiveError(
+            f"{owner} attribute {attribute_name} in {path} exceeds its primitive range"
+        )
+
+
+def _fmi3_integer_range(variable_type: FmuVariableType) -> tuple[int, int] | None:
+    """Return the normative integer range for one FMI 3 primitive.
+
+    :param variable_type: FMI primitive type.
+    :return: Inclusive range, or ``None`` for a non-integer primitive.
+    """
+
+    ranges: dict[FmuVariableType, tuple[int, int]] = dict((
+        (FmuVariableType.INT8, (-128, 127)),
+        (FmuVariableType.UINT8, (0, 255)),
+        (FmuVariableType.INT16, (-32768, 32767)),
+        (FmuVariableType.UINT16, (0, 65535)),
+        (FmuVariableType.INT32, (-2147483648, 2147483647)),
+        (FmuVariableType.UINT32, (0, 4294967295)),
+        (FmuVariableType.INT64, (-9223372036854775808, 9223372036854775807)),
+        (FmuVariableType.UINT64, (0, 18446744073709551615)),
+        (FmuVariableType.ENUMERATION, (-9223372036854775808, 9223372036854775807)),
+    ))
+    return ranges.get(variable_type, None)
+
+
+def _validate_fmi3_numeric_attributes(
+    element: ET.Element,
+    variable_type: FmuVariableType,
+    owner: str,
+    path: Path,
+) -> None:
+    """Validate optional bounds and nominal values for one FMI primitive.
+
+    :param element: Variable or type-definition element.
+    :param variable_type: FMI primitive that determines lexical bounds.
+    :param owner: FMI element identified in diagnostics.
+    :param path: FMU source path included in validation errors.
+    :return: None.
+    :raises FmuArchiveError: If bounds or nominal metadata are invalid.
+    """
+
+    minimum_text: str | None = element.attrib.get("min", None)
+    maximum_text: str | None = element.attrib.get("max", None)
+    integer_range: tuple[int, int] | None = _fmi3_integer_range(variable_type)
+    # Floating-point and integer XSD families have different lexical and range
+    # rules, but both converge on the same ordered-bound invariant.
+    if variable_type in (FmuVariableType.FLOAT32, FmuVariableType.FLOAT64):
+        minimum_value: float | int | None = None
+        maximum_value: float | int | None = None
+        if minimum_text is None:
+            pass
+        else:
+            minimum_value = _read_optional_finite_float(element, "min", owner, path)
+        if maximum_text is None:
+            pass
+        else:
+            maximum_value = _read_optional_finite_float(element, "max", owner, path)
+        nominal_value: float | None = _read_optional_finite_float(
+            element, "nominal", owner, path
+        )
+        if variable_type == FmuVariableType.FLOAT32:
+            maximum_float32: float = 3.4028234663852886e38
+            floating_value: float | int | None
+            for floating_value in (minimum_value, maximum_value, nominal_value):
+                if floating_value is None or abs(floating_value) <= maximum_float32:
+                    pass
+                else:
+                    raise FmuArchiveError(
+                        f"{owner} numeric metadata in {path} exceeds Float32 range"
+                    )
+        else:
+            pass
+        if nominal_value is None or nominal_value > 0.0:
+            pass
+        else:
+            raise FmuArchiveError(f"{owner} nominal in {path} must be positive")
+    else:
+        if integer_range is None:
+            minimum_value = None
+            maximum_value = None
+        else:
+            if minimum_text is None:
+                minimum_value = None
+            else:
+                minimum_value = _parse_fmi3_bounded_integer(
+                    minimum_text, "min", owner, integer_range[0], integer_range[1], path
+                )
+            if maximum_text is None:
+                maximum_value = None
+            else:
+                maximum_value = _parse_fmi3_bounded_integer(
+                    maximum_text, "max", owner, integer_range[0], integer_range[1], path
+                )
+    if minimum_value is None or maximum_value is None or minimum_value <= maximum_value:
+        pass
+    else:
+        raise FmuArchiveError(f"{owner} min in {path} must not exceed max")
+
+
+def _parse_fmi3_unit_definitions(
+    root: ET.Element,
+    path: Path,
+) -> dict[str, set[str]]:
+    """Validate units and return their bounded display-unit lookup.
+
+    :param root: FMI 3 model-description root.
+    :param path: FMU source path included in validation errors.
+    :return: Unit names mapped to the display-unit names they declare.
+    :raises FmuArchiveError: If unit metadata is malformed or ambiguous.
+    """
+
+    unit_lookups: dict[str, set[str]] = dict()
+    containers: list[ET.Element] = root.findall("UnitDefinitions")
+    if len(containers) <= 1:
+        pass
+    else:
+        raise FmuArchiveError(f"FMI 3 UnitDefinitions is duplicated in {path}")
+    if len(containers) == 0:
+        return unit_lookups
+    else:
+        container: ET.Element = containers[0]
+    _validate_attribute_subset(container, tuple(), "FMI 3 UnitDefinitions", path)
+    _validate_fmi3_element_only_content(container, "FMI 3 UnitDefinitions", path)
+    # Unit data is needed only while resolving declared types and aliases. The
+    # lookup is intentionally local to the import and is discarded afterward.
+    if len(container) > 0:
+        pass
+    else:
+        raise FmuArchiveError(f"FMI 3 UnitDefinitions in {path} must declare a Unit")
+    unit_element: ET.Element
+    for unit_element in container:
+        if unit_element.tag == "Unit":
+            pass
+        else:
+            raise FmuArchiveError(
+                f"Unexpected FMI 3 UnitDefinitions element {unit_element.tag!r} in {path}"
+            )
+        _validate_attribute_subset(unit_element, ("name",), "FMI 3 Unit", path)
+        unit_name: str = read_required_attribute(unit_element, "name", "FMI 3 Unit", path)
+        _validate_fmi3_element_only_content(
+            unit_element, f"FMI 3 Unit {unit_name!r}", path
+        )
+        if unit_name in unit_lookups:
+            raise FmuArchiveError(f"FMI 3 unit {unit_name!r} is duplicated in {path}")
+        else:
+            display_units: set[str] = set()
+            unit_lookups[unit_name] = display_units
+        previous_child_index: int = -1
+        base_unit_count: int = 0
+        annotation_count: int = 0
+        unit_child: ET.Element
+        for unit_child in unit_element:
+            child_order: tuple[str, ...] = ("BaseUnit", "DisplayUnit", "Annotations")
+            if unit_child.tag in child_order:
+                child_index: int = child_order.index(unit_child.tag)
+            else:
+                raise FmuArchiveError(
+                    f"Unexpected FMI 3 Unit child {unit_child.tag!r} in {path}"
+                )
+            if child_index >= previous_child_index:
+                previous_child_index = child_index
+            else:
+                raise FmuArchiveError(f"FMI 3 Unit {unit_name!r} children are out of order")
+            if unit_child.tag == "BaseUnit":
+                base_unit_count += 1
+                if base_unit_count == 1:
+                    pass
+                else:
+                    raise FmuArchiveError(
+                        f"FMI 3 Unit {unit_name!r} duplicates BaseUnit"
+                    )
+                _validate_attribute_subset(
+                    unit_child,
+                    ("kg", "m", "s", "A", "K", "mol", "cd", "rad", "factor", "offset"),
+                    f"FMI 3 BaseUnit for {unit_name!r}",
+                    path,
+                )
+                _validate_fmi3_element_only_content(
+                    unit_child, f"FMI 3 BaseUnit for {unit_name!r}", path
+                )
+                exponent_name: str
+                for exponent_name in ("kg", "m", "s", "A", "K", "mol", "cd", "rad"):
+                    exponent_text: str | None = unit_child.attrib.get(exponent_name, None)
+                    if exponent_text is None:
+                        pass
+                    else:
+                        parse_fmi_int32(
+                            exponent_text, exponent_name, f"FMI 3 BaseUnit for {unit_name!r}", path
+                        )
+                _read_optional_finite_float(
+                    unit_child, "factor", f"FMI 3 BaseUnit for {unit_name!r}", path
+                )
+                _read_optional_finite_float(
+                    unit_child, "offset", f"FMI 3 BaseUnit for {unit_name!r}", path
+                )
+                if len(unit_child) == 0:
+                    pass
+                else:
+                    raise FmuArchiveError(f"FMI 3 BaseUnit for {unit_name!r} has children")
+            else:
+                if unit_child.tag == "DisplayUnit":
+                    _validate_attribute_subset(
+                        unit_child, ("name", "factor", "offset", "inverse"),
+                        f"FMI 3 DisplayUnit for {unit_name!r}", path
+                    )
+                    display_name: str = read_required_attribute(
+                        unit_child, "name", f"FMI 3 DisplayUnit for {unit_name!r}", path
+                    )
+                    _validate_fmi3_element_only_content(
+                        unit_child, f"FMI 3 DisplayUnit {display_name!r}", path
+                    )
+                    if display_name in display_units:
+                        raise FmuArchiveError(
+                            f"FMI 3 display unit {display_name!r} is duplicated for {unit_name!r}"
+                        )
+                    else:
+                        display_units.add(display_name)
+                    _read_optional_finite_float(
+                        unit_child, "factor", f"FMI 3 DisplayUnit {display_name!r}", path
+                    )
+                    _read_optional_finite_float(
+                        unit_child, "offset", f"FMI 3 DisplayUnit {display_name!r}", path
+                    )
+                    _validate_fmi3_boolean_attributes(
+                        unit_child, f"FMI 3 DisplayUnit {display_name!r}", ("inverse",), path
+                    )
+                    _validate_optional_annotations(
+                        unit_child, f"FMI 3 DisplayUnit {display_name!r}", path
+                    )
+                else:
+                    annotation_count += 1
+                    if annotation_count == 1:
+                        pass
+                    else:
+                        raise FmuArchiveError(
+                            f"FMI 3 Unit {unit_name!r} duplicates Annotations"
+                        )
+                    _validate_annotations(unit_child, f"FMI 3 Unit {unit_name!r}", path)
+    return unit_lookups
+
+
+def _parse_fmi3_type_definitions(
+    root: ET.Element,
+    unit_lookups: dict[str, set[str]],
+    path: Path,
+) -> tuple[dict[str, FmuVariableType], dict[str, str | None]]:
+    """Validate declared types and return their primitive and unit lookups.
+
+    :param root: FMI 3 model-description root.
+    :param unit_lookups: Validated unit and display-unit lookup.
+    :param path: FMU source path included in validation errors.
+    :return: Declared-type primitive lookup and effective unit lookup.
+    :raises FmuArchiveError: If a type definition is invalid.
+    """
+
+    type_lookups: dict[str, FmuVariableType] = dict()
+    type_units: dict[str, str | None] = dict()
+    containers: list[ET.Element] = root.findall("TypeDefinitions")
+    if len(containers) <= 1:
+        pass
+    else:
+        raise FmuArchiveError(f"FMI 3 TypeDefinitions is duplicated in {path}")
+    if len(containers) == 0:
+        return type_lookups, type_units
+    else:
+        container: ET.Element = containers[0]
+    _validate_attribute_subset(container, tuple(), "FMI 3 TypeDefinitions", path)
+    _validate_fmi3_element_only_content(container, "FMI 3 TypeDefinitions", path)
+    # Retain only identity, primitive compatibility, and effective unit. The
+    # complete source type graph is not a second product metadata owner.
+    if len(container) > 0:
+        pass
+    else:
+        raise FmuArchiveError(
+            f"FMI 3 TypeDefinitions in {path} must declare a type"
+        )
+    type_element: ET.Element
+    for type_element in container:
+        if type_element.tag.endswith("Type") and type_element.tag != "ClockType":
+            primitive_name: str = type_element.tag[:-4]
+        else:
+            raise FmuArchiveError(
+                f"Unsupported FMI 3 type definition {type_element.tag!r} in {path}"
+            )
+        try:
+            variable_type: FmuVariableType = FmuVariableType(primitive_name)
+        except ValueError as exc:
+            raise FmuArchiveError(
+                f"Unknown FMI 3 type definition {type_element.tag!r} in {path}"
+            ) from exc
+        supported_type_definitions: tuple[FmuVariableType, ...] = (
+            FmuVariableType.FLOAT32,
+            FmuVariableType.FLOAT64,
+            FmuVariableType.INT8,
+            FmuVariableType.UINT8,
+            FmuVariableType.INT16,
+            FmuVariableType.UINT16,
+            FmuVariableType.INT32,
+            FmuVariableType.UINT32,
+            FmuVariableType.INT64,
+            FmuVariableType.UINT64,
+            FmuVariableType.BOOLEAN,
+            FmuVariableType.STRING,
+            FmuVariableType.BINARY,
+            FmuVariableType.ENUMERATION,
+        )
+        if variable_type in supported_type_definitions:
+            pass
+        else:
+            raise FmuArchiveError(
+                f"Unknown FMI 3 type definition {type_element.tag!r} in {path}"
+            )
+        type_name: str = read_required_attribute(
+            type_element, "name", f"FMI 3 {type_element.tag}", path
+        )
+        _validate_fmi3_element_only_content(
+            type_element, f"FMI 3 declared type {type_name!r}", path
+        )
+        if type_name in type_lookups:
+            raise FmuArchiveError(f"FMI 3 declared type {type_name!r} is duplicated in {path}")
+        else:
+            type_lookups[type_name] = variable_type
+        common_attributes: tuple[str, ...] = ("name", "description")
+        if variable_type in (FmuVariableType.FLOAT32, FmuVariableType.FLOAT64):
+            allowed_attributes: tuple[str, ...] = common_attributes + (
+                "quantity", "unit", "displayUnit", "relativeQuantity", "unbounded",
+                "min", "max", "nominal",
+            )
+        else:
+            if _fmi3_integer_range(variable_type) is not None:
+                allowed_attributes = common_attributes + ("quantity", "min", "max")
+            else:
+                if variable_type == FmuVariableType.BINARY:
+                    allowed_attributes = common_attributes + ("mimeType", "maxSize")
+                else:
+                    allowed_attributes = common_attributes
+        _validate_attribute_subset(
+            type_element, allowed_attributes, f"FMI 3 declared type {type_name!r}", path
+        )
+        _validate_fmi3_numeric_attributes(
+            type_element, variable_type, f"FMI 3 declared type {type_name!r}", path
+        )
+        unit_name: str | None = type_element.attrib.get("unit", None)
+        display_unit_name: str | None = type_element.attrib.get("displayUnit", None)
+        if unit_name is None:
+            if display_unit_name is None:
+                pass
+            else:
+                raise FmuArchiveError(
+                    f"FMI 3 declared type {type_name!r} has displayUnit without unit"
+                )
+        else:
+            display_units: set[str] | None = unit_lookups.get(unit_name, None)
+            if display_units is not None:
+                pass
+            else:
+                raise FmuArchiveError(
+                    f"FMI 3 declared type {type_name!r} references unknown unit {unit_name!r}"
+                )
+            if display_unit_name is None or display_unit_name in display_units:
+                pass
+            else:
+                raise FmuArchiveError(
+                    f"FMI 3 declared type {type_name!r} references invalid display unit "
+                    f"{display_unit_name!r}"
+                )
+        type_units[type_name] = unit_name
+        _validate_fmi3_boolean_attributes(
+            type_element, f"FMI 3 declared type {type_name!r}",
+            ("relativeQuantity", "unbounded"), path
+        )
+        if variable_type == FmuVariableType.BINARY:
+            maximum_size_text: str | None = type_element.attrib.get("maxSize", None)
+            if maximum_size_text is None:
+                pass
+            else:
+                parse_fmi_uint64(
+                    maximum_size_text, "maxSize", f"FMI 3 declared type {type_name!r}", path
+                )
+        else:
+            pass
+        if variable_type == FmuVariableType.ENUMERATION:
+            item_values: set[int] = set()
+            item_names: set[str] = set()
+            enumeration_annotation_count: int = 0
+            item_element: ET.Element
+            for item_element in type_element:
+                if item_element.tag == "Annotations":
+                    enumeration_annotation_count += 1
+                    if enumeration_annotation_count == 1 and len(item_values) == 0:
+                        _validate_annotations(
+                            item_element, f"FMI 3 enumeration type {type_name!r}", path
+                        )
+                    else:
+                        raise FmuArchiveError(
+                            f"FMI 3 enumeration type {type_name!r} misplaces Annotations"
+                        )
+                else:
+                    if item_element.tag == "Item":
+                        pass
+                    else:
+                        raise FmuArchiveError(
+                            f"FMI 3 enumeration type {type_name!r} contains "
+                            f"{item_element.tag!r}"
+                        )
+                    _validate_attribute_subset(
+                        item_element, ("name", "value", "description"),
+                        f"FMI 3 enumeration item in {type_name!r}", path
+                    )
+                    item_name: str = read_required_attribute(
+                        item_element, "name", f"FMI 3 enumeration item in {type_name!r}", path
+                    )
+                    _validate_fmi3_element_only_content(
+                        item_element,
+                        f"FMI 3 enumeration item {item_name!r}",
+                        path,
+                    )
+                    item_value: int = _parse_fmi3_bounded_integer(
+                        read_required_attribute(
+                            item_element, "value", f"FMI 3 enumeration item {item_name!r}", path
+                        ),
+                        "value", f"FMI 3 enumeration item {item_name!r}",
+                        -9223372036854775808, 9223372036854775807, path,
+                    )
+                    if item_name in item_names or item_value in item_values:
+                        raise FmuArchiveError(
+                            f"FMI 3 enumeration type {type_name!r} has a duplicate item"
+                        )
+                    else:
+                        item_names.add(item_name)
+                        item_values.add(item_value)
+                    _validate_optional_annotations(
+                        item_element, f"FMI 3 enumeration item {item_name!r}", path
+                    )
+            if len(item_values) > 0:
+                pass
+            else:
+                raise FmuArchiveError(f"FMI 3 enumeration type {type_name!r} has no items")
+        else:
+            _validate_optional_annotations(
+                type_element, f"FMI 3 declared type {type_name!r}", path
+            )
+    return type_lookups, type_units
+
+
 def _validate_fmi3_root_structure(root: ET.Element, path: Path) -> None:
     """Validate root attributes, child order, and represented sections.
 
@@ -522,9 +1051,7 @@ def _validate_fmi3_root_structure(root: ET.Element, path: Path) -> None:
         "TypeDefinitions", "LogCategories", "DefaultExperiment", "ModelVariables",
         "ModelStructure", "Annotations",
     )
-    unsupported_root_elements: tuple[str, ...] = (
-        "ScheduledExecution", "UnitDefinitions", "TypeDefinitions",
-    )
+    unsupported_root_elements: tuple[str, ...] = ("ScheduledExecution",)
     annotations_elements: list[ET.Element] = root.findall("Annotations")
     if len(annotations_elements) <= 1:
         pass
@@ -895,14 +1422,18 @@ def _parse_fmi3_interfaces(
 def _parse_fmi3_array_dimensions(
     variable_element: ET.Element,
     variable_name: str,
+    variable_type: FmuVariableType,
+    valid_display_units: set[str] | None,
     path: Path,
-) -> tuple[FmiThreeVariableDimension, ...]:
-    """Parse ordered constant or referenced dimensions and annotations.
+) -> tuple[tuple[FmiThreeVariableDimension, ...], tuple[str, ...]]:
+    """Validate variable children and return dimensions and child starts.
 
     :param variable_element: FMI 3 variable element containing child metadata.
     :param variable_name: Required variable name used in diagnostics.
+    :param variable_type: Primitive type governing Start and Alias children.
+    :param valid_display_units: Display units inherited from the effective unit.
     :param path: FMU source path included in validation errors.
-    :return: Ordered typed dimensions, or an empty tuple for a scalar.
+    :return: Ordered dimensions and String or Binary child start values.
     :raises FmuArchiveError: If child order, attributes, or sizes are invalid.
     """
 
@@ -925,90 +1456,178 @@ def _parse_fmi3_array_dimensions(
                 f"FMI 3 variable {variable_name!r} in {path} contains text outside "
                 "its child elements"
             )
-    first_dimension_index: int = 0
-    if len(child_elements) > 0 and child_elements[0].tag == "Annotations":
-        _validate_annotations(
-            child_elements[0],
-            f"FMI 3 variable {variable_name!r}",
-            path,
-        )
-        first_dimension_index = 1
-    else:
-        pass
-    dimension_count: int = len(child_elements) - first_dimension_index
-    dimensions: list[FmiThreeVariableDimension | None] = [None] * dimension_count
-    dimension_index: int
-    for dimension_index in range(dimension_count):
-        child_element: ET.Element = child_elements[
-            first_dimension_index + dimension_index
-        ]
-        if child_element.tag == "Dimension":
-            dimension_owner: str = (
-                f"FMI 3 variable {variable_name!r} Dimension {dimension_index + 1}"
-            )
-            _validate_attribute_subset(
-                child_element,
-                ("start", "valueReference"),
-                dimension_owner,
-                path,
-            )
-            if len(child_element) == 0:
-                pass
-            else:
-                raise FmuArchiveError(
-                    f"{dimension_owner} in {path} must not contain child elements"
-                )
-            dimension_text: str | None = child_element.text
-            if dimension_text is None or len(dimension_text.strip()) == 0:
-                pass
-            else:
-                raise FmuArchiveError(
-                    f"{dimension_owner} in {path} must not contain text"
-                )
-            start_text: str | None = child_element.attrib.get("start", None)
-            value_reference_text: str | None = child_element.attrib.get(
-                "valueReference",
-                None,
-            )
-            if start_text is not None and value_reference_text is None:
-                start_size: int = parse_fmi_uint64(
-                    start_text,
-                    "start",
-                    dimension_owner,
-                    path,
-                )
-                if start_size > 0:
-                    dimensions[dimension_index] = FmiThreeVariableDimension(
-                        constant_size=start_size,
-                        value_reference=None,
-                    )
-                else:
-                    raise FmuArchiveError(
-                        f"{dimension_owner} in {path} must be positive"
-                    )
-            else:
-                if start_text is None and value_reference_text is not None:
-                    dimension_value_reference: int = parse_fmi_uint32(
-                        raw_attribute_value=value_reference_text,
-                        attribute_name="valueReference",
-                        fmi_attribute_owner=dimension_owner,
-                        path=path,
-                    )
-                    dimensions[dimension_index] = FmiThreeVariableDimension(
-                        constant_size=None,
-                        value_reference=dimension_value_reference,
-                    )
-                else:
-                    raise FmuArchiveError(
-                        f"{dimension_owner} in {path} must declare exactly one of "
-                        "start or valueReference"
-                    )
+    dimensions: list[FmiThreeVariableDimension | None] = [None] * len(child_elements)
+    child_start_values: list[str | None] = [None] * len(child_elements)
+    # One schema-ordered pass validates all children while filling bounded,
+    # preallocated collections for the canonical variable metadata.
+    dimension_count: int = 0
+    child_start_count: int = 0
+    annotation_count: int = 0
+    previous_child_index: int = -1
+    child_element: ET.Element
+    for child_element in child_elements:
+        child_order: tuple[str, ...] = ("Annotations", "Dimension", "Start", "Alias")
+        if child_element.tag in child_order:
+            child_index: int = child_order.index(child_element.tag)
         else:
             raise FmuArchiveError(
                 f"FMI 3 variable {variable_name!r} in {path} contains "
-                "unsupported or out-of-order child elements"
+                "unsupported child elements"
             )
-    return cast(tuple[FmiThreeVariableDimension, ...], tuple(dimensions))
+        if child_index >= previous_child_index:
+            previous_child_index = child_index
+        else:
+            raise FmuArchiveError(
+                f"FMI 3 variable {variable_name!r} in {path} contains out-of-order children"
+            )
+        if child_element.tag == "Annotations":
+            annotation_count += 1
+            if child_index == 0 and annotation_count == 1:
+                _validate_annotations(
+                    child_element, f"FMI 3 variable {variable_name!r}", path
+                )
+            else:
+                raise FmuArchiveError(
+                    f"FMI 3 variable {variable_name!r} in {path} misplaces Annotations"
+                )
+        else:
+            if child_element.tag == "Dimension":
+                dimension_owner: str = (
+                    f"FMI 3 variable {variable_name!r} Dimension {dimension_count + 1}"
+                )
+                _validate_attribute_subset(
+                    child_element,
+                    ("start", "valueReference"),
+                    dimension_owner,
+                    path,
+                )
+                if len(child_element) == 0:
+                    pass
+                else:
+                    raise FmuArchiveError(
+                        f"{dimension_owner} in {path} must not contain child elements"
+                    )
+                dimension_text: str | None = child_element.text
+                if dimension_text is None or len(dimension_text.strip()) == 0:
+                    pass
+                else:
+                    raise FmuArchiveError(
+                        f"{dimension_owner} in {path} must not contain text"
+                    )
+                start_text: str | None = child_element.attrib.get("start", None)
+                value_reference_text: str | None = child_element.attrib.get(
+                    "valueReference",
+                    None,
+                )
+                if start_text is not None and value_reference_text is None:
+                    start_size: int = parse_fmi_uint64(
+                        start_text,
+                        "start",
+                        dimension_owner,
+                        path,
+                    )
+                    if start_size > 0:
+                        dimensions[dimension_count] = FmiThreeVariableDimension(
+                            constant_size=start_size,
+                            value_reference=None,
+                        )
+                    else:
+                        raise FmuArchiveError(
+                            f"{dimension_owner} in {path} must be positive"
+                        )
+                else:
+                    if start_text is None and value_reference_text is not None:
+                        dimension_value_reference: int = parse_fmi_uint32(
+                            raw_attribute_value=value_reference_text,
+                            attribute_name="valueReference",
+                            fmi_attribute_owner=dimension_owner,
+                            path=path,
+                        )
+                        dimensions[dimension_count] = FmiThreeVariableDimension(
+                            constant_size=None,
+                            value_reference=dimension_value_reference,
+                        )
+                    else:
+                        raise FmuArchiveError(
+                            f"{dimension_owner} in {path} must declare exactly one of "
+                            "start or valueReference"
+                        )
+                dimension_count += 1
+            else:
+                if child_element.tag == "Start":
+                    if variable_type in (FmuVariableType.STRING, FmuVariableType.BINARY):
+                        pass
+                    else:
+                        raise FmuArchiveError(
+                            f"FMI 3 {variable_type.value} variable {variable_name!r} "
+                            "cannot contain Start children"
+                        )
+                    _validate_attribute_subset(
+                        child_element, ("value",),
+                        f"FMI 3 variable {variable_name!r} Start", path
+                    )
+                    if len(child_element) == 0:
+                        pass
+                    else:
+                        raise FmuArchiveError(
+                            f"FMI 3 variable {variable_name!r} Start has children"
+                        )
+                    child_start_value: str = child_element.attrib.get("value", "")
+                    if variable_type == FmuVariableType.BINARY:
+                        if (
+                            len(child_start_value) % 2 == 0
+                            and re.fullmatch(r"[0-9A-Fa-f]*", child_start_value) is not None
+                        ):
+                            pass
+                        else:
+                            raise FmuArchiveError(
+                                f"FMI 3 Binary variable {variable_name!r} has invalid hex start"
+                            )
+                    else:
+                        pass
+                    child_start_values[child_start_count] = child_start_value
+                    child_start_count += 1
+                else:
+                    _validate_attribute_subset(
+                        child_element,
+                        ("name", "description", "displayUnit")
+                        if variable_type in (FmuVariableType.FLOAT32, FmuVariableType.FLOAT64)
+                        else ("name", "description"),
+                        f"FMI 3 variable {variable_name!r} Alias",
+                        path,
+                    )
+                    read_required_attribute(
+                        child_element, "name", f"FMI 3 variable {variable_name!r} Alias", path
+                    )
+                    alias_display_unit: str | None = child_element.attrib.get(
+                        "displayUnit", None
+                    )
+                    if alias_display_unit is None:
+                        pass
+                    else:
+                        if (
+                            valid_display_units is not None
+                            and alias_display_unit in valid_display_units
+                        ):
+                            pass
+                        else:
+                            raise FmuArchiveError(
+                                f"FMI 3 variable {variable_name!r} Alias references invalid "
+                                f"display unit {alias_display_unit!r}"
+                            )
+                    if len(child_element) == 0:
+                        pass
+                    else:
+                        raise FmuArchiveError(
+                            f"FMI 3 variable {variable_name!r} Alias has children"
+                        )
+    parsed_dimensions: tuple[FmiThreeVariableDimension, ...] = cast(
+        tuple[FmiThreeVariableDimension, ...], tuple(dimensions[:dimension_count])
+    )
+    parsed_child_starts: tuple[str, ...] = cast(
+        tuple[str, ...], tuple(child_start_values[:child_start_count])
+    )
+    return parsed_dimensions, parsed_child_starts
 
 
 def _parse_fmi3_variable_semantics(
@@ -1016,6 +1635,7 @@ def _parse_fmi3_variable_semantics(
     variable_name: str,
     variable_type: FmuVariableType,
     dimensions: tuple[FmiThreeVariableDimension, ...],
+    child_start_values: tuple[str, ...],
     path: Path,
 ) -> tuple[str, str, str | None, str | None]:
     """Resolve causality, variability, initial condition, and start values.
@@ -1024,6 +1644,7 @@ def _parse_fmi3_variable_semantics(
     :param variable_name: Required variable name.
     :param variable_type: Parsed FMI 3 primitive type.
     :param dimensions: Ordered constant or referenced array dimensions.
+    :param child_start_values: Ordered String or Binary Start child values.
     :param path: FMU source path included in validation errors.
     :return: Effective causality, variability, initial condition, and start text.
     :raises FmuArchiveError: If the semantic combination is invalid.
@@ -1094,7 +1715,13 @@ def _parse_fmi3_variable_semantics(
             f"FMI 3 variable {variable_name!r} in {path} has invalid causality, "
             "variability, and initial semantics"
         )
-    start_value: str | None = variable_element.attrib.get("start", None)
+    if variable_type in (FmuVariableType.STRING, FmuVariableType.BINARY):
+        if len(child_start_values) == 0:
+            start_value: str | None = None
+        else:
+            start_value = "\n".join(child_start_values)
+    else:
+        start_value = variable_element.attrib.get("start", None)
     requires_start: bool = initial in ("exact", "approx") or causality == "input"
     if requires_start:
         if start_value is None:
@@ -1113,7 +1740,10 @@ def _parse_fmi3_variable_semantics(
     if start_value is None:
         pass
     else:
-        start_values: list[str] = start_value.split()
+        if variable_type in (FmuVariableType.STRING, FmuVariableType.BINARY):
+            start_values: list[str] = list(child_start_values)
+        else:
+            start_values = start_value.split()
         start_value_text: str
         for start_value_text in start_values:
             if variable_type in (
@@ -1127,26 +1757,30 @@ def _parse_fmi3_variable_semantics(
                     path,
                 )
             else:
-                if variable_type == FmuVariableType.UINT64:
-                    parse_fmi_uint64(
-                        start_value_text,
-                        "start",
-                        f"FMI 3 variable {variable_name!r}",
-                        path,
+                integer_range: tuple[int, int] | None = _fmi3_integer_range(
+                    variable_type
+                )
+                if integer_range is not None:
+                    _parse_fmi3_bounded_integer(
+                        start_value_text, "start", f"FMI 3 variable {variable_name!r}",
+                        integer_range[0], integer_range[1], path,
                     )
                 else:
-                    if variable_type == FmuVariableType.INT32:
-                        parse_fmi_int32(
+                    if variable_type == FmuVariableType.BOOLEAN:
+                        parse_fmi_boolean(
                             start_value_text,
                             "start",
                             f"FMI 3 variable {variable_name!r}",
                             path,
                         )
                     else:
-                        raise FmuArchiveError(
-                            f"Unsupported FMI 3 start type for variable "
-                            f"{variable_name!r} in {path}"
-                        )
+                        if variable_type in (FmuVariableType.STRING, FmuVariableType.BINARY):
+                            pass
+                        else:
+                            raise FmuArchiveError(
+                                f"Unsupported FMI 3 start type for variable "
+                                f"{variable_name!r} in {path}"
+                            )
         if len(dimensions) == 0:
             if len(start_values) == 1:
                 pass
@@ -1306,11 +1940,17 @@ def _validate_fmi3_dimension_references_and_start_cardinalities(
 
 def _parse_fmi3_variables(
     model_variables: ET.Element,
+    type_lookups: dict[str, FmuVariableType],
+    type_units: dict[str, str | None],
+    unit_lookups: dict[str, set[str]],
     path: Path,
 ) -> tuple[FmuVariableDescription, ...]:
-    """Parse represented floating-point, Int32, and UInt64 FMI 3 variables.
+    """Parse all FMI 3 CS/ME primitive metadata without widening runtime ACLs.
 
     :param model_variables: Required FMI 3 ``ModelVariables`` element.
+    :param type_lookups: Validated declared-type primitive lookup.
+    :param type_units: Effective unit declared by each named type.
+    :param unit_lookups: Validated unit and display-unit lookup.
     :param path: FMU source path included in validation errors.
     :return: Ordered supported primitive-variable metadata.
     :raises FmuArchiveError: If variable metadata is unsupported or ambiguous.
@@ -1324,12 +1964,18 @@ def _parse_fmi3_variables(
     supported_variable_types: tuple[FmuVariableType, ...] = (
         FmuVariableType.FLOAT32,
         FmuVariableType.FLOAT64,
+        FmuVariableType.INT8,
+        FmuVariableType.UINT8,
+        FmuVariableType.INT16,
+        FmuVariableType.UINT16,
         FmuVariableType.INT32,
+        FmuVariableType.UINT32,
+        FmuVariableType.INT64,
         FmuVariableType.UINT64,
-    )
-    allowed_variable_attributes: tuple[str, ...] = (
-        "name", "valueReference", "description", "causality", "variability",
-        "initial", "start", "derivative",
+        FmuVariableType.BOOLEAN,
+        FmuVariableType.STRING,
+        FmuVariableType.BINARY,
+        FmuVariableType.ENUMERATION,
     )
     variable_names: set[str] = set()
     value_references: set[int] = set()
@@ -1351,24 +1997,134 @@ def _parse_fmi3_variables(
             else:
                 raise FmuArchiveError(
                     f"FMI 3 variable type {variable_element.tag!r} is outside "
-                    "the represented Float32, Float64, Int32, and UInt64 subset"
+                    "the represented CS and Model Exchange primitive subset"
                 )
         variable_name: str = read_required_attribute(
             variable_element, "name", variable_element.tag, path
         )
+        common_variable_attributes: tuple[str, ...] = (
+            "name", "valueReference", "description", "causality", "variability",
+            "initial", "declaredType", "canHandleMultipleSetPerTimeInstant",
+            "intermediateUpdate", "previous",
+        )
+        if variable_type in (FmuVariableType.STRING, FmuVariableType.BINARY):
+            allowed_variable_attributes: tuple[str, ...] = common_variable_attributes
+        else:
+            allowed_variable_attributes = common_variable_attributes + ("start",)
+        if variable_type in (FmuVariableType.FLOAT32, FmuVariableType.FLOAT64):
+            allowed_variable_attributes = allowed_variable_attributes + (
+                "derivative", "reinit", "quantity", "unit", "displayUnit",
+                "relativeQuantity", "unbounded", "min", "max", "nominal",
+            )
+        else:
+            if _fmi3_integer_range(variable_type) is not None:
+                allowed_variable_attributes = allowed_variable_attributes + (
+                    "quantity", "min", "max",
+                )
+            else:
+                if variable_type == FmuVariableType.BINARY:
+                    allowed_variable_attributes = allowed_variable_attributes + (
+                        "mimeType", "maxSize",
+                    )
+                else:
+                    pass
         _validate_attribute_subset(
             variable_element,
             allowed_variable_attributes,
             f"FMI 3 variable {variable_name!r}",
             path,
         )
-        dimensions: tuple[FmiThreeVariableDimension, ...] = (
-            _parse_fmi3_array_dimensions(
+        _validate_fmi3_boolean_attributes(
+            variable_element,
+            f"FMI 3 variable {variable_name!r}",
+            (
+                "canHandleMultipleSetPerTimeInstant", "intermediateUpdate", "reinit",
+                "relativeQuantity", "unbounded",
+            ),
+            path,
+        )
+        previous_text: str | None = variable_element.attrib.get("previous", None)
+        if previous_text is None:
+            pass
+        else:
+            parse_fmi_uint32(
+                previous_text, "previous", f"FMI 3 variable {variable_name!r}", path
+            )
+        if variable_type == FmuVariableType.BINARY:
+            maximum_size_text: str | None = variable_element.attrib.get("maxSize", None)
+            if maximum_size_text is None:
+                pass
+            else:
+                parse_fmi_uint64(
+                    maximum_size_text, "maxSize", f"FMI 3 variable {variable_name!r}", path
+                )
+        else:
+            pass
+        _validate_fmi3_numeric_attributes(
+            variable_element, variable_type, f"FMI 3 variable {variable_name!r}", path
+        )
+        declared_type_name: str | None = variable_element.attrib.get("declaredType", None)
+        if declared_type_name is None:
+            if variable_type == FmuVariableType.ENUMERATION:
+                raise FmuArchiveError(
+                    f"FMI 3 Enumeration variable {variable_name!r} requires declaredType"
+                )
+            else:
+                declared_type_unit: str | None = None
+        else:
+            declared_variable_type: FmuVariableType | None = type_lookups.get(
+                declared_type_name, None
+            )
+            if declared_variable_type is None:
+                raise FmuArchiveError(
+                    f"FMI 3 variable {variable_name!r} references unknown declaredType "
+                    f"{declared_type_name!r}"
+                )
+            else:
+                if declared_variable_type == variable_type:
+                    pass
+                else:
+                    raise FmuArchiveError(
+                        f"FMI 3 variable {variable_name!r} declaredType is incompatible "
+                        f"with {variable_type.value}"
+                    )
+            declared_type_unit = type_units[declared_type_name]
+        direct_unit_name: str | None = variable_element.attrib.get("unit", None)
+        if direct_unit_name is None:
+            effective_unit_name: str | None = declared_type_unit
+        else:
+            effective_unit_name = direct_unit_name
+        if effective_unit_name is None:
+            valid_display_units: set[str] | None = None
+        else:
+            valid_display_units = unit_lookups.get(effective_unit_name, None)
+            if valid_display_units is not None:
+                pass
+            else:
+                raise FmuArchiveError(
+                    f"FMI 3 variable {variable_name!r} references unknown unit "
+                    f"{effective_unit_name!r}"
+                )
+        direct_display_unit: str | None = variable_element.attrib.get("displayUnit", None)
+        if direct_display_unit is None:
+            pass
+        else:
+            if valid_display_units is not None and direct_display_unit in valid_display_units:
+                pass
+            else:
+                raise FmuArchiveError(
+                    f"FMI 3 variable {variable_name!r} references invalid display unit "
+                    f"{direct_display_unit!r}"
+                )
+        dimensions: tuple[FmiThreeVariableDimension, ...]
+        child_start_values: tuple[str, ...]
+        dimensions, child_start_values = _parse_fmi3_array_dimensions(
                 variable_element,
                 variable_name,
+                variable_type,
+                valid_display_units,
                 path,
             )
-        )
         # The product runtime deliberately supports Int32 only as a scalar.
         # Rejecting the shape while parsing keeps unsupported array metadata
         # out of every later binding, staging, and native-access owner.
@@ -1411,6 +2167,7 @@ def _parse_fmi3_variables(
             variable_name,
             variable_type,
             dimensions,
+            child_start_values,
             path,
         )
         if causality == "independent":
@@ -1427,7 +2184,7 @@ def _parse_fmi3_variables(
                 f"FMI 3 variable {variable_name!r}",
                 path,
             )
-        if variable_type in (FmuVariableType.INT32, FmuVariableType.UINT64):
+        if variable_type not in (FmuVariableType.FLOAT32, FmuVariableType.FLOAT64):
             if state_value_reference is None and causality != "independent":
                 pass
             else:
@@ -1596,19 +2353,72 @@ def _parse_fmi3_model_structure(
             raise FmuArchiveError(
                 f"FMI 3 ModelStructure element {structure_element.tag!r} is out of schema order"
             )
-        if "dependencies" in structure_element.attrib or "dependenciesKind" in structure_element.attrib:
-            raise FmuArchiveError(
-                "FMI 3 ModelStructure dependencies are outside the represented "
-                "metadata subset"
-            )
-        else:
-            pass
         _validate_attribute_subset(
             structure_element,
-            ("valueReference",),
+            ("valueReference", "dependencies", "dependenciesKind"),
             f"FMI 3 ModelStructure {structure_element.tag}",
             path,
         )
+        dependencies_text: str | None = structure_element.attrib.get("dependencies", None)
+        dependency_kinds_text: str | None = structure_element.attrib.get(
+            "dependenciesKind", None
+        )
+        # Solvers do not consume dependency sparsity yet. Validate references
+        # and alignment here, then deliberately release this parse-only state.
+        if dependencies_text is None:
+            if dependency_kinds_text is None:
+                pass
+            else:
+                raise FmuArchiveError(
+                    f"FMI 3 {structure_element.tag} dependenciesKind requires dependencies"
+                )
+        else:
+            dependency_tokens: list[str] = dependencies_text.split()
+            dependency_reference_set: set[int] = set()
+            dependency_index: int
+            for dependency_index in range(len(dependency_tokens)):
+                dependency_reference: int = parse_fmi_uint32(
+                    dependency_tokens[dependency_index],
+                    "dependencies",
+                    f"FMI 3 ModelStructure {structure_element.tag}",
+                    path,
+                )
+                if dependency_reference in variables_by_reference:
+                    pass
+                else:
+                    raise FmuArchiveError(
+                        f"FMI 3 {structure_element.tag} dependency references unknown "
+                        f"valueReference {dependency_reference}"
+                    )
+                if dependency_reference in dependency_reference_set:
+                    raise FmuArchiveError(
+                        f"FMI 3 {structure_element.tag} has duplicate dependency "
+                        f"valueReference {dependency_reference}"
+                    )
+                else:
+                    dependency_reference_set.add(dependency_reference)
+            if dependency_kinds_text is None:
+                pass
+            else:
+                dependency_kinds: list[str] = dependency_kinds_text.split()
+                if len(dependency_kinds) == len(dependency_tokens):
+                    pass
+                else:
+                    raise FmuArchiveError(
+                        f"FMI 3 {structure_element.tag} dependenciesKind count does not "
+                        "match dependencies"
+                    )
+                dependency_kind: str
+                for dependency_kind in dependency_kinds:
+                    if dependency_kind in (
+                        "dependent", "constant", "fixed", "tunable", "discrete"
+                    ):
+                        pass
+                    else:
+                        raise FmuArchiveError(
+                            f"FMI 3 {structure_element.tag} dependency kind "
+                            f"{dependency_kind!r} is invalid"
+                        )
         _validate_optional_annotations(
             structure_element, f"FMI 3 ModelStructure {structure_element.tag}", path
         )
@@ -1744,6 +2554,12 @@ def parse_fmi3_model_description(
     _validate_fmi3_element_names(root, path)
     _validate_fmi3_root_structure(root, path)
     _validate_default_experiment(root, path)
+    unit_lookups: dict[str, set[str]] = _parse_fmi3_unit_definitions(root, path)
+    type_lookups: dict[str, FmuVariableType]
+    type_units: dict[str, str | None]
+    type_lookups, type_units = _parse_fmi3_type_definitions(
+        root, unit_lookups, path
+    )
     model_name: str = read_required_attribute(
         root, "modelName", "fmiModelDescription", path
     )
@@ -1771,7 +2587,11 @@ def parse_fmi3_model_description(
             path,
         )
         variables: tuple[FmuVariableDescription, ...] = _parse_fmi3_variables(
-            model_variables_elements[0], path
+            model_variables_elements[0],
+            type_lookups,
+            type_units,
+            unit_lookups,
+            path,
         )
     else:
         if len(model_variables_elements) == 0:

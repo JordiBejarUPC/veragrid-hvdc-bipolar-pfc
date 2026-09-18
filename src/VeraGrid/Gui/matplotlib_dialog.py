@@ -11,6 +11,7 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
 from PySide6 import QtCore, QtGui, QtWidgets
+import shiboken6
 
 
 class MatplotlibFigureDialog(QtWidgets.QDialog):
@@ -61,10 +62,22 @@ class MatplotlibFigureDialog(QtWidgets.QDialog):
             pass
         else:
             self._disposed = True
-            self._canvas._draw_pending = False
-            self._canvas.figure.clear()
-            self._toolbar.close()
-            self._canvas.close()
+            if shiboken6.isValid(self._canvas):
+                self._canvas._draw_pending = False
+                self._canvas.figure.clear()
+                plt.close(self._canvas.figure)
+                self._canvas.close()
+                self._canvas.setParent(None)
+                self._canvas.deleteLater()
+            else:
+                pass
+
+            if shiboken6.isValid(self._toolbar):
+                self._toolbar.close()
+                self._toolbar.setParent(None)
+                self._toolbar.deleteLater()
+            else:
+                pass
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         """
@@ -83,10 +96,35 @@ class MatplotlibFigureDialog(QtWidgets.QDialog):
         :param result: Qt dialog result.
         :return: None.
         """
+        self.dispose()
         if self in self._open_dialogs:
             self._open_dialogs.remove(self)
         else:
             pass
+
+    def done(self, result: int) -> None:
+        """
+        Dispose the Matplotlib children before completing the dialog.
+
+        :param result: Qt dialog result code.
+        :return: None.
+        """
+        self.dispose()
+        QtWidgets.QDialog.done(self, result)
+
+    def event(self, event: QtCore.QEvent) -> bool:
+        """
+        Dispose Matplotlib children when Qt processes deferred deletion.
+
+        :param event: Qt event.
+        :return: Whether the base dialog handled the event.
+        """
+        if event.type() == QtCore.QEvent.Type.DeferredDelete:
+            self.dispose()
+        else:
+            pass
+
+        return QtWidgets.QDialog.event(self, event)
 
 
 def show_matplotlib_figure(figure: Figure,

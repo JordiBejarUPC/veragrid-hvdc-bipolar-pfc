@@ -694,7 +694,7 @@ class DataBaseTableMain(DiagramsMain):
             if len(logger):
                 dlg = LogsDialogue(name=self.tr("Add selected DB objects to current diagram"), logger=logger)
                 dlg.setModal(True)
-                dlg.exec()
+                exec_dialog_safely(dialog=dlg)
 
     def add_new_bus_diagram_from_selection(self):
         """
@@ -749,7 +749,7 @@ class DataBaseTableMain(DiagramsMain):
             if self.circuit.get_substation_number() > 0:
                 # showing this menu only makes sense if there is anything there
                 try:
-                    new_se_dlg.exec()
+                    exec_dialog_safely(dialog=new_se_dlg)
                     show_substations: bool = new_se_dlg.selected(DeviceType.SubstationDevice.value)
                     show_lines: bool = new_se_dlg.selected(DeviceType.LineDevice.value)
                     show_dc_lines: bool = new_se_dlg.selected(DeviceType.DCLineDevice.value)
@@ -853,7 +853,7 @@ class DataBaseTableMain(DiagramsMain):
                                                                              selected_buses_set=selected_buses)
 
             try:
-                grid_reduction_dialogue.exec()
+                exec_dialog_safely(dialog=grid_reduction_dialogue)
                 did_reduce: bool = grid_reduction_dialogue.did_reduce
                 reduction_logger: bs.Logger = grid_reduction_dialogue.logger
                 reduced_grid: dev.MultiCircuit | None = grid_reduction_dialogue.reduced_grid
@@ -910,7 +910,7 @@ class DataBaseTableMain(DiagramsMain):
             )
 
             try:
-                grid_reduction_dialogue.exec()
+                exec_dialog_safely(dialog=grid_reduction_dialogue)
                 did_reduce: bool = grid_reduction_dialogue.did_reduce
                 reduction_logger: bs.Logger = grid_reduction_dialogue.logger
                 reduced_grid: dev.MultiCircuit | None = grid_reduction_dialogue.reduced_grid
@@ -957,7 +957,7 @@ class DataBaseTableMain(DiagramsMain):
                         buses=buses,
                         parent=self,
                     )
-                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                    if exec_dialog_safely(dialog=dlg) == QtWidgets.QDialog.DialogCode.Accepted:
                         selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
                         if selected_buses[0] is not None:
                             obj: dev.Load = dev.Load(name=dlg.get_name())
@@ -979,7 +979,7 @@ class DataBaseTableMain(DiagramsMain):
                         buses=buses,
                         parent=self,
                     )
-                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                    if exec_dialog_safely(dialog=dlg) == QtWidgets.QDialog.DialogCode.Accepted:
                         selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
                         if selected_buses[0] is not None:
                             obj: dev.StaticGenerator = dev.StaticGenerator(name=dlg.get_name())
@@ -1001,7 +1001,7 @@ class DataBaseTableMain(DiagramsMain):
                         buses=buses,
                         parent=self,
                     )
-                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                    if exec_dialog_safely(dialog=dlg) == QtWidgets.QDialog.DialogCode.Accepted:
                         selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
                         if selected_buses[0] is not None:
                             obj: dev.Generator = dev.Generator(name=dlg.get_name())
@@ -1023,7 +1023,7 @@ class DataBaseTableMain(DiagramsMain):
                         buses=buses,
                         parent=self,
                     )
-                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                    if exec_dialog_safely(dialog=dlg) == QtWidgets.QDialog.DialogCode.Accepted:
                         selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
                         if selected_buses[0] is not None:
                             obj: dev.Battery = dev.Battery(name=dlg.get_name())
@@ -1045,7 +1045,7 @@ class DataBaseTableMain(DiagramsMain):
                         buses=buses,
                         parent=self,
                     )
-                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                    if exec_dialog_safely(dialog=dlg) == QtWidgets.QDialog.DialogCode.Accepted:
                         selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
                         if selected_buses[0] is not None:
                             obj: dev.Shunt = dev.Shunt(name=dlg.get_name())
@@ -1067,7 +1067,7 @@ class DataBaseTableMain(DiagramsMain):
                         buses=buses,
                         parent=self,
                     )
-                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                    if exec_dialog_safely(dialog=dlg) == QtWidgets.QDialog.DialogCode.Accepted:
                         selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
                         if selected_buses[0] is not None:
                             obj: dev.ExternalGrid = dev.ExternalGrid(name=dlg.get_name())
@@ -1089,7 +1089,7 @@ class DataBaseTableMain(DiagramsMain):
                         buses=buses,
                         parent=self,
                     )
-                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                    if exec_dialog_safely(dialog=dlg) == QtWidgets.QDialog.DialogCode.Accepted:
                         selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
                         if selected_buses[0] is not None:
                             obj: dev.CurrentInjection = dev.CurrentInjection(name=dlg.get_name())
@@ -1111,7 +1111,7 @@ class DataBaseTableMain(DiagramsMain):
                         buses=buses,
                         parent=self,
                     )
-                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                    if exec_dialog_safely(dialog=dlg) == QtWidgets.QDialog.DialogCode.Accepted:
                         selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
                         if selected_buses[0] is not None:
                             obj: dev.ControllableShunt = dev.ControllableShunt(name=dlg.get_name())
@@ -1133,7 +1133,7 @@ class DataBaseTableMain(DiagramsMain):
                         buses=buses,
                         parent=self,
                     )
-                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                    if exec_dialog_safely(dialog=dlg) == QtWidgets.QDialog.DialogCode.Accepted:
                         selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
                         if selected_buses[0] is not None and selected_buses[1] is not None:
                             obj: dev.Line = dev.Line(name=dlg.get_name(),
@@ -1156,7 +1156,7 @@ class DataBaseTableMain(DiagramsMain):
                         buses=buses,
                         parent=self,
                     )
-                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                    if exec_dialog_safely(dialog=dlg) == QtWidgets.QDialog.DialogCode.Accepted:
                         selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
                         if selected_buses[0] is not None and selected_buses[1] is not None:
                             obj: dev.DcLine = dev.DcLine(name=dlg.get_name(),
@@ -1179,7 +1179,7 @@ class DataBaseTableMain(DiagramsMain):
                         buses=buses,
                         parent=self,
                     )
-                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                    if exec_dialog_safely(dialog=dlg) == QtWidgets.QDialog.DialogCode.Accepted:
                         selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
                         if selected_buses[0] is not None and selected_buses[1] is not None:
                             obj: dev.Transformer2W = dev.Transformer2W(name=dlg.get_name(),
@@ -1202,7 +1202,7 @@ class DataBaseTableMain(DiagramsMain):
                         buses=buses,
                         parent=self,
                     )
-                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                    if exec_dialog_safely(dialog=dlg) == QtWidgets.QDialog.DialogCode.Accepted:
                         selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
                         if selected_buses[0] is not None and selected_buses[1] is not None and selected_buses[2] is not None:
                             obj: dev.Transformer3W = dev.Transformer3W(name=dlg.get_name(),
@@ -1226,7 +1226,7 @@ class DataBaseTableMain(DiagramsMain):
                         buses=buses,
                         parent=self,
                     )
-                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                    if exec_dialog_safely(dialog=dlg) == QtWidgets.QDialog.DialogCode.Accepted:
                         selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
                         if selected_buses[0] is not None and selected_buses[1] is not None and selected_buses[2] is not None:
                             obj: dev.TransformerNW = dev.TransformerNW(name=dlg.get_name(),
@@ -1249,7 +1249,7 @@ class DataBaseTableMain(DiagramsMain):
                         buses=buses,
                         parent=self,
                     )
-                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                    if exec_dialog_safely(dialog=dlg) == QtWidgets.QDialog.DialogCode.Accepted:
                         selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
                         if selected_buses[0] is not None and selected_buses[1] is not None:
                             obj: dev.HvdcLine = dev.HvdcLine(name=dlg.get_name(),
@@ -1273,7 +1273,7 @@ class DataBaseTableMain(DiagramsMain):
                         parent=self,
                         allow_last_bus_none=True,
                     )
-                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                    if exec_dialog_safely(dialog=dlg) == QtWidgets.QDialog.DialogCode.Accepted:
                         selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
                         if selected_buses[0] is not None and selected_buses[1] is not None:
                             bus_from: ALL_DEV_TYPES = selected_buses[0]
@@ -1318,7 +1318,7 @@ class DataBaseTableMain(DiagramsMain):
                         buses=buses,
                         parent=self,
                     )
-                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                    if exec_dialog_safely(dialog=dlg) == QtWidgets.QDialog.DialogCode.Accepted:
                         selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
                         if selected_buses[0] is not None and selected_buses[1] is not None:
                             obj: dev.UPFC = dev.UPFC(name=dlg.get_name(),
@@ -1341,7 +1341,7 @@ class DataBaseTableMain(DiagramsMain):
                         buses=buses,
                         parent=self,
                     )
-                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                    if exec_dialog_safely(dialog=dlg) == QtWidgets.QDialog.DialogCode.Accepted:
                         selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
                         if selected_buses[0] is not None and selected_buses[1] is not None:
                             obj: dev.SeriesReactance = dev.SeriesReactance(name=dlg.get_name(),
@@ -1429,7 +1429,7 @@ class DataBaseTableMain(DiagramsMain):
                         allow_none=False,
                         parent=self,
                     )
-                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                    if exec_dialog_safely(dialog=dlg) == QtWidgets.QDialog.DialogCode.Accepted:
                         selected_device: ALL_DEV_TYPES | None = dlg.get_selected_device()
                         if isinstance(selected_device, EditableDevice):
                             if len(self.circuit.contingency_groups) > 0:
@@ -1497,7 +1497,7 @@ class DataBaseTableMain(DiagramsMain):
                         allow_none=False,
                         parent=self,
                     )
-                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                    if exec_dialog_safely(dialog=dlg) == QtWidgets.QDialog.DialogCode.Accepted:
                         selected_device: ALL_DEV_TYPES | None = dlg.get_selected_device()
                         if isinstance(selected_device, EditableDevice):
                             if len(self.circuit.remedial_action_groups) > 0:
@@ -1561,7 +1561,7 @@ class DataBaseTableMain(DiagramsMain):
                         allow_none=False,
                         parent=self,
                     )
-                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                    if exec_dialog_safely(dialog=dlg) == QtWidgets.QDialog.DialogCode.Accepted:
                         selected_device: ALL_DEV_TYPES | None = dlg.get_selected_device()
                         if isinstance(selected_device, EditableDevice):
                             if len(self.circuit.investments_groups) > 0:
@@ -1596,7 +1596,7 @@ class DataBaseTableMain(DiagramsMain):
                         allow_none=False,
                         parent=self,
                     )
-                    if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                    if exec_dialog_safely(dialog=dlg) == QtWidgets.QDialog.DialogCode.Accepted:
                         selected_device: ALL_DEV_TYPES | None = dlg.get_selected_device()
                         if isinstance(selected_device, dev.Bus):
                             short_circuit_event: dev.ShortCircuitEvent = dev.ShortCircuitEvent(
@@ -2169,7 +2169,7 @@ class DataBaseTableMain(DiagramsMain):
 
                 if logger.size():
                     logs_window = LogsDialogue(self.tr("Assign to profile"), logger=logger)
-                    logs_window.exec()
+                    exec_dialog_safely(dialog=logs_window)
                 else:
                     lst = ", ".join(attr_list)
                     self.show_info_toast(f"{lst} assigned to profile")
@@ -2497,7 +2497,7 @@ class DataBaseTableMain(DiagramsMain):
 
         kv = self.get_default_voltage()
         dlg = SubstationDesigner(grid=self.circuit, default_voltage=kv)
-        dlg.exec()
+        exec_dialog_safely(dialog=dlg)
         if dlg.was_ok():
 
             se_object, voltage_levels = substation_wizards.create_substation(
@@ -2514,7 +2514,7 @@ class DataBaseTableMain(DiagramsMain):
                                           question=self.tr("How do you want to represent the merged grid?"),
                                           answer1=self.tr("Create new diagram"),
                                           answer2=self.tr("Add to current diagram"))
-            dlg3.exec()
+            exec_dialog_safely(dialog=dlg3)
 
             if dlg3.accepted_answer == 1:
                 # Create a blank diagram and add to it

@@ -14,15 +14,11 @@ from PySide6.QtGui import QClipboard
 from typing import Iterator, List, Tuple
 import packaging.version as pkg
 from VeraGrid.Gui.AboutDialogue.about_gui import Ui_AboutDialog
+from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
 from VeraGrid.__version__ import __VeraGrid_VERSION__
 from VeraGrid.update import find_latest_version, get_upgrade_command
 from VeraGridEngine.__version__ import __VeraGridEngine_VERSION__, copyright_msg, contributors_msg
-from VeraGridEngine.Compilers.Gslv.activation import (GSLV_AVAILABLE,
-                                                      GSLV_RECOMMENDED_VERSION,
-                                                      GSLV_VERSION)
-from VeraGridEngine.Compilers.circuit_to_pgm import (PGM_AVAILABLE,
-                                                     PGM_RECOMMENDED_VERSION,
-                                                     PGM_VERSION)
+
 
 def get_packages() -> Iterator[Tuple[str, str, str, str, str]]:
     """
@@ -238,6 +234,29 @@ def translate_about_dialog(source_text: str, disambiguation: str | None = None, 
     return QtCore.QCoreApplication.translate("AboutDialog", source_text, disambiguation, n)
 
 
+def add_lib(rows: List[OptionalLibraryStatus],
+            name: str,
+            package_name: str):
+    """
+    Add library to the list
+    :param rows:
+    :param name:
+    :param package_name:
+    :return:
+    """
+    _installed_version: str = get_installed_package_version(package_name=package_name)
+
+    rows.append(OptionalLibraryStatus(
+        name=name,
+        package_name=package_name,
+        installed=len(_installed_version) > 0,
+        installed_version=_installed_version,
+        latest_version=find_latest_version(package_name=package_name) or "",
+        supported_version="",
+        licensed=len(_installed_version) > 0,
+    ))
+
+
 class AboutDialogueGuiGUI(QtWidgets.QDialog):
     """
     AboutDialogueGuiGUI
@@ -285,13 +304,9 @@ class AboutDialogueGuiGUI(QtWidgets.QDialog):
         :return: None.
         """
         rows: List[OptionalLibraryStatus] = list()
-        veragrid_latest_version: str | None = find_latest_version(package_name="VeraGrid")
-        gslv_installed_version: str = get_installed_package_version(package_name="pygslv")
-        pgm_installed_version: str = get_installed_package_version(package_name="power-grid-model")
-        pandapower_installed_version: str = get_installed_package_version(package_name="pandapower")
-        pypsa_installed_version: str = get_installed_package_version(package_name="pypsa")
-        pypowsybl_installed_version: str = get_installed_package_version(package_name="pypowsybl")
 
+        # Add the base library to perform self-update
+        veragrid_latest_version: str | None = find_latest_version(package_name="VeraGrid")
         rows.append(OptionalLibraryStatus(
             name="VeraGrid",
             package_name="VeraGrid",
@@ -301,51 +316,15 @@ class AboutDialogueGuiGUI(QtWidgets.QDialog):
             supported_version=__VeraGridEngine_VERSION__,
             licensed=True,
         ))
-        rows.append(OptionalLibraryStatus(
-            name="GSLV",
-            package_name="pygslv",
-            installed=len(gslv_installed_version) > 0,
-            installed_version=gslv_installed_version if len(gslv_installed_version) > 0 else GSLV_VERSION,
-            latest_version=find_latest_version(package_name="pygslv") or "",
-            supported_version=GSLV_RECOMMENDED_VERSION,
-            licensed=GSLV_AVAILABLE,
-        ))
-        rows.append(OptionalLibraryStatus(
-            name="power-grid-model",
-            package_name="power-grid-model",
-            installed=len(pgm_installed_version) > 0 or PGM_AVAILABLE,
-            installed_version=pgm_installed_version if len(pgm_installed_version) > 0 else PGM_VERSION,
-            latest_version=find_latest_version(package_name="power-grid-model") or "",
-            supported_version=PGM_RECOMMENDED_VERSION,
-            licensed=PGM_AVAILABLE,
-        ))
-        rows.append(OptionalLibraryStatus(
-            name="pandapower",
-            package_name="pandapower",
-            installed=len(pandapower_installed_version) > 0,
-            installed_version=pandapower_installed_version,
-            latest_version=find_latest_version(package_name="pandapower") or "",
-            supported_version="",
-            licensed=len(pandapower_installed_version) > 0,
-        ))
-        rows.append(OptionalLibraryStatus(
-            name="PyPSA",
-            package_name="pypsa",
-            installed=len(pypsa_installed_version) > 0,
-            installed_version=pypsa_installed_version,
-            latest_version=find_latest_version(package_name="pypsa") or "",
-            supported_version="",
-            licensed=len(pypsa_installed_version) > 0,
-        ))
-        rows.append(OptionalLibraryStatus(
-            name="pypowsybl",
-            package_name="pypowsybl",
-            installed=len(pypowsybl_installed_version) > 0,
-            installed_version=pypowsybl_installed_version,
-            latest_version=find_latest_version(package_name="pypowsybl") or "",
-            supported_version="",
-            licensed=len(pypowsybl_installed_version) > 0,
-        ))
+
+        # Add the optional dependencies
+        add_lib(rows=rows, name="pygslv", package_name="pygslv")
+        add_lib(rows=rows, name="power-grid-model", package_name="power-grid-model")
+        add_lib(rows=rows, name="pandapower", package_name="pandapower")
+        add_lib(rows=rows, name="pypsa", package_name="pypsa")
+        add_lib(rows=rows, name="pypowsybl", package_name="pypowsybl")
+        add_lib(rows=rows, name="msgspec", package_name="msgspec")
+        add_lib(rows=rows, name="msgspec", package_name="msgspec")
 
         self.ui.librariesTableWidget.setColumnCount(6)
         self.ui.librariesTableWidget.setRowCount(len(rows))
@@ -514,7 +493,7 @@ class AboutDialogueGuiGUI(QtWidgets.QDialog):
         msg.setWindowTitle(title)
         # msg.setDetailedText("The details are as follows:")
         msg.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
-        retval = msg.exec()
+        retval = exec_dialog_safely(dialog=msg)
 
     def copy_libs(self):
         """

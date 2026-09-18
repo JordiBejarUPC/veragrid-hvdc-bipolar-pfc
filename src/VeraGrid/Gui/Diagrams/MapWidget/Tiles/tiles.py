@@ -63,18 +63,28 @@ class TileCallbackBridge(QObject):
         Store the tile source that receives decoded images.
         """
         QObject.__init__(self)
-        self._tiles: Tiles = tiles
+        self._tiles: "Tiles | None" = tiles
+
+    def detach(self) -> None:
+        """
+        Remove the Python owner reference before the bridge is destroyed.
+        """
+        self._tiles = None
 
     @Slot(int, float, float, bytes, bool)
     def tile_is_available(self, level: int, x: float, y: float, image_data: bytes, error: bool) -> None:
         """
         Forward worker bytes to the tile source on this object's Qt thread.
         """
-        self._tiles.tile_is_available(level=level,
-                                      x=x,
-                                      y=y,
-                                      image_data=image_data,
-                                      error=error)
+        tiles: "Tiles | None" = self._tiles
+        if tiles is not None:
+            tiles.tile_is_available(level=level,
+                                    x=x,
+                                    y=y,
+                                    image_data=image_data,
+                                    error=error)
+        else:
+            pass
 
 
 class Tiles(BaseTiles):
@@ -147,6 +157,7 @@ class Tiles(BaseTiles):
         # callback must be set by higher-level code
         self.callback: Union[None, Callable[[int, float, float, QPixmap, bool], None]] = None
         self._shutdown: bool = False
+        self._shutdown_complete: bool = False
 
         # calculate a re-request age, if specified
         self.re_request_age = (time.time() - self.refresh_tiles_after_days * self.SecondsInADay)
@@ -184,7 +195,8 @@ class Tiles(BaseTiles):
 
         # set the list of queued unsatisfied requests to 'empty'
         self.queued_requests = {}
-        self.tile_callback_bridge: TileCallbackBridge = TileCallbackBridge(tiles=self)
+        tile_callback_bridge: TileCallbackBridge = TileCallbackBridge(tiles=self)
+        self.tile_callback_bridge: TileCallbackBridge | None = tile_callback_bridge
 
         # prepare the "pending" and "error" images
         self.pending_tile = QPixmap(256, 256)
@@ -257,7 +269,7 @@ class Tiles(BaseTiles):
                                         content_type=self.content_type,
                                         re_request_age=self.re_request_age,
                                         refresh_tiles_after_days=60)
-                    worker.tile_available.connect(self.tile_callback_bridge.tile_is_available,
+                    worker.tile_available.connect(tile_callback_bridge.tile_is_available,
                                                   Qt.ConnectionType.QueuedConnection)
                     self.workers.append(worker)
                     worker.start()
@@ -393,15 +405,33 @@ class Tiles(BaseTiles):
 
         :return: ``True`` when every tile worker has stopped.
         """
-        if self._shutdown:
+        if self._shutdown_complete:
             return True
+        else:
+            pass
 
-        self._shutdown = True
-        self.callback = None
-        self.FlushRequests()
+        if self._shutdown:
+            pass
+        else:
+            self._shutdown = True
+            self.callback = None
+            self.FlushRequests()
 
-        for worker in self.workers:
-            worker.stop()
+            tile_callback_bridge: TileCallbackBridge | None = self.tile_callback_bridge
+            if tile_callback_bridge is not None:
+                tile_callback_bridge.detach()
+                for worker in self.workers:
+                    try:
+                        worker.tile_available.disconnect(tile_callback_bridge.tile_is_available)
+                    except (RuntimeError, TypeError):
+                        pass
+                tile_callback_bridge.deleteLater()
+                self.tile_callback_bridge = None
+            else:
+                pass
+
+            for worker in self.workers:
+                worker.stop()
 
         all_stopped: bool = True
         for worker in self.workers:
@@ -410,6 +440,14 @@ class Tiles(BaseTiles):
                 pass
             else:
                 all_stopped = False
+
+        if all_stopped:
+            for worker in self.workers:
+                worker.deleteLater()
+            self.workers.clear()
+            self._shutdown_complete = True
+        else:
+            pass
 
         return all_stopped
 
@@ -424,11 +462,14 @@ class Tiles(BaseTiles):
         do this since we can't peek into a queue to see what's there.
         """
 
-        tile_key = (level, x, y)
-        if tile_key not in self.queued_requests:
-            # add tile request to the server request queue
-            self.request_queue.put(tile_key)
-            self.queued_requests[tile_key] = True
+        if self._shutdown:
+            return
+        else:
+            tile_key = (level, x, y)
+            if tile_key not in self.queued_requests:
+                # add tile request to the server request queue
+                self.request_queue.put(tile_key)
+                self.queued_requests[tile_key] = True
 
     def tile_on_disk(self, level: int, x: float, y: float):
         """
@@ -456,6 +497,11 @@ class Tiles(BaseTiles):
         image_data   tile image data
         error   True if image is 'error' image, don't cache in that case
         """
+        if self._shutdown:
+            return
+        else:
+            pass
+
         tile_key: tuple[int, float, float] = (level, x, y)
         image: QPixmap
 

@@ -9,5 +9,4 @@ from VeraGridEngine.Templates.ProceduralLogicCatalog.procedural_logic_catalog im
     ProceduralBlockParameterSpec,
     ProceduralBlockTemplateDescriptor,
     build_procedural_block_catalog_template,
-    get_procedural_block_template_descriptors,
 )

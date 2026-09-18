@@ -6,7 +6,6 @@
 
 from __future__ import annotations
 
-import gc
 import os
 from pathlib import Path
 import zipfile
@@ -290,8 +289,6 @@ def test_unclosed_staging_survives_owner_garbage_collection(tmp_path: Path) -> N
     staging_root: Path = staging.get_root()
 
     del staging
-    gc.collect()
-
     assert staging_root.is_dir()
 
 

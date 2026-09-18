@@ -20,6 +20,7 @@ from VeraGrid.Gui.Diagrams.generic_graphics import ACTIVE, DEACTIVATED
 from VeraGrid.Gui.Diagrams.generic_graphics import GenericDiagramWidget
 from VeraGrid.Gui.gui_functions import add_menu_entry, translate_context_menu_text
 from VeraGrid.Gui.DeviceEditors.device_editor_factory import build_device_editor_dialog
+from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
 from VeraGrid.Gui.messages import error_msg
 from VeraGrid.Gui.messages import yes_no_question
 
@@ -659,7 +660,7 @@ class MapLineContainer(GenericDiagramWidget, QGraphicsItemGroup):
         :return: ``True`` when an editor was opened.
         """
         dialog = build_device_editor_dialog(api_object=self.api_object, circuit=self.editor.circuit)
-        dialog.exec()
+        exec_dialog_safely(dialog=dialog)
         return True
 
     def call_editor(self) -> None:

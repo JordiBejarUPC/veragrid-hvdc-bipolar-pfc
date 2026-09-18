@@ -133,6 +133,84 @@ class FmuVariableDescription:
         self.dimensions: tuple[FmiThreeVariableDimension, ...] = tuple(dimensions)
 
 
+class FmiOneCoSimulationCapabilities:
+    """Store FMI 1 Co-Simulation identity and capability values.
+
+    :param needs_execution_tool: Whether the declaration requires its original tool.
+    :param can_handle_variable_communication_step_size: Whether step sizes may differ.
+    :param can_handle_events: Whether the slave can handle events internally.
+    :param can_reject_steps: Whether ``fmiDoStep`` may reject a step.
+    :param can_interpolate_inputs: Whether input derivatives can be used.
+    :param max_output_derivative_order: Maximum output derivative order.
+    :param can_run_asynchronuously: Whether execution may complete asynchronously.
+    :param can_signal_events: Whether the slave can signal events.
+    :param can_be_instantiated_only_once_per_process: Process-local instance limit.
+    :param can_not_use_memory_management_functions: Callback allocator restriction.
+    """
+
+    __slots__ = (
+        "needs_execution_tool",
+        "can_handle_variable_communication_step_size",
+        "can_handle_events",
+        "can_reject_steps",
+        "can_interpolate_inputs",
+        "max_output_derivative_order",
+        "can_run_asynchronuously",
+        "can_signal_events",
+        "can_be_instantiated_only_once_per_process",
+        "can_not_use_memory_management_functions",
+    )
+
+    def __init__(
+        self,
+        needs_execution_tool: bool,
+        can_handle_variable_communication_step_size: bool,
+        can_handle_events: bool,
+        can_reject_steps: bool,
+        can_interpolate_inputs: bool,
+        max_output_derivative_order: int,
+        can_run_asynchronuously: bool,
+        can_signal_events: bool,
+        can_be_instantiated_only_once_per_process: bool,
+        can_not_use_memory_management_functions: bool,
+    ) -> None:
+        """Store the validated FMI 1 capability declaration.
+
+        :param needs_execution_tool: Whether an external tool is required.
+        :param can_handle_variable_communication_step_size: Variable-step support.
+        :param can_handle_events: Internal event-handling support.
+        :param can_reject_steps: Step-rejection support.
+        :param can_interpolate_inputs: Input-interpolation support.
+        :param max_output_derivative_order: Maximum output derivative order.
+        :param can_run_asynchronuously: Asynchronous-execution support.
+        :param can_signal_events: Event-signalling support.
+        :param can_be_instantiated_only_once_per_process: Single-instance limit.
+        :param can_not_use_memory_management_functions: Callback allocator restriction.
+        :return: None.
+        """
+
+        if 0 <= max_output_derivative_order <= 4294967295:
+            pass
+        else:
+            raise ValueError("FMI 1 maximum output derivative order must fit UInt32")
+        self.needs_execution_tool: bool = needs_execution_tool
+        self.can_handle_variable_communication_step_size: bool = (
+            can_handle_variable_communication_step_size
+        )
+        self.can_handle_events: bool = can_handle_events
+        self.can_reject_steps: bool = can_reject_steps
+        self.can_interpolate_inputs: bool = can_interpolate_inputs
+        self.max_output_derivative_order: int = max_output_derivative_order
+        self.can_run_asynchronuously: bool = can_run_asynchronuously
+        self.can_signal_events: bool = can_signal_events
+        self.can_be_instantiated_only_once_per_process: bool = (
+            can_be_instantiated_only_once_per_process
+        )
+        self.can_not_use_memory_management_functions: bool = (
+            can_not_use_memory_management_functions
+        )
+
+
 class FmiThreeCoSimulationCapabilities:
     """Store FMI 3 Co-Simulation capabilities that control host lifecycle.
 
@@ -285,6 +363,7 @@ class FmuModelDescription:
     :param model_name: Model name declared in the FMU.
     :param guid: FMI 1 or FMI 2 GUID; FMI 3 does not declare this attribute.
     :param variable_naming_convention: FMI naming convention.
+    :param number_of_continuous_states: Validated continuous-state cardinality.
     :param number_of_event_indicators: Number of declared event indicators.
     :param interface_modes: Interfaces declared by the FMU.
     :param model_identifiers: Mapping from declared interface to model identifier.
@@ -293,6 +372,8 @@ class FmuModelDescription:
     :param fmi_version_family: Canonical FMI version family.
     :param inspection_receipt: Receipt identifying the inspected source bytes.
     :param instantiation_token: Required FMI 3 model-instantiation identity.
+    :param fmi_one_co_simulation_capabilities: FMI 1 Co-Simulation identity and
+        capabilities when that interface is declared.
     :param fmi_three_co_simulation_capabilities: Lifecycle-relevant FMI 3
         Co-Simulation capabilities when that interface is declared.
     :param fmi_three_model_exchange_capabilities: Lifecycle-relevant FMI 3
@@ -307,12 +388,14 @@ class FmuModelDescription:
         "model_name",
         "guid",
         "variable_naming_convention",
+        "number_of_continuous_states",
         "number_of_event_indicators",
         "interface_modes",
         "model_identifiers",
         "platforms",
         "variables",
         "instantiation_token",
+        "fmi_one_co_simulation_capabilities",
         "fmi_three_co_simulation_capabilities",
         "fmi_three_model_exchange_capabilities",
     )
@@ -332,6 +415,8 @@ class FmuModelDescription:
         fmi_version_family: FmiVersion | None = None,
         inspection_receipt: FmuInspectionReceipt | None = None,
         instantiation_token: str | None = None,
+        number_of_continuous_states: int | None = None,
+        fmi_one_co_simulation_capabilities: FmiOneCoSimulationCapabilities | None = None,
         fmi_three_co_simulation_capabilities: FmiThreeCoSimulationCapabilities | None = None,
         fmi_three_model_exchange_capabilities: FmiThreeModelExchangeCapabilities | None = None,
     ) -> None:
@@ -342,6 +427,8 @@ class FmuModelDescription:
         :param model_name: Model name declared by the FMU.
         :param guid: FMI 1 or FMI 2 GUID.
         :param variable_naming_convention: FMI variable naming convention.
+        :param number_of_continuous_states: Explicit state cardinality, or
+            ``None`` to derive it from derivative metadata for FMI 2/3.
         :param number_of_event_indicators: Number of declared event indicators.
         :param interface_modes: Interfaces declared by the FMU.
         :param model_identifiers: Model identifier for each declared interface.
@@ -350,6 +437,8 @@ class FmuModelDescription:
         :param fmi_version_family: Canonical FMI version family.
         :param inspection_receipt: Content-bound archive inspection receipt.
         :param instantiation_token: FMI 3 instantiation token.
+        :param fmi_one_co_simulation_capabilities: FMI 1 Co-Simulation
+            capabilities, or ``None`` for FMI 1 ME and other families.
         :param fmi_three_co_simulation_capabilities: FMI 3 Co-Simulation
             capabilities, or ``None`` when that interface is not declared.
         :param fmi_three_model_exchange_capabilities: FMI 3 Model Exchange
@@ -387,6 +476,23 @@ class FmuModelDescription:
             else:
                 raise ValueError("FMI 1 and FMI 2 metadata require a GUID")
         self.variable_naming_convention: str | None = variable_naming_convention
+        if number_of_continuous_states is None:
+            derived_state_count: int = 0
+            declared_variable: FmuVariableDescription
+            for declared_variable in variables:
+                if (
+                    declared_variable.derivative_index is not None
+                    or declared_variable.state_value_reference is not None
+                ):
+                    derived_state_count += 1
+                else:
+                    pass
+            self.number_of_continuous_states: int = derived_state_count
+        else:
+            if 0 <= number_of_continuous_states <= 4294967295:
+                self.number_of_continuous_states = number_of_continuous_states
+            else:
+                raise ValueError("FMI continuous-state count must fit UInt32")
         self.number_of_event_indicators: int = number_of_event_indicators
         self.interface_modes: tuple[FmuInterfaceMode, ...] = interface_modes
         self.model_identifiers: dict[FmuInterfaceMode, str] = model_identifiers
@@ -409,6 +515,31 @@ class FmuModelDescription:
         self.fmi_three_model_exchange_capabilities: (
             FmiThreeModelExchangeCapabilities | None
         ) = fmi_three_model_exchange_capabilities
+        self.fmi_one_co_simulation_capabilities: (
+            FmiOneCoSimulationCapabilities | None
+        ) = fmi_one_co_simulation_capabilities
+        if self.fmi_version_family == FmiVersion.FMI_1_0:
+            if FmuInterfaceMode.CO_SIMULATION in self.interface_modes:
+                if self.fmi_one_co_simulation_capabilities is not None:
+                    pass
+                else:
+                    raise ValueError(
+                        "FMI 1 Co-Simulation metadata requires its capability declaration"
+                    )
+            else:
+                if self.fmi_one_co_simulation_capabilities is None:
+                    pass
+                else:
+                    raise ValueError(
+                        "FMI 1 Co-Simulation capabilities require that interface"
+                    )
+        else:
+            if self.fmi_one_co_simulation_capabilities is None:
+                pass
+            else:
+                raise ValueError(
+                    "Only FMI 1 may declare FMI 1 Co-Simulation capabilities"
+                )
         if self.fmi_version_family == FmiVersion.FMI_3_0:
             if instantiation_token is not None and len(instantiation_token.strip()) > 0:
                 self.instantiation_token: str | None = instantiation_token

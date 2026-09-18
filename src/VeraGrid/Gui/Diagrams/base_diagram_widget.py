@@ -525,7 +525,7 @@ class BaseDiagramWidget(QSplitter):
             )
 
             dlg.setModal(True)
-            dlg.exec()
+            exec_dialog_safely(dialog=dlg)
 
             if dlg.is_accepted:
                 for device in extended_lst:

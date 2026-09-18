@@ -4,6 +4,9 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from __future__ import annotations
+
+import shiboken6
+
 import numpy as np
 from enum import Enum
 from typing import Callable, Dict, List, Union, Any, Tuple, TYPE_CHECKING, Set, Sequence
@@ -19,6 +22,7 @@ from VeraGridEngine.Devices.Branches.line_locations import LineLocations
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.enumerations import SimulationTypes, WindingType, WaveformSequenceType, V_I_CurveSequenceType
 from VeraGrid.Gui.font_config import MENU_FONT_SIZE
+from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
 
 if TYPE_CHECKING:
     from VeraGrid.Gui.object_model import ObjectsModel
@@ -1736,9 +1740,13 @@ def dispose_optional_matplotlib_canvas(canvas: Any, figure: Any) -> None:
     """
     if canvas is None:
         pass
-    else:
+    elif isinstance(canvas, QtWidgets.QWidget) and shiboken6.isValid(canvas):
         canvas._draw_pending = False
         canvas.close()
+        canvas.setParent(None)
+        canvas.deleteLater()
+    else:
+        pass
 
     if figure is None:
         pass
@@ -2449,7 +2457,7 @@ class SequenceDelegate(QtWidgets.QStyledItemDelegate):
             current = index.model().data(index, QtCore.Qt.ItemDataRole.EditRole)
             if current is not None:
                 dialog.set_points(current)
-            if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+            if exec_dialog_safely(dialog=dialog) == QtWidgets.QDialog.DialogCode.Accepted:
                 model.setData(index, dialog.get_points())
             return True
         return False
@@ -2488,7 +2496,7 @@ class ZmatrixDelegate(QtWidgets.QStyledItemDelegate):
             if current is not None:
                 x_pts, y_pts, z_mat = current
                 dialog.set_data(x_pts, y_pts, z_mat)
-            if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+            if exec_dialog_safely(dialog=dialog) == QtWidgets.QDialog.DialogCode.Accepted:
                 model.setData(index, dialog.get_data())
             return True
         return False

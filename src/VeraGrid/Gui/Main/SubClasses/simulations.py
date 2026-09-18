@@ -22,7 +22,7 @@ from VeraGrid.Gui.SigmaAnalysis.sigma_analysis_dialogue import SigmaAnalysisGUI
 from VeraGrid.Gui.ProceduralGrid.procedural_grid import ProceduralGridWindow
 from VeraGrid.Gui.ProceduralGrid.map_warning import MapWarningDialog
 from VeraGrid.Gui.CandidateInvestments.candidate_investments import CandidateInvestmentsWindow
-from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, is_dialog_available
+from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, exec_dialog_safely, is_dialog_available
 from VeraGrid.Session.session import GcThread
 from VeraGrid.Session.server_driver import RemoteJobDriver
 
@@ -1442,7 +1442,7 @@ class SimulationsMain(TimeEventsMain):
                         dlg = LogsDialogue(name=self.tr("RMS pre simulation check"),
                                            logger=logger)
                         dlg.setModal(True)
-                        dlg.exec()
+                        exec_dialog_safely(dialog=dlg)
                         return
                     else:
                         self.run_rms()
@@ -1682,23 +1682,25 @@ class SimulationsMain(TimeEventsMain):
 
         _, results = self.session.power_flow_3ph
 
-        if results is not None:
-            self.ui.progress_label.setText('Colouring power flow results in the grid...')
-            self.remove_simulation(SimulationTypes.PowerFlow3ph_run)
-            self.update_available_results()
-            self.colour_diagrams()
+        self.remove_simulation(SimulationTypes.PowerFlow3ph_run)
 
-            if results.converged:
-                self.show_info_toast(self.tr("Power flow 3ph converged :)"))
+        try:
+            if results is not None:
+                self.ui.progress_label.setText('Colouring power flow results in the grid...')
+                self.update_available_results()
+                self.colour_diagrams()
+
+                if results.converged:
+                    self.show_info_toast(self.tr("Power flow 3ph converged :)"))
+                else:
+                    self.show_warning_toast(self.tr("Power flow 3ph not converged :/"))
+
             else:
-                self.show_warning_toast(self.tr("Power flow 3ph not converged :/"))
-
-        else:
-            warning_msg(self.tr('There are no power flow results.\nIs there any slack bus or generator?'),
-                        self.tr('Power flow'))
-
-        if not self.session.is_anything_running():
-            self.UNLOCK()
+                warning_msg(self.tr('There are no power flow results.\nIs there any slack bus or generator?'),
+                            self.tr('Power flow'))
+        finally:
+            if not self.session.is_anything_running():
+                self.UNLOCK()
 
     def run_power_flow_time_series_3ph(self):
         """
@@ -1749,18 +1751,18 @@ class SimulationsMain(TimeEventsMain):
         """
         _, results = self.session.power_flow_3ph_ts
 
-        if results is not None:
-            results.expand_clustered_results()
+        self.remove_simulation(SimulationTypes.PowerFlowTimeSeries3ph_run)
 
-            self.remove_simulation(SimulationTypes.PowerFlowTimeSeries3ph_run)
-
-            self.update_available_results()
-            self.colour_diagrams()
-        else:
-            self.show_warning_toast(self.tr('No results for the three-phase time series simulation.'))
-
-        if not self.session.is_anything_running():
-            self.UNLOCK()
+        try:
+            if results is not None:
+                results.expand_clustered_results()
+                self.update_available_results()
+                self.colour_diagrams()
+            else:
+                self.show_warning_toast(self.tr('No results for the three-phase time series simulation.'))
+        finally:
+            if not self.session.is_anything_running():
+                self.UNLOCK()
 
     def get_se_options(self) -> sim.StateEstimationOptions:
         """
@@ -1915,21 +1917,42 @@ class SimulationsMain(TimeEventsMain):
         Returns:
 
         """
-        # update the results in the circuit structures
-        _, results = self.session.short_circuit
+        # Read the Qt worker first because it carries the actual exception log
+        # when the driver failed before publishing results into the session.
+        sender: QtCore.QObject | None = self.sender()
+        worker_failed: bool = False
+        error_text: str = self.tr('The short-circuit worker finished without results.')
+        results: sim.ShortCircuitResults | None
 
-        if results is not None:
+        if isinstance(sender, GcThread):
+            results = sender.driver.results
+            worker_failed = sender.has_failed()
 
-            self.ui.progress_label.setText('Colouring short circuit results in the grid...')
-            self.remove_simulation(SimulationTypes.ShortCircuit_run)
-            self.update_available_results()
-            self.colour_diagrams()
-
+            if len(sender.logger.entries) > 0:
+                error_text = sender.logger.entries[-1].msg
+            else:
+                if len(sender.driver.logger.entries) > 0:
+                    error_text = sender.driver.logger.entries[-1].msg
+                else:
+                    pass
         else:
-            error_msg(self.tr('Something went wrong, There are no power short circuit results.'))
+            # Direct calls, tests and older code paths still retrieve the
+            # results from the session as before.
+            _, results = self.session.short_circuit
 
-        if not self.session.is_anything_running():
-            self.UNLOCK()
+        self.remove_simulation(SimulationTypes.ShortCircuit_run)
+
+        try:
+            if results is not None and not worker_failed:
+                self.ui.progress_label.setText('Colouring short circuit results in the grid...')
+                self.update_available_results()
+                self.colour_diagrams()
+
+            else:
+                error_msg(self.tr('Short circuit failed:\n') + error_text)
+        finally:
+            if not self.session.is_anything_running():
+                self.UNLOCK()
 
     def get_linear_options(self) -> sim.LinearAnalysisOptions:
         """
@@ -3737,7 +3760,7 @@ class SimulationsMain(TimeEventsMain):
 
     def post_clustering(self):
         """
-        Action performed after the short circuit.
+        Action performed after clustering.
         Returns:
 
         """
@@ -3749,7 +3772,7 @@ class SimulationsMain(TimeEventsMain):
 
             self.update_available_results()
         else:
-            self.show_error_toast(self.tr('Something went wrong, There are no power short circuit results.'))
+            self.show_error_toast(self.tr('Something went wrong, there are no clustering results.'))
 
         if not self.session.is_anything_running():
             self.UNLOCK()
@@ -4376,7 +4399,7 @@ class SimulationsMain(TimeEventsMain):
                     dlg = LogsDialogue(name=self.tr("Small-signal stability RMS pre simulation check"),
                                        logger=logger)
                     dlg.setModal(True)
-                    dlg.exec()
+                    exec_dialog_safely(dialog=dlg)
                     return
                 else:
 
@@ -4462,7 +4485,7 @@ class SimulationsMain(TimeEventsMain):
                     dlg = LogsDialogue(name=self.tr("Small-signal stability EMT pre simulation check"),
                                        logger=logger)
                     dlg.setModal(True)
-                    dlg.exec()
+                    exec_dialog_safely(dialog=dlg)
                     return
                 else:
 
@@ -4572,11 +4595,11 @@ class SimulationsMain(TimeEventsMain):
         current_diagram = self.get_selected_diagram_widget()
         if current_diagram is None:
             self.map_warning = MapWarningDialog(parent=self)
-            self.map_warning.exec()
+            exec_dialog_safely(dialog=self.map_warning)
             return
 
         self.candidate_investments_window = CandidateInvestmentsWindow(app=self)
-        self.candidate_investments_window.exec()
+        exec_dialog_safely(dialog=self.candidate_investments_window)
 
     def procedural_grid_expansion(self):
         """
@@ -4590,14 +4613,14 @@ class SimulationsMain(TimeEventsMain):
         if current_diagram is None:  # Before it was "if not isinstance(current_diagram, MapWidget):" but it did not work
             map_warning: MapWarningDialog = MapWarningDialog(parent=self)
             try:
-                map_warning.exec()
+                exec_dialog_safely(dialog=map_warning)
             finally:
                 delete_dialog_safely(dialog=map_warning)
             return
 
         procedural_grid_window: ProceduralGridWindow = ProceduralGridWindow(app=self)
         try:
-            procedural_grid_window.exec()
+            exec_dialog_safely(dialog=procedural_grid_window)
         finally:
             delete_dialog_safely(dialog=procedural_grid_window)
 
