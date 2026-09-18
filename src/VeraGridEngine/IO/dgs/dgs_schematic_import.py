@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
+import math
 from typing import Dict, List, Tuple
 
 import VeraGridEngine.Devices as dev
@@ -27,6 +28,8 @@ DGS_SUBSTATION_HEIGHT_SCALE: float = 90.0
 DGS_POLYLINE_MERGE_TOLERANCE: float = 1e-6
 DGS_BRANCH_SYMBOL_DEFAULT_SIZE: float = 40.0
 DGS_CHILD_Y_STRETCH: float = 1.82
+DGS_ARRANGEMENT_MIN_SCALE: float = 0.2
+DGS_ARRANGEMENT_MAX_SCALE: float = 2.0
 
 
 def normalize_dgs_ref_id(raw_value: str | None) -> str:
@@ -210,6 +213,46 @@ def orient_route_points_for_owners(route_points: List[Tuple[float, float]],
             return list(reversed(route_points))
         else:
             return list(route_points)
+
+
+def extend_route_points_to_owner_locations(route_points: List[Tuple[float, float]],
+                                           from_location: GraphicLocation | None,
+                                           to_location: GraphicLocation | None) -> List[Tuple[float, float]]:
+    """Extend a source route to endpoint owners omitted by a reduced DGS view.
+
+    PowerFactory regional diagrams may terminate an external branch at the
+    displayed busbar even though its electrical cubicle belongs to an omitted
+    internal connectivity node.  Once the detailed substation arrangement has
+    been expanded into the VeraGrid diagram, this helper adds the short lead
+    needed to reach the real endpoint owner.
+
+    :param route_points: Imported and endpoint-oriented route.
+    :param from_location: From-owner location, when visible.
+    :param to_location: To-owner location, when visible.
+    :return: Route whose first and last points reach their real owners.
+    """
+    extended_points: List[Tuple[float, float]] = list(route_points)
+
+    if len(extended_points) == 0:
+        return extended_points
+
+    if from_location is not None and not is_point_inside_location(extended_points[0], from_location):
+        from_center: Tuple[float, float] = get_location_center(from_location)
+        append_points: List[Tuple[float, float]] = [from_center]
+        first_point: Tuple[float, float] = extended_points[0]
+        if abs(from_center[0] - first_point[0]) > 1e-9 and abs(from_center[1] - first_point[1]) > 1e-9:
+            append_points.append((first_point[0], from_center[1]))
+        append_points.extend(extended_points)
+        extended_points = append_points
+
+    if to_location is not None and not is_point_inside_location(extended_points[-1], to_location):
+        to_center: Tuple[float, float] = get_location_center(to_location)
+        last_point: Tuple[float, float] = extended_points[-1]
+        if abs(to_center[0] - last_point[0]) > 1e-9 and abs(to_center[1] - last_point[1]) > 1e-9:
+            extended_points.append((last_point[0], to_center[1]))
+        extended_points.append(to_center)
+
+    return extended_points
 
 
 def append_route_point_if_new(points: List[Tuple[float, float]], point: Tuple[float, float]) -> None:
@@ -590,7 +633,8 @@ def set_imported_branch_route_and_attachments(diagram: SchematicDiagram,
                                               branch: ALL_DEV_TYPES,
                                               route_points: List[Tuple[float, float]],
                                               graphic: IntGrf | None = None,
-                                              enforce_orthogonal: bool = False) -> None:
+                                              enforce_orthogonal: bool = False,
+                                              branch_location_override: GraphicLocation | None = None) -> None:
     """
     Persist one imported branch route together with endpoint boundary anchors.
 
@@ -599,6 +643,7 @@ def set_imported_branch_route_and_attachments(diagram: SchematicDiagram,
     :param route_points: Imported route points.
     :param graphic: Optional DGS graphical object for inline symbol geometry.
     :param enforce_orthogonal: Whether imported diagonal segments must be converted to Manhattan routes.
+    :param branch_location_override: Optional already-transformed inline-symbol location.
     :return: ``None``.
     """
     if len(route_points) < 2:
@@ -614,7 +659,10 @@ def set_imported_branch_route_and_attachments(diagram: SchematicDiagram,
     from_owner, to_owner = resolve_branch_owner_devices_for_diagram(branch=branch, diagram=diagram)
     trimmed_points: List[Tuple[float, float]] = list(route_points)
 
-    if graphic is None or not should_store_branch_symbol_geometry(branch):
+    if branch_location_override is not None:
+        branch_location = branch_location_override
+        protected_points = [get_location_center(branch_location)]
+    elif graphic is None or not should_store_branch_symbol_geometry(branch):
         branch_location = GraphicLocation(api_object=branch)
         protected_points: List[Tuple[float, float]] = list()
     else:
@@ -662,6 +710,9 @@ def set_imported_branch_route_and_attachments(diagram: SchematicDiagram,
         trimmed_points = orient_route_points_for_owners(route_points=trimmed_points,
                                                         from_location=from_location,
                                                         to_location=to_location)
+        trimmed_points = extend_route_points_to_owner_locations(route_points=trimmed_points,
+                                                                from_location=from_location,
+                                                                to_location=to_location)
     elif graphic is None:
         trimmed_points = trimmed_points
     else:
@@ -1639,6 +1690,329 @@ def build_elmterm_by_id(dgs_grid: DgsCircuit) -> Dict[str, ElmTerm]:
     return terminals_by_id
 
 
+def get_graphic_scene_center(graphic: IntGrf) -> Tuple[float, float]:
+    """Return one DGS graphic center in VeraGrid scene coordinates."""
+    return transform_dgs_coordinate_pair(graphic.rCenterX, graphic.rCenterY)
+
+
+def build_arrangement_similarity_transform(source_graphics_by_object_id: Dict[str, IntGrf],
+                                           target_graphics_by_object_id: Dict[str, IntGrf]) -> Tuple[float, float, float,
+                                                                                                   float, float] | None:
+    """Fit a stable similarity transform between a substation and grid view.
+
+    Shared busbars are the authoritative anchors.  Two anchors recover scale,
+    rotation and translation; a single anchor falls back to the relative symbol
+    size and translation.  Scale limits keep unusually small overview symbols
+    usable without changing the arrangement topology.
+
+    :return: ``scale, cosine, sine, translate_x, translate_y`` or ``None``.
+    """
+    shared_object_ids: List[str] = sorted(set(source_graphics_by_object_id).intersection(target_graphics_by_object_id))
+    if len(shared_object_ids) == 0:
+        return None
+
+    source_anchor_id: str = shared_object_ids[0]
+    target_anchor_id: str = source_anchor_id
+    source_anchor: Tuple[float, float] = get_graphic_scene_center(source_graphics_by_object_id[source_anchor_id])
+    target_anchor: Tuple[float, float] = get_graphic_scene_center(target_graphics_by_object_id[target_anchor_id])
+    scale_value: float
+    cosine_value: float = 1.0
+    sine_value: float = 0.0
+
+    if len(shared_object_ids) >= 2:
+        best_pair: Tuple[str, str] | None = None
+        best_distance_squared: float = -1.0
+        left_index: int = 0
+
+        while left_index < len(shared_object_ids) - 1:
+            right_index: int = left_index + 1
+            while right_index < len(shared_object_ids):
+                left_id: str = shared_object_ids[left_index]
+                right_id: str = shared_object_ids[right_index]
+                source_left: Tuple[float, float] = get_graphic_scene_center(source_graphics_by_object_id[left_id])
+                source_right: Tuple[float, float] = get_graphic_scene_center(source_graphics_by_object_id[right_id])
+                delta_x: float = source_right[0] - source_left[0]
+                delta_y: float = source_right[1] - source_left[1]
+                distance_squared: float = delta_x * delta_x + delta_y * delta_y
+                if distance_squared > best_distance_squared:
+                    best_distance_squared = distance_squared
+                    best_pair = (left_id, right_id)
+                right_index += 1
+            left_index += 1
+
+        if best_pair is not None and best_distance_squared > 1e-12:
+            source_anchor_id = best_pair[0]
+            target_anchor_id = best_pair[0]
+            source_anchor = get_graphic_scene_center(source_graphics_by_object_id[source_anchor_id])
+            target_anchor = get_graphic_scene_center(target_graphics_by_object_id[target_anchor_id])
+            source_second: Tuple[float, float] = get_graphic_scene_center(source_graphics_by_object_id[best_pair[1]])
+            target_second: Tuple[float, float] = get_graphic_scene_center(target_graphics_by_object_id[best_pair[1]])
+            source_delta_x: float = source_second[0] - source_anchor[0]
+            source_delta_y: float = source_second[1] - source_anchor[1]
+            target_delta_x: float = target_second[0] - target_anchor[0]
+            target_delta_y: float = target_second[1] - target_anchor[1]
+            source_distance: float = math.hypot(source_delta_x, source_delta_y)
+            target_distance: float = math.hypot(target_delta_x, target_delta_y)
+            scale_value = target_distance / source_distance
+            source_angle: float = math.atan2(source_delta_y, source_delta_x)
+            target_angle: float = math.atan2(target_delta_y, target_delta_x)
+            rotation_angle: float = target_angle - source_angle
+            cosine_value = math.cos(rotation_angle)
+            sine_value = math.sin(rotation_angle)
+        else:
+            scale_value = 1.0
+    else:
+        source_graphic: IntGrf = source_graphics_by_object_id[source_anchor_id]
+        target_graphic: IntGrf = target_graphics_by_object_id[target_anchor_id]
+        source_extent: float = max(abs(float(source_graphic.rSizeX)), abs(float(source_graphic.rSizeY)), 1e-9)
+        target_extent: float = max(abs(float(target_graphic.rSizeX)), abs(float(target_graphic.rSizeY)), 1e-9)
+        scale_value = target_extent / source_extent
+
+    scale_value = max(DGS_ARRANGEMENT_MIN_SCALE, min(DGS_ARRANGEMENT_MAX_SCALE, scale_value))
+    rotated_source_x: float = scale_value * (cosine_value * source_anchor[0] - sine_value * source_anchor[1])
+    rotated_source_y: float = scale_value * (sine_value * source_anchor[0] + cosine_value * source_anchor[1])
+    translate_x: float = target_anchor[0] - rotated_source_x
+    translate_y: float = target_anchor[1] - rotated_source_y
+    return scale_value, cosine_value, sine_value, translate_x, translate_y
+
+
+def transform_arrangement_point(point: Tuple[float, float],
+                                transform: Tuple[float, float, float, float, float]) -> Tuple[float, float]:
+    """Apply a substation-to-grid similarity transform to one scene point."""
+    scale_value, cosine_value, sine_value, translate_x, translate_y = transform
+    transformed_x: float = scale_value * (cosine_value * point[0] - sine_value * point[1]) + translate_x
+    transformed_y: float = scale_value * (sine_value * point[0] + cosine_value * point[1]) + translate_y
+    return transformed_x, transformed_y
+
+
+def get_transformed_graphic_location(api_object: ALL_DEV_TYPES,
+                                     graphic: IntGrf,
+                                     transform: Tuple[float, float, float, float, float],
+                                     width: float,
+                                     height: float,
+                                     minimum_width: float,
+                                     minimum_height: float,
+                                     draw_labels: bool = True) -> GraphicLocation:
+    """Build a location for one detailed object embedded in a grid diagram."""
+    scale_value: float = transform[0]
+    transformed_center: Tuple[float, float] = transform_arrangement_point(
+        point=get_graphic_scene_center(graphic),
+        transform=transform,
+    )
+    transformed_width: float = max(float(width) * scale_value, minimum_width)
+    transformed_height: float = max(float(height) * scale_value, minimum_height)
+    rotation_angle_degrees: float = math.degrees(math.atan2(transform[2], transform[1]))
+    return GraphicLocation(
+        api_object=api_object,
+        x=transformed_center[0] - transformed_width * 0.5,
+        y=transformed_center[1] - transformed_height * 0.5,
+        w=transformed_width,
+        h=transformed_height,
+        r=float(graphic.iRot) + rotation_angle_degrees,
+        draw_labels=draw_labels,
+    )
+
+
+def build_substation_detail_diagram(diagram_id: str,
+                                    substation: dev.Substation,
+                                    source_diagram: IntGrfnet | None,
+                                    graphics_by_diagram_id: Dict[str, List[IntGrf]],
+                                    connections_by_graphic_id: Dict[str, List[IntGrfcon]],
+                                    terminals_by_id: Dict[str, ElmTerm],
+                                    bus_by_term_id: Dict[str, dev.Bus],
+                                    api_objects_by_dgs_id: Dict[str, List[ALL_DEV_TYPES]]) -> SchematicDiagram:
+    """Materialize one complete PowerFactory substation arrangement."""
+    diagram_name: str = substation.name
+    if source_diagram is not None and source_diagram.loc_name != "":
+        diagram_name = source_diagram.loc_name
+    detailed_diagram = SchematicDiagram(idtag=diagram_id, name=diagram_name)
+    diagram_graphics: List[IntGrf] = graphics_by_diagram_id.get(diagram_id, list())
+
+    for graphic in diagram_graphics:
+        object_id: str = normalize_dgs_ref_id(graphic.pDataObj)
+        bus: dev.Bus | None = bus_by_term_id.get(object_id, None)
+        elmterm: ElmTerm | None = terminals_by_id.get(object_id, None)
+        if bus is None or elmterm is None:
+            continue
+        bus.graphic_type = get_bus_graphic_type_from_dgs_terminal(elmterm=elmterm)
+        width, height = get_bus_size_from_graphic(bus=bus, graphic=graphic)
+        x_pos, y_pos = transform_dgs_center_to_top_left(graphic.rCenterX, graphic.rCenterY, width, height)
+        x_pos, y_pos = stretch_child_diagram_position(x_pos, y_pos)
+        detailed_diagram.set_point(
+            device=bus,
+            location=GraphicLocation(
+                api_object=bus,
+                x=x_pos,
+                y=y_pos,
+                w=width,
+                h=height,
+                r=float(graphic.iRot),
+                draw_labels=not should_hide_imported_bus_label(bus),
+            ),
+        )
+
+    seen_device_ids: set[str] = set()
+    for graphic in diagram_graphics:
+        object_id = normalize_dgs_ref_id(graphic.pDataObj)
+        diagram_objects: List[ALL_DEV_TYPES] = api_objects_by_dgs_id.get(object_id, list())
+        if len(diagram_objects) == 0:
+            continue
+        diagram_api_object: ALL_DEV_TYPES = diagram_objects[0]
+        if diagram_api_object.idtag in seen_device_ids:
+            continue
+        if is_supported_injection_api_object(diagram_api_object):
+            set_imported_injection_layout(diagram=detailed_diagram,
+                                          api_object=diagram_api_object,
+                                          graphic=graphic)
+        elif isinstance(diagram_api_object, (dev.Transformer3W, dev.TransformerNW)):
+            width = max(float(graphic.rSizeX) * 18.0, 40.0)
+            height = max(float(graphic.rSizeY) * 18.0, 40.0)
+            x_pos, y_pos = transform_dgs_center_to_top_left(graphic.rCenterX, graphic.rCenterY, width, height)
+            x_pos, y_pos = stretch_child_diagram_position(x_pos, y_pos)
+            detailed_diagram.set_point(
+                device=diagram_api_object,
+                location=GraphicLocation(api_object=diagram_api_object,
+                                         x=x_pos,
+                                         y=y_pos,
+                                         w=width,
+                                         h=height,
+                                         r=float(graphic.iRot)),
+            )
+        else:
+            route_points: List[Tuple[float, float]] = build_dgs_branch_route_points_for_graphic(
+                graphic=graphic,
+                connections_by_graphic_id=connections_by_graphic_id,
+            )
+            route_points = stretch_child_route_points(route_points)
+            if len(route_points) >= 2:
+                set_imported_branch_route_and_attachments(diagram=detailed_diagram,
+                                                          branch=diagram_api_object,
+                                                          route_points=route_points,
+                                                          graphic=graphic,
+                                                          enforce_orthogonal=True)
+                branch_location: GraphicLocation | None = detailed_diagram.query_point(diagram_api_object)
+                if branch_location is not None:
+                    branch_location.draw_labels = not should_hide_imported_branch_label(diagram_api_object)
+        seen_device_ids.add(diagram_api_object.idtag)
+
+    return detailed_diagram
+
+
+def expand_substation_arrangements_into_grid_diagram(
+        diagram: SchematicDiagram,
+        diagram_id: str,
+        diagram_graphics: List[IntGrf],
+        child_diagram_id_by_substation_id: Dict[str, str],
+        substation_by_id: Dict[str, dev.Substation],
+        graphics_by_diagram_id: Dict[str, List[IntGrf]],
+        terminals_by_id: Dict[str, ElmTerm],
+        bus_by_term_id: Dict[str, dev.Bus],
+        api_objects_by_dgs_id: Dict[str, List[ALL_DEV_TYPES]]) -> None:
+    """Embed complete internal switchgear for substations reduced in a grid view."""
+    target_terminal_graphics_by_substation_id: Dict[str, Dict[str, IntGrf]] = dict()
+
+    for graphic in diagram_graphics:
+        object_id: str = normalize_dgs_ref_id(graphic.pDataObj)
+        if object_id in substation_by_id:
+            continue
+        elmterm: ElmTerm | None = terminals_by_id.get(object_id, None)
+        bus: dev.Bus | None = bus_by_term_id.get(object_id, None)
+        if elmterm is None or bus is None or bus.substation is None:
+            continue
+        substation_id: str = str(bus.substation.idtag)
+        target_terminal_graphics_by_substation_id.setdefault(substation_id, dict())[object_id] = graphic
+
+    for substation_id, target_graphics_by_object_id in target_terminal_graphics_by_substation_id.items():
+        detail_diagram_id: str = child_diagram_id_by_substation_id.get(substation_id, "")
+        if detail_diagram_id == "" or detail_diagram_id == diagram_id:
+            continue
+        source_graphics: List[IntGrf] = graphics_by_diagram_id.get(detail_diagram_id, list())
+        source_terminal_graphics_by_object_id: Dict[str, IntGrf] = dict()
+        for source_graphic in source_graphics:
+            source_object_id: str = normalize_dgs_ref_id(source_graphic.pDataObj)
+            source_bus: dev.Bus | None = bus_by_term_id.get(source_object_id, None)
+            if source_bus is not None and source_bus.substation is not None and str(source_bus.substation.idtag) == substation_id:
+                source_terminal_graphics_by_object_id[source_object_id] = source_graphic
+
+        transform = build_arrangement_similarity_transform(
+            source_graphics_by_object_id=source_terminal_graphics_by_object_id,
+            target_graphics_by_object_id=target_graphics_by_object_id,
+        )
+        if transform is None:
+            continue
+
+        # Buses must exist before switches so their real electrical endpoints
+        # can own the route attachments.
+        for object_id, source_graphic in source_terminal_graphics_by_object_id.items():
+            bus = bus_by_term_id[object_id]
+            if diagram.query_point(bus) is not None:
+                continue
+            elmterm = terminals_by_id[object_id]
+            bus.graphic_type = get_bus_graphic_type_from_dgs_terminal(elmterm=elmterm)
+            width, height = get_bus_size_from_graphic(bus=bus, graphic=source_graphic)
+            minimum_size: float = DGS_CONNECTIVITY_BUS_SCALE if bus.graphic_type == BusGraphicType.Connectivity else 40.0
+            diagram.set_point(
+                device=bus,
+                location=get_transformed_graphic_location(
+                    api_object=bus,
+                    graphic=source_graphic,
+                    transform=transform,
+                    width=width,
+                    height=height,
+                    minimum_width=minimum_size,
+                    minimum_height=minimum_size,
+                    draw_labels=not should_hide_imported_bus_label(bus),
+                ),
+            )
+
+        seen_switch_ids: set[str] = set()
+        for source_graphic in source_graphics:
+            source_object_id = normalize_dgs_ref_id(source_graphic.pDataObj)
+            diagram_objects: List[ALL_DEV_TYPES] = api_objects_by_dgs_id.get(source_object_id, list())
+            if len(diagram_objects) == 0 or not isinstance(diagram_objects[0], dev.Switch):
+                continue
+            switch: dev.Switch = diagram_objects[0]
+            if switch.idtag in seen_switch_ids:
+                continue
+            if switch.bus_from is None or switch.bus_to is None:
+                continue
+            if switch.bus_from.substation is None or switch.bus_to.substation is None:
+                continue
+            if str(switch.bus_from.substation.idtag) != substation_id or str(switch.bus_to.substation.idtag) != substation_id:
+                continue
+            switch_width, switch_height = get_branch_symbol_size(api_object=switch, graphic=source_graphic)
+            switch_location: GraphicLocation = get_transformed_graphic_location(
+                api_object=switch,
+                graphic=source_graphic,
+                transform=transform,
+                width=switch_width,
+                height=switch_height,
+                minimum_width=9.0,
+                minimum_height=9.0,
+                draw_labels=not should_hide_imported_branch_label(switch),
+            )
+            # Switch routing is rebuilt through the transformed symbol and the
+            # actual endpoint buses. The source connector points are only a
+            # fallback contract for the branch routine's minimum route length.
+            from_location: GraphicLocation | None = diagram.query_point(switch.bus_from)
+            to_location: GraphicLocation | None = diagram.query_point(switch.bus_to)
+            if from_location is None or to_location is None:
+                continue
+            route_points = build_symbol_axis_route_points(branch_location=switch_location,
+                                                          from_location=from_location,
+                                                          to_location=to_location)
+            if len(route_points) >= 2:
+                set_imported_branch_route_and_attachments(
+                    diagram=diagram,
+                    branch=switch,
+                    route_points=route_points,
+                    graphic=source_graphic,
+                    enforce_orthogonal=True,
+                    branch_location_override=switch_location,
+                )
+                seen_switch_ids.add(switch.idtag)
+
+
 def import_dgs_substations_and_schematic_diagrams(dgs_grid: DgsCircuit,
                                                   grid: dev.MultiCircuit,
                                                   bus_by_term_id: Dict[str, dev.Bus],
@@ -1741,14 +2115,6 @@ def import_dgs_substations_and_schematic_diagrams(dgs_grid: DgsCircuit,
         if diagram_id in static_diagram_ids:
             intgrfnet_by_id[diagram_id] = diagram_object
 
-    excluded_diagram_count: int = len(dgs_grid.intgrfnets) - len(intgrfnet_by_id)
-    if excluded_diagram_count > 0:
-        logger.add_info(
-            msg="DGS non-static schematics excluded",
-            value=excluded_diagram_count,
-            expected_value=len(dgs_grid.intgrfnets),
-        )
-
     for dgs_substation in dgs_grid.elmsubstats:
         substation_id: str = normalize_dgs_ref_id(dgs_substation.ID)
         direct_diagram_id: str = normalize_dgs_ref_id(dgs_substation.pDiagram)
@@ -1771,6 +2137,31 @@ def import_dgs_substations_and_schematic_diagrams(dgs_grid: DgsCircuit,
                                                             graphics_by_diagram_id=graphics_by_diagram_id,
                                                             substation_by_id=substation_by_id)
 
+    # Substation arrangements are deliberately materialized before every grid
+    # or site view. They are both user-facing diagrams and the authoritative
+    # geometry source used to expand reduced regional schematics below.
+    imported_substation_diagram_ids: set[str] = set()
+    ordered_substation_entries: List[Tuple[str, str]] = sorted(
+        child_diagram_id_by_substation_id.items(),
+        key=lambda entry: get_substation_id_sort_key(entry=entry, substation_by_id=substation_by_id),
+    )
+    for child_substation_id, child_diagram_id in ordered_substation_entries:
+        if child_diagram_id in imported_substation_diagram_ids:
+            continue
+        child_diagram: SchematicDiagram = build_substation_detail_diagram(
+            diagram_id=child_diagram_id,
+            substation=substation_by_id[child_substation_id],
+            source_diagram=intgrfnet_by_id.get(child_diagram_id, None),
+            graphics_by_diagram_id=graphics_by_diagram_id,
+            connections_by_graphic_id=connections_by_graphic_id,
+            terminals_by_id=terminals_by_id,
+            bus_by_term_id=bus_by_term_id,
+            api_objects_by_dgs_id=api_objects_by_dgs_id,
+        )
+        if len(child_diagram.data) > 0:
+            grid.add_diagram(child_diagram)
+            imported_substation_diagram_ids.add(child_diagram_id)
+
     if root_diagram_id != "":
         root_diagram_object: IntGrfnet | None = intgrfnet_by_id.get(root_diagram_id, None)
         root_diagram_name: str = "DGS root schematic"
@@ -1791,10 +2182,9 @@ def import_dgs_substations_and_schematic_diagrams(dgs_grid: DgsCircuit,
         for root_graphic in graphics_by_diagram_id.get(root_diagram_id, list()):
             object_id: str = normalize_dgs_ref_id(root_graphic.pDataObj)
             substation: dev.Substation | None = substation_by_id.get(object_id, None)
+            bus: dev.Bus | None = bus_by_term_id.get(object_id, None)
 
-            if substation is None:
-                substation = substation
-            else:
+            if substation is not None:
                 width: float
                 height: float
                 width, height = get_substation_size_from_graphic(root_graphic)
@@ -1821,6 +2211,25 @@ def import_dgs_substations_and_schematic_diagrams(dgs_grid: DgsCircuit,
                                                                 h=height,
                                                                  r=float(root_graphic.iRot),
                                                                  layout_metadata=location_metadata))
+            elif bus is not None:
+                elmterm: ElmTerm | None = terminals_by_id.get(object_id, None)
+                if elmterm is not None:
+                    bus.graphic_type = get_bus_graphic_type_from_dgs_terminal(elmterm=elmterm)
+                width, height = get_bus_size_from_graphic(bus=bus, graphic=root_graphic)
+                x_pos, y_pos = transform_dgs_center_to_top_left(root_graphic.rCenterX,
+                                                                root_graphic.rCenterY,
+                                                                width,
+                                                                height)
+                root_diagram.set_point(
+                    device=bus,
+                    location=GraphicLocation(api_object=bus,
+                                             x=x_pos,
+                                             y=y_pos,
+                                             w=width,
+                                             h=height,
+                                             r=float(root_graphic.iRot),
+                                             draw_labels=not should_hide_imported_bus_label(bus)),
+                )
 
         root_substation_group = root_diagram.query_by_type(DeviceType.SubstationDevice)
 
@@ -1828,6 +2237,18 @@ def import_dgs_substations_and_schematic_diagrams(dgs_grid: DgsCircuit,
             root_substation_group = root_substation_group
         else:
             separate_overlapping_locations(locations=list(root_substation_group.locations.values()))
+
+        expand_substation_arrangements_into_grid_diagram(
+            diagram=root_diagram,
+            diagram_id=root_diagram_id,
+            diagram_graphics=graphics_by_diagram_id.get(root_diagram_id, list()),
+            child_diagram_id_by_substation_id=child_diagram_id_by_substation_id,
+            substation_by_id=substation_by_id,
+            graphics_by_diagram_id=graphics_by_diagram_id,
+            terminals_by_id=terminals_by_id,
+            bus_by_term_id=bus_by_term_id,
+            api_objects_by_dgs_id=api_objects_by_dgs_id,
+        )
 
         # Once the grouped substations exist and have been de-overlapped, import the inter-zone branches.
         for root_graphic in graphics_by_diagram_id.get(root_diagram_id, list()):
@@ -1888,6 +2309,8 @@ def import_dgs_substations_and_schematic_diagrams(dgs_grid: DgsCircuit,
     for child_entry in sortable_child_entries:
         child_substation_id: str = child_entry[0]
         child_diagram_id: str = child_entry[1]
+        if child_diagram_id in imported_substation_diagram_ids:
+            continue
         child_diagram_object: IntGrfnet | None = intgrfnet_by_id.get(child_diagram_id, None)
         child_diagram_name: str = substation_by_id[child_substation_id].name
 
@@ -1998,6 +2421,12 @@ def import_dgs_substations_and_schematic_diagrams(dgs_grid: DgsCircuit,
                 x_pos, y_pos = transform_dgs_center_to_top_left(
                     graphic.rCenterX, graphic.rCenterY, width, height,
                 )
+                location_metadata: Dict[str, object] = {
+                    "collapsed_bus_idtags": list(bus_idtags_by_substation_id.get(object_id, list())),
+                }
+                child_diagram_id: str = child_diagram_id_by_substation_id.get(object_id, "")
+                if child_diagram_id != "":
+                    location_metadata["dgs_child_diagram_id"] = child_diagram_id
                 schematic.set_point(
                     device=substation,
                     location=GraphicLocation(
@@ -2007,6 +2436,7 @@ def import_dgs_substations_and_schematic_diagrams(dgs_grid: DgsCircuit,
                         w=width,
                         h=height,
                         r=float(graphic.iRot),
+                        layout_metadata=location_metadata,
                     ),
                 )
             elif bus is not None:
@@ -2029,6 +2459,18 @@ def import_dgs_substations_and_schematic_diagrams(dgs_grid: DgsCircuit,
                         draw_labels=not should_hide_imported_bus_label(bus),
                     ),
                 )
+
+        expand_substation_arrangements_into_grid_diagram(
+            diagram=schematic,
+            diagram_id=diagram_id,
+            diagram_graphics=diagram_graphics,
+            child_diagram_id_by_substation_id=child_diagram_id_by_substation_id,
+            substation_by_id=substation_by_id,
+            graphics_by_diagram_id=graphics_by_diagram_id,
+            terminals_by_id=terminals_by_id,
+            bus_by_term_id=bus_by_term_id,
+            api_objects_by_dgs_id=api_objects_by_dgs_id,
+        )
 
         seen_device_ids: set[str] = set()
         for graphic in diagram_graphics:
