@@ -1,8 +1,48 @@
 # FMI comparison
 
+The concise evidence views are:
+
+- [Interoperability status](INTEROPERABILITY_STATUS.md): the master inventory
+  of open-source and commercial test campaigns, including direction, evidence
+  currency, result and known limits.
+- [Official listing readiness](OFFICIAL_LISTING_READINESS.md): the current FMI
+  tools-list process and a separate, explicitly historical 3x3 cross-check gap
+  analysis.
+
+These views are indexes over the detailed recipes below. They do not replace
+the original manifests and receipts, and they do not claim official FMI
+certification or listing.
+
 This package owns reproducible FMI examples and interoperability evidence. It is
 kept under `trunk` because it is benchmark material, not part of the
 `VeraGridEngine` runtime API.
+
+## Standard electrical FMU examples (local preflight)
+
+The [win64 catalog](veragrid_standard_examples/published/win64/README.md)
+publishes three distinct existing VeraGrid RMS model families: GENSAL, TGOV1,
+and ESDC2A. Each has FMI 1/2/3 Co-Simulation and Model Exchange archives, for
+18 FMUs total. The catalog includes the exact input trajectories, raw FMPy
+reference CSVs, comparison options, MPL-2.0 and corresponding-source notices,
+per-file SHA-256 hashes, and a [manifest](veragrid_standard_examples/published/win64/manifest.json).
+The [typed generator](veragrid_standard_examples/generate_standard_examples.py)
+rebuilds the package from a clean checkout with explicit repository, Git,
+external work-directory, publication-root, expected-HEAD, and source-tree
+digest arguments. The final `published/win64` directory must be absent before
+rebuilding; compilation and all checks occur outside the checkout, followed by
+one verified, atomic catalog publication.
+
+All 18 cells passed local VeraGrid export and FMPy execution on the recorded
+Windows host. Their traces are compared pointwise on a 0.01 s grid against FMI
+2 of the same interface; CS/ME comparison retains the causal event phase, gates
+every non-boundary sample and each event against a pre/post ME envelope, and
+reports the raw initial CS visibility separately. This local preflight is
+separate from the later licensed Simulink replay of these exact FMUs;
+PowerFactory coverage of the new families remains `UNKNOWN`. Neither campaign
+is official FMI certification.
+The catalog is marked `NOT_FOR_EXTERNAL_DISTRIBUTION` until its corresponding
+source and artifact revision is remotely available; no remote publication is
+implied by this local build.
 
 Commercial first-order replays are maintained beside the open-source lanes.
 The [PowerFactory FMI 2/3 CS/ME recipe](powerfactory_first_order/README.md)
@@ -565,3 +605,16 @@ Simulink model, trace, receipt, and figure is generated in a caller-selected
 external directory. See `simulink_first_order/README.md` for the authenticated
 end-to-end procedure and the distinction between historical lineage and a
 fresh replay.
+## Standard electrical examples in licensed Simulink
+
+The [18-cell standard-example catalog and replay recipe](veragrid_standard_examples/SIMULINK_VALIDATION.md)
+extends the retained first-order commercial evidence with GENSAL, TGOV1 and
+ESDC2A. Its version/interface variants are distinct cells, not distinct model
+families. The published FMUs, `_in.csv`, `_ref.csv`, manifest, hash list,
+builder, runner, validator and plotter all live under
+`trunk/dynamics/fmi_comparison/veragrid_standard_examples`. Generated MATLAB
+models and execution evidence belong outside Git. The authenticated R2025b
+Update 1 replay passed 18/18 licensed cells, with a maximum pointwise wave
+error of 0.002880763429 against the 0.005 limit and 12 trajectory/error plots
+in both PNG and PDF. See the recipe for the exact acceptance and evidence
+boundary; this is not an official FMI certification claim.

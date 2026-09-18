@@ -25,6 +25,7 @@ from VeraGridEngine.IO.fmu.compiler import (
     _compiler_available,
     _close_owned_compiler_session,
     _create_compiler_session_tools,
+    _dependency_versions_match,
     _download_verified_archive,
     _expand_verified_archive,
     _host_toolchain_selection,
@@ -37,6 +38,45 @@ from VeraGridEngine.IO.fmu.compiler import (
     compile_fmu_shared_library,
     fmu_compiler_available,
 )
+
+
+def test_dependency_probe_accepts_approved_top_level_distribution() -> None:
+    """Accept the installed top-level distribution without pinning its closure.
+
+    :return: None.
+    """
+
+    assert _dependency_versions_match()
+
+
+def test_dependency_probe_rejects_missing_top_level_distribution() -> None:
+    """Fail closed when the requested top-level distribution is absent.
+
+    :return: None.
+    """
+
+    assert not _dependency_versions_match("veragrid-intentionally-missing-toolchain-distribution")
+
+
+def test_toolchain_index_rejects_content_drift(tmp_path: Path) -> None:
+    """Accept the host index and reject a package-local index with drift.
+
+    :param tmp_path: Isolated synthetic package directory from pytest.
+    :return: None.
+    """
+
+    # The installed host wheel must first match its reviewed platform digest.
+    reviewed_index_path: Path = _toolchain_index_path()
+    assert reviewed_index_path.is_file()
+
+    # A regular file in the correct package-relative location remains
+    # untrusted when its complete content digest differs.
+    synthetic_module_file: Path = tmp_path / "clang_tool_chain_bins" / "__init__.py"
+    synthetic_index_path: Path = synthetic_module_file.parent / "_impl" / "data" / "tool-index.json"
+    synthetic_index_path.parent.mkdir(parents=True)
+    synthetic_index_path.write_bytes(b"index content drift")
+    with pytest.raises(RuntimeError, match="index failed SHA-256 validation"):
+        _toolchain_index_path(platform.system().lower(), str(synthetic_module_file))
 
 
 def _write_complete_fmi_two_cs_stub(source_path: Path) -> None:

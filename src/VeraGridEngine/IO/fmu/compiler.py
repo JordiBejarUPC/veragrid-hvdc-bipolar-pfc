@@ -31,20 +31,53 @@ class FmuBinaryInterface(Enum):
     FMI_THREE_MODEL_EXCHANGE = "fmi_three_model_exchange"
 
 
-def _toolchain_index_path() -> Path:
-    """Return the immutable package-local Clang tool index.
+def _toolchain_index_path(system_name: str | None = None, module_file: str | None = None) -> Path:
+    """Return the authenticated package-local Clang tool index.
 
+    :param system_name: Optional lowercase operating-system name used by
+        focused tests; the current host is used when omitted.
+    :param module_file: Optional package module location used by focused tests;
+        the installed package location is used when omitted.
     :return: Absolute path to the reviewed ``clang-tool-chain-bins`` index.
     """
 
-    module_file: str | None = clang_tool_chain_bins.__file__
-    if module_file is not None:
-        index_path: Path = Path(module_file).parent / "_impl" / "data" / "tool-index.json"
+    # Resolve the existing package-owned index without accepting a symlinked
+    # replacement from outside the installed distribution.
+    selected_module_file: str | None
+    if module_file is None:
+        selected_module_file = clang_tool_chain_bins.__file__
+    else:
+        selected_module_file = module_file
+    if selected_module_file is not None:
+        index_path: Path = Path(selected_module_file).parent / "_impl" / "data" / "tool-index.json"
     else:
         raise RuntimeError("clang-tool-chain-bins does not expose a package location")
 
+    # The 0.4.6 Windows wheel contains a platform-specific aggregate index;
+    # Linux and macOS share the second reviewed index identity.
+    selected_system_name: str
+    expected_index_sha256: str
+    if system_name is None:
+        selected_system_name = platform.system().lower()
+    else:
+        selected_system_name = system_name
+    if selected_system_name == "windows":
+        expected_index_sha256 = "a05d3020ad5787c79f1377997401f5025eb9abbec529c578206a312f63e80c2d"
+    else:
+        if selected_system_name == "linux" or selected_system_name == "darwin":
+            expected_index_sha256 = "fd0e4f17094ae0687a3e562aace1bac9c99534de619619d8df947da71703907c"
+        else:
+            raise RuntimeError("FMI export compilation does not support this operating system")
+
+    # Authenticate the complete index before any package API can use its URLs,
+    # archive identities, or tool paths.
     if index_path.is_file() and not index_path.is_symlink():
-        return index_path.resolve()
+        with index_path.open("rb") as index_stream:
+            actual_index_sha256: str = hashlib.file_digest(index_stream, "sha256").hexdigest()
+        if actual_index_sha256 == expected_index_sha256:
+            return index_path.resolve()
+        else:
+            raise RuntimeError("The clang-tool-chain-bins package-local index failed SHA-256 validation")
     else:
         raise FileNotFoundError("The clang-tool-chain-bins package-local index is unavailable")
 
@@ -58,33 +91,24 @@ def _toolchain_cache_root() -> Path:
     return Path.home() / ".veragrid" / "fmi-toolchains" / "clang-tool-chain-bins-0.4.6" / "archives"
 
 
-def _dependency_versions_match() -> bool:
-    """Check the complete reviewed Python provisioning closure.
+def _dependency_versions_match(distribution_name: str = "clang-tool-chain") -> bool:
+    """Check that the approved top-level toolchain distribution is installed.
 
-    :return: ``True`` when every consumed package has its reviewed version.
+    The package installer owns the ``>=1.5.9`` constraint and its transitive
+    dependency closure. Compiler availability separately authenticates the
+    consumed package index and compiler archive.
+
+    :param distribution_name: Distribution queried by the focused positive
+        and negative tests.
+    :return: ``True`` when the requested distribution is installed.
     """
 
-    requirements: tuple[tuple[str, str], ...] = (
-        ("clang-tool-chain-bins", "0.4.6"),
-        ("fasteners", "0.20"),
-        ("json5", "0.15.0"),
-        ("zstandard", "0.25.0"),
-        ("pyzstd", "0.19.1"),
-        ("zccache", "1.13.22"),
-    )
-    versions_match: bool = True
-    requirement: tuple[str, str]
-    for requirement in requirements:
-        try:
-            installed_version: str = metadata.version(requirement[0])
-        except metadata.PackageNotFoundError:
-            versions_match = False
-        else:
-            if installed_version == requirement[1]:
-                pass
-            else:
-                versions_match = False
-    return versions_match
+    try:
+        installed_version: str = metadata.version(distribution_name)
+    except metadata.PackageNotFoundError:
+        return False
+    else:
+        return len(installed_version) > 0
 
 
 def _host_toolchain_selection(system_name: str, machine_name: str) -> tuple[str, str, str, str, str, str, str]:
