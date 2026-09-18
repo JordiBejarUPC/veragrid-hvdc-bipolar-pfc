@@ -2138,6 +2138,26 @@ class _PersistedBlockReader:
         else:
             raise TypeError("Persisted block field 'name' must be a string")
 
+    def read_model_family_name(self) -> str:
+        """Read the optional structurally equivalent model-family label.
+
+        Older persisted blocks predate model comparison and therefore omit
+        this field. They intentionally load with an empty label so the GUI can
+        generate a deterministic ``device_type_n`` name.
+
+        :return: Persisted family label, or an empty string for legacy data.
+        """
+        family_name_value: object = self.read_optional_value(
+            field_name="model_family_name",
+            default_value="",
+        )
+        if family_name_value is None:
+            return ""
+        elif isinstance(family_name_value, str):
+            return family_name_value
+        else:
+            raise TypeError("Persisted block field 'model_family_name' must be a string")
+
     def read_block_uid(self) -> int | None:
         """Read the stable block identifier or its allocation marker.
 
@@ -2577,7 +2597,8 @@ class Block:
                  api_obj_mapping: Dict[ParamPowerFlowReferenceType, Var | None] | None = None,
                  is_decomposable: bool = True,
                  name: str = "",
-                 uid: int | None = None):
+                 uid: int | None = None,
+                 model_family_name: str = ""):
         """
         This represents a group of equations or a group of blocks
 
@@ -2607,9 +2628,14 @@ class Block:
         :param is_decomposable: Whether the editor and compiler may expose the block's internal structure.
         :param name: Human-readable block name.
         :param uid: Stable block identifier, or ``None`` to allocate a new identifier.
+        :param model_family_name: Optional user-facing family shared by structurally equivalent root models.
         """
 
         self.name: str = name
+        # This semantic label identifies a complete model family without
+        # changing the names of the root block or any of its children. Empty
+        # values preserve the automatically generated comparator labels.
+        self.model_family_name = model_family_name
 
         self.uid: int = _new_uid() if uid is None else uid
 
@@ -2713,6 +2739,43 @@ class Block:
         # identity remains tied to the existing uid.
         self.name = name
 
+    @property
+    def model_family_name(self) -> str:
+        """Return the optional user-defined structural model-family label.
+
+        Historical ``.veragrid`` files may restore pickled ``Block`` objects
+        without calling the current constructor. Reading the instance storage
+        directly keeps those objects valid and supplies the same empty default
+        used by the declarative parser.
+
+        :return: Persisted family label or an empty string for legacy blocks.
+        """
+        # Current instances store the value behind the property. The second
+        # lookup also accepts files produced during the short-lived direct
+        # attribute representation, while the final empty default covers all
+        # older files that predate model-family labels entirely.
+        stored_value: object | None = self.__dict__.get("_model_family_name", None)
+        if stored_value is None:
+            stored_value = self.__dict__.get("model_family_name", "")
+        else:
+            pass
+        if isinstance(stored_value, str):
+            return stored_value
+        else:
+            return ""
+
+    @model_family_name.setter
+    def model_family_name(self, name: str) -> None:
+        """Store one model-family label without changing the block name.
+
+        :param name: Family label, with an empty string selecting automatic naming.
+        :return: None.
+        """
+        if isinstance(name, str):
+            self.__dict__["_model_family_name"] = name
+        else:
+            self.__dict__["_model_family_name"] = ""
+
     def to_dict(self) -> Dict[str, Any]:
         """
         Get dictionary representation of this block
@@ -2727,6 +2790,7 @@ class Block:
         validate_dynamic_model_contract(self)
         return {
             "name": self.name,
+            "model_family_name": self.model_family_name,
             "uid": self.uid,
 
             "state_vars": [_expr_to_dict(v) for v in self.state_vars],
@@ -2919,6 +2983,7 @@ class Block:
             external_mapping=_parse_external_mapping(reader),
             api_obj_mapping=_parse_api_object_mapping(reader),
             name=reader.read_block_name(),
+            model_family_name=reader.read_model_family_name(),
             uid=reader.read_block_uid(),
         )
 
@@ -3078,6 +3143,7 @@ class Block:
             memo[id(self)] = result
 
             result.name = copy.deepcopy(self.name, memo)
+            result.model_family_name = copy.deepcopy(self.model_family_name, memo)
             result.uid = copy.deepcopy(self.uid, memo)
             result.is_decomposable = copy.deepcopy(self.is_decomposable, memo)
             result.tpe_uid = copy.deepcopy(self.tpe_uid, memo)

@@ -87,29 +87,39 @@ def error_msg(text: str, title: str | None = None) -> int:
     return msg.exec()
 
 
-def yes_no_question(text: str, title: str | None = None) -> bool:
-    """
-    Question message
-    :param text:
-    :param title:
-    :return: True / False
+def yes_no_question(text: str,
+                    title: str | None = None,
+                    parent: QtWidgets.QWidget | None = None) -> bool:
+    """Ask a question using the standard affirmative and negative buttons.
+
+    The negative answer is selected by default so closing the dialogue cannot
+    accidentally confirm a destructive action.
+
+    :param text: Question displayed to the user.
+    :param title: Optional window title. The translated generic title is used
+        when no specific title is supplied.
+    :param parent: Optional widget that owns and positions the modal dialogue.
+    :return: ``True`` when the user selects the affirmative answer.
     """
     default_title: str = QCoreApplication.translate("messages", "Question")
     if title is None:
         window_title: str = default_title
     else:
         window_title = title
-    buttonReply = QtWidgets.QMessageBox.question(
-        None,
+
+    # Use one shared message-box structure so callers differ only in their
+    # translated title and question text.
+    button_reply: QtWidgets.QMessageBox.StandardButton = QtWidgets.QMessageBox.question(
+        parent,
         window_title,
         text,
         QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
         QtWidgets.QMessageBox.StandardButton.No
     )
     yes_button: QtWidgets.QMessageBox.StandardButton = QtWidgets.QMessageBox.StandardButton.Yes
-    if buttonReply == yes_button:
+    if button_reply == yes_button:
         result: bool = True
     else:
-        result = buttonReply == yes_button.value
+        result = False
 
     return result

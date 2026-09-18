@@ -174,6 +174,7 @@ def copy_block_state(source_block: Block, target_block: Block) -> None:
     # Copy every persistent symbolic collection so Apply changes cannot retain
     # stale equations, mappings, or procedural data from the previous model.
     target_block.name = source_clone.name
+    target_block.model_family_name = source_clone.model_family_name
     target_block.uid = source_clone.uid
     target_block.is_decomposable = source_clone.is_decomposable
     target_block.tpe_uid = source_clone.tpe_uid
