@@ -61,6 +61,7 @@ from VeraGridEngine.IO.dgs.dgs_objects import (
     IntFolder,
     IntGrf,
     IntGrfcon,
+    IntGrfgroup,
     IntGrfnet,
     IntRef,
     IntTemplate,
@@ -217,6 +218,7 @@ class DgsCircuit:
         IntTemplate,
         IntGrf,
         IntGrfcon,
+        IntGrfgroup,
         IntGrfnet,
         Matrix,
         RelFuse,
@@ -307,6 +309,7 @@ class DgsCircuit:
         self.inttemplates: List[IntTemplate] = list()
         self.intgrfs: List[IntGrf] = list()
         self.intgrfcons: List[IntGrfcon] = list()
+        self.intgrfgroups: List[IntGrfgroup] = list()
         self.intgrfnets: List[IntGrfnet] = list()
         self.matrixes: List[Matrix] = list()
         self.relfuses: List[RelFuse] = list()
@@ -387,6 +390,7 @@ class DgsCircuit:
             IntTemplate: self.inttemplates,
             IntGrf: self.intgrfs,
             IntGrfcon: self.intgrfcons,
+            IntGrfgroup: self.intgrfgroups,
             IntGrfnet: self.intgrfnets,
             Matrix: self.matrixes,
             RelFuse: self.relfuses,

@@ -1633,6 +1633,7 @@ class ElmSite(DGSElement):
         DgsProperty('sType', 'a:80', 'DGS field sType (a:80)', py_name='sType'),
         DgsProperty('GPSlat', 'r', 'DGS field GPSlat (r)', py_name='GPSlat'),
         DgsProperty('GPSlon', 'r', 'DGS field GPSlon (r)', py_name='GPSlon'),
+        DgsProperty('pDiagram', 'p', 'Preferred static diagram in IntGrfnet', py_name='pDiagram'),
     ]
 
     def __init__(self) -> None:
@@ -1643,6 +1644,7 @@ class ElmSite(DGSElement):
         self.sType: str = ""
         self.GPSlat: float = 0.0
         self.GPSlon: float = 0.0
+        self.pDiagram: str = ""
 
 
 class ElmSubstat(DGSElement):
@@ -1661,6 +1663,7 @@ class ElmSubstat(DGSElement):
         DgsProperty('GPSlon', 'r', 'Longitude / Easting in deg', py_name='GPSlon'),
         DgsProperty('cpArea', 'p', 'Default Area in ElmArea', py_name='cpArea'),
         DgsProperty('cpZone', 'p', 'Default Zone in ElmZone', py_name='cpZone'),
+        DgsProperty('pDiagram', 'p', 'Preferred static diagram in IntGrfnet', py_name='pDiagram'),
     ]
 
     def __init__(self) -> None:
@@ -1675,6 +1678,9 @@ class ElmSubstat(DGSElement):
         self.sType: str = ""
         self.GPSlat: float = 0.0
         self.GPSlon: float = 0.0
+        self.cpArea: str = ""
+        self.cpZone: str = ""
+        self.pDiagram: str = ""
 
 
 class ElmSym(DGSElement):
@@ -1766,6 +1772,9 @@ class ElmTerm(DGSElement):
         DgsProperty('outserv', 'i', 'Out of Service', py_name='outserv'),
         DgsProperty('cpArea', 'p', 'Area in ElmArea', py_name='cpArea'),
         DgsProperty('cpZone', 'p', 'Zone in ElmZone', py_name='cpZone'),
+        DgsProperty('cpGrid', 'p', 'Owning network in ElmNet', py_name='cpGrid'),
+        DgsProperty('cpSubstat', 'p', 'Owning substation in ElmSubstat', py_name='cpSubstat'),
+        DgsProperty('cpSite', 'p', 'Owning site in ElmSite', py_name='cpSite'),
         DgsProperty('phtech', 'i', 'Phase Technology Code', py_name='phtech'),
         DgsProperty('for_name', 'a:50', 'Foreign Key', py_name='for_name'),
         DgsProperty('systype', 'i', 'System Type: AC:DC:AC/BI', py_name='systype'),
@@ -1799,6 +1808,9 @@ class ElmTerm(DGSElement):
         self.m_phiu: float = 0.0
         self.cpArea: str = ""
         self.cpZone: str = ""
+        self.cpGrid: str = ""
+        self.cpSubstat: str = ""
+        self.cpSite: str = ""
 
 
 class ElmTr2(DGSElement):
@@ -2472,6 +2484,7 @@ class IntGrf(DGSElement):
     element_type = 'IntGrf'
     properties_list = [
         DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('OP', 'a:1', 'DGS operation marker', py_name='OP'),
         DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
         DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
         DgsProperty('iCol', 'i', 'DGS field iCol (i)', py_name='iCol'),
@@ -2484,6 +2497,8 @@ class IntGrf(DGSElement):
         DgsProperty('iRot', 'i', 'DGS field iRot (i)', py_name='iRot'),
         DgsProperty('rSizeX', 'r', 'DGS field rSizeX (r)', py_name='rSizeX'),
         DgsProperty('rSizeY', 'r', 'DGS field rSizeY (r)', py_name='rSizeY'),
+        DgsProperty('iIndLS', 'i', 'Individual line-style flag', py_name='iIndLS'),
+        DgsProperty('iCollapsed', 'i', 'Collapsed compound-graphic flag', py_name='iCollapsed'),
         DgsProperty('sAttr:SIZEROW', 'i', 'DGS field sAttr:SIZEROW (i)', py_name='sAttr_SIZEROW'),
         DgsProperty('sAttr:0', 'a', 'DGS field sAttr:0 (a)', py_name='sAttr_0'),
         DgsProperty('sAttr:1', 'a', 'DGS field sAttr:1 (a)', py_name='sAttr_1'),
@@ -2492,6 +2507,7 @@ class IntGrf(DGSElement):
 
     def __init__(self) -> None:
         self.ID: str = ""
+        self.OP: str = ""
         self.loc_name: str = ""
         self.fold_id: str = ""
         self.iCol: int = 0
@@ -2504,16 +2520,34 @@ class IntGrf(DGSElement):
         self.iRot: int = 0
         self.rSizeX: float = 0.0
         self.rSizeY: float = 0.0
+        self.iIndLS: int = 0
+        self.iCollapsed: int = 0
         self.sAttr_SIZEROW: int = 0
         self.sAttr_0: str = ""
         self.sAttr_1: str = ""
         self.sAttr_2: str = ""
+        self.sAttr: List[str] = list()
+
+    @classmethod
+    def parse_line(cls, line: str, header_map: dict[str, int]) -> "IntGrf":
+        """Parse the scalar graphic fields and its variable-length attribute vector."""
+        obj: IntGrf = super().parse_line(line=line, header_map=header_map)
+        parts: List[str] = _split_dgs_line(line)
+        attributes: List[str] = list()
+
+        for index in range(int(obj.sAttr_SIZEROW)):
+            raw_value: str | None = _dgs_get(parts=parts, header_map=header_map, key=f"sAttr:{index}")
+            attributes.append("" if raw_value is None or raw_value == "*" else raw_value)
+
+        obj.sAttr = attributes
+        return obj
 
 
 class IntGrfcon(DGSElement):
     element_type = 'IntGrfcon'
     properties_list = [
         DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('OP', 'a:1', 'DGS operation marker', py_name='OP'),
         DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
         DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
         DgsProperty('rX:SIZEROW', 'i', 'DGS field rX:SIZEROW (i)', py_name='rX_SIZEROW'),
@@ -2538,10 +2572,16 @@ class IntGrfcon(DGSElement):
         DgsProperty('rY:7', 'r', 'DGS field rY:7 (r)', py_name='rY_7'),
         DgsProperty('rY:8', 'r', 'DGS field rY:8 (r)', py_name='rY_8'),
         DgsProperty('rY:9', 'r', 'DGS field rY:9 (r)', py_name='rY_9'),
+        DgsProperty('iDatConNr', 'i', 'Graphic connector or terminal ordinal', py_name='iDatConNr'),
+        DgsProperty('iLinSt', 'i', 'Graphic connector line style', py_name='iLinSt'),
+        DgsProperty('rLinWd', 'r', 'Graphic connector line width', py_name='rLinWd'),
+        DgsProperty('points:SIZEROW', 'i', 'Number of point-matrix rows', py_name='points_SIZEROW'),
+        DgsProperty('points:SIZECOL', 'i', 'Number of point-matrix columns', py_name='points_SIZECOL'),
     ]
 
     def __init__(self) -> None:
         self.ID: str = ""
+        self.OP: str = ""
         self.loc_name: str = ""
         self.fold_id: str = ""
         self.rX_SIZEROW: int = 0
@@ -2566,28 +2606,117 @@ class IntGrfcon(DGSElement):
         self.rY_7: float = 0.0
         self.rY_8: float = 0.0
         self.rY_9: float = 0.0
+        self.iDatConNr: int = -1
+        self.iLinSt: int = 0
+        self.rLinWd: float = 0.0
+        self.points_SIZEROW: int = 0
+        self.points_SIZECOL: int = 0
+        self.rX: List[float] = list()
+        self.rY: List[float] = list()
+        self.points: List[tuple[float, float]] = list()
+
+    @classmethod
+    def parse_line(cls, line: str, header_map: dict[str, int]) -> "IntGrfcon":
+        """Parse connector geometry without imposing a fixed vector length."""
+        obj: IntGrfcon = super().parse_line(line=line, header_map=header_map)
+        parts: List[str] = _split_dgs_line(line)
+
+        def parse_float_vector(prefix: str, size: int) -> List[float]:
+            values: List[float] = list()
+            for index in range(size):
+                raw_value: str | None = _dgs_get(parts=parts, header_map=header_map, key=f"{prefix}:{index}")
+                if raw_value is None or raw_value.strip() in {"", "*"}:
+                    break
+                try:
+                    values.append(float(raw_value.replace(",", ".")))
+                except ValueError:
+                    break
+            return values
+
+        obj.rX = parse_float_vector(prefix="rX", size=int(obj.rX_SIZEROW))
+        obj.rY = parse_float_vector(prefix="rY", size=int(obj.rY_SIZEROW))
+
+        matrix_points: List[tuple[float, float]] = list()
+        for row_index in range(int(obj.points_SIZEROW)):
+            raw_x: str | None = _dgs_get(parts=parts, header_map=header_map, key=f"points:{row_index}:0")
+            raw_y: str | None = _dgs_get(parts=parts, header_map=header_map, key=f"points:{row_index}:1")
+            if raw_x is None or raw_y is None or raw_x.strip() in {"", "*"} or raw_y.strip() in {"", "*"}:
+                break
+            try:
+                matrix_points.append((float(raw_x.replace(",", ".")), float(raw_y.replace(",", "."))))
+            except ValueError:
+                break
+        obj.points = matrix_points
+        return obj
 
 
 class IntGrfnet(DGSElement):
     element_type = 'IntGrfnet'
     properties_list = [
         DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('OP', 'a:1', 'DGS operation marker', py_name='OP'),
         DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
         DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
         DgsProperty('snap_on', 'i', 'DGS field snap_on (i)', py_name='snap_on'),
         DgsProperty('grid_on', 'i', 'DGS field grid_on (i)', py_name='grid_on'),
         DgsProperty('ortho_on', 'i', 'DGS field ortho_on (i)', py_name='ortho_on'),
         DgsProperty('pDataFolder', 'p', 'DGS field pDataFolder (p)', py_name='pDataFolder'),
+        DgsProperty('iType', 'i', 'PowerFactory diagram type', py_name='iType'),
+        DgsProperty('rScalFac', 'r', 'Diagram scale factor', py_name='rScalFac'),
+        DgsProperty('rXFak', 'r', 'Diagram X factor', py_name='rXFak'),
+        DgsProperty('rYFak', 'r', 'Diagram Y factor', py_name='rYFak'),
+        DgsProperty('rRTopXc', 'r', 'Content right/top X bound', py_name='rRTopXc'),
+        DgsProperty('rRTopYc', 'r', 'Content right/top Y bound', py_name='rRTopYc'),
+        DgsProperty('rLBotXc', 'r', 'Content left/bottom X bound', py_name='rLBotXc'),
+        DgsProperty('rLBotYc', 'r', 'Content left/bottom Y bound', py_name='rLBotYc'),
     ]
 
     def __init__(self) -> None:
         self.ID: str = ""
+        self.OP: str = ""
         self.loc_name: str = ""
         self.fold_id: str = ""
         self.snap_on: int = 0
         self.grid_on: int = 0
         self.ortho_on: int = 0
         self.pDataFolder: str = ""
+        self.iType: int = -1
+        self.rScalFac: float = 1.0
+        self.rXFak: float = 1.0
+        self.rYFak: float = 1.0
+        self.rRTopXc: float = 0.0
+        self.rRTopYc: float = 0.0
+        self.rLBotXc: float = 0.0
+        self.rLBotYc: float = 0.0
+
+
+class IntGrfgroup(DGSElement):
+    """Optional PowerFactory graphic grouping node."""
+    element_type = 'IntGrfgroup'
+    properties_list = [
+        DgsProperty('ID', 'a:40', 'DGS field ID', py_name='ID'),
+        DgsProperty('OP', 'a:1', 'DGS operation marker', py_name='OP'),
+        DgsProperty('loc_name', 'a:80', 'Graphic group name', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'Parent graphic container', py_name='fold_id'),
+    ]
+
+    def __init__(self) -> None:
+        self.ID: str = ""
+        self.OP: str = ""
+        self.loc_name: str = ""
+        self.fold_id: str = ""
+        self.raw_attributes: Dict[str, str] = dict()
+
+    @classmethod
+    def parse_line(cls, line: str, header_map: dict[str, int]) -> "IntGrfgroup":
+        obj: IntGrfgroup = super().parse_line(line=line, header_map=header_map)
+        parts: List[str] = _split_dgs_line(line)
+        known_names: set[str] = set(obj.properties)
+        known_names.add("FID")
+        for column_name, column_index in header_map.items():
+            if column_name not in known_names and 0 <= column_index < len(parts):
+                obj.raw_attributes[column_name] = parts[column_index]
+        return obj
 
 
 class RelFuse(DGSElement):

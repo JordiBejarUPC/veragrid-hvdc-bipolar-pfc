@@ -757,6 +757,8 @@ def build_preferred_position_by_object_id(dgs_grid: DgsCircuit) -> Dict[str, Tup
     :return: Stable object-position mapping.
     """
     positions_by_object_id: Dict[str, Tuple[float, float]] = dict()
+    static_diagram_ids: set[str] = build_static_diagram_ids(dgs_grid=dgs_grid)
+    graphics_by_diagram_id: Dict[str, List[IntGrf]] = build_graphics_by_diagram_id(dgs_grid=dgs_grid)
     preferred_root_diagram_ids: List[str] = list()
     elmnet: object
     graphic: IntGrf
@@ -768,28 +770,19 @@ def build_preferred_position_by_object_id(dgs_grid: DgsCircuit) -> Dict[str, Tup
         else:
             root_diagram_id = root_diagram_id
 
-    for graphic in dgs_grid.intgrfs:
-        object_id: str = normalize_dgs_ref_id(graphic.pDataObj)
-        diagram_id: str = normalize_dgs_ref_id(graphic.fold_id)
+    ordered_diagram_ids: List[str] = list()
+    for diagram_id in preferred_root_diagram_ids:
+        if diagram_id in static_diagram_ids and diagram_id not in ordered_diagram_ids:
+            ordered_diagram_ids.append(diagram_id)
+    for diagram_id in sorted(static_diagram_ids):
+        if diagram_id not in ordered_diagram_ids:
+            ordered_diagram_ids.append(diagram_id)
 
-        if object_id == "":
-            object_id = object_id
-        elif diagram_id in preferred_root_diagram_ids:
-            if positions_by_object_id.get(object_id, None) is None:
+    for diagram_id in ordered_diagram_ids:
+        for graphic in graphics_by_diagram_id.get(diagram_id, list()):
+            object_id: str = normalize_dgs_ref_id(graphic.pDataObj)
+            if object_id != "" and object_id not in positions_by_object_id:
                 positions_by_object_id[object_id] = (float(graphic.rCenterX), float(graphic.rCenterY))
-            else:
-                pass
-        else:
-            diagram_id = diagram_id
-
-    for graphic in dgs_grid.intgrfs:
-        object_id = normalize_dgs_ref_id(graphic.pDataObj)
-        if object_id == "":
-            object_id = object_id
-        elif positions_by_object_id.get(object_id, None) is None:
-            positions_by_object_id[object_id] = (float(graphic.rCenterX), float(graphic.rCenterY))
-        else:
-            pass
 
     return positions_by_object_id
 
@@ -801,6 +794,16 @@ def extract_dgs_connection_points(connection: IntGrfcon) -> List[Tuple[float, fl
     :param connection: DGS graphical connection row.
     :return: Ordered polyline points.
     """
+    if len(connection.points) > 0:
+        return list(connection.points)
+    elif len(connection.rX) > 0 and len(connection.rY) > 0:
+        point_count: int = min(len(connection.rX), len(connection.rY))
+        return list(zip(connection.rX[:point_count], connection.rY[:point_count]))
+    else:
+        pass
+
+    # Compatibility with programmatically constructed rows and older cached
+    # objects which predate the variable-length vector representation.
     x_values: List[float] = [
         float(connection.rX_0),
         float(connection.rX_1),
@@ -932,21 +935,90 @@ def build_graphics_by_diagram_id(dgs_grid: DgsCircuit) -> Dict[str, List[IntGrf]
     :return: Graphical rows indexed by diagram id.
     """
     graphics_by_diagram_id: Dict[str, List[IntGrf]] = dict()
-    graphic: IntGrf
+    diagram_ids: set[str] = {
+        normalize_dgs_ref_id(diagram.ID)
+        for diagram in dgs_grid.intgrfnets
+        if normalize_dgs_ref_id(diagram.ID) != ""
+    }
+    parent_by_id: Dict[str, str] = dict()
 
     for graphic in dgs_grid.intgrfs:
-        diagram_id: str = normalize_dgs_ref_id(graphic.fold_id)
-        object_id: str = normalize_dgs_ref_id(graphic.pDataObj)
-        existing_graphics: List[IntGrf] | None = graphics_by_diagram_id.get(diagram_id, None)
+        parent_by_id[normalize_dgs_ref_id(graphic.ID)] = normalize_dgs_ref_id(graphic.fold_id)
+    for folder in dgs_grid.intfolders:
+        parent_by_id[normalize_dgs_ref_id(folder.ID)] = normalize_dgs_ref_id(folder.fold_id)
+    for group in dgs_grid.intgrfgroups:
+        parent_by_id[normalize_dgs_ref_id(group.ID)] = normalize_dgs_ref_id(group.fold_id)
 
-        if diagram_id == "" or object_id == "":
-            diagram_id = diagram_id
-        elif existing_graphics is None:
-            graphics_by_diagram_id[diagram_id] = [graphic]
-        else:
-            existing_graphics.append(graphic)
+    for graphic in dgs_grid.intgrfs:
+        object_id: str = normalize_dgs_ref_id(graphic.pDataObj)
+        candidate_id: str = normalize_dgs_ref_id(graphic.fold_id)
+        visited_ids: set[str] = set()
+
+        while candidate_id != "" and candidate_id not in diagram_ids and candidate_id not in visited_ids:
+            visited_ids.add(candidate_id)
+            candidate_id = parent_by_id.get(candidate_id, "")
+
+        if object_id == "" or candidate_id not in diagram_ids:
+            continue
+
+        graphics_by_diagram_id.setdefault(candidate_id, list()).append(graphic)
 
     return graphics_by_diagram_id
+
+
+def build_static_diagram_ids(dgs_grid: DgsCircuit) -> set[str]:
+    """Return the strict whitelist of static electrical diagram identifiers.
+
+    Dynamic and free-form diagrams are intentionally never inferred from names
+    or ``iType``.  A diagram is drawable only when PowerFactory associates it
+    with a static network/site/substation object, either as its data folder or
+    through that object's explicit ``pDiagram`` reference.
+    """
+    static_owner_ids: set[str] = set()
+    referenced_diagram_ids: set[str] = set()
+
+    for owner in [*dgs_grid.elmnets, *dgs_grid.elmsites, *dgs_grid.elmsubstats]:
+        owner_id: str = normalize_dgs_ref_id(owner.ID)
+        if owner_id != "":
+            static_owner_ids.add(owner_id)
+        diagram_id: str = normalize_dgs_ref_id(getattr(owner, "pDiagram", ""))
+        if diagram_id != "":
+            referenced_diagram_ids.add(diagram_id)
+
+    dynamic_owner_ids: set[str] = set()
+    dynamic_collections: List[list] = [
+        dgs_grid.elmcomps,
+        dgs_grid.elmdsls,
+        dgs_grid.blkdefs,
+        dgs_grid.blkdivs,
+        dgs_grid.blkfroms,
+        dgs_grid.blkgotos,
+        dgs_grid.blkmuls,
+        dgs_grid.blkrefs,
+        dgs_grid.blksigs,
+        dgs_grid.blkslots,
+        dgs_grid.blksums,
+        dgs_grid.blkswts,
+    ]
+    for collection in dynamic_collections:
+        for dynamic_object in collection:
+            dynamic_id: str = normalize_dgs_ref_id(dynamic_object.ID)
+            if dynamic_id != "":
+                dynamic_owner_ids.add(dynamic_id)
+
+    static_diagram_ids: set[str] = set()
+    for diagram in dgs_grid.intgrfnets:
+        diagram_id = normalize_dgs_ref_id(diagram.ID)
+        owner_id: str = normalize_dgs_ref_id(diagram.pDataFolder)
+        # Type 1 is PowerFactory's graphic/block-diagram domain in the supplied
+        # exports. It is excluded even if a future export happens to store that
+        # diagram below a static project object.
+        if int(diagram.iType) == 1 or owner_id in dynamic_owner_ids:
+            continue
+        if owner_id in static_owner_ids or diagram_id in referenced_diagram_ids:
+            static_diagram_ids.add(diagram_id)
+
+    return static_diagram_ids
 
 
 def get_root_diagram_score(candidate_id: str,
@@ -1029,6 +1101,8 @@ def select_preferred_root_diagram_id(dgs_grid: DgsCircuit,
     candidate_id: str
 
     for candidate_id in unique_candidate_ids:
+        if candidate_id not in intgrfnet_by_id:
+            continue
         current_score: Tuple[int, int, int] = get_root_diagram_score(candidate_id=candidate_id,
                                                                       intgrfnet_by_id=intgrfnet_by_id,
                                                                       graphics_by_diagram_id=graphics_by_diagram_id,
@@ -1053,7 +1127,10 @@ def build_dgs_branch_route_points_for_graphic(graphic: IntGrf,
     """
     graphic_id: str = normalize_dgs_ref_id(graphic.ID)
     raw_connections: List[IntGrfcon] = connections_by_graphic_id.get(graphic_id, list())
-    ordered_connections: List[IntGrfcon] = sorted(raw_connections, key=get_intgrfcon_order_key)
+    ordered_connections: List[IntGrfcon] = sorted(
+        [connection for connection in raw_connections if len(extract_dgs_connection_points(connection)) > 0],
+        key=get_intgrfcon_order_key,
+    )
     route_points_dgs: List[Tuple[float, float]] = list()
     transformed_points: List[Tuple[float, float]] = list()
     point: Tuple[float, float]
@@ -1065,7 +1142,26 @@ def build_dgs_branch_route_points_for_graphic(graphic: IntGrf,
     else:
         left_points: List[Tuple[float, float]] = extract_dgs_connection_points(ordered_connections[0])
         right_points: List[Tuple[float, float]] = extract_dgs_connection_points(ordered_connections[1])
-        route_points_dgs = merge_dgs_connection_polylines(left_points, right_points)
+        graphic_center: Tuple[float, float] = (float(graphic.rCenterX), float(graphic.rCenterY))
+
+        def squared_distance(point: Tuple[float, float]) -> float:
+            return ((point[0] - graphic_center[0]) ** 2
+                    + (point[1] - graphic_center[1]) ** 2)
+
+        # PowerFactory commonly terminates each connector at a different edge
+        # of the inline symbol, so exact endpoint equality is not a valid merge
+        # requirement. Orient side zero outer-to-inner and side one
+        # inner-to-outer, preserving the symbol gap as part of the route.
+        if squared_distance(left_points[0]) < squared_distance(left_points[-1]):
+            left_points.reverse()
+        if squared_distance(right_points[-1]) < squared_distance(right_points[0]):
+            right_points.reverse()
+
+        route_points_dgs = list(left_points)
+        if are_dgs_points_close(route_points_dgs[-1], right_points[0]):
+            route_points_dgs.extend(right_points[1:])
+        else:
+            route_points_dgs.extend(right_points)
 
     for point in route_points_dgs:
         transformed_points.append(transform_dgs_coordinate_pair(point[0], point[1]))
@@ -1080,7 +1176,8 @@ def get_intgrfcon_order_key(connection: IntGrfcon) -> int:
     :param connection: Connector row.
     :return: Side order.
     """
-    return int(connection.iDatConNr)
+    connector_number: int = int(connection.iDatConNr)
+    return connector_number if connector_number >= 0 else 1_000_000
 
 
 def get_substation_size_from_graphic(graphic: IntGrf) -> Tuple[float, float]:
@@ -1337,7 +1434,8 @@ def infer_injection_dock_side(bus_location: GraphicLocation,
 
 def set_imported_injection_layout(diagram: SchematicDiagram,
                                   api_object: ALL_DEV_TYPES,
-                                  graphic: IntGrf) -> None:
+                                  graphic: IntGrf,
+                                  stretch_vertical: bool = True) -> None:
     """
     Persist the imported child position and manual dock metadata for one injection-like device.
 
@@ -1365,7 +1463,8 @@ def set_imported_injection_layout(diagram: SchematicDiagram,
                                                             graphic.rCenterY,
                                                             child_width,
                                                             child_height)
-        child_x, child_y = stretch_child_diagram_position(child_x, child_y)
+        if stretch_vertical:
+            child_x, child_y = stretch_child_diagram_position(child_x, child_y)
         child_location = GraphicLocation(api_object=api_object,
                                          x=child_x,
                                          y=child_y,
@@ -1557,6 +1656,7 @@ def import_dgs_substations_and_schematic_diagrams(dgs_grid: DgsCircuit,
     :param logger: Import logger.
     :return: ``None``.
     """
+    static_diagram_ids: set[str] = build_static_diagram_ids(dgs_grid=dgs_grid)
     graphics_by_diagram_id: Dict[str, List[IntGrf]] = build_graphics_by_diagram_id(dgs_grid=dgs_grid)
     connections_by_graphic_id: Dict[str, List[IntGrfcon]] = build_connections_by_graphic_id(dgs_grid=dgs_grid)
     terminals_by_id: Dict[str, ElmTerm] = build_elmterm_by_id(dgs_grid=dgs_grid)
@@ -1637,16 +1737,26 @@ def import_dgs_substations_and_schematic_diagrams(dgs_grid: DgsCircuit,
                 zone_id = zone_id
 
     for diagram_object in dgs_grid.intgrfnets:
-        intgrfnet_by_id[normalize_dgs_ref_id(diagram_object.ID)] = diagram_object
+        diagram_id: str = normalize_dgs_ref_id(diagram_object.ID)
+        if diagram_id in static_diagram_ids:
+            intgrfnet_by_id[diagram_id] = diagram_object
+
+    excluded_diagram_count: int = len(dgs_grid.intgrfnets) - len(intgrfnet_by_id)
+    if excluded_diagram_count > 0:
+        logger.add_info(
+            msg="DGS non-static schematics excluded",
+            value=excluded_diagram_count,
+            expected_value=len(dgs_grid.intgrfnets),
+        )
 
     for dgs_substation in dgs_grid.elmsubstats:
         substation_id: str = normalize_dgs_ref_id(dgs_substation.ID)
         direct_diagram_id: str = normalize_dgs_ref_id(dgs_substation.pDiagram)
 
-        if direct_diagram_id != "":
+        if direct_diagram_id in static_diagram_ids:
             child_diagram_id_by_substation_id[substation_id] = direct_diagram_id
         else:
-            for diagram_object in dgs_grid.intgrfnets:
+            for diagram_object in intgrfnet_by_id.values():
                 folder_id: str = normalize_dgs_ref_id(diagram_object.pDataFolder)
                 diagram_id: str = normalize_dgs_ref_id(diagram_object.ID)
 
@@ -1756,8 +1866,6 @@ def import_dgs_substations_and_schematic_diagrams(dgs_grid: DgsCircuit,
 
         if len(root_diagram.data) > 0:
             grid.add_diagram(root_diagram)
-        else:
-            logger.add_warning("DGS root schematic metadata was found but no drawable root diagram could be built.")
     else:
         root_diagram_id = root_diagram_id
 
@@ -1858,6 +1966,132 @@ def import_dgs_substations_and_schematic_diagrams(dgs_grid: DgsCircuit,
 
         if len(child_diagram.data) > 0:
             grid.add_diagram(child_diagram)
-        else:
-            logger.add_warning("DGS child schematic metadata was found but no drawable child diagram could be built.",
-                               device=substation_by_id[child_substation_id].name)
+
+    # Materialize any remaining static network/site diagrams.  The historical
+    # importer above retains the preferred root and substation presentation;
+    # this pass covers alternate ElmNet views and ElmSite overviews without
+    # ever admitting an ownerless or dynamic-model diagram.
+    imported_diagram_ids: set[str] = {
+        str(diagram.idtag)
+        for diagram in grid.get_diagrams()
+        if isinstance(diagram, SchematicDiagram)
+    }
+    for diagram_id in sorted(static_diagram_ids):
+        if diagram_id in imported_diagram_ids:
+            continue
+
+        source_diagram: IntGrfnet | None = intgrfnet_by_id.get(diagram_id, None)
+        if source_diagram is None:
+            continue
+        diagram_name: str = source_diagram.loc_name if source_diagram.loc_name != "" else f"DGS schematic {diagram_id}"
+        schematic = SchematicDiagram(idtag=diagram_id, name=diagram_name)
+        diagram_graphics: List[IntGrf] = graphics_by_diagram_id.get(diagram_id, list())
+
+        # Endpoint owners must exist before routes and docks are restored.
+        for graphic in diagram_graphics:
+            object_id: str = normalize_dgs_ref_id(graphic.pDataObj)
+            substation: dev.Substation | None = substation_by_id.get(object_id, None)
+            bus: dev.Bus | None = bus_by_term_id.get(object_id, None)
+
+            if substation is not None:
+                width, height = get_substation_size_from_graphic(graphic=graphic)
+                x_pos, y_pos = transform_dgs_center_to_top_left(
+                    graphic.rCenterX, graphic.rCenterY, width, height,
+                )
+                schematic.set_point(
+                    device=substation,
+                    location=GraphicLocation(
+                        api_object=substation,
+                        x=x_pos,
+                        y=y_pos,
+                        w=width,
+                        h=height,
+                        r=float(graphic.iRot),
+                    ),
+                )
+            elif bus is not None:
+                elmterm: ElmTerm | None = terminals_by_id.get(object_id, None)
+                if elmterm is not None:
+                    bus.graphic_type = get_bus_graphic_type_from_dgs_terminal(elmterm=elmterm)
+                width, height = get_bus_size_from_graphic(bus=bus, graphic=graphic)
+                x_pos, y_pos = transform_dgs_center_to_top_left(
+                    graphic.rCenterX, graphic.rCenterY, width, height,
+                )
+                schematic.set_point(
+                    device=bus,
+                    location=GraphicLocation(
+                        api_object=bus,
+                        x=x_pos,
+                        y=y_pos,
+                        w=width,
+                        h=height,
+                        r=float(graphic.iRot),
+                        draw_labels=not should_hide_imported_bus_label(bus),
+                    ),
+                )
+
+        seen_device_ids: set[str] = set()
+        for graphic in diagram_graphics:
+            object_id = normalize_dgs_ref_id(graphic.pDataObj)
+            diagram_objects: List[ALL_DEV_TYPES] = api_objects_by_dgs_id.get(object_id, list())
+            if len(diagram_objects) == 0:
+                continue
+
+            diagram_api_object: ALL_DEV_TYPES = diagram_objects[0]
+            if diagram_api_object.idtag in seen_device_ids:
+                continue
+
+            if is_supported_injection_api_object(diagram_api_object):
+                set_imported_injection_layout(
+                    diagram=schematic,
+                    api_object=diagram_api_object,
+                    graphic=graphic,
+                    stretch_vertical=False,
+                )
+            elif isinstance(diagram_api_object, (dev.Transformer3W, dev.TransformerNW)):
+                width = max(float(graphic.rSizeX) * 18.0, 40.0)
+                height = max(float(graphic.rSizeY) * 18.0, 40.0)
+                x_pos, y_pos = transform_dgs_center_to_top_left(
+                    graphic.rCenterX, graphic.rCenterY, width, height,
+                )
+                schematic.set_point(
+                    device=diagram_api_object,
+                    location=GraphicLocation(
+                        api_object=diagram_api_object,
+                        x=x_pos,
+                        y=y_pos,
+                        w=width,
+                        h=height,
+                        r=float(graphic.iRot),
+                    ),
+                )
+            else:
+                route_points: List[Tuple[float, float]] = build_dgs_branch_route_points_for_graphic(
+                    graphic=graphic,
+                    connections_by_graphic_id=connections_by_graphic_id,
+                )
+                if len(route_points) >= 2:
+                    set_imported_branch_route_and_attachments(
+                        diagram=schematic,
+                        branch=diagram_api_object,
+                        route_points=route_points,
+                        graphic=graphic,
+                        enforce_orthogonal=False,
+                    )
+            seen_device_ids.add(diagram_api_object.idtag)
+
+        if len(schematic.data) > 0:
+            grid.add_diagram(schematic)
+
+    final_imported_diagram_ids: set[str] = {
+        str(diagram.idtag)
+        for diagram in grid.get_diagrams()
+        if isinstance(diagram, SchematicDiagram)
+    }
+    undrawn_static_count: int = len(static_diagram_ids - final_imported_diagram_ids)
+    if undrawn_static_count > 0:
+        logger.add_warning(
+            msg="Static DGS schematics contained no supported drawable objects",
+            value=undrawn_static_count,
+            expected_value=len(static_diagram_ids),
+        )
