@@ -1,0 +1,7 @@
+# VeraGrid standard electrical FMU examples
+
+Three physical families (GENSAL, TGOV1, ESDC2A), each exported as FMI 1/2/3 CS/ME for win64. All 18 cells passed local FMPy preflight. Commercial validation remains UNKNOWN for these exact artifacts. The local catalog is NOT_FOR_EXTERNAL_DISTRIBUTION until its corresponding source and artifact revision is remotely available.
+
+Rebuild from a clean VeraGrid checkout with the generator at `trunk/dynamics/fmi_comparison/veragrid_standard_examples/generate_standard_examples.py`. Run it as a Python module with `--repository-root`, `--git-executable`, an empty `--work-dir` outside Git, the exact `--publication-root` under `published/win64`, `--expected-head` from `git rev-parse HEAD`, and `--expected-source-tree-sha256` equal to SHA-256 of the binary `git ls-tree -r -z HEAD` output. The publication root must be absent. The generator checks all 18 executions and every staged file before publication.
+
+The `_in.csv` files retain right-continuous events; `_ref.csv` files retain raw 0.01 s output samples, including CS pre-first-step visibility at t=0. The manifest records same-interface all-sample errors, cross-interface non-boundary errors, both pre/post errors and causal-envelope gates at each event. CS t=0 is reported but is not claimed as initialized physical output. These are FMPy local references, not Simulink, PowerFactory, or official certification results.
