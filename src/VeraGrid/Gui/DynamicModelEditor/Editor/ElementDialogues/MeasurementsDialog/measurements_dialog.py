@@ -9,6 +9,7 @@ from typing import Dict, List, Sequence, Tuple
 from PySide6 import QtCore, QtWidgets
 
 from VeraGrid.Gui.general_dialogues import DeviceSelectorDialogue
+from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
 from VeraGrid.Gui.DynamicModelEditor.Editor.ElementDialogues.MeasurementsDialog.measurements_dialog_ui import (
     Ui_MeasurementsDialog,
 )
@@ -301,7 +302,7 @@ class MeasurementsDialog(QtWidgets.QDialog):
             allow_none=False,
             parent=self,
         )
-        if selector.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+        if exec_dialog_safely(dialog=selector) == QtWidgets.QDialog.DialogCode.Accepted:
             selected_device: object = selector.get_selected_device()
             if isinstance(selected_device, Bus):
                 self.set_selected_bus(selected_device)

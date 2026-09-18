@@ -17,6 +17,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from VeraGrid.Gui.Icons.icon_associations import device_type_icons
 from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_support import create_dynamic_events_group_with_dialog
+from VeraGrid.Gui.dialog_lifecycle import delete_dialogs_safely, exec_dialog_safely
 from VeraGrid.Gui.matplotlib_dialog import show_matplotlib_figure
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.Events.dynamic_plot import DynamicPlot
@@ -4937,7 +4938,7 @@ class DynamicsResultsHandler:
                     QtCore.QCoreApplication.translate("DynamicsResultsHandler", "Cancel"),
                     QtWidgets.QMessageBox.ButtonRole.RejectRole,
                 )
-                message_box.exec()
+                exec_dialog_safely(dialog=message_box)
                 clicked_button: QtWidgets.QAbstractButton | None = message_box.clickedButton()
                 if clicked_button is replace_x_button:
                     return DynamicPlotEntryRole.X_AXIS
@@ -4974,7 +4975,7 @@ class DynamicsResultsHandler:
                             QtCore.QCoreApplication.translate("DynamicsResultsHandler", "Cancel"),
                             QtWidgets.QMessageBox.ButtonRole.RejectRole,
                         )
-                        message_box.exec()
+                        exec_dialog_safely(dialog=message_box)
                         clicked_button = message_box.clickedButton()
                         if clicked_button is replace_x_button:
                             return DynamicPlotEntryRole.X_AXIS
@@ -5407,6 +5408,14 @@ class DynamicsResultsHandler:
         :return: ``True`` when multiple event-group sources are available.
         """
         return len(self.source_labels) > 1
+
+    def close_plot_dialogs(self) -> None:
+        """
+        Schedule all modeless plots owned by this handler for deletion.
+
+        :return: None.
+        """
+        delete_dialogs_safely(dialogs=self._open_plot_dialogs)
 
     def _show_figure(self, figure: Figure, title: str) -> None:
         """

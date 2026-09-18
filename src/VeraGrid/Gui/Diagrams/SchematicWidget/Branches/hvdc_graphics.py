@@ -12,6 +12,7 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.terminal_item import BarTerminalItem,
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem
 from VeraGridEngine.Devices.Branches.hvdc_line import HvdcLine
 from VeraGrid.Gui.messages import yes_no_question
+from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
 from VeraGridEngine.enumerations import DynamicSimulationMode
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
@@ -54,7 +55,7 @@ class HvdcGraphicItem(LineGraphicTemplateItem):
         :return: ``True`` when the editor was opened.
         """
         dialog = build_device_editor_dialog(api_object=self.api_object, circuit=self.editor.circuit)
-        dialog.exec()
+        exec_dialog_safely(dialog=dialog)
         return True
 
     def contextMenuEvent(self, event):

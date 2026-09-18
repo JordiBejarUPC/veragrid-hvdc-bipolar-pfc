@@ -5,8 +5,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from importlib import metadata
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 import hashlib
 import os
 import platform
@@ -14,10 +13,6 @@ import shutil
 import subprocess
 import tempfile
 import threading
-import urllib.request
-
-import clang_tool_chain_bins
-from clang_tool_chain_bins import ToolMatch
 
 
 class FmuBinaryInterface(Enum):
@@ -31,100 +26,88 @@ class FmuBinaryInterface(Enum):
     FMI_THREE_MODEL_EXCHANGE = "fmi_three_model_exchange"
 
 
-def _toolchain_index_path(system_name: str | None = None, module_file: str | None = None) -> Path:
-    """Return the authenticated package-local Clang tool index.
+def _toolchain_tool_path(tool_name: str) -> Path:
+    """Return one executable exposed by the approved Clang distribution.
 
-    :param system_name: Optional lowercase operating-system name used by
-        focused tests; the current host is used when omitted.
-    :param module_file: Optional package module location used by focused tests;
-        the installed package location is used when omitted.
-    :return: Absolute path to the reviewed ``clang-tool-chain-bins`` index.
+    :param tool_name: Logical tool name used by the FMI compiler.
+    :return: Absolute executable path.
+    :raises FileNotFoundError: If the approved command is not installed.
     """
 
-    # Resolve the existing package-owned index without accepting a symlinked
-    # replacement from outside the installed distribution.
-    selected_module_file: str | None
-    if module_file is None:
-        selected_module_file = clang_tool_chain_bins.__file__
+    if tool_name == "clang":
+        binary_name: str = "clang"
+        command_name: str = "clang-tool-chain-clang"
     else:
-        selected_module_file = module_file
-    if selected_module_file is not None:
-        index_path: Path = Path(selected_module_file).parent / "_impl" / "data" / "tool-index.json"
-    else:
-        raise RuntimeError("clang-tool-chain-bins does not expose a package location")
-
-    # The 0.4.6 Windows wheel contains a platform-specific aggregate index;
-    # Linux and macOS share the second reviewed index identity.
-    selected_system_name: str
-    expected_index_sha256: str
-    if system_name is None:
-        selected_system_name = platform.system().lower()
-    else:
-        selected_system_name = system_name
-    if selected_system_name == "windows":
-        expected_index_sha256 = "a05d3020ad5787c79f1377997401f5025eb9abbec529c578206a312f63e80c2d"
-    else:
-        if selected_system_name == "linux" or selected_system_name == "darwin":
-            expected_index_sha256 = "fd0e4f17094ae0687a3e562aace1bac9c99534de619619d8df947da71703907c"
+        if tool_name == "ld.lld":
+            binary_name = "ld.lld"
+            command_name = "clang-tool-chain-ld"
         else:
-            raise RuntimeError("FMI export compilation does not support this operating system")
-
-    # Authenticate the complete index before any package API can use its URLs,
-    # archive identities, or tool paths.
-    if index_path.is_file() and not index_path.is_symlink():
-        with index_path.open("rb") as index_stream:
-            actual_index_sha256: str = hashlib.file_digest(index_stream, "sha256").hexdigest()
-        if actual_index_sha256 == expected_index_sha256:
-            return index_path.resolve()
-        else:
-            raise RuntimeError("The clang-tool-chain-bins package-local index failed SHA-256 validation")
+            if tool_name == "llvm-nm":
+                binary_name = "llvm-nm"
+                command_name = "clang-tool-chain-nm"
+            else:
+                if tool_name == "llvm-objdump":
+                    binary_name = "llvm-objdump"
+                    command_name = "clang-tool-chain-objdump"
+                else:
+                    if tool_name == "ld64.lld":
+                        binary_name = "ld64.lld"
+                        command_name = "clang-tool-chain-ld"
+                    else:
+                        raise ValueError("Unsupported Clang tool: " + tool_name)
+    package_platform: str
+    package_arch: str
+    selection: tuple[str, str, str, str, str] = _host_toolchain_selection(
+        platform.system().lower(), platform.machine().lower()
+    )
+    package_platform = selection[0]
+    package_arch = selection[1]
+    if platform.system().lower() == "windows":
+        binary_path: Path = (
+            Path.home()
+            / ".clang-tool-chain"
+            / "clang"
+            / "win"
+            / package_arch
+            / "bin"
+            / (binary_name + ".exe")
+        )
     else:
-        raise FileNotFoundError("The clang-tool-chain-bins package-local index is unavailable")
-
-
-def _toolchain_cache_root() -> Path:
-    """Return the VeraGrid-owned persistent compiler archive directory.
-
-    :return: Version-isolated compiler archive cache directory.
-    """
-
-    return Path.home() / ".veragrid" / "fmi-toolchains" / "clang-tool-chain-bins-0.4.6" / "archives"
-
-
-def _dependency_versions_match(distribution_name: str = "clang-tool-chain") -> bool:
-    """Check that the approved top-level toolchain distribution is installed.
-
-    The package installer owns the ``>=1.5.9`` constraint and its transitive
-    dependency closure. Compiler availability separately authenticates the
-    consumed package index and compiler archive.
-
-    :param distribution_name: Distribution queried by the focused positive
-        and negative tests.
-    :return: ``True`` when the requested distribution is installed.
-    """
-
-    try:
-        installed_version: str = metadata.version(distribution_name)
-    except metadata.PackageNotFoundError:
-        return False
+        binary_path = (
+            Path.home()
+            / ".clang-tool-chain"
+            / "clang"
+            / package_platform
+            / package_arch
+            / "bin"
+            / binary_name
+        )
+    if binary_path.is_file() and not binary_path.is_symlink():
+        return binary_path.resolve()
     else:
-        return len(installed_version) > 0
+        pass
+    executable: str | None = shutil.which(command_name)
+    if executable is not None:
+        return Path(executable).resolve()
+    else:
+        raise FileNotFoundError(
+            "The approved clang-tool-chain command is unavailable: " + command_name
+        )
 
 
-def _host_toolchain_selection(system_name: str, machine_name: str) -> tuple[str, str, str, str, str, str, str]:
-    """Select a reviewed host-native compiler archive and ABI.
+def _host_toolchain_selection(system_name: str, machine_name: str) -> tuple[str, str, str, str, str]:
+    """Select the host-native compiler ABI and executable names.
 
     :param system_name: Lowercase operating-system name.
     :param machine_name: Lowercase machine architecture name.
-    :return: Package platform, package architecture, compiler version, target
-        triple, library suffix, archive SHA-256, and linker tool name.
+    :return: Package platform, package architecture, target triple, library
+        suffix, and linker tool name.
     """
 
     if system_name == "windows":
         if machine_name == "amd64" or machine_name == "x86_64":
             return (
-                "win", "mingw-x86_64", "20251104", "x86_64-w64-windows-gnu", ".dll",
-                "a18059f62f4435c0f023073e186f7c14be5fdfc07a193b1f1e627bcad7f15d87", "ld.lld",
+                "win", "mingw-x86_64", "x86_64-w64-windows-gnu", ".dll", "ld.lld",
             )
         else:
             raise RuntimeError("FMI export compilation supports only AMD64 Windows hosts")
@@ -132,8 +115,7 @@ def _host_toolchain_selection(system_name: str, machine_name: str) -> tuple[str,
         if system_name == "linux":
             if machine_name == "x86_64" or machine_name == "amd64":
                 return (
-                    "linux", "x86_64", "21.1.5", "x86_64-unknown-linux-gnu", ".so",
-                    "4021cc49d70472122761709e7376835dfc857b5ec77183fa969b5f61d0f13a2f", "ld.lld",
+                    "linux", "x86_64", "x86_64-unknown-linux-gnu", ".so", "ld.lld",
                 )
             else:
                 raise RuntimeError("FMI export compilation supports only x86_64 Linux hosts")
@@ -141,14 +123,12 @@ def _host_toolchain_selection(system_name: str, machine_name: str) -> tuple[str,
             if system_name == "darwin":
                 if machine_name == "x86_64" or machine_name == "amd64":
                     return (
-                        "darwin", "x86_64", "21.1.6", "x86_64-apple-macos11.0", ".dylib",
-                        "2f010a75d4b4f238b132ec22f3b9df5d341be9be60b73a5790436642f85fba71", "ld64.lld",
+                        "darwin", "x86_64", "x86_64-apple-macos11.0", ".dylib", "ld64.lld",
                     )
                 else:
                     if machine_name == "arm64" or machine_name == "aarch64":
                         return (
-                            "darwin", "arm64", "21.1.6", "arm64-apple-macos11.0", ".dylib",
-                            "f7631c8b96d76dadd9aa69be681e164a5b5fbbb0dd95ecf99764d9d2222ca65a", "ld64.lld",
+                            "darwin", "arm64", "arm64-apple-macos11.0", ".dylib", "ld64.lld",
                         )
                     else:
                         raise RuntimeError("FMI export compilation supports only x86_64 or arm64 macOS hosts")
@@ -156,235 +136,39 @@ def _host_toolchain_selection(system_name: str, machine_name: str) -> tuple[str,
                 raise RuntimeError("FMI export compilation does not support this operating system")
 
 
-def _archive_matches(archive_path: Path, expected_sha256: str) -> bool:
-    """Authenticate one regular, non-symlink compiler archive.
-
-    :param archive_path: Candidate archive path.
-    :param expected_sha256: Reviewed complete-file digest.
-    :return: ``True`` only when the path and complete digest are valid.
-    """
-
-    if archive_path.is_file() and not archive_path.is_symlink():
-        with archive_path.open("rb") as archive_stream:
-            actual_sha256: str = hashlib.file_digest(archive_stream, "sha256").hexdigest()
-        return actual_sha256 == expected_sha256
-    else:
-        return False
-
-
-def _compiler_available(index_path: Path, cache_root: Path, system_name: str, machine_name: str) -> bool:
-    """Inspect local metadata and cache without downloading or executing tools.
-
-    :param index_path: Regular package-local tool index.
-    :param cache_root: VeraGrid-owned archive cache root.
-    :param system_name: Lowercase operating-system name.
-    :param machine_name: Lowercase machine architecture name.
-    :return: ``True`` only when the reviewed archive is already available.
-    """
-
-    try:
-        dependencies_match: bool = _dependency_versions_match()
-        index_is_regular: bool = index_path.is_file() and not index_path.is_symlink()
-        if dependencies_match and index_is_regular:
-            package_platform: str
-            package_arch: str
-            compiler_version: str
-            target_triple: str
-            library_suffix: str
-            expected_sha256: str
-            linker: str
-            (
-                package_platform,
-                package_arch,
-                compiler_version,
-                target_triple,
-                library_suffix,
-                expected_sha256,
-                linker,
-            ) = _host_toolchain_selection(system_name, machine_name)
-            compiler_match: ToolMatch = clang_tool_chain_bins.resolve_one(
-                "clang",
-                index_path=index_path,
-                platform=package_platform,
-                arch=package_arch,
-                version=compiler_version,
-                component="clang",
-            )
-            selection_complete: bool = (
-                len(target_triple) > 0
-                and len(library_suffix) > 0
-                and len(linker) > 0
-            )
-        else:
-            return False
-
-        if selection_complete and compiler_match.archive_sha256 == expected_sha256:
-            archive_name: str = (
-                compiler_match.component
-                + "-"
-                + package_platform
-                + "-"
-                + package_arch
-                + "-"
-                + expected_sha256[:16]
-                + ".tar.zst"
-            )
-            archive_matches: bool = _archive_matches(
-                cache_root / archive_name,
-                expected_sha256,
-            )
-        else:
-            archive_matches = False
-    except (OSError, RuntimeError, ValueError):
-        return False
-    else:
-        return archive_matches
-
-
 def fmu_compiler_available() -> bool:
-    """Return whether the reviewed compiler archive is ready for offline use.
+    """Return whether the approved Clang command set is available.
 
     This probe is side-effect free because test collection and UI capability
     checks must not download or execute a compiler.
 
-    :return: ``True`` only when dependencies, index, host row, and archive match.
+    :return: ``True`` when the host row and all required wrapper commands exist.
     """
 
     try:
-        index_path: Path = _toolchain_index_path()
-        cache_root: Path = _toolchain_cache_root()
-    except (OSError, RuntimeError, ValueError):
+        selection: tuple[str, str, str, str, str] = _host_toolchain_selection(
+            platform.system().lower(), platform.machine().lower()
+        )
+        compiler_path: Path = _toolchain_tool_path("clang")
+        linker_path: Path = _toolchain_tool_path(selection[4])
+        nm_path: Path = _toolchain_tool_path("llvm-nm")
+        objdump_path: Path = _toolchain_tool_path("llvm-objdump")
+    except (FileNotFoundError, OSError, RuntimeError, ValueError):
         return False
     else:
-        return _compiler_available(index_path, cache_root, platform.system().lower(), platform.machine().lower())
+        return all(
+            (
+                compiler_path.is_file(),
+                linker_path.is_file(),
+                nm_path.is_file(),
+                objdump_path.is_file(),
+            )
+        )
 
 
-def _download_verified_archive(media_url: str, download_path: Path, archive_path: Path, expected_sha256: str) -> None:
-    """Download, authenticate, and atomically publish a compiler archive.
+def _resolve_toolchain_tools() -> tuple[Path, Path, Path, Path, str, str, str, str]:
+    """Resolve the compiler, linker, and inspectors from the approved package.
 
-    :param media_url: Package-derived Git LFS media URL.
-    :param download_path: Build-scoped download path.
-    :param archive_path: Persistent content-addressed cache path.
-    :param expected_sha256: Reviewed complete-file digest.
-    :return: None.
-    """
-
-    download_path.parent.mkdir(parents=True, exist_ok=True)
-    with urllib.request.urlopen(media_url, timeout=120) as response_stream:
-        with download_path.open("wb") as download_stream:
-            shutil.copyfileobj(response_stream, download_stream)
-    if _archive_matches(download_path, expected_sha256):
-        pass
-    else:
-        download_path.unlink(missing_ok=True)
-        raise RuntimeError("The provisioned compiler archive failed SHA-256 validation")
-
-    archive_path.parent.mkdir(parents=True, exist_ok=True)
-    temporary_fd: int
-    temporary_name: str
-    temporary_fd, temporary_name = tempfile.mkstemp(prefix=archive_path.name + ".", suffix=".tmp", dir=archive_path.parent)
-    os.close(temporary_fd)
-    temporary_path: Path = Path(temporary_name)
-    try:
-        shutil.copyfile(download_path, temporary_path)
-        if _archive_matches(temporary_path, expected_sha256):
-            temporary_path.replace(archive_path)
-        else:
-            raise RuntimeError("The cache publication copy failed SHA-256 validation")
-    finally:
-        if temporary_path.exists():
-            temporary_path.unlink()
-        else:
-            pass
-
-
-def _expand_verified_archive(archive_path: Path, expected_sha256: str, build_dir: Path) -> Path:
-    """Reauthenticate and expand a fresh build-scoped toolchain tree.
-
-    :param archive_path: Persistent compiler archive.
-    :param expected_sha256: Reviewed complete-file digest.
-    :param build_dir: Private directory for the current FMU export.
-    :return: Fresh extraction root.
-    """
-
-    if _archive_matches(archive_path, expected_sha256):
-        pass
-    else:
-        raise RuntimeError("The cached compiler archive failed SHA-256 validation")
-    build_dir.mkdir(parents=True, exist_ok=True)
-    extraction_root: Path = Path(tempfile.mkdtemp(prefix="veragrid_fmu_toolchain_", dir=build_dir))
-    clang_tool_chain_bins.expand_archive(str(archive_path), str(extraction_root), verify=expected_sha256)
-    return extraction_root
-
-
-def _provision_toolchain(build_dir: Path, cache_root: Path) -> Path:
-    """Materialize one verified compiler tree below the current FMU build.
-
-    :param build_dir: Private directory owned by the current FMU export.
-    :param cache_root: VeraGrid-owned persistent archive directory.
-    :return: Fresh build-scoped compiler tree.
-    """
-
-    if _dependency_versions_match():
-        pass
-    else:
-        raise RuntimeError("The reviewed FMI compiler dependency set is incomplete or differs")
-    system_name: str = platform.system().lower()
-    machine_name: str = platform.machine().lower()
-    package_platform: str
-    package_arch: str
-    compiler_version: str
-    target_triple: str
-    library_suffix: str
-    expected_sha256: str
-    linker: str
-    (
-        package_platform,
-        package_arch,
-        compiler_version,
-        target_triple,
-        library_suffix,
-        expected_sha256,
-        linker,
-    ) = _host_toolchain_selection(system_name, machine_name)
-    if len(target_triple) > 0 and len(library_suffix) > 0 and len(linker) > 0:
-        pass
-    else:
-        raise RuntimeError("The selected compiler row is incomplete")
-    index_path: Path = _toolchain_index_path()
-    compiler_match: ToolMatch = clang_tool_chain_bins.resolve_one(
-        "clang", index_path=index_path, platform=package_platform, arch=package_arch,
-        version=compiler_version, component="clang",
-    )
-    if compiler_match.archive_sha256 == expected_sha256:
-        pass
-    else:
-        raise RuntimeError("The selected compiler archive differs from the reviewed host row")
-
-    archive_name: str = compiler_match.component + "-" + package_platform + "-" + package_arch + "-" + expected_sha256[:16] + ".tar.zst"
-    archive_path: Path = cache_root / archive_name
-    if archive_path.exists() and (archive_path.is_symlink() or not archive_path.is_file()):
-        raise RuntimeError("The VeraGrid compiler archive cache entry is not a regular file")
-    else:
-        pass
-    if archive_path.is_file():
-        pass
-    else:
-        normalized_asset_path: str = compiler_match.archive_path.replace("\\", "/")
-        media_url: str = clang_tool_chain_bins.lfs_media_url(normalized_asset_path)
-        download_path: Path = build_dir / "toolchain_download" / archive_name
-        _download_verified_archive(media_url, download_path, archive_path, expected_sha256)
-    return _expand_verified_archive(archive_path, expected_sha256, build_dir)
-
-
-def _resolve_toolchain_tools(
-    build_dir: Path,
-    cache_root: Path | None = None,
-) -> tuple[Path, Path, Path, Path, str, str, str, str]:
-    """Resolve the compiler, linker, and inspectors in a fresh verified tree.
-
-    :param build_dir: Private directory owned by the current FMU export.
-    :param cache_root: Optional reviewed-archive cache root selected by a compiler session.
     :return: Absolute tools followed by platform, architecture, target, suffix.
     """
 
@@ -392,84 +176,44 @@ def _resolve_toolchain_tools(
     machine_name: str = platform.machine().lower()
     package_platform: str
     package_arch: str
-    compiler_version: str
     target_triple: str
     library_suffix: str
-    expected_sha256: str
     linker: str
     (
         package_platform,
         package_arch,
-        compiler_version,
         target_triple,
         library_suffix,
-        expected_sha256,
         linker,
     ) = _host_toolchain_selection(system_name, machine_name)
-    index_path: Path = _toolchain_index_path()
-    if cache_root is None:
-        selected_cache_root: Path = _toolchain_cache_root()
-    else:
-        selected_cache_root = cache_root
-    toolchain_root: Path = _provision_toolchain(build_dir, selected_cache_root).resolve()
-    tool_names: tuple[str, ...] = ("clang", linker, "llvm-nm", "llvm-objdump")
-    resolved_tools: list[Path | None] = list((None, None, None, None))
-    tool_index: int
-    tool_name: str
-    for tool_index, tool_name in enumerate(tool_names):
-        tool_match: ToolMatch = clang_tool_chain_bins.resolve_one(
-            tool_name, index_path=index_path, platform=package_platform, arch=package_arch,
-            version=compiler_version, component="clang",
-        )
-        if tool_match.archive_sha256 == expected_sha256:
-            tool_path: Path = toolchain_root.joinpath(*PurePosixPath(tool_match.path_in_archive).parts).resolve()
-            if tool_path.is_relative_to(toolchain_root) and tool_path.is_file():
-                resolved_tools[tool_index] = tool_path
-            else:
-                raise FileNotFoundError("A reviewed compiler tool is absent from the fresh extraction")
-        else:
-            raise RuntimeError("A compiler tool resolves to an unreviewed archive")
-    compiler_path: Path | None = resolved_tools[0]
-    linker_path: Path | None = resolved_tools[1]
-    nm_path: Path | None = resolved_tools[2]
-    objdump_path: Path | None = resolved_tools[3]
-    if (
-        compiler_path is not None
-        and linker_path is not None
-        and nm_path is not None
-        and objdump_path is not None
-    ):
-        return (
-            compiler_path,
-            linker_path,
-            nm_path,
-            objdump_path,
-            package_platform,
-            package_arch,
-            target_triple,
-            library_suffix,
-        )
-    else:
-        raise RuntimeError("The reviewed compiler tool set is incomplete")
+    compiler_path: Path = _toolchain_tool_path("clang")
+    linker_path: Path = _toolchain_tool_path(linker)
+    nm_path: Path = _toolchain_tool_path("llvm-nm")
+    objdump_path: Path = _toolchain_tool_path("llvm-objdump")
+    return (
+        compiler_path,
+        linker_path,
+        nm_path,
+        objdump_path,
+        package_platform,
+        package_arch,
+        target_triple,
+        library_suffix,
+    )
 
 
 def _create_compiler_session_tools(
     workspace_parent: Path,
-    cache_root: Path,
 ) -> tuple[Path, Path, Path, Path, Path, str, str, str, str, tuple[str, ...]]:
-    """Create one private compiler workspace and authenticate its tool paths.
+    """Create one private workspace and authenticate the selected tool paths.
 
     :param workspace_parent: Existing parent for the session-owned temporary root.
-    :param cache_root: Persistent authenticated archive cache to consume.
     :return: Workspace, four tools, host metadata, and ordered tool digests.
     """
 
     workspace_root: Path = Path(tempfile.mkdtemp(prefix="veragrid_fmu_compiler_session_", dir=workspace_parent))
     try:
-        resolved: tuple[Path, Path, Path, Path, str, str, str, str] = _resolve_toolchain_tools(
-            workspace_root,
-            cache_root,
-        )
+        resolved: tuple[Path, Path, Path, Path, str, str, str, str] = _resolve_toolchain_tools()
         tool_paths: tuple[Path, ...] = resolved[:4]
         tool_hashes: list[str] = [""] * len(tool_paths)
         tool_index: int
@@ -980,7 +724,7 @@ def _validate_runtime_dependencies(output_path: Path, objdump_path: Path, packag
 
 
 class FmuCompilerSession:
-    """Own one authenticated compiler extraction for a sequential FMI batch."""
+    """Own one authenticated compiler command session for a sequential FMI batch."""
 
     __slots__ = (
         "_workspace_root", "_compiler_path", "_linker_path", "_nm_path",
@@ -1010,7 +754,7 @@ class FmuCompilerSession:
             self._target_triple,
             self._library_suffix,
             self._tool_hashes,
-        ) = _create_compiler_session_tools(Path(tempfile.gettempdir()), _toolchain_cache_root())
+        ) = _create_compiler_session_tools(Path(tempfile.gettempdir()))
 
     def __reduce_ex__(self, protocol: int) -> object:
         """Reject serialization because tool ownership is process-local.
@@ -1054,7 +798,7 @@ class FmuCompilerSession:
             valid_path: bool = bool(
                 not tool_path.is_symlink()
                 and tool_path.is_file()
-                and canonical_tool.is_relative_to(self._workspace_root.resolve())
+                and canonical_tool == tool_path
             )
             if valid_path:
                 with tool_path.open("rb") as tool_stream:
@@ -1067,7 +811,7 @@ class FmuCompilerSession:
                 raise RuntimeError("An FMI compiler session tool path is no longer trusted")
 
     def close(self) -> None:
-        """Remove the exact session-owned extraction and mark the session closed.
+        """Remove the exact session-owned workspace and mark the session closed.
 
         :return: None.
         """
@@ -1212,10 +956,28 @@ def compile_fmu_shared_library(
     :param output_path: Expected host-native shared-library path.
     :param interface: FMI interface whose complete symbols must be present.
     :param model_identifier: Explicit FMI 1 symbol prefix, when required.
-    :param compiler_session: Optional authenticated extraction reused by an explicit batch.
+    :param compiler_session: Optional authenticated session reused by an explicit batch.
     :return: Validated shared-library path.
     """
 
+    if len(source_files) > 0 and len(include_directories) > 0:
+        pass
+    else:
+        raise ValueError("FMI compilation requires source files and include directories")
+    source_file: Path
+    for source_file in source_files:
+        if source_file.is_file():
+            pass
+        else:
+            raise FileNotFoundError("FMI compilation source is missing: " + str(source_file))
+    include_directory: Path
+    for include_directory in include_directories:
+        if include_directory.is_dir():
+            pass
+        else:
+            raise FileNotFoundError(
+                "FMI compilation include directory is missing: " + str(include_directory)
+            )
     if compiler_session is None:
         owned_session: FmuCompilerSession = FmuCompilerSession()
         try:

@@ -6,6 +6,8 @@
 from PySide6 import QtWidgets
 from PySide6.QtCore import QCoreApplication, QT_TRANSLATE_NOOP
 
+from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
+
 # ponytail: keep these stock message-box titles visible to lupdate so the
 # compiled catalog always contains the "messages" context used at runtime.
 MESSAGE_TRANSLATION_KEYS: tuple[str, str, str, str] = (
@@ -46,7 +48,7 @@ def info_msg(text, title=None):
         window_title = title
     msg.setWindowTitle(window_title)
     msg.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
-    return msg.exec()
+    return exec_dialog_safely(dialog=msg)
 
 
 def warning_msg(text: str, title: str | None = None) -> int:
@@ -65,7 +67,7 @@ def warning_msg(text: str, title: str | None = None) -> int:
         window_title = title
     msg.setWindowTitle(window_title)
     msg.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
-    return msg.exec()
+    return exec_dialog_safely(dialog=msg)
 
 
 def error_msg(text: str, title: str | None = None) -> int:
@@ -84,42 +86,34 @@ def error_msg(text: str, title: str | None = None) -> int:
         window_title = title
     msg.setWindowTitle(window_title)
     msg.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
-    return msg.exec()
+    return exec_dialog_safely(dialog=msg)
 
 
-def yes_no_question(text: str,
-                    title: str | None = None,
-                    parent: QtWidgets.QWidget | None = None) -> bool:
-    """Ask a question using the standard affirmative and negative buttons.
-
-    The negative answer is selected by default so closing the dialogue cannot
-    accidentally confirm a destructive action.
-
-    :param text: Question displayed to the user.
-    :param title: Optional window title. The translated generic title is used
-        when no specific title is supplied.
-    :param parent: Optional widget that owns and positions the modal dialogue.
-    :return: ``True`` when the user selects the affirmative answer.
+def yes_no_question(text: str, title: str | None = None, parent: QtWidgets.QWidget | None = None) -> bool:
+    """
+    Question message
+    :param text:
+    :param title:
+    :param parent: Optional owner window for the question box.
+    :return: True / False
     """
     default_title: str = QCoreApplication.translate("messages", "Question")
     if title is None:
         window_title: str = default_title
     else:
         window_title = title
-
-    # Use one shared message-box structure so callers differ only in their
-    # translated title and question text.
-    button_reply: QtWidgets.QMessageBox.StandardButton = QtWidgets.QMessageBox.question(
-        parent,
-        window_title,
-        text,
-        QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
-        QtWidgets.QMessageBox.StandardButton.No
-    )
+    msg: CenteredMessageBox = CenteredMessageBox(parent)
+    msg.setIcon(QtWidgets.QMessageBox.Icon.Question)
+    msg.setWindowTitle(window_title)
+    msg.setText(text)
+    msg.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Yes |
+                           QtWidgets.QMessageBox.StandardButton.No)
+    msg.setDefaultButton(QtWidgets.QMessageBox.StandardButton.No)
+    button_reply: int = exec_dialog_safely(dialog=msg)
     yes_button: QtWidgets.QMessageBox.StandardButton = QtWidgets.QMessageBox.StandardButton.Yes
     if button_reply == yes_button:
         result: bool = True
     else:
-        result = False
+        result = button_reply == yes_button.value
 
     return result

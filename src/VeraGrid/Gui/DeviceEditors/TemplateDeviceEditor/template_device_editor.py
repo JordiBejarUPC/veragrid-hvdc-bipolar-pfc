@@ -1141,7 +1141,7 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
             figure.tight_layout()
             plot_widget.redraw()
             try:
-                dialog.exec()
+                exec_dialog_safely(dialog=dialog)
             finally:
                 plot_widget.dispose()
                 delete_dialog_safely(dialog=dialog)

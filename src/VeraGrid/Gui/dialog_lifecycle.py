@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 import shiboken6
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtWidgets
 
 
 def is_dialog_available(dialog: QtWidgets.QWidget | None) -> bool:
@@ -26,7 +26,7 @@ def is_dialog_available(dialog: QtWidgets.QWidget | None) -> bool:
 
 def delete_dialog_safely(dialog: object) -> None:
     """
-    Schedule one Qt dialog/widget for deletion and flush deferred delete events.
+    Schedule one Qt dialog/widget and its children for deferred deletion.
 
     :param dialog: Qt widget to delete.
     :return: None.
@@ -36,7 +36,6 @@ def delete_dialog_safely(dialog: object) -> None:
             delete_child_widgets_safely(widget=dialog)
             try:
                 dialog.deleteLater()
-                QtCore.QCoreApplication.sendPostedEvents(dialog, QtCore.QEvent.Type.DeferredDelete)
             except Exception:
                 pass
             else:
@@ -69,7 +68,18 @@ def delete_child_widgets_safely(widget: QtWidgets.QWidget) -> None:
         else:
             pass
 
-    QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
+
+def delete_dialogs_safely(dialogs: list[QtWidgets.QDialog]) -> None:
+    """
+    Schedule all retained dialogs for deferred deletion and release the list.
+
+    :param dialogs: Owner list containing dialogs to close.
+    :return: None.
+    """
+    retained_dialogs: list[QtWidgets.QDialog] = list(dialogs)
+    for dialog in retained_dialogs:
+        delete_dialog_safely(dialog=dialog)
+    dialogs.clear()
 
 
 def exec_dialog_safely(dialog: QtWidgets.QDialog) -> int:
@@ -82,6 +92,12 @@ def exec_dialog_safely(dialog: QtWidgets.QDialog) -> int:
     try:
         result: int = int(dialog.exec())
     finally:
-        delete_dialog_safely(dialog=dialog)
+        # Keep the wrapper valid until the caller has consumed fields populated
+        # by the dialog. Qt will perform the deferred deletion on the GUI loop.
+        if isinstance(dialog, QtWidgets.QWidget) and shiboken6.isValid(dialog):
+            delete_child_widgets_safely(widget=dialog)
+            dialog.deleteLater()
+        else:
+            pass
 
     return result

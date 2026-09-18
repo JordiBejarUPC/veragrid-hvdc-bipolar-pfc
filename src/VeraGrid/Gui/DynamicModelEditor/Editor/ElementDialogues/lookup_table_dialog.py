@@ -13,6 +13,7 @@ from matplotlib.figure import Figure
 import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 
+from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely
 from VeraGrid.Gui.matplotlib_dialog import show_matplotlib_figure
 
 
@@ -500,6 +501,38 @@ class LookupArrayLinearDialog(QtWidgets.QDialog):
         _unused_destroyed_obj: QtCore.QObject | None = destroyed_obj
         self._preview_dialog = None
 
+    def close_preview_dialog(self) -> None:
+        """
+        Schedule the retained plot preview for deferred deletion.
+
+        :return: None.
+        """
+        if self._preview_dialog is not None:
+            delete_dialog_safely(dialog=self._preview_dialog)
+            self._preview_dialog = None
+        else:
+            pass
+
+    def done(self, result: int) -> None:
+        """
+        Close the plot preview before completing the lookup dialog.
+
+        :param result: Qt dialog result code.
+        :return: None.
+        """
+        self.close_preview_dialog()
+        QtWidgets.QDialog.done(self, result)
+
+    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
+        """
+        Close the plot preview before closing the lookup dialog.
+
+        :param event: Qt close event.
+        :return: None.
+        """
+        self.close_preview_dialog()
+        QtWidgets.QDialog.closeEvent(self, event)
+
     def show_plot_preview(self) -> None:
         """
         Render the current lookup-table rows in one external preview window.
@@ -521,10 +554,7 @@ class LookupArrayLinearDialog(QtWidgets.QDialog):
         else:
             pass
 
-        if self._preview_dialog is not None:
-            self._preview_dialog.close()
-        else:
-            pass
+        self.close_preview_dialog()
 
         figure: Figure = Figure(figsize=(7, 4))
         axis: Axes = figure.add_subplot(111)

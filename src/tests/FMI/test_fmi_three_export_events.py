@@ -52,6 +52,8 @@ def test_fmi_three_time_event_me(tmp_path: Path) -> None:
     result: np.ndarray = simulate_fmu(
         str(fmu_path),
         stop_time=0.03,
+        solver="Euler",
+        step_size=1.0e-3,
         output_interval=1.0e-3,
         output=list(("x", "event_mode")),
     )
@@ -81,4 +83,3 @@ def test_fmi_three_state_zero_crossing_me(tmp_path: Path) -> None:
     transition_time: float = float(result["time"][rising_edges[0] + 1])
     assert abs(transition_time - 0.015) <= 2.0e-5
     np.testing.assert_allclose(result["x"], result["time"], rtol=0.0, atol=2.0e-7)
-

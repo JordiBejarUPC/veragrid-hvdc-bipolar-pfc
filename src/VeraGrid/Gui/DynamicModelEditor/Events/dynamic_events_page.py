@@ -14,6 +14,8 @@ from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_handler import Dynami
 from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_page_ui import Ui_DynamicEventsPage
 from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_support import SwitchSequenceData, SwitchSequenceDialog
 from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import DynamicEditorEntry
+from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
+from VeraGrid.Gui.messages import yes_no_question
 from VeraGrid.Gui.toast_widget import ToastManager
 from VeraGridEngine.Devices.Events.emt_event import EmtEvent
 from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup
@@ -244,14 +246,12 @@ class DynamicEventsPage(QtWidgets.QWidget):
         event: RmsEvent | EmtEvent | None = self._selected_event()
         group: RmsEventsGroup | EmtEventsGroup | None = self._selected_group()
         if event is not None:
-            answer: QtWidgets.QMessageBox.StandardButton = QtWidgets.QMessageBox.question(
-                self,
-                self.tr("Remove event"),
-                self.tr("Remove the selected event?"),
-                QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
-                QtWidgets.QMessageBox.StandardButton.No,
+            answer: bool = yes_no_question(
+                text=self.tr("Remove the selected event?"),
+                title=self.tr("Remove event"),
+                parent=self,
             )
-            if answer == QtWidgets.QMessageBox.StandardButton.Yes:
+            if answer:
                 parent_group: RmsEventsGroup | EmtEventsGroup | None = event.group
                 self.handler.delete_event(event=event)
                 if parent_group is not None:
@@ -261,14 +261,12 @@ class DynamicEventsPage(QtWidgets.QWidget):
             else:
                 pass
         elif group is not None:
-            answer = QtWidgets.QMessageBox.question(
-                self,
-                self.tr("Remove event group"),
-                self.tr("Remove '{name}' and all events in this group?").format(name=group.name),
-                QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
-                QtWidgets.QMessageBox.StandardButton.No,
+            answer = yes_no_question(
+                text=self.tr("Remove '{name}' and all events in this group?").format(name=group.name),
+                title=self.tr("Remove event group"),
+                parent=self,
             )
-            if answer == QtWidgets.QMessageBox.StandardButton.Yes:
+            if answer:
                 self.handler.delete_group(group=group)
                 self._select_first_group()
             else:
@@ -483,7 +481,7 @@ class DynamicEventsPage(QtWidgets.QWidget):
                 events_groups=groups,
                 parent=self,
             )
-            if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+            if exec_dialog_safely(dialog=dialog) == QtWidgets.QDialog.DialogCode.Accepted:
                 sequence_data: SwitchSequenceData | None = dialog.get_typed_data()
                 if sequence_data is not None:
                     target_candidate: DynamicEventParameterCandidate | None = None

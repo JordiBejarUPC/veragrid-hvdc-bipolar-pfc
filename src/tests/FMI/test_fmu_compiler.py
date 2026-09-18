@@ -2,30 +2,25 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 import hashlib
 import inspect
 import os
 import pickle
 import platform
-import shutil
 import threading
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
-import clang_tool_chain_bins
-from clang_tool_chain_bins import ToolMatch
 
 from VeraGridEngine.IO.fmu.compiler import (
     FmuBinaryInterface,
     FmuCompilerSession,
-    _archive_matches,
     _binary_header_matches,
     _compile_command,
     _compiler_available,
     _close_owned_compiler_session,
     _create_compiler_session_tools,
-    _dependency_versions_match,
     _download_verified_archive,
     _expand_verified_archive,
     _host_toolchain_selection,
@@ -33,50 +28,9 @@ from VeraGridEngine.IO.fmu.compiler import (
     _provision_toolchain,
     _required_fmi_symbols,
     _runtime_dependency_violations,
-    _toolchain_cache_root,
-    _toolchain_index_path,
     compile_fmu_shared_library,
     fmu_compiler_available,
 )
-
-
-def test_dependency_probe_accepts_approved_top_level_distribution() -> None:
-    """Accept the installed top-level distribution without pinning its closure.
-
-    :return: None.
-    """
-
-    assert _dependency_versions_match()
-
-
-def test_dependency_probe_rejects_missing_top_level_distribution() -> None:
-    """Fail closed when the requested top-level distribution is absent.
-
-    :return: None.
-    """
-
-    assert not _dependency_versions_match("veragrid-intentionally-missing-toolchain-distribution")
-
-
-def test_toolchain_index_rejects_content_drift(tmp_path: Path) -> None:
-    """Accept the host index and reject a package-local index with drift.
-
-    :param tmp_path: Isolated synthetic package directory from pytest.
-    :return: None.
-    """
-
-    # The installed host wheel must first match its reviewed platform digest.
-    reviewed_index_path: Path = _toolchain_index_path()
-    assert reviewed_index_path.is_file()
-
-    # A regular file in the correct package-relative location remains
-    # untrusted when its complete content digest differs.
-    synthetic_module_file: Path = tmp_path / "clang_tool_chain_bins" / "__init__.py"
-    synthetic_index_path: Path = synthetic_module_file.parent / "_impl" / "data" / "tool-index.json"
-    synthetic_index_path.parent.mkdir(parents=True)
-    synthetic_index_path.write_bytes(b"index content drift")
-    with pytest.raises(RuntimeError, match="index failed SHA-256 validation"):
-        _toolchain_index_path(platform.system().lower(), str(synthetic_module_file))
 
 
 def _write_complete_fmi_two_cs_stub(source_path: Path) -> None:
@@ -130,28 +84,24 @@ def _build_synthetic_session_for_cleanup_failure(tmp_path: Path) -> FmuCompilerS
 @pytest.mark.parametrize(
     (
         "system_name", "machine_name", "package_platform", "package_arch",
-        "version", "target_triple", "suffix", "archive_sha256", "linker",
+        "target_triple", "suffix", "linker",
     ),
     (
         (
-            "windows", "amd64", "win", "mingw-x86_64", "20251104",
-            "x86_64-w64-windows-gnu", ".dll",
-            "a18059f62f4435c0f023073e186f7c14be5fdfc07a193b1f1e627bcad7f15d87", "ld.lld",
+            "windows", "amd64", "win", "mingw-x86_64",
+            "x86_64-w64-windows-gnu", ".dll", "ld.lld",
         ),
         (
-            "linux", "x86_64", "linux", "x86_64", "21.1.5",
-            "x86_64-unknown-linux-gnu", ".so",
-            "4021cc49d70472122761709e7376835dfc857b5ec77183fa969b5f61d0f13a2f", "ld.lld",
+            "linux", "x86_64", "linux", "x86_64",
+            "x86_64-unknown-linux-gnu", ".so", "ld.lld",
         ),
         (
-            "darwin", "x86_64", "darwin", "x86_64", "21.1.6",
-            "x86_64-apple-macos11.0", ".dylib",
-            "2f010a75d4b4f238b132ec22f3b9df5d341be9be60b73a5790436642f85fba71", "ld64.lld",
+            "darwin", "x86_64", "darwin", "x86_64",
+            "x86_64-apple-macos11.0", ".dylib", "ld64.lld",
         ),
         (
-            "darwin", "arm64", "darwin", "arm64", "21.1.6",
-            "arm64-apple-macos11.0", ".dylib",
-            "f7631c8b96d76dadd9aa69be681e164a5b5fbbb0dd95ecf99764d9d2222ca65a", "ld64.lld",
+            "darwin", "arm64", "darwin", "arm64",
+            "arm64-apple-macos11.0", ".dylib", "ld64.lld",
         ),
     ),
 )
@@ -160,10 +110,8 @@ def test_host_selection_is_explicit(
     machine_name: str,
     package_platform: str,
     package_arch: str,
-    version: str,
     target_triple: str,
     suffix: str,
-    archive_sha256: str,
     linker: str,
 ) -> None:
     """Map every supported native host to its sealed compiler row.
@@ -172,22 +120,18 @@ def test_host_selection_is_explicit(
     :param machine_name: Explicit machine test value.
     :param package_platform: Expected package platform.
     :param package_arch: Expected package architecture.
-    :param version: Expected compiler release identifier.
     :param target_triple: Expected host-native LLVM target triple.
     :param suffix: Expected shared-library suffix.
-    :param archive_sha256: Expected complete archive digest.
-    :param linker: Expected bundled linker.
+    :param linker: Expected linker.
     :return: None.
     """
 
-    selection: tuple[str, str, str, str, str, str, str] = _host_toolchain_selection(system_name, machine_name)
+    selection: tuple[str, str, str, str, str] = _host_toolchain_selection(system_name, machine_name)
     assert selection[0] == package_platform
     assert selection[1] == package_arch
-    assert selection[2] == version
-    assert selection[3] == target_triple
-    assert selection[4] == suffix
-    assert selection[5] == archive_sha256
-    assert selection[6] == linker
+    assert selection[2] == target_triple
+    assert selection[3] == suffix
+    assert selection[4] == linker
 
 
 @pytest.mark.parametrize(
@@ -204,57 +148,6 @@ def test_host_selection_rejects_unreviewed_pairs(system_name: str, machine_name:
 
     with pytest.raises(RuntimeError, match="supports only|does not support"):
         _host_toolchain_selection(system_name, machine_name)
-
-
-def test_archive_authentication_detects_mutation(tmp_path: Path) -> None:
-    """Reject a compiler archive after any byte changes.
-
-    :param tmp_path: Isolated archive directory supplied by pytest.
-    :return: None.
-    """
-
-    archive_path: Path = tmp_path / "compiler.tar.zst"
-    original_bytes: bytes = b"reviewed compiler archive"
-    archive_path.write_bytes(original_bytes)
-    expected_sha256: str = hashlib.sha256(original_bytes).hexdigest()
-    assert _archive_matches(archive_path, expected_sha256)
-    archive_path.write_bytes(original_bytes + b"changed")
-    assert not _archive_matches(archive_path, expected_sha256)
-
-
-def test_download_publishes_only_a_verified_archive(tmp_path: Path) -> None:
-    """Publish an authenticated local-source archive and reject wrong content.
-
-    :param tmp_path: Isolated source, download, and cache root from pytest.
-    :return: None.
-    """
-
-    source_path: Path = tmp_path / "source.tar.zst"
-    source_bytes: bytes = b"content-addressed archive"
-    source_path.write_bytes(source_bytes)
-    expected_sha256: str = hashlib.sha256(source_bytes).hexdigest()
-    download_path: Path = tmp_path / "build" / "download.tar.zst"
-    archive_path: Path = tmp_path / "cache" / "archive.tar.zst"
-    _download_verified_archive(source_path.as_uri(), download_path, archive_path, expected_sha256)
-    assert archive_path.read_bytes() == source_bytes
-    assert len(list(archive_path.parent.glob("*.tmp"))) == 0
-
-    rejected_path: Path = tmp_path / "cache" / "rejected.tar.zst"
-    with pytest.raises(RuntimeError, match="failed SHA-256"):
-        _download_verified_archive(source_path.as_uri(), tmp_path / "bad" / "download.tar.zst", rejected_path, "0" * 64)
-    assert not rejected_path.exists()
-
-
-def test_availability_rejects_malformed_local_index(tmp_path: Path) -> None:
-    """Treat malformed local package metadata as unavailable without raising.
-
-    :param tmp_path: Isolated malformed index and cache root from pytest.
-    :return: None.
-    """
-
-    malformed_index: Path = tmp_path / "tool-index.json"
-    malformed_index.write_text("not valid json", encoding="utf-8")
-    assert not _compiler_available(malformed_index, tmp_path / "cache", "windows", "amd64")
 
 
 def test_compile_command_binds_absolute_linker(tmp_path: Path) -> None:
@@ -424,7 +317,7 @@ def test_compiler_rejects_missing_source(tmp_path: Path) -> None:
         compile_fmu_shared_library((missing_source,), (tmp_path,), tmp_path / "missing.dll", FmuBinaryInterface.FMI_TWO_MODEL_EXCHANGE)
 
 
-@pytest.mark.skipif(not fmu_compiler_available(), reason="The reviewed compiler archive has not been provisioned on this host")
+@pytest.mark.skipif(not fmu_compiler_available(), reason="The approved compiler command set is unavailable on this host")
 def test_compiler_rejects_binary_without_fmi_symbols(tmp_path: Path) -> None:
     """Compile a valid shared library and reject its absent FMI 1 contract.
 
@@ -456,132 +349,6 @@ def test_compiler_rejects_binary_without_fmi_symbols(tmp_path: Path) -> None:
         )
 
 
-def test_availability_rejects_corrupted_cached_archive(tmp_path: Path) -> None:
-    """Treat a present archive with the wrong digest as unavailable.
-
-    :param tmp_path: Isolated cache root supplied by pytest.
-    :return: None.
-    """
-
-    system_name: str = platform.system().lower()
-    machine_name: str = platform.machine().lower()
-    package_platform: str
-    package_arch: str
-    compiler_version: str
-    target_triple: str
-    library_suffix: str
-    expected_sha256: str
-    linker: str
-    (
-        package_platform,
-        package_arch,
-        compiler_version,
-        target_triple,
-        library_suffix,
-        expected_sha256,
-        linker,
-    ) = _host_toolchain_selection(system_name, machine_name)
-    compiler_match: ToolMatch = clang_tool_chain_bins.resolve_one(
-        "clang",
-        index_path=_toolchain_index_path(),
-        platform=package_platform,
-        arch=package_arch,
-        version=compiler_version,
-        component="clang",
-    )
-    archive_name: str = (
-        compiler_match.component
-        + "-"
-        + package_platform
-        + "-"
-        + package_arch
-        + "-"
-        + expected_sha256[:16]
-        + ".tar.zst"
-    )
-    corrupted_archive: Path = tmp_path / archive_name
-    corrupted_archive.write_bytes(b"corrupted")
-    assert not _compiler_available(
-        _toolchain_index_path(),
-        tmp_path,
-        system_name,
-        machine_name,
-    )
-
-
-@pytest.mark.skipif(
-    not fmu_compiler_available(),
-    reason="The reviewed compiler archive has not been provisioned on this host",
-)
-def test_provisioning_reuses_archive_and_rematerializes_tools(tmp_path: Path) -> None:
-    """Reuse a local archive while expanding a fresh authenticated tree each time.
-
-    :param tmp_path: Isolated cache and extraction roots supplied by pytest.
-    :return: None.
-    """
-
-    system_name: str = platform.system().lower()
-    machine_name: str = platform.machine().lower()
-    package_platform: str
-    package_arch: str
-    compiler_version: str
-    target_triple: str
-    library_suffix: str
-    expected_sha256: str
-    linker: str
-    (
-        package_platform,
-        package_arch,
-        compiler_version,
-        target_triple,
-        library_suffix,
-        expected_sha256,
-        linker,
-    ) = _host_toolchain_selection(system_name, machine_name)
-    compiler_match: ToolMatch = clang_tool_chain_bins.resolve_one(
-        "clang",
-        index_path=_toolchain_index_path(),
-        platform=package_platform,
-        arch=package_arch,
-        version=compiler_version,
-        component="clang",
-    )
-    archive_name: str = (
-        compiler_match.component
-        + "-"
-        + package_platform
-        + "-"
-        + package_arch
-        + "-"
-        + expected_sha256[:16]
-        + ".tar.zst"
-    )
-    source_archive: Path = _toolchain_cache_root() / archive_name
-    isolated_cache: Path = tmp_path / "cache"
-    isolated_cache.mkdir()
-    isolated_archive: Path = isolated_cache / archive_name
-    shutil.copyfile(source_archive, isolated_archive)
-
-    first_root: Path = _provision_toolchain(tmp_path / "first", isolated_cache)
-    compiler_relative_path: PurePosixPath = PurePosixPath(compiler_match.path_in_archive)
-    first_compiler: Path = first_root.joinpath(*compiler_relative_path.parts)
-    original_compiler_sha256: str = hashlib.sha256(first_compiler.read_bytes()).hexdigest()
-    first_compiler.write_bytes(b"mutated extracted tool")
-
-    second_root: Path = _provision_toolchain(tmp_path / "second", isolated_cache)
-    second_compiler: Path = second_root.joinpath(*compiler_relative_path.parts)
-    second_compiler_sha256: str = hashlib.sha256(second_compiler.read_bytes()).hexdigest()
-    assert first_root != second_root
-    assert second_compiler_sha256 == original_compiler_sha256
-
-    direct_root: Path = _expand_verified_archive(
-        isolated_archive,
-        expected_sha256,
-        tmp_path / "direct",
-    )
-    assert direct_root != first_root
-
-
 def test_macho_dependency_parser_rejects_weak_external_library() -> None:
     """Apply the same allowlist to weak and reexported Mach-O dependencies.
 
@@ -603,7 +370,7 @@ def test_macho_dependency_parser_rejects_weak_external_library() -> None:
 
 @pytest.mark.skipif(
     not fmu_compiler_available(),
-    reason="The reviewed compiler archive has not been provisioned on this host",
+    reason="The approved compiler command set is unavailable on this host",
 )
 def test_compiler_rejects_foreign_library_suffix(tmp_path: Path) -> None:
     """Reject a foreign output suffix before compiling generated source.
@@ -628,9 +395,9 @@ def test_compiler_rejects_foreign_library_suffix(tmp_path: Path) -> None:
         )
 
 
-@pytest.mark.skipif(not fmu_compiler_available(), reason="The reviewed compiler archive has not been provisioned on this host")
-def test_compiler_session_reuses_one_extraction_and_closes(tmp_path: Path) -> None:
-    """Compile twice through one extraction and remove it exactly once.
+@pytest.mark.skipif(not fmu_compiler_available(), reason="The approved compiler command set is unavailable on this host")
+def test_compiler_session_reuses_one_workspace_and_closes(tmp_path: Path) -> None:
+    """Compile twice through one session and remove its workspace exactly once.
 
     :param tmp_path: Isolated source and binary directory.
     :return: None.
@@ -638,7 +405,7 @@ def test_compiler_session_reuses_one_extraction_and_closes(tmp_path: Path) -> No
 
     source_path: Path = tmp_path / "complete.c"
     _write_complete_fmi_two_cs_stub(source_path)
-    library_suffix: str = _host_toolchain_selection(platform.system().lower(), platform.machine().lower())[4]
+    library_suffix: str = _host_toolchain_selection(platform.system().lower(), platform.machine().lower())[3]
     compiler_session: FmuCompilerSession = FmuCompilerSession()
     workspace_root: Path = compiler_session._workspace_root
     try:
@@ -812,7 +579,7 @@ def test_owned_session_cleanup_failure_preserves_primary_error(tmp_path: Path) -
     assert isinstance(captured.value.__cause__, OSError)
 
 
-@pytest.mark.skipif(not fmu_compiler_available(), reason="The reviewed compiler archive has not been provisioned on this host")
+@pytest.mark.skipif(not fmu_compiler_available(), reason="The approved compiler command set is unavailable on this host")
 def test_compiler_session_remains_reusable_after_compile_failure(tmp_path: Path) -> None:
     """Clear active state after failure so a valid compile can follow.
 
@@ -822,7 +589,7 @@ def test_compiler_session_remains_reusable_after_compile_failure(tmp_path: Path)
 
     source_path: Path = tmp_path / "model.c"
     source_path.write_text("this is invalid C\n", encoding="utf-8")
-    library_suffix: str = _host_toolchain_selection(platform.system().lower(), platform.machine().lower())[4]
+    library_suffix: str = _host_toolchain_selection(platform.system().lower(), platform.machine().lower())[3]
     compiler_session: FmuCompilerSession = FmuCompilerSession()
     try:
         with pytest.raises(RuntimeError, match="Clang failed"):
@@ -837,29 +604,6 @@ def test_compiler_session_remains_reusable_after_compile_failure(tmp_path: Path)
         assert valid_path.is_file()
     finally:
         compiler_session.close()
-
-
-def test_compiler_session_initialization_failure_cleans_workspace(tmp_path: Path) -> None:
-    """Remove the private root when archive authentication fails during init.
-
-    :param tmp_path: Isolated session parent and corrupt cache.
-    :return: None.
-    """
-
-    session_parent: Path = tmp_path / "sessions"
-    session_parent.mkdir()
-    cache_root: Path = tmp_path / "cache"
-    cache_root.mkdir()
-    selection: tuple[str, str, str, str, str, str, str] = _host_toolchain_selection(platform.system().lower(), platform.machine().lower())
-    compiler_match: ToolMatch = clang_tool_chain_bins.resolve_one(
-        "clang", index_path=_toolchain_index_path(), platform=selection[0], arch=selection[1], version=selection[2], component="clang",
-    )
-    archive_name: str = "clang-" + selection[0] + "-" + selection[1] + "-" + selection[5][:16] + ".tar.zst"
-    (cache_root / archive_name).write_bytes(b"corrupt")
-    assert compiler_match.archive_sha256 == selection[5]
-    with pytest.raises(RuntimeError, match="SHA-256 validation"):
-        _create_compiler_session_tools(session_parent, cache_root)
-    assert list(session_parent.iterdir()) == list()
 
 
 def test_compiler_session_initialization_and_cleanup_failure_preserves_primary_error() -> None:

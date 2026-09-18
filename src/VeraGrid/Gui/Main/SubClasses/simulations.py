@@ -22,7 +22,7 @@ from VeraGrid.Gui.SigmaAnalysis.sigma_analysis_dialogue import SigmaAnalysisGUI
 from VeraGrid.Gui.ProceduralGrid.procedural_grid import ProceduralGridWindow
 from VeraGrid.Gui.ProceduralGrid.map_warning import MapWarningDialog
 from VeraGrid.Gui.CandidateInvestments.candidate_investments import CandidateInvestmentsWindow
-from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, is_dialog_available
+from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, exec_dialog_safely, is_dialog_available
 from VeraGrid.Session.session import GcThread
 from VeraGrid.Session.server_driver import RemoteJobDriver
 
@@ -1442,7 +1442,7 @@ class SimulationsMain(TimeEventsMain):
                         dlg = LogsDialogue(name=self.tr("RMS pre simulation check"),
                                            logger=logger)
                         dlg.setModal(True)
-                        dlg.exec()
+                        exec_dialog_safely(dialog=dlg)
                         return
                     else:
                         self.run_rms()
@@ -4399,7 +4399,7 @@ class SimulationsMain(TimeEventsMain):
                     dlg = LogsDialogue(name=self.tr("Small-signal stability RMS pre simulation check"),
                                        logger=logger)
                     dlg.setModal(True)
-                    dlg.exec()
+                    exec_dialog_safely(dialog=dlg)
                     return
                 else:
 
@@ -4485,7 +4485,7 @@ class SimulationsMain(TimeEventsMain):
                     dlg = LogsDialogue(name=self.tr("Small-signal stability EMT pre simulation check"),
                                        logger=logger)
                     dlg.setModal(True)
-                    dlg.exec()
+                    exec_dialog_safely(dialog=dlg)
                     return
                 else:
 
@@ -4595,11 +4595,11 @@ class SimulationsMain(TimeEventsMain):
         current_diagram = self.get_selected_diagram_widget()
         if current_diagram is None:
             self.map_warning = MapWarningDialog(parent=self)
-            self.map_warning.exec()
+            exec_dialog_safely(dialog=self.map_warning)
             return
 
         self.candidate_investments_window = CandidateInvestmentsWindow(app=self)
-        self.candidate_investments_window.exec()
+        exec_dialog_safely(dialog=self.candidate_investments_window)
 
     def procedural_grid_expansion(self):
         """
@@ -4613,14 +4613,14 @@ class SimulationsMain(TimeEventsMain):
         if current_diagram is None:  # Before it was "if not isinstance(current_diagram, MapWidget):" but it did not work
             map_warning: MapWarningDialog = MapWarningDialog(parent=self)
             try:
-                map_warning.exec()
+                exec_dialog_safely(dialog=map_warning)
             finally:
                 delete_dialog_safely(dialog=map_warning)
             return
 
         procedural_grid_window: ProceduralGridWindow = ProceduralGridWindow(app=self)
         try:
-            procedural_grid_window.exec()
+            exec_dialog_safely(dialog=procedural_grid_window)
         finally:
             delete_dialog_safely(dialog=procedural_grid_window)
 

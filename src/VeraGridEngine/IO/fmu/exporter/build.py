@@ -71,7 +71,7 @@ def _copy_template_tree(cfg: ExportConfig, destination: Path) -> None:
 
 def host_build_capable() -> bool:
     """
-    Return whether the reviewed FMI compiler archive is ready for offline use.
+    Return whether the approved FMI compiler command set is available.
 
     :return: ``True`` when the host likely has a usable FMU build toolchain.
     """

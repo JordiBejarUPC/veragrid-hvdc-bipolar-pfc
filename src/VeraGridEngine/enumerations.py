@@ -3065,6 +3065,7 @@ class ResultTypes(Enum):
 
     BaseFlowReport = 'Ntc: Base flow report'
     ContingencyFlowsReport = 'Ntc: Contingency flow report'
+    ContingencyFlowsRepresentativeReport = 'Ntc: Representative hours contingency flow report'
     ContingencyFlowsBranchReport = 'Ntc: Contingency flow report. (Branch)'
     ContingencyFlowsGenerationReport = 'Ntc: Contingency flow report. (Generation)'
     ContingencyFlowsHvdcReport = 'Ntc: Contingency flow report. (Hvdc)'
@@ -3085,6 +3086,7 @@ class ResultTypes(Enum):
 
     # Clustering
     ClusteringReport = 'Clustering time series report'
+    ClusteringMembershipReport = 'Clustering hour assignments report'
 
     # RMS Simulation
 

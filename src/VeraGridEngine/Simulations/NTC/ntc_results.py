@@ -42,11 +42,22 @@ def worst_contingency_report_table(time_array: Union[DateVec, None],
                                    flow_n: np.ndarray,
                                    ntc: np.ndarray,
                                    contingency_rates: Vec,
-                                   loading_threshold_pct: float) -> ResultsTable:
+                                   loading_threshold_pct: float,
+                                   total_slack_mw: Vec | None = None,
+                                   time_percentage: Vec | None = None,
+                                   original_time_indices: IntVec | None = None,
+                                   result_type: ResultTypes = ResultTypes.ContingencyFlowsReport,
+                                   vsc_names: StrVec | None = None,
+                                   vsc_power: np.ndarray | None = None,
+                                   hvdc_names: StrVec | None = None,
+                                   hvdc_power: np.ndarray | None = None,
+                                   phase_shifter_indices: IntVec | None = None,
+                                   phase_shift: np.ndarray | None = None) -> ResultsTable:
     """
     Build the long form worst-contingency table with one row per kept (time, branch).
 
-    A row is kept only when its N-1 loading is at least ``loading_threshold_pct``.
+    A row is kept only when the branch is monitored and its N-1 loading is at
+    least ``loading_threshold_pct``.
     That is the NTC "loading threshold to report" option. It avoids allocating
     an object cell for every branch of every hour.
 
@@ -64,6 +75,16 @@ def worst_contingency_report_table(time_array: Union[DateVec, None],
     :param ntc: NTC of each time index (MW)
     :param contingency_rates: branch contingency ratings (MW)
     :param loading_threshold_pct: keep rows whose N-1 loading is at least this percent
+    :param total_slack_mw: optional total thermal slack per displayed operating point
+    :param time_percentage: optional cluster probabilities expressed as percentages
+    :param original_time_indices: optional original-series indices for the displayed hours
+    :param vsc_names: converter names, in stored power order
+    :param vsc_power: base operating-point converter powers, MW (time, converter)
+    :param hvdc_names: HVDC names, in stored power order
+    :param hvdc_power: base operating-point HVDC powers, MW (time, HVDC)
+    :param phase_shifter_indices: indices of branches configured for phase-angle control
+    :param phase_shift: base operating-point branch tap angles, radians (time, branch)
+    :param result_type: report title to display
     :return: results table
     """
     n_g: int = len(group_names)
@@ -76,7 +97,9 @@ def worst_contingency_report_table(time_array: Union[DateVec, None],
 
     # worst_loading is already p.u. of the contingency rate, including the N-state
     loading_pct: np.ndarray = np.asarray(worst_loading, dtype=float) * 100.0
-    keep: np.ndarray = loading_pct >= float(loading_threshold_pct)
+    # Apply the same per hour monitoring flags displayed in the monitored column.
+    keep: np.ndarray = ((loading_pct >= float(loading_threshold_pct))
+                        & np.asarray(monitor_logic, dtype=bool))
     kept: np.ndarray = np.argwhere(keep)
     n_rows: int = int(kept.shape[0])
 
@@ -98,6 +121,38 @@ def worst_contingency_report_table(time_array: Union[DateVec, None],
             'Flow N (MW)', 'Flow N-1 (MW)', 'Loading N-1 (%)'
         ]
 
+    # Slack is useful for snapshots too. Probability exists only for clusters.
+    detail_column: int = columns.index('NTC (MW)') + 1
+    if total_slack_mw is not None:
+        columns.insert(detail_column, 'Total slack (MW)')
+        detail_column += 1
+        n_cols += 1
+    else:
+        pass
+    if time_percentage is not None:
+        columns.insert(detail_column, 'Time percentage (%)')
+        n_cols += 1
+    else:
+        pass
+
+    # Controls describe the optimized N operating point, not corrective N-1 settings.
+    # Keep their columns even when a solved power or angle is zero.
+    control_start: int = n_cols
+    if vsc_names is not None and vsc_power is not None:
+        columns.extend(f'VSC {name}: P N (MW)' for name in vsc_names)
+    else:
+        pass
+    if hvdc_names is not None and hvdc_power is not None:
+        columns.extend(f'HVDC {name}: P N (MW)' for name in hvdc_names)
+    else:
+        pass
+    if phase_shifter_indices is not None and phase_shift is not None:
+        for branch_index in phase_shifter_indices:
+            columns.append(f'PST {branch_names[branch_index]}: angle N (deg)')
+            columns.append(f'PST {branch_names[branch_index]}: P N (MW)')
+    else:
+        pass
+    n_cols = len(columns)
     data: np.ndarray = np.empty((n_rows, n_cols), dtype=object)
     index: np.ndarray = np.empty(n_rows, dtype=object)
 
@@ -131,7 +186,10 @@ def worst_contingency_report_table(time_array: Union[DateVec, None],
         mon_flag: bool = monitored_flag_from_logic(monitor_logic[h, m])
 
         if include_time:
-            data[row_i, 0] = h
+            if original_time_indices is not None:
+                data[row_i, 0] = int(original_time_indices[h])
+            else:
+                data[row_i, 0] = h
             data[row_i, 1] = time_val
             col0: int = 2
         else:
@@ -142,18 +200,47 @@ def worst_contingency_report_table(time_array: Union[DateVec, None],
         data[row_i, col0 + 2] = c_name
         data[row_i, col0 + 3] = c_dev
         data[row_i, col0 + 4] = np.round(ntc_h, 4)
-        data[row_i, col0 + 5] = np.round(float(alpha[h, m]), 6)
-        data[row_i, col0 + 6] = np.round(float(alpha_n1[h, m]), 6)
-        data[row_i, col0 + 7] = np.round(flow_n_m, 4)
-        data[row_i, col0 + 8] = np.round(flow_n1_m, 4)
-        data[row_i, col0 + 9] = np.round(loading_n1_m, 4)
+        next_col: int = col0 + 5
+        if total_slack_mw is not None:
+            data[row_i, next_col] = np.round(float(total_slack_mw[h]), 4)
+            next_col += 1
+        else:
+            pass
+        if time_percentage is not None:
+            data[row_i, next_col] = np.round(float(time_percentage[h]), 6)
+            next_col += 1
+        else:
+            pass
+        data[row_i, next_col] = np.round(float(alpha[h, m]), 6)
+        data[row_i, next_col + 1] = np.round(float(alpha_n1[h, m]), 6)
+        data[row_i, next_col + 2] = np.round(flow_n_m, 4)
+        data[row_i, next_col + 3] = np.round(flow_n1_m, 4)
+        data[row_i, next_col + 4] = np.round(loading_n1_m, 4)
+        control_col: int = control_start
+        if vsc_names is not None and vsc_power is not None:
+            data[row_i, control_col:control_col + len(vsc_names)] = np.round(vsc_power[h], 4)
+            control_col += len(vsc_names)
+        else:
+            pass
+        if hvdc_names is not None and hvdc_power is not None:
+            data[row_i, control_col:control_col + len(hvdc_names)] = np.round(hvdc_power[h], 4)
+            control_col += len(hvdc_names)
+        else:
+            pass
+        if phase_shifter_indices is not None and phase_shift is not None:
+            for branch_index in phase_shifter_indices:
+                data[row_i, control_col] = np.round(np.rad2deg(phase_shift[h, branch_index]), 4)
+                data[row_i, control_col + 1] = np.round(flow_n[h, branch_index], 4)
+                control_col += 2
+        else:
+            pass
         index[row_i] = ""
 
     return ResultsTable(
         data=data,
         index=index,
         columns=columns,
-        title=str(ResultTypes.ContingencyFlowsReport.value),
+        title=str(result_type.value),
         ylabel='',
         xlabel='',
         units='',
@@ -194,6 +281,7 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
         ResultsProperty(name='overloads', tpe=Vec, old_names=list(), expandable=False),
         ResultsProperty(name='loading', tpe=Vec, old_names=list(), expandable=False),
         ResultsProperty(name='losses', tpe=Vec, old_names=list(), expandable=False),
+        ResultsProperty(name='phase_shifter_indices', tpe=IntVec, old_names=list(), expandable=False),
         ResultsProperty(name='phase_shift', tpe=Vec, old_names=list(), expandable=False),
         ResultsProperty(name='rates', tpe=Vec, old_names=list(), expandable=False),
         ResultsProperty(name='contingency_rates', tpe=Vec, old_names=list(), expandable=False),
@@ -242,6 +330,7 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
         "loading",
         "losses",
         "phase_shift",
+        "phase_shifter_indices",
         "rates",
         "contingency_rates",
         "alpha",
@@ -342,6 +431,7 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
         self.overloads = np.zeros(m, dtype=float)
         self.loading = np.zeros(m, dtype=float)
         self.losses = np.zeros(m, dtype=float)
+        self.phase_shifter_indices: IntVec = np.empty(0, dtype=int)
         self.phase_shift = np.zeros(m, dtype=float)
         self.rates = np.zeros(m, dtype=float)
         self.contingency_rates = np.zeros(m, dtype=float)
@@ -683,6 +773,7 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
             flow_n: np.ndarray = np.real(self.Sf).reshape(1, n_br)
             return worst_contingency_report_table(
                 time_array=None,
+                total_slack_mw=np.array([self.get_total_slack_mw()], dtype=float),
                 branch_names=self.branch_names,
                 group_names=self.contingency_group_names,
                 group_device_names=self.contingency_group_device_names,
@@ -695,7 +786,13 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
                 flow_n=flow_n,
                 ntc=np.array([self.inter_area_flows], dtype=float),
                 contingency_rates=self.contingency_rates,
-                loading_threshold_pct=self.loading_threshold_to_report
+                loading_threshold_pct=self.loading_threshold_to_report,
+                vsc_names=self.vsc_names,
+                vsc_power=self.vsc_Pf.reshape(1, -1),
+                hvdc_names=self.hvdc_names,
+                hvdc_power=self.hvdc_Pf.reshape(1, -1),
+                phase_shifter_indices=self.phase_shifter_indices,
+                phase_shift=self.phase_shift.reshape(1, -1)
             )
 
         else:

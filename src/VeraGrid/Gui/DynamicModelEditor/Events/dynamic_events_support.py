@@ -7,6 +7,7 @@ from typing import List, Dict, Set
 
 from PySide6 import QtWidgets, QtCore
 
+from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
 from VeraGrid.Gui.messages import info_msg
 from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import DynamicEditorEntry
 from VeraGrid.Gui.DynamicModelEditor.Workspace.dynamic_editor_entries import get_block_for_entry
@@ -110,7 +111,7 @@ def create_dynamic_events_group_with_dialog(circuit: MultiCircuit,
     # The canonical name-entry dialog ensures that every workflow creates the
     # same persisted asset shape and requires the same explicit user choice.
     dialog: DynamicEventsGroupsDialog = DynamicEventsGroupsDialog(parent=parent, mode=mode)
-    dialog_result: int = dialog.exec()
+    dialog_result: int = exec_dialog_safely(dialog=dialog)
     if dialog_result == QtWidgets.QDialog.DialogCode.Accepted:
         group_name: str = dialog.get_name()
         if mode == DynamicSimulationMode.RMS:

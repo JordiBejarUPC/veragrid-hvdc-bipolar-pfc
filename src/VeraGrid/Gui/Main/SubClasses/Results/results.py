@@ -15,7 +15,7 @@ from VeraGrid.Gui.messages import error_msg, warning_msg, yes_no_question
 from VeraGrid.Gui.Main.SubClasses.simulations import SimulationsMain
 from VeraGrid.Gui.results_model import ResultsModel
 from VeraGrid.Gui.general_dialogues import fill_tree_from_logs
-from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely
+from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, exec_dialog_safely
 from VeraGrid.Gui.matplotlib_dialog import show_matplotlib_figure
 import VeraGridEngine.Utils.Filtering as flt
 from VeraGridEngine.basic_structures import Logger
@@ -621,7 +621,7 @@ class ResultsMain(SimulationsMain):
             layout.addWidget(mode_combo)
             layout.addWidget(buttons)
             try:
-                accepted: bool = dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted
+                accepted: bool = exec_dialog_safely(dialog=dialog) == QtWidgets.QDialog.DialogCode.Accepted
                 if accepted:
                     group_name: str = name_edit.text()
                     selected_mode_data: object = mode_combo.currentData()
@@ -1026,12 +1026,9 @@ class ResultsMain(SimulationsMain):
                 quit_msg = self.tr("Do you want to delete the results driver {study_name}?").format(
                     study_name=study_type.value
                 )
-                reply = QtWidgets.QMessageBox.question(self, self.tr("Message"),
-                                                       quit_msg,
-                                                       QtWidgets.QMessageBox.StandardButton.Yes,
-                                                       QtWidgets.QMessageBox.StandardButton.No)
+                reply: bool = yes_no_question(text=quit_msg, title=self.tr("Message"), parent=self)
 
-                if reply == QtWidgets.QMessageBox.StandardButton.Yes.value:
+                if reply:
                     if study_type == SimulationTypes.RmsDynamic_run or study_type == SimulationTypes.EmtDynamic_run:
                         if study_type in self.dynamic_results_handlers:
                             del self.dynamic_results_handlers[study_type]

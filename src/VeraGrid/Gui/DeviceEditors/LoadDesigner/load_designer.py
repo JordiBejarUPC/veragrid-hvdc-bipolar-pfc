@@ -18,6 +18,7 @@ from PySide6 import QtCore, QtWidgets
 from PySide6.QtWidgets import QApplication
 
 from VeraGrid.Gui.DeviceEditors.LoadDesigner.load_designer_ui import Ui_Dialog
+from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
 
 
 class LoadArchetype(Enum):
@@ -657,7 +658,7 @@ class LoadDesigner(QtWidgets.QDialog):
         msg.setText(text)
         msg.setWindowTitle(title)
         msg.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
-        msg.exec()
+        exec_dialog_safely(dialog=msg)
 
     def process_by_peak(self) -> None:
         """

@@ -14,6 +14,8 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QPoint
 from PySide6.QtGui import QCloseEvent
 
+from VeraGrid.Gui.dialog_lifecycle import delete_dialogs_safely
+from VeraGrid.Gui.gui_functions import dispose_optional_matplotlib_canvas
 from VeraGrid.Gui.matplotlib_dialog import show_matplotlib_figure
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.Rms.rms_results import RmsResults #, ResultsTable
@@ -125,13 +127,12 @@ class RmsPlotDialog(QDialog):
         :param event: Qt close event.
         :return: None.
         """
+        self.close_external_plot_dialogs()
         if self._plot_disposed:
             pass
         else:
             self._plot_disposed = True
-            self.canvas._draw_pending = False
-            self.figure.clear()
-            self.canvas.close()
+            dispose_optional_matplotlib_canvas(canvas=self.canvas, figure=self.figure)
         QDialog.closeEvent(self, event)
 
     def done(self, result: int) -> None:
@@ -141,14 +142,21 @@ class RmsPlotDialog(QDialog):
         :param result: Qt dialog result code.
         :return: None.
         """
+        self.close_external_plot_dialogs()
         if self._plot_disposed:
             pass
         else:
             self._plot_disposed = True
-            self.canvas._draw_pending = False
-            self.figure.clear()
-            self.canvas.close()
+            dispose_optional_matplotlib_canvas(canvas=self.canvas, figure=self.figure)
         QDialog.done(self, result)
+
+    def close_external_plot_dialogs(self) -> None:
+        """
+        Schedule all retained external plot windows for deletion with this owner.
+
+        :return: None.
+        """
+        delete_dialogs_safely(dialogs=self._open_plot_dialogs)
 
     def update_variables(self, index):
 

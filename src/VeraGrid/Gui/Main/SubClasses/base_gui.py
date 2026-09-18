@@ -42,7 +42,7 @@ from VeraGrid.Gui.messages import yes_no_question, warning_msg, info_msg, error_
 from VeraGrid.Gui.FileDialogues.LoadCatalogue.catalogue_dialogue import CatalogueGUI
 from VeraGrid.Gui.Main.MainWindow import Ui_mainWindow, QMainWindow
 from VeraGrid.Session.session import SimulationSession, GcThread
-from VeraGrid.Session.server_driver import RemoteJobDriver
+from VeraGrid.Session.server_driver import RemoteJobDriver, ServerDriver
 from VeraGrid.Gui.SigmaAnalysis.sigma_analysis_dialogue import SigmaAnalysisGUI
 from VeraGrid.Gui.SyncDialogue.sync_dialogue import SyncDialogueWindow
 from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_editor import DynamicBlockEditorGUI
@@ -58,7 +58,7 @@ from VeraGrid.Gui.AiAgent.ai_chat_dialogue import AiChatDialogue, AiBackendState
 from VeraGrid.AI import ProviderType
 from VeraGrid.AI.mcp_client import VeraGridMcpClient
 from VeraGrid.AI.ollama import OllamaProcessManager
-from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, is_dialog_available
+from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, exec_dialog_safely, is_dialog_available
 from VeraGrid.Gui.i18n import (
     ActionShortcutState,
     ApplicationTranslator,
@@ -751,6 +751,8 @@ class BaseMainGui(QMainWindow):
                     thread.cancel()
                 elif isinstance(thread, RemoteJobDriver):
                     thread.cancel()
+                elif isinstance(thread, ServerDriver):
+                    thread.cancel()
                 else:
                     pass
 
@@ -1376,12 +1378,13 @@ class BaseMainGui(QMainWindow):
         @return:
         """
 
-        reply = QtWidgets.QMessageBox.question(self, 'Message',
-                                               self.tr('Are you sure that you want to cancel the simulation?'),
-                                               QtWidgets.QMessageBox.StandardButton.Yes,
-                                               QtWidgets.QMessageBox.StandardButton.No)
+        reply: bool = yes_no_question(
+            text=self.tr('Are you sure that you want to cancel the simulation?'),
+            title='Message',
+            parent=self,
+        )
 
-        if reply == QtWidgets.QMessageBox.StandardButton.Yes.value:
+        if reply:
             # send the cancel state to whatever it is being executed
 
             for drv in self.get_all_threads():
@@ -1481,7 +1484,7 @@ class BaseMainGui(QMainWindow):
         """
         contingency_planner_dialogue: ContingencyPlannerGUI = ContingencyPlannerGUI(parent=self, grid=self.circuit)
         try:
-            contingency_planner_dialogue.exec()
+            exec_dialog_safely(dialog=contingency_planner_dialogue)
             generated_results: bool = contingency_planner_dialogue.generated_results
             contingency_groups: list[object] = list(contingency_planner_dialogue.contingency_groups)
             contingencies: list[object] = list(contingency_planner_dialogue.contingencies)
@@ -1569,4 +1572,4 @@ class BaseMainGui(QMainWindow):
         """
         dlg = LogsDialogue(name=name, logger=logger, expand_all=expand_all)
         dlg.setModal(True)
-        dlg.exec()
+        exec_dialog_safely(dialog=dlg)

@@ -210,7 +210,7 @@ class MatplotlibWidget(QtWidgets.QWidget):
     def __init__(self, parent=None):
         QtWidgets.QWidget.__init__(self, parent)
 
-        self.frame = QtWidgets.QWidget()
+        self.frame: QtWidgets.QWidget = QtWidgets.QWidget(self)
         self.canvas = MplCanvas()
         self._disposed: bool = False
         self.canvas.setParent(self.frame)

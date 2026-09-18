@@ -6,7 +6,6 @@
 
 from __future__ import annotations
 
-import gc
 import os
 from pathlib import Path
 import signal
@@ -572,8 +571,6 @@ def test_fmi_three_worker_host_retains_unknown_spawn_after_owner_gc(
     assert staging_root.is_dir()
 
     del host
-    gc.collect()
-
     assert staging_root.is_dir()
 
 

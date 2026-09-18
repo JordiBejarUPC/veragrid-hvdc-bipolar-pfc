@@ -28,6 +28,7 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.Substation.bus_graphics import BusGra
 from VeraGrid.Gui.Diagrams.generic_graphics import GenericDiagramWidget
 from VeraGrid.Gui.SubstationDesigner.substation_designer import SubstationDesigner
 from VeraGrid.Gui.general_dialogues import InputNumberDialogue
+from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
 from VeraGrid.Gui.matplotlib_dialog import show_matplotlib_figure
 from VeraGridEngine.Devices.Diagrams.map_location import MapLocation
 from VeraGridEngine.Devices.Substation import Bus
@@ -773,7 +774,7 @@ class GridMapWidget(BaseDiagramWidget):
             return None
 
         dialog = NewMapLineDialogue(grid=self.circuit, se_from=it1.api_object, se_to=it2.api_object)
-        dialog.exec()
+        exec_dialog_safely(dialog=dialog)
         if dialog.is_valid():
             bus1 = dialog.bus_from()
             bus2 = dialog.bus_to()
@@ -1318,7 +1319,7 @@ class GridMapWidget(BaseDiagramWidget):
         """
         kv = self.gui.get_default_voltage()
         dlg = SubstationDesigner(grid=self.circuit, default_voltage=kv, lat=lat, lon=lon)
-        dlg.exec()
+        exec_dialog_safely(dialog=dlg)
         if dlg.was_ok():
 
             se_object, voltage_levels = substation_wizards.create_substation(
@@ -2195,7 +2196,7 @@ class GridMapWidget(BaseDiagramWidget):
         ss = selected_substations[0][0]
 
         dialog = BusSelectorDialogue(grid=self.circuit, se=ss)
-        dialog.exec()
+        exec_dialog_safely(dialog=dialog)
         if dialog.is_valid():
             bus = dialog.bus()
             if bus is not None:
@@ -2250,7 +2251,7 @@ class GridMapWidget(BaseDiagramWidget):
                 is_int=True
             )
 
-            inpt.exec()
+            exec_dialog_safely(dialog=inpt)
 
             if inpt.is_accepted:
                 circ_idx = inpt.value
@@ -2419,7 +2420,7 @@ class GridMapWidget(BaseDiagramWidget):
             msg.setIcon(QMessageBox.Icon.Information)
             msg.setText(self.tr("Please select exactly one line and one substation."))
             msg.setWindowTitle(self.tr("Selection Error"))
-            msg.exec()
+            exec_dialog_safely(dialog=msg)
             return
 
         # Get the API objects
@@ -2456,7 +2457,7 @@ class GridMapWidget(BaseDiagramWidget):
                 self.tr("The line cannot be connected. Please ensure the target substation has a bus with a matching nominal voltage.")
             )
             msg.setWindowTitle(self.tr("Connection Error"))
-            msg.exec()
+            exec_dialog_safely(dialog=msg)
             return
 
         # Step 1: Collect all waypoints of the original line
@@ -3024,7 +3025,7 @@ class GridMapWidget(BaseDiagramWidget):
             )
         )
         msg.setWindowTitle(self.tr("Operation Successful"))
-        msg.exec()
+        exec_dialog_safely(dialog=msg)
 
     def change_line_connection(self):
 

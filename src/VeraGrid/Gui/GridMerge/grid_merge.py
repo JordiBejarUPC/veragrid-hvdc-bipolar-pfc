@@ -9,6 +9,7 @@ from PySide6.QtCore import Qt
 
 from VeraGrid.Gui.GridMerge.build_diff_tree import populate_tree
 from VeraGrid.Gui.GridMerge.grid_merge_gui import Ui_Dialog
+from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
 from VeraGrid.Gui.general_dialogues import LogsDialogue
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
@@ -41,7 +42,7 @@ class GridMergeDialogue(QtWidgets.QDialog):
 
         if not ok:
             dlg = LogsDialogue(self.tr('The base circuit has duplicated idtags and cannot be merged :('), self.logger)
-            dlg.exec()
+            exec_dialog_safely(dialog=dlg)
             return
 
         self._diff: MultiCircuit = diff
@@ -50,7 +51,7 @@ class GridMergeDialogue(QtWidgets.QDialog):
 
         if not ok2:
             dlg = LogsDialogue(self.tr('The diff circuit has duplicated idtags and cannot be merged :('), self.logger)
-            dlg.exec()
+            exec_dialog_safely(dialog=dlg)
             return
 
         self.build_tree()
