@@ -99,7 +99,8 @@ dependencies = ["numpy>=2.2.0",
                 "websockets>=9.1",
                 "brotli>=1.2.0",
                 "opencv-python>=4.10.0.84",
-                "fmpy>=0.3.22"
+                "fmpy>=0.3.22",
+                "clang-tool-chain>=1.5.9"
                 ]
 
 extras_require = {
