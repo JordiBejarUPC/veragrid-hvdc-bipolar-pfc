@@ -11,7 +11,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 import numpy as np
-from PySide6 import QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 from VeraGrid.Gui.PlotDialogue.plot_dialogue_ui import Ui_PlotDialogue
 from VeraGrid.Gui.PlotDialogue.plot_export import save_chart_image
@@ -35,6 +35,8 @@ class PlotDialogue(QtWidgets.QDialog):
         self.ui.setupUi(self)
         self.chart: GraphsWidget = self.ui.plotwidget
         self._tab_charts: list[GraphsWidget] = [self.chart]
+        self.ui.plotSplitter.setStretchFactor(0, 1)
+        self.ui.plotSplitter.setStretchFactor(1, 0)
         self.setWindowTitle(title)
         self.chart.setTitle(title)
 
@@ -43,6 +45,9 @@ class PlotDialogue(QtWidgets.QDialog):
         self.ui.actionSaveImage.triggered.connect(self.save_image)
         self.ui.actionResetView.triggered.connect(self.center_data)
         self.ui.buttonBox.rejected.connect(self.reject)
+        self.ui.plotTabs.currentChanged.connect(self._refresh_series_selector)
+        self.ui.seriesSearchLineEdit.textChanged.connect(self._filter_series_selector)
+        self.ui.seriesListWidget.itemChanged.connect(self._set_series_visibility)
 
     def done(self, result: int) -> None:
         """Release every tab buffer before Qt tears down the parent-child widgets.
@@ -50,11 +55,25 @@ class PlotDialogue(QtWidgets.QDialog):
         :param result: Qt dialog result code.
         :return: None.
         """
+        # Stop list callbacks before Qt destroys its child items with this dialog.
+        self.ui.seriesListWidget.blockSignals(True)
+        self.ui.seriesListWidget.clear()
+        self.ui.seriesListWidget.blockSignals(False)
+        self.ui.seriesSelectorFrame.setVisible(False)
         chart: GraphsWidget
         for chart in self._tab_charts:
             chart.dispose()
         self._tab_charts.clear()
         QtWidgets.QDialog.done(self, result)
+
+    def showEvent(self, event: QtGui.QShowEvent) -> None:
+        """Refresh the optional series selector before Qt makes the dialog visible.
+
+        :param event: Qt visibility event delivered on the dialog owner thread.
+        :return: None.
+        """
+        self._refresh_series_selector()
+        QtWidgets.QDialog.showEvent(self, event)
 
     def get_current_chart(self) -> GraphsWidget:
         """Return the chart owned by the currently selected tab.
@@ -81,6 +100,7 @@ class PlotDialogue(QtWidgets.QDialog):
         self._tab_charts.append(tab_chart)
         tab_index: int = self.ui.plotTabs.addTab(tab_page, title)
         self.ui.plotTabs.setCurrentIndex(tab_index)
+        self._refresh_series_selector()
         return tab_chart
 
     def set_current_tab_title(self, title: str) -> None:
@@ -114,41 +134,18 @@ class PlotDialogue(QtWidgets.QDialog):
         :param y_axis_title: Vertical axis caption.
         :return: Whether every buffer was shape-compatible.
         """
-        series_count: int = len(series_names)
-        if series_count > 0 and len(series_values) == series_count:
-            if colors is None:
-                color_values: list[str | None] = list()
-                series_index: int
-                for series_index in range(series_count):
-                    color_values.append(None)
-            elif len(colors) == series_count:
-                color_values = list(colors)
-            else:
-                return False
-
-            valid: bool = True
-            series_index: int
-            for series_index in range(series_count):
-                if len(series_values[series_index]) == len(x_values):
-                    pass
-                else:
-                    valid = False
-
-            if valid:
-                chart: GraphsWidget = self.get_current_chart()
-                chart.clear()
-                for series_index in range(series_count):
-                    chart.add_line_series(
-                        name=str(series_names[series_index]),
-                        x_values=x_values,
-                        y_values=series_values[series_index],
-                        color=color_values[series_index],
-                    )
-                chart.setTitle(title)
-                chart.set_axis_titles(x_axis_title, y_axis_title)
-                return True
-            else:
-                return False
+        chart: GraphsWidget = self.get_current_chart()
+        accepted: bool = chart.set_line_series(
+            x_values=x_values,
+            series_names=series_names,
+            series_values=series_values,
+            colors=colors,
+        )
+        if accepted:
+            chart.setTitle(title)
+            chart.set_axis_titles(x_axis_title, y_axis_title)
+            self._refresh_series_selector()
+            return True
         else:
             return False
 
@@ -208,6 +205,7 @@ class PlotDialogue(QtWidgets.QDialog):
         if accepted:
             chart.setTitle(title)
             chart.set_axis_titles(x_axis_title, y_axis_title)
+            self._refresh_series_selector()
         else:
             pass
         return accepted
@@ -245,6 +243,7 @@ class PlotDialogue(QtWidgets.QDialog):
         if accepted:
             chart.setTitle(title)
             chart.set_axis_titles('', radius_title)
+            self._refresh_series_selector()
         else:
             pass
         return accepted
@@ -273,6 +272,7 @@ class PlotDialogue(QtWidgets.QDialog):
         if accepted:
             chart.setTitle(title)
             chart.set_axis_titles(x_axis_title, y_axis_title)
+            self._refresh_series_selector()
         else:
             pass
         return accepted
@@ -303,9 +303,76 @@ class PlotDialogue(QtWidgets.QDialog):
         if accepted:
             tab_chart.setTitle(title)
             tab_chart.set_axis_titles(x_axis_title, y_axis_title)
+            self._refresh_series_selector()
             return True
         else:
             return False
+
+    def _refresh_series_selector(self, current_index: int = -1) -> None:
+        """Show a coloured searchable legend only for charts with many named series.
+
+        :param current_index: Tab index provided by Qt and otherwise unused.
+        :return: None.
+        """
+        _ = current_index
+        chart: GraphsWidget = self.get_current_chart()
+        named_series_count: int = 0
+        series_index: int
+        for series_index in range(chart.get_series_count()):
+            if chart.get_series_name(series_index=series_index) != '':
+                named_series_count += 1
+            else:
+                pass
+
+        selector_visible: bool = named_series_count > 20
+        chart.set_legend_visible(visible=not selector_visible)
+        self.ui.seriesSelectorFrame.setVisible(selector_visible)
+        self.ui.seriesListWidget.blockSignals(True)
+        self.ui.seriesListWidget.clear()
+        if selector_visible:
+            for series_index in range(chart.get_series_count()):
+                series_name: str = chart.get_series_name(series_index=series_index)
+                if series_name != '':
+                    list_item: QtWidgets.QListWidgetItem = QtWidgets.QListWidgetItem(series_name)
+                    list_item.setData(QtCore.Qt.ItemDataRole.UserRole, series_index)
+                    list_item.setFlags(list_item.flags() | QtCore.Qt.ItemFlag.ItemIsUserCheckable)
+                    list_item.setCheckState(
+                        QtCore.Qt.CheckState.Checked if chart.get_series_visible(series_index=series_index)
+                        else QtCore.Qt.CheckState.Unchecked,
+                    )
+                    list_item.setForeground(QtGui.QBrush(chart.get_series_color(series_index=series_index)))
+                    self.ui.seriesListWidget.addItem(list_item)
+                else:
+                    pass
+        else:
+            pass
+        self.ui.seriesListWidget.blockSignals(False)
+        self._filter_series_selector(text=self.ui.seriesSearchLineEdit.text())
+
+    def _filter_series_selector(self, text: str) -> None:
+        """Hide legend rows that do not match the user search text.
+
+        :param text: Case-insensitive text that must occur in a series name.
+        :return: None.
+        """
+        search_text: str = text.casefold()
+        item_index: int
+        for item_index in range(self.ui.seriesListWidget.count()):
+            list_item: QtWidgets.QListWidgetItem = self.ui.seriesListWidget.item(item_index)
+            list_item.setHidden(search_text not in list_item.text().casefold())
+
+    def _set_series_visibility(self, list_item: QtWidgets.QListWidgetItem) -> None:
+        """Apply one check box change to the currently selected chart series.
+
+        :param list_item: Qt-owned legend row whose check state changed.
+        :return: None.
+        """
+        series_index_value: object = list_item.data(QtCore.Qt.ItemDataRole.UserRole)
+        if isinstance(series_index_value, int):
+            visible: bool = list_item.checkState() == QtCore.Qt.CheckState.Checked
+            self.get_current_chart().set_series_visible(series_index=series_index_value, visible=visible)
+        else:
+            pass
 
     def center_data(self, checked: bool = False) -> None:
         """Reset the chart zoom and pan from the toolbar action.

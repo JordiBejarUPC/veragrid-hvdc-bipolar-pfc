@@ -1412,7 +1412,7 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         """
         Plot API objects profiles
         """
-        self.editor.plot_device_profiles(api_object=self.api_object)
+        self.editor.plot_device(api_object=self.api_object)
 
     def open_device_editor(self) -> bool:
         """

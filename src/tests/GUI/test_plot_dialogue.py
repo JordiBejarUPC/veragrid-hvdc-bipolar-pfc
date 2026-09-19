@@ -175,3 +175,42 @@ def test_plot_dialogue_histogram_tabs_release_every_chart(
         dialog.deleteLater()
         QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
         app.processEvents()
+
+
+def test_plot_dialogue_series_selector_filters_and_hides_lines(
+        qt_app: QtWidgets.QApplication) -> None:
+    """Use the large-series legend without retaining chart-owned Qt objects.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    app: QtWidgets.QApplication = qt_app
+    dialog: PlotDialogue = PlotDialogue(title='Many lines')
+    dialog.resize(900, 620)
+    dialog.show()
+    app.processEvents()
+    x_values: np.ndarray = np.linspace(0.0, 1.0, 32, dtype=float)
+    series_names: tuple[str, ...] = tuple(f'Series {series_index:02d}' for series_index in range(21))
+    series_values: tuple[np.ndarray, ...] = tuple(
+        x_values + float(series_index) for series_index in range(len(series_names))
+    )
+    assert dialog.set_line_series(
+        x_values=x_values,
+        series_names=series_names,
+        series_values=series_values,
+    )
+    assert dialog.ui.seriesSelectorFrame.isVisible()
+    assert dialog.ui.seriesListWidget.count() == len(series_names)
+    assert not dialog.chart._legend_visible
+    first_item: QtWidgets.QListWidgetItem = dialog.ui.seriesListWidget.item(0)
+    assert first_item.foreground().color() == dialog.chart.get_series_color(series_index=0)
+
+    dialog.ui.seriesSearchLineEdit.setText('series 20')
+    app.processEvents()
+    assert not dialog.ui.seriesListWidget.item(20).isHidden()
+    assert dialog.ui.seriesListWidget.item(0).isHidden()
+
+    first_item.setCheckState(QtCore.Qt.CheckState.Unchecked)
+    app.processEvents()
+    assert not dialog.chart.get_series_visible(series_index=0)
+    close_plot_dialogue(dialog=dialog, app=app)

@@ -17,8 +17,9 @@ from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
     QPainter, QPalette, QPixmap, QRadialGradient,
     QTransform)
 from PySide6.QtWidgets import (QAbstractButton, QApplication, QDialog, QDialogButtonBox,
-    QSizePolicy, QTabWidget, QToolBar, QVBoxLayout,
-    QWidget)
+    QFrame, QLabel, QLineEdit, QListWidget,
+    QListWidgetItem, QSizePolicy, QSplitter, QTabWidget,
+    QToolBar, QVBoxLayout, QWidget)
 
 from VeraGrid.Gui.Widgets.qt_chart_widget import GraphsWidget
 
@@ -41,7 +42,11 @@ class Ui_PlotDialogue(object):
 
         self.verticalLayout.addWidget(self.plotToolBar)
 
-        self.plotTabs = QTabWidget(PlotDialogue)
+        self.plotSplitter = QSplitter(PlotDialogue)
+        self.plotSplitter.setObjectName(u"plotSplitter")
+        self.plotSplitter.setOrientation(Qt.Orientation.Horizontal)
+        self.plotSplitter.setChildrenCollapsible(False)
+        self.plotTabs = QTabWidget(self.plotSplitter)
         self.plotTabs.setObjectName(u"plotTabs")
         self.plotTabs.setTabPosition(QTabWidget.TabPosition.North)
         self.plotTabs.setTabsClosable(False)
@@ -56,8 +61,33 @@ class Ui_PlotDialogue(object):
         self.plotTabLayout.addWidget(self.plotwidget)
 
         self.plotTabs.addTab(self.plotTab, "")
+        self.plotSplitter.addWidget(self.plotTabs)
+        self.seriesSelectorFrame = QFrame(self.plotSplitter)
+        self.seriesSelectorFrame.setObjectName(u"seriesSelectorFrame")
+        self.seriesSelectorFrame.setVisible(False)
+        self.seriesSelectorFrame.setMinimumSize(QSize(220, 0))
+        self.seriesSelectorFrame.setFrameShape(QFrame.Shape.StyledPanel)
+        self.seriesSelectorFrame.setFrameShadow(QFrame.Shadow.Sunken)
+        self.seriesSelectorLayout = QVBoxLayout(self.seriesSelectorFrame)
+        self.seriesSelectorLayout.setObjectName(u"seriesSelectorLayout")
+        self.seriesSelectorLabel = QLabel(self.seriesSelectorFrame)
+        self.seriesSelectorLabel.setObjectName(u"seriesSelectorLabel")
 
-        self.verticalLayout.addWidget(self.plotTabs)
+        self.seriesSelectorLayout.addWidget(self.seriesSelectorLabel)
+
+        self.seriesSearchLineEdit = QLineEdit(self.seriesSelectorFrame)
+        self.seriesSearchLineEdit.setObjectName(u"seriesSearchLineEdit")
+
+        self.seriesSelectorLayout.addWidget(self.seriesSearchLineEdit)
+
+        self.seriesListWidget = QListWidget(self.seriesSelectorFrame)
+        self.seriesListWidget.setObjectName(u"seriesListWidget")
+
+        self.seriesSelectorLayout.addWidget(self.seriesListWidget)
+
+        self.plotSplitter.addWidget(self.seriesSelectorFrame)
+
+        self.verticalLayout.addWidget(self.plotSplitter)
 
         self.buttonBox = QDialogButtonBox(PlotDialogue)
         self.buttonBox.setObjectName(u"buttonBox")
@@ -86,4 +116,6 @@ class Ui_PlotDialogue(object):
         self.actionResetView.setToolTip(QCoreApplication.translate("PlotDialogue", u"Reset zoom and pan to show all data", None))
 #endif // QT_CONFIG(tooltip)
         self.plotTabs.setTabText(self.plotTabs.indexOf(self.plotTab), QCoreApplication.translate("PlotDialogue", u"Plot", None))
+        self.seriesSelectorLabel.setText(QCoreApplication.translate("PlotDialogue", u"Series", None))
+        self.seriesSearchLineEdit.setPlaceholderText(QCoreApplication.translate("PlotDialogue", u"Search series", None))
     # retranslateUi

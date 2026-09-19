@@ -120,6 +120,112 @@ def delete_chart_owner(owner: QtWidgets.QDialog,
     assert probe.destroyed_count == 1
 
 
+def drag_select_zoom(chart: GraphsWidget) -> None:
+    """Deliver one left-button selection across the current chart data area.
+
+    :param chart: Visible native chart receiving the zoom gesture.
+    :return: None.
+    """
+    plot_rect: QtCore.QRectF = chart._get_plot_rect()
+    start_position: QtCore.QPointF = QtCore.QPointF(
+        plot_rect.left() + plot_rect.width() * 0.25,
+        plot_rect.top() + plot_rect.height() * 0.25,
+    )
+    end_position: QtCore.QPointF = QtCore.QPointF(
+        plot_rect.left() + plot_rect.width() * 0.75,
+        plot_rect.top() + plot_rect.height() * 0.75,
+    )
+    chart.mousePressEvent(make_mouse_event(
+        event_type=QtCore.QEvent.Type.MouseButtonPress,
+        widget=chart,
+        local_position=start_position,
+        button=QtCore.Qt.MouseButton.LeftButton,
+        buttons=QtCore.Qt.MouseButton.LeftButton,
+    ))
+    chart.mouseMoveEvent(make_mouse_event(
+        event_type=QtCore.QEvent.Type.MouseMove,
+        widget=chart,
+        local_position=end_position,
+        button=QtCore.Qt.MouseButton.NoButton,
+        buttons=QtCore.Qt.MouseButton.LeftButton,
+    ))
+    chart.mouseReleaseEvent(make_mouse_event(
+        event_type=QtCore.QEvent.Type.MouseButtonRelease,
+        widget=chart,
+        local_position=end_position,
+        button=QtCore.Qt.MouseButton.LeftButton,
+        buttons=QtCore.Qt.MouseButton.NoButton,
+    ))
+
+
+def test_chart_widget_rectangle_zoom_covers_every_native_renderer(
+        qt_app: QtWidgets.QApplication) -> None:
+    """Verify every chart mode accepts a left-drag zoom without retained Qt items.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    owner: QtWidgets.QDialog = QtWidgets.QDialog()
+    layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(owner)
+    chart: GraphsWidget = GraphsWidget(parent=owner)
+    layout.addWidget(chart)
+    owner.resize(720, 520)
+    owner.show()
+    qt_app.processEvents()
+
+    chart.add_line_series(
+        name="XY",
+        x_values=np.array((0.0, 1.0, 2.0, 3.0), dtype=float),
+        y_values=np.array((1.0, 3.0, 2.0, 4.0), dtype=float),
+    )
+    drag_select_zoom(chart=chart)
+    assert chart.axis_x.get_zoom() > 1.0
+    assert chart.axis_y.get_zoom() > 1.0
+
+    assert chart.set_cumulative_area_series(
+        x_values=np.array((0.0, 1.0, 2.0, 3.0), dtype=float),
+        series_names=("A", "B"),
+        series_values=(
+            np.array((1.0, 2.0, 1.0, 2.0), dtype=float),
+            np.array((2.0, 1.0, 2.0, 1.0), dtype=float),
+        ),
+    )
+    drag_select_zoom(chart=chart)
+    assert chart.axis_x.get_zoom() > 1.0
+    assert chart.axis_y.get_zoom() > 1.0
+
+    chart.add_horizontal_bar_series(
+        labels=("A", "B", "C"),
+        values=np.array((1.0, -2.0, 3.0), dtype=float),
+        positive_color="#0f766e",
+        negative_color="#dc2626",
+    )
+    drag_select_zoom(chart=chart)
+    assert chart.axis_x.get_zoom() > 1.0
+
+    assert chart.set_histogram(
+        values=np.array((-2.0, -1.0, 0.0, 1.0, 2.0), dtype=float),
+        bin_count=3,
+    )
+    drag_select_zoom(chart=chart)
+    assert chart.axis_x.get_zoom() > 1.0
+    assert chart.axis_y.get_zoom() > 1.0
+
+    assert chart.set_polar_series(
+        series_names=("Polar",),
+        angle_values=(np.array((0.0, 90.0, 180.0, 270.0), dtype=float),),
+        radius_values=(np.array((1.0, 0.5, 0.8, 1.2), dtype=float),),
+        angle_unit=PolarAngleUnit.DEGREES,
+    )
+    drag_select_zoom(chart=chart)
+    assert chart.axis_y.get_zoom() > 1.0
+
+    chart.dispose()
+    owner.deleteLater()
+    QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
+    qt_app.processEvents()
+
+
 def test_chart_widget_stress_replaces_data_paints_and_destroys_cleanly(
         qt_app: QtWidgets.QApplication) -> None:
     """Stress XY updates, input, paint, mode changes, and deferred destruction.
@@ -202,6 +308,7 @@ def test_chart_widget_stress_replaces_data_paints_and_destroys_cleanly(
         chart.wheelEvent(make_wheel_event(widget=chart, delta_y=120))
         assert chart.axis_x.get_zoom() > 1.0
         assert chart.axis_y.get_zoom() > 1.0
+        wheel_zoom: float = chart.axis_x.get_zoom()
         press_position: QtCore.QPointF = QtCore.QPointF(chart.width() * 0.45, chart.height() * 0.45)
         move_position: QtCore.QPointF = QtCore.QPointF(chart.width() * 0.62, chart.height() * 0.57)
         chart.mousePressEvent(make_mouse_event(
@@ -218,11 +325,41 @@ def test_chart_widget_stress_replaces_data_paints_and_destroys_cleanly(
             button=QtCore.Qt.MouseButton.NoButton,
             buttons=QtCore.Qt.MouseButton.LeftButton,
         ))
+        assert chart._zoom_selection is not None
+        assert not paint_chart_to_image(widget=chart).isNull()
         chart.mouseReleaseEvent(make_mouse_event(
             event_type=QtCore.QEvent.Type.MouseButtonRelease,
             widget=chart,
             local_position=move_position,
             button=QtCore.Qt.MouseButton.LeftButton,
+            buttons=QtCore.Qt.MouseButton.NoButton,
+        ))
+        assert chart.axis_x.get_zoom() > wheel_zoom
+        assert chart.axis_y.get_zoom() > wheel_zoom
+        assert chart._zoom_selection is None
+        chart.reset_viewport()
+        assert chart.axis_x.get_pan() == 0.0
+        assert chart.axis_y.get_pan() == 0.0
+
+        chart.mousePressEvent(make_mouse_event(
+            event_type=QtCore.QEvent.Type.MouseButtonPress,
+            widget=chart,
+            local_position=press_position,
+            button=QtCore.Qt.MouseButton.MiddleButton,
+            buttons=QtCore.Qt.MouseButton.MiddleButton,
+        ))
+        chart.mouseMoveEvent(make_mouse_event(
+            event_type=QtCore.QEvent.Type.MouseMove,
+            widget=chart,
+            local_position=move_position,
+            button=QtCore.Qt.MouseButton.NoButton,
+            buttons=QtCore.Qt.MouseButton.MiddleButton,
+        ))
+        chart.mouseReleaseEvent(make_mouse_event(
+            event_type=QtCore.QEvent.Type.MouseButtonRelease,
+            widget=chart,
+            local_position=move_position,
+            button=QtCore.Qt.MouseButton.MiddleButton,
             buttons=QtCore.Qt.MouseButton.NoButton,
         ))
         assert chart.axis_x.get_pan() != 0.0

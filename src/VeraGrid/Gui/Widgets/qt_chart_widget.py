@@ -146,11 +146,38 @@ class ChartAxis:
         centre: float = (self._minimum + self._maximum) * 0.5 + self._pan
         return centre - span * 0.5, centre + span * 0.5
 
+    def set_visual_range(self, minimum: float, maximum: float) -> None:
+        """Set the visible range selected by a chart rectangle.
+
+        :param minimum: Lower selected data value.
+        :param maximum: Upper selected data value.
+        :return: None.
+        """
+        full_span: float = self._maximum - self._minimum
+        selected_span: float = maximum - minimum
+        if (np.isfinite(minimum) and np.isfinite(maximum) and full_span > 0.0
+                and selected_span > 0.0):
+            selected_centre: float = (minimum + maximum) * 0.5
+            full_centre: float = (self._minimum + self._maximum) * 0.5
+            self.set_zoom(full_span / selected_span)
+            self.set_pan(selected_centre - full_centre)
+        else:
+            pass
+
 
 class ChartSeries:
     """One Python-owned chart series with private NumPy point buffers."""
 
-    __slots__ = ("_series_type", "_name", "_x_data", "_y_data", "_color", "_point_tooltips")
+    __slots__ = (
+        "_series_type",
+        "_name",
+        "_x_data",
+        "_y_data",
+        "_color",
+        "_point_tooltips",
+        "_visible",
+        "_x_is_monotonic",
+    )
 
     def __init__(self,
                  series_type: ChartSeriesType,
@@ -158,7 +185,9 @@ class ChartSeries:
                  x_data: np.ndarray,
                  y_data: np.ndarray,
                  color: QtGui.QColor,
-                 point_tooltips: Sequence[str] | None = None) -> None:
+                 point_tooltips: Sequence[str] | None = None,
+                 copy_buffers: bool = True,
+                 x_is_monotonic: bool | None = None) -> None:
         """Create a series whose buffers are owned by this Python object.
 
         :param series_type: Rendering primitive for the point buffers.
@@ -167,6 +196,8 @@ class ChartSeries:
         :param y_data: Already validated vertical point values.
         :param color: Visible series colour.
         :param point_tooltips: Optional text paired with scatter points.
+        :param copy_buffers: Whether data belongs to a caller and must be copied.
+        :param x_is_monotonic: Known X ordering, when already established by a batch owner.
         :return: None.
         """
         self._series_type: ChartSeriesType = series_type
@@ -175,7 +206,15 @@ class ChartSeries:
         self._y_data: np.ndarray = np.zeros(0, dtype=float)
         self._color: QtGui.QColor = QtGui.QColor(color)
         self._point_tooltips: list[str] = list()
-        self.replace_data(x_data=x_data, y_data=y_data, color=color)
+        self._visible: bool = True
+        self._x_is_monotonic: bool = True
+        self.replace_data(
+            x_data=x_data,
+            y_data=y_data,
+            color=color,
+            copy_buffers=copy_buffers,
+            x_is_monotonic=x_is_monotonic,
+        )
         self.set_point_tooltips(point_tooltips=point_tooltips)
 
     def get_series_type(self) -> ChartSeriesType:
@@ -212,6 +251,28 @@ class ChartSeries:
         :return: Series colour.
         """
         return QtGui.QColor(self._color)
+
+    def get_visible(self) -> bool:
+        """Return whether the painter must draw this series.
+
+        :return: Whether this series is included in the current plot.
+        """
+        return self._visible
+
+    def set_visible(self, visible: bool) -> None:
+        """Set whether the painter includes this series.
+
+        :param visible: New drawing state.
+        :return: None.
+        """
+        self._visible = visible
+
+    def get_x_is_monotonic(self) -> bool:
+        """Return whether X values are sorted in ascending order.
+
+        :return: Whether search-based viewport sampling is safe.
+        """
+        return self._x_is_monotonic
 
     def set_point_tooltips(self, point_tooltips: Sequence[str] | None) -> bool:
         """Set optional text paired with every retained scatter point.
@@ -251,18 +312,33 @@ class ChartSeries:
         """
         return len(self._point_tooltips) == len(self._x_data) and len(self._point_tooltips) > 0
 
-    def replace_data(self, x_data: np.ndarray, y_data: np.ndarray, color: QtGui.QColor) -> None:
+    def replace_data(self,
+                     x_data: np.ndarray,
+                     y_data: np.ndarray,
+                     color: QtGui.QColor,
+                     copy_buffers: bool = True,
+                     x_is_monotonic: bool | None = None) -> None:
         """Replace both private point buffers after caller-side validation.
 
         :param x_data: Finite horizontal values.
         :param y_data: Finite vertical values.
         :param color: New visible series colour.
+        :param copy_buffers: Whether data belongs to a caller and must be copied.
+        :param x_is_monotonic: Known X ordering, when already established by a batch owner.
         :return: None.
         """
-        # Copy the arrays so producers cannot mutate a buffer while paintEvent reads it.
-        self._x_data = np.ascontiguousarray(x_data, dtype=float).copy()
-        self._y_data = np.ascontiguousarray(y_data, dtype=float).copy()
+        # The batch API has already made its own arrays, allowing one X buffer to be shared safely.
+        if copy_buffers:
+            self._x_data = np.ascontiguousarray(x_data, dtype=float).copy()
+            self._y_data = np.ascontiguousarray(y_data, dtype=float).copy()
+        else:
+            self._x_data = np.ascontiguousarray(x_data, dtype=float)
+            self._y_data = np.ascontiguousarray(y_data, dtype=float)
         self._color = QtGui.QColor(color)
+        if x_is_monotonic is None:
+            self._x_is_monotonic = bool(np.all(self._x_data[1:] >= self._x_data[:-1]))
+        else:
+            self._x_is_monotonic = x_is_monotonic
         if len(self._point_tooltips) != len(self._x_data):
             self._point_tooltips.clear()
         else:
@@ -276,6 +352,8 @@ class ChartSeries:
         self._x_data = np.zeros(0, dtype=float)
         self._y_data = np.zeros(0, dtype=float)
         self._point_tooltips.clear()
+        self._visible = False
+        self._x_is_monotonic = True
 
 
 def prepare_chart_points(x_values: Sequence[float] | np.ndarray,
@@ -371,11 +449,14 @@ class GraphsWidget(QtWidgets.QWidget):
         "_y_max",
         "_x_is_datetime",
         "_pan_position",
+        "_zoom_origin",
+        "_zoom_selection",
         "_disposed",
         "_background_color",
         "_plot_color",
         "_label_color",
         "_grid_color",
+        "_legend_visible",
     )
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
@@ -388,7 +469,8 @@ class GraphsWidget(QtWidgets.QWidget):
         self.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding)
         self.setFocusPolicy(QtCore.Qt.FocusPolicy.StrongFocus)
         self.setMouseTracking(True)
-        self.setToolTip(self.tr("Mouse wheel: zoom\nLeft drag: pan\nDouble-click: reset view"))
+        self.setToolTip(self.tr("Mouse wheel: zoom\nLeft drag: select zoom area\n"
+                                "Shift + left drag or middle drag: pan\nDouble-click: reset view"))
 
         # The axes and series are plain Python values, so QWidget owns every native object involved.
         self.axis_x: ChartAxis = ChartAxis()
@@ -404,11 +486,14 @@ class GraphsWidget(QtWidgets.QWidget):
         self._y_max: float = 1.0
         self._x_is_datetime: bool = False
         self._pan_position: QtCore.QPointF | None = None
+        self._zoom_origin: QtCore.QPointF | None = None
+        self._zoom_selection: QtCore.QRectF | None = None
         self._disposed: bool = False
         self._background_color: QtGui.QColor = QtGui.QColor("#ffffff")
         self._plot_color: QtGui.QColor = QtGui.QColor("#f7fbff")
         self._label_color: QtGui.QColor = QtGui.QColor("#17324a")
         self._grid_color: QtGui.QColor = QtGui.QColor("#cbd5e1")
+        self._legend_visible: bool = True
         self.apply_theme(dark=self.palette().color(QtGui.QPalette.ColorRole.Window).lightness() < 128)
         self._set_axis_ranges()
 
@@ -484,6 +569,196 @@ class GraphsWidget(QtWidgets.QWidget):
             self.update()
         else:
             pass
+
+    def get_series_count(self) -> int:
+        """Return the number of Python-owned chart series.
+
+        :return: Number of series in display order.
+        """
+        return len(self._series)
+
+    def get_series_name(self, series_index: int) -> str:
+        """Return one series name without exposing the owning series object.
+
+        :param series_index: Position in display order.
+        :return: Series name, or an empty string for an invalid position.
+        """
+        if 0 <= series_index < len(self._series):
+            return self._series[series_index].get_name()
+        else:
+            return ''
+
+    def get_series_color(self, series_index: int) -> QtGui.QColor:
+        """Return one series colour without exposing the owning series object.
+
+        :param series_index: Position in display order.
+        :return: Series colour, or an invalid colour for an invalid position.
+        """
+        if 0 <= series_index < len(self._series):
+            return self._series[series_index].get_color()
+        else:
+            return QtGui.QColor()
+
+    def get_series_visible(self, series_index: int) -> bool:
+        """Return the display state of one series.
+
+        :param series_index: Position in display order.
+        :return: Whether the selected series is painted.
+        """
+        if 0 <= series_index < len(self._series):
+            return self._series[series_index].get_visible()
+        else:
+            return False
+
+    def set_series_visible(self, series_index: int, visible: bool) -> bool:
+        """Set one series display state and schedule a single paint pass.
+
+        :param series_index: Position in display order.
+        :param visible: Whether the painter includes the selected series.
+        :return: Whether the series position was valid while the chart was active.
+        """
+        if self._can_mutate() and 0 <= series_index < len(self._series):
+            self._series[series_index].set_visible(visible=visible)
+            self.update()
+            return True
+        else:
+            return False
+
+    def set_legend_visible(self, visible: bool) -> None:
+        """Set whether the in-plot legend reserves part of the data area.
+
+        :param visible: Whether named series are painted above the axes.
+        :return: None.
+        """
+        if self._can_mutate() and self._legend_visible != visible:
+            self._legend_visible = visible
+            self.update()
+        else:
+            pass
+
+    def set_line_series(self,
+                        x_values: Sequence[float] | np.ndarray,
+                        series_names: Sequence[str],
+                        series_values: Sequence[Sequence[float] | np.ndarray],
+                        colors: Sequence[str | None] | None = None) -> bool:
+        """Replace the chart with line series that share one isolated X buffer.
+
+        :param x_values: Numeric or NumPy datetime coordinates shared by every line.
+        :param series_names: Visible name for each line.
+        :param series_values: One Y buffer for each name in display order.
+        :param colors: Optional Qt colour for each line.
+        :return: Whether every input buffer had a compatible finite shape.
+        """
+        series_count: int = len(series_names)
+        if self._can_mutate() and series_count > 0 and len(series_values) == series_count:
+            if colors is None:
+                color_values: list[str | None] = list()
+                series_index: int
+                for series_index in range(series_count):
+                    color_values.append(None)
+            elif len(colors) == series_count:
+                color_values = list(colors)
+            else:
+                return False
+
+            x_data: np.ndarray
+            is_datetime: bool
+            x_data, is_datetime = prepare_chart_x_values(x_values=x_values)
+            if len(x_data) > 0:
+                pass
+            else:
+                return False
+            x_is_finite: bool = bool(np.all(np.isfinite(x_data)))
+            x_is_monotonic: bool = bool(np.all(x_data[1:] >= x_data[:-1]))
+            values_data: list[np.ndarray] = list()
+            all_values_finite: bool = True
+            series_index: int
+            for series_index in range(series_count):
+                y_data: np.ndarray = np.asarray(series_values[series_index], dtype=float)
+                if len(y_data) == len(x_data):
+                    values_data.append(y_data)
+                    all_values_finite = all_values_finite and bool(np.all(np.isfinite(y_data)))
+                else:
+                    return False
+
+            new_series: list[ChartSeries] = list()
+            has_points: bool = False
+            minimum_x: float = 0.0
+            maximum_x: float = 1.0
+            minimum_y: float = 0.0
+            maximum_y: float = 1.0
+            if x_is_finite and all_values_finite:
+                # One private X array prevents 2,224 identical copies for wide time-series tables.
+                retained_x_data: np.ndarray = np.ascontiguousarray(x_data, dtype=float).copy()
+                for series_index in range(series_count):
+                    retained_y_data: np.ndarray = np.ascontiguousarray(values_data[series_index], dtype=float).copy()
+                    new_series.append(ChartSeries(
+                        series_type=ChartSeriesType.LINE,
+                        name=str(series_names[series_index]),
+                        x_data=retained_x_data,
+                        y_data=retained_y_data,
+                        color=self._make_series_color(
+                            color_name=color_values[series_index],
+                            series_index=series_index,
+                        ),
+                        copy_buffers=False,
+                        x_is_monotonic=x_is_monotonic,
+                    ))
+                    if has_points:
+                        minimum_y = min(minimum_y, float(np.min(retained_y_data)))
+                        maximum_y = max(maximum_y, float(np.max(retained_y_data)))
+                    else:
+                        minimum_x = float(np.min(retained_x_data))
+                        maximum_x = float(np.max(retained_x_data))
+                        minimum_y = float(np.min(retained_y_data))
+                        maximum_y = float(np.max(retained_y_data))
+                        has_points = True
+            else:
+                for series_index in range(series_count):
+                    points: tuple[np.ndarray, np.ndarray] | None = prepare_chart_points(
+                        x_values=x_data,
+                        y_values=values_data[series_index],
+                    )
+                    if points is not None and len(points[0]) > 0:
+                        new_series.append(ChartSeries(
+                            series_type=ChartSeriesType.LINE,
+                            name=str(series_names[series_index]),
+                            x_data=points[0],
+                            y_data=points[1],
+                            color=self._make_series_color(
+                                color_name=color_values[series_index],
+                                series_index=series_index,
+                            ),
+                            copy_buffers=False,
+                        ))
+                        if has_points:
+                            minimum_x = min(minimum_x, float(np.min(points[0])))
+                            maximum_x = max(maximum_x, float(np.max(points[0])))
+                            minimum_y = min(minimum_y, float(np.min(points[1])))
+                            maximum_y = max(maximum_y, float(np.max(points[1])))
+                        else:
+                            minimum_x = float(np.min(points[0]))
+                            maximum_x = float(np.max(points[0]))
+                            minimum_y = float(np.min(points[1]))
+                            maximum_y = float(np.max(points[1]))
+                            has_points = True
+                    else:
+                        return False
+
+            # Validate and allocate first, then replace every old buffer in one GUI-thread mutation.
+            self.clear()
+            self._series = new_series
+            self._has_points = has_points
+            self._x_min = minimum_x
+            self._x_max = maximum_x
+            self._y_min = minimum_y
+            self._y_max = maximum_y
+            self._x_is_datetime = is_datetime
+            self._set_axis_ranges()
+            self.update()
+            return True
+        else:
+            return False
 
     def set_cumulative_area_series(
             self,
@@ -676,6 +951,7 @@ class GraphsWidget(QtWidgets.QWidget):
             self._y_min = 0.0
             self._y_max = 1.0
             self._x_is_datetime = False
+            self._legend_visible = True
             self.axis_x.reset_viewport()
             self.axis_y.reset_viewport()
             self._set_axis_ranges()
@@ -813,7 +1089,8 @@ class GraphsWidget(QtWidgets.QWidget):
                 nearest_distance_squared: float = 49.0
                 series: ChartSeries
                 for series in self._series:
-                    if series.get_series_type() == ChartSeriesType.SCATTER and series.has_point_tooltips():
+                    if (series.get_visible() and series.get_series_type() == ChartSeriesType.SCATTER
+                            and series.has_point_tooltips()):
                         x_data: np.ndarray = series.get_x_data()
                         y_data: np.ndarray = series.get_y_data()
                         point_index: int
@@ -965,6 +1242,8 @@ class GraphsWidget(QtWidgets.QWidget):
         if not self._disposed and self._is_owner_thread():
             self._disposed = True
             self._pan_position = None
+            self._zoom_origin = None
+            self._zoom_selection = None
             self.unsetCursor()
             QtWidgets.QToolTip.hideText()
             self.clear()
@@ -1009,21 +1288,34 @@ class GraphsWidget(QtWidgets.QWidget):
             event.ignore()
 
     def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
-        """Start a value-axis pan from a left-button press.
+        """Start a selected-rectangle zoom or an explicit pan gesture.
 
         :param event: Mouse button press delivered by Qt Widgets.
         :return: None.
         """
-        if self._can_mutate() and event.button() == QtCore.Qt.MouseButton.LeftButton:
+        left_pan_requested: bool = (
+            event.button() == QtCore.Qt.MouseButton.LeftButton
+            and event.modifiers() & QtCore.Qt.KeyboardModifier.ShiftModifier
+        )
+        pan_requested: bool = event.button() == QtCore.Qt.MouseButton.MiddleButton or left_pan_requested
+        plot_rect: QtCore.QRectF = self._get_plot_rect()
+        if self._can_mutate() and pan_requested and plot_rect.contains(event.position()):
             QtWidgets.QToolTip.hideText()
             self._pan_position = event.position()
             self.setCursor(QtCore.Qt.CursorShape.ClosedHandCursor)
+            event.accept()
+        elif (self._can_mutate() and event.button() == QtCore.Qt.MouseButton.LeftButton
+              and plot_rect.contains(event.position())):
+            QtWidgets.QToolTip.hideText()
+            self._zoom_origin = event.position()
+            self._zoom_selection = QtCore.QRectF(event.position(), event.position())
+            self.setCursor(QtCore.Qt.CursorShape.CrossCursor)
             event.accept()
         else:
             event.ignore()
 
     def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
-        """Pan the visible value range while the left-button drag is active.
+        """Update an explicit pan or a left-button zoom selection.
 
         :param event: Pointer motion delivered by Qt Widgets.
         :return: None.
@@ -1057,6 +1349,13 @@ class GraphsWidget(QtWidgets.QWidget):
             self._pan_position = current_position
             self.update()
             event.accept()
+        elif self._can_mutate() and self._zoom_origin is not None:
+            current_position: QtCore.QPointF = event.position()
+            plot_rect = self._get_plot_rect()
+            selected_rect: QtCore.QRectF = QtCore.QRectF(self._zoom_origin, current_position).normalized()
+            self._zoom_selection = selected_rect.intersected(plot_rect)
+            self.update()
+            event.accept()
         elif self._can_mutate():
             point_tooltip: str | None = self.get_point_tooltip_at(position=event.position())
             if point_tooltip is not None:
@@ -1068,14 +1367,28 @@ class GraphsWidget(QtWidgets.QWidget):
             event.ignore()
 
     def mouseReleaseEvent(self, event: QtGui.QMouseEvent) -> None:
-        """Finish a left-button pan and release its cursor state.
+        """Apply a zoom selection or finish the current pan gesture.
 
         :param event: Mouse release event delivered by Qt Widgets.
         :return: None.
         """
-        if event.button() == QtCore.Qt.MouseButton.LeftButton and self._pan_position is not None:
+        pan_released: bool = event.button() in (
+            QtCore.Qt.MouseButton.LeftButton,
+            QtCore.Qt.MouseButton.MiddleButton,
+        )
+        if pan_released and self._pan_position is not None:
             self._pan_position = None
             self.unsetCursor()
+            event.accept()
+        elif event.button() == QtCore.Qt.MouseButton.LeftButton and self._zoom_origin is not None:
+            selection: QtCore.QRectF | None = self._zoom_selection
+            self._zoom_origin = None
+            self._zoom_selection = None
+            self.unsetCursor()
+            if selection is not None:
+                self._apply_zoom_selection(selection=selection)
+            else:
+                pass
             event.accept()
         else:
             event.ignore()
@@ -1160,9 +1473,76 @@ class GraphsWidget(QtWidgets.QWidget):
             # Restoring the clipped painter also restores the last series brush.
             painter.setBrush(QtGui.QBrush(QtCore.Qt.BrushStyle.NoBrush))
             painter.drawRect(plot_rect)
+            self._paint_zoom_selection(painter=painter, plot_rect=plot_rect)
         else:
             pass
         painter.restore()
+
+    def _apply_zoom_selection(self, selection: QtCore.QRectF) -> None:
+        """Convert one screen rectangle into the corresponding visible value range.
+
+        :param selection: Selection rectangle clipped to the chart data area.
+        :return: None.
+        """
+        plot_rect: QtCore.QRectF = self._get_plot_rect()
+        minimum_selection_size: float = 6.0
+        if (self._can_mutate() and plot_rect.width() > 0.0 and plot_rect.height() > 0.0
+                and selection.width() >= minimum_selection_size and selection.height() >= minimum_selection_size):
+            x_minimum: float
+            x_maximum: float
+            y_minimum: float
+            y_maximum: float
+            x_minimum, x_maximum = self.axis_x.get_visual_range()
+            y_minimum, y_maximum = self.axis_y.get_visual_range()
+            x_span: float = x_maximum - x_minimum
+            y_span: float = y_maximum - y_minimum
+            selected_x_minimum: float = x_minimum + (selection.left() - plot_rect.left()) * x_span / plot_rect.width()
+            selected_x_maximum: float = x_minimum + (selection.right() - plot_rect.left()) * x_span / plot_rect.width()
+            selected_y_minimum: float = y_maximum - (selection.bottom() - plot_rect.top()) * y_span / plot_rect.height()
+            selected_y_maximum: float = y_maximum - (selection.top() - plot_rect.top()) * y_span / plot_rect.height()
+            if self._content_type in (ChartContentType.XY, ChartContentType.CUMULATIVE_AREA,
+                                      ChartContentType.HISTOGRAM):
+                self.axis_x.set_visual_range(selected_x_minimum, selected_x_maximum)
+                self.axis_y.set_visual_range(selected_y_minimum, selected_y_maximum)
+            elif self._content_type == ChartContentType.HORIZONTAL_BAR:
+                self.axis_x.set_visual_range(selected_x_minimum, selected_x_maximum)
+            elif self._content_type == ChartContentType.POLAR:
+                selection_fraction: float = max(
+                    selection.width() / plot_rect.width(),
+                    selection.height() / plot_rect.height(),
+                )
+                if selection_fraction > 0.0:
+                    self.axis_y.set_zoom(self.axis_y.get_zoom() / selection_fraction)
+                else:
+                    pass
+            else:
+                pass
+            self.update()
+        else:
+            pass
+
+    def _paint_zoom_selection(self, painter: QtGui.QPainter, plot_rect: QtCore.QRectF) -> None:
+        """Paint the current left-drag selection without retaining a Qt graphics item.
+
+        :param painter: Active widget painter.
+        :param plot_rect: Current data rectangle used to clip the selection.
+        :return: None.
+        """
+        if self._zoom_selection is not None:
+            visible_selection: QtCore.QRectF = self._zoom_selection.intersected(plot_rect)
+            if visible_selection.width() > 0.0 and visible_selection.height() > 0.0:
+                selection_color: QtGui.QColor = QtGui.QColor("#2563eb")
+                fill_color: QtGui.QColor = QtGui.QColor(selection_color)
+                fill_color.setAlpha(48)
+                painter.save()
+                painter.setPen(QtGui.QPen(selection_color, 1.0, QtCore.Qt.PenStyle.DashLine))
+                painter.setBrush(QtGui.QBrush(fill_color))
+                painter.drawRect(visible_selection)
+                painter.restore()
+            else:
+                pass
+        else:
+            pass
 
     def event(self, event: QtCore.QEvent) -> bool:
         """Release Python buffers before a deferred QWidget deletion completes.
@@ -1315,7 +1695,7 @@ class GraphsWidget(QtWidgets.QWidget):
         :return: Rectangle available to the data renderer.
         """
         title_space: float = 24.0 if self._title != "" else 4.0
-        legend_space: float = 20.0 if len(self._visible_legend_series()) > 0 else 0.0
+        legend_space: float = 20.0 if self._legend_visible and len(self._visible_legend_series()) > 0 else 0.0
         return QtCore.QRectF(self.rect()).adjusted(74.0, title_space + legend_space + 4.0, -20.0, -58.0)
 
     def _visible_legend_series(self) -> list[ChartSeries]:
@@ -1326,7 +1706,7 @@ class GraphsWidget(QtWidgets.QWidget):
         visible_series: list[ChartSeries] = list()
         series: ChartSeries
         for series in self._series:
-            if series.get_name() != "":
+            if self._legend_visible and series.get_visible() and series.get_name() != "":
                 visible_series.append(series)
             else:
                 pass
@@ -1428,11 +1808,17 @@ class GraphsWidget(QtWidgets.QWidget):
         :param plot_rect: Data drawing rectangle.
         :return: None.
         """
+        visible_line_count: int = self._get_visible_line_count()
         series: ChartSeries
         for series in self._series:
-            if series.get_series_type() == ChartSeriesType.LINE:
-                self._paint_line_series(painter=painter, plot_rect=plot_rect, series=series)
-            elif series.get_series_type() == ChartSeriesType.SCATTER:
+            if series.get_visible() and series.get_series_type() == ChartSeriesType.LINE:
+                self._paint_line_series(
+                    painter=painter,
+                    plot_rect=plot_rect,
+                    series=series,
+                    visible_line_count=visible_line_count,
+                )
+            elif series.get_visible() and series.get_series_type() == ChartSeriesType.SCATTER:
                 self._paint_scatter_series(painter=painter, plot_rect=plot_rect, series=series)
             else:
                 pass
@@ -1440,34 +1826,44 @@ class GraphsWidget(QtWidgets.QWidget):
     def _paint_line_series(self,
                            painter: QtGui.QPainter,
                            plot_rect: QtCore.QRectF,
-                           series: ChartSeries) -> None:
+                           series: ChartSeries,
+                           visible_line_count: int) -> None:
         """Paint one sampled line path from an owned NumPy buffer.
 
         :param painter: Active painter for this paint event.
         :param plot_rect: Data drawing rectangle.
         :param series: Owned line series to draw.
+        :param visible_line_count: Number of lines sharing the frame paint budget.
         :return: None.
         """
         x_data: np.ndarray = series.get_x_data()
         y_data: np.ndarray = series.get_y_data()
         if len(x_data) > 0:
-            indices: np.ndarray = self._sample_indices(point_count=len(x_data), plot_rect=plot_rect)
+            indices: np.ndarray = self._sample_xy_indices(
+                x_data=x_data,
+                x_is_monotonic=series.get_x_is_monotonic(),
+                plot_rect=plot_rect,
+                visible_line_count=visible_line_count,
+            )
             path: QtGui.QPainterPath = QtGui.QPainterPath()
-            point_index: int
-            for point_index in range(len(indices)):
-                data_index: int = int(indices[point_index])
-                point: QtCore.QPointF = self._map_xy_point(
-                    x_value=float(x_data[data_index]),
-                    y_value=float(y_data[data_index]),
-                    plot_rect=plot_rect,
-                )
-                if point_index == 0:
-                    path.moveTo(point)
-                else:
-                    path.lineTo(point)
-            painter.setBrush(QtCore.Qt.BrushStyle.NoBrush)
-            painter.setPen(QtGui.QPen(series.get_color(), 1.8))
-            painter.drawPath(path)
+            if len(indices) > 0:
+                x_minimum: float
+                x_maximum: float
+                y_minimum: float
+                y_maximum: float
+                x_minimum, x_maximum = self.axis_x.get_visual_range()
+                y_minimum, y_maximum = self.axis_y.get_visual_range()
+                x_positions: np.ndarray = plot_rect.left() + (x_data[indices] - x_minimum) * plot_rect.width() / (x_maximum - x_minimum)
+                y_positions: np.ndarray = plot_rect.bottom() - (y_data[indices] - y_minimum) * plot_rect.height() / (y_maximum - y_minimum)
+                path.moveTo(float(x_positions[0]), float(y_positions[0]))
+                point_index: int
+                for point_index in range(1, len(indices)):
+                    path.lineTo(float(x_positions[point_index]), float(y_positions[point_index]))
+                painter.setBrush(QtCore.Qt.BrushStyle.NoBrush)
+                painter.setPen(QtGui.QPen(series.get_color(), 1.8))
+                painter.drawPath(path)
+            else:
+                pass
         else:
             pass
 
@@ -1515,7 +1911,8 @@ class GraphsWidget(QtWidgets.QWidget):
         :param plot_rect: Rectangle used to map bin edges and frequencies.
         :return: None.
         """
-        if len(self._series) == 1 and self._series[0].get_series_type() == ChartSeriesType.HISTOGRAM:
+        if (len(self._series) == 1 and self._series[0].get_visible()
+                and self._series[0].get_series_type() == ChartSeriesType.HISTOGRAM):
             series: ChartSeries = self._series[0]
             edges: np.ndarray = series.get_x_data()
             counts: np.ndarray = series.get_y_data()
@@ -1568,7 +1965,7 @@ class GraphsWidget(QtWidgets.QWidget):
                     x_data: np.ndarray = series.get_x_data()
                     y_data: np.ndarray = series.get_y_data()
                     upper_values: np.ndarray = cumulative_values + y_data
-                    if len(indices) > 0:
+                    if series.get_visible() and len(indices) > 0:
                         first_index: int = int(indices[0])
                         path: QtGui.QPainterPath = QtGui.QPainterPath()
                         lower_first: QtCore.QPointF = self._map_xy_point(
@@ -1702,7 +2099,8 @@ class GraphsWidget(QtWidgets.QWidget):
         polar_rect: QtCore.QRectF = self._get_polar_rect(plot_rect=plot_rect)
         series: ChartSeries
         for series in self._series:
-            if (series.get_series_type() in (ChartSeriesType.POLAR, ChartSeriesType.POLAR_SCATTER)
+            if (series.get_visible()
+                    and series.get_series_type() in (ChartSeriesType.POLAR, ChartSeriesType.POLAR_SCATTER)
                     and polar_rect.width() > 2.0):
                 angles: np.ndarray = series.get_x_data()
                 radii: np.ndarray = series.get_y_data()
@@ -1793,7 +2191,7 @@ class GraphsWidget(QtWidgets.QWidget):
         bar_height: float = max(plot_rect.height() / max(len(self._bar_labels), 1) * 0.62, 2.0)
         series: ChartSeries
         for series in self._series:
-            if series.get_series_type() == ChartSeriesType.HORIZONTAL_BAR:
+            if series.get_visible() and series.get_series_type() == ChartSeriesType.HORIZONTAL_BAR:
                 x_data: np.ndarray = series.get_x_data()
                 y_data: np.ndarray = series.get_y_data()
                 painter.setPen(QtCore.Qt.PenStyle.NoPen)
@@ -1874,15 +2272,86 @@ class GraphsWidget(QtWidgets.QWidget):
         fraction: float = (float(index) - y_minimum) / (y_maximum - y_minimum)
         return plot_rect.bottom() - fraction * plot_rect.height()
 
-    def _sample_indices(self, point_count: int, plot_rect: QtCore.QRectF) -> np.ndarray:
+    def _get_visible_line_count(self) -> int:
+        """Return the number of line paths sharing the current paint budget.
+
+        :return: Count of visible XY line series.
+        """
+        visible_line_count: int = 0
+        series: ChartSeries
+        for series in self._series:
+            if series.get_visible() and series.get_series_type() == ChartSeriesType.LINE:
+                visible_line_count += 1
+            else:
+                pass
+        return max(visible_line_count, 1)
+
+    def _sample_xy_indices(self,
+                           x_data: np.ndarray,
+                           x_is_monotonic: bool,
+                           plot_rect: QtCore.QRectF,
+                           visible_line_count: int) -> np.ndarray:
+        """Return line samples inside the current viewport within one frame budget.
+
+        :param x_data: Owned horizontal data values.
+        :param x_is_monotonic: Whether search-based viewport clipping is safe.
+        :param plot_rect: Data drawing rectangle.
+        :param visible_line_count: Number of lines sharing the frame paint budget.
+        :return: Ordered indices suitable for a line path.
+        """
+        if x_is_monotonic and len(x_data) > 0:
+            x_minimum: float
+            x_maximum: float
+            x_minimum, x_maximum = self.axis_x.get_visual_range()
+            first_index: int = max(int(np.searchsorted(x_data, x_minimum, side='left')) - 1, 0)
+            last_index: int = min(int(np.searchsorted(x_data, x_maximum, side='right')) + 1, len(x_data))
+            return self._sample_index_range(
+                first_index=first_index,
+                last_index=last_index,
+                plot_rect=plot_rect,
+                visible_line_count=visible_line_count,
+            )
+        else:
+            return self._sample_indices(
+                point_count=len(x_data),
+                plot_rect=plot_rect,
+                visible_line_count=visible_line_count,
+            )
+
+    def _sample_index_range(self,
+                            first_index: int,
+                            last_index: int,
+                            plot_rect: QtCore.QRectF,
+                            visible_line_count: int) -> np.ndarray:
+        """Sample an ordered half-open index range with the current frame budget.
+
+        :param first_index: First retained data position.
+        :param last_index: One past the last retained data position.
+        :param plot_rect: Data drawing rectangle.
+        :param visible_line_count: Number of lines sharing the frame paint budget.
+        :return: Ordered global data positions for one line path.
+        """
+        point_count: int = last_index - first_index
+        maximum_points: int = max(int(plot_rect.width()) * 2 // max(visible_line_count, 1), 2)
+        if point_count > maximum_points:
+            return np.linspace(first_index, last_index - 1, maximum_points, dtype=int)
+        else:
+            return np.arange(first_index, last_index, dtype=int)
+
+    def _sample_indices(self,
+                        point_count: int,
+                        plot_rect: QtCore.QRectF,
+                        visible_line_count: int = 1) -> np.ndarray:
         """Bound painter work to useful screen resolution for large buffers.
 
         :param point_count: Number of available data points.
         :param plot_rect: Data drawing rectangle.
+        :param visible_line_count: Number of lines sharing the frame paint budget.
         :return: Ordered indices that retain both series endpoints.
         """
-        maximum_points: int = max(int(plot_rect.width()) * 2, 2)
-        if point_count > maximum_points:
-            return np.linspace(0, point_count - 1, maximum_points, dtype=int)
-        else:
-            return np.arange(point_count, dtype=int)
+        return self._sample_index_range(
+            first_index=0,
+            last_index=point_count,
+            plot_rect=plot_rect,
+            visible_line_count=visible_line_count,
+        )

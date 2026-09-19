@@ -205,7 +205,7 @@ class MapInjectionTemplateGraphicItem(NodeTemplate, QGraphicsEllipseItem):
         """
         Plot API objects profiles
         """
-        self.editor.plot_device_profiles(api_object=self.api_object)
+        self.editor.plot_device(api_object=self.api_object)
 
     def open_device_editor(self) -> bool:
         """

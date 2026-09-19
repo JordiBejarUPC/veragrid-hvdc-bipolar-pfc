@@ -30,7 +30,7 @@ from VeraGridEngine.Devices.Diagrams.schematic_diagram import SchematicDiagram
 from VeraGridEngine.Devices.Diagrams.map_diagram import MapDiagram
 from VeraGridEngine.Simulations.types import DRIVER_OBJECTS
 from VeraGridEngine.basic_structures import Logger
-from VeraGridEngine.enumerations import SimulationTypes, ResultTypes, PrpCat
+from VeraGridEngine.enumerations import DeviceType, SimulationTypes, ResultTypes, PrpCat
 import VeraGridEngine.Devices.Diagrams.palettes as palettes
 
 from VeraGrid.Gui.Diagrams.graphics_manager import GraphicsManager, ALL_GRAPHICS
@@ -41,9 +41,12 @@ from VeraGrid.Gui.general_dialogues import DeleteDialogue
 from VeraGrid.Gui.messages import yes_no_question, info_msg
 from VeraGrid.Gui.object_model import ObjectsModel
 from VeraGrid.Gui.PlotDialogue.plot_dialogue import PlotDialogue
-from VeraGrid.Gui.PlotDialogue.result_table_data import append_result_table_column
+from VeraGrid.Gui.PlotDialogue.result_table_data import append_result_table_column, get_result_table_series
+from VeraGrid.Gui.Widgets.qt_chart_widget import GraphsWidget
 import VeraGrid.Gui.gui_functions as gf
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
+from VeraGridEngine.Simulations.results_table import ResultsTable
+from VeraGridEngine.Simulations.results_template import ResultsTemplate
 
 if TYPE_CHECKING:
     from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import MapLibraryModel
@@ -681,67 +684,178 @@ class BaseDiagramWidget(QSplitter):
         """
         self.results_dictionary = {thr.tpe: thr for thr in all_threads if thr is not None}
 
-    def plot_device_profiles(self, api_object: EditableDevice) -> None:
-        """Open one native chart tab for each numeric profile of a device.
+    def plot_device(self, api_object: EditableDevice) -> None:
+        """Open native profile and time-series result tabs for one graphic device.
 
-        :param api_object: Device whose persisted profile buffers are displayed.
+        :param api_object: Device represented by the selected injection graphic.
         :return: None.
         """
         time_values: np.ndarray = np.asarray(self.circuit.time_profile).copy()
-        if time_values.size == 0:
-            info_msg(self.tr("There is no time profile to plot"), self.tr("Profiles plot"))
-            return
-        else:
-            pass
-
-        plot_dialogue: PlotDialogue = PlotDialogue(
-            title=self.tr("{device_name} profiles").format(device_name=api_object.name),
-            parent=self.gui,
+        dialog_title: str = self.tr("{device_name} plot").format(device_name=api_object.name)
+        plot_dialogue: PlotDialogue = PlotDialogue(title=dialog_title, parent=self.gui)
+        has_profiles: bool = self._add_device_profile_tabs(
+            plot_dialogue=plot_dialogue,
+            api_object=api_object,
+            time_values=time_values,
+            has_existing_tabs=False,
         )
-        has_profiles: bool = False
-        properties = list(api_object.registered_properties.values())
-        for property_data in properties:
-            if property_data.has_profile():
-                profile = api_object.get_profile_by_prop(prop=property_data)
-                if profile is not None:
-                    values: np.ndarray = np.asarray(profile.toarray()).copy()
-                    is_numeric: bool = np.issubdtype(values.dtype, np.number)
-                    is_matching_time: bool = values.size == time_values.size
-                    if is_numeric and is_matching_time:
-                        if has_profiles:
-                            plot_dialogue.add_tab(title=property_data.name)
-                        else:
-                            plot_dialogue.set_current_tab_title(title=property_data.name)
+        has_results: bool = self._add_device_result_tabs(
+            plot_dialogue=plot_dialogue,
+            api_object=api_object,
+            has_existing_tabs=has_profiles,
+        )
+        if has_profiles or has_results:
+            self.gui._open_plot_dialogs.append(plot_dialogue)
+            plot_dialogue.show()
+        else:
+            plot_dialogue.reject()
+            info_msg(self.tr("This device has no numeric profiles or time-series results to plot."), dialog_title)
 
-                        plot_title: str = self.tr("{device_name}: {property_name}").format(
-                            device_name=api_object.name,
-                            property_name=property_data.name,
+    def _add_device_profile_tabs(self,
+                                 plot_dialogue: PlotDialogue,
+                                 api_object: EditableDevice,
+                                 time_values: np.ndarray,
+                                 has_existing_tabs: bool) -> bool:
+        """Add unit-compatible device profile series to native chart tabs.
+
+        :param plot_dialogue: Dialog retaining every created chart widget.
+        :param api_object: Device supplying persisted profile buffers.
+        :param time_values: Copied grid time coordinates.
+        :param has_existing_tabs: Whether the initial tab already holds valid data.
+        :return: Whether one or more profile tabs contain finite series.
+        """
+        profile_units: list[str] = list()
+        profile_names: list[list[str]] = list()
+        profile_values: list[list[np.ndarray]] = list()
+        if time_values.size > 0:
+            property_data: object
+            for property_data in api_object.registered_properties.values():
+                if property_data.has_profile():
+                    profile = api_object.get_profile_by_prop(prop=property_data)
+                    if profile is not None:
+                        raw_values: np.ndarray = np.asarray(profile.toarray()).copy()
+                        values_are_numeric: bool = (
+                            np.issubdtype(raw_values.dtype, np.number)
+                            or np.issubdtype(raw_values.dtype, np.bool_)
                         )
-                        accepted: bool = plot_dialogue.set_time_series(
-                            time_values=time_values,
-                            series_names=[api_object.name],
-                            series_values=[values],
-                            title=plot_title,
-                            y_axis_title=property_data.units,
-                        )
-                        if accepted:
-                            has_profiles = True
+                        if values_are_numeric and raw_values.size == time_values.size:
+                            unit: str = str(property_data.units)
+                            values: np.ndarray = np.asarray(raw_values, dtype=float)
+                            has_finite_values: bool = bool(np.any(np.isfinite(values)))
+                            if has_finite_values and unit in profile_units:
+                                unit_index: int = profile_units.index(unit)
+                            elif has_finite_values:
+                                profile_units.append(unit)
+                                profile_names.append(list())
+                                profile_values.append(list())
+                                unit_index = len(profile_units) - 1
+                            else:
+                                unit_index = -1
+                            if unit_index >= 0:
+                                profile_names[unit_index].append(str(property_data.name))
+                                profile_values[unit_index].append(values)
+                            else:
+                                pass
                         else:
                             pass
                     else:
                         pass
                 else:
                     pass
+        else:
+            pass
+
+        has_profiles: bool = False
+        unit_index: int
+        for unit_index in range(len(profile_units)):
+            tab_title: str = self.tr("Profiles")
+            if profile_units[unit_index] != "":
+                tab_title = self.tr("Profiles {unit}").format(unit=profile_units[unit_index])
             else:
                 pass
+            if has_existing_tabs or has_profiles:
+                plot_dialogue.add_tab(title=tab_title)
+            else:
+                plot_dialogue.set_current_tab_title(title=tab_title)
+            accepted: bool = plot_dialogue.set_time_series(
+                time_values=time_values,
+                series_names=profile_names[unit_index],
+                series_values=profile_values[unit_index],
+                title=self.tr("{device_name} profiles").format(device_name=api_object.name),
+                y_axis_title=profile_units[unit_index],
+            )
+            if accepted:
+                has_profiles = True
+            else:
+                pass
+        return has_profiles
 
-        if has_profiles:
-            self.gui._open_plot_dialogs.append(plot_dialogue)
-            plot_dialogue.show()
-        else:
-            plot_dialogue.reject()
-            info_msg(self.tr("This device has no numeric profiles matching the grid time profile"),
-                     self.tr("Profiles plot"))
+    def _add_device_result_tabs(self,
+                                plot_dialogue: PlotDialogue,
+                                api_object: EditableDevice,
+                                has_existing_tabs: bool) -> bool:
+        """Add every available time-series result that maps to one device graphic.
+
+        :param plot_dialogue: Dialog retaining every created chart widget.
+        :param api_object: Device used to resolve each result-table column.
+        :param has_existing_tabs: Whether the initial dialog tab already contains a profile.
+        :return: Whether at least one finite result series was appended.
+        """
+        plotted_result_types: list[ResultTypes] = list()
+        result_charts: list[GraphsWidget] = list()
+        has_results: bool = False
+        driver: object
+        results: object
+        for driver, results in self.gui.session.drivers_results_iter():
+            if isinstance(results, ResultsTemplate):
+                result_type: ResultTypes
+                for result_type in results.get_results_type_dict().values():
+                    table: ResultsTable = results.mdl(result_type=result_type)
+                    if (isinstance(table, ResultsTable) and table.idx_device_type == DeviceType.TimeDevice
+                            and table.cols_device_type != DeviceType.NoDevice):
+                        device_list = self.circuit.get_elements_by_type(device_type=table.cols_device_type)
+                        if api_object in device_list:
+                            device_index: int = device_list.index(api_object)
+                            finite_data = get_result_table_series(
+                                table=table,
+                                selected_col_idx=np.array((device_index,), dtype=np.int64),
+                            )
+                            has_finite_values: bool = (
+                                finite_data is not None
+                                and bool(np.any(np.isfinite(finite_data[2][0])))
+                            )
+                            if has_finite_values:
+                                if result_type in plotted_result_types:
+                                    chart_index: int = plotted_result_types.index(result_type)
+                                    chart: GraphsWidget = result_charts[chart_index]
+                                else:
+                                    if has_existing_tabs or has_results:
+                                        chart = plot_dialogue.add_tab(title=result_type.value)
+                                    else:
+                                        chart = plot_dialogue.chart
+                                        plot_dialogue.set_current_tab_title(title=result_type.value)
+                                    chart.setTitle(result_type.value)
+                                    plotted_result_types.append(result_type)
+                                    result_charts.append(chart)
+                                appended: bool = append_result_table_column(
+                                    chart=chart,
+                                    table=table,
+                                    column_index=device_index,
+                                    series_name=str(results.name),
+                                )
+                                if appended:
+                                    has_results = True
+                                else:
+                                    pass
+                            else:
+                                pass
+                        else:
+                            pass
+                    else:
+                        pass
+            else:
+                pass
+        return has_results
 
     def plot_branch(self, i: int, api_object: Union[Line, DcLine, Transformer2W, VSC, UPFC]):
         """Open native power and loading tabs for one branch.
