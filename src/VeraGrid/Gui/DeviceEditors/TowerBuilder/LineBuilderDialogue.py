@@ -270,14 +270,21 @@ class TowerBuilderGUI(QtWidgets.QDialog):
         """
         Plot the tower wire positions in the Qt Graphs view.
         """
-        self.ui.plotwidget.clear()
         wires = self.tower_driver.tower.wires_in_tower.data
         x_values: np.ndarray = np.asarray([wire.xpos for wire in wires], dtype=float)
         y_values: np.ndarray = np.asarray([wire.ypos for wire in wires], dtype=float)
-        self.ui.plotwidget.add_scatter_series(name=self.tr("Wire positions"),
-                                              x_values=x_values,
-                                              y_values=y_values,
-                                              color="#2563eb")
+        series_data: list[tuple[np.ndarray, np.ndarray, str | None]] = [
+            (x_values, y_values, "#2563eb"),
+        ]
+        updated: bool = self.ui.plotwidget.replace_xy_series_data(series_data=series_data)
+        if not updated:
+            self.ui.plotwidget.clear()
+            self.ui.plotwidget.add_scatter_series(name=self.tr("Wire positions"),
+                                                  x_values=x_values,
+                                                  y_values=y_values,
+                                                  color="#2563eb")
+        else:
+            pass
         self.ui.plotwidget.setTitle(self.tr("Tower wire position"))
         self.ui.plotwidget.set_axis_titles(self.tr("Horizontal position (m)"),
                                            self.tr("Vertical position (m)"))

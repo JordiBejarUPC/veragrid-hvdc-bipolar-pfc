@@ -386,30 +386,40 @@ class ProceduralGridWindow(QtWidgets.QDialog):
         for transformer in new_transformers:
             G.add_edge(transformer.bus_from.name, transformer.bus_to.name)
 
-        # Clear the Qt Graphs series before redrawing successive previews.
-        self.ui.plotWidget.clear()
+        # Preserve renderer-owned series when the preview topology keeps its series count.
+        series_data: List[tuple[np.ndarray, np.ndarray, str | None]] = list()
         edge: tuple[str, str]
         for edge in G.edges:
             edge_x: np.ndarray = np.asarray([pos[edge[0]][0], pos[edge[1]][0]], dtype=float)
             edge_y: np.ndarray = np.asarray([pos[edge[0]][1], pos[edge[1]][1]], dtype=float)
-            self.ui.plotWidget.add_line_series(name="",
-                                               x_values=edge_x,
-                                               y_values=edge_y,
-                                               color="#8b9dad")
+            series_data.append((edge_x, edge_y, "#8b9dad"))
 
         existing_x: np.ndarray = np.asarray([pos[node][0] for node in existing_node_names], dtype=float)
         existing_y: np.ndarray = np.asarray([pos[node][1] for node in existing_node_names], dtype=float)
-        self.ui.plotWidget.add_scatter_series(name=self.tr("Existing buses"),
-                                              x_values=existing_x,
-                                              y_values=existing_y,
-                                              color="#8ac6e8")
-
         new_x: np.ndarray = np.asarray([pos[node][0] for node in new_node_names], dtype=float)
         new_y: np.ndarray = np.asarray([pos[node][1] for node in new_node_names], dtype=float)
-        self.ui.plotWidget.add_scatter_series(name=self.tr("New buses"),
-                                              x_values=new_x,
-                                              y_values=new_y,
-                                              color="#69c681")
+        series_data.append((existing_x, existing_y, "#8ac6e8"))
+        series_data.append((new_x, new_y, "#69c681"))
+        updated: bool = self.ui.plotWidget.replace_xy_series_data(series_data=series_data)
+        if not updated:
+            self.ui.plotWidget.clear()
+            edge_index: int
+            for edge_index in range(len(G.edges)):
+                edge_data: tuple[np.ndarray, np.ndarray, str | None] = series_data[edge_index]
+                self.ui.plotWidget.add_line_series(name="",
+                                                   x_values=edge_data[0],
+                                                   y_values=edge_data[1],
+                                                   color=edge_data[2])
+            self.ui.plotWidget.add_scatter_series(name=self.tr("Existing buses"),
+                                                  x_values=existing_x,
+                                                  y_values=existing_y,
+                                                  color="#8ac6e8")
+            self.ui.plotWidget.add_scatter_series(name=self.tr("New buses"),
+                                                  x_values=new_x,
+                                                  y_values=new_y,
+                                                  color="#69c681")
+        else:
+            pass
         self.ui.plotWidget.setTitle(self.tr("Procedural grid preview"))
         self.ui.plotWidget.set_axis_titles(self.tr("Longitude"), self.tr("Latitude"))
 

@@ -48,15 +48,10 @@ def draw_styled_qcurve_plot(plotter: GraphsWidget, q_curve: GeneratorQCurve, cha
     :param q_curve: Generator reactive capability curve object.
     :param chart_title: Plot title text.
     """
-    plotter.clear()
     radius: float = abs(float(q_curve.get_Snom()))
     theta: np.ndarray = np.linspace(0.0, 2.0 * np.pi, 360)
     circle_x: np.ndarray = radius * np.cos(theta)
     circle_y: np.ndarray = radius * np.sin(theta)
-    plotter.add_line_series(name="Snom envelope",
-                            x_values=circle_x,
-                            y_values=circle_y,
-                            color="#2563eb")
 
     curve_data: Mat = q_curve.get_data()
     if curve_data.shape[0] > 0:
@@ -65,6 +60,25 @@ def draw_styled_qcurve_plot(plotter: GraphsWidget, q_curve: GeneratorQCurve, cha
         p_values: np.ndarray = np.asarray(sorted_data[:, 0], dtype=float)
         qmin_values: np.ndarray = np.asarray(sorted_data[:, 1], dtype=float)
         qmax_values: np.ndarray = np.asarray(sorted_data[:, 2], dtype=float)
+    else:
+        p_values = np.zeros(0, dtype=float)
+        qmin_values = np.zeros(0, dtype=float)
+        qmax_values = np.zeros(0, dtype=float)
+
+    series_data: list[tuple[np.ndarray, np.ndarray, str | None]] = [
+        (circle_x, circle_y, "#2563eb"),
+        (p_values, qmin_values, "#f97316"),
+        (p_values, qmax_values, "#0f766e"),
+        (p_values, qmin_values, "#f97316"),
+        (p_values, qmax_values, "#0f766e"),
+    ]
+    updated: bool = plotter.replace_xy_series_data(series_data=series_data)
+    if not updated:
+        plotter.clear()
+        plotter.add_line_series(name="Snom envelope",
+                                x_values=circle_x,
+                                y_values=circle_y,
+                                color="#2563eb")
         plotter.add_line_series(name="Qmin(P)", x_values=p_values, y_values=qmin_values, color="#f97316")
         plotter.add_line_series(name="Qmax(P)", x_values=p_values, y_values=qmax_values, color="#0f766e")
         plotter.add_scatter_series(name="Qmin points",
@@ -257,8 +271,6 @@ class GeneratorQCurveEditorWidget(QtWidgets.QWidget):
     Reactive power capability curve editor widget backed by a Qt Designer `.ui`.
     """
 
-    curve_changed = QtCore.Signal()
-
     def __init__(self, q_curve: GeneratorQCurve, Qmin: float, Qmax: float, Pmin: float, Pmax: float, Snom: float) -> None:
         """
         Build the curve editor widget.
@@ -353,10 +365,9 @@ class GeneratorQCurveEditorWidget(QtWidgets.QWidget):
 
     def _on_table_model_changed(self) -> None:
         """
-        React to table edits by redrawing and notifying listeners.
+        Repaint every capability series after table data changes.
         """
         self.plot()
-        self.curve_changed.emit()
 
 
 class GeneratorQCurveEditor(QtWidgets.QDialog):
@@ -384,7 +395,6 @@ class GeneratorQCurveEditor(QtWidgets.QDialog):
             Pmax=Pmax,
             Snom=Snom,
         )
-        self.q_curve_widget.curve_changed.connect(self._sync_from_widget)
         self.setWindowTitle(self.tr("Reactive power curve editor"))
 
         self.q_curve: GeneratorQCurve = q_curve
@@ -418,6 +428,7 @@ class GeneratorQCurveEditor(QtWidgets.QDialog):
         """
         _ = event
         self._sync_from_widget()
+        self.q_curve_widget.ui.plotter.dispose()
 
 
 class EmbeddedSolarPvEditorWidget(SolarPvWizard):
@@ -580,8 +591,6 @@ class GeneratorEditor(TemplateDeviceEditor):
         self.qcurve_tab_layout.addWidget(self.qcurve_editor_widget)
         qcurve_tab_index: int = self.tab_widget.addTab(self.qcurve_tab, "Q curve editor")
         self.tab_widget.setTabIcon(qcurve_tab_index, QtGui.QIcon(":/Icons/icons/plot.png"))
-        self.qcurve_editor_widget.curve_changed.connect(self._on_qcurve_data_changed)
-
     def _build_solar_tab(self) -> None:
         """
         Build and configure the embedded solar profile editor tab.
@@ -664,12 +673,6 @@ class GeneratorEditor(TemplateDeviceEditor):
         wind_tab_index: int = self.tab_widget.addTab(self.wind_tab, "Wind farm editor")
         self.tab_widget.setTabIcon(wind_tab_index, QtGui.QIcon(":/Icons/icons/wind_power.png"))
 
-    def _plot_qcurve(self) -> None:
-        """
-        Plot capability envelope and edited q-curve.
-        """
-        self.qcurve_editor_widget.plot()
-
     def _sync_qcurve_to_generator(self) -> None:
         """
         Synchronize q-curve widget data into the generator object.
@@ -685,13 +688,6 @@ class GeneratorEditor(TemplateDeviceEditor):
         # Keep property and profile tabs coherent with scalar updates.
         self.properties_model.set_time_index(time_index=self._get_current_time_index())
         self.refresh_profile_table()
-
-    def _on_qcurve_data_changed(self) -> None:
-        """
-        React to q-curve table changes.
-        """
-        self._sync_qcurve_to_generator()
-        self._plot_qcurve()
 
     def _get_generator_bus(self) -> Bus | None:
         """

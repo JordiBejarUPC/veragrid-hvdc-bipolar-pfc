@@ -778,16 +778,26 @@ class LoadDesigner(QtWidgets.QDialog):
         :return: Nothing.
         """
         result_df: pd.DataFrame = pd.DataFrame(data=dict(P=self.P, Q=self.Q), index=self.time_array)
-        self.ui.plotwidget.clear()
         x_values: np.ndarray = np.arange(len(result_df), dtype=float)
-        self.ui.plotwidget.add_line_series(name=self.tr("Active power"),
-                                           x_values=x_values,
-                                           y_values=result_df["P"].to_numpy(dtype=float),
-                                           color="#2563eb")
-        self.ui.plotwidget.add_line_series(name=self.tr("Reactive power"),
-                                           x_values=x_values,
-                                           y_values=result_df["Q"].to_numpy(dtype=float),
-                                           color="#f97316")
+        active_values: np.ndarray = result_df["P"].to_numpy(dtype=float)
+        reactive_values: np.ndarray = result_df["Q"].to_numpy(dtype=float)
+        series_data: list[tuple[np.ndarray, np.ndarray, str | None]] = [
+            (x_values, active_values, "#2563eb"),
+            (x_values, reactive_values, "#f97316"),
+        ]
+        updated: bool = self.ui.plotwidget.replace_xy_series_data(series_data=series_data)
+        if not updated:
+            self.ui.plotwidget.clear()
+            self.ui.plotwidget.add_line_series(name=self.tr("Active power"),
+                                               x_values=x_values,
+                                               y_values=active_values,
+                                               color="#2563eb")
+            self.ui.plotwidget.add_line_series(name=self.tr("Reactive power"),
+                                               x_values=x_values,
+                                               y_values=reactive_values,
+                                               color="#f97316")
+        else:
+            pass
         self.ui.plotwidget.setTitle(self.tr("Generated load profile"))
         self.ui.plotwidget.set_axis_titles(self.tr("Time index"), self.tr("Power"))
         self.ui.plotwidget.redraw()

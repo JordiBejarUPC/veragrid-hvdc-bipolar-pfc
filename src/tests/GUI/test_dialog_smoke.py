@@ -28,6 +28,7 @@ from VeraGrid.Gui.DeviceEditors.ControllableShuntEditor.controllable_shunt_edito
 from VeraGrid.Gui.DeviceEditors.DcLineEditor.dc_line_editor import DcLineEditor
 from VeraGrid.Gui.DeviceEditors.GeneratorEditor.SolarPowerWizard.solar_power_wizzard import SolarPvWizard
 from VeraGrid.Gui.DeviceEditors.GeneratorEditor.WindPowerWizard.wind_power_wizzard import WindFarmWizard
+from VeraGrid.Gui.DeviceEditors.GeneratorEditor.generator_editor import GeneratorEditor
 from VeraGrid.Gui.DeviceEditors.GeneratorEditor.generator_editor import GeneratorQCurveEditor
 from VeraGrid.Gui.DeviceEditors.LineEditor.line_editor import LineEditor
 from VeraGrid.Gui.DeviceEditors.LoadDesigner.load_designer import LoadDesigner
@@ -87,6 +88,7 @@ from VeraGrid.Gui.SubstationDesigner.substation_designer import SubstationDesign
 from VeraGrid.Gui.SubstationDesigner.voltage_level_conversion import VoltageLevelConversionWizard
 from VeraGrid.Gui.SyncDialogue.sync_dialogue import SyncDialogueWindow
 from VeraGrid.Gui.SystemScaler.system_scaler import SystemScaler
+from VeraGrid.Gui.Widgets.qtgraphs_widget import GraphsWidget
 from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely
 from VeraGrid.Gui.dialog_lifecycle import is_dialog_available
 from VeraGrid.Gui.general_dialogues import ArrayEditor
@@ -116,6 +118,7 @@ from VeraGridEngine.Devices.Dynamic.fmu_template import FmuTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Parents.editable_device import GCProp
 from VeraGridEngine.IO.file_open import FileOpenOptions
+from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.basic_structures import Logger
@@ -141,6 +144,7 @@ class DialogSmokeTarget(Enum):
     DC_LINE_EDITOR = "DcLineEditor"
     SOLAR_PV_WIZARD = "SolarPvWizard"
     WIND_FARM_WIZARD = "WindFarmWizard"
+    GENERATOR_EDITOR = "GeneratorEditor"
     GENERATOR_Q_CURVE_EDITOR = "GeneratorQCurveEditor"
     LINE_EDITOR = "LineEditor"
     LOAD_DESIGNER = "LoadDesigner"
@@ -240,6 +244,50 @@ class NamedObject:
         :return: Object name.
         """
         return self.name
+
+
+class ProceduralGraphEngine:
+    """Minimal completed procedural-engine result used to render a preview chart."""
+
+    __slots__ = ("_buses", "_lines")
+
+    def __init__(self, buses: List[vge.Bus], lines: List[vge.Line]) -> None:
+        """Store a completed topology that can be rendered by the preview window.
+
+        :param buses: Existing preview buses.
+        :param lines: Newly created preview lines.
+        :return: None.
+        """
+        self._buses: List[vge.Bus] = buses
+        self._lines: List[vge.Line] = lines
+
+    def get_buses(self) -> List[vge.Bus]:
+        """Return all preview buses.
+
+        :return: Preview buses.
+        """
+        return self._buses
+
+    def get_new_buses(self) -> List[vge.Bus]:
+        """Return the preview's newly created buses.
+
+        :return: Empty list because this compact fixture adds only a line.
+        """
+        return list()
+
+    def get_new_lines(self) -> List[vge.Line]:
+        """Return the preview's newly created lines.
+
+        :return: Preview lines.
+        """
+        return self._lines
+
+    def get_new_transformers(self) -> List[vge.Transformer2W]:
+        """Return the preview's newly created transformers.
+
+        :return: Empty transformer list.
+        """
+        return list()
 
 
 class FakeSpinBox:
@@ -900,6 +948,8 @@ def build_dialog_for_smoke(target: DialogSmokeTarget, context: DialogSmokeContex
             latitude=28.0,
             longitude=-16.0,
         )
+    elif target == DialogSmokeTarget.GENERATOR_EDITOR:
+        dialog = GeneratorEditor(api_object=circuit.generators[0], circuit=circuit)
     elif target == DialogSmokeTarget.GENERATOR_Q_CURVE_EDITOR:
         dialog = GeneratorQCurveEditor(
             q_curve=vge.GeneratorQCurve(),
@@ -1064,7 +1114,7 @@ def build_dialog_for_smoke(target: DialogSmokeTarget, context: DialogSmokeContex
     elif target == DialogSmokeTarget.SHORT_CIRCUIT_SELECTOR:
         dialog = ShortCircuitSelector()
     elif target == DialogSmokeTarget.SIGMA_ANALYSIS:
-        dialog = SigmaAnalysisGUI(grid=circuit)
+        dialog = SigmaAnalysisGUI(grid=circuit, options=PowerFlowOptions(), classical_sigma=True)
     elif target == DialogSmokeTarget.SUBSTATION_DESIGNER:
         dialog = SubstationDesigner(grid=circuit)
     elif target == DialogSmokeTarget.VOLTAGE_LEVEL_CONVERSION:
@@ -1190,6 +1240,101 @@ def collect_qt_deletes(app: QtWidgets.QApplication) -> None:
     app.processEvents()
 
 
+def exercise_qtgraphs_widgets_for_smoke(dialog: QtWidgets.QWidget, app: QtWidgets.QApplication) -> None:
+    """Exercise every embedded Qt Graphs host through its native QWidget lifecycle.
+
+    :param dialog: Displayed window that owns the chart widgets.
+    :param app: Shared Qt application delivering renderer events.
+    :return: None.
+    """
+    plot_widgets: list[GraphsWidget] = dialog.findChildren(GraphsWidget)
+    plot_widget: GraphsWidget
+    for plot_widget in plot_widgets:
+        # Start from a known renderer state before repeatedly replacing its live point buffers.
+        plot_widget.clear()
+        x_values: np.ndarray = np.asarray((0.0, 1.0, 2.0), dtype=float)
+        plot_widget.add_line_series(name="Smoke line", x_values=x_values, y_values=x_values, color="#2563eb")
+        plot_widget.add_scatter_series(name="Smoke points", x_values=x_values, y_values=-x_values, color="#f97316")
+        original_series: tuple[object, ...] = tuple(plot_widget._series)
+        assert len(original_series) == 2
+
+        update_index: int
+        for update_index in range(12):
+            updated_x: np.ndarray = np.linspace(0.0, 2.0 + update_index, 8)
+            updated_y: np.ndarray = updated_x * float(update_index + 1)
+            updated: bool = plot_widget.replace_xy_series_data(series_data=(
+                (updated_x, updated_y, "#2563eb"),
+                (updated_x, -updated_y, "#f97316"),
+            ))
+            assert updated
+            assert tuple(plot_widget._series) == original_series
+            dialog.resize(760 + update_index, 520 + update_index)
+            plot_widget.redraw()
+            app.processEvents()
+
+        # A final clear exercises removal while the Quick renderer is alive; dialog close then disposes it.
+        plot_widget.clear()
+        app.processEvents()
+
+
+def exercise_chart_window_operation_for_smoke(target: DialogSmokeTarget,
+                                              dialog: QtWidgets.QWidget,
+                                              app: QtWidgets.QApplication) -> None:
+    """Run the real chart-producing operation for each chart-hosting window.
+
+    :param target: Dialog type whose chart operation is exercised.
+    :param dialog: Displayed dialog owning the chart.
+    :param app: Shared Qt application delivering renderer events.
+    :return: None.
+    """
+    if target == DialogSmokeTarget.TOWER_BUILDER and isinstance(dialog, TowerBuilderGUI):
+        wire: vge.Wire = vge.Wire(name="Smoke wire", diameter=23.0, diameter_internal=9.0,
+                                  is_tube=True, r=0.19, max_current=1.0)
+        dialog.tower_driver.tower.add_wire_relationship(wire=wire, xpos=-2.0, ypos=20.0, phase=1)
+        dialog.tower_driver.tower.add_wire_relationship(wire=wire, xpos=0.0, ypos=20.0, phase=2)
+        dialog.tower_driver.tower.add_wire_relationship(wire=wire, xpos=2.0, ypos=20.0, phase=3)
+        dialog.compute()
+        original_series: tuple[object, ...] = tuple(dialog.ui.plotwidget._series)
+        dialog.compute()
+        assert tuple(dialog.ui.plotwidget._series) == original_series
+    elif target == DialogSmokeTarget.LOAD_DESIGNER and isinstance(dialog, LoadDesigner):
+        dialog.update_results()
+        original_series = tuple(dialog.ui.plotwidget._series)
+        dialog.update_results()
+        assert tuple(dialog.ui.plotwidget._series) == original_series
+    elif target == DialogSmokeTarget.GRID_GENERATOR and isinstance(dialog, GridGeneratorGUI):
+        dialog.ui.nodes_spinBox.setValue(12)
+        dialog.preview()
+        dialog.preview()
+    elif target == DialogSmokeTarget.GRID_ANALYSIS and isinstance(dialog, GridAnalysisGUI):
+        dialog.analyze_all()
+    elif target == DialogSmokeTarget.PROCEDURAL_GRID and isinstance(dialog, ProceduralGridWindow):
+        dialog.compute_candidates()
+        engine: ProceduralGraphEngine = ProceduralGraphEngine(
+            buses=dialog.app.circuit.buses,
+            lines=dialog.app.circuit.lines,
+        )
+        dialog._draw_graph(engine=engine)
+        original_series = tuple(dialog.ui.plotWidget._series)
+        dialog._draw_graph(engine=engine)
+        assert tuple(dialog.ui.plotWidget._series) == original_series
+    elif target == DialogSmokeTarget.GENERATOR_Q_CURVE_EDITOR and isinstance(dialog, GeneratorQCurveEditor):
+        dialog.q_curve_widget.add_row()
+        dialog.q_curve_widget.add_row()
+    elif target == DialogSmokeTarget.GENERATOR_EDITOR and isinstance(dialog, GeneratorEditor):
+        dialog.qcurve_editor_widget.add_row()
+        dialog.qcurve_editor_widget.add_row()
+    elif target == DialogSmokeTarget.SIGMA_ANALYSIS and isinstance(dialog, SigmaAnalysisGUI):
+        dialog.rerun_sigma_analysis()
+        original_series = tuple(dialog.ui.plotwidget._series)
+        dialog.rerun_sigma_analysis()
+        assert len(original_series) == 3
+        assert tuple(dialog.ui.plotwidget._series) == original_series
+    else:
+        pass
+    app.processEvents()
+
+
 def run_dialog_smoke_suite_in_child(message_queue: Any) -> None:
     """
     Run the full dialog smoke inventory in a disposable child process.
@@ -1203,6 +1348,16 @@ def run_dialog_smoke_suite_in_child(message_queue: Any) -> None:
     else:
         pass
 
+    chart_targets: Set[DialogSmokeTarget] = set()
+    chart_targets.add(DialogSmokeTarget.GRID_ANALYSIS)
+    chart_targets.add(DialogSmokeTarget.GENERATOR_EDITOR)
+    chart_targets.add(DialogSmokeTarget.GENERATOR_Q_CURVE_EDITOR)
+    chart_targets.add(DialogSmokeTarget.LOAD_DESIGNER)
+    chart_targets.add(DialogSmokeTarget.TOWER_BUILDER)
+    chart_targets.add(DialogSmokeTarget.GRID_GENERATOR)
+    chart_targets.add(DialogSmokeTarget.PROCEDURAL_GRID)
+    chart_targets.add(DialogSmokeTarget.SIGMA_ANALYSIS)
+
     target: DialogSmokeTarget
     for target in DialogSmokeTarget:
         context: DialogSmokeContext = DialogSmokeContext(app=app)
@@ -1214,6 +1369,12 @@ def run_dialog_smoke_suite_in_child(message_queue: Any) -> None:
             dialog.show()
             app.processEvents()
             assert shiboken6.isValid(dialog)
+            if target in chart_targets:
+                assert len(dialog.findChildren(GraphsWidget)) > 0
+                exercise_chart_window_operation_for_smoke(target=target, dialog=dialog, app=app)
+                exercise_qtgraphs_widgets_for_smoke(dialog=dialog, app=app)
+            else:
+                pass
         except Exception:
             message_queue.put(f"{target.value}\n{traceback.format_exc()}")
             raise

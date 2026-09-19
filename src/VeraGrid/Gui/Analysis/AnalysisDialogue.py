@@ -1891,7 +1891,6 @@ QWidget#overviewPage QProgressBar::chunk {{
         Refresh the sigma plot and sigma status copy.
         """
         plot_widget: GraphsWidget = self.ui.sigmaPlotWidget
-        plot_widget.clear(force=True)
         plot_widget.apply_theme(dark=self.theme_is_dark)
 
         if self.sigma_results is not None:
@@ -1910,18 +1909,29 @@ QWidget#overviewPage QProgressBar::chunk {{
                 boundary_color = "#102235"
 
             plot_color: str = "#00a884" if self.sigma_results.converged else "#ef6c45"
-            plot_widget.add_line_series(name=self.tr("Stability boundary"),
-                                        x_values=boundary_x,
-                                        y_values=boundary_y,
-                                        color=boundary_color)
-            plot_widget.add_line_series(name="",
-                                        x_values=boundary_x,
-                                        y_values=-boundary_y,
-                                        color=boundary_color)
-            plot_widget.add_scatter_series(name=self.tr("Buses"),
-                                           x_values=sigma_x,
-                                           y_values=sigma_y,
-                                           color=plot_color)
+            series_data: list[tuple[np.ndarray, np.ndarray, str | None]] = [
+                (boundary_x, boundary_y, boundary_color),
+                (boundary_x, -boundary_y, boundary_color),
+                (sigma_x, sigma_y, plot_color),
+            ]
+            updated: bool = plot_widget.replace_xy_series_data(series_data=series_data)
+            if not updated:
+                plot_widget.clear()
+                plot_widget.apply_theme(dark=self.theme_is_dark)
+                plot_widget.add_line_series(name=self.tr("Stability boundary"),
+                                            x_values=boundary_x,
+                                            y_values=boundary_y,
+                                            color=boundary_color)
+                plot_widget.add_line_series(name="",
+                                            x_values=boundary_x,
+                                            y_values=-boundary_y,
+                                            color=boundary_color)
+                plot_widget.add_scatter_series(name=self.tr("Buses"),
+                                               x_values=sigma_x,
+                                               y_values=sigma_y,
+                                               color=plot_color)
+            else:
+                pass
             plot_widget.setTitle(self.tr("Sigma plot"))
             plot_widget.set_axis_titles("σre", "σim")
             plot_widget.redraw()
@@ -1938,6 +1948,17 @@ QWidget#overviewPage QProgressBar::chunk {{
             self.ui.sigmaStatusLabel.setText(sigma_status_text)
         else:
             self.sigma_model = None
+            empty_values: np.ndarray = np.zeros(0, dtype=float)
+            empty_series_data: list[tuple[np.ndarray, np.ndarray, str | None]] = [
+                (empty_values, empty_values, None),
+                (empty_values, empty_values, None),
+                (empty_values, empty_values, None),
+            ]
+            updated: bool = plot_widget.replace_xy_series_data(series_data=empty_series_data)
+            if not updated:
+                plot_widget.clear()
+            else:
+                pass
             plot_widget.setTitle(self.summary.sigma_status_text)
             plot_widget.set_axis_titles("σre", "σim")
             plot_widget.redraw()

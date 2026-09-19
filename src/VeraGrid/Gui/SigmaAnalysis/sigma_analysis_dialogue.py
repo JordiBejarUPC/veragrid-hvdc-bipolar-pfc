@@ -7,6 +7,7 @@ import numpy as np
 from PySide6 import QtGui, QtWidgets
 
 from VeraGrid.Gui.SigmaAnalysis.sigma_analysis_gui import Ui_MainWindow
+from VeraGrid.Gui.Widgets.qtgraphs_widget import GraphsWidget
 from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
 from VeraGrid.Gui.results_model import ResultsModel
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
@@ -239,8 +240,7 @@ class SigmaAnalysisGUI(QtWidgets.QMainWindow):
         self.results = results
 
         if results is not None and bus_names is not None:
-            plot_widget = self.ui.plotwidget
-            plot_widget.clear()
+            plot_widget: GraphsWidget = self.ui.plotwidget
             sigma_x: np.ndarray = np.asarray(self.results.sigma_re, dtype=float)
             sigma_y: np.ndarray = np.asarray(self.results.sigma_im, dtype=float)
             if len(sigma_x) > 0:
@@ -250,19 +250,30 @@ class SigmaAnalysisGUI(QtWidgets.QMainWindow):
 
             boundary_x: np.ndarray = np.linspace(-0.25, max(boundary_max, -0.15), 1000)
             boundary_y: np.ndarray = np.sqrt(np.maximum(0.25 + boundary_x, 0.0))
-            plot_widget.add_line_series(name=self.tr("Stability boundary"),
-                                        x_values=boundary_x,
-                                        y_values=boundary_y,
-                                        color="#263238")
-            plot_widget.add_line_series(name="",
-                                        x_values=boundary_x,
-                                        y_values=-boundary_y,
-                                        color="#263238")
             plot_color: str = "#00a884" if self.results.converged else "#ef6c45"
-            plot_widget.add_scatter_series(name=self.tr("Buses"),
-                                           x_values=sigma_x,
-                                           y_values=sigma_y,
-                                           color=plot_color)
+            series_data: list[tuple[np.ndarray, np.ndarray, str | None]] = [
+                (boundary_x, boundary_y, "#263238"),
+                (boundary_x, -boundary_y, "#263238"),
+                (sigma_x, sigma_y, plot_color),
+            ]
+            updated: bool = plot_widget.replace_xy_series_data(series_data=series_data)
+            if not updated:
+                # The first result creates the fixed renderer-owned series set used by every later rerun.
+                plot_widget.clear()
+                plot_widget.add_line_series(name=self.tr("Stability boundary"),
+                                            x_values=boundary_x,
+                                            y_values=boundary_y,
+                                            color="#263238")
+                plot_widget.add_line_series(name="",
+                                            x_values=boundary_x,
+                                            y_values=-boundary_y,
+                                            color="#263238")
+                plot_widget.add_scatter_series(name=self.tr("Buses"),
+                                               x_values=sigma_x,
+                                               y_values=sigma_y,
+                                               color=plot_color)
+            else:
+                pass
             plot_widget.setTitle(self.tr("Sigma plot"))
             plot_widget.set_axis_titles("σre", "σim")
             plot_widget.redraw()

@@ -19,6 +19,7 @@ from PySide6.QtGraphs import (
     QLineSeries,
     QScatterSeries,
     QValueAxis,
+    QXYSeries,
 )
 from PySide6.QtQml import QQmlComponent
 from PySide6.QtQuick import QQuickItem
@@ -45,6 +46,7 @@ class GraphsWidget(QtWidgets.QWidget):
         "_x_max",
         "_y_min",
         "_y_max",
+        "_pan_position",
         "_disposed",
     )
 
@@ -66,12 +68,18 @@ class GraphsWidget(QtWidgets.QWidget):
         self.legend_layout.setContentsMargins(4, 0, 4, 0)
         self.legend_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
         self._legend_items: list[QtWidgets.QLabel] = list()
+        self._pan_position: QtCore.QPointF | None = None
+        self._disposed: bool = False
         self.quick_widget: QQuickWidget = QQuickWidget(self)
         self.quick_widget.setSizePolicy(
             QtWidgets.QSizePolicy.Policy.Expanding,
             QtWidgets.QSizePolicy.Policy.Expanding,
         )
         self.quick_widget.setResizeMode(QQuickWidget.ResizeMode.SizeRootObjectToView)
+        self.quick_widget.setFocusPolicy(QtCore.Qt.FocusPolicy.StrongFocus)
+        self.quick_widget.setMouseTracking(True)
+        self.quick_widget.setToolTip(self.tr("Mouse wheel: zoom\nLeft drag: pan\nDouble-click: reset view"))
+        self.quick_widget.installEventFilter(self)
 
         # Keep Python-created axes and theme alive while the QML view references them.
         self.axis_x: QAbstractAxis = QValueAxis(self)
@@ -115,7 +123,6 @@ class GraphsWidget(QtWidgets.QWidget):
         self._x_max: float = 1.0
         self._y_min: float = 0.0
         self._y_max: float = 1.0
-        self._disposed: bool = False
 
         self.axis_x.setRange(0.0, 1.0)
         self.axis_y.setRange(0.0, 1.0)
@@ -187,6 +194,7 @@ class GraphsWidget(QtWidgets.QWidget):
         if self.graph_view is not None:
             series: QAbstractSeries
             for series in self._series:
+                # Detach first and defer QObject destruction so the Quick renderer can finish removal.
                 self.graph_view.removeSeries(series)
                 series.deleteLater()
             self._series.clear()
@@ -210,6 +218,69 @@ class GraphsWidget(QtWidgets.QWidget):
         self._y_min = 0.0
         self._y_max = 1.0
         self._set_axis_ranges()
+
+    def replace_xy_series_data(
+            self,
+            series_data: Sequence[tuple[np.ndarray, np.ndarray, str | None]]) -> bool:
+        """Replace point arrays on existing XY series without destroying them.
+
+        :param series_data: New X values, Y values, and optional colors in series order.
+        :return: Whether every existing series was updated.
+        """
+        if self.graph_view is not None and len(series_data) == len(self._series):
+            # Validate and filter the whole replacement before changing any renderer-owned series.
+            prepared_data: list[tuple[QXYSeries, np.ndarray, np.ndarray, str | None]] = list()
+            series_index: int
+            series_values: tuple[np.ndarray, np.ndarray, str | None]
+            for series_index, series_values in enumerate(series_data):
+                series: QAbstractSeries = self._series[series_index]
+                if isinstance(series, QXYSeries):
+                    x_data: np.ndarray = np.asarray(series_values[0], dtype=float)
+                    y_data: np.ndarray = np.asarray(series_values[1], dtype=float)
+                    if len(x_data) == len(y_data):
+                        finite_mask: np.ndarray = np.isfinite(x_data) & np.isfinite(y_data)
+                        prepared_data.append((series,
+                                              x_data[finite_mask],
+                                              y_data[finite_mask],
+                                              series_values[2]))
+                    else:
+                        return False
+                else:
+                    return False
+
+            # Start new ranges from the replacement data so a rerun can zoom in as well as out.
+            self._has_points = False
+            self._x_min = 0.0
+            self._x_max = 1.0
+            self._y_min = 0.0
+            self._y_max = 1.0
+            series_entry: tuple[QXYSeries, np.ndarray, np.ndarray, str | None]
+            for series_entry in prepared_data:
+                series: QXYSeries = series_entry[0]
+                x_data: np.ndarray = series_entry[1]
+                y_data: np.ndarray = series_entry[2]
+                color: str | None = series_entry[3]
+                if len(x_data) > 0:
+                    series.replaceNp(x_data, y_data)
+                else:
+                    series.clear()
+                if color is not None:
+                    series.setColor(QtGui.QColor(color))
+                else:
+                    pass
+                # Rebuild shared limits from each series after the native data replacement.
+                if len(x_data) > 0:
+                    self._include_points(x_data=x_data, y_data=y_data)
+                else:
+                    pass
+
+            if not self._has_points:
+                self._set_axis_ranges()
+            else:
+                pass
+            return True
+        else:
+            return False
 
     def add_line_series(self,
                         name: str,
@@ -283,7 +354,8 @@ class GraphsWidget(QtWidgets.QWidget):
             if len(valid_values) > 0:
                 self._ensure_bar_axes(labels=valid_labels)
 
-                bar_series: QBarSeries = QBarSeries()
+                # Keep Qt ownership on this GUI widget while the GraphsView uses the series.
+                bar_series: QBarSeries = QBarSeries(self)
                 positive_set: QBarSet = QBarSet(self.tr("Positive"), bar_series)
                 negative_set: QBarSet = QBarSet(self.tr("Negative"), bar_series)
                 positive_set.setColor(QtGui.QColor(positive_color))
@@ -385,32 +457,36 @@ class GraphsWidget(QtWidgets.QWidget):
         :param color: Optional Qt color string.
         :return: None.
         """
-        if self.graph_view is not None and len(x_data) == len(y_data) and len(x_data) > 0:
+        if self.graph_view is not None and len(x_data) == len(y_data):
             finite_mask: np.ndarray = np.isfinite(x_data) & np.isfinite(y_data)
             valid_x: np.ndarray = x_data[finite_mask]
             valid_y: np.ndarray = y_data[finite_mask]
 
+            # Parent Qt ownership here so Python wrapper collection cannot destroy a live renderer object.
+            series: QLineSeries | QScatterSeries = series_type(self)
+            series.setName(name)
+
+            if isinstance(series, QScatterSeries) and self._circle_marker_delegate is not None:
+                series.setPointDelegate(self._circle_marker_delegate)
+            else:
+                pass
+
+            if color is not None:
+                series.setColor(QtGui.QColor(color))
+            else:
+                pass
+
             if len(valid_x) > 0:
-                series: QLineSeries | QScatterSeries = series_type()
-                series.setName(name)
-
-                if isinstance(series, QScatterSeries) and self._circle_marker_delegate is not None:
-                    series.setPointDelegate(self._circle_marker_delegate)
-                else:
-                    pass
-
-                if color is not None:
-                    series.setColor(QtGui.QColor(color))
-                else:
-                    pass
-
                 series.appendNp(valid_x, valid_y)
-                self.graph_view.addSeries(series)
-                self._series.append(series)
-                if name != "":
-                    self._add_legend_entry(name=name, color=series.color())
-                else:
-                    pass
+            else:
+                pass
+            self.graph_view.addSeries(series)
+            self._series.append(series)
+            if name != "":
+                self._add_legend_entry(name=name, color=series.color())
+            else:
+                pass
+            if len(valid_x) > 0:
                 self._include_points(x_data=valid_x, y_data=valid_y)
             else:
                 pass
@@ -483,6 +559,144 @@ class GraphsWidget(QtWidgets.QWidget):
         else:
             pass
 
+    def eventFilter(self, watched: QtCore.QObject, event: QtCore.QEvent) -> bool:
+        """Translate QWidget pointer input into direct Qt Graphs axis navigation.
+
+        :param watched: QObject receiving the original event.
+        :param event: Qt input or lifecycle event.
+        :return: True when chart navigation consumed the event.
+        """
+        if watched is self.quick_widget and not self._disposed:
+            if event.type() == QtCore.QEvent.Type.Wheel and isinstance(event, QtGui.QWheelEvent):
+                self._zoom_from_wheel(delta_y=event.angleDelta().y())
+                event.accept()
+                return True
+            elif event.type() == QtCore.QEvent.Type.MouseButtonPress and isinstance(event, QtGui.QMouseEvent):
+                if event.button() == QtCore.Qt.MouseButton.LeftButton:
+                    self._pan_position = event.position()
+                    event.accept()
+                    return True
+                else:
+                    pass
+            elif event.type() == QtCore.QEvent.Type.MouseMove and isinstance(event, QtGui.QMouseEvent):
+                if self._pan_position is not None:
+                    self._pan_from_drag(current_position=event.position())
+                    event.accept()
+                    return True
+                else:
+                    pass
+            elif event.type() == QtCore.QEvent.Type.MouseButtonRelease and isinstance(event, QtGui.QMouseEvent):
+                if event.button() == QtCore.Qt.MouseButton.LeftButton and self._pan_position is not None:
+                    self._pan_position = None
+                    event.accept()
+                    return True
+                else:
+                    pass
+            elif event.type() == QtCore.QEvent.Type.MouseButtonDblClick and isinstance(event, QtGui.QMouseEvent):
+                if event.button() == QtCore.Qt.MouseButton.LeftButton:
+                    self._reset_viewport()
+                    event.accept()
+                    return True
+                else:
+                    pass
+            else:
+                pass
+        else:
+            pass
+        return QtWidgets.QWidget.eventFilter(self, watched, event)
+
+    def _zoom_from_wheel(self, delta_y: int) -> None:
+        """Scale compatible graph axes from a physical mouse-wheel delta.
+
+        :param delta_y: Vertical wheel delta from the QWidget input event.
+        :return: None.
+        """
+        if delta_y > 0:
+            zoom_multiplier: float = 1.25
+        elif delta_y < 0:
+            zoom_multiplier = 0.8
+        else:
+            return
+
+        if isinstance(self.axis_x, QValueAxis) or isinstance(self.axis_x, QDateTimeAxis):
+            self._zoom_axis(axis=self.axis_x, multiplier=zoom_multiplier)
+        else:
+            pass
+        if isinstance(self.axis_y, QValueAxis) or isinstance(self.axis_y, QDateTimeAxis):
+            self._zoom_axis(axis=self.axis_y, multiplier=zoom_multiplier)
+        else:
+            pass
+        self.redraw()
+
+    def _zoom_axis(self, axis: QValueAxis | QDateTimeAxis, multiplier: float) -> None:
+        """Apply one bounded zoom multiplier to a navigable Qt Graphs axis.
+
+        :param axis: Value or datetime axis to update.
+        :param multiplier: Relative zoom adjustment.
+        :return: None.
+        """
+        zoom_value: float = min(max(axis.zoom() * multiplier, 1.0), 20.0)
+        axis.setZoom(zoom_value)
+
+    def _pan_from_drag(self, current_position: QtCore.QPointF) -> None:
+        """Move compatible axes by the distance travelled since the last drag event.
+
+        :param current_position: Current pointer position inside the graph widget.
+        :return: None.
+        """
+        if self._pan_position is not None:
+            previous_position: QtCore.QPointF = self._pan_position
+            delta: QtCore.QPointF = current_position - previous_position
+            self._pan_position = current_position
+        else:
+            return
+
+        if self.quick_widget.width() > 0:
+            if isinstance(self.axis_x, QValueAxis) or isinstance(self.axis_x, QDateTimeAxis):
+                x_span: float = self._axis_span(axis=self.axis_x)
+                self.axis_x.setPan(self.axis_x.pan() - delta.x() * x_span / self.quick_widget.width())
+            else:
+                pass
+        else:
+            pass
+        if self.quick_widget.height() > 0:
+            if isinstance(self.axis_y, QValueAxis) or isinstance(self.axis_y, QDateTimeAxis):
+                y_span: float = self._axis_span(axis=self.axis_y)
+                self.axis_y.setPan(self.axis_y.pan() + delta.y() * y_span / self.quick_widget.height())
+            else:
+                pass
+        else:
+            pass
+        self.redraw()
+
+    def _axis_span(self, axis: QValueAxis | QDateTimeAxis) -> float:
+        """Return the unzoomed numerical span for a Qt Graphs axis.
+
+        :param axis: Value or datetime axis whose viewport is panned.
+        :return: Axis span in its pan coordinate unit.
+        """
+        if isinstance(axis, QValueAxis):
+            return axis.max() - axis.min()
+        else:
+            return float(axis.max().toMSecsSinceEpoch() - axis.min().toMSecsSinceEpoch())
+
+    def _reset_viewport(self) -> None:
+        """Restore unzoomed, unpanned axes after a double-click.
+
+        :return: None.
+        """
+        if isinstance(self.axis_x, QValueAxis) or isinstance(self.axis_x, QDateTimeAxis):
+            self.axis_x.setZoom(1.0)
+            self.axis_x.setPan(0.0)
+        else:
+            pass
+        if isinstance(self.axis_y, QValueAxis) or isinstance(self.axis_y, QDateTimeAxis):
+            self.axis_y.setZoom(1.0)
+            self.axis_y.setPan(0.0)
+        else:
+            pass
+        self.redraw()
+
     def dispose(self) -> None:
         """Release series before the parent dialog closes.
 
@@ -490,6 +704,8 @@ class GraphsWidget(QtWidgets.QWidget):
         """
         if not self._disposed:
             self._disposed = True
+            self.quick_widget.removeEventFilter(self)
+            self._pan_position = None
             self.clear()
         else:
             pass
