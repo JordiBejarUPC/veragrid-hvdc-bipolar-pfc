@@ -34,6 +34,7 @@ from VeraGrid.Gui.DeviceEditors.LineEditor.line_editor import LineEditor
 from VeraGrid.Gui.DeviceEditors.LoadDesigner.load_designer import LoadDesigner
 from VeraGrid.Gui.DeviceEditors.TemplateDeviceEditor.template_device_editor import TemplateDeviceEditor
 from VeraGrid.Gui.DeviceEditors.TowerBuilder.LineBuilderDialogue import TowerBuilderGUI
+from VeraGrid.Gui.DeviceEditors.UndergroundCableBuilder.underground_cable_builder import UndergroundCableBuilderGUI
 from VeraGrid.Gui.DeviceEditors.Transformer3wEditor.transformer3w_editor import Transformer3WEditor
 from VeraGrid.Gui.DeviceEditors.TransformerEditor.transformer_editor import TransformerEditor
 from VeraGrid.Gui.Diagrams.Editors.bus_selector import BusSelectorDialogue
@@ -150,6 +151,7 @@ class DialogSmokeTarget(Enum):
     LOAD_DESIGNER = "LoadDesigner"
     TEMPLATE_DEVICE_EDITOR = "TemplateDeviceEditor"
     TOWER_BUILDER = "TowerBuilderGUI"
+    UNDERGROUND_CABLE_BUILDER = "UndergroundCableBuilderGUI"
     TRANSFORMER_3W_EDITOR = "Transformer3WEditor"
     TRANSFORMER_EDITOR = "TransformerEditor"
     BUS_SELECTOR = "BusSelectorDialogue"
@@ -973,6 +975,12 @@ def build_dialog_for_smoke(target: DialogSmokeTarget, context: DialogSmokeContex
         dialog = TemplateDeviceEditor(api_object=circuit.lines[0], circuit=circuit)
     elif target == DialogSmokeTarget.TOWER_BUILDER:
         dialog = TowerBuilderGUI(tower=vge.OverheadLineType(name="Tower", Vnom=110.0), wires_catalogue=list())
+    elif target == DialogSmokeTarget.UNDERGROUND_CABLE_BUILDER:
+        cable: vge.UndergroundCableType = vge.UndergroundCableType(name="Smoke cable")
+        dialog = UndergroundCableBuilderGUI(
+            system=vge.UndergroundLineType(name="Cable system", Vnom=110.0),
+            cables_catalogue=list((cable,)),
+        )
     elif target == DialogSmokeTarget.TRANSFORMER_3W_EDITOR:
         dialog = Transformer3WEditor(tr3=circuit.transformers3w[0], Sbase=circuit.Sbase)
     elif target == DialogSmokeTarget.TRANSFORMER_EDITOR:
@@ -1297,6 +1305,16 @@ def exercise_chart_window_operation_for_smoke(target: DialogSmokeTarget,
         original_series: tuple[object, ...] = tuple(dialog.ui.plotwidget._series)
         dialog.compute()
         assert tuple(dialog.ui.plotwidget._series) == original_series
+    elif target == DialogSmokeTarget.UNDERGROUND_CABLE_BUILDER and isinstance(dialog, UndergroundCableBuilderGUI):
+        dialog.ui.wires_tableView.selectRow(0)
+        dialog.add_cable_to_system()
+        original_series = tuple(dialog.ui.plotwidget._series)
+        dialog.plot()
+        assert len(original_series) == 1
+        assert tuple(dialog.ui.plotwidget._series) == original_series
+        dialog.ui.tower_tableView.selectRow(0)
+        dialog.delete_cable_from_system()
+        assert tuple(dialog.ui.plotwidget._series) == original_series
     elif target == DialogSmokeTarget.LOAD_DESIGNER and isinstance(dialog, LoadDesigner):
         dialog.update_results()
         original_series = tuple(dialog.ui.plotwidget._series)
@@ -1354,6 +1372,7 @@ def run_dialog_smoke_suite_in_child(message_queue: Any) -> None:
     chart_targets.add(DialogSmokeTarget.GENERATOR_Q_CURVE_EDITOR)
     chart_targets.add(DialogSmokeTarget.LOAD_DESIGNER)
     chart_targets.add(DialogSmokeTarget.TOWER_BUILDER)
+    chart_targets.add(DialogSmokeTarget.UNDERGROUND_CABLE_BUILDER)
     chart_targets.add(DialogSmokeTarget.GRID_GENERATOR)
     chart_targets.add(DialogSmokeTarget.PROCEDURAL_GRID)
     chart_targets.add(DialogSmokeTarget.SIGMA_ANALYSIS)
