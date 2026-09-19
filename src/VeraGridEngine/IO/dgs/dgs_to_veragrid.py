@@ -3096,6 +3096,7 @@ def convert_dgs_to_line(
         dc_cable_type_dict: Dict[str, dev.DcCableType],
         source_line_type_dict: Dict[str, TypLne],
         overhead_line_type_dict: Dict[str, dev.OverheadLineType],
+        underground_line_type_dict: Dict[str, dev.UndergroundLineType],
         line_type_by_line_id: Dict[str, str],
         line_sections_by_line_id: Dict[str, List[ElmLnesec]],
         tower_template_by_line_id: Dict[str, dev.OverheadLineType],
@@ -3118,6 +3119,7 @@ def convert_dgs_to_line(
     :param dc_cable_type_dict: Complete physical DC cable templates by source pointer.
     :param source_line_type_dict: Parsed line types used for resistive fallback.
     :param overhead_line_type_dict: overhead_line_type_dict parameter.
+    :param underground_line_type_dict: Physical cable systems by source pointer.
     :param line_type_by_line_id: line_type_by_line_id parameter.
     :param line_sections_by_line_id: line_sections_by_line_id parameter.
     :param tower_template_by_line_id: tower_template_by_line_id parameter.
@@ -3303,6 +3305,7 @@ def convert_dgs_to_line(
     # ------------------------------------------------------------
     seq_template: dev.SequenceLineType | None = None
     ohl_template: dev.OverheadLineType | None = None
+    underground_template: dev.UndergroundLineType | None = None
 
     ohl_template = overhead_line_type_dict.get(lne.ID, None)
     if ohl_template is None:
@@ -3311,6 +3314,10 @@ def convert_dgs_to_line(
             ohl_template = overhead_line_type_dict.get(line_id, None)
 
     if ohl_template is None and typ_id is not None and typ_id != "":
+        underground_template = _resolve_pointer_dict_value(
+            key=typ_id,
+            mapping=underground_line_type_dict,
+        )
         seq_template = sequence_templates_dict.get(typ_id, None)
         if seq_template is None:
             tid = _ref_id(typ_id)
@@ -3432,6 +3439,11 @@ def convert_dgs_to_line(
         line.set_circuit_idx(val=1, obj=ohl_template)
         line.apply_template(obj=ohl_template, Sbase=baseMVA, freq=freq, logger=logger)
         applied_template = True
+    elif underground_template is not None:
+        # TypCabsys uses the same one-based circuit convention as TypTow.
+        line.set_circuit_idx(val=1, obj=underground_template)
+        line.apply_template(obj=underground_template, Sbase=baseMVA, freq=freq, logger=logger)
+        applied_template = True
     else:
         pass
 
@@ -3457,6 +3469,8 @@ def convert_dgs_to_line(
     is_ac_topological_link: bool = (
         np.round(float(line.R), decimals=6) == 0.0
         and np.round(float(line.X), decimals=6) == 0.0
+        and ohl_template is None
+        and underground_template is None
     )
     if is_ac_topological_link:
         line.reducible = True
@@ -7107,6 +7121,199 @@ def _build_typlne_templates(
     return typlne_dict, dc_cable_type_dict, source_line_type_dict
 
 
+def _build_typcab_catalogue(dgs_grid: DgsCircuit,
+                            grid: dev.MultiCircuit,
+                            logger: Logger) -> Dict[str, dev.UndergroundCableType]:
+    """Build physical underground-cable catalogue entries from ``TypCab`` rows.
+
+    :param dgs_grid: Parsed PowerFactory DGS model.
+    :param grid: Destination VeraGrid circuit.
+    :param logger: Import logger receiving unsupported or unknown layer warnings.
+    :return: Cable constructions indexed by raw and normalized DGS pointers.
+    """
+    cable_type_dict: Dict[str, dev.UndergroundCableType] = dict()
+    source_cable: TypCab
+    for source_cable in dgs_grid.typcabs:
+        # PF retains material properties and thicknesses for disabled layers.
+        # Only the explicit existence flags establish that armour is active.
+        has_armour: bool = (
+            source_cable.has_arm not in (None, 0)
+            or source_cable.cHasEl_2 not in (None, 0)
+        )
+        if has_armour:
+            logger.add_warning(
+                msg='Active cable armour is not modelled; only core and sheath are imported; cable results are an approximation',
+                device=source_cable.loc_name,
+                device_class='TypCab',
+                device_property='has_arm / cHasEl:2',
+            )
+        elif source_cable.has_arm is None and source_cable.cHasEl_2 is None:
+            logger.add_warning(
+                msg='Cable armour flags are missing; importing core and sheath without verifying armour absence',
+                device=source_cable.loc_name,
+                device_class='TypCab',
+                device_property='has_arm / cHasEl:2',
+            )
+        else:
+            pass
+        cable_type: dev.UndergroundCableType = dev.UndergroundCableType(
+            name=source_cable.loc_name,
+            idtag=_ref_id(source_cable.ID),
+            nominal_voltage=source_cable.uline,
+            core_dc_resistance=source_cable.rpha,
+            core_diameter=source_cable.diaCon,
+            core_internal_diameter=source_cable.diaTube,
+            cable_diameter=source_cable.diaCab,
+            sheath_thickness=source_cable.thSht,
+            main_insulation_thickness=source_cable.thIns[0],
+            core_resistivity=source_cable.crho[0],
+            sheath_resistivity=source_cable.crho[1],
+            core_filling_factor=source_cable.Cf[0],
+            sheath_filling_factor=source_cable.Cf[1],
+            main_insulation_permittivity=source_cable.cepsr[0],
+            outer_insulation_permittivity=source_cable.cepsr[1],
+            main_insulation_loss_tangent=source_cable.ctand[0],
+            outer_insulation_loss_tangent=source_cable.ctand[1],
+            core_relative_permeability=source_cable.my[0],
+            sheath_relative_permeability=source_cable.my[1],
+            skin_effect_factor=source_cable.ks,
+            proximity_effect_factor=source_cable.kp,
+        )
+        grid.add_underground_cable(obj=cable_type)
+
+        # DGS references may use either the complete FID or its pointer token.
+        cable_type_dict[source_cable.ID] = cable_type
+        normalized_id: str | None = _ref_id(source_cable.ID)
+        if normalized_id is not None:
+            cable_type_dict[normalized_id] = cable_type
+        else:
+            pass
+    return cable_type_dict
+
+
+def _get_typcabsys_earth_resistivity(source_system: TypCabsys) -> float:
+    """Resolve earth resistivity from the two equivalent PowerFactory fields.
+
+    :param source_system: Parsed PowerFactory cable-system type.
+    :return: Earth resistivity in ohm metres.
+    """
+    if source_system.rhoEarth > 0.0:
+        earth_resistivity: float = float(source_system.rhoEarth)
+    elif source_system.cGearth > 0.0:
+        # PowerFactory stores conductivity in micro-siemens per centimetre.
+        earth_resistivity = 10000.0 / float(source_system.cGearth)
+    else:
+        earth_resistivity = 100.0
+    return earth_resistivity
+
+
+def _build_typcabsys_templates(
+        dgs_grid: DgsCircuit,
+        grid: dev.MultiCircuit,
+        cable_type_dict: Dict[str, dev.UndergroundCableType],
+        logger: Logger,
+) -> Dict[str, dev.UndergroundLineType]:
+    """Build physical underground-line templates from ``TypCabsys`` rows.
+
+    :param dgs_grid: Parsed PowerFactory DGS model.
+    :param grid: Destination VeraGrid circuit.
+    :param cable_type_dict: Imported physical cables indexed by DGS pointer.
+    :param logger: Import logger receiving unsupported or incomplete data.
+    :return: Cable systems indexed by raw and normalized DGS pointers.
+    """
+    cable_system_dict: Dict[str, dev.UndergroundLineType] = dict()
+    source_system: TypCabsys
+    for source_system in dgs_grid.typcabsys:
+        is_supported: bool = int(source_system.systp) == 0 and source_system.iopt_bur == 'gnd'
+        if is_supported:
+            referenced_cables: List[dev.UndergroundCableType | None] = list()
+            cable_pointer: str | None
+            for cable_pointer in source_system.pcab_c:
+                referenced_cable: dev.UndergroundCableType | None = _resolve_pointer_dict_value(
+                    key=cable_pointer,
+                    mapping=cable_type_dict,
+                )
+                referenced_cables.append(referenced_cable)
+
+            first_cable: dev.UndergroundCableType | None = (
+                referenced_cables[0] if len(referenced_cables) > 0 else None
+            )
+            if first_cable is not None:
+                rated_current_ka: float = (
+                    float(source_system.dInom[0]) if len(source_system.dInom) > 0 else 0.0
+                )
+                cable_system: dev.UndergroundLineType = dev.UndergroundLineType(
+                    name=source_system.loc_name,
+                    idtag=_ref_id(source_system.ID),
+                    Imax=rated_current_ka,
+                    Vnom=first_cable.nominal_voltage,
+                    freq=source_system.frnom,
+                    earth_resistivity=_get_typcabsys_earth_resistivity(source_system=source_system),
+                )
+
+                # Each xy_c row stores all X coordinates followed by all burial
+                # depths for one circuit. Only nphas positions are meaningful.
+                circuit_index: int
+                phase_offset: int = 0
+                complete_composition: bool = True
+                for circuit_index in range(len(source_system.xy_c)):
+                    phase_count: int = (
+                        int(source_system.nphas[circuit_index])
+                        if circuit_index < len(source_system.nphas)
+                        else int(source_system.cnphas)
+                    )
+                    cable_for_circuit: dev.UndergroundCableType | None = (
+                        referenced_cables[circuit_index]
+                        if circuit_index < len(referenced_cables)
+                        else None
+                    )
+                    coordinate_row: List[float] = source_system.xy_c[circuit_index]
+                    coordinate_axis_width: int = int(source_system.cnphas)
+                    if (
+                        cable_for_circuit is not None
+                        and len(coordinate_row) >= coordinate_axis_width + phase_count
+                    ):
+                        local_phase: int
+                        for local_phase in range(phase_count):
+                            cable_system.add_cable_relationship(
+                                cable=cable_for_circuit,
+                                xpos=float(coordinate_row[local_phase]),
+                                ypos=float(coordinate_row[coordinate_axis_width + local_phase]),
+                                phase=phase_offset + local_phase + 1,
+                            )
+                    else:
+                        complete_composition = False
+                    phase_offset += phase_count
+
+                if complete_composition and cable_system.compute(logger=logger):
+                    grid.add_underground_line(obj=cable_system)
+                    cable_system_dict[source_system.ID] = cable_system
+                    normalized_id: str | None = _ref_id(source_system.ID)
+                    if normalized_id is not None:
+                        cable_system_dict[normalized_id] = cable_system
+                    else:
+                        pass
+                else:
+                    logger.add_warning(
+                        msg='Underground cable system could not be calculated',
+                        device=source_system.loc_name,
+                        device_class='TypCabsys',
+                    )
+            else:
+                logger.add_warning(
+                    msg='Underground cable construction not found',
+                    device=source_system.loc_name,
+                    device_class='TypCabsys',
+                )
+        else:
+            logger.add_warning(
+                msg='Only AC cable systems laid directly in ground are supported',
+                device=source_system.loc_name,
+                device_class='TypCabsys',
+            )
+    return cable_system_dict
+
+
 def _build_typcon_catalogues(dgs_grid: DgsCircuit,
                              grid: dev.MultiCircuit) -> Tuple[Dict[str, TypCon], Dict[str, Wire]]:
     """
@@ -7458,6 +7665,7 @@ def _add_elmlne_lines(dgs_grid: DgsCircuit,
                       dc_cable_type_dict: Dict[str, dev.DcCableType],
                       source_line_type_dict: Dict[str, TypLne],
                       overhead_line_type_dict: Dict[str, dev.OverheadLineType],
+                      underground_line_type_dict: Dict[str, dev.UndergroundLineType],
                       line_type_by_line_id: Dict[str, str],
                       line_sections_by_line_id: Dict[str, List[ElmLnesec]],
                       tower_template_by_line_id: Dict[str, dev.OverheadLineType],
@@ -7478,6 +7686,7 @@ def _add_elmlne_lines(dgs_grid: DgsCircuit,
     :param dc_cable_type_dict: Complete physical DC cable types by source pointer.
     :param source_line_type_dict: Parsed line types for resistive fallback.
     :param overhead_line_type_dict: overhead_line_type_dict parameter.
+    :param underground_line_type_dict: Physical cable systems by source pointer.
     :param line_type_by_line_id: line_type_by_line_id parameter.
     :param line_sections_by_line_id: line_sections_by_line_id parameter.
     :param tower_template_by_line_id: tower_template_by_line_id parameter.
@@ -7532,6 +7741,7 @@ def _add_elmlne_lines(dgs_grid: DgsCircuit,
                 dc_cable_type_dict=dc_cable_type_dict,
                 source_line_type_dict=source_line_type_dict,
                 overhead_line_type_dict=overhead_line_type_dict,
+                underground_line_type_dict=underground_line_type_dict,
                 line_type_by_line_id=line_type_by_line_id,
                 line_sections_by_line_id=line_sections_by_line_id,
                 tower_template_by_line_id=tower_template_by_line_id,
@@ -7825,6 +8035,17 @@ def dgs_to_circuit(path: str,
         grid=grid,
         logger=logger,
     )
+    underground_cable_type_dict: Dict[str, dev.UndergroundCableType] = _build_typcab_catalogue(
+        dgs_grid=dgs_grid,
+        grid=grid,
+        logger=logger,
+    )
+    underground_line_type_dict: Dict[str, dev.UndergroundLineType] = _build_typcabsys_templates(
+        dgs_grid=dgs_grid,
+        grid=grid,
+        cable_type_dict=underground_cable_type_dict,
+        logger=logger,
+    )
     typcon_raw_dict, wire_type_dict = _build_typcon_catalogues(dgs_grid=dgs_grid, grid=grid)
     overhead_line_type_dict: Dict[str, dev.OverheadLineType] = _add_typtow_templates(
         dgs_grid=dgs_grid,
@@ -7870,6 +8091,7 @@ def dgs_to_circuit(path: str,
         dc_cable_type_dict=dc_cable_type_dict,
         source_line_type_dict=source_line_type_dict,
         overhead_line_type_dict=overhead_line_type_dict,
+        underground_line_type_dict=underground_line_type_dict,
         line_type_by_line_id=line_type_by_line_id,
         line_sections_by_line_id=line_sections_by_line_id,
         tower_template_by_line_id=tower_template_by_line_id,

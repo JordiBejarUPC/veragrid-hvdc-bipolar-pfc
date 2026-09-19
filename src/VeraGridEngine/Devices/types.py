@@ -96,6 +96,7 @@ ALL_DEV_TYPES = Union[
     TransformerNW,
     OverheadLineType,
     Wire,
+    UndergroundCableType,
     Area,
     Zone,
     TransformerType,

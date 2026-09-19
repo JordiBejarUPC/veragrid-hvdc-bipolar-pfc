@@ -3856,6 +3856,244 @@ class TypCon(DGSElement):
         self.iModel: int = 1
 
 
+class TypCab(DGSElement):
+    """PowerFactory geometrical single-core cable type."""
+
+    element_type = 'TypCab'
+    properties_list = list((
+        DgsProperty('FID', 'a:40', 'Unique DGS identifier', py_name='ID'),
+        DgsProperty('OP', 'a:1', 'Operation', py_name='OP'),
+        DgsProperty('loc_name', 'a:80', 'Name', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'In Folder', py_name='fold_id'),
+        DgsProperty('uline', 'r', 'Rated voltage in kV', py_name='uline'),
+        DgsProperty('rpha', 'r', 'Core DC resistance at 20 C in Ohm/km', py_name='rpha'),
+        DgsProperty('diaCon', 'r', 'Core outer diameter in mm', py_name='diaCon'),
+        DgsProperty('diaTube', 'r', 'Core inner diameter in mm', py_name='diaTube'),
+        DgsProperty('diaCab', 'r', 'Overall cable diameter in mm', py_name='diaCab'),
+        DgsProperty('thSht', 'r', 'Metallic sheath thickness in mm', py_name='thSht'),
+        DgsProperty('has_arm', 'i', 'Armour enabled', py_name='has_arm', optional=True),
+        DgsProperty('cHasEl:2', 'i', 'Third conducting layer enabled', py_name='cHasEl_2', optional=True),
+        DgsProperty('thIns:SIZEROW', 'i', 'Insulation vector size', py_name='thIns_SIZEROW'),
+        DgsProperty('thIns:0', 'r', 'Insulation thickness 0', py_name='thIns_0'),
+        DgsProperty('thIns:1', 'r', 'Insulation thickness 1', py_name='thIns_1'),
+        DgsProperty('thIns:2', 'r', 'Insulation thickness 2', py_name='thIns_2'),
+        DgsProperty('crho:SIZEROW', 'i', 'Resistivity vector size', py_name='crho_SIZEROW'),
+        DgsProperty('crho:0', 'r', 'Conducting resistivity 0', py_name='crho_0'),
+        DgsProperty('crho:1', 'r', 'Conducting resistivity 1', py_name='crho_1'),
+        DgsProperty('crho:2', 'r', 'Conducting resistivity 2', py_name='crho_2'),
+        DgsProperty('Cf:SIZEROW', 'i', 'Filling-factor vector size', py_name='Cf_SIZEROW'),
+        DgsProperty('Cf:0', 'r', 'Filling factor 0', py_name='Cf_0'),
+        DgsProperty('Cf:1', 'r', 'Filling factor 1', py_name='Cf_1'),
+        DgsProperty('Cf:2', 'r', 'Filling factor 2', py_name='Cf_2'),
+        DgsProperty('cepsr:SIZEROW', 'i', 'Permittivity vector size', py_name='cepsr_SIZEROW'),
+        DgsProperty('cepsr:0', 'r', 'Relative permittivity 0', py_name='cepsr_0'),
+        DgsProperty('cepsr:1', 'r', 'Relative permittivity 1', py_name='cepsr_1'),
+        DgsProperty('cepsr:2', 'r', 'Relative permittivity 2', py_name='cepsr_2'),
+        DgsProperty('ctand:SIZEROW', 'i', 'Loss-factor vector size', py_name='ctand_SIZEROW'),
+        DgsProperty('ctand:0', 'r', 'Dielectric loss factor 0', py_name='ctand_0'),
+        DgsProperty('ctand:1', 'r', 'Dielectric loss factor 1', py_name='ctand_1'),
+        DgsProperty('ctand:2', 'r', 'Dielectric loss factor 2', py_name='ctand_2'),
+        DgsProperty('my:SIZEROW', 'i', 'Permeability vector size', py_name='my_SIZEROW'),
+        DgsProperty('my:0', 'r', 'Relative permeability 0', py_name='my_0'),
+        DgsProperty('my:1', 'r', 'Relative permeability 1', py_name='my_1'),
+        DgsProperty('my:2', 'r', 'Relative permeability 2', py_name='my_2'),
+        DgsProperty('ks', 'r', 'Core skin-effect factor', py_name='ks'),
+        DgsProperty('kp', 'r', 'Core proximity-effect factor', py_name='kp'),
+    ))
+
+    def __init__(self) -> None:
+        """Create an empty typed cable row.
+
+        :return: None.
+        """
+        self.ID: str = ''
+        self.OP: str = ''
+        self.loc_name: str = ''
+        self.fold_id: str | None = None
+        self.uline: float = 0.0
+        self.rpha: float = 0.0
+        self.diaCon: float = 0.0
+        self.diaTube: float = 0.0
+        self.diaCab: float = 0.0
+        self.thSht: float = 0.0
+        self.has_arm: int | None = None
+        self.cHasEl_2: int | None = None
+        self.thIns_SIZEROW: int = 0
+        self.thIns_0: float = 0.0
+        self.thIns_1: float = 0.0
+        self.thIns_2: float = 0.0
+        self.thIns: List[float] = list()
+        self.crho_SIZEROW: int = 0
+        self.crho_0: float = 0.0
+        self.crho_1: float = 0.0
+        self.crho_2: float = 0.0
+        self.crho: List[float] = list()
+        self.Cf_SIZEROW: int = 0
+        self.Cf_0: float = 0.0
+        self.Cf_1: float = 0.0
+        self.Cf_2: float = 0.0
+        self.Cf: List[float] = list()
+        self.cepsr_SIZEROW: int = 0
+        self.cepsr_0: float = 0.0
+        self.cepsr_1: float = 0.0
+        self.cepsr_2: float = 0.0
+        self.cepsr: List[float] = list()
+        self.ctand_SIZEROW: int = 0
+        self.ctand_0: float = 0.0
+        self.ctand_1: float = 0.0
+        self.ctand_2: float = 0.0
+        self.ctand: List[float] = list()
+        self.my_SIZEROW: int = 0
+        self.my_0: float = 0.0
+        self.my_1: float = 0.0
+        self.my_2: float = 0.0
+        self.my: List[float] = list()
+        self.ks: float = 1.0
+        self.kp: float = 1.0
+
+    @classmethod
+    def parse_line(cls, line: str, header_map: dict[str, int]) -> TypCab:
+        """Parse scalar and three-layer cable fields.
+
+        :param line: Raw DGS row.
+        :param header_map: DGS column map.
+        :return: Parsed cable type.
+        """
+        obj: TypCab = super().parse_line(line=line, header_map=header_map)
+        obj.thIns = list((obj.thIns_0, obj.thIns_1, obj.thIns_2))
+        obj.crho = list((obj.crho_0, obj.crho_1, obj.crho_2))
+        obj.Cf = list((obj.Cf_0, obj.Cf_1, obj.Cf_2))
+        obj.cepsr = list((obj.cepsr_0, obj.cepsr_1, obj.cepsr_2))
+        obj.ctand = list((obj.ctand_0, obj.ctand_1, obj.ctand_2))
+        obj.my = list((obj.my_0, obj.my_1, obj.my_2))
+        return obj
+
+
+class TypCabsys(DGSElement):
+    """PowerFactory geometrical cable-system type."""
+
+    element_type = 'TypCabsys'
+    properties_list = list((
+        DgsProperty('FID', 'a:40', 'Unique DGS identifier', py_name='ID'),
+        DgsProperty('OP', 'a:1', 'Operation', py_name='OP'),
+        DgsProperty('loc_name', 'a:80', 'Name', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'In Folder', py_name='fold_id'),
+        DgsProperty('systp', 'i', 'System type', py_name='systp'),
+        DgsProperty('frnom', 'r', 'Nominal frequency in Hz', py_name='frnom'),
+        DgsProperty('iopt_bur', 'a:6', 'Laying type', py_name='iopt_bur'),
+        DgsProperty('nlcir', 'i', 'Number of circuits', py_name='nlcir'),
+        DgsProperty('cnphas', 'i', 'System phase count', py_name='cnphas'),
+        DgsProperty('pcab_c:SIZEROW', 'i', 'Cable pointer vector size', py_name='pcab_c_SIZEROW'),
+        DgsProperty('pcab_c:0', 'p', 'Cable pointer 0', py_name='pcab_c_0'),
+        DgsProperty('nphas:SIZEROW', 'i', 'Phase-count vector size', py_name='nphas_SIZEROW'),
+        DgsProperty('nphas:0', 'r', 'Circuit phase count 0', py_name='nphas_0'),
+        DgsProperty('xy_c:SIZEROW', 'i', 'Coordinate matrix rows', py_name='xy_c_SIZEROW'),
+        DgsProperty('xy_c:SIZECOL', 'i', 'Coordinate matrix columns', py_name='xy_c_SIZECOL'),
+        DgsProperty('xy_c:0:0', 'r', 'Circuit coordinate 0', py_name='xy_c_0_0'),
+        DgsProperty('xy_c:0:1', 'r', 'Circuit coordinate 1', py_name='xy_c_0_1'),
+        DgsProperty('xy_c:0:2', 'r', 'Circuit coordinate 2', py_name='xy_c_0_2'),
+        DgsProperty('xy_c:0:3', 'r', 'Circuit coordinate 3', py_name='xy_c_0_3'),
+        DgsProperty('xy_c:0:4', 'r', 'Circuit coordinate 4', py_name='xy_c_0_4'),
+        DgsProperty('xy_c:0:5', 'r', 'Circuit coordinate 5', py_name='xy_c_0_5'),
+        DgsProperty('cGearth', 'r', 'Earth conductivity in uS/cm', py_name='cGearth'),
+        DgsProperty('rhoEarth', 'r', 'Earth resistivity in Ohm*m', py_name='rhoEarth'),
+        DgsProperty('dInom:SIZEROW', 'i', 'Rated-current vector size', py_name='dInom_SIZEROW'),
+        DgsProperty('dInom:0', 'r', 'Rated current 0 in kA', py_name='dInom_0'),
+    ))
+
+    def __init__(self) -> None:
+        """Create an empty typed cable-system row.
+
+        :return: None.
+        """
+        self.ID: str = ''
+        self.OP: str = ''
+        self.loc_name: str = ''
+        self.fold_id: str | None = None
+        self.systp: int = 0
+        self.frnom: float = 50.0
+        self.iopt_bur: str = ''
+        self.nlcir: int = 1
+        self.cnphas: int = 3
+        self.pcab_c_SIZEROW: int = 0
+        self.pcab_c_0: str | None = None
+        self.pcab_c: List[str | None] = list()
+        self.nphas_SIZEROW: int = 0
+        self.nphas_0: float = 0.0
+        self.nphas: List[float] = list()
+        self.xy_c_SIZEROW: int = 0
+        self.xy_c_SIZECOL: int = 0
+        self.xy_c_0_0: float = 0.0
+        self.xy_c_0_1: float = 0.0
+        self.xy_c_0_2: float = 0.0
+        self.xy_c_0_3: float = 0.0
+        self.xy_c_0_4: float = 0.0
+        self.xy_c_0_5: float = 0.0
+        self.xy_c: List[List[float]] = list()
+        self.cGearth: float = 0.0
+        self.rhoEarth: float = 100.0
+        self.dInom_SIZEROW: int = 0
+        self.dInom_0: float = 0.0
+        self.dInom: List[float] = list()
+
+    @classmethod
+    def parse_line(cls, line: str, header_map: dict[str, int]) -> TypCabsys:
+        """Parse variable-size cable references, phase counts and coordinates.
+
+        :param line: Raw DGS row.
+        :param header_map: DGS column map.
+        :return: Parsed cable-system type.
+        """
+        parts: List[str] = _split_dgs_line(line=line)
+        obj: TypCabsys = super().parse_line(line=line, header_map=header_map)
+
+        obj.pcab_c = list()
+        cable_index: int
+        for cable_index in range(obj.pcab_c_SIZEROW):
+            raw_pointer: str | None = _dgs_get(parts=parts, header_map=header_map, key=f'pcab_c:{cable_index}')
+            if raw_pointer is not None and raw_pointer.strip() not in ('', '*'):
+                obj.pcab_c.append(raw_pointer.strip())
+            else:
+                obj.pcab_c.append(None)
+
+        obj.nphas = list()
+        circuit_index: int
+        for circuit_index in range(obj.nphas_SIZEROW):
+            raw_phase_count: str | None = _dgs_get(
+                parts=parts,
+                header_map=header_map,
+                key=f'nphas:{circuit_index}',
+            )
+            phase_count: float = float(raw_phase_count.replace(',', '.')) if raw_phase_count else 0.0
+            obj.nphas.append(phase_count)
+
+        obj.xy_c = list()
+        row_index: int
+        column_index: int
+        for row_index in range(obj.xy_c_SIZEROW):
+            coordinate_row: List[float] = list()
+            for column_index in range(obj.xy_c_SIZECOL):
+                raw_coordinate: str | None = _dgs_get(
+                    parts=parts,
+                    header_map=header_map,
+                    key=f'xy_c:{row_index}:{column_index}',
+                )
+                coordinate: float = float(raw_coordinate.replace(',', '.')) if raw_coordinate else 0.0
+                coordinate_row.append(coordinate)
+            obj.xy_c.append(coordinate_row)
+
+        obj.dInom = list()
+        for circuit_index in range(obj.dInom_SIZEROW):
+            raw_current: str | None = _dgs_get(
+                parts=parts,
+                header_map=header_map,
+                key=f'dInom:{circuit_index}',
+            )
+            rated_current: float = float(raw_current.replace(',', '.')) if raw_current else 0.0
+            obj.dInom.append(rated_current)
+        return obj
+
+
 class TypCt(DGSElement):
     element_type = 'TypCt'
     properties_list = [

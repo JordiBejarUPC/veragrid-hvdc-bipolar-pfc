@@ -1955,6 +1955,7 @@ class DeviceType(Enum):
     ItMeasurementDevice = 'It Measurement'
 
     WireDevice = 'Wire'
+    UndergroundCableTypeDevice = 'Underground cable'
     DcCableTypeDevice = 'DC cable type'
     SequenceLineDevice = 'Sequence line'
     UnderGroundLineDevice = 'Underground line'
@@ -2078,6 +2079,7 @@ class SubObjectType(Enum):
     ObjectsList = "ObjectsList"
     Associations = "AssociationsList"
     ListOfWires = 'ListOfWires'
+    ListOfCables = 'ListOfCables'
     AdmittanceMatrix = "Admittance Matrix"
     ImpedanceTripletList = "Impedance Triplet List"
     DaeBlockType = "DaeBlock"

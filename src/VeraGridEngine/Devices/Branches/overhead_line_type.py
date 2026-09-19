@@ -1337,9 +1337,13 @@ class OverheadLineType(DynamicDevice):
                        'If this is correct, try a very small value.')
             return False
 
-        if len(phases) == 1:
-            logger.add('All the wires are in the same phase!')
+        # A tower may legitimately contain one phase only. Reject just the
+        # configuration that has earth/neutral wires without a phase conductor.
+        if len(phases) == 1 and 0 in phases:
+            logger.add('The tower has no phase conductor!')
             return False
+        else:
+            pass
 
         # if there is a phase, all the preceding ones must be present too
         # mx = max(phases)
