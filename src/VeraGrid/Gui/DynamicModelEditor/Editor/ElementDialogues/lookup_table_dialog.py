@@ -8,13 +8,13 @@ from __future__ import annotations
 import re
 from typing import Sequence
 
+from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely
-from VeraGrid.Gui.matplotlib_dialog import show_matplotlib_figure
+from VeraGrid.Gui.plot_windows import show_matplotlib_window
 
 
 def sort_pair_by_x(point: tuple[float, float] | tuple[float, int]) -> float:
@@ -160,7 +160,7 @@ class LookupArrayLinearDialog(QtWidgets.QDialog):
         "_x_label",
         "_y_label",
         "_preview_title",
-        "_preview_dialog",
+        "_preview_figure",
     )
 
     def __init__(self,
@@ -193,7 +193,7 @@ class LookupArrayLinearDialog(QtWidgets.QDialog):
         self._x_label: str = str(x_label)
         self._y_label: str = str(y_label)
         self._preview_title: str = preview_title if preview_title is not None else f"{block_label} Preview"
-        self._preview_dialog: QtWidgets.QDialog | None = None
+        self._preview_figure: Figure | None = None
 
         main_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self)
         description_label: QtWidgets.QLabel = QtWidgets.QLabel(
@@ -491,25 +491,15 @@ class LookupArrayLinearDialog(QtWidgets.QDialog):
         """
         return list(self._x_points), list(self._y_points)
 
-    def _clear_preview_dialog_reference(self, destroyed_obj: QtCore.QObject | None = None) -> None:
-        """
-        Drop the stored preview-dialog reference after the window closes.
-
-        :param destroyed_obj: Destroyed Qt object emitted by the signal.
-        :return: None.
-        """
-        _unused_destroyed_obj: QtCore.QObject | None = destroyed_obj
-        self._preview_dialog = None
-
     def close_preview_dialog(self) -> None:
         """
-        Schedule the retained plot preview for deferred deletion.
+        Close the retained standalone plot preview.
 
         :return: None.
         """
-        if self._preview_dialog is not None:
-            delete_dialog_safely(dialog=self._preview_dialog)
-            self._preview_dialog = None
+        if self._preview_figure is not None:
+            plt.close(self._preview_figure)
+            self._preview_figure = None
         else:
             pass
 
@@ -556,7 +546,7 @@ class LookupArrayLinearDialog(QtWidgets.QDialog):
 
         self.close_preview_dialog()
 
-        figure: Figure = Figure(figsize=(7, 4))
+        figure: Figure = plt.figure(figsize=(7, 4))
         axis: Axes = figure.add_subplot(111)
 
         # The preview intentionally plots the sorted point sequence because the
@@ -570,15 +560,8 @@ class LookupArrayLinearDialog(QtWidgets.QDialog):
         axis.set_title(self._preview_title)
         figure.tight_layout()
 
-        open_dialogs: list[QtWidgets.QDialog] = list()
-        preview_dialog: QtWidgets.QDialog = show_matplotlib_figure(figure=figure,
-                                                                    parent=self,
-                                                                    open_dialogs=open_dialogs,
-                                                                    title=self._preview_title)
-        preview_dialog.destroyed.connect(self._clear_preview_dialog_reference)
-        self._preview_dialog = preview_dialog
-        preview_dialog.raise_()
-        preview_dialog.activateWindow()
+        self._preview_figure = figure
+        show_matplotlib_window(figure=figure, title=self._preview_title)
 
     def _read_points_from_table(self) -> tuple[list[float], list[float]]:
         """

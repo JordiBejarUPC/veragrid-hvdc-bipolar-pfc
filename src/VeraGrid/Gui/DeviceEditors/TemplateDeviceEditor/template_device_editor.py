@@ -17,8 +17,10 @@ from VeraGrid.Gui.DeviceEditors.AdmittanceMatrixEditor.admittance_matrix_editor 
 from VeraGrid.Gui.DeviceEditors.LineLocationsEditor.line_locations_editor import LineLocationsEditorWidget
 from VeraGrid.Gui.DeviceEditors.TemplateDeviceEditor.template_device_editor_gui import Ui_TemplateDeviceEditorDialog
 from VeraGrid.Gui.gui_functions import ComboDelegate, FloatDelegate, IntDelegate, TextDelegate, ComplexDelegate
-from VeraGrid.Gui.Widgets.matplotlibwidget import MatplotlibWidget
-from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, exec_dialog_safely
+from VeraGrid.Gui.plot_windows import show_matplotlib_window
+from matplotlib import pyplot as plt
+from matplotlib.figure import Figure
+from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
 from VeraGrid.Gui.messages import warning_msg
 from VeraGrid.Gui.object_model import ObjectsModel
 from VeraGrid.Gui.spread_sheet_table import SpreadsheetTableView
@@ -1089,30 +1091,14 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
 
     def _open_profiles_plot_dialog(self, grouped_series: dict[str, list[tuple[str, np.ndarray]]], title: str) -> None:
         """
-        Open a modal chart dialog with one subplot per units group.
+        Open a standalone chart window with one subplot per units group.
 
         :param grouped_series: Mapping `unit -> list[(series_name, values)]`.
         :param title: Dialog title.
         """
         if len(grouped_series) > 0:
-            dialog: QtWidgets.QDialog = QtWidgets.QDialog(self)
-            dialog.setWindowTitle(title)
-            dialog.resize(1200, 760)
-
-            dialog_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(dialog)
-            plot_widget: MatplotlibWidget = MatplotlibWidget(dialog)
-            dialog_layout.addWidget(plot_widget)
-
-            close_buttons: QtWidgets.QDialogButtonBox = QtWidgets.QDialogButtonBox(
-                QtWidgets.QDialogButtonBox.StandardButton.Close,
-                dialog,
-            )
-            dialog_layout.addWidget(close_buttons)
-            close_buttons.rejected.connect(dialog.close)
-
             unit_labels: list[str] = sorted(list(grouped_series.keys()))
-            figure = plot_widget.canvas.fig
-            figure.clear()
+            figure: Figure = plt.figure(figsize=(12, 8))
 
             # Build one axis per engineering unit to avoid mixing scales.
             axes_object = figure.subplots(len(unit_labels), 1, sharex=True)
@@ -1120,8 +1106,6 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
                 axes = [axes_object]
             else:
                 axes = list(np.ravel(np.asarray(axes_object)))
-
-            plot_widget.canvas.zoom_axis = axes[0]
 
             axis_index: int
             for axis_index, unit_label in enumerate(unit_labels):
@@ -1139,12 +1123,7 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
 
             axes[len(axes) - 1].set_xlabel("Time index")
             figure.tight_layout()
-            plot_widget.redraw()
-            try:
-                exec_dialog_safely(dialog=dialog)
-            finally:
-                plot_widget.dispose()
-                delete_dialog_safely(dialog=dialog)
+            show_matplotlib_window(figure=figure, title=title)
         else:
             self.show_warning_toast("No numeric profile columns available for plotting")
 

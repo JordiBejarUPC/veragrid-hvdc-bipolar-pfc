@@ -20,7 +20,7 @@ from VeraGrid.Gui.gui_functions import ComboModel, get_list_model
 from VeraGrid.Gui.FileDialogues.ProfilesInput.profiles_from_data_gui import Ui_Dialog
 from VeraGrid.Gui.FileDialogues.ProfilesInput.excel_dialog import ExcelDialog
 from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, delete_dialogs_safely, exec_dialog_safely
-from VeraGrid.Gui.matplotlib_dialog import show_matplotlib_figure
+from VeraGrid.Gui.plot_windows import show_matplotlib_window
 from VeraGrid.Gui.messages import error_msg, info_msg
 from VeraGrid.Gui.toast_widget import ToastManager
 from VeraGridEngine import DeviceType
@@ -722,10 +722,7 @@ class ProfileInputGUI(QtWidgets.QDialog):
                     self.fig = plt.figure(figsize=(8, 6))
                     ax = self.fig.add_subplot(111)
                     self.original_data_frame[col_name].plot(ax=ax)
-                    show_matplotlib_figure(figure=self.fig,
-                                           parent=self,
-                                           open_dialogs=self._open_plot_dialogs,
-                                           title=self.tr("Profile plot"))
+                    show_matplotlib_window(figure=self.fig, title=self.tr("Profile plot"))
                 except TypeError as e:
                     self.toast_manager.show_error_toast(str(e))
             else:

@@ -81,7 +81,7 @@ from VeraGrid.Gui.Diagrams.graphics_manager import ALL_GRAPHICS
 from VeraGrid.Gui.Diagrams.base_diagram_widget import BaseDiagramWidget
 from VeraGrid.Gui.general_dialogues import InputNumberDialogue
 from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
-from VeraGrid.Gui.matplotlib_dialog import show_matplotlib_figure
+from VeraGrid.Gui.plot_windows import show_matplotlib_window
 import VeraGrid.Gui.Visualization.visualization as viz
 from VeraGrid.Gui.messages import error_msg, warning_msg, yes_no_question
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem
@@ -6296,9 +6296,7 @@ class SchematicWidget(BaseDiagramWidget):
                 fig.suptitle(api_object.name, fontsize=20)
 
                 # plot the profiles
-                show_matplotlib_figure(figure=fig,
-                                       parent=self.gui,
-                                       open_dialogs=self.gui._open_plot_dialogs,
+                show_matplotlib_window(figure=fig,
                                        title=self.tr("{device_name} profiles plot").format(device_name=api_object.name))
         else:
             self.gui.show_error_toast("There are no time series, so nothing to plot :/")
@@ -6354,9 +6352,7 @@ class SchematicWidget(BaseDiagramWidget):
                 fig.suptitle(api_object.name, fontsize=20)
 
                 # plot the profiles
-                show_matplotlib_figure(figure=fig,
-                                       parent=self.gui,
-                                       open_dialogs=self.gui._open_plot_dialogs,
+                show_matplotlib_window(figure=fig,
                                        title=self.tr("{device_name} profiles plot").format(device_name=api_object.name))
         else:
             self.gui.show_error_toast("There are no time series, so nothing to plot :/")

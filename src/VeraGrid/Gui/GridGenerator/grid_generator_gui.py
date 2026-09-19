@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (QApplication, QDialog, QDoubleSpinBox, QFrame,
     QSizePolicy, QSpacerItem, QSpinBox, QSplitter,
     QVBoxLayout, QWidget)
 
-from VeraGrid.Gui.Widgets.matplotlibwidget import MatplotlibWidget
+from VeraGrid.Gui.Widgets.qtgraphs_widget import GraphsWidget
 from VeraGrid.Gui.Icons.icons_rc import *
 
 class Ui_MainWindow(object):
@@ -252,7 +252,7 @@ class Ui_MainWindow(object):
         self.PlotFrame.setFrameShadow(QFrame.Shadow.Raised)
         self.horizontalLayout = QHBoxLayout(self.PlotFrame)
         self.horizontalLayout.setObjectName(u"horizontalLayout")
-        self.plotwidget = MatplotlibWidget(self.PlotFrame)
+        self.plotwidget = GraphsWidget(self.PlotFrame)
         self.plotwidget.setObjectName(u"plotwidget")
 
         self.horizontalLayout.addWidget(self.plotwidget)
@@ -331,4 +331,3 @@ class Ui_MainWindow(object):
 #endif // QT_CONFIG(tooltip)
         self.applyButton.setText(QCoreApplication.translate("MainWindow", u"Accept", None))
     # retranslateUi
-

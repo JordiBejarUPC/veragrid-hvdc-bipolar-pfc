@@ -779,8 +779,17 @@ class LoadDesigner(QtWidgets.QDialog):
         """
         result_df: pd.DataFrame = pd.DataFrame(data=dict(P=self.P, Q=self.Q), index=self.time_array)
         self.ui.plotwidget.clear()
-        axis = self.ui.plotwidget.get_axis()
-        result_df.plot(ax=axis)
+        x_values: np.ndarray = np.arange(len(result_df), dtype=float)
+        self.ui.plotwidget.add_line_series(name=self.tr("Active power"),
+                                           x_values=x_values,
+                                           y_values=result_df["P"].to_numpy(dtype=float),
+                                           color="#2563eb")
+        self.ui.plotwidget.add_line_series(name=self.tr("Reactive power"),
+                                           x_values=x_values,
+                                           y_values=result_df["Q"].to_numpy(dtype=float),
+                                           color="#f97316")
+        self.ui.plotwidget.setTitle(self.tr("Generated load profile"))
+        self.ui.plotwidget.set_axis_titles(self.tr("Time index"), self.tr("Power"))
         self.ui.plotwidget.redraw()
         # Zero-length arrays mean that the circuit has no usable time profile yet,
         # so the designer must remain disabled even though the lengths match.

@@ -15,7 +15,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from VeraGrid.Gui.dialog_lifecycle import delete_dialogs_safely
 from VeraGrid.Gui.messages import error_msg
 from VeraGrid.Gui.DeviceEditors.GeneratorEditor.SolarPowerWizard.solar_power_wizard_gui import Ui_MainWindow
-from VeraGrid.Gui.matplotlib_dialog import show_matplotlib_figure
+from VeraGrid.Gui.plot_windows import show_matplotlib_window
 from VeraGrid.Gui.pandas_model import PandasModel
 
 
@@ -366,10 +366,7 @@ class SolarPvWizard(QtWidgets.QDialog):
 
         df: pd.DataFrame = pd.DataFrame(data=self.P, index=self.time_array, columns=['P (MW)'])
         axis: Axes = df.plot()
-        show_matplotlib_figure(figure=axis.figure,
-                               parent=self,
-                               open_dialogs=self._open_plot_dialogs,
-                               title=self.tr("Solar power profile"))
+        show_matplotlib_window(figure=axis.figure, title=self.tr("Solar power profile"))
 
     def accept_click(self) -> None:
         """

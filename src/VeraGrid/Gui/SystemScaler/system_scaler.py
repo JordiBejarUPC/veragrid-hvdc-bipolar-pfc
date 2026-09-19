@@ -6,17 +6,15 @@ import sys
 from typing import Sequence, Union
 import numpy as np
 import pandas as pd
-import shiboken6
 from PySide6.QtWidgets import QApplication
 from PySide6 import QtCore, QtGui, QtWidgets
-from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
 from matplotlib import pyplot as plt
 
 from VeraGrid.Gui.SystemScaler.system_scaler_ui import Ui_Dialog
 from VeraGrid.Gui.gui_functions import ComboDelegate, FloatDelegate
 from VeraGrid.Gui.messages import yes_no_question
+from VeraGrid.Gui.plot_windows import show_matplotlib_window
 from VeraGridEngine.enumerations import DeviceType
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
@@ -924,20 +922,10 @@ class SystemScaler(QtWidgets.QDialog):
         self.checkpoints_model: Union[SystemScalingCheckpointsModel, None] = None
         self.current_checkpoint_data_model: Union[SystemScalingModel, None] = None
         self.connected_checkpoint_data_models: list[SystemScalingModel] = list()
-        self.plot_figure: Figure = Figure(figsize=(7.0, 5.0))
-        self.plot_canvas: FigureCanvas = FigureCanvas(self.plot_figure)
-        self.plot_toolbar: NavigationToolbar = NavigationToolbar(self.plot_canvas, self)
-
-        self.ui.verticalLayout_2.addWidget(self.plot_toolbar)
-        self.ui.verticalLayout_2.addWidget(self.plot_canvas)
-
-        plot_axis = self.plot_figure.add_subplot(111)
-        plot_axis.text(0.5, 0.5, self.tr("Press plot to preview scaling"), ha="center", va="center")
-        plot_axis.set_axis_off()
-        if self.is_plot_canvas_valid():
-            self.plot_canvas.draw()
-        else:
-            pass
+        self.plot_figure: Figure = plt.figure(figsize=(7.0, 5.0))
+        plot_hint: QtWidgets.QLabel = QtWidgets.QLabel(self.tr("Use the plot button to open a preview window."), self)
+        plot_hint.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        self.ui.verticalLayout_2.addWidget(plot_hint)
 
         self.groups = [DeviceType.AreaDevice,
                        DeviceType.ZoneDevice,
@@ -976,15 +964,6 @@ class SystemScaler(QtWidgets.QDialog):
         self.ui.removeButton.clicked.connect(self.remove_checkpoint)
         self._plot_disposed: bool = False
 
-    def is_plot_canvas_valid(self) -> bool:
-        """
-        Check whether the scaling preview canvas still owns a valid Qt object.
-
-        :return: True if the plot canvas can still be used.
-        """
-        result: bool = shiboken6.isValid(self.plot_canvas)
-        return result
-
     def done(self, result: int) -> None:
         """
         Release Matplotlib resources before the modal dialog closes.
@@ -1007,7 +986,7 @@ class SystemScaler(QtWidgets.QDialog):
 
     def dispose_plot(self) -> None:
         """
-        Schedule the preview canvas and toolbar for deferred deletion.
+        Close the standalone scaling preview figure.
 
         :return: None.
         """
@@ -1015,30 +994,7 @@ class SystemScaler(QtWidgets.QDialog):
             pass
         else:
             self._plot_disposed = True
-            canvas_is_valid: bool = self.is_plot_canvas_valid()
-            toolbar_is_valid: bool = shiboken6.isValid(self.plot_toolbar)
-
-            if canvas_is_valid:
-                self.plot_canvas._draw_pending = False
-            else:
-                pass
-
-            self.plot_figure.clear()
             plt.close(self.plot_figure)
-
-            if toolbar_is_valid:
-                self.plot_toolbar.close()
-                self.plot_toolbar.setParent(None)
-                self.plot_toolbar.deleteLater()
-            else:
-                pass
-
-            if canvas_is_valid:
-                self.plot_canvas.close()
-                self.plot_canvas.setParent(None)
-                self.plot_canvas.deleteLater()
-            else:
-                pass
 
     def set_checkpoints_delegates(self) -> None:
         """
@@ -1594,10 +1550,7 @@ class SystemScaler(QtWidgets.QDialog):
 
             self.plot_figure.autofmt_xdate()
             self.plot_figure.tight_layout()
-            if self.is_plot_canvas_valid():
-                self.plot_canvas.draw()
-            else:
-                pass
+            show_matplotlib_window(figure=self.plot_figure, title=self.tr("System scaling preview"))
         else:
             QtWidgets.QMessageBox.warning(self,
                                           self.tr("System scaling"),

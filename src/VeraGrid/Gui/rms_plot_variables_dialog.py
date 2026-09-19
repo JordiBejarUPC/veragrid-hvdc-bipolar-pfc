@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 
 
-from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
 
 from PySide6.QtWidgets import (
@@ -14,9 +14,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QPoint
 from PySide6.QtGui import QCloseEvent
 
-from VeraGrid.Gui.dialog_lifecycle import delete_dialogs_safely
-from VeraGrid.Gui.gui_functions import dispose_optional_matplotlib_canvas
-from VeraGrid.Gui.matplotlib_dialog import show_matplotlib_figure
+from VeraGrid.Gui.plot_windows import show_matplotlib_window
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.Rms.rms_results import RmsResults #, ResultsTable
 from VeraGridEngine.Simulations.results_table import ResultsTable
@@ -63,8 +61,6 @@ class RmsPlotDialog(QDialog):
         )
 
         self.selected_vars = []
-        self._open_plot_dialogs: list[QDialog] = list()
-
         # main layout
         layout = QVBoxLayout(self)
 
@@ -95,11 +91,8 @@ class RmsPlotDialog(QDialog):
         self.list_widget.customContextMenuRequested.connect(self.show_variable_context_menu)
         layout.addWidget(self.list_widget)
 
-        # --- Canvas embebido ---
-        self.figure = Figure(figsize=(6, 3))
+        self.figure: Figure = plt.figure(figsize=(6, 3))
         self.ax = self.figure.add_subplot(111)
-        self.canvas = FigureCanvas(self.figure)
-        layout.addWidget(self.canvas)
 
         # accept reject buttons layout
         buttons_layout = QHBoxLayout()
@@ -127,12 +120,11 @@ class RmsPlotDialog(QDialog):
         :param event: Qt close event.
         :return: None.
         """
-        self.close_external_plot_dialogs()
         if self._plot_disposed:
             pass
         else:
             self._plot_disposed = True
-            dispose_optional_matplotlib_canvas(canvas=self.canvas, figure=self.figure)
+            plt.close(self.figure)
         QDialog.closeEvent(self, event)
 
     def done(self, result: int) -> None:
@@ -142,21 +134,12 @@ class RmsPlotDialog(QDialog):
         :param result: Qt dialog result code.
         :return: None.
         """
-        self.close_external_plot_dialogs()
         if self._plot_disposed:
             pass
         else:
             self._plot_disposed = True
-            dispose_optional_matplotlib_canvas(canvas=self.canvas, figure=self.figure)
+            plt.close(self.figure)
         QDialog.done(self, result)
-
-    def close_external_plot_dialogs(self) -> None:
-        """
-        Schedule all retained external plot windows for deletion with this owner.
-
-        :return: None.
-        """
-        delete_dialogs_safely(dialogs=self._open_plot_dialogs)
 
     def update_variables(self, index):
 
@@ -198,23 +181,15 @@ class RmsPlotDialog(QDialog):
 
         self.ax.clear()
         if not self.selected_vars:
-            self.canvas.draw()
+            self.figure.canvas.draw_idle()
             return
 
         selected_col_idx = [self.uid2idx[uid] for uid in self.selected_vars]
         self.results_table.plot(ax=self.ax, selected_col_idx=selected_col_idx)
-        self.canvas.draw()
+        self.figure.canvas.draw_idle()
 
     def show_external_plot(self):
         if not self.selected_vars:
             return
-
-        selected_col_idx = [self.uid2idx[uid] for uid in self.selected_vars]
-
-        figure = Figure(figsize=(10, 5))
-        ax = figure.add_subplot(111)
-        self.results_table.plot(ax=ax, selected_col_idx=selected_col_idx)
-        show_matplotlib_figure(figure=figure,
-                               parent=self,
-                               open_dialogs=self._open_plot_dialogs,
-                               title=self.tr("Plot Window"))
+        self.plot_selected()
+        show_matplotlib_window(figure=self.figure, title=self.tr("Plot Window"))

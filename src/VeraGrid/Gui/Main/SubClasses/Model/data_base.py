@@ -33,7 +33,7 @@ from VeraGrid.Gui.messages import yes_no_question, warning_msg, info_msg
 from VeraGrid.Gui.Main.SubClasses.Model.diagrams import DiagramsMain
 from VeraGrid.Gui.DeviceEditors.TowerBuilder.LineBuilderDialogue import TowerBuilderGUI
 from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, exec_dialog_safely, is_dialog_available
-from VeraGrid.Gui.matplotlib_dialog import show_matplotlib_figure
+from VeraGrid.Gui.plot_windows import show_matplotlib_window
 from VeraGrid.Gui.FmuTemplateEditor.fmu_template_editor import FmuTemplateEditorDialog
 from VeraGrid.Gui.SystemScaler.system_scaler import SystemScaler
 from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import GridMapWidget, generate_map_diagram
@@ -2173,10 +2173,7 @@ class DataBaseTableMain(DiagramsMain):
                                           object_type=elm_type.value,
                                           t_idx=self.get_db_slider_index(),
                                           fig=fig)
-                show_matplotlib_figure(figure=fig,
-                                       parent=self,
-                                       open_dialogs=self._open_plot_dialogs,
-                                       title=self.tr("Object histogram"))
+                show_matplotlib_window(figure=fig, title=self.tr("Object histogram"))
             else:
                 pass
         else:

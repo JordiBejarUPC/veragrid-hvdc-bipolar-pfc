@@ -24,7 +24,7 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDoubleSpinBo
     QTabWidget, QTextBrowser, QTreeView, QVBoxLayout,
     QWidget)
 
-from VeraGrid.Gui.Widgets.matplotlibwidget import MatplotlibWidget
+from VeraGrid.Gui.Widgets.qtgraphs_widget import GraphsWidget
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -455,7 +455,7 @@ class Ui_MainWindow(object):
 
         self.verticalLayout_sigmaPanel.addLayout(self.horizontalLayout_sigmaHeader)
 
-        self.sigmaPlotWidget = MatplotlibWidget(self.sigmaPanelFrame)
+        self.sigmaPlotWidget = GraphsWidget(self.sigmaPanelFrame)
         self.sigmaPlotWidget.setObjectName(u"sigmaPlotWidget")
 
         self.verticalLayout_sigmaPanel.addWidget(self.sigmaPlotWidget)

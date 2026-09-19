@@ -5,9 +5,10 @@
 
 from __future__ import annotations
 
-import shiboken6
-
 import numpy as np
+from matplotlib import pyplot as plt
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 from enum import Enum
 from typing import Callable, Dict, List, Union, Any, Tuple, TYPE_CHECKING, Set, Sequence
 from PySide6 import QtCore, QtWidgets, QtGui
@@ -23,6 +24,7 @@ from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.enumerations import SimulationTypes, WindingType, WaveformSequenceType, V_I_CurveSequenceType
 from VeraGrid.Gui.font_config import MENU_FONT_SIZE
 from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
+from VeraGrid.Gui.plot_windows import show_matplotlib_window
 
 if TYPE_CHECKING:
     from VeraGrid.Gui.object_model import ObjectsModel
@@ -1730,30 +1732,6 @@ class WaveformPoint:
         return f"WaveformPoint({self.time}, {self.value})"
 
 
-def dispose_optional_matplotlib_canvas(canvas: Any, figure: Any) -> None:
-    """
-    Release an optional Matplotlib canvas before Qt deletes its widget.
-
-    :param canvas: Optional FigureCanvas instance.
-    :param figure: Optional Matplotlib figure.
-    :return: None.
-    """
-    if canvas is None:
-        pass
-    elif isinstance(canvas, QtWidgets.QWidget) and shiboken6.isValid(canvas):
-        canvas._draw_pending = False
-        canvas.close()
-        canvas.setParent(None)
-        canvas.deleteLater()
-    else:
-        pass
-
-    if figure is None:
-        pass
-    else:
-        figure.clear()
-
-
 class SequenceEditorDialog(QtWidgets.QDialog):
     def __init__(self, parent, sequence_type: WaveformSequenceType | V_I_CurveSequenceType | X_Y_SequenceType ):
         super().__init__(parent)
@@ -1792,18 +1770,11 @@ class SequenceEditorDialog(QtWidgets.QDialog):
         self.table.setSelectionBehavior(QtWidgets.QTableWidget.SelectionBehavior.SelectRows)
         layout.addWidget(self.table)
 
-        self.figure = None
-        self.canvas = None
-        self.ax = None
-        try:
-            from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
-            from matplotlib.figure import Figure
-            self.figure = Figure()
-            self.canvas = FigureCanvasQTAgg(self.figure)
-            self.ax = self.figure.add_subplot(111)
-            layout.addWidget(self.canvas)
-        except Exception:
-            pass
+        self.figure: Figure = plt.figure()
+        self.ax: Axes = self.figure.add_subplot(111)
+        self.plot_button: QtWidgets.QPushButton = QtWidgets.QPushButton(self.tr("Show plot"), self)
+        self.plot_button.clicked.connect(self.show_plot)
+        layout.addWidget(self.plot_button)
 
         button_box = QtWidgets.QDialogButtonBox(
             QtWidgets.QDialogButtonBox.StandardButton.Ok | QtWidgets.QDialogButtonBox.StandardButton.Cancel
@@ -1823,7 +1794,7 @@ class SequenceEditorDialog(QtWidgets.QDialog):
             pass
         else:
             self._plot_disposed = True
-            dispose_optional_matplotlib_canvas(canvas=self.canvas, figure=self.figure)
+            plt.close(self.figure)
         QtWidgets.QDialog.closeEvent(self, event)
 
     def done(self, result: int) -> None:
@@ -1837,8 +1808,12 @@ class SequenceEditorDialog(QtWidgets.QDialog):
             pass
         else:
             self._plot_disposed = True
-            dispose_optional_matplotlib_canvas(canvas=self.canvas, figure=self.figure)
+            plt.close(self.figure)
         QtWidgets.QDialog.done(self, result)
+
+    def show_plot(self) -> None:
+        """Show the current sequence in its standalone Matplotlib window."""
+        show_matplotlib_window(figure=self.figure, title=self.tr("Sequence plot"))
 
     def add_point(self):
         row = self.table.rowCount()
@@ -1896,9 +1871,6 @@ class SequenceEditorDialog(QtWidgets.QDialog):
         v2.setText(v1_text)
 
     def update_plot(self):
-        if self.canvas is None:
-            return
-
         values_0 = []
         values_1 = []
         for row in range(self.table.rowCount()):
@@ -1921,7 +1893,7 @@ class SequenceEditorDialog(QtWidgets.QDialog):
                 self.ax.set_xlabel("time")
                 self.ax.set_ylabel("value")
             self.ax.grid(True)
-        self.canvas.draw_idle()
+        self.figure.canvas.draw_idle()
 
     def accept(self) -> None:
         # points count check
@@ -2082,18 +2054,11 @@ class LookupMatrixEditorDialog(QtWidgets.QDialog):
         main_layout.addWidget(matrix_group)
 
         # ── Matplotlib plot (optional) ──────────────────────────────────
-        self.figure = None
-        self.canvas = None
-        self.ax = None
-        try:
-            from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
-            from matplotlib.figure import Figure
-            self.figure = Figure()
-            self.canvas = FigureCanvasQTAgg(self.figure)
-            self.ax = self.figure.add_subplot(111)
-            main_layout.addWidget(self.canvas)
-        except Exception:
-            pass
+        self.figure: Figure = plt.figure()
+        self.ax: Axes = self.figure.add_subplot(111)
+        self.plot_button: QtWidgets.QPushButton = QtWidgets.QPushButton(self.tr("Show plot"), self)
+        self.plot_button.clicked.connect(self.show_plot)
+        main_layout.addWidget(self.plot_button)
 
         # ── Dialog buttons ──────────────────────────────────────────────
         button_box = QtWidgets.QDialogButtonBox(
@@ -2114,7 +2079,7 @@ class LookupMatrixEditorDialog(QtWidgets.QDialog):
             pass
         else:
             self._plot_disposed = True
-            dispose_optional_matplotlib_canvas(canvas=self.canvas, figure=self.figure)
+            plt.close(self.figure)
         QtWidgets.QDialog.closeEvent(self, event)
 
     def done(self, result: int) -> None:
@@ -2128,8 +2093,12 @@ class LookupMatrixEditorDialog(QtWidgets.QDialog):
             pass
         else:
             self._plot_disposed = True
-            dispose_optional_matplotlib_canvas(canvas=self.canvas, figure=self.figure)
+            plt.close(self.figure)
         QtWidgets.QDialog.done(self, result)
+
+    def show_plot(self) -> None:
+        """Show the current lookup surface in its standalone Matplotlib window."""
+        show_matplotlib_window(figure=self.figure, title=self.tr("Lookup surface plot"))
 
     # ── X table helpers ─────────────────────────────────────────────────
 
@@ -2331,7 +2300,7 @@ class LookupMatrixEditorDialog(QtWidgets.QDialog):
                     self.ax.set_title("Z matrix")
             except (ValueError, TypeError):
                 pass
-        self.canvas.draw_idle()
+        self.figure.canvas.draw_idle()
 
     # ── Data accessors ──────────────────────────────────────────────────
 

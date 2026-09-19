@@ -239,12 +239,33 @@ class SigmaAnalysisGUI(QtWidgets.QMainWindow):
         self.results = results
 
         if results is not None and bus_names is not None:
-            ax = self.ui.plotwidget.get_axis()
-            fig = self.ui.plotwidget.get_figure()
-            ax.clear()
-            self.results.plot(fig, ax)
-            fig.tight_layout()
-            fig.canvas.draw_idle()
+            plot_widget = self.ui.plotwidget
+            plot_widget.clear()
+            sigma_x: np.ndarray = np.asarray(self.results.sigma_re, dtype=float)
+            sigma_y: np.ndarray = np.asarray(self.results.sigma_im, dtype=float)
+            if len(sigma_x) > 0:
+                boundary_max: float = float(np.max(sigma_x)) + 0.1
+            else:
+                boundary_max = 0.1
+
+            boundary_x: np.ndarray = np.linspace(-0.25, max(boundary_max, -0.15), 1000)
+            boundary_y: np.ndarray = np.sqrt(np.maximum(0.25 + boundary_x, 0.0))
+            plot_widget.add_line_series(name=self.tr("Stability boundary"),
+                                        x_values=boundary_x,
+                                        y_values=boundary_y,
+                                        color="#263238")
+            plot_widget.add_line_series(name="",
+                                        x_values=boundary_x,
+                                        y_values=-boundary_y,
+                                        color="#263238")
+            plot_color: str = "#00a884" if self.results.converged else "#ef6c45"
+            plot_widget.add_scatter_series(name=self.tr("Buses"),
+                                           x_values=sigma_x,
+                                           y_values=sigma_y,
+                                           color=plot_color)
+            plot_widget.setTitle(self.tr("Sigma plot"))
+            plot_widget.set_axis_titles("σre", "σim")
+            plot_widget.redraw()
 
             n: int = len(bus_names)
             self.mdl = ResultsModel(self.results.mdl(result_type=ResultTypes.SigmaPlusDistances,

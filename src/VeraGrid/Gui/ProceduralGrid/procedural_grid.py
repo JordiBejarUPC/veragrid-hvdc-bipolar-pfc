@@ -8,7 +8,6 @@ import numpy as np
 import networkx as nx
 from PySide6 import QtWidgets, QtCore, QtGui
 
-from VeraGrid.ThirdParty.adjustText import adjust_text
 from VeraGrid.Gui.Diagrams.MapWidget.Substation.substation_graphic_item import SubstationGraphicItem
 from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import GridMapWidget
 from VeraGridEngine.Utils.GeographicalMethods.haversine_distance import haversine_distance
@@ -350,7 +349,7 @@ class ProceduralGridWindow(QtWidgets.QDialog):
     def _draw_graph(self, engine: ProceduralGridComputationEngine) -> None:
         """
         Build a NetworkX graph from the engine result and render it on the
-        embedded MatplotlibWidget. Existing buses (targets and candidates) are
+        Qt Graphs view. Existing buses (targets and candidates) are
         drawn in light blue; newly created buses are drawn in light green.
 
         :param engine: The engine whose buses and lines are used to build the graph.
@@ -387,27 +386,32 @@ class ProceduralGridWindow(QtWidgets.QDialog):
         for transformer in new_transformers:
             G.add_edge(transformer.bus_from.name, transformer.bus_to.name)
 
-        # Clear the matplotlib canvas before redrawing so successive Preview clicks
-        # do not stack graphs on top of each other
+        # Clear the Qt Graphs series before redrawing successive previews.
         self.ui.plotWidget.clear()
-        ax = self.ui.plotWidget.get_axis()
+        edge: tuple[str, str]
+        for edge in G.edges:
+            edge_x: np.ndarray = np.asarray([pos[edge[0]][0], pos[edge[1]][0]], dtype=float)
+            edge_y: np.ndarray = np.asarray([pos[edge[0]][1], pos[edge[1]][1]], dtype=float)
+            self.ui.plotWidget.add_line_series(name="",
+                                               x_values=edge_x,
+                                               y_values=edge_y,
+                                               color="#8b9dad")
 
-        # Draw existing buses in blue and new buses in green so the user can
-        # clearly distinguish what is being added to the grid
-        nx.draw_networkx_nodes(G, pos=pos, nodelist=existing_node_names,
-                               ax=ax, node_color='lightblue', node_size=300)
-        nx.draw_networkx_nodes(G, pos=pos, nodelist=new_node_names,
-                               ax=ax, node_color='lightgreen', node_size=300)
-        nx.draw_networkx_edges(G, pos=pos, ax=ax)
+        existing_x: np.ndarray = np.asarray([pos[node][0] for node in existing_node_names], dtype=float)
+        existing_y: np.ndarray = np.asarray([pos[node][1] for node in existing_node_names], dtype=float)
+        self.ui.plotWidget.add_scatter_series(name=self.tr("Existing buses"),
+                                              x_values=existing_x,
+                                              y_values=existing_y,
+                                              color="#8ac6e8")
 
-        # Place labels as Text objects first, then let adjustText reposition
-        # them so that overlapping labels (including co-located nodes) are
-        # spread apart automatically
-        texts: List = list()
-        for node, (x, y) in pos.items():
-            texts.append(ax.text(x, y, node, fontsize=7))
-
-        adjust_text(texts, ax=ax)
+        new_x: np.ndarray = np.asarray([pos[node][0] for node in new_node_names], dtype=float)
+        new_y: np.ndarray = np.asarray([pos[node][1] for node in new_node_names], dtype=float)
+        self.ui.plotWidget.add_scatter_series(name=self.tr("New buses"),
+                                              x_values=new_x,
+                                              y_values=new_y,
+                                              color="#69c681")
+        self.ui.plotWidget.setTitle(self.tr("Procedural grid preview"))
+        self.ui.plotWidget.set_axis_titles(self.tr("Longitude"), self.tr("Latitude"))
 
         self.ui.plotWidget.redraw()
 

@@ -92,11 +92,23 @@ class GridGeneratorGUI(QtWidgets.QDialog):
         pos = {i: (self.g.lat[i], self.g.lon[i]) for i in range(self.g.added_nodes)}
 
         self.ui.plotwidget.clear()
-        nx.draw(G,
-                ax=self.ui.plotwidget.get_axis(),
-                pos=pos,
-                with_labels=True,
-                node_color='lightblue')
+        for edge_from, edge_to in G.edges:
+            x_values: np.ndarray = np.asarray([pos[edge_from][0], pos[edge_to][0]], dtype=float)
+            y_values: np.ndarray = np.asarray([pos[edge_from][1], pos[edge_to][1]], dtype=float)
+            self.ui.plotwidget.add_line_series(name="",
+                                               x_values=x_values,
+                                               y_values=y_values,
+                                               color="#8b9dad")
+
+        node_indices: np.ndarray = np.asarray(list(G.nodes), dtype=int)
+        node_x: np.ndarray = np.asarray([pos[node][0] for node in node_indices], dtype=float)
+        node_y: np.ndarray = np.asarray([pos[node][1] for node in node_indices], dtype=float)
+        self.ui.plotwidget.add_scatter_series(name=self.tr("Buses"),
+                                              x_values=node_x,
+                                              y_values=node_y,
+                                              color="#8ac6e8")
+        self.ui.plotwidget.setTitle(self.tr("Generated grid"))
+        self.ui.plotwidget.set_axis_titles(self.tr("Latitude"), self.tr("Longitude"))
         self.ui.plotwidget.redraw()
 
     def apply(self):

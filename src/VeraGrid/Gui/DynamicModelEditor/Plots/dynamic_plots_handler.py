@@ -8,17 +8,19 @@ from enum import Enum
 from typing import Dict, List, Sequence, Set, Optional, Protocol, Union
 import numpy as np
 import pandas as pd
+from matplotlib.backend_bases import CloseEvent
 from matplotlib.axes import Axes
 from matplotlib.collections import Collection
 from matplotlib.colors import to_hex, to_rgba
 from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
+from matplotlib import pyplot as plt
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from VeraGrid.Gui.Icons.icon_associations import device_type_icons
 from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_support import create_dynamic_events_group_with_dialog
-from VeraGrid.Gui.dialog_lifecycle import delete_dialogs_safely, exec_dialog_safely
-from VeraGrid.Gui.matplotlib_dialog import show_matplotlib_figure
+from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
+from VeraGrid.Gui.plot_windows import close_matplotlib_windows, show_matplotlib_window
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.Events.dynamic_plot import DynamicPlot
 from VeraGridEngine.Devices.Events.dynamic_plot_entry import DynamicPlotEntry
@@ -2935,7 +2937,7 @@ class DynamicsResultsHandler:
     __slots__ = ("results", "circuit", "dialog_parent", "plot_simulation_type",
                   "pre_simulation_mode", "tree_data", "tree_model", "proxy_model", "plots_model", "group_idx",
                   "var_role", "group_name_role", "tree_state_role", "drag_mime_type", "drop_target_role", "entry_role_role", "plot_groups", "series_by_key",
-                  "series_by_var_uid", "candidates_by_parameter_key", "source_labels", "_open_plot_dialogs")
+                  "series_by_var_uid", "candidates_by_parameter_key", "source_labels", "_open_plot_figures")
 
     def __init__(self,
                  results: RmsResults | EmtResults | None,
@@ -2982,7 +2984,7 @@ class DynamicsResultsHandler:
 
         # Open plot windows are kept referenced so they are not garbage collected
         # while still visible; entries are pruned when the user closes them.
-        self._open_plot_dialogs: List[QtWidgets.QDialog] = list()
+        self._open_plot_figures: List[Figure] = list()
 
         # The proxy model owns the reversible filtering state used by the device tree view.
         self.proxy_model: QtCore.QSortFilterProxyModel = QtCore.QSortFilterProxyModel()
@@ -5411,30 +5413,38 @@ class DynamicsResultsHandler:
 
     def close_plot_dialogs(self) -> None:
         """
-        Schedule all modeless plots owned by this handler for deletion.
+        Close all standalone plots owned by this handler.
 
         :return: None.
         """
-        delete_dialogs_safely(dialogs=self._open_plot_dialogs)
+        close_matplotlib_windows(figures=self._open_plot_figures)
 
     def _show_figure(self, figure: Figure, title: str) -> None:
         """
-        Display a Matplotlib figure in an embedded Qt window.
+        Display a Matplotlib figure in its standalone window.
 
-        The figure is embedded in a ``FigureCanvasQTAgg`` inside a modeless
-        ``QDialog`` instead of being shown with ``pyplot.show()``. 
-        Before ``pyplot.show()`` was starting starts a second GUI event loop
-        on top of the already-running Qt application which is a hard
-        crash on the macOS backend.
-
-        :param figure: Figure to display (built with ``matplotlib.figure.Figure``).
+        :param figure: Pyplot-managed figure to display.
         :param title: Window title.
         :return: Nothing.
         """
-        show_matplotlib_figure(figure=figure,
-                               parent=self.dialog_parent,
-                               open_dialogs=self._open_plot_dialogs,
-                               title=title)
+        if figure not in self._open_plot_figures:
+            self._open_plot_figures.append(figure)
+            figure.canvas.mpl_connect("close_event", self._on_plot_window_closed)
+        else:
+            pass
+        show_matplotlib_window(figure=figure, title=title)
+
+    def _on_plot_window_closed(self, event: CloseEvent) -> None:
+        """Release one closed pyplot figure from this handler's owner list.
+
+        :param event: Matplotlib close event.
+        :return: None.
+        """
+        figure: Figure = event.canvas.figure
+        if figure in self._open_plot_figures:
+            self._open_plot_figures.remove(figure)
+        else:
+            pass
 
     def plot_series(self, series: DynamicResultSeries) -> None:
         """
@@ -5443,7 +5453,7 @@ class DynamicsResultsHandler:
         :param series: Series to plot.
         :return: Nothing.
         """
-        figure = Figure(figsize=(12, 8))
+        figure: Figure = plt.figure(figsize=(12, 8))
         axis = figure.add_subplot(111)
         x_values, y_values = self._get_series_plot_data(series=series)
         axis.plot(x_values, y_values, label=series.get_plot_label(has_multiple_sources=self.has_multiple_sources()))
@@ -5698,7 +5708,7 @@ class DynamicsResultsHandler:
         else:
             pass
 
-        figure = Figure(figsize=(12, 8))
+        figure: Figure = plt.figure(figsize=(12, 8))
         axis = figure.add_subplot(111)
         plotted_anything: bool = False
 
@@ -5861,7 +5871,7 @@ class DynamicsResultsHandler:
         else:
             pass
 
-        figure = Figure(figsize=(12, 8))
+        figure: Figure = plt.figure(figsize=(12, 8))
         axis = figure.add_subplot(111)
 
         finite_mask: np.ndarray = np.isfinite(x_values) & np.isfinite(y_values)
@@ -6480,7 +6490,7 @@ class DynamicsResultsHandler:
         :return: ``True`` when the parameter was resolved and plotted.
         """
         label: str = _build_parameter_plot_entry_label(entry=entry)
-        figure = Figure(figsize=(12, 8))
+        figure: Figure = plt.figure(figsize=(12, 8))
         axis = figure.add_subplot(111)
         series_colour: str = _get_next_available_plot_colour(axis=axis)
         plotted: bool = self._plot_parameter_entry_on_axis(
