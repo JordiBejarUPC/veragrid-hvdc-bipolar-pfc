@@ -18,6 +18,8 @@ class ChartSeriesType(Enum):
     LINE = auto()
     SCATTER = auto()
     HORIZONTAL_BAR = auto()
+    CUMULATIVE_AREA = auto()
+    POLAR = auto()
 
 
 class ChartContentType(Enum):
@@ -25,6 +27,15 @@ class ChartContentType(Enum):
 
     XY = auto()
     HORIZONTAL_BAR = auto()
+    CUMULATIVE_AREA = auto()
+    POLAR = auto()
+
+
+class PolarAngleUnit(Enum):
+    """Unit used by the angle buffers of a polar series."""
+
+    RADIANS = auto()
+    DEGREES = auto()
 
 
 class ChartAxis:
@@ -459,6 +470,183 @@ class GraphsWidget(QtWidgets.QWidget):
         else:
             pass
 
+    def reset_viewport(self) -> None:
+        """Show every stored data point and clear the current pan offset.
+
+        :return: None.
+        """
+        if self._can_mutate():
+            self.axis_x.reset_viewport()
+            self.axis_y.reset_viewport()
+            self.update()
+        else:
+            pass
+
+    def set_cumulative_area_series(
+            self,
+            x_values: Sequence[float] | np.ndarray,
+            series_names: Sequence[str],
+            series_values: Sequence[Sequence[float] | np.ndarray],
+            colors: Sequence[str | None] | None = None) -> bool:
+        """Replace the chart with stacked cumulative areas sharing one X axis.
+
+        :param x_values: Numeric or NumPy datetime coordinates shared by every area.
+        :param series_names: Visible name for each cumulative band.
+        :param series_values: One value buffer for each name in display order.
+        :param colors: Optional Qt colour for each band.
+        :return: Whether every input buffer had a compatible finite shape.
+        """
+        if self._can_mutate() and len(series_names) == len(series_values) and len(series_names) > 0:
+            x_data: np.ndarray
+            is_datetime: bool
+            x_data, is_datetime = prepare_chart_x_values(x_values=x_values)
+            valid_mask: np.ndarray = np.isfinite(x_data)
+            values_data: list[np.ndarray] = list()
+            series_index: int
+            for series_index in range(len(series_values)):
+                value_data: np.ndarray = np.asarray(series_values[series_index], dtype=float)
+                if len(value_data) == len(x_data):
+                    values_data.append(value_data)
+                    valid_mask &= np.isfinite(value_data)
+                else:
+                    return False
+
+            if colors is None:
+                color_values: list[str | None] = list()
+                for series_index in range(len(series_names)):
+                    color_values.append(None)
+            elif len(colors) == len(series_names):
+                color_values = list(colors)
+            else:
+                return False
+
+            if np.any(valid_mask):
+                retained_x_data: np.ndarray = np.ascontiguousarray(x_data[valid_mask], dtype=float)
+                new_series: list[ChartSeries] = list()
+                cumulative_values: np.ndarray = np.zeros(len(retained_x_data), dtype=float)
+                minimum_value: float = 0.0
+                maximum_value: float = 0.0
+                for series_index in range(len(values_data)):
+                    retained_data: np.ndarray = np.ascontiguousarray(
+                        values_data[series_index][valid_mask],
+                        dtype=float,
+                    )
+                    cumulative_values += retained_data
+                    minimum_value = min(minimum_value, float(np.min(cumulative_values)))
+                    maximum_value = max(maximum_value, float(np.max(cumulative_values)))
+                    new_series.append(
+                        ChartSeries(
+                            series_type=ChartSeriesType.CUMULATIVE_AREA,
+                            name=str(series_names[series_index]),
+                            x_data=retained_x_data,
+                            y_data=retained_data,
+                            color=self._make_series_color(
+                                color_name=color_values[series_index],
+                                series_index=series_index,
+                            ),
+                        )
+                    )
+
+                # Release the old Python buffers before swapping the chart mode.
+                self.clear()
+                self._content_type = ChartContentType.CUMULATIVE_AREA
+                self._series = new_series
+                self._has_points = True
+                self._x_min = float(np.min(retained_x_data))
+                self._x_max = float(np.max(retained_x_data))
+                self._y_min = minimum_value
+                self._y_max = maximum_value
+                self._x_is_datetime = is_datetime
+                self._set_axis_ranges()
+                self.update()
+                return True
+            else:
+                return False
+        else:
+            return False
+
+    def set_polar_series(
+            self,
+            series_names: Sequence[str],
+            angle_values: Sequence[Sequence[float] | np.ndarray],
+            radius_values: Sequence[Sequence[float] | np.ndarray],
+            colors: Sequence[str | None] | None = None,
+            angle_unit: PolarAngleUnit = PolarAngleUnit.RADIANS) -> bool:
+        """Replace the chart with line series in polar coordinates.
+
+        :param series_names: Visible name for each polar line.
+        :param angle_values: Angle buffer for each series.
+        :param radius_values: Non-negative radial buffer for each series.
+        :param colors: Optional Qt colour for each polar line.
+        :param angle_unit: Unit used by every angle buffer.
+        :return: Whether every input series had compatible finite coordinates.
+        """
+        series_count: int = len(series_names)
+        if (self._can_mutate() and series_count > 0 and len(angle_values) == series_count
+                and len(radius_values) == series_count):
+            if colors is None:
+                color_values: list[str | None] = list()
+                series_index: int
+                for series_index in range(series_count):
+                    color_values.append(None)
+            elif len(colors) == series_count:
+                color_values = list(colors)
+            else:
+                return False
+
+            new_series: list[ChartSeries] = list()
+            maximum_radius: float = 0.0
+            series_index: int
+            for series_index in range(series_count):
+                angles: np.ndarray = np.asarray(angle_values[series_index], dtype=float)
+                radii: np.ndarray = np.asarray(radius_values[series_index], dtype=float)
+                if len(angles) == len(radii):
+                    finite_mask: np.ndarray = np.isfinite(angles) & np.isfinite(radii) & (radii >= 0.0)
+                    if np.any(finite_mask):
+                        retained_angles: np.ndarray = np.ascontiguousarray(angles[finite_mask], dtype=float)
+                        retained_radii: np.ndarray = np.ascontiguousarray(radii[finite_mask], dtype=float)
+                        if angle_unit == PolarAngleUnit.DEGREES:
+                            retained_angles = np.deg2rad(retained_angles)
+                        elif angle_unit == PolarAngleUnit.RADIANS:
+                            pass
+                        else:
+                            return False
+                        maximum_radius = max(maximum_radius, float(np.max(retained_radii)))
+                        new_series.append(
+                            ChartSeries(
+                                series_type=ChartSeriesType.POLAR,
+                                name=str(series_names[series_index]),
+                                x_data=retained_angles,
+                                y_data=retained_radii,
+                                color=self._make_series_color(
+                                    color_name=color_values[series_index],
+                                    series_index=series_index,
+                                ),
+                            )
+                        )
+                    else:
+                        return False
+                else:
+                    return False
+
+            self.clear()
+            self._content_type = ChartContentType.POLAR
+            self._series = new_series
+            self._has_points = True
+            self._x_min = 0.0
+            self._x_max = 2.0 * np.pi
+            self._y_min = 0.0
+            self._y_max = max(maximum_radius, 1.0)
+            self._x_is_datetime = False
+            self.axis_x.set_range(self._x_min, self._x_max)
+            self.axis_y.set_range(0.0, self._y_max * 1.05)
+            self.axis_x.reset_viewport()
+            self.axis_y.reset_viewport()
+            self.update()
+            return True
+        else:
+            return False
+
     def clear(self, force: bool = False) -> None:
         """Release all chart data and restore a neutral numeric viewport.
 
@@ -737,20 +925,24 @@ class GraphsWidget(QtWidgets.QWidget):
             delta_y: int = event.angleDelta().y()
             if delta_y > 0:
                 multiplier: float = 1.25
-                self.axis_x.set_zoom(self.axis_x.get_zoom() * multiplier)
-                if self._content_type == ChartContentType.XY:
+                if self._content_type in (ChartContentType.XY, ChartContentType.CUMULATIVE_AREA):
+                    self.axis_x.set_zoom(self.axis_x.get_zoom() * multiplier)
+                    self.axis_y.set_zoom(self.axis_y.get_zoom() * multiplier)
+                elif self._content_type == ChartContentType.POLAR:
                     self.axis_y.set_zoom(self.axis_y.get_zoom() * multiplier)
                 else:
-                    pass
+                    self.axis_x.set_zoom(self.axis_x.get_zoom() * multiplier)
                 self.update()
                 event.accept()
             elif delta_y < 0:
                 multiplier = 0.8
-                self.axis_x.set_zoom(self.axis_x.get_zoom() * multiplier)
-                if self._content_type == ChartContentType.XY:
+                if self._content_type in (ChartContentType.XY, ChartContentType.CUMULATIVE_AREA):
+                    self.axis_x.set_zoom(self.axis_x.get_zoom() * multiplier)
+                    self.axis_y.set_zoom(self.axis_y.get_zoom() * multiplier)
+                elif self._content_type == ChartContentType.POLAR:
                     self.axis_y.set_zoom(self.axis_y.get_zoom() * multiplier)
                 else:
-                    pass
+                    self.axis_x.set_zoom(self.axis_x.get_zoom() * multiplier)
                 self.update()
                 event.accept()
             else:
@@ -783,7 +975,7 @@ class GraphsWidget(QtWidgets.QWidget):
             current_position: QtCore.QPointF = event.position()
             delta: QtCore.QPointF = current_position - previous_position
             plot_rect: QtCore.QRectF = self._get_plot_rect()
-            if plot_rect.width() > 0.0:
+            if plot_rect.width() > 0.0 and self._content_type != ChartContentType.POLAR:
                 x_minimum: float
                 x_maximum: float
                 # Use the visible span so one drag covers the same screen distance at every zoom.
@@ -793,7 +985,7 @@ class GraphsWidget(QtWidgets.QWidget):
                 )
             else:
                 pass
-            if self._content_type == ChartContentType.XY and plot_rect.height() > 0.0:
+            if self._content_type in (ChartContentType.XY, ChartContentType.CUMULATIVE_AREA) and plot_rect.height() > 0.0:
                 y_minimum: float
                 y_maximum: float
                 # The visible span gives vertical panning the same zoom-consistent behaviour.
@@ -846,9 +1038,7 @@ class GraphsWidget(QtWidgets.QWidget):
         :return: None.
         """
         if self._can_mutate() and event.button() == QtCore.Qt.MouseButton.LeftButton:
-            self.axis_x.reset_viewport()
-            self.axis_y.reset_viewport()
-            self.update()
+            self.reset_viewport()
             event.accept()
         else:
             event.ignore()
@@ -861,6 +1051,16 @@ class GraphsWidget(QtWidgets.QWidget):
         """
         _ = event
         painter: QtGui.QPainter = QtGui.QPainter(self)
+        self.paint_to_painter(painter=painter)
+        painter.end()
+
+    def paint_to_painter(self, painter: QtGui.QPainter) -> None:
+        """Paint the current chart into an already-active Qt paint device.
+
+        :param painter: Active painter targeting this widget's native size.
+        :return: None.
+        """
+        painter.save()
         painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing, True)
         painter.fillRect(self.rect(), self._background_color)
         plot_rect: QtCore.QRectF = self._get_plot_rect()
@@ -872,6 +1072,18 @@ class GraphsWidget(QtWidgets.QWidget):
                 painter.save()
                 painter.setClipRect(plot_rect)
                 self._paint_horizontal_bars(painter=painter, plot_rect=plot_rect)
+                painter.restore()
+            elif self._content_type == ChartContentType.CUMULATIVE_AREA:
+                self._paint_xy_axes(painter=painter, plot_rect=plot_rect)
+                painter.save()
+                painter.setClipRect(plot_rect)
+                self._paint_cumulative_areas(painter=painter, plot_rect=plot_rect)
+                painter.restore()
+            elif self._content_type == ChartContentType.POLAR:
+                self._paint_polar_axes(painter=painter, plot_rect=plot_rect)
+                painter.save()
+                painter.setClipRect(plot_rect)
+                self._paint_polar_series(painter=painter, plot_rect=plot_rect)
                 painter.restore()
             else:
                 self._paint_xy_axes(painter=painter, plot_rect=plot_rect)
@@ -885,7 +1097,7 @@ class GraphsWidget(QtWidgets.QWidget):
             painter.drawRect(plot_rect)
         else:
             pass
-        painter.end()
+        painter.restore()
 
     def event(self, event: QtCore.QEvent) -> bool:
         """Release Python buffers before a deferred QWidget deletion completes.
@@ -1231,6 +1443,194 @@ class GraphsWidget(QtWidgets.QWidget):
         else:
             pass
 
+    def _paint_cumulative_areas(self, painter: QtGui.QPainter, plot_rect: QtCore.QRectF) -> None:
+        """Paint each stacked area between its prior and cumulative values.
+
+        :param painter: Active painter clipped to the numeric plot rectangle.
+        :param plot_rect: Rectangle used to map the shared X and Y coordinates.
+        :return: None.
+        """
+        if len(self._series) > 0:
+            point_count: int = len(self._series[0].get_x_data())
+            indices: np.ndarray = self._sample_indices(point_count=point_count, plot_rect=plot_rect)
+            cumulative_values: np.ndarray = np.zeros(point_count, dtype=float)
+            series: ChartSeries
+            for series in self._series:
+                if series.get_series_type() == ChartSeriesType.CUMULATIVE_AREA:
+                    x_data: np.ndarray = series.get_x_data()
+                    y_data: np.ndarray = series.get_y_data()
+                    upper_values: np.ndarray = cumulative_values + y_data
+                    if len(indices) > 0:
+                        first_index: int = int(indices[0])
+                        path: QtGui.QPainterPath = QtGui.QPainterPath()
+                        lower_first: QtCore.QPointF = self._map_xy_point(
+                            x_value=float(x_data[first_index]),
+                            y_value=float(cumulative_values[first_index]),
+                            plot_rect=plot_rect,
+                        )
+                        path.moveTo(lower_first)
+                        point_index: int
+                        for point_index in range(len(indices)):
+                            data_index: int = int(indices[point_index])
+                            upper_point: QtCore.QPointF = self._map_xy_point(
+                                x_value=float(x_data[data_index]),
+                                y_value=float(upper_values[data_index]),
+                                plot_rect=plot_rect,
+                            )
+                            path.lineTo(upper_point)
+                        reverse_index: int
+                        for reverse_index in range(len(indices) - 1, -1, -1):
+                            data_index = int(indices[reverse_index])
+                            lower_point: QtCore.QPointF = self._map_xy_point(
+                                x_value=float(x_data[data_index]),
+                                y_value=float(cumulative_values[data_index]),
+                                plot_rect=plot_rect,
+                            )
+                            path.lineTo(lower_point)
+                        path.closeSubpath()
+                        area_color: QtGui.QColor = series.get_color()
+                        fill_color: QtGui.QColor = QtGui.QColor(area_color)
+                        fill_color.setAlpha(145)
+                        painter.setPen(QtGui.QPen(area_color.darker(120), 1.25))
+                        painter.setBrush(QtGui.QBrush(fill_color))
+                        painter.drawPath(path)
+                    else:
+                        pass
+                    cumulative_values = upper_values
+                else:
+                    pass
+        else:
+            pass
+
+    def _get_polar_rect(self, plot_rect: QtCore.QRectF) -> QtCore.QRectF:
+        """Return a centred square inside the available plot rectangle.
+
+        :param plot_rect: Rectangle reserved for the plotted content.
+        :return: Square used for radial grid geometry.
+        """
+        diameter: float = min(plot_rect.width(), plot_rect.height()) - 20.0
+        if diameter > 2.0:
+            return QtCore.QRectF(
+                plot_rect.center().x() - diameter * 0.5,
+                plot_rect.center().y() - diameter * 0.5,
+                diameter,
+                diameter,
+            )
+        else:
+            return QtCore.QRectF()
+
+    def _paint_polar_axes(self, painter: QtGui.QPainter, plot_rect: QtCore.QRectF) -> None:
+        """Paint the radial grid, angular guides, and radial labels.
+
+        :param painter: Active painter used for the polar grid.
+        :param plot_rect: Rectangle available to the polar content.
+        :return: None.
+        """
+        polar_rect: QtCore.QRectF = self._get_polar_rect(plot_rect=plot_rect)
+        if polar_rect.width() > 2.0:
+            centre: QtCore.QPointF = polar_rect.center()
+            outer_radius: float = polar_rect.width() * 0.5
+            radial_minimum: float
+            radial_maximum: float
+            radial_minimum, radial_maximum = self.axis_y.get_visual_range()
+            grid_pen: QtGui.QPen = QtGui.QPen(self._grid_color, 1.0)
+            painter.setPen(grid_pen)
+            painter.setBrush(QtCore.Qt.BrushStyle.NoBrush)
+            circle_index: int
+            for circle_index in range(1, 5):
+                fraction: float = float(circle_index) / 4.0
+                radius: float = outer_radius * fraction
+                painter.drawEllipse(QtCore.QRectF(
+                    centre.x() - radius,
+                    centre.y() - radius,
+                    radius * 2.0,
+                    radius * 2.0,
+                ))
+                radial_value: float = radial_minimum + (radial_maximum - radial_minimum) * fraction
+                painter.setPen(QtGui.QPen(self._label_color))
+                painter.drawText(
+                    QtCore.QPointF(centre.x() + 4.0, centre.y() - radius + 13.0),
+                    format_chart_value(value=radial_value, is_datetime=False),
+                )
+                painter.setPen(grid_pen)
+
+            ray_index: int
+            for ray_index in range(12):
+                angle: float = float(ray_index) * np.pi / 6.0
+                end_point: QtCore.QPointF = QtCore.QPointF(
+                    centre.x() + outer_radius * np.cos(angle),
+                    centre.y() - outer_radius * np.sin(angle),
+                )
+                painter.drawLine(centre, end_point)
+                if ray_index % 3 == 0:
+                    painter.setPen(QtGui.QPen(self._label_color))
+                    label_point: QtCore.QPointF = QtCore.QPointF(
+                        centre.x() + (outer_radius + 14.0) * np.cos(angle),
+                        centre.y() - (outer_radius + 14.0) * np.sin(angle),
+                    )
+                    painter.drawText(
+                        QtCore.QRectF(label_point.x() - 18.0, label_point.y() - 9.0, 36.0, 18.0),
+                        QtCore.Qt.AlignmentFlag.AlignCenter,
+                        f'{ray_index * 30}°',
+                    )
+                    painter.setPen(grid_pen)
+
+            painter.setPen(QtGui.QPen(self._label_color))
+            painter.drawText(
+                QtCore.QRectF(plot_rect.left(), plot_rect.bottom() + 28.0, plot_rect.width(), 20.0),
+                QtCore.Qt.AlignmentFlag.AlignHCenter | QtCore.Qt.AlignmentFlag.AlignTop,
+                self.axis_y.get_title(),
+            )
+        else:
+            pass
+
+    def _paint_polar_series(self, painter: QtGui.QPainter, plot_rect: QtCore.QRectF) -> None:
+        """Paint every native polar line and its circular sample points.
+
+        :param painter: Active painter clipped to the numeric plot rectangle.
+        :param plot_rect: Rectangle used for the radial mapping.
+        :return: None.
+        """
+        polar_rect: QtCore.QRectF = self._get_polar_rect(plot_rect=plot_rect)
+        series: ChartSeries
+        for series in self._series:
+            if series.get_series_type() == ChartSeriesType.POLAR and polar_rect.width() > 2.0:
+                angles: np.ndarray = series.get_x_data()
+                radii: np.ndarray = series.get_y_data()
+                indices: np.ndarray = self._sample_indices(point_count=len(angles), plot_rect=polar_rect)
+                if len(indices) > 0:
+                    path: QtGui.QPainterPath = QtGui.QPainterPath()
+                    point_index: int
+                    for point_index in range(len(indices)):
+                        data_index: int = int(indices[point_index])
+                        point: QtCore.QPointF = self._map_polar_point(
+                            angle=float(angles[data_index]),
+                            radius=float(radii[data_index]),
+                            polar_rect=polar_rect,
+                        )
+                        if point_index == 0:
+                            path.moveTo(point)
+                        else:
+                            path.lineTo(point)
+                    color: QtGui.QColor = series.get_color()
+                    painter.setPen(QtGui.QPen(color, 1.8))
+                    painter.setBrush(QtCore.Qt.BrushStyle.NoBrush)
+                    painter.drawPath(path)
+                    painter.setPen(QtGui.QPen(color.darker(125), 1.0))
+                    painter.setBrush(QtGui.QBrush(color))
+                    for point_index in range(len(indices)):
+                        data_index = int(indices[point_index])
+                        point = self._map_polar_point(
+                            angle=float(angles[data_index]),
+                            radius=float(radii[data_index]),
+                            polar_rect=polar_rect,
+                        )
+                        painter.drawEllipse(QtCore.QRectF(point.x() - 3.0, point.y() - 3.0, 6.0, 6.0))
+                else:
+                    pass
+            else:
+                pass
+
     def _paint_bar_axes(self, painter: QtGui.QPainter, plot_rect: QtCore.QRectF) -> None:
         """Paint numeric horizontal ticks and category labels for bar charts.
 
@@ -1312,6 +1712,26 @@ class GraphsWidget(QtWidgets.QWidget):
         y_fraction: float = (y_value - y_minimum) / (y_maximum - y_minimum)
         y_position: float = plot_rect.bottom() - y_fraction * plot_rect.height()
         return QtCore.QPointF(x_position, y_position)
+
+    def _map_polar_point(self, angle: float, radius: float, polar_rect: QtCore.QRectF) -> QtCore.QPointF:
+        """Map one polar coordinate into the radial drawing square.
+
+        :param angle: Angle in radians.
+        :param radius: Non-negative radial coordinate.
+        :param polar_rect: Square used for the polar grid.
+        :return: Point in widget coordinates.
+        """
+        radial_minimum: float
+        radial_maximum: float
+        radial_minimum, radial_maximum = self.axis_y.get_visual_range()
+        radial_fraction: float = (radius - radial_minimum) / (radial_maximum - radial_minimum)
+        bounded_fraction: float = min(max(radial_fraction, 0.0), 1.0)
+        outer_radius: float = polar_rect.width() * 0.5
+        centre: QtCore.QPointF = polar_rect.center()
+        return QtCore.QPointF(
+            centre.x() + outer_radius * bounded_fraction * np.cos(angle),
+            centre.y() - outer_radius * bounded_fraction * np.sin(angle),
+        )
 
     def _map_x_value(self, value: float, plot_rect: QtCore.QRectF) -> float:
         """Map one horizontal data value into the current painter rectangle.

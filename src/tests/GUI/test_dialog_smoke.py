@@ -82,6 +82,7 @@ from VeraGrid.Gui.Main.object_select_window import ObjectSelectWindow
 from VeraGrid.Gui.ProceduralGrid.map_warning import MapWarningDialog
 from VeraGrid.Gui.ProceduralGrid.procedural_grid import ProceduralGridWindow
 from VeraGrid.Gui.ProceduralGrid.voltage_warning import VoltageWarningDialog
+from VeraGrid.Gui.PlotDialogue.plot_dialogue import PlotDialogue
 from VeraGrid.Gui.rms_plot_variables_dialog import RmsPlotDialog
 from VeraGrid.Gui.ShortCircuitEditor.short_circuit_selector import ShortCircuitSelector
 from VeraGrid.Gui.SigmaAnalysis.sigma_analysis_dialogue import SigmaAnalysisGUI
@@ -149,6 +150,7 @@ class DialogSmokeTarget(Enum):
     GENERATOR_Q_CURVE_EDITOR = "GeneratorQCurveEditor"
     LINE_EDITOR = "LineEditor"
     LOAD_DESIGNER = "LoadDesigner"
+    PLOT_DIALOGUE = "PlotDialogue"
     TEMPLATE_DEVICE_EDITOR = "TemplateDeviceEditor"
     TOWER_BUILDER = "TowerBuilderGUI"
     UNDERGROUND_CABLE_BUILDER = "UndergroundCableBuilderGUI"
@@ -971,6 +973,8 @@ def build_dialog_for_smoke(target: DialogSmokeTarget, context: DialogSmokeContex
             latitude=28.0,
             longitude=-16.0,
         )
+    elif target == DialogSmokeTarget.PLOT_DIALOGUE:
+        dialog = PlotDialogue(title="Smoke plot")
     elif target == DialogSmokeTarget.TEMPLATE_DEVICE_EDITOR:
         dialog = TemplateDeviceEditor(api_object=circuit.lines[0], circuit=circuit)
     elif target == DialogSmokeTarget.TOWER_BUILDER:
@@ -1315,6 +1319,35 @@ def exercise_chart_window_operation_for_smoke(target: DialogSmokeTarget,
         dialog.ui.tower_tableView.selectRow(0)
         dialog.delete_cable_from_system()
         assert tuple(dialog.ui.plotwidget._series) == original_series
+    elif target == DialogSmokeTarget.PLOT_DIALOGUE and isinstance(dialog, PlotDialogue):
+        x_values: np.ndarray = np.array((0.0, 1.0, 2.0), dtype=float)
+        assert dialog.set_line_series(
+            x_values=x_values,
+            series_names=("Line",),
+            series_values=(np.array((1.0, 2.0, 1.0), dtype=float),),
+            title="Line",
+            x_axis_title="X",
+            y_axis_title="Y",
+        )
+        assert dialog.set_cumulative_area_series(
+            x_values=x_values,
+            series_names=("Area A", "Area B"),
+            series_values=(
+                np.array((1.0, 1.0, 1.0), dtype=float),
+                np.array((0.5, 0.75, 0.5), dtype=float),
+            ),
+            title="Area",
+            x_axis_title="X",
+            y_axis_title="Y",
+        )
+        assert dialog.set_polar_series(
+            series_names=("Polar",),
+            angle_values=(np.array((0.0, 1.0, 2.0), dtype=float),),
+            radius_values=(np.array((1.0, 0.5, 1.0), dtype=float),),
+            title="Polar",
+            radius_title="Radius",
+        )
+        dialog.ui.actionResetView.trigger()
     elif target == DialogSmokeTarget.LOAD_DESIGNER and isinstance(dialog, LoadDesigner):
         dialog.update_results()
         original_series = tuple(dialog.ui.plotwidget._series)
@@ -1371,6 +1404,7 @@ def run_dialog_smoke_suite_in_child(message_queue: Any) -> None:
     chart_targets.add(DialogSmokeTarget.GENERATOR_EDITOR)
     chart_targets.add(DialogSmokeTarget.GENERATOR_Q_CURVE_EDITOR)
     chart_targets.add(DialogSmokeTarget.LOAD_DESIGNER)
+    chart_targets.add(DialogSmokeTarget.PLOT_DIALOGUE)
     chart_targets.add(DialogSmokeTarget.TOWER_BUILDER)
     chart_targets.add(DialogSmokeTarget.UNDERGROUND_CABLE_BUILDER)
     chart_targets.add(DialogSmokeTarget.GRID_GENERATOR)
