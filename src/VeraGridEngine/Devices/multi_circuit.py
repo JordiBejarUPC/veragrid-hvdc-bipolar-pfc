@@ -12,7 +12,6 @@ import pandas as pd
 from typing import List, Dict, Tuple, Union, Set, Sequence, TYPE_CHECKING
 from uuid import getnode as get_mac, uuid4
 import networkx as nx
-from matplotlib import pyplot as plt
 from scipy.sparse import csc_matrix, lil_matrix
 
 from VeraGridEngine.Devices.assets import Assets
@@ -1259,18 +1258,6 @@ class MultiCircuit(Assets):
 
         return ac_bus_1, ac_bus_2, dc_bus_1, dc_bus_2, conv1, conv2, dc_line
 
-    def plot_graph(self, ax=None):
-        """
-        Plot the grid.
-        :param ax: Matplotlib axis object
-        :return:
-        """
-        if ax is None:
-            fig = plt.figure()
-            ax = fig.add_subplot(111)
-
-        graph = self.build_graph()
-        nx.draw_spring(graph, ax=ax)
 
     def export_pf(self, file_name, power_flow_results):
         """

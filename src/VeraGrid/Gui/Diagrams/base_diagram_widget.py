@@ -7,7 +7,6 @@ from typing import List, Set, Dict, Union, Tuple, Generator, TYPE_CHECKING
 from time import perf_counter
 import numpy as np
 import cv2
-from matplotlib import pyplot as plt
 
 from PySide6 import QtCore
 from PySide6.QtGui import QIcon, QImage
@@ -41,7 +40,8 @@ from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
 from VeraGrid.Gui.general_dialogues import DeleteDialogue
 from VeraGrid.Gui.messages import yes_no_question, info_msg
 from VeraGrid.Gui.object_model import ObjectsModel
-from VeraGrid.Gui.plot_windows import show_matplotlib_window
+from VeraGrid.Gui.PlotDialogue.plot_dialogue import PlotDialogue
+from VeraGrid.Gui.PlotDialogue.result_table_data import append_result_table_column
 import VeraGrid.Gui.gui_functions as gf
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
 
@@ -681,133 +681,347 @@ class BaseDiagramWidget(QSplitter):
         """
         self.results_dictionary = {thr.tpe: thr for thr in all_threads if thr is not None}
 
+    def plot_device_profiles(self, api_object: EditableDevice) -> None:
+        """Open one native chart tab for each numeric profile of a device.
+
+        :param api_object: Device whose persisted profile buffers are displayed.
+        :return: None.
+        """
+        time_values: np.ndarray = np.asarray(self.circuit.time_profile).copy()
+        if time_values.size == 0:
+            info_msg(self.tr("There is no time profile to plot"), self.tr("Profiles plot"))
+            return
+        else:
+            pass
+
+        plot_dialogue: PlotDialogue = PlotDialogue(
+            title=self.tr("{device_name} profiles").format(device_name=api_object.name),
+            parent=self.gui,
+        )
+        has_profiles: bool = False
+        properties = list(api_object.registered_properties.values())
+        for property_data in properties:
+            if property_data.has_profile():
+                profile = api_object.get_profile_by_prop(prop=property_data)
+                if profile is not None:
+                    values: np.ndarray = np.asarray(profile.toarray()).copy()
+                    is_numeric: bool = np.issubdtype(values.dtype, np.number)
+                    is_matching_time: bool = values.size == time_values.size
+                    if is_numeric and is_matching_time:
+                        if has_profiles:
+                            plot_dialogue.add_tab(title=property_data.name)
+                        else:
+                            plot_dialogue.set_current_tab_title(title=property_data.name)
+
+                        plot_title: str = self.tr("{device_name}: {property_name}").format(
+                            device_name=api_object.name,
+                            property_name=property_data.name,
+                        )
+                        accepted: bool = plot_dialogue.set_time_series(
+                            time_values=time_values,
+                            series_names=[api_object.name],
+                            series_values=[values],
+                            title=plot_title,
+                            y_axis_title=property_data.units,
+                        )
+                        if accepted:
+                            has_profiles = True
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    pass
+            else:
+                pass
+
+        if has_profiles:
+            self.gui._open_plot_dialogs.append(plot_dialogue)
+            plot_dialogue.show()
+        else:
+            plot_dialogue.reject()
+            info_msg(self.tr("This device has no numeric profiles matching the grid time profile"),
+                     self.tr("Profiles plot"))
+
     def plot_branch(self, i: int, api_object: Union[Line, DcLine, Transformer2W, VSC, UPFC]):
+        """Open native power and loading tabs for one branch.
+
+        :param i: Branch result-column index.
+        :param api_object: Branch device represented by the selected graphic.
+        :return: None.
         """
-        Plot branch results
-        :param i: branch index (not counting HVDC lines because those are not real Branches)
-        :param api_object: API object
-        """
-        fig = plt.figure(figsize=(12, 8))
-        fig.suptitle(api_object.name, fontsize=20)
-
-        ax_1 = fig.add_subplot(211)
-        ax_1.set_title('Probability x < value', fontsize=14)
-        ax_1.set_ylabel('Loading [%]', fontsize=11)
-
-        ax_2 = fig.add_subplot(212)
-        ax_2.set_title('Power', fontsize=14)
-        ax_2.set_ylabel('Power [MW]', fontsize=11)
-
-        any_plot = False
+        dialog_title: str = self.tr("{device_name} results plot").format(device_name=api_object.name)
+        plot_dialogue: PlotDialogue = PlotDialogue(title=dialog_title, parent=self.gui)
+        power_chart = plot_dialogue.chart
+        loading_chart = None
+        has_power_plot: bool = False
+        has_loading_plot: bool = False
 
         for driver, results in self.gui.session.drivers_results_iter():
-
             if results is not None:
-
                 if isinstance(results, PowerFlowTimeSeriesResults):
-
-                    Sf_table = results.mdl(result_type=ResultTypes.BranchActivePowerFrom)
-                    Sf_table.plot_device(ax=ax_1, device_idx=i, title="Power flow")
-
+                    power_table = results.mdl(result_type=ResultTypes.BranchActivePowerFrom)
+                    appended_power: bool = append_result_table_column(
+                        chart=power_chart,
+                        table=power_table,
+                        column_index=i,
+                        series_name=self.tr("Power flow"),
+                    )
+                    if appended_power:
+                        power_chart.setTitle(self.tr("Power"))
+                        has_power_plot = True
+                    else:
+                        pass
                     loading_table = results.mdl(result_type=ResultTypes.BranchLoading)
                     loading_table.convert_to_cdf()
-                    loading_table.plot_device(ax=ax_2, device_idx=i, title="Power loading")
-                    any_plot = True
-
+                    if loading_chart is None:
+                        if has_power_plot:
+                            loading_chart = plot_dialogue.add_tab(title=self.tr("Loading"))
+                        else:
+                            loading_chart = power_chart
+                            plot_dialogue.set_current_tab_title(self.tr("Loading"))
+                    else:
+                        pass
+                    appended_loading: bool = append_result_table_column(
+                        chart=loading_chart,
+                        table=loading_table,
+                        column_index=i,
+                        series_name=self.tr("Power loading"),
+                    )
+                    if appended_loading:
+                        loading_chart.setTitle(self.tr("Loading"))
+                        has_loading_plot = True
+                    else:
+                        pass
                 elif isinstance(results, LinearAnalysisTimeSeriesResults):
-
-                    Sf_table = results.mdl(result_type=ResultTypes.BranchActivePowerFrom)
-                    Sf_table.plot_device(ax=ax_1, device_idx=i, title="Linear flow")
-
+                    power_table = results.mdl(result_type=ResultTypes.BranchActivePowerFrom)
+                    appended_power = append_result_table_column(
+                        chart=power_chart,
+                        table=power_table,
+                        column_index=i,
+                        series_name=self.tr("Linear flow"),
+                    )
+                    if appended_power:
+                        power_chart.setTitle(self.tr("Power"))
+                        has_power_plot = True
+                    else:
+                        pass
                     loading_table = results.mdl(result_type=ResultTypes.BranchLoading)
                     loading_table.convert_to_cdf()
-                    loading_table.plot_device(ax=ax_2, device_idx=i, title="Linear loading")
-                    any_plot = True
-
+                    if loading_chart is None:
+                        if has_power_plot:
+                            loading_chart = plot_dialogue.add_tab(title=self.tr("Loading"))
+                        else:
+                            loading_chart = power_chart
+                            plot_dialogue.set_current_tab_title(self.tr("Loading"))
+                    else:
+                        pass
+                    appended_loading = append_result_table_column(
+                        chart=loading_chart,
+                        table=loading_table,
+                        column_index=i,
+                        series_name=self.tr("Linear loading"),
+                    )
+                    if appended_loading:
+                        loading_chart.setTitle(self.tr("Loading"))
+                        has_loading_plot = True
+                    else:
+                        pass
                 elif isinstance(results, ContingencyAnalysisTimeSeriesResults):
-
-                    Sf_table = results.mdl(result_type=ResultTypes.MaxContingencyFlows)
-                    Sf_table.plot_device(ax=ax_1, device_idx=i, title="Contingency flow")
-
+                    power_table = results.mdl(result_type=ResultTypes.MaxContingencyFlows)
+                    appended_power = append_result_table_column(
+                        chart=power_chart,
+                        table=power_table,
+                        column_index=i,
+                        series_name=self.tr("Contingency flow"),
+                    )
+                    if appended_power:
+                        power_chart.setTitle(self.tr("Power"))
+                        has_power_plot = True
+                    else:
+                        pass
                     loading_table = results.mdl(result_type=ResultTypes.MaxContingencyLoading)
                     loading_table.convert_to_cdf()
-                    loading_table.plot_device(ax=ax_2, device_idx=i, title="Contingency loading")
-                    any_plot = True
-
+                    if loading_chart is None:
+                        if has_power_plot:
+                            loading_chart = plot_dialogue.add_tab(title=self.tr("Loading"))
+                        else:
+                            loading_chart = power_chart
+                            plot_dialogue.set_current_tab_title(self.tr("Loading"))
+                    else:
+                        pass
+                    appended_loading = append_result_table_column(
+                        chart=loading_chart,
+                        table=loading_table,
+                        column_index=i,
+                        series_name=self.tr("Contingency loading"),
+                    )
+                    if appended_loading:
+                        loading_chart.setTitle(self.tr("Loading"))
+                        has_loading_plot = True
+                    else:
+                        pass
                 elif isinstance(results, OptimalPowerFlowTimeSeriesResults):
-
-                    Sf_table = results.mdl(result_type=ResultTypes.BranchActivePowerFrom)
-                    Sf_table.plot_device(ax=ax_1, device_idx=i, title="Optimal power flow")
-
+                    power_table = results.mdl(result_type=ResultTypes.BranchActivePowerFrom)
+                    appended_power = append_result_table_column(
+                        chart=power_chart,
+                        table=power_table,
+                        column_index=i,
+                        series_name=self.tr("Optimal power flow"),
+                    )
+                    if appended_power:
+                        power_chart.setTitle(self.tr("Power"))
+                        has_power_plot = True
+                    else:
+                        pass
                     loading_table = results.mdl(result_type=ResultTypes.BranchLoading)
                     loading_table.convert_to_cdf()
-                    loading_table.plot_device(ax=ax_2, device_idx=i, title="Optimal loading")
-                    any_plot = True
-
+                    if loading_chart is None:
+                        if has_power_plot:
+                            loading_chart = plot_dialogue.add_tab(title=self.tr("Loading"))
+                        else:
+                            loading_chart = power_chart
+                            plot_dialogue.set_current_tab_title(self.tr("Loading"))
+                    else:
+                        pass
+                    appended_loading = append_result_table_column(
+                        chart=loading_chart,
+                        table=loading_table,
+                        column_index=i,
+                        series_name=self.tr("Optimal loading"),
+                    )
+                    if appended_loading:
+                        loading_chart.setTitle(self.tr("Loading"))
+                        has_loading_plot = True
+                    else:
+                        pass
                 elif isinstance(results, StochasticPowerFlowResults):
                     loading_table = results.mdl(result_type=ResultTypes.BranchLoadingCDF)
                     loading_table.convert_to_cdf()
-                    loading_table.plot_device(ax=ax_2, device_idx=i, title="Stochastic loading")
-                    any_plot = True
+                    if loading_chart is None:
+                        if has_power_plot:
+                            loading_chart = plot_dialogue.add_tab(title=self.tr("Loading"))
+                        else:
+                            loading_chart = power_chart
+                            plot_dialogue.set_current_tab_title(self.tr("Loading"))
+                    else:
+                        pass
+                    appended_loading = append_result_table_column(
+                        chart=loading_chart,
+                        table=loading_table,
+                        column_index=i,
+                        series_name=self.tr("Stochastic loading"),
+                    )
+                    if appended_loading:
+                        loading_chart.setTitle(self.tr("Loading"))
+                        has_loading_plot = True
+                    else:
+                        pass
+                else:
+                    pass
 
-        if any_plot:
-            plt.legend()
-            show_matplotlib_window(figure=fig,
-                                   title=self.tr("{device_name} results plot").format(device_name=api_object.name))
+        if has_power_plot or has_loading_plot:
+            self.gui._open_plot_dialogs.append(plot_dialogue)
+            plot_dialogue.show()
         else:
+            plot_dialogue.reject()
             info_msg(self.tr("No time series results to plot, run some time series results. Even partial results are fine"),
-                     self.tr("{device_name} results plot").format(device_name=api_object.name))
+                     dialog_title)
 
     def plot_hvdc_branch(self, i: int, api_object: HvdcLine):
+        """Open native power and loading tabs for one HVDC branch.
+
+        :param i: HVDC result-column index.
+        :param api_object: HVDC device represented by the selected graphic.
+        :return: None.
         """
-        HVDC branch
-        :param i: index of the object
-        :param api_object: HvdcGraphicItem
-        """
-        fig = plt.figure(figsize=(12, 8))
-        fig.suptitle(api_object.name, fontsize=20)
-
-        ax_1 = fig.add_subplot(211)
-        ax_1.set_title('Probability x < value', fontsize=14)
-        ax_1.set_ylabel('Loading [%]', fontsize=11)
-
-        ax_2 = fig.add_subplot(212)
-        ax_2.set_title('Power', fontsize=14)
-        ax_2.set_ylabel('Power [MW]', fontsize=11)
-
-        any_plot = False
+        dialog_title: str = self.tr("{device_name} results plot").format(device_name=api_object.name)
+        plot_dialogue: PlotDialogue = PlotDialogue(title=dialog_title, parent=self.gui)
+        power_chart = plot_dialogue.chart
+        loading_chart = None
+        has_power_plot: bool = False
+        has_loading_plot: bool = False
 
         for driver, results in self.gui.session.drivers_results_iter():
-
             if results is not None:
-
                 if isinstance(results, PowerFlowTimeSeriesResults):
-
-                    Sf_table = results.mdl(result_type=ResultTypes.HvdcPowerFrom)
-                    Sf_table.plot(ax=ax_1, selected_col_idx=[i])
-
+                    power_table = results.mdl(result_type=ResultTypes.HvdcPowerFrom)
+                    appended_power: bool = append_result_table_column(
+                        chart=power_chart,
+                        table=power_table,
+                        column_index=i,
+                        series_name=self.tr("Power flow"),
+                    )
+                    if appended_power:
+                        power_chart.setTitle(self.tr("Power"))
+                        has_power_plot = True
+                    else:
+                        pass
                     loading_table = results.mdl(result_type=ResultTypes.HvdcLoading)
                     loading_table.convert_to_cdf()
-                    loading_table.plot(ax=ax_2, selected_col_idx=[i])
-                    any_plot = True
-
+                    if loading_chart is None:
+                        if has_power_plot:
+                            loading_chart = plot_dialogue.add_tab(title=self.tr("Loading"))
+                        else:
+                            loading_chart = power_chart
+                            plot_dialogue.set_current_tab_title(self.tr("Loading"))
+                    else:
+                        pass
+                    appended_loading: bool = append_result_table_column(
+                        chart=loading_chart,
+                        table=loading_table,
+                        column_index=i,
+                        series_name=self.tr("Power loading"),
+                    )
+                    if appended_loading:
+                        loading_chart.setTitle(self.tr("Loading"))
+                        has_loading_plot = True
+                    else:
+                        pass
                 elif isinstance(results, OptimalPowerFlowTimeSeriesResults):
-
-                    Sf_table = results.mdl(result_type=ResultTypes.HvdcPowerFrom)
-                    Sf_table.plot(ax=ax_1, selected_col_idx=[i])
-
+                    power_table = results.mdl(result_type=ResultTypes.HvdcPowerFrom)
+                    appended_power = append_result_table_column(
+                        chart=power_chart,
+                        table=power_table,
+                        column_index=i,
+                        series_name=self.tr("Optimal power flow"),
+                    )
+                    if appended_power:
+                        power_chart.setTitle(self.tr("Power"))
+                        has_power_plot = True
+                    else:
+                        pass
                     loading_table = results.mdl(result_type=ResultTypes.HvdcLoading)
                     loading_table.convert_to_cdf()
-                    loading_table.plot(ax=ax_2, selected_col_idx=[i])
-                    any_plot = True
+                    if loading_chart is None:
+                        if has_power_plot:
+                            loading_chart = plot_dialogue.add_tab(title=self.tr("Loading"))
+                        else:
+                            loading_chart = power_chart
+                            plot_dialogue.set_current_tab_title(self.tr("Loading"))
+                    else:
+                        pass
+                    appended_loading = append_result_table_column(
+                        chart=loading_chart,
+                        table=loading_table,
+                        column_index=i,
+                        series_name=self.tr("Optimal loading"),
+                    )
+                    if appended_loading:
+                        loading_chart.setTitle(self.tr("Loading"))
+                        has_loading_plot = True
+                    else:
+                        pass
+                else:
+                    pass
 
-        if any_plot:
-            plt.legend()
-            show_matplotlib_window(figure=fig,
-                                   title=self.tr("{device_name} results plot").format(device_name=api_object.name))
+        if has_power_plot or has_loading_plot:
+            self.gui._open_plot_dialogs.append(plot_dialogue)
+            plot_dialogue.show()
         else:
+            plot_dialogue.reject()
             info_msg(self.tr("No time series results to plot, run some time series results. Even partial results are fine"),
-                     self.tr("{device_name} results plot").format(device_name=api_object.name))
+                     dialog_title)
 
     @staticmethod
     def set_rate_to_profile(api_object: ALL_DEV_TYPES):

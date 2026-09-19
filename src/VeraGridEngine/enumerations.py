@@ -4689,6 +4689,7 @@ class ResultTablePlotType(Enum):
     """
 
     SERIES = "SERIES"
+    POLAR = "POLAR"
     COMPLEX_POINTS = "COMPLEX_POINTS"
     COMPLEX_VECTORS = "COMPLEX_VECTORS"
 

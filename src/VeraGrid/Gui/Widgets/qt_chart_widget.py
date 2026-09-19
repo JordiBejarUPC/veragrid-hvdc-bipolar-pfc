@@ -20,6 +20,8 @@ class ChartSeriesType(Enum):
     HORIZONTAL_BAR = auto()
     CUMULATIVE_AREA = auto()
     POLAR = auto()
+    POLAR_SCATTER = auto()
+    HISTOGRAM = auto()
 
 
 class ChartContentType(Enum):
@@ -29,6 +31,7 @@ class ChartContentType(Enum):
     HORIZONTAL_BAR = auto()
     CUMULATIVE_AREA = auto()
     POLAR = auto()
+    HISTOGRAM = auto()
 
 
 class PolarAngleUnit(Enum):
@@ -352,7 +355,7 @@ def format_chart_value(value: float, is_datetime: bool) -> str:
 
 
 class GraphsWidget(QtWidgets.QWidget):
-    """Paint line, circle-scatter, and horizontal-bar charts with Qt Widgets."""
+    """Paint native line, scatter, area, bar, polar, and histogram charts."""
 
     __slots__ = (
         "axis_x",
@@ -571,7 +574,8 @@ class GraphsWidget(QtWidgets.QWidget):
             angle_values: Sequence[Sequence[float] | np.ndarray],
             radius_values: Sequence[Sequence[float] | np.ndarray],
             colors: Sequence[str | None] | None = None,
-            angle_unit: PolarAngleUnit = PolarAngleUnit.RADIANS) -> bool:
+            angle_unit: PolarAngleUnit = PolarAngleUnit.RADIANS,
+            connect_points: bool = True) -> bool:
         """Replace the chart with line series in polar coordinates.
 
         :param series_names: Visible name for each polar line.
@@ -579,6 +583,7 @@ class GraphsWidget(QtWidgets.QWidget):
         :param radius_values: Non-negative radial buffer for each series.
         :param colors: Optional Qt colour for each polar line.
         :param angle_unit: Unit used by every angle buffer.
+        :param connect_points: Whether consecutive samples are joined by line segments.
         :return: Whether every input series had compatible finite coordinates.
         """
         series_count: int = len(series_names)
@@ -612,9 +617,13 @@ class GraphsWidget(QtWidgets.QWidget):
                         else:
                             return False
                         maximum_radius = max(maximum_radius, float(np.max(retained_radii)))
+                        if connect_points:
+                            series_type: ChartSeriesType = ChartSeriesType.POLAR
+                        else:
+                            series_type = ChartSeriesType.POLAR_SCATTER
                         new_series.append(
                             ChartSeries(
-                                series_type=ChartSeriesType.POLAR,
+                                series_type=series_type,
                                 name=str(series_names[series_index]),
                                 x_data=retained_angles,
                                 y_data=retained_radii,
@@ -891,6 +900,53 @@ class GraphsWidget(QtWidgets.QWidget):
         else:
             pass
 
+    def set_histogram(self,
+                      values: Sequence[float] | np.ndarray,
+                      bin_count: int,
+                      name: str = '',
+                      color: str | None = None) -> bool:
+        """Replace the chart with a finite numeric histogram.
+
+        :param values: Sample values used to calculate bin frequencies.
+        :param bin_count: Positive number of equal-width bins.
+        :param name: Optional legend label for the histogram bars.
+        :param color: Optional Qt colour for the histogram bars.
+        :return: Whether the complete histogram was created.
+        """
+        value_data: np.ndarray = np.asarray(values, dtype=float)
+        if self._can_mutate() and bin_count > 0:
+            finite_values: np.ndarray = np.ascontiguousarray(value_data[np.isfinite(value_data)], dtype=float)
+            if len(finite_values) > 0:
+                counts: np.ndarray
+                edges: np.ndarray
+                counts, edges = np.histogram(finite_values, bins=bin_count)
+                self.clear()
+                self._content_type = ChartContentType.HISTOGRAM
+                self._series.append(
+                    ChartSeries(
+                        series_type=ChartSeriesType.HISTOGRAM,
+                        name=name,
+                        x_data=edges,
+                        y_data=counts.astype(float),
+                        color=self._make_series_color(color_name=color, series_index=0),
+                    )
+                )
+                self._has_points = True
+                self._x_min = float(edges[0])
+                self._x_max = float(edges[-1])
+                self._y_min = 0.0
+                self._y_max = max(float(np.max(counts)), 1.0)
+                self._x_is_datetime = False
+                self.axis_x.reset_viewport()
+                self.axis_y.reset_viewport()
+                self._set_axis_ranges()
+                self.update()
+                return True
+            else:
+                return False
+        else:
+            return False
+
     def redraw(self) -> None:
         """Request a QWidget paint pass when this chart is still active.
 
@@ -925,7 +981,8 @@ class GraphsWidget(QtWidgets.QWidget):
             delta_y: int = event.angleDelta().y()
             if delta_y > 0:
                 multiplier: float = 1.25
-                if self._content_type in (ChartContentType.XY, ChartContentType.CUMULATIVE_AREA):
+                if self._content_type in (ChartContentType.XY, ChartContentType.CUMULATIVE_AREA,
+                                          ChartContentType.HISTOGRAM):
                     self.axis_x.set_zoom(self.axis_x.get_zoom() * multiplier)
                     self.axis_y.set_zoom(self.axis_y.get_zoom() * multiplier)
                 elif self._content_type == ChartContentType.POLAR:
@@ -936,7 +993,8 @@ class GraphsWidget(QtWidgets.QWidget):
                 event.accept()
             elif delta_y < 0:
                 multiplier = 0.8
-                if self._content_type in (ChartContentType.XY, ChartContentType.CUMULATIVE_AREA):
+                if self._content_type in (ChartContentType.XY, ChartContentType.CUMULATIVE_AREA,
+                                          ChartContentType.HISTOGRAM):
                     self.axis_x.set_zoom(self.axis_x.get_zoom() * multiplier)
                     self.axis_y.set_zoom(self.axis_y.get_zoom() * multiplier)
                 elif self._content_type == ChartContentType.POLAR:
@@ -985,7 +1043,8 @@ class GraphsWidget(QtWidgets.QWidget):
                 )
             else:
                 pass
-            if self._content_type in (ChartContentType.XY, ChartContentType.CUMULATIVE_AREA) and plot_rect.height() > 0.0:
+            if self._content_type in (ChartContentType.XY, ChartContentType.CUMULATIVE_AREA,
+                                      ChartContentType.HISTOGRAM) and plot_rect.height() > 0.0:
                 y_minimum: float
                 y_maximum: float
                 # The visible span gives vertical panning the same zoom-consistent behaviour.
@@ -1084,6 +1143,12 @@ class GraphsWidget(QtWidgets.QWidget):
                 painter.save()
                 painter.setClipRect(plot_rect)
                 self._paint_polar_series(painter=painter, plot_rect=plot_rect)
+                painter.restore()
+            elif self._content_type == ChartContentType.HISTOGRAM:
+                self._paint_xy_axes(painter=painter, plot_rect=plot_rect)
+                painter.save()
+                painter.setClipRect(plot_rect)
+                self._paint_histogram(painter=painter, plot_rect=plot_rect)
                 painter.restore()
             else:
                 self._paint_xy_axes(painter=painter, plot_rect=plot_rect)
@@ -1443,6 +1508,49 @@ class GraphsWidget(QtWidgets.QWidget):
         else:
             pass
 
+    def _paint_histogram(self, painter: QtGui.QPainter, plot_rect: QtCore.QRectF) -> None:
+        """Paint the equal-width bin rectangles held by one histogram series.
+
+        :param painter: Active painter clipped to the numeric plot rectangle.
+        :param plot_rect: Rectangle used to map bin edges and frequencies.
+        :return: None.
+        """
+        if len(self._series) == 1 and self._series[0].get_series_type() == ChartSeriesType.HISTOGRAM:
+            series: ChartSeries = self._series[0]
+            edges: np.ndarray = series.get_x_data()
+            counts: np.ndarray = series.get_y_data()
+            if len(edges) == len(counts) + 1:
+                color: QtGui.QColor = series.get_color()
+                fill_color: QtGui.QColor = QtGui.QColor(color)
+                fill_color.setAlpha(165)
+                painter.setPen(QtGui.QPen(color.darker(120), 1.0))
+                painter.setBrush(QtGui.QBrush(fill_color))
+                baseline: QtCore.QPointF = self._map_xy_point(
+                    x_value=float(edges[0]),
+                    y_value=0.0,
+                    plot_rect=plot_rect,
+                )
+                bin_index: int
+                for bin_index in range(len(counts)):
+                    left_point: QtCore.QPointF = self._map_xy_point(
+                        x_value=float(edges[bin_index]),
+                        y_value=0.0,
+                        plot_rect=plot_rect,
+                    )
+                    right_point: QtCore.QPointF = self._map_xy_point(
+                        x_value=float(edges[bin_index + 1]),
+                        y_value=float(counts[bin_index]),
+                        plot_rect=plot_rect,
+                    )
+                    # The baseline follows pan and zoom, preserving natural rectangle geometry.
+                    rectangle: QtCore.QRectF = QtCore.QRectF(left_point, right_point).normalized()
+                    rectangle.setBottom(baseline.y())
+                    painter.drawRect(rectangle.normalized())
+            else:
+                pass
+        else:
+            pass
+
     def _paint_cumulative_areas(self, painter: QtGui.QPainter, plot_rect: QtCore.QRectF) -> None:
         """Paint each stacked area between its prior and cumulative values.
 
@@ -1594,28 +1702,35 @@ class GraphsWidget(QtWidgets.QWidget):
         polar_rect: QtCore.QRectF = self._get_polar_rect(plot_rect=plot_rect)
         series: ChartSeries
         for series in self._series:
-            if series.get_series_type() == ChartSeriesType.POLAR and polar_rect.width() > 2.0:
+            if (series.get_series_type() in (ChartSeriesType.POLAR, ChartSeriesType.POLAR_SCATTER)
+                    and polar_rect.width() > 2.0):
                 angles: np.ndarray = series.get_x_data()
                 radii: np.ndarray = series.get_y_data()
                 indices: np.ndarray = self._sample_indices(point_count=len(angles), plot_rect=polar_rect)
                 if len(indices) > 0:
-                    path: QtGui.QPainterPath = QtGui.QPainterPath()
-                    point_index: int
-                    for point_index in range(len(indices)):
-                        data_index: int = int(indices[point_index])
-                        point: QtCore.QPointF = self._map_polar_point(
-                            angle=float(angles[data_index]),
-                            radius=float(radii[data_index]),
-                            polar_rect=polar_rect,
-                        )
-                        if point_index == 0:
-                            path.moveTo(point)
-                        else:
-                            path.lineTo(point)
+                    if series.get_series_type() == ChartSeriesType.POLAR:
+                        path: QtGui.QPainterPath = QtGui.QPainterPath()
+                        point_index: int
+                        for point_index in range(len(indices)):
+                            data_index: int = int(indices[point_index])
+                            point: QtCore.QPointF = self._map_polar_point(
+                                angle=float(angles[data_index]),
+                                radius=float(radii[data_index]),
+                                polar_rect=polar_rect,
+                            )
+                            if point_index == 0:
+                                path.moveTo(point)
+                            else:
+                                path.lineTo(point)
+                    else:
+                        path = QtGui.QPainterPath()
                     color: QtGui.QColor = series.get_color()
-                    painter.setPen(QtGui.QPen(color, 1.8))
-                    painter.setBrush(QtCore.Qt.BrushStyle.NoBrush)
-                    painter.drawPath(path)
+                    if series.get_series_type() == ChartSeriesType.POLAR:
+                        painter.setPen(QtGui.QPen(color, 1.8))
+                        painter.setBrush(QtCore.Qt.BrushStyle.NoBrush)
+                        painter.drawPath(path)
+                    else:
+                        pass
                     painter.setPen(QtGui.QPen(color.darker(125), 1.0))
                     painter.setBrush(QtGui.QBrush(color))
                     for point_index in range(len(indices)):

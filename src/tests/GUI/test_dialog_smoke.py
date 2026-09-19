@@ -1004,7 +1004,10 @@ def build_dialog_for_smoke(target: DialogSmokeTarget, context: DialogSmokeContex
     elif target == DialogSmokeTarget.JMARTI_LINE_EMT:
         dialog = JMartiLineEmtDialog()
     elif target == DialogSmokeTarget.LOOKUP_ARRAY_LINEAR:
-        dialog = LookupArrayLinearDialog(block_label="Lookup")
+        dialog = LookupArrayLinearDialog(
+            block_label="Lookup",
+            preview_enabled=True,
+        )
     elif target == DialogSmokeTarget.LOOKUP_MATRIX_LINEAR:
         dialog = LookupMatrixLinearDialog(block_label="Lookup")
     elif target == DialogSmokeTarget.MEASUREMENTS:
@@ -1299,7 +1302,52 @@ def exercise_chart_window_operation_for_smoke(target: DialogSmokeTarget,
     :param app: Shared Qt application delivering renderer events.
     :return: None.
     """
-    if target == DialogSmokeTarget.TOWER_BUILDER and isinstance(dialog, TowerBuilderGUI):
+    if target == DialogSmokeTarget.SOLAR_PV_WIZARD and isinstance(dialog, SolarPvWizard):
+        dialog.plot()
+        assert len(dialog._open_plot_dialogs) == 1
+    elif target == DialogSmokeTarget.WIND_FARM_WIZARD and isinstance(dialog, WindFarmWizard):
+        dialog.plot()
+        assert len(dialog._open_plot_dialogs) == 1
+    elif target == DialogSmokeTarget.LOOKUP_ARRAY_LINEAR and isinstance(dialog, LookupArrayLinearDialog):
+        dialog.show_plot_preview()
+        assert dialog._preview_dialogue is not None
+    elif target == DialogSmokeTarget.RMS_PLOT and isinstance(dialog, RmsPlotDialog):
+        dialog.add_variable()
+        dialog.show_external_plot()
+        assert dialog._plot_dialogue is not None
+    elif target == DialogSmokeTarget.PROFILE_INPUT and isinstance(dialog, ProfileInputGUI):
+        profile_data: pd.DataFrame = pd.DataFrame(
+            data={"Smoke profile": (1.0, 2.0)},
+            index=pd.date_range("2026-01-01", periods=2, freq="h"),
+        )
+        dialog.assign_origin_df(df=profile_data)
+        profile_index: QtCore.QModelIndex = dialog.ui.sources_list.model().index(0, 0)
+        dialog.ui.sources_list.selectionModel().select(
+            profile_index,
+            QtCore.QItemSelectionModel.SelectionFlag.ClearAndSelect,
+        )
+        dialog.plot_selected()
+        assert len(dialog._open_plot_dialogs) == 1
+    elif target == DialogSmokeTarget.TEMPLATE_DEVICE_EDITOR and isinstance(dialog, TemplateDeviceEditor):
+        grouped_series: dict[str, list[tuple[str, np.ndarray]]] = dict()
+        grouped_series["MW"] = [("Smoke profile", np.asarray((1.0, 2.0), dtype=float))]
+        dialog._open_profiles_plot_dialog(grouped_series=grouped_series, title="Smoke profiles")
+        assert len(dialog._open_plot_dialogs) == 1
+    elif target == DialogSmokeTarget.SEQUENCE_EDITOR and isinstance(dialog, SequenceEditorDialog):
+        dialog.add_point()
+        dialog.add_point()
+        dialog.table.item(1, 0).setText("1.0")
+        dialog.table.item(1, 1).setText("2.0")
+        dialog.show_plot()
+        assert dialog._plot_dialogue is not None
+    elif target == DialogSmokeTarget.LOOKUP_MATRIX_EDITOR and isinstance(dialog, LookupMatrixEditorDialog):
+        dialog._add_x()
+        dialog._add_x()
+        dialog._add_y()
+        dialog._add_y()
+        dialog.show_plot()
+        assert dialog._plot_dialogue is not None
+    elif target == DialogSmokeTarget.TOWER_BUILDER and isinstance(dialog, TowerBuilderGUI):
         wire: vge.Wire = vge.Wire(name="Smoke wire", diameter=23.0, diameter_internal=9.0,
                                   is_tube=True, r=0.19, max_current=1.0)
         dialog.tower_driver.tower.add_wire_relationship(wire=wire, xpos=-2.0, ypos=20.0, phase=1)
@@ -1401,6 +1449,8 @@ def run_dialog_smoke_suite_in_child(message_queue: Any) -> None:
 
     chart_targets: Set[DialogSmokeTarget] = set()
     chart_targets.add(DialogSmokeTarget.GRID_ANALYSIS)
+    chart_targets.add(DialogSmokeTarget.SOLAR_PV_WIZARD)
+    chart_targets.add(DialogSmokeTarget.WIND_FARM_WIZARD)
     chart_targets.add(DialogSmokeTarget.GENERATOR_EDITOR)
     chart_targets.add(DialogSmokeTarget.GENERATOR_Q_CURVE_EDITOR)
     chart_targets.add(DialogSmokeTarget.LOAD_DESIGNER)
@@ -1410,6 +1460,12 @@ def run_dialog_smoke_suite_in_child(message_queue: Any) -> None:
     chart_targets.add(DialogSmokeTarget.GRID_GENERATOR)
     chart_targets.add(DialogSmokeTarget.PROCEDURAL_GRID)
     chart_targets.add(DialogSmokeTarget.SIGMA_ANALYSIS)
+    chart_targets.add(DialogSmokeTarget.LOOKUP_ARRAY_LINEAR)
+    chart_targets.add(DialogSmokeTarget.RMS_PLOT)
+    chart_targets.add(DialogSmokeTarget.PROFILE_INPUT)
+    chart_targets.add(DialogSmokeTarget.TEMPLATE_DEVICE_EDITOR)
+    chart_targets.add(DialogSmokeTarget.SEQUENCE_EDITOR)
+    chart_targets.add(DialogSmokeTarget.LOOKUP_MATRIX_EDITOR)
 
     target: DialogSmokeTarget
     for target in DialogSmokeTarget:
@@ -1423,8 +1479,8 @@ def run_dialog_smoke_suite_in_child(message_queue: Any) -> None:
             app.processEvents()
             assert shiboken6.isValid(dialog)
             if target in chart_targets:
-                assert len(dialog.findChildren(GraphsWidget)) > 0
                 exercise_chart_window_operation_for_smoke(target=target, dialog=dialog, app=app)
+                assert len(dialog.findChildren(GraphsWidget)) > 0
                 exercise_chart_widgets_for_smoke(dialog=dialog, app=app)
             else:
                 pass
@@ -1522,7 +1578,6 @@ def get_deferred_dialog_class_names() -> Set[str]:
     names: Set[str] = set()
     names.add("BaseMainGui")
     names.add("CenteredDialog")
-    names.add("MatplotlibFigureDialog")
     names.add("CandidateInvestmentsWindow")
     return names
 

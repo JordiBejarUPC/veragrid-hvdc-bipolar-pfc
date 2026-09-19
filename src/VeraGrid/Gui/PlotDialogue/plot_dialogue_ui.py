@@ -17,7 +17,8 @@ from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
     QPainter, QPalette, QPixmap, QRadialGradient,
     QTransform)
 from PySide6.QtWidgets import (QAbstractButton, QApplication, QDialog, QDialogButtonBox,
-    QSizePolicy, QToolBar, QVBoxLayout, QWidget)
+    QSizePolicy, QTabWidget, QToolBar, QVBoxLayout,
+    QWidget)
 
 from VeraGrid.Gui.Widgets.qt_chart_widget import GraphsWidget
 
@@ -40,10 +41,23 @@ class Ui_PlotDialogue(object):
 
         self.verticalLayout.addWidget(self.plotToolBar)
 
-        self.plotwidget = GraphsWidget(PlotDialogue)
+        self.plotTabs = QTabWidget(PlotDialogue)
+        self.plotTabs.setObjectName(u"plotTabs")
+        self.plotTabs.setTabPosition(QTabWidget.TabPosition.North)
+        self.plotTabs.setTabsClosable(False)
+        self.plotTab = QWidget()
+        self.plotTab.setObjectName(u"plotTab")
+        self.plotTabLayout = QVBoxLayout(self.plotTab)
+        self.plotTabLayout.setObjectName(u"plotTabLayout")
+        self.plotTabLayout.setContentsMargins(0, 0, 0, 0)
+        self.plotwidget = GraphsWidget(self.plotTab)
         self.plotwidget.setObjectName(u"plotwidget")
 
-        self.verticalLayout.addWidget(self.plotwidget)
+        self.plotTabLayout.addWidget(self.plotwidget)
+
+        self.plotTabs.addTab(self.plotTab, "")
+
+        self.verticalLayout.addWidget(self.plotTabs)
 
         self.buttonBox = QDialogButtonBox(PlotDialogue)
         self.buttonBox.setObjectName(u"buttonBox")
@@ -71,4 +85,5 @@ class Ui_PlotDialogue(object):
 #if QT_CONFIG(tooltip)
         self.actionResetView.setToolTip(QCoreApplication.translate("PlotDialogue", u"Reset zoom and pan to show all data", None))
 #endif // QT_CONFIG(tooltip)
+        self.plotTabs.setTabText(self.plotTabs.indexOf(self.plotTab), QCoreApplication.translate("PlotDialogue", u"Plot", None))
     # retranslateUi

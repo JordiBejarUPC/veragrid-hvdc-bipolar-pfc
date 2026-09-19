@@ -34,7 +34,7 @@ def test_plot_dialogue_time_area_polar_export_and_lifecycle(
     """
     app: QtWidgets.QApplication = qt_app
     cycle_index: int
-    for cycle_index in range(8):
+    for cycle_index in range(24):
         dialog: PlotDialogue = PlotDialogue(title=f'Chart cycle {cycle_index}')
         dialog.resize(900, 620)
         dialog.show()
@@ -85,6 +85,18 @@ def test_plot_dialogue_time_area_polar_export_and_lifecycle(
         dialog.repaint()
         app.processEvents()
 
+        assert dialog.set_polar_series(
+            series_names=('Voltage phasors',),
+            angle_values=(np.array((0.0, 120.0, 240.0)),),
+            radius_values=(np.array((1.0, 0.98, 1.02)),),
+            title='Voltage phasors',
+            radius_title='p.u.',
+            angle_unit=PolarAngleUnit.DEGREES,
+            connect_points=False,
+        )
+        dialog.repaint()
+        app.processEvents()
+
         png_path: Path = tmp_path / f'plot-{cycle_index}.png'
         svg_path: Path = tmp_path / f'plot-{cycle_index}.svg'
         assert dialog.save_image_to_file(file_name=str(png_path))
@@ -94,3 +106,72 @@ def test_plot_dialogue_time_area_polar_export_and_lifecycle(
         assert '<svg' in svg_path.read_text(encoding='utf-8')
 
         close_plot_dialogue(dialog=dialog, app=app)
+
+
+def test_plot_dialogue_histogram_tabs_release_every_chart(
+        qt_app: QtWidgets.QApplication,
+        tmp_path: Path) -> None:
+    """Exercise repeated histogram tabs, tab switching, export, and shutdown.
+
+    :param qt_app: Shared Qt application fixture.
+    :param tmp_path: Temporary output folder provided by pytest.
+    :return: None.
+    """
+    app: QtWidgets.QApplication = qt_app
+    cycle_index: int
+    for cycle_index in range(24):
+        dialog: PlotDialogue = PlotDialogue(title=f'Histogram cycle {cycle_index}')
+        dialog.resize(900, 620)
+        dialog.show()
+        app.processEvents()
+
+        first_values: np.ndarray = np.array((0.0, 0.1, 0.5, 0.7, 1.3, np.nan, np.inf), dtype=float)
+        assert dialog.set_histogram(
+            values=first_values,
+            bin_count=4,
+            title='Resistance distribution',
+            x_axis_title='R',
+            y_axis_title='Count',
+        )
+        dialog.set_current_tab_title('Resistance')
+        first_chart = dialog.chart
+        assert first_chart._content_type == ChartContentType.HISTOGRAM
+        assert len(first_chart._series) == 1
+        assert not first_chart.set_histogram(values=first_values, bin_count=0)
+        assert len(first_chart._series) == 1
+
+        second_values: np.ndarray = np.array((-3.0, -1.0, -1.0, 0.0, 2.0, 4.0), dtype=float)
+        assert dialog.add_histogram_tab(
+            tab_title='Reactance',
+            values=second_values,
+            bin_count=4,
+            title='Reactance distribution',
+            x_axis_title='X',
+            y_axis_title='Count',
+        )
+        second_chart = dialog.get_current_chart()
+        assert dialog.ui.plotTabs.count() == 2
+        assert second_chart is not first_chart
+        assert second_chart._content_type == ChartContentType.HISTOGRAM
+        second_chart.axis_x.set_zoom(3.0)
+        second_chart.axis_y.set_zoom(3.0)
+        dialog.ui.actionResetView.trigger()
+        assert second_chart.axis_x.get_zoom() == 1.0
+        assert second_chart.axis_y.get_zoom() == 1.0
+        dialog.repaint()
+        app.processEvents()
+
+        histogram_path: Path = tmp_path / f'histogram-{cycle_index}.png'
+        assert dialog.save_image_to_file(file_name=str(histogram_path))
+        assert histogram_path.stat().st_size > 0
+        dialog.ui.plotTabs.setCurrentIndex(0)
+        assert dialog.get_current_chart() is first_chart
+        dialog.ui.plotTabs.setCurrentIndex(1)
+        assert dialog.get_current_chart() is second_chart
+
+        dialog.reject()
+        assert first_chart._disposed
+        assert second_chart._disposed
+        dialog.deleteLater()
+        QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
+        app.processEvents()

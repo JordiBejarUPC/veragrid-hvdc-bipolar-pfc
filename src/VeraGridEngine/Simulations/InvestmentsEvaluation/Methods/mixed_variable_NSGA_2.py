@@ -6,7 +6,6 @@ from typing import Callable, List, Dict, Union
 from pymoo.core.mixed import MixedVariableGA
 from pymoo.algorithms.moo.nsga2 import RankAndCrowding
 # from pymoo.decomposition.asf import ASF
-# import matplotlib.pyplot as plt  # this is going to be in results, here for now to show we need to include plots
 from pymoo.core.mixed import MixedVariableSampling
 from pymoo.optimize import minimize
 from pymoo.core.problem import ElementwiseProblem

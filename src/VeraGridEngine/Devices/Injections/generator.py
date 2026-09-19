@@ -7,7 +7,6 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 from typing import Union, Tuple, List
-from matplotlib import pyplot as plt
 
 from VeraGridEngine.basic_structures import Logger, CxVec
 from VeraGridEngine.Devices.Substation.bus import Bus
@@ -1243,38 +1242,6 @@ class Generator(InjectionParent):
         """
         return get_at(self.must_run, self.must_run_prof, t)
 
-    def plot_profiles(self, time=None, show_fig=True):
-        """
-        Plot the time series results of this object
-        :param time: array of time values
-        :param show_fig: Show the figure?
-        """
-
-        if time is not None:
-            fig = plt.figure(figsize=(12, 8))
-
-            ax_1 = fig.add_subplot(211)
-            ax_2 = fig.add_subplot(212, sharex=ax_1)
-
-            # P
-            y = self.P_prof.toarray()
-            df = pd.DataFrame(data=y, index=time, columns=[self.name])
-            ax_1.set_title('Active power', fontsize=14)
-            ax_1.set_ylabel('MW', fontsize=11)
-            df.plot(ax=ax_1)
-
-            # V
-            y = self.Vset_prof.toarray()
-            df = pd.DataFrame(data=y, index=time, columns=[self.name])
-            ax_2.set_title('Voltage Set point', fontsize=14)
-            ax_2.set_ylabel('p.u.', fontsize=11)
-            df.plot(ax=ax_2)
-
-            plt.legend()
-            fig.suptitle(self.name, fontsize=20)
-
-            if show_fig:
-                plt.show(block=False)
 
     def fix_inconsistencies(self, logger: Logger, min_vset=0.98, max_vset=1.02):
         """

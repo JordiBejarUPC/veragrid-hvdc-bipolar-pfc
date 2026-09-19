@@ -6,7 +6,6 @@ from __future__ import annotations
 from typing import Dict, List, Tuple
 
 import numpy as np
-from matplotlib import pyplot as plt
 
 from VeraGridEngine.basic_structures import CxMat, Logger
 from VeraGridEngine.Devices.admittance_matrix import AdmittanceMatrix
@@ -878,37 +877,6 @@ class UndergroundLineType(DynamicDevice):
         admittance.phC = True
         return admittance
 
-    def plot(self, ax: plt.Axes | None = None) -> plt.Axes:
-        """Plot physical cable centres using positive depth downwards.
-
-        :param ax: Optional Matplotlib axes.
-        :return: Axes containing the cable-system plot.
-        """
-        plot_axes: plt.Axes
-        if ax is None:
-            figure: plt.Figure = plt.Figure(figsize=(12, 6))
-            plot_axes = figure.add_subplot(1, 1, 1)
-        else:
-            plot_axes = ax
-
-        cable_count: int = len(self.cables_in_system.data)
-        if cable_count > 0:
-            x_positions: np.ndarray = np.empty(cable_count, dtype=float)
-            depths: np.ndarray = np.empty(cable_count, dtype=float)
-            index: int
-            for index in range(cable_count):
-                x_positions[index] = self.cables_in_system.data[index].xpos
-                depths[index] = self.cables_in_system.data[index].ypos
-            plot_axes.scatter(x_positions, depths)
-            plot_axes.set_xlim(float(np.min(x_positions) - 0.25), float(np.max(x_positions) + 0.25))
-            plot_axes.set_ylim(float(np.max(depths) + 0.25), 0.0)
-        else:
-            pass
-        plot_axes.set_title('Underground cable position', fontsize=14)
-        plot_axes.set_xlabel('m', fontsize=8)
-        plot_axes.set_ylabel('depth [m]', fontsize=8)
-        plot_axes.grid(which='major', axis='both', linestyle='--')
-        return plot_axes
 
     @property
     def C(self) -> float:

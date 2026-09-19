@@ -19,9 +19,9 @@ from VeraGrid.Gui.Widgets.qt_chart_widget import GraphsWidget, PolarAngleUnit
 
 
 class PlotDialogue(QtWidgets.QDialog):
-    """Own one QWidget chart and expose line, area, and polar plot modes."""
+    """Own one or more native QWidget charts in explicitly owned Qt tabs."""
 
-    __slots__ = ('ui', 'chart')
+    __slots__ = ('ui', 'chart', '_tab_charts')
 
     def __init__(self, title: str = 'Plot', parent: QtWidgets.QWidget | None = None) -> None:
         """Create the retained chart dialog and its Qt-owned child hierarchy.
@@ -34,6 +34,7 @@ class PlotDialogue(QtWidgets.QDialog):
         self.ui: Ui_PlotDialogue = Ui_PlotDialogue()
         self.ui.setupUi(self)
         self.chart: GraphsWidget = self.ui.plotwidget
+        self._tab_charts: list[GraphsWidget] = [self.chart]
         self.setWindowTitle(title)
         self.chart.setTitle(title)
 
@@ -44,13 +45,55 @@ class PlotDialogue(QtWidgets.QDialog):
         self.ui.buttonBox.rejected.connect(self.reject)
 
     def done(self, result: int) -> None:
-        """Release chart buffers before Qt tears down its parent-child widgets.
+        """Release every tab buffer before Qt tears down the parent-child widgets.
 
         :param result: Qt dialog result code.
         :return: None.
         """
-        self.chart.dispose()
+        chart: GraphsWidget
+        for chart in self._tab_charts:
+            chart.dispose()
+        self._tab_charts.clear()
         QtWidgets.QDialog.done(self, result)
+
+    def get_current_chart(self) -> GraphsWidget:
+        """Return the chart owned by the currently selected tab.
+
+        :return: Current tab chart, or the initial chart when no tab is selected.
+        """
+        current_index: int = self.ui.plotTabs.currentIndex()
+        if 0 <= current_index < len(self._tab_charts):
+            return self._tab_charts[current_index]
+        else:
+            return self.chart
+
+    def add_tab(self, title: str) -> GraphsWidget:
+        """Create one additional Qt-owned chart tab and make it current.
+
+        :param title: Text displayed in the new tab.
+        :return: Newly owned chart widget for the tab.
+        """
+        tab_page: QtWidgets.QWidget = QtWidgets.QWidget(parent=self.ui.plotTabs)
+        tab_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(tab_page)
+        tab_layout.setContentsMargins(0, 0, 0, 0)
+        tab_chart: GraphsWidget = GraphsWidget(parent=tab_page)
+        tab_layout.addWidget(tab_chart)
+        self._tab_charts.append(tab_chart)
+        tab_index: int = self.ui.plotTabs.addTab(tab_page, title)
+        self.ui.plotTabs.setCurrentIndex(tab_index)
+        return tab_chart
+
+    def set_current_tab_title(self, title: str) -> None:
+        """Set the visible name of the selected plot tab.
+
+        :param title: New text for the selected tab.
+        :return: None.
+        """
+        tab_index: int = self.ui.plotTabs.currentIndex()
+        if tab_index >= 0:
+            self.ui.plotTabs.setTabText(tab_index, title)
+        else:
+            pass
 
     def set_line_series(self,
                         x_values: Sequence[float] | np.ndarray,
@@ -92,16 +135,17 @@ class PlotDialogue(QtWidgets.QDialog):
                     valid = False
 
             if valid:
-                self.chart.clear()
+                chart: GraphsWidget = self.get_current_chart()
+                chart.clear()
                 for series_index in range(series_count):
-                    self.chart.add_line_series(
+                    chart.add_line_series(
                         name=str(series_names[series_index]),
                         x_values=x_values,
                         y_values=series_values[series_index],
                         color=color_values[series_index],
                     )
-                self.chart.setTitle(title)
-                self.chart.set_axis_titles(x_axis_title, y_axis_title)
+                chart.setTitle(title)
+                chart.set_axis_titles(x_axis_title, y_axis_title)
                 return True
             else:
                 return False
@@ -154,15 +198,16 @@ class PlotDialogue(QtWidgets.QDialog):
         :param y_axis_title: Vertical axis caption.
         :return: Whether the native chart accepted every finite buffer.
         """
-        accepted: bool = self.chart.set_cumulative_area_series(
+        chart: GraphsWidget = self.get_current_chart()
+        accepted: bool = chart.set_cumulative_area_series(
             x_values=x_values,
             series_names=series_names,
             series_values=series_values,
             colors=colors,
         )
         if accepted:
-            self.chart.setTitle(title)
-            self.chart.set_axis_titles(x_axis_title, y_axis_title)
+            chart.setTitle(title)
+            chart.set_axis_titles(x_axis_title, y_axis_title)
         else:
             pass
         return accepted
@@ -174,7 +219,8 @@ class PlotDialogue(QtWidgets.QDialog):
                          colors: Sequence[str | None] | None = None,
                          title: str = '',
                          radius_title: str = '',
-                         angle_unit: PolarAngleUnit = PolarAngleUnit.RADIANS) -> bool:
+                         angle_unit: PolarAngleUnit = PolarAngleUnit.RADIANS,
+                         connect_points: bool = True) -> bool:
         """Replace the chart with native polar lines and circular sample points.
 
         :param series_names: Visible legend name for each polar line.
@@ -184,21 +230,82 @@ class PlotDialogue(QtWidgets.QDialog):
         :param title: Visible plot title.
         :param radius_title: Radial axis caption.
         :param angle_unit: Unit used by every angle buffer.
+        :param connect_points: Whether consecutive polar samples are joined.
         :return: Whether the native chart accepted every finite buffer.
         """
-        accepted: bool = self.chart.set_polar_series(
+        chart: GraphsWidget = self.get_current_chart()
+        accepted: bool = chart.set_polar_series(
             series_names=series_names,
             angle_values=angle_values,
             radius_values=radius_values,
             colors=colors,
             angle_unit=angle_unit,
+            connect_points=connect_points,
         )
         if accepted:
-            self.chart.setTitle(title)
-            self.chart.set_axis_titles('', radius_title)
+            chart.setTitle(title)
+            chart.set_axis_titles('', radius_title)
         else:
             pass
         return accepted
+
+    def set_histogram(self,
+                      values: Sequence[float] | np.ndarray,
+                      bin_count: int,
+                      title: str = '',
+                      x_axis_title: str = '',
+                      y_axis_title: str = '') -> bool:
+        """Replace the selected tab with one native numeric histogram.
+
+        :param values: Numeric samples from which bin frequencies are calculated.
+        :param bin_count: Positive number of equal-width bins.
+        :param title: Visible chart title.
+        :param x_axis_title: Horizontal numeric axis caption.
+        :param y_axis_title: Vertical frequency axis caption.
+        :return: Whether the chart accepted the complete finite sample set.
+        """
+        chart: GraphsWidget = self.get_current_chart()
+        accepted: bool = chart.set_histogram(
+            values=values,
+            bin_count=bin_count,
+            name='',
+        )
+        if accepted:
+            chart.setTitle(title)
+            chart.set_axis_titles(x_axis_title, y_axis_title)
+        else:
+            pass
+        return accepted
+
+    def add_histogram_tab(self,
+                          tab_title: str,
+                          values: Sequence[float] | np.ndarray,
+                          bin_count: int,
+                          title: str = '',
+                          x_axis_title: str = '',
+                          y_axis_title: str = '') -> bool:
+        """Create a tab that owns one native numeric histogram.
+
+        :param tab_title: Text displayed for the new tab.
+        :param values: Numeric samples from which bin frequencies are calculated.
+        :param bin_count: Positive number of equal-width bins.
+        :param title: Visible chart title.
+        :param x_axis_title: Horizontal numeric axis caption.
+        :param y_axis_title: Vertical frequency axis caption.
+        :return: Whether the new tab chart accepted the complete finite sample set.
+        """
+        tab_chart: GraphsWidget = self.add_tab(title=tab_title)
+        accepted: bool = tab_chart.set_histogram(
+            values=values,
+            bin_count=bin_count,
+            name='',
+        )
+        if accepted:
+            tab_chart.setTitle(title)
+            tab_chart.set_axis_titles(x_axis_title, y_axis_title)
+            return True
+        else:
+            return False
 
     def center_data(self, checked: bool = False) -> None:
         """Reset the chart zoom and pan from the toolbar action.
@@ -207,7 +314,7 @@ class PlotDialogue(QtWidgets.QDialog):
         :return: None.
         """
         _ = checked
-        self.chart.reset_viewport()
+        self.get_current_chart().reset_viewport()
 
     def save_image(self, checked: bool = False) -> None:
         """Ask for a PNG or SVG path and export the current native chart.
@@ -243,4 +350,4 @@ class PlotDialogue(QtWidgets.QDialog):
         :param file_name: Target PNG or SVG filename.
         :return: Whether a non-empty image file was created.
         """
-        return save_chart_image(chart=self.chart, file_name=file_name)
+        return save_chart_image(chart=self.get_current_chart(), file_name=file_name)

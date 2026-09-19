@@ -7,9 +7,6 @@ from __future__ import annotations
 import numpy as np
 from typing import Union, List, Set, Tuple, Dict
 from PySide6 import QtGui, QtCore, QtWidgets
-from matplotlib import pyplot as plt
-from matplotlib.colors import LinearSegmentedColormap
-from matplotlib.figure import Figure
 
 from VeraGrid.Gui.associations_model import AssociationsModel
 from VeraGrid.Gui.table_view_header_wrap import HeaderViewWithWordWrap, VerticalHeaderWidthResizer
@@ -34,7 +31,8 @@ from VeraGrid.Gui.Main.SubClasses.Model.diagrams import DiagramsMain
 from VeraGrid.Gui.DeviceEditors.TowerBuilder.LineBuilderDialogue import TowerBuilderGUI
 from VeraGrid.Gui.DeviceEditors.UndergroundCableBuilder.underground_cable_builder import UndergroundCableBuilderGUI
 from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, exec_dialog_safely, is_dialog_available
-from VeraGrid.Gui.plot_windows import show_matplotlib_window
+from VeraGrid.Gui.Visualization.visualization import NativeColorMap
+from VeraGrid.Gui.PlotDialogue.plot_dialogue import PlotDialogue
 from VeraGrid.Gui.FmuTemplateEditor.fmu_template_editor import FmuTemplateEditorDialog
 from VeraGrid.Gui.SystemScaler.system_scaler import SystemScaler
 from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import GridMapWidget, generate_map_diagram
@@ -2113,7 +2111,7 @@ class DataBaseTableMain(DiagramsMain):
                         seq = [(0.0, 'gray'),
                                (0.5, 'orange'),
                                (1, 'red')]
-                        cmap = LinearSegmentedColormap.from_list('lcolors', seq)
+                        cmap: NativeColorMap = NativeColorMap(stops=seq)
                         mx = max(values)
 
                         if mx != 0:
@@ -2176,21 +2174,71 @@ class DataBaseTableMain(DiagramsMain):
         else:
             info_msg(self.tr("Select a cell or a column first"), self.tr("Assign to profile"))
 
-    def objects_histogram_analysis_plot(self):
-        """
-        Histogram analysis
-        :return:
+    def objects_histogram_analysis_plot(self) -> None:
+        """Open native histogram tabs for the selected device properties.
+
+        :return: None.
         """
         elm_type: DeviceType | None = self.get_db_object_selected_type()
 
         if elm_type is not None:
             if len(self.circuit.get_elements_by_type(device_type=elm_type)):
-                fig: Figure = plt.figure(figsize=(12, 6))
-                object_histogram_analysis(circuit=self.circuit,
-                                          object_type=elm_type.value,
-                                          t_idx=self.get_db_slider_index(),
-                                          fig=fig)
-                show_matplotlib_window(figure=fig, title=self.tr("Object histogram"))
+                histogram_data: tuple[list[str], list[np.ndarray]] | None = object_histogram_analysis(
+                    circuit=self.circuit,
+                    object_type=elm_type.value,
+                    t_idx=self.get_db_slider_index(),
+                )
+                if histogram_data is not None:
+                    property_names: list[str] = histogram_data[0]
+                    property_values: list[np.ndarray] = histogram_data[1]
+                    dialog_title: str = self.tr("{device_type} distributions").format(device_type=elm_type.value)
+                    plot_dialogue: PlotDialogue = PlotDialogue(title=dialog_title, parent=self)
+                    has_histogram: bool = False
+                    property_index: int
+                    for property_index in range(len(property_names)):
+                        values: np.ndarray = property_values[property_index]
+                        finite_values: np.ndarray = values[np.isfinite(values)]
+                        if len(finite_values) > 0:
+                            bin_count: int = min(max(int(np.sqrt(len(finite_values))), 4), 32)
+                            chart_title: str = self.tr("{device_type} {property_name} distribution").format(
+                                device_type=elm_type.value,
+                                property_name=property_names[property_index],
+                            )
+                            accepted: bool
+                            if has_histogram:
+                                accepted = plot_dialogue.add_histogram_tab(
+                                    tab_title=property_names[property_index],
+                                    values=finite_values,
+                                    bin_count=bin_count,
+                                    title=chart_title,
+                                    x_axis_title=property_names[property_index],
+                                    y_axis_title=self.tr("Count"),
+                                )
+                            else:
+                                accepted = plot_dialogue.set_histogram(
+                                    values=finite_values,
+                                    bin_count=bin_count,
+                                    title=chart_title,
+                                    x_axis_title=property_names[property_index],
+                                    y_axis_title=self.tr("Count"),
+                                )
+                                if accepted:
+                                    plot_dialogue.set_current_tab_title(property_names[property_index])
+                                else:
+                                    pass
+                            if accepted:
+                                has_histogram = True
+                            else:
+                                pass
+                        else:
+                            pass
+                    if has_histogram:
+                        self._open_plot_dialogs.append(plot_dialogue)
+                        plot_dialogue.show()
+                    else:
+                        plot_dialogue.reject()
+                else:
+                    self.show_warning_toast(self.tr("This device type has no numeric histogram data."))
             else:
                 pass
         else:

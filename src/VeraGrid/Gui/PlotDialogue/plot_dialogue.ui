@@ -36,10 +36,39 @@
      </property>
      <addaction name="actionSaveImage"/>
      <addaction name="actionResetView"/>
-    </widget>
+   </widget>
    </item>
    <item>
-    <widget class="GraphsWidget" name="plotwidget" native="true"/>
+    <widget class="QTabWidget" name="plotTabs">
+     <property name="tabPosition">
+      <enum>QTabWidget::TabPosition::North</enum>
+     </property>
+     <property name="tabsClosable">
+      <bool>false</bool>
+     </property>
+     <widget class="QWidget" name="plotTab">
+      <attribute name="title">
+       <string>Plot</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="plotTabLayout">
+       <property name="leftMargin">
+        <number>0</number>
+       </property>
+       <property name="topMargin">
+        <number>0</number>
+       </property>
+       <property name="rightMargin">
+        <number>0</number>
+       </property>
+       <property name="bottomMargin">
+        <number>0</number>
+       </property>
+       <item>
+        <widget class="GraphsWidget" name="plotwidget" native="true"/>
+       </item>
+      </layout>
+     </widget>
+    </widget>
    </item>
    <item>
     <widget class="QDialogButtonBox" name="buttonBox">

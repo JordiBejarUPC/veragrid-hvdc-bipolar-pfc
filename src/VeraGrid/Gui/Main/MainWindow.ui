@@ -1017,20 +1017,6 @@
                                </widget>
                               </item>
                               <item>
-                               <widget class="QLabel" name="label_40">
-                                <property name="text">
-                                 <string>Plotting style</string>
-                                </property>
-                               </widget>
-                              </item>
-                              <item>
-                               <widget class="QComboBox" name="plt_style_comboBox">
-                                <property name="toolTip">
-                                 <string>MatPlotlib plot styles to choose from</string>
-                                </property>
-                               </widget>
-                              </item>
-                              <item>
                                <spacer name="verticalSpacer_14">
                                 <property name="orientation">
                                  <enum>Qt::Orientation::Vertical</enum>
