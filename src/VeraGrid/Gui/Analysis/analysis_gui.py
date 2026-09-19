@@ -24,7 +24,7 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDoubleSpinBo
     QTabWidget, QTextBrowser, QTreeView, QVBoxLayout,
     QWidget)
 
-from VeraGrid.Gui.Widgets.qtgraphs_widget import GraphsWidget
+from VeraGrid.Gui.Widgets.qt_chart_widget import GraphsWidget
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):

@@ -88,7 +88,7 @@ from VeraGrid.Gui.SubstationDesigner.substation_designer import SubstationDesign
 from VeraGrid.Gui.SubstationDesigner.voltage_level_conversion import VoltageLevelConversionWizard
 from VeraGrid.Gui.SyncDialogue.sync_dialogue import SyncDialogueWindow
 from VeraGrid.Gui.SystemScaler.system_scaler import SystemScaler
-from VeraGrid.Gui.Widgets.qtgraphs_widget import GraphsWidget
+from VeraGrid.Gui.Widgets.qt_chart_widget import GraphsWidget
 from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely
 from VeraGrid.Gui.dialog_lifecycle import is_dialog_available
 from VeraGrid.Gui.general_dialogues import ArrayEditor
@@ -1240,8 +1240,8 @@ def collect_qt_deletes(app: QtWidgets.QApplication) -> None:
     app.processEvents()
 
 
-def exercise_qtgraphs_widgets_for_smoke(dialog: QtWidgets.QWidget, app: QtWidgets.QApplication) -> None:
-    """Exercise every embedded Qt Graphs host through its native QWidget lifecycle.
+def exercise_chart_widgets_for_smoke(dialog: QtWidgets.QWidget, app: QtWidgets.QApplication) -> None:
+    """Exercise every embedded QWidget chart through its paint lifecycle.
 
     :param dialog: Displayed window that owns the chart widgets.
     :param app: Shared Qt application delivering renderer events.
@@ -1250,7 +1250,7 @@ def exercise_qtgraphs_widgets_for_smoke(dialog: QtWidgets.QWidget, app: QtWidget
     plot_widgets: list[GraphsWidget] = dialog.findChildren(GraphsWidget)
     plot_widget: GraphsWidget
     for plot_widget in plot_widgets:
-        # Start from a known renderer state before repeatedly replacing its live point buffers.
+        # Start from a known state before repeatedly replacing private point buffers.
         plot_widget.clear()
         x_values: np.ndarray = np.asarray((0.0, 1.0, 2.0), dtype=float)
         plot_widget.add_line_series(name="Smoke line", x_values=x_values, y_values=x_values, color="#2563eb")
@@ -1272,7 +1272,7 @@ def exercise_qtgraphs_widgets_for_smoke(dialog: QtWidgets.QWidget, app: QtWidget
             plot_widget.redraw()
             app.processEvents()
 
-        # A final clear exercises removal while the Quick renderer is alive; dialog close then disposes it.
+        # A final clear releases buffers before dialog close disposes the chart widget.
         plot_widget.clear()
         app.processEvents()
 
@@ -1372,7 +1372,7 @@ def run_dialog_smoke_suite_in_child(message_queue: Any) -> None:
             if target in chart_targets:
                 assert len(dialog.findChildren(GraphsWidget)) > 0
                 exercise_chart_window_operation_for_smoke(target=target, dialog=dialog, app=app)
-                exercise_qtgraphs_widgets_for_smoke(dialog=dialog, app=app)
+                exercise_chart_widgets_for_smoke(dialog=dialog, app=app)
             else:
                 pass
         except Exception:

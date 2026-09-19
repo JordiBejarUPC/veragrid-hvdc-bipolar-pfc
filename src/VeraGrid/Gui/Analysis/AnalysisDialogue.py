@@ -20,7 +20,7 @@ from VeraGrid.Gui.Analysis.object_plot_analysis import (FIXABLE_ERROR_TYPES, Fix
                                                         FixableErrorValueCorrection, FixableTransformerVtaps,
                                                         GridErrorLog, grid_analysis)
 from VeraGrid.Gui.Icons import icons_rc
-from VeraGrid.Gui.Widgets.qtgraphs_widget import GraphsWidget
+from VeraGrid.Gui.Widgets.qt_chart_widget import GraphsWidget
 from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
 from VeraGrid.Gui.general_dialogues import Logger, LogsDialogue
 from VeraGrid.Gui.results_model import ResultsModel
@@ -1909,6 +1909,13 @@ QWidget#overviewPage QProgressBar::chunk {{
                 boundary_color = "#102235"
 
             plot_color: str = "#00a884" if self.sigma_results.converged else "#ef6c45"
+            if len(self.sigma_results.bus_names) == len(sigma_x):
+                sigma_tooltips: list[str] | None = list()
+                bus_index: int
+                for bus_index in range(len(self.sigma_results.bus_names)):
+                    sigma_tooltips.append(str(self.sigma_results.bus_names[bus_index]))
+            else:
+                sigma_tooltips = None
             series_data: list[tuple[np.ndarray, np.ndarray, str | None]] = [
                 (boundary_x, boundary_y, boundary_color),
                 (boundary_x, -boundary_y, boundary_color),
@@ -1929,9 +1936,11 @@ QWidget#overviewPage QProgressBar::chunk {{
                 plot_widget.add_scatter_series(name=self.tr("Buses"),
                                                x_values=sigma_x,
                                                y_values=sigma_y,
-                                               color=plot_color)
+                                               color=plot_color,
+                                               point_tooltips=sigma_tooltips)
             else:
                 pass
+            plot_widget.set_series_point_tooltips(series_index=2, point_tooltips=sigma_tooltips)
             plot_widget.setTitle(self.tr("Sigma plot"))
             plot_widget.set_axis_titles("σre", "σim")
             plot_widget.redraw()

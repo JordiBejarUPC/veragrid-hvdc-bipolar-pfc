@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import numpy as np
 from PySide6 import QtCore, QtGui, QtTest, QtWidgets
-from PySide6.QtGraphs import QAbstractSeries, QValueAxis
 
 from VeraGrid.Gui.DeviceEditors.GeneratorEditor.generator_editor import GeneratorEditor, GeneratorQCurveEditor
 from VeraGrid.Gui.SigmaAnalysis.sigma_analysis_dialogue import SigmaAnalysisGUI
-from VeraGrid.Gui.Widgets.qtgraphs_widget import GraphsWidget
+from VeraGrid.Gui.Widgets.qt_chart_widget import ChartSeries, ChartSeriesType, GraphsWidget
 from VeraGridEngine.Devices.Branches.line import Line
 from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.Injections.generator_q_curve import GeneratorQCurve
@@ -104,9 +103,9 @@ def test_qcurve_add_button_reuses_the_existing_chart_series(qt_app: QtWidgets.QA
     qt_app.processEvents()
 
     plotter: GraphsWidget = dialog.q_curve_widget.ui.plotter
-    original_series: tuple[QAbstractSeries, ...] = tuple(plotter._series)
+    original_series: tuple[ChartSeries, ...] = tuple(plotter._series)
 
-    # Each click must replace the five existing data arrays instead of recreating Qt Graphs objects.
+    # Each click must replace the five existing Python buffers without recreating chart series.
     for _ in range(8):
         QtTest.QTest.mouseClick(dialog.q_curve_widget.ui.addRowButton, QtCore.Qt.MouseButton.LeftButton)
         qt_app.processEvents()
@@ -131,7 +130,7 @@ def test_embedded_generator_editor_reuses_the_existing_chart_series(qt_app: QtWi
     qt_app.processEvents()
 
     plotter: GraphsWidget = dialog.qcurve_editor_widget.ui.plotter
-    original_series: tuple[QAbstractSeries, ...] = tuple(plotter._series)
+    original_series: tuple[ChartSeries, ...] = tuple(plotter._series)
     original_row_count: int = dialog.qcurve_editor_widget.table_model.rowCount()
     assert len(original_series) == 5
 
@@ -147,7 +146,7 @@ def test_embedded_generator_editor_reuses_the_existing_chart_series(qt_app: QtWi
     assert plotter._disposed
 
 
-def test_qtgraphs_widget_survives_repeated_renderer_lifecycles(qt_app: QtWidgets.QApplication) -> None:
+def test_chart_widget_survives_repeated_paint_lifecycles(qt_app: QtWidgets.QApplication) -> None:
     """Stress series replacement, view resize, clearing, and ordered disposal.
 
     :param qt_app: Shared Qt application fixture.
@@ -162,21 +161,19 @@ def test_qtgraphs_widget_survives_repeated_renderer_lifecycles(qt_app: QtWidgets
         dialog.resize(840 + widget_index, 560 + widget_index)
         dialog.show()
         qt_app.processEvents()
-        assert plotter.quick_widget.width() > 400
+        assert plotter.width() > 400
 
         # Configure one stable line/scatter pair before replacing only its point buffers.
         initial_x: np.ndarray = np.asarray((0.0, 1.0, 2.0), dtype=float)
         plotter.add_line_series(name="Line", x_values=initial_x, y_values=initial_x, color="#2563eb")
         plotter.add_scatter_series(name="Points", x_values=initial_x, y_values=-initial_x, color="#f97316")
-        original_series: tuple[QAbstractSeries, ...] = tuple(plotter._series)
+        original_series: tuple[ChartSeries, ...] = tuple(plotter._series)
         assert len(original_series) == 2
-        assert plotter.graph_view is not None
-        assert isinstance(plotter.axis_x, QValueAxis)
-        zoom_before: float = plotter.axis_x.zoom()
-        center: QtCore.QPoint = plotter.quick_widget.rect().center()
+        zoom_before: float = plotter.axis_x.get_zoom()
+        center: QtCore.QPoint = plotter.rect().center()
         wheel_event: QtGui.QWheelEvent = QtGui.QWheelEvent(
             QtCore.QPointF(center),
-            QtCore.QPointF(plotter.quick_widget.mapToGlobal(center)),
+            QtCore.QPointF(plotter.mapToGlobal(center)),
             QtCore.QPoint(),
             QtCore.QPoint(0, 120),
             QtCore.Qt.MouseButton.NoButton,
@@ -184,17 +181,42 @@ def test_qtgraphs_widget_survives_repeated_renderer_lifecycles(qt_app: QtWidgets
             QtCore.Qt.ScrollPhase.ScrollUpdate,
             False,
         )
-        QtWidgets.QApplication.sendEvent(plotter.quick_widget, wheel_event)
+        QtWidgets.QApplication.sendEvent(plotter, wheel_event)
         qt_app.processEvents()
-        assert plotter.axis_x.zoom() > zoom_before
-        visual_minimum_before: float = plotter.axis_x.visualMin()
-        QtTest.QTest.mousePress(plotter.quick_widget, QtCore.Qt.MouseButton.LeftButton, pos=center)
-        QtTest.QTest.mouseMove(plotter.quick_widget, pos=center + QtCore.QPoint(80, 0))
-        QtTest.QTest.mouseRelease(plotter.quick_widget,
+        assert plotter.axis_x.get_zoom() > zoom_before
+        visual_minimum_before: float = plotter.axis_x.get_visual_range()[0]
+        QtTest.QTest.mousePress(plotter, QtCore.Qt.MouseButton.LeftButton, pos=center)
+        QtTest.QTest.mouseMove(plotter, pos=center + QtCore.QPoint(80, 0))
+        QtTest.QTest.mouseRelease(plotter,
                                   QtCore.Qt.MouseButton.LeftButton,
                                   pos=center + QtCore.QPoint(80, 0))
         qt_app.processEvents()
-        assert plotter.axis_x.visualMin() != visual_minimum_before
+        assert plotter.axis_x.get_visual_range()[0] != visual_minimum_before
+        first_zoom_pan_distance: float = abs(plotter.axis_x.get_pan())
+
+        # The same physical drag must cover fewer data units after further wheel zoom.
+        plotter.axis_x.reset_viewport()
+        plotter.axis_y.reset_viewport()
+        zoom_index: int
+        for zoom_index in range(4):
+            high_zoom_wheel_event: QtGui.QWheelEvent = QtGui.QWheelEvent(
+                QtCore.QPointF(center),
+                QtCore.QPointF(plotter.mapToGlobal(center)),
+                QtCore.QPoint(),
+                QtCore.QPoint(0, 120),
+                QtCore.Qt.MouseButton.NoButton,
+                QtCore.Qt.KeyboardModifier.NoModifier,
+                QtCore.Qt.ScrollPhase.ScrollUpdate,
+                False,
+            )
+            QtWidgets.QApplication.sendEvent(plotter, high_zoom_wheel_event)
+        QtTest.QTest.mousePress(plotter, QtCore.Qt.MouseButton.LeftButton, pos=center)
+        QtTest.QTest.mouseMove(plotter, pos=center + QtCore.QPoint(80, 0))
+        QtTest.QTest.mouseRelease(plotter,
+                                  QtCore.Qt.MouseButton.LeftButton,
+                                  pos=center + QtCore.QPoint(80, 0))
+        qt_app.processEvents()
+        assert abs(plotter.axis_x.get_pan()) < first_zoom_pan_distance
 
         replacement_index: int
         for replacement_index in range(24):
@@ -217,7 +239,7 @@ def test_qtgraphs_widget_survives_repeated_renderer_lifecycles(qt_app: QtWidgets
         assert not invalid_update
         assert tuple(plotter._series) == original_series
 
-        # Clearing schedules renderer-owned objects for deletion, then dispose prevents later reuse.
+        # Clearing releases chart-owned buffers before dispose prevents later reuse.
         plotter.clear()
         plotter.add_scatter_series(name="Empty", x_values=np.zeros(0), y_values=np.zeros(0), color="#2563eb")
         assert len(plotter._series) == 1
@@ -226,6 +248,66 @@ def test_qtgraphs_widget_survives_repeated_renderer_lifecycles(qt_app: QtWidgets
         dialog.close()
         dialog.deleteLater()
         flush_deferred_deletes(app=qt_app)
+
+
+def test_chart_widget_owns_data_without_native_chart_children(qt_app: QtWidgets.QApplication) -> None:
+    """Verify source arrays, bar rendering, and disposal need no chart QObjects.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    dialog: QtWidgets.QDialog = QtWidgets.QDialog()
+    layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(dialog)
+    plotter: GraphsWidget = GraphsWidget(dialog)
+    layout.addWidget(plotter)
+    dialog.resize(760, 480)
+    dialog.show()
+    qt_app.processEvents()
+
+    source_x: np.ndarray = np.asarray((0.0, 1.0, 2.0), dtype=float)
+    source_y: np.ndarray = np.asarray((2.0, 1.0, 0.0), dtype=float)
+    plotter.add_line_series(name="Owned", x_values=source_x, y_values=source_y, color="#2563eb")
+    plotter.add_scatter_series(
+        name="Points",
+        x_values=source_x,
+        y_values=source_y,
+        color="#f97316",
+        point_tooltips=("Bus 1", "Bus 2", "Bus 3"),
+    )
+    qt_app.processEvents()
+    chart_image: QtGui.QImage = plotter.grab().toImage()
+    plot_rect: QtCore.QRectF = plotter._get_plot_rect()
+    line_point: QtCore.QPointF = plotter._map_xy_point(x_value=0.5, y_value=1.5, plot_rect=plot_rect)
+    scatter_point: QtCore.QPointF = plotter._map_xy_point(x_value=1.0, y_value=1.0, plot_rect=plot_rect)
+    assert chart_image.pixelColor(line_point.toPoint()).name() == "#2563eb"
+    assert chart_image.pixelColor(scatter_point.toPoint()).name() == "#f97316"
+    assert plotter.get_point_tooltip_at(position=scatter_point) == "Bus 2"
+    assert len(plotter.findChildren(QtCore.QObject)) == 0
+    assert plotter.set_series_point_tooltips(series_index=1, point_tooltips=("A", "B", "C"))
+    assert plotter.get_point_tooltip_at(position=scatter_point) == "B"
+    line_series: ChartSeries = plotter._series[0]
+    source_x[:] = 99.0
+    source_y[:] = 99.0
+    assert np.array_equal(line_series.get_x_data(), np.asarray((0.0, 1.0, 2.0), dtype=float))
+    assert np.array_equal(line_series.get_y_data(), np.asarray((2.0, 1.0, 0.0), dtype=float))
+
+    plotter.add_horizontal_bar_series(
+        labels=("Export", "Import", "Neutral"),
+        values=np.asarray((2.0, -1.0, 0.0), dtype=float),
+        positive_color="#0f766e",
+        negative_color="#dc2626",
+    )
+    assert len(plotter._series) == 2
+    assert all(series.get_series_type() == ChartSeriesType.HORIZONTAL_BAR for series in plotter._series)
+    plotter.redraw()
+    qt_app.processEvents()
+
+    plotter.dispose()
+    assert plotter._disposed
+    assert len(plotter._series) == 0
+    dialog.close()
+    dialog.deleteLater()
+    flush_deferred_deletes(app=qt_app)
 
 
 def test_sigma_resimulation_reuses_the_existing_chart_series(qt_app: QtWidgets.QApplication) -> None:
@@ -243,8 +325,14 @@ def test_sigma_resimulation_reuses_the_existing_chart_series(qt_app: QtWidgets.Q
     qt_app.processEvents()
 
     plotter: GraphsWidget = dialog.ui.plotwidget
-    original_series: tuple[QAbstractSeries, ...] = tuple(plotter._series)
+    original_series: tuple[ChartSeries, ...] = tuple(plotter._series)
     assert len(original_series) == 3
+    sigma_point: QtCore.QPointF = plotter._map_xy_point(
+        x_value=0.10,
+        y_value=0.0,
+        plot_rect=plotter._get_plot_rect(),
+    )
+    assert plotter.get_point_tooltip_at(position=sigma_point) == "Bus 2"
 
     rerun_index: int
     for rerun_index in range(24):
@@ -278,7 +366,7 @@ def test_sigma_rerun_action_keeps_its_chart_series(qt_app: QtWidgets.QApplicatio
     qt_app.processEvents()
     assert dialog.results is not None
     plotter: GraphsWidget = dialog.ui.plotwidget
-    original_series: tuple[QAbstractSeries, ...] = tuple(plotter._series)
+    original_series: tuple[ChartSeries, ...] = tuple(plotter._series)
     assert len(original_series) == 3
 
     dialog.rerun_sigma_analysis()

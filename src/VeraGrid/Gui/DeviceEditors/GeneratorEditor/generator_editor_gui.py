@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (QApplication, QDialog, QFrame, QHBoxLayout,
     QHeaderView, QPushButton, QSizePolicy, QSpacerItem,
     QSplitter, QTableView, QVBoxLayout, QWidget)
 
-from VeraGrid.Gui.Widgets.qtgraphs_widget import GraphsWidget
+from VeraGrid.Gui.Widgets.qt_chart_widget import GraphsWidget
 
 class Ui_GeneratorQCurveEditorDialog(object):
     def setupUi(self, GeneratorQCurveEditorDialog):

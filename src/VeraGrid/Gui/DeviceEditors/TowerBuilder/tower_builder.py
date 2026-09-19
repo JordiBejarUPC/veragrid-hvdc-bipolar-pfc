@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QApplication, QComboBox, QDial
     QSpacerItem, QSplitter, QTableView, QVBoxLayout,
     QWidget)
 
-from VeraGrid.Gui.Widgets.qtgraphs_widget import GraphsWidget
+from VeraGrid.Gui.Widgets.qt_chart_widget import GraphsWidget
 from VeraGrid.Gui.Icons.icons_rc import *
 
 class Ui_TowerBuilderDialog(object):

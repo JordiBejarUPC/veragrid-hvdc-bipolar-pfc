@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (QApplication, QDialog, QDoubleSpinBox, QFrame,
     QSizePolicy, QSpacerItem, QSpinBox, QSplitter,
     QVBoxLayout, QWidget)
 
-from VeraGrid.Gui.Widgets.qtgraphs_widget import GraphsWidget
+from VeraGrid.Gui.Widgets.qt_chart_widget import GraphsWidget
 from VeraGrid.Gui.Icons.icons_rc import *
 
 class Ui_MainWindow(object):
