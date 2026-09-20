@@ -786,7 +786,7 @@ class GraphsWidget(QtWidgets.QWidget):
                         name=str(series_names[series_index]),
                         x_data=retained_x_data,
                         y_data=retained_y_data,
-                        color=self._make_series_color(
+                        color=self.make_series_color(
                             color_name=color_values[series_index],
                             series_index=series_index,
                         ),
@@ -814,7 +814,7 @@ class GraphsWidget(QtWidgets.QWidget):
                             name=str(series_names[series_index]),
                             x_data=points[0],
                             y_data=points[1],
-                            color=self._make_series_color(
+                            color=self.make_series_color(
                                 color_name=color_values[series_index],
                                 series_index=series_index,
                             ),
@@ -996,7 +996,7 @@ class GraphsWidget(QtWidgets.QWidget):
                                 name=str(series_names[series_index]),
                                 x_data=retained_angles,
                                 y_data=retained_radii,
-                                color=self._make_series_color(
+                                color=self.make_series_color(
                                     color_name=color_values[series_index],
                                     series_index=series_index,
                                 ),
@@ -1075,7 +1075,7 @@ class GraphsWidget(QtWidgets.QWidget):
                     y_values=series_values[1],
                 )
                 if points is not None and series.get_series_type() in (ChartSeriesType.LINE, ChartSeriesType.SCATTER):
-                    color: QtGui.QColor = self._make_series_color(
+                    color: QtGui.QColor = self.make_series_color(
                         color_name=series_values[2],
                         series_index=series_index,
                     )
@@ -1246,14 +1246,14 @@ class GraphsWidget(QtWidgets.QWidget):
                     name=self.tr("Positive"),
                     x_data=category_positions,
                     y_data=positive_values,
-                    color=self._make_series_color(color_name=positive_color, series_index=0),
+                    color=self.make_series_color(color_name=positive_color, series_index=0),
                 )
                 negative_series: ChartSeries = ChartSeries(
                     series_type=ChartSeriesType.HORIZONTAL_BAR,
                     name=self.tr("Negative"),
                     x_data=category_positions,
                     y_data=negative_values,
-                    color=self._make_series_color(color_name=negative_color, series_index=1),
+                    color=self.make_series_color(color_name=negative_color, series_index=1),
                 )
                 self._series.append(positive_series)
                 self._series.append(negative_series)
@@ -1299,7 +1299,7 @@ class GraphsWidget(QtWidgets.QWidget):
                         name=name,
                         x_data=edges,
                         y_data=counts.astype(float),
-                        color=self._make_series_color(color_name=color, series_index=0),
+                        color=self.make_series_color(color_name=color, series_index=0),
                     )
                 )
                 self._has_points = True
@@ -2201,7 +2201,7 @@ class GraphsWidget(QtWidgets.QWidget):
         points: tuple[np.ndarray, np.ndarray] | None = prepare_chart_points(x_values=x_data, y_values=y_values)
         if self._can_mutate() and points is not None and self._content_type == ChartContentType.XY:
             series_index: int = len(self._series)
-            series_color: QtGui.QColor = self._make_series_color(color_name=color, series_index=series_index)
+            series_color: QtGui.QColor = self.make_series_color(color_name=color, series_index=series_index)
             retained_tooltips: list[str] | None = prepare_chart_point_tooltips(
                 x_values=x_data,
                 y_values=y_values,
@@ -2262,7 +2262,7 @@ class GraphsWidget(QtWidgets.QWidget):
             self.axis_x.set_range(self._x_min - x_padding, self._x_max + x_padding)
             self.axis_y.set_range(self._y_min - y_padding, self._y_max + y_padding)
 
-    def _make_series_color(self, color_name: str | None, series_index: int) -> QtGui.QColor:
+    def make_series_color(self, color_name: str | None, series_index: int) -> QtGui.QColor:
         """Return a valid explicit or deterministic fallback series colour.
 
         :param color_name: Optional caller-provided Qt colour name.

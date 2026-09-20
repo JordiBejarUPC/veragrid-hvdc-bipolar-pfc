@@ -200,19 +200,44 @@ def test_plot_dialogue_series_selector_filters_and_hides_lines(
         series_values=series_values,
     )
     assert dialog.ui.seriesSelectorFrame.isVisible()
-    assert dialog.ui.seriesListWidget.count() == len(series_names)
+    assert dialog.ui.seriesTreeWidget.topLevelItemCount() == 1
+    assert dialog.ui.seriesTreeWidget.topLevelItem(0).childCount() == len(series_names)
     assert not dialog.chart._legend_visible
-    first_item: QtWidgets.QListWidgetItem = dialog.ui.seriesListWidget.item(0)
-    assert first_item.foreground().color() == dialog.chart.get_series_color(series_index=0)
+    first_item: QtWidgets.QTreeWidgetItem = dialog.ui.seriesTreeWidget.topLevelItem(0).child(0)
+    assert first_item.foreground(0).color() == dialog.chart.get_series_color(series_index=0)
 
     dialog.ui.seriesSearchLineEdit.setText('series 20')
     app.processEvents()
-    assert not dialog.ui.seriesListWidget.item(20).isHidden()
-    assert dialog.ui.seriesListWidget.item(0).isHidden()
+    series_group: QtWidgets.QTreeWidgetItem = dialog.ui.seriesTreeWidget.topLevelItem(0)
+    assert not series_group.child(20).isHidden()
+    assert series_group.child(0).isHidden()
 
-    first_item.setCheckState(QtCore.Qt.CheckState.Unchecked)
+    first_item.setCheckState(0, QtCore.Qt.CheckState.Unchecked)
     app.processEvents()
     assert not dialog.chart.get_series_visible(series_index=0)
+    close_plot_dialogue(dialog=dialog, app=app)
+
+
+def test_plot_tabs_can_be_added_and_closed_without_disposing_survivors(
+        qt_app: QtWidgets.QApplication) -> None:
+    """Dispose only the requested tab chart and keep another tab usable.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    app: QtWidgets.QApplication = qt_app
+    dialog: PlotDialogue = PlotDialogue(title='Tabs')
+    first_chart = dialog.chart
+    dialog.ui.actionAddPlot.trigger()
+    assert dialog.ui.plotTabs.count() == 2
+    second_chart = dialog.get_current_chart()
+    assert second_chart is not first_chart
+    dialog.ui.plotTabs.tabCloseRequested.emit(1)
+    app.processEvents()
+    assert dialog.ui.plotTabs.count() == 1
+    assert first_chart in dialog._tab_charts
+    assert second_chart not in dialog._tab_charts
+    assert dialog.get_current_chart() is first_chart
     close_plot_dialogue(dialog=dialog, app=app)
 
 

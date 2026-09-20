@@ -46,10 +46,8 @@ from VeraGridEngine.Devices.Injections.current_injection import CurrentInjection
 from VeraGridEngine.Devices.Fluid import FluidNode, FluidPath
 from VeraGridEngine.Devices.Diagrams.schematic_diagram import SchematicDiagram
 from VeraGridEngine.Devices.Diagrams.graphic_location import GraphicLocation
-from VeraGridEngine.Simulations.OPF.opf_ts_results import OptimalPowerFlowTimeSeriesResults
-from VeraGridEngine.Simulations.PowerFlow.power_flow_ts_results import PowerFlowTimeSeriesResults
 from VeraGridEngine.Topology.VoltageLevels.vl_creation_common_functions import transform_bus_to_connectivity_grid
-from VeraGridEngine.enumerations import DeviceType, ResultTypes, BusGraphicType, SchematicAutoRouteStyle
+from VeraGridEngine.enumerations import DeviceType, BusGraphicType, SchematicAutoRouteStyle
 from VeraGridEngine.basic_structures import Vec, CxVec, IntVec, Logger
 import VeraGridEngine.Devices.Diagrams.palettes as palettes
 from VeraGridEngine.Topology.VoltageLevels import vl_creation_common_functions as substation_wizards
@@ -80,7 +78,7 @@ from VeraGrid.Gui.Diagrams.base_diagram_widget import BaseDiagramWidget
 from VeraGrid.Gui.general_dialogues import InputNumberDialogue
 from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
 from VeraGrid.Gui.PlotDialogue.plot_dialogue import PlotDialogue
-from VeraGrid.Gui.PlotDialogue.result_table_data import append_result_table_column
+from VeraGrid.Gui.Widgets.qt_chart_widget import GraphsWidget
 import VeraGrid.Gui.Visualization.visualization as viz
 from VeraGrid.Gui.messages import error_msg, warning_msg, yes_no_question
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem
@@ -6224,25 +6222,28 @@ class SchematicWidget(BaseDiagramWidget):
 
         return min_x, max_x, min_y, max_y
 
-    def plot_bus(self, i: int, api_object: Bus):
-        """Open native injection-power and voltage tabs for one bus.
+    def plot_bus(self, i: int, api_object: Bus) -> None:
+        """Open bus injection profiles and all available time-series results.
 
-        :param i: Bus voltage result-column index.
+        :param i: Legacy result-column index retained for graphic callbacks.
         :param api_object: Bus represented by the selected schematic graphic.
         :return: None.
         """
-        time_values = self.circuit.get_time_array()
+        _ = i
+        time_values: np.ndarray | None = self.circuit.get_time_array()
+        dialog_title: str = self.tr("{device_name} profiles plot").format(device_name=api_object.name)
+        plot_dialogue: PlotDialogue = PlotDialogue(title=dialog_title, parent=self.gui)
+        plotted_units: list[str] = list()
+        plotted_charts: list[GraphsWidget] = list()
+        has_profiles: bool = False
         if time_values is not None and len(time_values) > 0:
-            dialog_title: str = self.tr("{device_name} profiles plot").format(device_name=api_object.name)
-            plot_dialogue: PlotDialogue = PlotDialogue(title=dialog_title, parent=self.gui)
-            power_chart = plot_dialogue.chart
-            plot_dialogue.set_current_tab_title(self.tr("Injections"))
+            all_devices: Dict[Bus, Dict[DeviceType, List[INJECTION_DEVICE_TYPES]]]
             all_devices = self.circuit.get_injection_devices_grouped_by_bus()
-            bus_devices = all_devices.get(api_object, None)
+            bus_devices: Dict[DeviceType, List[INJECTION_DEVICE_TYPES]] | None = all_devices.get(api_object, None)
             power_names: list[str] = list()
             power_values: list[np.ndarray] = list()
             if bus_devices is not None:
-                device_group: list
+                device_group: list[object]
                 for device_group in bus_devices.values():
                     device: object
                     for device in device_group:
@@ -6262,158 +6263,55 @@ class SchematicWidget(BaseDiagramWidget):
                         else:
                             pass
                         if profile_values is not None and len(profile_values) == len(time_values):
-                            power_names.append(device.name)
+                            power_names.append(str(device.name))
                             power_values.append(np.asarray(profile_values, dtype=float))
                         else:
                             pass
             else:
                 pass
 
-            has_power_plot: bool = False
-            if len(power_names) > 1:
-                has_power_plot = plot_dialogue.set_cumulative_area_series(
+            if len(power_names) > 0:
+                plot_dialogue.register_time_series(
+                    group=self.tr("Profile Inputs"),
+                    unit="MW",
                     x_values=time_values,
                     series_names=power_names,
                     series_values=power_values,
-                    title=self.tr("Injection power"),
-                    x_axis_title=self.tr("Time"),
-                    y_axis_title=self.tr("Injections [MW]"),
                 )
-            elif len(power_names) == 1:
-                has_power_plot = plot_dialogue.set_line_series(
-                    x_values=time_values,
-                    series_names=power_names,
-                    series_values=power_values,
-                    title=self.tr("Injection power"),
-                    x_axis_title=self.tr("Time"),
-                    y_axis_title=self.tr("Injections [MW]"),
-                )
-            else:
-                pass
-
-            voltage_chart = None
-            has_voltage_plot: bool = False
-            for driver, results in self.gui.session.drivers_results_iter():
-                if isinstance(results, PowerFlowTimeSeriesResults):
-                    voltage_table = results.mdl(result_type=ResultTypes.BusVoltageModule)
-                    voltage_name: str = self.tr("Power flow")
-                elif isinstance(results, OptimalPowerFlowTimeSeriesResults):
-                    voltage_table = results.mdl(result_type=ResultTypes.BusVoltageModule)
-                    voltage_name = self.tr("Optimal power flow")
-                else:
-                    voltage_table = None
-                    voltage_name = ''
-                if voltage_table is not None:
-                    if voltage_chart is None:
-                        if has_power_plot:
-                            voltage_chart = plot_dialogue.add_tab(title=self.tr("Voltage"))
-                        else:
-                            voltage_chart = power_chart
-                            plot_dialogue.set_current_tab_title(self.tr("Voltage"))
-                    else:
-                        pass
-                    appended_voltage: bool = append_result_table_column(
-                        chart=voltage_chart,
-                        table=voltage_table,
-                        column_index=i,
-                        series_name=voltage_name,
-                    )
-                    if appended_voltage:
-                        voltage_chart.setTitle(self.tr("Voltage"))
-                        has_voltage_plot = True
-                    else:
-                        pass
+                if len(power_values) > 0:
+                    has_profiles = True
+                    plotted_units.append("MW")
                 else:
                     pass
-
-            if has_power_plot or has_voltage_plot:
-                self.gui._open_plot_dialogs.append(plot_dialogue)
-                plot_dialogue.show()
             else:
-                plot_dialogue.reject()
-                self.gui.show_error_toast(self.tr("There are no finite time-series values to plot."))
+                pass
         else:
-            self.gui.show_error_toast(self.tr("There are no time series, so nothing to plot."))
+            pass
 
-    def plot_fluid_node(self, i: int, api_object: FluidNode):
-        """Open native storage-level and flow tabs for one fluid node.
+        has_results: bool = self._add_device_result_tabs(
+            plot_dialogue=plot_dialogue,
+            api_object=api_object,
+            plotted_units=plotted_units,
+            plotted_charts=plotted_charts,
+        )
+        if has_profiles or has_results:
+            plot_dialogue.select_default_catalog_series()
+            plot_dialogue.set_series_selector_visible(visible=True)
+            self.gui._open_plot_dialogs.append(plot_dialogue)
+            plot_dialogue.show()
+        else:
+            plot_dialogue.reject()
+            self.gui.show_error_toast(self.tr("There are no finite time-series values to plot."))
 
-        :param i: Fluid-node result-column index.
+    def plot_fluid_node(self, i: int, api_object: FluidNode) -> None:
+        """Open node profiles and all available time-series result curves.
+
+        :param i: Legacy result-column index retained for graphic callbacks.
         :param api_object: Fluid node represented by the selected graphic.
         :return: None.
         """
-        time_values = self.circuit.get_time_array()
-        if time_values is not None and len(time_values) > 0:
-            dialog_title: str = self.tr("{device_name} profiles plot").format(device_name=api_object.name)
-            plot_dialogue: PlotDialogue = PlotDialogue(title=dialog_title, parent=self.gui)
-            level_chart = plot_dialogue.chart
-            plot_dialogue.set_current_tab_title(self.tr("Level"))
-            flow_chart = None
-            has_level_plot: bool = False
-            has_flow_plot: bool = False
-            for driver, results in self.gui.session.drivers_results_iter():
-                if isinstance(results, OptimalPowerFlowTimeSeriesResults):
-                    level_table = results.mdl(result_type=ResultTypes.FluidCurrentLevel)
-                    appended_level: bool = append_result_table_column(
-                        chart=level_chart,
-                        table=level_table,
-                        column_index=i,
-                        series_name=self.tr("Optimal power flow"),
-                    )
-                    if appended_level:
-                        level_chart.setTitle(self.tr("Capacity"))
-                        has_level_plot = True
-                    else:
-                        pass
-                    flow_time_values: np.ndarray = np.asarray(level_table.index_c)
-                    flow_names: tuple[str, ...] = (
-                        self.tr("Flow in"),
-                        self.tr("Flow out"),
-                        self.tr("P2X"),
-                        self.tr("Spillage"),
-                    )
-                    flow_values: tuple[np.ndarray, ...] = (
-                        np.asarray(results.fluid_node_flow_in[:, i], dtype=float),
-                        np.asarray(results.fluid_node_flow_out[:, i], dtype=float),
-                        np.asarray(results.fluid_node_p2x_flow[:, i], dtype=float),
-                        np.asarray(results.fluid_node_spillage[:, i], dtype=float),
-                    )
-                    if flow_chart is None:
-                        if has_level_plot:
-                            flow_chart = plot_dialogue.add_tab(title=self.tr("Flows"))
-                        else:
-                            flow_chart = level_chart
-                            plot_dialogue.set_current_tab_title(self.tr("Flows"))
-                    else:
-                        pass
-                    flow_position: int
-                    for flow_position in range(len(flow_names)):
-                        current_flow: np.ndarray = flow_values[flow_position]
-                        if len(current_flow) == len(flow_time_values) and bool(np.any(np.isfinite(current_flow))):
-                            flow_chart.add_line_series(
-                                name=flow_names[flow_position],
-                                x_values=flow_time_values,
-                                y_values=current_flow,
-                            )
-                            has_flow_plot = True
-                        else:
-                            pass
-                    if has_flow_plot:
-                        flow_chart.setTitle(self.tr("Flows"))
-                        flow_chart.set_axis_titles(self.tr("Time"), self.tr("Flow [m3/s]"))
-                    else:
-                        pass
-                else:
-                    pass
-
-            if has_level_plot or has_flow_plot:
-                self.gui._open_plot_dialogs.append(plot_dialogue)
-                plot_dialogue.show()
-            else:
-                plot_dialogue.reject()
-                self.gui.show_error_toast(self.tr("There are no finite time-series values to plot."))
-        else:
-            self.gui.show_error_toast(self.tr("There are no time series, so nothing to plot."))
+        _ = i
+        self.plot_device(api_object=api_object)
 
     def split_line_now(self, line_graphics: LineGraphicItem, position: float, extra_km: float):
         """

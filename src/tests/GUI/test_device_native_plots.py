@@ -12,6 +12,7 @@ from PySide6 import QtCore, QtWidgets
 
 from VeraGrid.Gui.Diagrams.base_diagram_widget import BaseDiagramWidget
 from VeraGrid.Gui.PlotDialogue.plot_dialogue import PlotDialogue
+from VeraGrid.Gui.Widgets.qt_chart_widget import GraphsWidget
 from VeraGridEngine.enumerations import DeviceType, ResultTypes, StudyResultsType
 from VeraGridEngine.Simulations.results_table import ResultsTable
 from VeraGridEngine.Simulations.results_template import ResultsTemplate
@@ -105,42 +106,59 @@ class GraphicDevice:
 
 
 class GraphicResults(ResultsTemplate):
-    """Provide one time-series generator result table for the graphic test."""
+    """Provide generator-power and shedding tables for the graphic test."""
 
-    __slots__ = ("_table",)
+    __slots__ = ("_tables",)
 
     def __init__(self) -> None:
-        """Create a results template with a single generator-power result.
+        """Create time-series OPF power and shedding results.
 
         :return: None.
         """
         ResultsTemplate.__init__(
             self,
-            name="Power flow",
-            available_results=[ResultTypes.GeneratorPower],
+            name="Optimal power flow",
+            available_results=[ResultTypes.GeneratorPower, ResultTypes.GeneratorShedding],
             time_array=None,
             clustering_results=None,
-            study_results_type=StudyResultsType.PowerFlowTimeSeries,
+            study_results_type=StudyResultsType.OptimalPowerFlowTimeSeries,
         )
-        self._table: ResultsTable = ResultsTable(
-            data=np.array(((2.0,), (2.5,), (3.5,)), dtype=float),
-            columns=np.array(("Generator A",)),
-            index=np.array(("2026-01-01", "2026-01-02", "2026-01-03"), dtype="datetime64[ns]"),
-            title=ResultTypes.GeneratorPower.value,
-            cols_device_type=DeviceType.GeneratorDevice,
-            idx_device_type=DeviceType.TimeDevice,
-            xlabel="Time",
-            ylabel="MW",
-        )
+        self._tables: list[ResultsTable] = [
+            ResultsTable(
+                data=np.array(((2.0,), (2.5,), (3.5,)), dtype=float),
+                columns=np.array(("Generator A",)),
+                index=np.array(("2026-01-01", "2026-01-02", "2026-01-03"), dtype="datetime64[ns]"),
+                title=ResultTypes.GeneratorPower.value,
+                cols_device_type=DeviceType.GeneratorDevice,
+                idx_device_type=DeviceType.TimeDevice,
+                units="(MW)",
+                xlabel="Time",
+                ylabel="MW",
+            ),
+            ResultsTable(
+                data=np.array(((0.0,), (0.25,), (0.0,)), dtype=float),
+                columns=np.array(("Generator A",)),
+                index=np.array(("2026-01-01", "2026-01-02", "2026-01-03"), dtype="datetime64[ns]"),
+                title=ResultTypes.GeneratorShedding.value,
+                cols_device_type=DeviceType.GeneratorDevice,
+                idx_device_type=DeviceType.TimeDevice,
+                units="(MW)",
+                xlabel="Time",
+                ylabel="MW",
+            ),
+        ]
 
     def mdl(self, result_type: ResultTypes) -> ResultsTable:
-        """Return the matching native result table.
+        """Return the native table matching one requested result type.
 
         :param result_type: Requested result type.
-        :return: Fixed generator-power table.
+        :return: Fixed generator result table.
         """
-        assert result_type == ResultTypes.GeneratorPower
-        return self._table
+        if result_type == ResultTypes.GeneratorPower:
+            return self._tables[0]
+        else:
+            assert result_type == ResultTypes.GeneratorShedding
+            return self._tables[1]
 
 
 class GraphicCircuit:
@@ -225,9 +243,9 @@ class GraphicPlotOwner:
         return text
 
 
-def test_graphic_device_tabs_group_profiles_and_attach_result_columns(
+def test_graphic_device_tab_groups_profiles_and_opf_results_by_unit(
         qt_app: QtWidgets.QApplication) -> None:
-    """Verify graphic-device tabs retain grouped profiles and mapped result buffers.
+    """Group compatible profile and OPF series so their selector can compare them.
 
     :param qt_app: Shared Qt application fixture.
     :return: None.
@@ -241,29 +259,65 @@ def test_graphic_device_tabs_group_profiles_and_attach_result_columns(
     plot_dialogue: PlotDialogue = PlotDialogue(title="Device plot", parent=owner)
     time_values: np.ndarray = np.array(("2026-01-01", "2026-01-02", "2026-01-03"), dtype="datetime64[ns]")
 
+    plotted_units: list[str] = list()
+    plotted_charts: list[GraphsWidget] = list()
     profiles_added: bool = BaseDiagramWidget._add_device_profile_tabs(
         diagram,
         plot_dialogue=plot_dialogue,
         api_object=device,
         time_values=time_values,
-        has_existing_tabs=False,
+        plotted_units=plotted_units,
+        plotted_charts=plotted_charts,
     )
     assert profiles_added
-    assert len(plot_dialogue._tab_charts) == 2
-    assert len(plot_dialogue._tab_charts[0]._series) == 2
-    assert len(plot_dialogue._tab_charts[1]._series) == 1
+    assert len(plot_dialogue._tab_charts) == 1
+    assert len(plot_dialogue._series_catalog) == 3
 
     results_added: bool = BaseDiagramWidget._add_device_result_tabs(
         diagram,
         plot_dialogue=plot_dialogue,
         api_object=device,
-        has_existing_tabs=profiles_added,
+        plotted_units=plotted_units,
+        plotted_charts=plotted_charts,
     )
     assert results_added
-    assert len(plot_dialogue._tab_charts) == 3
-    result_chart = plot_dialogue._tab_charts[2]
-    assert len(result_chart._series) == 1
-    assert np.array_equal(result_chart._series[0].get_y_data(), np.array((2.0, 2.5, 3.5)))
+    assert len(plot_dialogue._tab_charts) == 1
+    assert len(plot_dialogue._series_catalog) == 5
+    assert plot_dialogue.select_default_catalog_series()
+    active_power_chart = plot_dialogue._tab_charts[0]
+    assert len(active_power_chart._series) == 4
+    assert np.array_equal(active_power_chart._series[2].get_y_data(), np.array((2.0, 2.5, 3.5)))
+    assert np.array_equal(active_power_chart._series[3].get_y_data(), np.array((0.0, 0.25, 0.0)))
+    assert active_power_chart.get_series_name(2) == "Optimal power flow: {}".format(
+        ResultTypes.GeneratorPower.value,
+    )
+    assert active_power_chart.get_series_name(3) == "Optimal power flow: {}".format(
+        ResultTypes.GeneratorShedding.value,
+    )
+    plot_dialogue.ui.plotTabs.setCurrentIndex(0)
+    plot_dialogue.set_series_selector_visible(visible=True)
+    assert not plot_dialogue.ui.seriesSelectorFrame.isHidden()
+    series_group: QtWidgets.QTreeWidgetItem = plot_dialogue.ui.seriesTreeWidget.topLevelItem(0)
+    opf_group: QtWidgets.QTreeWidgetItem = plot_dialogue.ui.seriesTreeWidget.topLevelItem(1)
+    assert series_group.text(0) == "Profile Inputs"
+    assert opf_group.text(0) == "OPF Time Series"
+    power_unit_group: QtWidgets.QTreeWidgetItem = series_group.child(0)
+    opf_unit_group: QtWidgets.QTreeWidgetItem = opf_group.child(0)
+    assert power_unit_group.childCount() == 2
+    assert opf_unit_group.childCount() == 2
+    assert opf_unit_group.child(0).foreground(0).color() == active_power_chart.get_series_color(2)
+    opf_unit_group.child(0).setCheckState(0, QtCore.Qt.CheckState.Unchecked)
+    assert active_power_chart.get_series_count() == 3
+    opf_unit_group.child(0).setCheckState(0, QtCore.Qt.CheckState.Checked)
+    assert active_power_chart.get_series_count() == 4
+    plot_dialogue.ui.actionAddPlot.trigger()
+    assert plot_dialogue.ui.plotTabs.count() == 2
+    assert plot_dialogue.ui.seriesTreeWidget.topLevelItemCount() == 2
+    opf_unit_group.child(0).setCheckState(0, QtCore.Qt.CheckState.Checked)
+    assert len(plot_dialogue.get_current_chart()._series) == 1
+    assert (opf_unit_group.child(0).foreground(0).color()
+            == plot_dialogue.get_current_chart().get_series_color(0))
+    assert plot_dialogue.ui.seriesTreeWidget.topLevelItemCount() == 2
 
     plot_dialogue.reject()
     owner.deleteLater()
