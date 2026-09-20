@@ -241,6 +241,28 @@ def test_plot_tabs_can_be_added_and_closed_without_disposing_survivors(
     close_plot_dialogue(dialog=dialog, app=app)
 
 
+def test_plot_dialogue_save_picker_is_child_owned_and_asynchronous(
+        qt_app: QtWidgets.QApplication) -> None:
+    """Release the asynchronous image picker when its plot dialog closes.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    app: QtWidgets.QApplication = qt_app
+    dialog: PlotDialogue = PlotDialogue(title='Save lifecycle')
+    dialog.show()
+    app.processEvents()
+    dialog.save_image()
+    save_dialog: QtWidgets.QFileDialog | None = dialog._active_save_dialog
+    assert save_dialog is not None
+    assert save_dialog.parent() is dialog
+    assert save_dialog.isVisible()
+    save_dialog.close()
+    app.processEvents()
+    assert dialog._active_save_dialog is None
+    close_plot_dialogue(dialog=dialog, app=app)
+
+
 def test_plot_dialogue_dense_rhi_is_opt_in_and_applies_to_new_tabs(
         qt_app: QtWidgets.QApplication) -> None:
     """Keep ordinary dialogs on QPainter while carrying explicit RHI opt-in to tabs.

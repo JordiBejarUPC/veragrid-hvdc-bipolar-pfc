@@ -17,6 +17,7 @@ from VeraGrid.Gui.Widgets.qt_chart_widget import (
     PolarAngleUnit,
     format_chart_value,
 )
+from VeraGrid.Gui.Widgets.qt_rhi_line_chart_widget import RhiLineChartWidget
 
 
 class ObjectDestructionProbe:
@@ -747,7 +748,112 @@ def test_dense_random_chart_reuses_vertices_during_zoom_and_pan(
 
     assert chart._prepare_rhi_line_layer(plot_rect=chart._get_plot_rect())
     chart.dispose()
+    assert chart._rhi_line_widget is not None
+    assert chart._rhi_line_widget._disposed
+    assert chart._rhi_line_widget._vertices.size == 0
+    assert chart._rhi_line_widget._buffer is None
+    assert chart._rhi_line_widget._pipeline is None
     delete_chart_owner(owner=owner, chart=chart, probe=probe, app=qt_app)
+
+
+def test_chart_context_and_save_dialogs_do_not_retain_or_reenter_chart(
+        qt_app: QtWidgets.QApplication) -> None:
+    """Open and close chart menus and save dialogs without nested event loops.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    app: QtWidgets.QApplication = qt_app
+    owner: QtWidgets.QDialog = QtWidgets.QDialog()
+    chart: GraphsWidget = GraphsWidget(parent=owner)
+    chart.resize(640, 420)
+    owner.show()
+    chart.show()
+    app.processEvents()
+    cycle_index: int
+    for cycle_index in range(8):
+        global_position: QtCore.QPoint = chart.mapToGlobal(QtCore.QPoint(30, 30))
+        context_event: QtGui.QContextMenuEvent = QtGui.QContextMenuEvent(
+            QtGui.QContextMenuEvent.Reason.Mouse,
+            QtCore.QPoint(30, 30),
+            global_position,
+        )
+        chart.contextMenuEvent(context_event)
+        app.processEvents()
+        chart_menus: list[QtWidgets.QMenu] = chart.findChildren(QtWidgets.QMenu)
+        assert len(chart_menus) == 1
+        chart_menus[0].close()
+        QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
+        assert len(chart.findChildren(QtWidgets.QMenu)) == 0
+
+        chart._save_image_from_context_menu()
+        assert chart._active_save_dialog is not None
+        assert chart._active_save_dialog.parent() is chart
+        chart._active_save_dialog.close()
+        app.processEvents()
+        assert chart._active_save_dialog is None
+
+    context_position: QtCore.QPoint = chart.mapToGlobal(QtCore.QPoint(20, 20))
+    final_context_event: QtGui.QContextMenuEvent = QtGui.QContextMenuEvent(
+        QtGui.QContextMenuEvent.Reason.Mouse,
+        QtCore.QPoint(20, 20),
+        context_position,
+    )
+    chart.contextMenuEvent(final_context_event)
+    app.processEvents()
+    assert len(chart.findChildren(QtWidgets.QMenu)) == 1
+    chart.dispose()
+    app.processEvents()
+    assert len(chart.findChildren(QtWidgets.QMenu)) == 0
+    owner.deleteLater()
+    QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
+    app.processEvents()
+
+
+def test_rhi_widget_copies_and_releases_all_cpu_buffers(
+        qt_app: QtWidgets.QApplication) -> None:
+    """Keep caller arrays isolated and release renderer-owned arrays explicitly.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    _ = qt_app
+    renderer: RhiLineChartWidget = RhiLineChartWidget()
+    vertices: np.ndarray = np.asarray(((-1.0, -1.0), (1.0, 1.0)), dtype=np.float32)
+    lengths: np.ndarray = np.asarray((2,), dtype=np.int32)
+    area_flags: np.ndarray = np.asarray((False,), dtype=bool)
+    assert renderer.set_vertices(
+        vertices=vertices,
+        series_lengths=lengths,
+        series_colors=(QtGui.QColor("#2563eb"),),
+        series_is_area=area_flags,
+    )
+    vertices.fill(0.0)
+    lengths[0] = 0
+    area_flags[0] = True
+    assert renderer._vertices[1, 0] == 1.0
+    assert renderer._series_lengths[0] == 2
+    assert not renderer._series_is_area[0]
+
+    renderer.clear_data()
+    assert renderer._vertices.size == 0
+    assert renderer._series_lengths.size == 0
+    assert renderer._series_first_vertices.size == 0
+    assert renderer._series_is_area.size == 0
+    assert renderer._vertex_count == 0
+
+    renderer.dispose()
+    assert renderer._disposed
+    assert renderer._vertices.size == 0
+    assert renderer._buffer is None
+    assert renderer._pipeline is None
+    assert not renderer.set_vertices(
+        vertices=np.asarray(((0.0, 0.0), (1.0, 1.0)), dtype=np.float32),
+        series_lengths=(2,),
+        series_colors=(QtGui.QColor("#2563eb"),),
+    )
+    renderer.deleteLater()
+    QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
 
 
 def test_chart_colors_follow_application_palette_changes(qt_app: QtWidgets.QApplication) -> None:

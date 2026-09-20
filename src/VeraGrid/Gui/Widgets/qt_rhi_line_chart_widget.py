@@ -19,7 +19,7 @@ class RhiLineChartWidget(QtWidgets.QRhiWidget):
     __slots__ = ("_vertices", "_series_lengths", "_series_first_vertices", "_series_count",
                  "_series_is_area", "_buffer", "_buffer_size", "_pipeline", "_area_pipeline", "_rhi",
                  "_vertex_count", "_data_revision", "_uploaded_revision", "_bindings",
-                 "_background_color")
+                 "_background_color", "_disposed")
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         """Create an empty chart without allocating native graphics resources.
@@ -43,6 +43,7 @@ class RhiLineChartWidget(QtWidgets.QRhiWidget):
         self._uploaded_revision: int = -1
         self._bindings: QtGui.QRhiShaderResourceBindings | None = None
         self._background_color: QtGui.QColor = QtGui.QColor("#f7fbff")
+        self._disposed: bool = False
 
     def set_background_color(self, color: QtGui.QColor) -> None:
         """Set the plot fill used when QRhi clears its opaque child surface.
@@ -52,7 +53,10 @@ class RhiLineChartWidget(QtWidgets.QRhiWidget):
         """
         if self._background_color != color:
             self._background_color = QtGui.QColor(color)
-            self.update()
+            if not self._disposed:
+                self.update()
+            else:
+                pass
         else:
             pass
 
@@ -69,14 +73,18 @@ class RhiLineChartWidget(QtWidgets.QRhiWidget):
         :param series_is_area: Optional triangle-list flags paired with primitives.
         :return: Whether the buffers contain valid line or area primitives.
         """
+        if self._disposed:
+            return False
+        else:
+            pass
         if (vertices.ndim == 2 and vertices.shape[1] == 2
                 and len(series_lengths) == len(series_colors)
                 and np.all(np.isfinite(vertices))):
-            lengths: np.ndarray = np.asarray(series_lengths, dtype=np.int32)
+            lengths: np.ndarray = np.asarray(series_lengths, dtype=np.int32).copy()
             if series_is_area is None:
                 area_flags: np.ndarray = np.zeros(lengths.size, dtype=bool)
             else:
-                area_flags = np.asarray(series_is_area, dtype=bool)
+                area_flags = np.asarray(series_is_area, dtype=bool).copy()
             if (lengths.size > 0 and np.all(lengths >= 2) and int(np.sum(lengths)) == vertices.shape[0]
                     and area_flags.size == lengths.size):
                 packed_vertices: np.ndarray = np.empty((vertices.shape[0], 5), dtype=np.float32)
@@ -119,7 +127,34 @@ class RhiLineChartWidget(QtWidgets.QRhiWidget):
         self._series_count = 0
         self._vertex_count = 0
         self._data_revision += 1
-        self.update()
+        if not self._disposed:
+            self.update()
+        else:
+            pass
+
+    def clear_data(self) -> None:
+        """Release retained CPU vertices while keeping reusable GPU resources.
+
+        :return: None.
+        """
+        if not self._disposed:
+            self._clear_data()
+        else:
+            pass
+
+    def dispose(self) -> None:
+        """Release CPU and GPU resources before the chart owner is destroyed.
+
+        :return: None.
+        """
+        if not self._disposed:
+            self.hide()
+            self._disposed = True
+            self._clear_data()
+            self._destroy_graphics_resources()
+            self._rhi = None
+        else:
+            pass
 
     def initialize(self, command_buffer: QtGui.QRhiCommandBuffer) -> None:
         """Create a graphics pipeline for the current QRhi instance.
@@ -129,7 +164,7 @@ class RhiLineChartWidget(QtWidgets.QRhiWidget):
         """
         _ = command_buffer
         current_rhi: QtGui.QRhi | None = self.rhi()
-        if current_rhi is not self._rhi:
+        if not self._disposed and current_rhi is not self._rhi:
             self._destroy_graphics_resources()
             self._rhi = current_rhi
             if current_rhi is not None:
@@ -215,7 +250,7 @@ class RhiLineChartWidget(QtWidgets.QRhiWidget):
         :return: None.
         """
         render_target: QtGui.QRhiRenderTarget | None = self.renderTarget()
-        if render_target is not None:
+        if not self._disposed and render_target is not None:
             update_batch: QtGui.QRhiResourceUpdateBatch | None = None
             if self._pipeline is not None and self._uploaded_revision != self._data_revision:
                 if self._vertex_count > 0:
@@ -224,6 +259,8 @@ class RhiLineChartWidget(QtWidgets.QRhiWidget):
                         if self._buffer is None or self._buffer_size != self._vertices.nbytes:
                             if self._buffer is not None:
                                 self._buffer.destroy()
+                                self._buffer = None
+                                self._buffer_size = 0
                             else:
                                 pass
                             buffer: QtGui.QRhiBuffer = rhi.newBuffer(

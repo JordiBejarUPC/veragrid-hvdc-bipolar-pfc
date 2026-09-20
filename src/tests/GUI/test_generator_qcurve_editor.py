@@ -43,6 +43,48 @@ def flush_deferred_deletes(app: QtWidgets.QApplication) -> None:
     app.processEvents()
 
 
+def send_chart_pan(chart: GraphsWidget, start: QtCore.QPoint, end: QtCore.QPoint) -> None:
+    """Deliver one Ctrl+left drag directly to the chart's QWidget handlers.
+
+    :param chart: Native chart receiving the pan gesture.
+    :param start: Local drag origin.
+    :param end: Local drag destination.
+    :return: None.
+    """
+    modifier: QtCore.Qt.KeyboardModifier = QtCore.Qt.KeyboardModifier.ControlModifier
+    start_position: QtCore.QPointF = QtCore.QPointF(start)
+    end_position: QtCore.QPointF = QtCore.QPointF(end)
+    start_global: QtCore.QPointF = QtCore.QPointF(chart.mapToGlobal(start))
+    end_global: QtCore.QPointF = QtCore.QPointF(chart.mapToGlobal(end))
+    press_event: QtGui.QMouseEvent = QtGui.QMouseEvent(
+        QtCore.QEvent.Type.MouseButtonPress,
+        start_position,
+        start_global,
+        QtCore.Qt.MouseButton.LeftButton,
+        QtCore.Qt.MouseButton.LeftButton,
+        modifier,
+    )
+    chart.mousePressEvent(press_event)
+    move_event: QtGui.QMouseEvent = QtGui.QMouseEvent(
+        QtCore.QEvent.Type.MouseMove,
+        end_position,
+        end_global,
+        QtCore.Qt.MouseButton.NoButton,
+        QtCore.Qt.MouseButton.LeftButton,
+        modifier,
+    )
+    chart.mouseMoveEvent(move_event)
+    release_event: QtGui.QMouseEvent = QtGui.QMouseEvent(
+        QtCore.QEvent.Type.MouseButtonRelease,
+        end_position,
+        end_global,
+        QtCore.Qt.MouseButton.LeftButton,
+        QtCore.Qt.MouseButton.NoButton,
+        modifier,
+    )
+    chart.mouseReleaseEvent(release_event)
+
+
 def build_generator_editor() -> GeneratorEditor:
     """Build the in-place generator editor with an assigned generator bus.
 
@@ -185,11 +227,7 @@ def test_chart_widget_survives_repeated_paint_lifecycles(qt_app: QtWidgets.QAppl
         qt_app.processEvents()
         assert plotter.axis_x.get_zoom() > zoom_before
         visual_minimum_before: float = plotter.axis_x.get_visual_range()[0]
-        QtTest.QTest.mousePress(plotter, QtCore.Qt.MouseButton.LeftButton, pos=center)
-        QtTest.QTest.mouseMove(plotter, pos=center + QtCore.QPoint(80, 0))
-        QtTest.QTest.mouseRelease(plotter,
-                                  QtCore.Qt.MouseButton.LeftButton,
-                                  pos=center + QtCore.QPoint(80, 0))
+        send_chart_pan(chart=plotter, start=center, end=center + QtCore.QPoint(80, 0))
         qt_app.processEvents()
         assert plotter.axis_x.get_visual_range()[0] != visual_minimum_before
         first_zoom_pan_distance: float = abs(plotter.axis_x.get_pan())
@@ -210,11 +248,7 @@ def test_chart_widget_survives_repeated_paint_lifecycles(qt_app: QtWidgets.QAppl
                 False,
             )
             QtWidgets.QApplication.sendEvent(plotter, high_zoom_wheel_event)
-        QtTest.QTest.mousePress(plotter, QtCore.Qt.MouseButton.LeftButton, pos=center)
-        QtTest.QTest.mouseMove(plotter, pos=center + QtCore.QPoint(80, 0))
-        QtTest.QTest.mouseRelease(plotter,
-                                  QtCore.Qt.MouseButton.LeftButton,
-                                  pos=center + QtCore.QPoint(80, 0))
+        send_chart_pan(chart=plotter, start=center, end=center + QtCore.QPoint(80, 0))
         qt_app.processEvents()
         assert abs(plotter.axis_x.get_pan()) < first_zoom_pan_distance
 

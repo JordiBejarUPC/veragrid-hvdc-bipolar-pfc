@@ -7,6 +7,7 @@
 
 from collections.abc import Sequence
 from enum import Enum, auto
+from pathlib import Path
 
 import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
@@ -530,6 +531,7 @@ class GraphsWidget(QtWidgets.QWidget):
         "_rhi_line_threshold",
         "_rhi_line_failed",
         "_rhi_line_cache_key",
+        "_active_save_dialog",
     )
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
@@ -577,6 +579,7 @@ class GraphsWidget(QtWidgets.QWidget):
         self._rhi_line_threshold: int = 64
         self._rhi_line_failed: bool = False
         self._rhi_line_cache_key: tuple[object, ...] | None = None
+        self._active_save_dialog: QtWidgets.QFileDialog | None = None
         self.apply_theme(dark=self.palette().color(QtGui.QPalette.ColorRole.Window).lightness() < 128)
         self._set_axis_ranges()
 
@@ -1063,6 +1066,16 @@ class GraphsWidget(QtWidgets.QWidget):
             self.axis_x.reset_viewport()
             self.axis_y.reset_viewport()
             self._set_axis_ranges()
+            self._rhi_line_cache_key = None
+            if self._rhi_line_widget is not None:
+                self._rhi_line_widget.clear_data()
+                self._rhi_line_widget.hide()
+            else:
+                pass
+            if self._rhi_selection_overlay is not None:
+                self._rhi_selection_overlay.set_selection(None, QtCore.QRectF())
+            else:
+                pass
             if not self._disposed:
                 self.update()
             else:
@@ -1355,9 +1368,17 @@ class GraphsWidget(QtWidgets.QWidget):
             self._zoom_selection = None
             self.unsetCursor()
             QtWidgets.QToolTip.hideText()
+            chart_menu: QtWidgets.QMenu
+            for chart_menu in self.findChildren(QtWidgets.QMenu):
+                chart_menu.close()
+            if self._active_save_dialog is not None:
+                self._active_save_dialog.close()
+                self._active_save_dialog = None
+            else:
+                pass
             if self._rhi_line_widget is not None:
-                self._rhi_line_widget.hide()
-                self._rhi_line_widget.releaseResources()
+                self._rhi_line_widget.renderFailed.disconnect(self._on_rhi_render_failed)
+                self._rhi_line_widget.dispose()
             else:
                 pass
             if self._rhi_selection_overlay is not None:
@@ -1542,11 +1563,12 @@ class GraphsWidget(QtWidgets.QWidget):
         """
         if self._can_mutate():
             menu: QtWidgets.QMenu = QtWidgets.QMenu(self)
+            menu.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose, True)
             save_action: QtGui.QAction = menu.addAction(self.tr("Save image…"))
             center_action: QtGui.QAction = menu.addAction(self.tr("Center data"))
             save_action.triggered.connect(self._save_image_from_context_menu)
             center_action.triggered.connect(self._center_from_context_menu)
-            menu.exec(event.globalPos())
+            menu.popup(event.globalPos())
             event.accept()
         else:
             event.ignore()
@@ -1558,20 +1580,47 @@ class GraphsWidget(QtWidgets.QWidget):
         :return: None.
         """
         _ = checked
-        file_name: str
-        selected_filter: str
-        file_name, selected_filter = QtWidgets.QFileDialog.getSaveFileName(
-            self,
-            self.tr("Save chart"),
-            "",
-            self.tr("PNG image (*.png);;SVG image (*.svg)"),
-        )
-        _ = selected_filter
-        if file_name:
+        if self._active_save_dialog is None:
+            file_dialog: QtWidgets.QFileDialog = QtWidgets.QFileDialog(self, self.tr("Save chart"))
+            file_dialog.setAcceptMode(QtWidgets.QFileDialog.AcceptMode.AcceptSave)
+            file_dialog.setFileMode(QtWidgets.QFileDialog.FileMode.AnyFile)
+            file_dialog.setOption(QtWidgets.QFileDialog.Option.DontUseNativeDialog, True)
+            file_dialog.setNameFilters([self.tr("PNG image (*.png)"), self.tr("SVG image (*.svg)")])
+            file_dialog.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose, True)
+            file_dialog.fileSelected.connect(self._save_chart_to_file)
+            file_dialog.finished.connect(self._clear_active_save_dialog)
+            self._active_save_dialog = file_dialog
+            file_dialog.open()
+        else:
+            self._active_save_dialog.raise_()
+            self._active_save_dialog.activateWindow()
+
+    def _save_chart_to_file(self, file_name: str) -> None:
+        """Export the chart after the non-modal save dialog returns a path.
+
+        :param file_name: Chosen image destination.
+        :return: None.
+        """
+        if self._can_mutate() and file_name != "":
+            output_path: Path = Path(file_name)
+            if output_path.suffix == "" and self._active_save_dialog is not None:
+                selected_filter: str = self._active_save_dialog.selectedNameFilter().casefold()
+                output_path = output_path.with_suffix(".svg" if "svg" in selected_filter else ".png")
+            else:
+                pass
             from VeraGrid.Gui.PlotDialogue.plot_export import save_chart_image
-            save_chart_image(chart=self, file_name=file_name)
+            save_chart_image(chart=self, file_name=str(output_path))
         else:
             pass
+
+    def _clear_active_save_dialog(self, result: int) -> None:
+        """Drop the reference after the child save dialog has finished.
+
+        :param result: Dialog result code.
+        :return: None.
+        """
+        _ = result
+        self._active_save_dialog = None
 
     def _center_from_context_menu(self, checked: bool = False) -> None:
         """Reset axes to the complete data range.

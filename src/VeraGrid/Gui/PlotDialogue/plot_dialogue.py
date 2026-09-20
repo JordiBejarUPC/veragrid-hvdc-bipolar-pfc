@@ -53,7 +53,7 @@ class PlotDialogue(QtWidgets.QDialog):
 
     __slots__ = ('ui', 'chart', '_tab_charts', '_series_selector_override',
                  '_use_rhi_for_many_series', '_series_catalog', '_plot_series_indices',
-                 '_series_catalog_enabled', '_series_tree_initialized')
+                 '_series_catalog_enabled', '_series_tree_initialized', '_active_save_dialog')
 
     def __init__(self,
                  title: str = 'Plot',
@@ -77,6 +77,7 @@ class PlotDialogue(QtWidgets.QDialog):
         self._plot_series_indices: list[list[int]] = [list()]
         self._series_catalog_enabled: bool = False
         self._series_tree_initialized: bool = False
+        self._active_save_dialog: QtWidgets.QFileDialog | None = None
         self.chart.set_rhi_line_rendering(enabled=use_rhi_for_many_series)
         self.ui.plotSplitter.setStretchFactor(0, 0)
         self.ui.plotSplitter.setStretchFactor(1, 1)
@@ -108,6 +109,11 @@ class PlotDialogue(QtWidgets.QDialog):
         self.ui.seriesTreeWidget.clear()
         self.ui.seriesTreeWidget.blockSignals(False)
         self.ui.seriesSelectorFrame.setVisible(False)
+        if self._active_save_dialog is not None:
+            self._active_save_dialog.close()
+            self._active_save_dialog = None
+        else:
+            pass
         chart: GraphsWidget
         for chart in self._tab_charts:
             chart.dispose()
@@ -867,26 +873,46 @@ class PlotDialogue(QtWidgets.QDialog):
         :return: None.
         """
         _ = checked
-        file_name: str
-        selected_filter: str
-        file_name, selected_filter = QtWidgets.QFileDialog.getSaveFileName(
-            self,
-            self.tr('Save plot image'),
-            '',
-            self.tr('SVG image (*.svg);;PNG image (*.png)'),
-        )
+        if self._active_save_dialog is None:
+            file_dialog: QtWidgets.QFileDialog = QtWidgets.QFileDialog(self, self.tr('Save plot image'))
+            file_dialog.setAcceptMode(QtWidgets.QFileDialog.AcceptMode.AcceptSave)
+            file_dialog.setFileMode(QtWidgets.QFileDialog.FileMode.AnyFile)
+            file_dialog.setOption(QtWidgets.QFileDialog.Option.DontUseNativeDialog, True)
+            file_dialog.setNameFilters([self.tr('SVG image (*.svg)'), self.tr('PNG image (*.png)')])
+            file_dialog.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose, True)
+            file_dialog.fileSelected.connect(self._save_selected_image)
+            file_dialog.finished.connect(self._clear_active_save_dialog)
+            self._active_save_dialog = file_dialog
+            file_dialog.open()
+        else:
+            self._active_save_dialog.raise_()
+            self._active_save_dialog.activateWindow()
+
+    def _save_selected_image(self, file_name: str) -> None:
+        """Export the current chart after the non-modal file chooser selects a path.
+
+        :param file_name: User-selected destination.
+        :return: None.
+        """
         if file_name != '':
             output_path: Path = Path(file_name)
-            if output_path.suffix == '':
-                if selected_filter.startswith('SVG'):
-                    output_path = output_path.with_suffix('.svg')
-                else:
-                    output_path = output_path.with_suffix('.png')
+            if output_path.suffix == '' and self._active_save_dialog is not None:
+                selected_filter: str = self._active_save_dialog.selectedNameFilter().casefold()
+                output_path = output_path.with_suffix('.svg' if 'svg' in selected_filter else '.png')
             else:
                 pass
             self.save_image_to_file(file_name=str(output_path))
         else:
             pass
+
+    def _clear_active_save_dialog(self, result: int) -> None:
+        """Drop the reference after the child save dialog has finished.
+
+        :param result: Dialog result code.
+        :return: None.
+        """
+        _ = result
+        self._active_save_dialog = None
 
     def save_image_to_file(self, file_name: str) -> bool:
         """Export the current chart without opening a file dialog.
