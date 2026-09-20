@@ -21,13 +21,18 @@ from VeraGrid.Gui.Widgets.qt_chart_widget import GraphsWidget, PolarAngleUnit
 class PlotDialogue(QtWidgets.QDialog):
     """Own one or more native QWidget charts in explicitly owned Qt tabs."""
 
-    __slots__ = ('ui', 'chart', '_tab_charts')
+    __slots__ = ('ui', 'chart', '_tab_charts', '_series_selector_override',
+                 '_use_rhi_for_many_series')
 
-    def __init__(self, title: str = 'Plot', parent: QtWidgets.QWidget | None = None) -> None:
+    def __init__(self,
+                 title: str = 'Plot',
+                 parent: QtWidgets.QWidget | None = None,
+                 use_rhi_for_many_series: bool = False) -> None:
         """Create the retained chart dialog and its Qt-owned child hierarchy.
 
         :param title: Initial dialog and chart title.
         :param parent: Optional Qt owner for the complete dialog hierarchy.
+        :param use_rhi_for_many_series: Whether dense XY line series may use QRhi.
         :return: None.
         """
         QtWidgets.QDialog.__init__(self, parent)
@@ -35,6 +40,9 @@ class PlotDialogue(QtWidgets.QDialog):
         self.ui.setupUi(self)
         self.chart: GraphsWidget = self.ui.plotwidget
         self._tab_charts: list[GraphsWidget] = [self.chart]
+        self._series_selector_override: bool | None = None
+        self._use_rhi_for_many_series: bool = use_rhi_for_many_series
+        self.chart.set_rhi_line_rendering(enabled=use_rhi_for_many_series)
         self.ui.plotSplitter.setStretchFactor(0, 1)
         self.ui.plotSplitter.setStretchFactor(1, 0)
         self.setWindowTitle(title)
@@ -44,10 +52,12 @@ class PlotDialogue(QtWidgets.QDialog):
         # or queued ownership crosses the chart lifetime boundary.
         self.ui.actionSaveImage.triggered.connect(self.save_image)
         self.ui.actionResetView.triggered.connect(self.center_data)
-        self.ui.buttonBox.rejected.connect(self.reject)
+        self.ui.actionopencloseTree.triggered.connect(self._toggle_series_selector)
         self.ui.plotTabs.currentChanged.connect(self._refresh_series_selector)
         self.ui.seriesSearchLineEdit.textChanged.connect(self._filter_series_selector)
         self.ui.seriesListWidget.itemChanged.connect(self._set_series_visibility)
+        self.ui.selectAllButton.clicked.connect(self.select_all_series)
+        self.ui.selectNoneButton.clicked.connect(self.select_no_series)
 
     def done(self, result: int) -> None:
         """Release every tab buffer before Qt tears down the parent-child widgets.
@@ -96,6 +106,7 @@ class PlotDialogue(QtWidgets.QDialog):
         tab_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(tab_page)
         tab_layout.setContentsMargins(0, 0, 0, 0)
         tab_chart: GraphsWidget = GraphsWidget(parent=tab_page)
+        tab_chart.set_rhi_line_rendering(enabled=self._use_rhi_for_many_series)
         tab_layout.addWidget(tab_chart)
         self._tab_charts.append(tab_chart)
         tab_index: int = self.ui.plotTabs.addTab(tab_page, title)
@@ -324,29 +335,83 @@ class PlotDialogue(QtWidgets.QDialog):
             else:
                 pass
 
-        selector_visible: bool = named_series_count > 20
-        chart.set_legend_visible(visible=not selector_visible)
-        self.ui.seriesSelectorFrame.setVisible(selector_visible)
-        self.ui.seriesListWidget.blockSignals(True)
-        self.ui.seriesListWidget.clear()
-        if selector_visible:
-            for series_index in range(chart.get_series_count()):
-                series_name: str = chart.get_series_name(series_index=series_index)
-                if series_name != '':
-                    list_item: QtWidgets.QListWidgetItem = QtWidgets.QListWidgetItem(series_name)
-                    list_item.setData(QtCore.Qt.ItemDataRole.UserRole, series_index)
-                    list_item.setFlags(list_item.flags() | QtCore.Qt.ItemFlag.ItemIsUserCheckable)
-                    list_item.setCheckState(
-                        QtCore.Qt.CheckState.Checked if chart.get_series_visible(series_index=series_index)
-                        else QtCore.Qt.CheckState.Unchecked,
-                    )
-                    list_item.setForeground(QtGui.QBrush(chart.get_series_color(series_index=series_index)))
-                    self.ui.seriesListWidget.addItem(list_item)
-                else:
-                    pass
+        automatic_visibility: bool = named_series_count > 20
+        selector_visible: bool = automatic_visibility
+        if self._series_selector_override is not None:
+            selector_visible = self._series_selector_override
         else:
             pass
+        chart.set_legend_visible(visible=not selector_visible)
+        self.ui.seriesSelectorFrame.setVisible(selector_visible)
+        self.ui.actionopencloseTree.setChecked(selector_visible)
+        self.ui.seriesListWidget.blockSignals(True)
+        self.ui.seriesListWidget.clear()
+        for series_index in range(chart.get_series_count()):
+            series_name: str = chart.get_series_name(series_index=series_index)
+            if series_name != '':
+                list_item: QtWidgets.QListWidgetItem = QtWidgets.QListWidgetItem(series_name)
+                list_item.setData(QtCore.Qt.ItemDataRole.UserRole, series_index)
+                list_item.setFlags(list_item.flags() | QtCore.Qt.ItemFlag.ItemIsUserCheckable)
+                list_item.setCheckState(
+                    QtCore.Qt.CheckState.Checked if chart.get_series_visible(series_index=series_index)
+                    else QtCore.Qt.CheckState.Unchecked,
+                )
+                list_item.setForeground(QtGui.QBrush(chart.get_series_color(series_index=series_index)))
+                self.ui.seriesListWidget.addItem(list_item)
+            else:
+                pass
         self.ui.seriesListWidget.blockSignals(False)
+        self._filter_series_selector(text=self.ui.seriesSearchLineEdit.text())
+
+    def _toggle_series_selector(self, visible: bool) -> None:
+        """Apply the toolbar action's requested series-list visibility.
+
+        :param visible: Checked state of the list visibility action.
+        :return: None.
+        """
+        self._series_selector_override = visible
+        self.ui.seriesSelectorFrame.setVisible(visible)
+        self.get_current_chart().set_legend_visible(visible=not visible)
+
+    def select_all_series(self, checked: bool = False) -> None:
+        """Show every series currently listed for the selected chart.
+
+        :param checked: Button state ignored by this momentary action.
+        :return: None.
+        """
+        _ = checked
+        self._set_all_series_visibility(visible=True)
+
+    def select_no_series(self, checked: bool = False) -> None:
+        """Hide every series currently listed for the selected chart.
+
+        :param checked: Button state ignored by this momentary action.
+        :return: None.
+        """
+        _ = checked
+        self._set_all_series_visibility(visible=False)
+
+    def _set_all_series_visibility(self, visible: bool) -> None:
+        """Update list check states and chart data without item callbacks per row.
+
+        :param visible: Whether every named series should be rendered.
+        :return: None.
+        """
+        chart: GraphsWidget = self.get_current_chart()
+        self.ui.seriesListWidget.blockSignals(True)
+        for item_index in range(self.ui.seriesListWidget.count()):
+            list_item: QtWidgets.QListWidgetItem = self.ui.seriesListWidget.item(item_index)
+            check_state: QtCore.Qt.CheckState = (
+                QtCore.Qt.CheckState.Checked if visible else QtCore.Qt.CheckState.Unchecked
+            )
+            list_item.setCheckState(check_state)
+            series_index_value: object = list_item.data(QtCore.Qt.ItemDataRole.UserRole)
+            if isinstance(series_index_value, int):
+                chart.set_series_visible(series_index=series_index_value, visible=visible)
+            else:
+                pass
+        self.ui.seriesListWidget.blockSignals(False)
+        chart.update()
         self._filter_series_selector(text=self.ui.seriesSearchLineEdit.text())
 
     def _filter_series_selector(self, text: str) -> None:

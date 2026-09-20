@@ -14,18 +14,6 @@
    <string>Plot</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
-   <property name="leftMargin">
-    <number>6</number>
-   </property>
-   <property name="topMargin">
-    <number>6</number>
-   </property>
-   <property name="rightMargin">
-    <number>6</number>
-   </property>
-   <property name="bottomMargin">
-    <number>6</number>
-   </property>
    <item>
     <widget class="QToolBar" name="plotToolBar">
      <property name="movable">
@@ -34,21 +22,105 @@
      <property name="floatable">
       <bool>false</bool>
      </property>
+     <addaction name="actionopencloseTree"/>
+     <addaction name="separator"/>
      <addaction name="actionSaveImage"/>
      <addaction name="actionResetView"/>
-   </widget>
+    </widget>
    </item>
    <item>
     <widget class="QSplitter" name="plotSplitter">
      <property name="orientation">
       <enum>Qt::Orientation::Horizontal</enum>
      </property>
-     <property name="childrenCollapsible">
-      <bool>false</bool>
-     </property>
+     <widget class="QFrame" name="seriesSelectorFrame">
+      <property name="minimumSize">
+       <size>
+        <width>220</width>
+        <height>0</height>
+       </size>
+      </property>
+      <property name="visible">
+       <bool>true</bool>
+      </property>
+      <property name="frameShape">
+       <enum>QFrame::Shape::NoFrame</enum>
+      </property>
+      <property name="frameShadow">
+       <enum>QFrame::Shadow::Sunken</enum>
+      </property>
+      <layout class="QVBoxLayout" name="seriesSelectorLayout">
+       <item>
+        <widget class="QFrame" name="frame">
+         <property name="frameShape">
+          <enum>QFrame::Shape::NoFrame</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Shadow::Raised</enum>
+         </property>
+         <layout class="QHBoxLayout" name="horizontalLayout">
+          <property name="leftMargin">
+           <number>0</number>
+          </property>
+          <property name="topMargin">
+           <number>0</number>
+          </property>
+          <property name="rightMargin">
+           <number>0</number>
+          </property>
+          <property name="bottomMargin">
+           <number>0</number>
+          </property>
+          <item>
+           <widget class="QLineEdit" name="seriesSearchLineEdit">
+            <property name="placeholderText">
+             <string>Search series</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+          <widget class="QPushButton" name="selectAllButton">
+           <property name="toolTip">
+            <string>Select all series</string>
+           </property>
+            <property name="text">
+             <string/>
+            </property>
+            <property name="icon">
+             <iconset resource="../Icons/icons.qrc">
+              <normaloff>:/Icons/icons/check_all.png</normaloff>:/Icons/icons/check_all.png</iconset>
+            </property>
+           </widget>
+          </item>
+          <item>
+          <widget class="QPushButton" name="selectNoneButton">
+           <property name="toolTip">
+            <string>Select no series</string>
+           </property>
+            <property name="text">
+             <string/>
+            </property>
+            <property name="icon">
+             <iconset resource="../Icons/icons.qrc">
+              <normaloff>:/Icons/icons/uncheck_all.png</normaloff>:/Icons/icons/uncheck_all.png</iconset>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QListWidget" name="seriesListWidget">
+         <property name="frameShape">
+          <enum>QFrame::Shape::NoFrame</enum>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
      <widget class="QTabWidget" name="plotTabs">
       <property name="tabPosition">
-       <enum>QTabWidget::TabPosition::North</enum>
+       <enum>QTabWidget::TabPosition::South</enum>
       </property>
       <property name="tabsClosable">
        <bool>false</bool>
@@ -76,56 +148,14 @@
        </layout>
       </widget>
      </widget>
-     <widget class="QFrame" name="seriesSelectorFrame">
-      <property name="visible">
-       <bool>false</bool>
-      </property>
-      <property name="minimumSize">
-       <size>
-        <width>220</width>
-        <height>0</height>
-       </size>
-      </property>
-      <property name="frameShape">
-       <enum>QFrame::Shape::StyledPanel</enum>
-      </property>
-      <property name="frameShadow">
-       <enum>QFrame::Shadow::Sunken</enum>
-      </property>
-      <layout class="QVBoxLayout" name="seriesSelectorLayout">
-       <item>
-        <widget class="QLabel" name="seriesSelectorLabel">
-         <property name="text">
-          <string>Series</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLineEdit" name="seriesSearchLineEdit">
-         <property name="placeholderText">
-          <string>Search series</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QListWidget" name="seriesListWidget"/>
-       </item>
-      </layout>
-     </widget>
-    </widget>
-   </item>
-   <item>
-    <widget class="QDialogButtonBox" name="buttonBox">
-     <property name="orientation">
-      <enum>Qt::Orientation::Horizontal</enum>
-     </property>
-     <property name="standardButtons">
-      <set>QDialogButtonBox::StandardButton::Close</set>
-     </property>
     </widget>
    </item>
   </layout>
   <action name="actionSaveImage">
+   <property name="icon">
+    <iconset resource="../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/savec.png</normaloff>:/Icons/icons/savec.png</iconset>
+   </property>
    <property name="text">
     <string>Save image</string>
    </property>
@@ -134,11 +164,33 @@
    </property>
   </action>
   <action name="actionResetView">
+   <property name="icon">
+    <iconset resource="../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/resize.png</normaloff>:/Icons/icons/resize.png</iconset>
+   </property>
    <property name="text">
     <string>Center data</string>
    </property>
    <property name="toolTip">
     <string>Reset zoom and pan to show all data</string>
+   </property>
+  </action>
+  <action name="actionopencloseTree">
+   <property name="icon">
+    <iconset resource="../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/tree.png</normaloff>:/Icons/icons/tree.png</iconset>
+   </property>
+   <property name="text">
+    <string>Series list</string>
+   </property>
+   <property name="toolTip">
+    <string>Show or hide the series list</string>
+   </property>
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::NoRole</enum>
    </property>
   </action>
  </widget>
@@ -149,6 +201,8 @@
    <header>VeraGrid.Gui.Widgets.qt_chart_widget</header>
   </customwidget>
  </customwidgets>
- <resources/>
+ <resources>
+  <include location="../Icons/icons.qrc"/>
+ </resources>
  <connections/>
 </ui>

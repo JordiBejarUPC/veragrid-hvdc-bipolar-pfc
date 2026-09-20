@@ -62,7 +62,7 @@ for package in packages:
 
 package_data = {
     package_name('Gui.translations'): ['*.qm'],
-    package_name('Gui.Widgets'): ['*.qml'],
+    package_name('Gui.Widgets'): ['*.qml', 'shaders/*.qsb'],
     package_name('data'): [
         'cables.csv',
         'transformers.csv',

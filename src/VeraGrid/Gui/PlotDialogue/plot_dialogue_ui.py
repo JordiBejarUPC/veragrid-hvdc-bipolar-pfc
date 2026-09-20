@@ -16,12 +16,13 @@ from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
     QIcon, QImage, QKeySequence, QLinearGradient,
     QPainter, QPalette, QPixmap, QRadialGradient,
     QTransform)
-from PySide6.QtWidgets import (QAbstractButton, QApplication, QDialog, QDialogButtonBox,
-    QFrame, QLabel, QLineEdit, QListWidget,
-    QListWidgetItem, QSizePolicy, QSplitter, QTabWidget,
-    QToolBar, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QApplication, QDialog, QFrame, QHBoxLayout,
+    QLineEdit, QListWidget, QListWidgetItem, QPushButton,
+    QSizePolicy, QSplitter, QTabWidget, QToolBar,
+    QVBoxLayout, QWidget)
 
 from VeraGrid.Gui.Widgets.qt_chart_widget import GraphsWidget
+from VeraGrid.Gui.Icons.icons_rc import *
 
 class Ui_PlotDialogue(object):
     def setupUi(self, PlotDialogue):
@@ -30,11 +31,23 @@ class Ui_PlotDialogue(object):
         PlotDialogue.resize(900, 620)
         self.actionSaveImage = QAction(PlotDialogue)
         self.actionSaveImage.setObjectName(u"actionSaveImage")
+        icon = QIcon()
+        icon.addFile(u":/Icons/icons/savec.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.actionSaveImage.setIcon(icon)
         self.actionResetView = QAction(PlotDialogue)
         self.actionResetView.setObjectName(u"actionResetView")
+        icon1 = QIcon()
+        icon1.addFile(u":/Icons/icons/resize.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.actionResetView.setIcon(icon1)
+        self.actionopencloseTree = QAction(PlotDialogue)
+        self.actionopencloseTree.setObjectName(u"actionopencloseTree")
+        icon2 = QIcon()
+        icon2.addFile(u":/Icons/icons/tree.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.actionopencloseTree.setIcon(icon2)
+        self.actionopencloseTree.setCheckable(True)
+        self.actionopencloseTree.setMenuRole(QAction.MenuRole.NoRole)
         self.verticalLayout = QVBoxLayout(PlotDialogue)
         self.verticalLayout.setObjectName(u"verticalLayout")
-        self.verticalLayout.setContentsMargins(6, 6, 6, 6)
         self.plotToolBar = QToolBar(PlotDialogue)
         self.plotToolBar.setObjectName(u"plotToolBar")
         self.plotToolBar.setMovable(False)
@@ -45,10 +58,55 @@ class Ui_PlotDialogue(object):
         self.plotSplitter = QSplitter(PlotDialogue)
         self.plotSplitter.setObjectName(u"plotSplitter")
         self.plotSplitter.setOrientation(Qt.Orientation.Horizontal)
-        self.plotSplitter.setChildrenCollapsible(False)
+        self.seriesSelectorFrame = QFrame(self.plotSplitter)
+        self.seriesSelectorFrame.setObjectName(u"seriesSelectorFrame")
+        self.seriesSelectorFrame.setMinimumSize(QSize(220, 0))
+        self.seriesSelectorFrame.setVisible(True)
+        self.seriesSelectorFrame.setFrameShape(QFrame.Shape.NoFrame)
+        self.seriesSelectorFrame.setFrameShadow(QFrame.Shadow.Sunken)
+        self.seriesSelectorLayout = QVBoxLayout(self.seriesSelectorFrame)
+        self.seriesSelectorLayout.setObjectName(u"seriesSelectorLayout")
+        self.frame = QFrame(self.seriesSelectorFrame)
+        self.frame.setObjectName(u"frame")
+        self.frame.setFrameShape(QFrame.Shape.NoFrame)
+        self.frame.setFrameShadow(QFrame.Shadow.Raised)
+        self.horizontalLayout = QHBoxLayout(self.frame)
+        self.horizontalLayout.setObjectName(u"horizontalLayout")
+        self.horizontalLayout.setContentsMargins(0, 0, 0, 0)
+        self.seriesSearchLineEdit = QLineEdit(self.frame)
+        self.seriesSearchLineEdit.setObjectName(u"seriesSearchLineEdit")
+
+        self.horizontalLayout.addWidget(self.seriesSearchLineEdit)
+
+        self.selectAllButton = QPushButton(self.frame)
+        self.selectAllButton.setObjectName(u"selectAllButton")
+        icon3 = QIcon()
+        icon3.addFile(u":/Icons/icons/check_all.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.selectAllButton.setIcon(icon3)
+
+        self.horizontalLayout.addWidget(self.selectAllButton)
+
+        self.selectNoneButton = QPushButton(self.frame)
+        self.selectNoneButton.setObjectName(u"selectNoneButton")
+        icon4 = QIcon()
+        icon4.addFile(u":/Icons/icons/uncheck_all.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.selectNoneButton.setIcon(icon4)
+
+        self.horizontalLayout.addWidget(self.selectNoneButton)
+
+
+        self.seriesSelectorLayout.addWidget(self.frame)
+
+        self.seriesListWidget = QListWidget(self.seriesSelectorFrame)
+        self.seriesListWidget.setObjectName(u"seriesListWidget")
+        self.seriesListWidget.setFrameShape(QFrame.Shape.NoFrame)
+
+        self.seriesSelectorLayout.addWidget(self.seriesListWidget)
+
+        self.plotSplitter.addWidget(self.seriesSelectorFrame)
         self.plotTabs = QTabWidget(self.plotSplitter)
         self.plotTabs.setObjectName(u"plotTabs")
-        self.plotTabs.setTabPosition(QTabWidget.TabPosition.North)
+        self.plotTabs.setTabPosition(QTabWidget.TabPosition.South)
         self.plotTabs.setTabsClosable(False)
         self.plotTab = QWidget()
         self.plotTab.setObjectName(u"plotTab")
@@ -62,41 +120,12 @@ class Ui_PlotDialogue(object):
 
         self.plotTabs.addTab(self.plotTab, "")
         self.plotSplitter.addWidget(self.plotTabs)
-        self.seriesSelectorFrame = QFrame(self.plotSplitter)
-        self.seriesSelectorFrame.setObjectName(u"seriesSelectorFrame")
-        self.seriesSelectorFrame.setVisible(False)
-        self.seriesSelectorFrame.setMinimumSize(QSize(220, 0))
-        self.seriesSelectorFrame.setFrameShape(QFrame.Shape.StyledPanel)
-        self.seriesSelectorFrame.setFrameShadow(QFrame.Shadow.Sunken)
-        self.seriesSelectorLayout = QVBoxLayout(self.seriesSelectorFrame)
-        self.seriesSelectorLayout.setObjectName(u"seriesSelectorLayout")
-        self.seriesSelectorLabel = QLabel(self.seriesSelectorFrame)
-        self.seriesSelectorLabel.setObjectName(u"seriesSelectorLabel")
-
-        self.seriesSelectorLayout.addWidget(self.seriesSelectorLabel)
-
-        self.seriesSearchLineEdit = QLineEdit(self.seriesSelectorFrame)
-        self.seriesSearchLineEdit.setObjectName(u"seriesSearchLineEdit")
-
-        self.seriesSelectorLayout.addWidget(self.seriesSearchLineEdit)
-
-        self.seriesListWidget = QListWidget(self.seriesSelectorFrame)
-        self.seriesListWidget.setObjectName(u"seriesListWidget")
-
-        self.seriesSelectorLayout.addWidget(self.seriesListWidget)
-
-        self.plotSplitter.addWidget(self.seriesSelectorFrame)
 
         self.verticalLayout.addWidget(self.plotSplitter)
 
-        self.buttonBox = QDialogButtonBox(PlotDialogue)
-        self.buttonBox.setObjectName(u"buttonBox")
-        self.buttonBox.setOrientation(Qt.Orientation.Horizontal)
-        self.buttonBox.setStandardButtons(QDialogButtonBox.StandardButton.Close)
 
-        self.verticalLayout.addWidget(self.buttonBox)
-
-
+        self.plotToolBar.addAction(self.actionopencloseTree)
+        self.plotToolBar.addSeparator()
         self.plotToolBar.addAction(self.actionSaveImage)
         self.plotToolBar.addAction(self.actionResetView)
 
@@ -115,7 +144,18 @@ class Ui_PlotDialogue(object):
 #if QT_CONFIG(tooltip)
         self.actionResetView.setToolTip(QCoreApplication.translate("PlotDialogue", u"Reset zoom and pan to show all data", None))
 #endif // QT_CONFIG(tooltip)
-        self.plotTabs.setTabText(self.plotTabs.indexOf(self.plotTab), QCoreApplication.translate("PlotDialogue", u"Plot", None))
-        self.seriesSelectorLabel.setText(QCoreApplication.translate("PlotDialogue", u"Series", None))
+        self.actionopencloseTree.setText(QCoreApplication.translate("PlotDialogue", u"Series list", None))
+#if QT_CONFIG(tooltip)
+        self.actionopencloseTree.setToolTip(QCoreApplication.translate("PlotDialogue", u"Show or hide the series list", None))
+#endif // QT_CONFIG(tooltip)
         self.seriesSearchLineEdit.setPlaceholderText(QCoreApplication.translate("PlotDialogue", u"Search series", None))
+#if QT_CONFIG(tooltip)
+        self.selectAllButton.setToolTip(QCoreApplication.translate("PlotDialogue", u"Select all series", None))
+#endif // QT_CONFIG(tooltip)
+        self.selectAllButton.setText("")
+#if QT_CONFIG(tooltip)
+        self.selectNoneButton.setToolTip(QCoreApplication.translate("PlotDialogue", u"Select no series", None))
+#endif // QT_CONFIG(tooltip)
+        self.selectNoneButton.setText("")
+        self.plotTabs.setTabText(self.plotTabs.indexOf(self.plotTab), QCoreApplication.translate("PlotDialogue", u"Plot", None))
     # retranslateUi

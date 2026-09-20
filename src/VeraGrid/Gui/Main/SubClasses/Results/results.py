@@ -1063,7 +1063,11 @@ class ResultsMain(SimulationsMain):
             series_names: list[str] = plot_data[1]
             series_values: list[np.ndarray] = plot_data[2]
             dialog_title: str = self.tr("Results plot")
-            plot_dialogue: PlotDialogue = PlotDialogue(title=dialog_title, parent=self)
+            plot_dialogue: PlotDialogue = PlotDialogue(
+                title=dialog_title,
+                parent=self,
+                use_rhi_for_many_series=True,
+            )
             accepted: bool
             if stacked and len(series_names) > 1:
                 accepted = plot_dialogue.set_cumulative_area_series(

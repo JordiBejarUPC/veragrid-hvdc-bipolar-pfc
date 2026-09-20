@@ -11,6 +11,8 @@ from enum import Enum, auto
 import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 
+from VeraGrid.Gui.Widgets.qt_rhi_line_chart_widget import RhiLineChartWidget
+
 
 class ChartSeriesType(Enum):
     """Rendering primitive stored by :class:`ChartSeries`."""
@@ -449,6 +451,8 @@ class GraphsWidget(QtWidgets.QWidget):
         "_y_max",
         "_x_is_datetime",
         "_pan_position",
+        "_pan_button",
+        "_right_pan_moved",
         "_zoom_origin",
         "_zoom_selection",
         "_disposed",
@@ -457,6 +461,11 @@ class GraphsWidget(QtWidgets.QWidget):
         "_label_color",
         "_grid_color",
         "_legend_visible",
+        "_rhi_line_widget",
+        "_rhi_line_enabled",
+        "_rhi_line_threshold",
+        "_rhi_line_failed",
+        "_rhi_line_cache_key",
     )
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
@@ -469,8 +478,9 @@ class GraphsWidget(QtWidgets.QWidget):
         self.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding)
         self.setFocusPolicy(QtCore.Qt.FocusPolicy.StrongFocus)
         self.setMouseTracking(True)
+        self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.DefaultContextMenu)
         self.setToolTip(self.tr("Mouse wheel: zoom\nLeft drag: select zoom area\n"
-                                "Shift + left drag or middle drag: pan\nDouble-click: reset view"))
+                                "Right drag: pan\nDouble-click: reset view"))
 
         # The axes and series are plain Python values, so QWidget owns every native object involved.
         self.axis_x: ChartAxis = ChartAxis()
@@ -486,6 +496,8 @@ class GraphsWidget(QtWidgets.QWidget):
         self._y_max: float = 1.0
         self._x_is_datetime: bool = False
         self._pan_position: QtCore.QPointF | None = None
+        self._pan_button: QtCore.Qt.MouseButton | None = None
+        self._right_pan_moved: bool = False
         self._zoom_origin: QtCore.QPointF | None = None
         self._zoom_selection: QtCore.QRectF | None = None
         self._disposed: bool = False
@@ -494,6 +506,11 @@ class GraphsWidget(QtWidgets.QWidget):
         self._label_color: QtGui.QColor = QtGui.QColor("#17324a")
         self._grid_color: QtGui.QColor = QtGui.QColor("#cbd5e1")
         self._legend_visible: bool = True
+        self._rhi_line_widget: RhiLineChartWidget | None = None
+        self._rhi_line_enabled: bool = False
+        self._rhi_line_threshold: int = 64
+        self._rhi_line_failed: bool = False
+        self._rhi_line_cache_key: tuple[object, ...] | None = None
         self.apply_theme(dark=self.palette().color(QtGui.QPalette.ColorRole.Window).lightness() < 128)
         self._set_axis_ranges()
 
@@ -1246,6 +1263,11 @@ class GraphsWidget(QtWidgets.QWidget):
             self._zoom_selection = None
             self.unsetCursor()
             QtWidgets.QToolTip.hideText()
+            if self._rhi_line_widget is not None:
+                self._rhi_line_widget.hide()
+                self._rhi_line_widget.releaseResources()
+            else:
+                pass
             self.clear()
         else:
             pass
@@ -1293,15 +1315,13 @@ class GraphsWidget(QtWidgets.QWidget):
         :param event: Mouse button press delivered by Qt Widgets.
         :return: None.
         """
-        left_pan_requested: bool = (
-            event.button() == QtCore.Qt.MouseButton.LeftButton
-            and event.modifiers() & QtCore.Qt.KeyboardModifier.ShiftModifier
-        )
-        pan_requested: bool = event.button() == QtCore.Qt.MouseButton.MiddleButton or left_pan_requested
+        pan_requested: bool = event.button() == QtCore.Qt.MouseButton.RightButton
         plot_rect: QtCore.QRectF = self._get_plot_rect()
         if self._can_mutate() and pan_requested and plot_rect.contains(event.position()):
             QtWidgets.QToolTip.hideText()
             self._pan_position = event.position()
+            self._pan_button = event.button()
+            self._right_pan_moved = False
             self.setCursor(QtCore.Qt.CursorShape.ClosedHandCursor)
             event.accept()
         elif (self._can_mutate() and event.button() == QtCore.Qt.MouseButton.LeftButton
@@ -1324,6 +1344,10 @@ class GraphsWidget(QtWidgets.QWidget):
             previous_position: QtCore.QPointF = self._pan_position
             current_position: QtCore.QPointF = event.position()
             delta: QtCore.QPointF = current_position - previous_position
+            if delta.x() != 0.0 or delta.y() != 0.0:
+                self._right_pan_moved = True
+            else:
+                pass
             plot_rect: QtCore.QRectF = self._get_plot_rect()
             if plot_rect.width() > 0.0 and self._content_type != ChartContentType.POLAR:
                 x_minimum: float
@@ -1372,12 +1396,10 @@ class GraphsWidget(QtWidgets.QWidget):
         :param event: Mouse release event delivered by Qt Widgets.
         :return: None.
         """
-        pan_released: bool = event.button() in (
-            QtCore.Qt.MouseButton.LeftButton,
-            QtCore.Qt.MouseButton.MiddleButton,
-        )
-        if pan_released and self._pan_position is not None:
+        pan_released: bool = event.button() == self._pan_button
+        if pan_released and self._pan_position is not None and self._pan_button is not None:
             self._pan_position = None
+            self._pan_button = None
             self.unsetCursor()
             event.accept()
         elif event.button() == QtCore.Qt.MouseButton.LeftButton and self._zoom_origin is not None:
@@ -1415,6 +1437,215 @@ class GraphsWidget(QtWidgets.QWidget):
         else:
             event.ignore()
 
+    def contextMenuEvent(self, event: QtGui.QContextMenuEvent) -> None:
+        """Offer image export and centering after an unmoved right click.
+
+        :param event: Context menu request delivered by Qt Widgets.
+        :return: None.
+        """
+        if self._right_pan_moved:
+            self._right_pan_moved = False
+            event.accept()
+        elif self._can_mutate():
+            menu: QtWidgets.QMenu = QtWidgets.QMenu(self)
+            save_action: QtGui.QAction = menu.addAction(self.tr("Save image…"))
+            center_action: QtGui.QAction = menu.addAction(self.tr("Center data"))
+            save_action.triggered.connect(self._save_image_from_context_menu)
+            center_action.triggered.connect(self._center_from_context_menu)
+            menu.exec(event.globalPos())
+            event.accept()
+        else:
+            event.ignore()
+
+    def _save_image_from_context_menu(self, checked: bool = False) -> None:
+        """Choose a PNG or SVG destination and export this chart.
+
+        :param checked: Unused QAction state.
+        :return: None.
+        """
+        _ = checked
+        file_name: str
+        selected_filter: str
+        file_name, selected_filter = QtWidgets.QFileDialog.getSaveFileName(
+            self,
+            self.tr("Save chart"),
+            "",
+            self.tr("PNG image (*.png);;SVG image (*.svg)"),
+        )
+        _ = selected_filter
+        if file_name:
+            from VeraGrid.Gui.PlotDialogue.plot_export import save_chart_image
+            save_chart_image(chart=self, file_name=file_name)
+        else:
+            pass
+
+    def _center_from_context_menu(self, checked: bool = False) -> None:
+        """Reset axes to the complete data range.
+
+        :param checked: Unused QAction state.
+        :return: None.
+        """
+        _ = checked
+        self.reset_viewport()
+
+    def set_rhi_line_rendering(self, enabled: bool, series_threshold: int = 64) -> None:
+        """Enable the optional QRhi line layer above the requested series count.
+
+        :param enabled: Whether QRhi may replace QPainter for dense XY lines.
+        :param series_threshold: Minimum visible line count for that replacement.
+        :return: None.
+        """
+        if self._can_mutate():
+            self._rhi_line_enabled = enabled
+            self._rhi_line_threshold = max(series_threshold, 2)
+            self._rhi_line_failed = False
+            if enabled and self._rhi_line_widget is None:
+                self._create_rhi_line_widget()
+            else:
+                pass
+            self.update()
+        else:
+            pass
+
+    def _create_rhi_line_widget(self) -> None:
+        """Create the optional child renderer only when dense data needs it.
+
+        :return: None.
+        """
+        rhi_widget: RhiLineChartWidget = RhiLineChartWidget(parent=self)
+        rhi_widget.setAttribute(QtCore.Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        rhi_widget.setAttribute(QtCore.Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        rhi_widget.renderFailed.connect(self._on_rhi_render_failed)
+        self._rhi_line_widget = rhi_widget
+
+    def _on_rhi_render_failed(self) -> None:
+        """Fall back to QPainter after the optional QRhi surface fails.
+
+        :return: None.
+        """
+        self._rhi_line_failed = True
+        if self._rhi_line_widget is not None:
+            self._rhi_line_widget.hide()
+        else:
+            pass
+        self.update()
+
+    def _prepare_rhi_line_layer(self, plot_rect: QtCore.QRectF) -> bool:
+        """Prepare the transparent QRhi overlay when dense line rendering is enabled.
+
+        :param plot_rect: Current data viewport used for clip-space transforms.
+        :return: Whether QPainter should omit its line paths for this frame.
+        """
+        line_count: int = self._count_visible_lines()
+        rhi_selected: bool = (
+            self._rhi_line_enabled
+            and not self._rhi_line_failed
+            and self._content_type == ChartContentType.XY
+            and line_count >= self._rhi_line_threshold
+        )
+        if rhi_selected and self._rhi_line_widget is None:
+            self._create_rhi_line_widget()
+        else:
+            pass
+        if rhi_selected and self._rhi_line_widget is not None:
+            has_visible_non_line: bool = False
+            series: ChartSeries
+            for series in self._series:
+                if (series.get_visible()
+                        and series.get_series_type() not in (ChartSeriesType.LINE,)):
+                    has_visible_non_line = True
+                else:
+                    pass
+            if not has_visible_non_line and plot_rect.width() > 2.0 and plot_rect.height() > 2.0:
+                x_minimum: float
+                x_maximum: float
+                y_minimum: float
+                y_maximum: float
+                x_minimum, x_maximum = self.axis_x.get_visual_range()
+                y_minimum, y_maximum = self.axis_y.get_visual_range()
+                x_span: float = x_maximum - x_minimum
+                y_span: float = y_maximum - y_minimum
+                cache_series: list[tuple[int, int, int, int, int, int]] = list()
+                for series in self._series:
+                    if series.get_visible() and series.get_series_type() == ChartSeriesType.LINE:
+                        x_data: np.ndarray = series.get_x_data()
+                        y_data: np.ndarray = series.get_y_data()
+                        color: QtGui.QColor = series.get_color()
+                        cache_series.append((
+                            id(x_data), id(y_data), x_data.size, y_data.size,
+                            color.rgba(), int(series.get_x_is_monotonic()),
+                        ))
+                    else:
+                        pass
+                cache_key: tuple[object, ...] = (
+                    tuple(cache_series), x_minimum, x_maximum, y_minimum, y_maximum,
+                    plot_rect.x(), plot_rect.y(), plot_rect.width(), plot_rect.height(),
+                )
+                if cache_key == self._rhi_line_cache_key:
+                    self._rhi_line_widget.setGeometry(plot_rect.toAlignedRect())
+                    self._rhi_line_widget.show()
+                    return True
+                else:
+                    pass
+                vertex_chunks: list[np.ndarray] = list()
+                series_lengths: list[int] = list()
+                series_colors: list[QtGui.QColor] = list()
+                for series in self._series:
+                    if series.get_visible() and series.get_series_type() == ChartSeriesType.LINE:
+                        x_data: np.ndarray = series.get_x_data()
+                        y_data: np.ndarray = series.get_y_data()
+                        sample_indices: np.ndarray = self._sample_xy_indices(
+                            x_data=x_data,
+                            y_data=y_data,
+                            x_is_monotonic=series.get_x_is_monotonic(),
+                            plot_rect=plot_rect,
+                            visible_line_count=line_count,
+                        )
+                        if sample_indices.size >= 2 and x_span > 0.0 and y_span > 0.0:
+                            line_vertices: np.ndarray = np.empty((sample_indices.size, 2), dtype=np.float32)
+                            line_vertices[:, 0] = (
+                                (x_data[sample_indices] - x_minimum) * (2.0 / x_span) - 1.0
+                            ).astype(np.float32)
+                            line_vertices[:, 1] = (
+                                (y_data[sample_indices] - y_minimum) * (2.0 / y_span) - 1.0
+                            ).astype(np.float32)
+                            vertex_chunks.append(line_vertices)
+                            series_lengths.append(int(sample_indices.size))
+                            series_colors.append(series.get_color())
+                        else:
+                            pass
+                    else:
+                        pass
+                if len(vertex_chunks) > 0:
+                    packed_vertices: np.ndarray = np.concatenate(vertex_chunks, axis=0)
+                    if self._rhi_line_widget.set_vertices(
+                            vertices=packed_vertices,
+                            series_lengths=series_lengths,
+                            series_colors=series_colors):
+                        self._rhi_line_cache_key = cache_key
+                        self._rhi_line_widget.setGeometry(plot_rect.toAlignedRect())
+                        self._rhi_line_widget.show()
+                        return True
+                    else:
+                        self._rhi_line_cache_key = None
+                        self._rhi_line_widget.hide()
+                        return False
+                else:
+                    self._rhi_line_cache_key = None
+                    self._rhi_line_widget.hide()
+                    return False
+            else:
+                self._rhi_line_cache_key = None
+                self._rhi_line_widget.hide()
+                return False
+        else:
+            self._rhi_line_cache_key = None
+            if self._rhi_line_widget is not None:
+                self._rhi_line_widget.hide()
+            else:
+                pass
+            return False
+
     def paintEvent(self, event: QtGui.QPaintEvent) -> None:
         """Paint the entire chart synchronously from Python-owned buffers.
 
@@ -1422,14 +1653,17 @@ class GraphsWidget(QtWidgets.QWidget):
         :return: None.
         """
         _ = event
+        plot_rect: QtCore.QRectF = self._get_plot_rect()
+        use_rhi_lines: bool = self._prepare_rhi_line_layer(plot_rect=plot_rect)
         painter: QtGui.QPainter = QtGui.QPainter(self)
-        self.paint_to_painter(painter=painter)
+        self.paint_to_painter(painter=painter, paint_lines=not use_rhi_lines)
         painter.end()
 
-    def paint_to_painter(self, painter: QtGui.QPainter) -> None:
+    def paint_to_painter(self, painter: QtGui.QPainter, paint_lines: bool = True) -> None:
         """Paint the current chart into an already-active Qt paint device.
 
         :param painter: Active painter targeting this widget's native size.
+        :param paint_lines: Whether XY line series use the CPU painter path.
         :return: None.
         """
         painter.save()
@@ -1467,7 +1701,7 @@ class GraphsWidget(QtWidgets.QWidget):
                 self._paint_xy_axes(painter=painter, plot_rect=plot_rect)
                 painter.save()
                 painter.setClipRect(plot_rect)
-                self._paint_xy_series(painter=painter, plot_rect=plot_rect)
+                self._paint_xy_series(painter=painter, plot_rect=plot_rect, paint_lines=paint_lines)
                 painter.restore()
             painter.setPen(QtGui.QPen(self._label_color, 1.0))
             # Restoring the clipped painter also restores the last series brush.
@@ -1801,17 +2035,21 @@ class GraphsWidget(QtWidgets.QWidget):
                          self.axis_y.get_title())
         painter.restore()
 
-    def _paint_xy_series(self, painter: QtGui.QPainter, plot_rect: QtCore.QRectF) -> None:
+    def _paint_xy_series(self,
+                         painter: QtGui.QPainter,
+                         plot_rect: QtCore.QRectF,
+                         paint_lines: bool = True) -> None:
         """Paint line paths and circular scatter markers inside the XY axes.
 
         :param painter: Active painter for this paint event.
         :param plot_rect: Data drawing rectangle.
+        :param paint_lines: Whether line strips are delegated to the QRhi child.
         :return: None.
         """
         visible_line_count: int = self._count_visible_lines()
         series: ChartSeries
         for series in self._series:
-            if series.get_visible() and series.get_series_type() == ChartSeriesType.LINE:
+            if paint_lines and series.get_visible() and series.get_series_type() == ChartSeriesType.LINE:
                 self._paint_line_series(
                     painter=painter,
                     plot_rect=plot_rect,

@@ -376,23 +376,24 @@ def test_chart_widget_stress_replaces_data_paints_and_destroys_cleanly(
             event_type=QtCore.QEvent.Type.MouseButtonPress,
             widget=chart,
             local_position=press_position,
-            button=QtCore.Qt.MouseButton.MiddleButton,
-            buttons=QtCore.Qt.MouseButton.MiddleButton,
+            button=QtCore.Qt.MouseButton.RightButton,
+            buttons=QtCore.Qt.MouseButton.RightButton,
         ))
         chart.mouseMoveEvent(make_mouse_event(
             event_type=QtCore.QEvent.Type.MouseMove,
             widget=chart,
             local_position=move_position,
             button=QtCore.Qt.MouseButton.NoButton,
-            buttons=QtCore.Qt.MouseButton.MiddleButton,
+            buttons=QtCore.Qt.MouseButton.RightButton,
         ))
         chart.mouseReleaseEvent(make_mouse_event(
             event_type=QtCore.QEvent.Type.MouseButtonRelease,
             widget=chart,
             local_position=move_position,
-            button=QtCore.Qt.MouseButton.MiddleButton,
+            button=QtCore.Qt.MouseButton.RightButton,
             buttons=QtCore.Qt.MouseButton.NoButton,
         ))
+        assert chart._zoom_origin is None
         assert chart.axis_x.get_pan() != 0.0
         assert chart.axis_y.get_pan() != 0.0
         chart.reset_viewport()
@@ -521,3 +522,112 @@ def test_chart_widget_validates_tooltips_and_rejects_invalid_mode_data(
 
     chart.dispose()
     delete_chart_owner(owner=owner, chart=chart, probe=probe, app=app)
+
+
+def test_dense_random_chart_reuses_vertices_during_zoom_and_pan(
+        qt_app: QtWidgets.QApplication) -> None:
+    """Stress random line batches and prove unchanged paints skip repacking.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    random_generator: np.random.Generator = np.random.default_rng(20260920)
+    owner: QtWidgets.QDialog = QtWidgets.QDialog()
+    layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(owner)
+    chart: GraphsWidget = GraphsWidget(parent=owner)
+    probe: ObjectDestructionProbe = ObjectDestructionProbe()
+    chart.destroyed.connect(probe.mark_destroyed)
+    layout.addWidget(chart)
+    chart.set_rhi_line_rendering(enabled=True, series_threshold=32)
+    chart.resize(1100, 720)
+    point_count: int = 12000
+    x_values: np.ndarray = np.linspace(0.0, 120.0, point_count, dtype=float)
+    series_index: int
+    for series_index in range(48):
+        noise: np.ndarray = random_generator.normal(0.0, 0.08, point_count)
+        frequency: float = float(random_generator.uniform(0.05, 1.5))
+        phase: float = float(random_generator.uniform(-np.pi, np.pi))
+        y_values: np.ndarray = np.sin(x_values * frequency + phase) + noise + series_index * 0.01
+        chart.add_line_series(
+            name=f"random {series_index}",
+            x_values=x_values,
+            y_values=y_values,
+            color=QtGui.QColor.fromHsv((series_index * 47) % 360, 190, 190),
+        )
+    plot_rect: QtCore.QRectF = chart._get_plot_rect()
+    assert chart._prepare_rhi_line_layer(plot_rect=plot_rect)
+    assert chart._rhi_line_widget is not None
+    first_revision: int = chart._rhi_line_widget._data_revision
+    repeat_index: int
+    for repeat_index in range(12):
+        assert chart._prepare_rhi_line_layer(plot_rect=plot_rect)
+        assert chart._rhi_line_widget._data_revision == first_revision
+    image: QtGui.QImage = QtGui.QImage(
+        chart.size(), QtGui.QImage.Format.Format_ARGB32_Premultiplied
+    )
+    painter: QtGui.QPainter = QtGui.QPainter(image)
+    chart.paint_to_painter(painter=painter, paint_lines=False)
+    painter.end()
+    assert not image.isNull()
+    chart._center_from_context_menu()
+    assert chart.axis_x.get_zoom() == 1.0
+    assert chart.axis_y.get_zoom() == 1.0
+
+    gesture_index: int
+    for gesture_index in range(12):
+        drag_select_zoom(chart=chart)
+        assert chart.axis_x.get_zoom() > 1.0
+        assert chart.axis_y.get_zoom() > 1.0
+        assert chart._prepare_rhi_line_layer(plot_rect=chart._get_plot_rect())
+        assert chart._rhi_line_widget._data_revision > first_revision
+        first_revision = chart._rhi_line_widget._data_revision
+        image = QtGui.QImage(chart.size(), QtGui.QImage.Format.Format_ARGB32_Premultiplied)
+        painter = QtGui.QPainter(image)
+        chart.paint_to_painter(painter=painter, paint_lines=False)
+        painter.end()
+        assert not image.isNull()
+        chart.reset_viewport()
+        plot_rect = chart._get_plot_rect()
+        pan_start: QtCore.QPointF = QtCore.QPointF(
+            plot_rect.left() + plot_rect.width() * 0.35,
+            plot_rect.top() + plot_rect.height() * 0.4,
+        )
+        pan_end: QtCore.QPointF = QtCore.QPointF(
+            pan_start.x() + float(random_generator.uniform(8.0, 48.0)),
+            pan_start.y() + float(random_generator.uniform(-24.0, 24.0)),
+        )
+        chart.mousePressEvent(make_mouse_event(
+            event_type=QtCore.QEvent.Type.MouseButtonPress,
+            widget=chart,
+            local_position=pan_start,
+            button=QtCore.Qt.MouseButton.RightButton,
+            buttons=QtCore.Qt.MouseButton.RightButton,
+        ))
+        chart.mouseMoveEvent(make_mouse_event(
+            event_type=QtCore.QEvent.Type.MouseMove,
+            widget=chart,
+            local_position=pan_end,
+            button=QtCore.Qt.MouseButton.NoButton,
+            buttons=QtCore.Qt.MouseButton.RightButton,
+        ))
+        chart.mouseReleaseEvent(make_mouse_event(
+            event_type=QtCore.QEvent.Type.MouseButtonRelease,
+            widget=chart,
+            local_position=pan_end,
+            button=QtCore.Qt.MouseButton.RightButton,
+            buttons=QtCore.Qt.MouseButton.NoButton,
+        ))
+        assert chart.axis_x.get_pan() != 0.0 or chart.axis_y.get_pan() != 0.0
+        assert chart._prepare_rhi_line_layer(plot_rect=chart._get_plot_rect())
+        assert chart._rhi_line_widget._data_revision > first_revision
+        first_revision = chart._rhi_line_widget._data_revision
+        image = QtGui.QImage(chart.size(), QtGui.QImage.Format.Format_ARGB32_Premultiplied)
+        painter = QtGui.QPainter(image)
+        chart.paint_to_painter(painter=painter, paint_lines=False)
+        painter.end()
+        assert not image.isNull()
+        chart.reset_viewport()
+
+    assert chart._prepare_rhi_line_layer(plot_rect=chart._get_plot_rect())
+    chart.dispose()
+    delete_chart_owner(owner=owner, chart=chart, probe=probe, app=qt_app)

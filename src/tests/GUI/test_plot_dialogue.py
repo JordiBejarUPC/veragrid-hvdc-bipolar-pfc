@@ -214,3 +214,32 @@ def test_plot_dialogue_series_selector_filters_and_hides_lines(
     app.processEvents()
     assert not dialog.chart.get_series_visible(series_index=0)
     close_plot_dialogue(dialog=dialog, app=app)
+
+
+def test_plot_dialogue_dense_rhi_is_opt_in_and_applies_to_new_tabs(
+        qt_app: QtWidgets.QApplication) -> None:
+    """Keep ordinary dialogs on QPainter while carrying explicit RHI opt-in to tabs.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    app: QtWidgets.QApplication = qt_app
+    painter_dialog: PlotDialogue = PlotDialogue(title='Default renderer')
+    assert not painter_dialog.chart._rhi_line_enabled
+    painter_dialog.reject()
+
+    rhi_dialog: PlotDialogue = PlotDialogue(
+        title='Dense results',
+        use_rhi_for_many_series=True,
+    )
+    assert rhi_dialog.chart._rhi_line_enabled
+    new_chart = rhi_dialog.add_tab(title='Additional results')
+    assert new_chart._rhi_line_enabled
+    assert new_chart._rhi_line_widget is not None
+    rhi_dialog.reject()
+
+    dialogue: PlotDialogue
+    for dialogue in (painter_dialog, rhi_dialog):
+        dialogue.deleteLater()
+    QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
+    app.processEvents()
