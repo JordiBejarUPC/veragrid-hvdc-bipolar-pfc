@@ -579,7 +579,12 @@ class PlotDialogue(QtWidgets.QDialog):
         """
         self._series_selector_override = visible
         self.ui.seriesSelectorFrame.setVisible(visible)
-        self.get_current_chart().set_legend_visible(visible=not visible)
+        chart: GraphsWidget = self.get_current_chart()
+        if self._series_catalog_enabled:
+            chart.set_legend_overlay(enabled=True)
+            chart.set_legend_visible(visible=True)
+        else:
+            chart.set_legend_visible(visible=not visible)
 
     def set_series_selector_visible(self, visible: bool) -> None:
         """Set whether named series are controlled through the checkbox list.
@@ -722,7 +727,8 @@ class PlotDialogue(QtWidgets.QDialog):
             pass
         self.ui.seriesSelectorFrame.setVisible(selector_visible)
         self.ui.actionopencloseTree.setChecked(selector_visible)
-        chart.set_legend_visible(visible=not selector_visible)
+        chart.set_legend_overlay(enabled=True)
+        chart.set_legend_visible(visible=True)
         self.ui.seriesTreeWidget.blockSignals(True)
         if not self._series_tree_initialized:
             self.ui.seriesTreeWidget.clear()

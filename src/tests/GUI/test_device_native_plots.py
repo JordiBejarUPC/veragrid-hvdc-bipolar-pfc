@@ -297,6 +297,8 @@ def test_graphic_device_tab_groups_profiles_and_opf_results_by_unit(
     plot_dialogue.ui.plotTabs.setCurrentIndex(0)
     plot_dialogue.set_series_selector_visible(visible=True)
     assert not plot_dialogue.ui.seriesSelectorFrame.isHidden()
+    assert active_power_chart._legend_visible
+    assert active_power_chart._legend_overlay
     series_group: QtWidgets.QTreeWidgetItem = plot_dialogue.ui.seriesTreeWidget.topLevelItem(0)
     opf_group: QtWidgets.QTreeWidgetItem = plot_dialogue.ui.seriesTreeWidget.topLevelItem(1)
     assert series_group.text(0) == "Profile Inputs"

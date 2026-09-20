@@ -523,6 +523,7 @@ class GraphsWidget(QtWidgets.QWidget):
         "_label_color",
         "_grid_color",
         "_legend_visible",
+        "_legend_overlay",
         "_rhi_line_widget",
         "_rhi_selection_overlay",
         "_rhi_line_enabled",
@@ -569,6 +570,7 @@ class GraphsWidget(QtWidgets.QWidget):
         self._label_color: QtGui.QColor = QtGui.QColor("#17324a")
         self._grid_color: QtGui.QColor = QtGui.QColor("#cbd5e1")
         self._legend_visible: bool = True
+        self._legend_overlay: bool = False
         self._rhi_line_widget: RhiLineChartWidget | None = None
         self._rhi_selection_overlay: ChartSelectionOverlay | None = None
         self._rhi_line_enabled: bool = False
@@ -721,6 +723,18 @@ class GraphsWidget(QtWidgets.QWidget):
         """
         if self._can_mutate() and self._legend_visible != visible:
             self._legend_visible = visible
+            self.update()
+        else:
+            pass
+
+    def set_legend_overlay(self, enabled: bool) -> None:
+        """Draw the visible legend over the data area without reserving height.
+
+        :param enabled: Whether the legend overlays the upper plot area.
+        :return: None.
+        """
+        if self._can_mutate() and self._legend_overlay != enabled:
+            self._legend_overlay = enabled
             self.update()
         else:
             pass
@@ -2013,7 +2027,6 @@ class GraphsWidget(QtWidgets.QWidget):
         painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing, True)
         painter.fillRect(self.rect(), self._background_color)
         plot_rect: QtCore.QRectF = self._get_plot_rect()
-        self._paint_title_and_legend(painter=painter, plot_rect=plot_rect)
         if plot_rect.width() > 2.0 and plot_rect.height() > 2.0:
             painter.fillRect(plot_rect, self._plot_color)
             if self._content_type == ChartContentType.HORIZONTAL_BAR:
@@ -2057,6 +2070,7 @@ class GraphsWidget(QtWidgets.QWidget):
             self._paint_zoom_selection(painter=painter, plot_rect=plot_rect)
         else:
             pass
+        self._paint_title_and_legend(painter=painter, plot_rect=plot_rect)
         painter.restore()
 
     def _apply_zoom_selection(self, selection: QtCore.QRectF) -> None:
@@ -2332,7 +2346,10 @@ class GraphsWidget(QtWidgets.QWidget):
         :return: Rectangle available to the data renderer.
         """
         title_space: float = 24.0 if self._title != "" else 4.0
-        legend_space: float = 20.0 if self._legend_visible and len(self._visible_legend_series()) > 0 else 0.0
+        legend_space: float = (
+            20.0 if self._legend_visible and not self._legend_overlay
+            and len(self._visible_legend_series()) > 0 else 0.0
+        )
         return QtCore.QRectF(self.rect()).adjusted(
             74.0, title_space + legend_space + 4.0, -20.0, -58.0
         )
@@ -2376,8 +2393,33 @@ class GraphsWidget(QtWidgets.QWidget):
             normal_font: QtGui.QFont = QtGui.QFont(painter.font())
             normal_font.setBold(False)
             painter.setFont(normal_font)
+            if self._legend_overlay:
+                legend_width: float = 8.0
+                for series in legend_series:
+                    legend_width += float(painter.fontMetrics().horizontalAdvance(series.get_name()) + 34)
+                legend_width = min(legend_width, max(0.0, plot_rect.width() - 8.0))
+                overlay_rect: QtCore.QRectF = QtCore.QRectF(
+                    plot_rect.left() + 4.0,
+                    plot_rect.top() + 4.0,
+                    legend_width,
+                    22.0,
+                )
+                overlay_color: QtGui.QColor = QtGui.QColor(self._background_color)
+                overlay_color.setAlpha(220)
+                painter.setBrush(QtGui.QBrush(overlay_color))
+                painter.setPen(QtGui.QPen(self._grid_color, 0.8))
+                painter.drawRoundedRect(overlay_rect, 3.0, 3.0)
+                legend_y = overlay_rect.top()
+                legend_x = overlay_rect.left()
+            else:
+                pass
             series: ChartSeries
             for series in legend_series:
+                item_width: float = float(painter.fontMetrics().horizontalAdvance(series.get_name()) + 34)
+                if self._legend_overlay and legend_x + item_width > plot_rect.right() - 4.0:
+                    break
+                else:
+                    pass
                 marker_color: QtGui.QColor = series.get_color()
                 painter.setBrush(QtGui.QBrush(marker_color))
                 painter.setPen(QtGui.QPen(marker_color))
@@ -2387,7 +2429,7 @@ class GraphsWidget(QtWidgets.QWidget):
                 painter.drawText(QtCore.QPointF(legend_x + 13.0, legend_y + 14.0), legend_text)
                 text_width: int = painter.fontMetrics().horizontalAdvance(legend_text)
                 legend_x += float(text_width + 34)
-                if legend_x > float(self.width() - 120):
+                if not self._legend_overlay and legend_x > float(self.width() - 120):
                     break
                 else:
                     pass
