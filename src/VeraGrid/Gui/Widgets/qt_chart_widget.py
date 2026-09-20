@@ -161,7 +161,8 @@ class ChartAxis:
                 and selected_span > 0.0):
             selected_centre: float = (minimum + maximum) * 0.5
             full_centre: float = (self._minimum + self._maximum) * 0.5
-            self.set_zoom(full_span / selected_span)
+            # Rectangle zoom must preserve narrow selections; wheel zoom still uses set_zoom().
+            self._zoom = max(full_span / selected_span, 1.0)
             self.set_pan(selected_centre - full_centre)
         else:
             pass
@@ -1451,8 +1452,8 @@ class GraphsWidget(QtWidgets.QWidget):
         elif self._can_mutate() and self._zoom_origin is not None:
             current_position: QtCore.QPointF = event.position()
             plot_rect = self._get_plot_rect()
-            selected_rect: QtCore.QRectF = QtCore.QRectF(self._zoom_origin, current_position).normalized()
-            self._zoom_selection = selected_rect.intersected(plot_rect)
+            self._zoom_selection = QtCore.QRectF(self._zoom_origin, current_position).normalized()
+            self._zoom_selection = self._zoom_selection.intersected(plot_rect)
             self._update_rhi_selection_overlay(plot_rect=plot_rect)
             self.update()
             event.accept()
@@ -2065,7 +2066,9 @@ class GraphsWidget(QtWidgets.QWidget):
         """
         title_space: float = 24.0 if self._title != "" else 4.0
         legend_space: float = 20.0 if self._legend_visible and len(self._visible_legend_series()) > 0 else 0.0
-        return QtCore.QRectF(self.rect()).adjusted(74.0, title_space + legend_space + 4.0, -20.0, -58.0)
+        return QtCore.QRectF(self.rect()).adjusted(
+            74.0, title_space + legend_space + 4.0, -20.0, -58.0
+        )
 
     def _visible_legend_series(self) -> list[ChartSeries]:
         """Return named series to be painted in the legend.

@@ -343,6 +343,9 @@ def test_chart_widget_stress_replaces_data_paints_and_destroys_cleanly(
         assert chart.axis_x.get_zoom() > 1.0
         assert chart.axis_y.get_zoom() > 1.0
         wheel_zoom: float = chart.axis_x.get_zoom()
+        plot_rect: QtCore.QRectF = chart._get_plot_rect()
+        x_zoom_before_selection: float = chart.axis_x.get_zoom()
+        y_zoom_before_selection: float = chart.axis_y.get_zoom()
         press_position: QtCore.QPointF = QtCore.QPointF(chart.width() * 0.45, chart.height() * 0.45)
         move_position: QtCore.QPointF = QtCore.QPointF(chart.width() * 0.62, chart.height() * 0.57)
         chart.mousePressEvent(make_mouse_event(
@@ -361,6 +364,8 @@ def test_chart_widget_stress_replaces_data_paints_and_destroys_cleanly(
         ))
         assert chart._zoom_selection is not None
         selection_rect: QtCore.QRectF = chart._zoom_selection
+        selection_aspect: float = selection_rect.width() / selection_rect.height()
+        assert not np.isclose(selection_aspect, plot_rect.width() / plot_rect.height())
         assert not paint_chart_to_image(widget=chart).isNull()
         chart.mouseReleaseEvent(make_mouse_event(
             event_type=QtCore.QEvent.Type.MouseButtonRelease,
@@ -371,6 +376,17 @@ def test_chart_widget_stress_replaces_data_paints_and_destroys_cleanly(
         ))
         assert chart.axis_x.get_zoom() > wheel_zoom
         assert chart.axis_y.get_zoom() > wheel_zoom
+        adjusted_plot: QtCore.QRectF = chart._get_plot_rect()
+        assert np.isclose(adjusted_plot.width(), plot_rect.width())
+        assert np.isclose(adjusted_plot.height(), plot_rect.height())
+        assert np.isclose(
+            chart.axis_x.get_zoom() * selection_rect.width() / plot_rect.width(),
+            x_zoom_before_selection,
+        )
+        assert np.isclose(
+            chart.axis_y.get_zoom() * selection_rect.height() / plot_rect.height(),
+            y_zoom_before_selection,
+        )
         assert chart._zoom_selection is None
         chart.reset_viewport()
         assert chart.axis_x.get_pan() == 0.0
@@ -540,11 +556,9 @@ def test_dense_random_chart_reuses_vertices_during_zoom_and_pan(
     """
     random_generator: np.random.Generator = np.random.default_rng(20260920)
     owner: QtWidgets.QDialog = QtWidgets.QDialog()
-    layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(owner)
     chart: GraphsWidget = GraphsWidget(parent=owner)
     probe: ObjectDestructionProbe = ObjectDestructionProbe()
     chart.destroyed.connect(probe.mark_destroyed)
-    layout.addWidget(chart)
     chart.set_rhi_line_rendering(enabled=True, series_threshold=32)
     chart.resize(1100, 720)
     point_count: int = 12000
@@ -583,13 +597,15 @@ def test_dense_random_chart_reuses_vertices_during_zoom_and_pan(
     gesture_index: int
     for gesture_index in range(12):
         plot_rect = chart._get_plot_rect()
+        x_zoom_before_selection: float = chart.axis_x.get_zoom()
+        y_zoom_before_selection: float = chart.axis_y.get_zoom()
         selection_start: QtCore.QPointF = QtCore.QPointF(
             plot_rect.left() + plot_rect.width() * 0.25,
             plot_rect.top() + plot_rect.height() * 0.25,
         )
         selection_end: QtCore.QPointF = QtCore.QPointF(
-            plot_rect.left() + plot_rect.width() * 0.75,
-            plot_rect.top() + plot_rect.height() * 0.75,
+            plot_rect.left() + plot_rect.width() * 0.72,
+            plot_rect.top() + plot_rect.height() * 0.60,
         )
         chart.mousePressEvent(make_mouse_event(
             event_type=QtCore.QEvent.Type.MouseButtonPress,
@@ -607,6 +623,8 @@ def test_dense_random_chart_reuses_vertices_during_zoom_and_pan(
         ))
         assert chart._zoom_selection is not None
         selection_rect: QtCore.QRectF = chart._zoom_selection
+        selection_aspect: float = selection_rect.width() / selection_rect.height()
+        assert not np.isclose(selection_aspect, plot_rect.width() / plot_rect.height())
         assert chart._pan_position is None
         assert chart.axis_x.get_pan() == 0.0
         assert chart.axis_y.get_pan() == 0.0
@@ -646,6 +664,17 @@ def test_dense_random_chart_reuses_vertices_during_zoom_and_pan(
         ))
         assert chart._rhi_selection_overlay.isHidden()
         assert chart._zoom_selection is None
+        adjusted_plot: QtCore.QRectF = chart._get_plot_rect()
+        assert np.isclose(adjusted_plot.width(), plot_rect.width())
+        assert np.isclose(adjusted_plot.height(), plot_rect.height())
+        assert np.isclose(
+            chart.axis_x.get_zoom() * selection_rect.width() / plot_rect.width(),
+            x_zoom_before_selection,
+        )
+        assert np.isclose(
+            chart.axis_y.get_zoom() * selection_rect.height() / plot_rect.height(),
+            y_zoom_before_selection,
+        )
         chart.wheelEvent(make_wheel_event(widget=chart, delta_y=120))
         assert chart.axis_x.get_zoom() > 1.0
         assert chart.axis_y.get_zoom() > 1.0
