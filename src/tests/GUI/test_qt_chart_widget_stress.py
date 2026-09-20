@@ -60,7 +60,9 @@ def make_mouse_event(event_type: QtCore.QEvent.Type,
                      widget: GraphsWidget,
                      local_position: QtCore.QPointF,
                      button: QtCore.Qt.MouseButton,
-                     buttons: QtCore.Qt.MouseButton) -> QtGui.QMouseEvent:
+                     buttons: QtCore.Qt.MouseButton,
+                     modifiers: QtCore.Qt.KeyboardModifier = QtCore.Qt.KeyboardModifier.NoModifier
+                     ) -> QtGui.QMouseEvent:
     """Build one mouse event in the chart coordinate system.
 
     :param event_type: Qt mouse event type.
@@ -68,6 +70,7 @@ def make_mouse_event(event_type: QtCore.QEvent.Type,
     :param local_position: Pointer position in chart pixels.
     :param button: Button that caused the event.
     :param buttons: Buttons held while the event is delivered.
+    :param modifiers: Keyboard modifiers held during the gesture.
     :return: Native mouse event for the widget.
     """
     global_position: QtCore.QPointF = QtCore.QPointF(widget.mapToGlobal(local_position.toPoint()))
@@ -77,7 +80,7 @@ def make_mouse_event(event_type: QtCore.QEvent.Type,
         global_position,
         button,
         buttons,
-        QtCore.Qt.KeyboardModifier.NoModifier,
+        modifiers,
     )
 
 
@@ -357,6 +360,7 @@ def test_chart_widget_stress_replaces_data_paints_and_destroys_cleanly(
             buttons=QtCore.Qt.MouseButton.LeftButton,
         ))
         assert chart._zoom_selection is not None
+        selection_rect: QtCore.QRectF = chart._zoom_selection
         assert not paint_chart_to_image(widget=chart).isNull()
         chart.mouseReleaseEvent(make_mouse_event(
             event_type=QtCore.QEvent.Type.MouseButtonRelease,
@@ -376,22 +380,25 @@ def test_chart_widget_stress_replaces_data_paints_and_destroys_cleanly(
             event_type=QtCore.QEvent.Type.MouseButtonPress,
             widget=chart,
             local_position=press_position,
-            button=QtCore.Qt.MouseButton.RightButton,
-            buttons=QtCore.Qt.MouseButton.RightButton,
+            button=QtCore.Qt.MouseButton.LeftButton,
+            buttons=QtCore.Qt.MouseButton.LeftButton,
+            modifiers=QtCore.Qt.KeyboardModifier.ControlModifier,
         ))
         chart.mouseMoveEvent(make_mouse_event(
             event_type=QtCore.QEvent.Type.MouseMove,
             widget=chart,
             local_position=move_position,
             button=QtCore.Qt.MouseButton.NoButton,
-            buttons=QtCore.Qt.MouseButton.RightButton,
+            buttons=QtCore.Qt.MouseButton.LeftButton,
+            modifiers=QtCore.Qt.KeyboardModifier.ControlModifier,
         ))
         chart.mouseReleaseEvent(make_mouse_event(
             event_type=QtCore.QEvent.Type.MouseButtonRelease,
             widget=chart,
             local_position=move_position,
-            button=QtCore.Qt.MouseButton.RightButton,
+            button=QtCore.Qt.MouseButton.LeftButton,
             buttons=QtCore.Qt.MouseButton.NoButton,
+            modifiers=QtCore.Qt.KeyboardModifier.ControlModifier,
         ))
         assert chart._zoom_origin is None
         assert chart.axis_x.get_pan() != 0.0
@@ -575,17 +582,76 @@ def test_dense_random_chart_reuses_vertices_during_zoom_and_pan(
 
     gesture_index: int
     for gesture_index in range(12):
-        drag_select_zoom(chart=chart)
-        assert chart.axis_x.get_zoom() > 1.0
-        assert chart.axis_y.get_zoom() > 1.0
-        assert chart._prepare_rhi_line_layer(plot_rect=chart._get_plot_rect())
-        assert chart._rhi_line_widget._data_revision > first_revision
-        first_revision = chart._rhi_line_widget._data_revision
+        plot_rect = chart._get_plot_rect()
+        selection_start: QtCore.QPointF = QtCore.QPointF(
+            plot_rect.left() + plot_rect.width() * 0.25,
+            plot_rect.top() + plot_rect.height() * 0.25,
+        )
+        selection_end: QtCore.QPointF = QtCore.QPointF(
+            plot_rect.left() + plot_rect.width() * 0.75,
+            plot_rect.top() + plot_rect.height() * 0.75,
+        )
+        chart.mousePressEvent(make_mouse_event(
+            event_type=QtCore.QEvent.Type.MouseButtonPress,
+            widget=chart,
+            local_position=selection_start,
+            button=QtCore.Qt.MouseButton.LeftButton,
+            buttons=QtCore.Qt.MouseButton.LeftButton,
+        ))
+        chart.mouseMoveEvent(make_mouse_event(
+            event_type=QtCore.QEvent.Type.MouseMove,
+            widget=chart,
+            local_position=selection_end,
+            button=QtCore.Qt.MouseButton.NoButton,
+            buttons=QtCore.Qt.MouseButton.LeftButton,
+        ))
+        assert chart._zoom_selection is not None
+        selection_rect: QtCore.QRectF = chart._zoom_selection
+        assert chart._pan_position is None
+        assert chart.axis_x.get_pan() == 0.0
+        assert chart.axis_y.get_pan() == 0.0
+        assert chart._rhi_selection_overlay is not None
+        assert not chart._rhi_selection_overlay.isHidden()
+        overlay_image: QtGui.QImage = QtGui.QImage(
+            chart.size(), QtGui.QImage.Format.Format_ARGB32_Premultiplied
+        )
+        overlay_image.fill(QtCore.Qt.GlobalColor.transparent)
+        overlay_painter: QtGui.QPainter = QtGui.QPainter(overlay_image)
+        chart._rhi_selection_overlay.render(overlay_painter, QtCore.QPoint(0, 0))
+        overlay_painter.end()
+        overlay_probe: QtCore.QPoint = QtCore.QPoint(
+            int(chart._zoom_selection.left() + chart._zoom_selection.width() * 0.35),
+            int(chart._zoom_selection.top() + chart._zoom_selection.height() * 0.35),
+        )
+        assert overlay_image.pixelColor(overlay_probe).alpha() > 0
+        assert chart._zoom_origin is not None
+        assert selection_rect.width() >= 6.0
+        assert selection_rect.height() >= 6.0
         image = QtGui.QImage(chart.size(), QtGui.QImage.Format.Format_ARGB32_Premultiplied)
         painter = QtGui.QPainter(image)
         chart.paint_to_painter(painter=painter, paint_lines=False)
         painter.end()
         assert not image.isNull()
+        selection_probe: QtCore.QPoint = QtCore.QPoint(
+            int(selection_rect.left() + selection_rect.width() * 0.35),
+            int(selection_rect.top() + selection_rect.height() * 0.35),
+        )
+        assert image.pixelColor(selection_probe) != chart._plot_color
+        chart.mouseReleaseEvent(make_mouse_event(
+            event_type=QtCore.QEvent.Type.MouseButtonRelease,
+            widget=chart,
+            local_position=selection_end,
+            button=QtCore.Qt.MouseButton.LeftButton,
+            buttons=QtCore.Qt.MouseButton.NoButton,
+        ))
+        assert chart._rhi_selection_overlay.isHidden()
+        assert chart._zoom_selection is None
+        chart.wheelEvent(make_wheel_event(widget=chart, delta_y=120))
+        assert chart.axis_x.get_zoom() > 1.0
+        assert chart.axis_y.get_zoom() > 1.0
+        assert chart._prepare_rhi_line_layer(plot_rect=chart._get_plot_rect())
+        assert chart._rhi_line_widget._data_revision > first_revision
+        first_revision = chart._rhi_line_widget._data_revision
         chart.reset_viewport()
         plot_rect = chart._get_plot_rect()
         pan_start: QtCore.QPointF = QtCore.QPointF(
@@ -600,22 +666,25 @@ def test_dense_random_chart_reuses_vertices_during_zoom_and_pan(
             event_type=QtCore.QEvent.Type.MouseButtonPress,
             widget=chart,
             local_position=pan_start,
-            button=QtCore.Qt.MouseButton.RightButton,
-            buttons=QtCore.Qt.MouseButton.RightButton,
+            button=QtCore.Qt.MouseButton.LeftButton,
+            buttons=QtCore.Qt.MouseButton.LeftButton,
+            modifiers=QtCore.Qt.KeyboardModifier.ControlModifier,
         ))
         chart.mouseMoveEvent(make_mouse_event(
             event_type=QtCore.QEvent.Type.MouseMove,
             widget=chart,
             local_position=pan_end,
             button=QtCore.Qt.MouseButton.NoButton,
-            buttons=QtCore.Qt.MouseButton.RightButton,
+            buttons=QtCore.Qt.MouseButton.LeftButton,
+            modifiers=QtCore.Qt.KeyboardModifier.ControlModifier,
         ))
         chart.mouseReleaseEvent(make_mouse_event(
             event_type=QtCore.QEvent.Type.MouseButtonRelease,
             widget=chart,
             local_position=pan_end,
-            button=QtCore.Qt.MouseButton.RightButton,
+            button=QtCore.Qt.MouseButton.LeftButton,
             buttons=QtCore.Qt.MouseButton.NoButton,
+            modifiers=QtCore.Qt.KeyboardModifier.ControlModifier,
         ))
         assert chart.axis_x.get_pan() != 0.0 or chart.axis_y.get_pan() != 0.0
         assert chart._prepare_rhi_line_layer(plot_rect=chart._get_plot_rect())
@@ -631,3 +700,32 @@ def test_dense_random_chart_reuses_vertices_during_zoom_and_pan(
     assert chart._prepare_rhi_line_layer(plot_rect=chart._get_plot_rect())
     chart.dispose()
     delete_chart_owner(owner=owner, chart=chart, probe=probe, app=qt_app)
+
+
+def test_chart_colors_follow_application_palette_changes(qt_app: QtWidgets.QApplication) -> None:
+    """Keep the painter theme aligned with Qt palette changes after construction.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    _ = qt_app
+    chart: GraphsWidget = GraphsWidget()
+    dark_palette: QtGui.QPalette = QtGui.QPalette(chart.palette())
+    dark_palette.setColor(QtGui.QPalette.ColorRole.Window, QtGui.QColor("#202020"))
+    chart.setPalette(dark_palette)
+    assert chart._background_color == QtGui.QColor("#171c24")
+    assert chart._plot_color == QtGui.QColor("#202834")
+    assert chart._label_color == QtGui.QColor("#e7edf5")
+    assert chart._grid_color == QtGui.QColor("#445164")
+
+    light_palette: QtGui.QPalette = QtGui.QPalette(chart.palette())
+    light_palette.setColor(QtGui.QPalette.ColorRole.Window, QtGui.QColor("#ffffff"))
+    chart.setPalette(light_palette)
+    assert chart._background_color == QtGui.QColor("#ffffff")
+    assert chart._plot_color == QtGui.QColor("#f7fbff")
+    assert chart._label_color == QtGui.QColor("#17324a")
+    assert chart._grid_color == QtGui.QColor("#cbd5e1")
+
+    chart.dispose()
+    chart.deleteLater()
+    QtWidgets.QApplication.sendPostedEvents(None)

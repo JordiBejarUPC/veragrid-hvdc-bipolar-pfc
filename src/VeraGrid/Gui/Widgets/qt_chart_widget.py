@@ -434,6 +434,68 @@ def format_chart_value(value: float, is_datetime: bool) -> str:
         return f"{value:.4g}"
 
 
+class ChartSelectionOverlay(QtWidgets.QWidget):
+    """Paint a transient zoom rectangle above a native QRhi child widget."""
+
+    __slots__ = ("_selection", "_plot_rect")
+
+    def __init__(self, parent: QtWidgets.QWidget) -> None:
+        """Create a transparent, input-pass-through chart overlay.
+
+        :param parent: Chart whose plot-selection rectangle is shown.
+        :return: None.
+        """
+        super().__init__(parent)
+        self._selection: QtCore.QRectF | None = None
+        self._plot_rect: QtCore.QRectF = QtCore.QRectF()
+        self.setAttribute(QtCore.Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self.setAttribute(QtCore.Qt.WidgetAttribute.WA_NoSystemBackground, True)
+        self.setAttribute(QtCore.Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self.hide()
+
+    def set_selection(self,
+                      selection: QtCore.QRectF | None,
+                      plot_rect: QtCore.QRectF) -> None:
+        """Show the current rectangle above QRhi-rendered lines.
+
+        :param selection: Current drag rectangle in chart coordinates.
+        :param plot_rect: Plot bounds used to clip the selection.
+        :return: None.
+        """
+        if selection is not None:
+            self._selection = QtCore.QRectF(selection)
+            self._plot_rect = QtCore.QRectF(plot_rect)
+            self.update()
+            self.show()
+            self.raise_()
+        else:
+            self._selection = None
+            self.hide()
+
+    def paintEvent(self, event: QtGui.QPaintEvent) -> None:
+        """Paint the translucent selection rectangle without touching plot data.
+
+        :param event: Paint request delivered by QWidget.
+        :return: None.
+        """
+        _ = event
+        if self._selection is not None:
+            visible_selection: QtCore.QRectF = self._selection.intersected(self._plot_rect)
+            if visible_selection.width() > 0.0 and visible_selection.height() > 0.0:
+                painter: QtGui.QPainter = QtGui.QPainter(self)
+                selection_color: QtGui.QColor = QtGui.QColor("#2563eb")
+                fill_color: QtGui.QColor = QtGui.QColor(selection_color)
+                fill_color.setAlpha(48)
+                painter.setPen(QtGui.QPen(selection_color, 1.0, QtCore.Qt.PenStyle.DashLine))
+                painter.setBrush(QtGui.QBrush(fill_color))
+                painter.drawRect(visible_selection)
+                painter.end()
+            else:
+                pass
+        else:
+            pass
+
+
 class GraphsWidget(QtWidgets.QWidget):
     """Paint native line, scatter, area, bar, polar, and histogram charts."""
 
@@ -452,7 +514,6 @@ class GraphsWidget(QtWidgets.QWidget):
         "_x_is_datetime",
         "_pan_position",
         "_pan_button",
-        "_right_pan_moved",
         "_zoom_origin",
         "_zoom_selection",
         "_disposed",
@@ -462,6 +523,7 @@ class GraphsWidget(QtWidgets.QWidget):
         "_grid_color",
         "_legend_visible",
         "_rhi_line_widget",
+        "_rhi_selection_overlay",
         "_rhi_line_enabled",
         "_rhi_line_threshold",
         "_rhi_line_failed",
@@ -480,7 +542,8 @@ class GraphsWidget(QtWidgets.QWidget):
         self.setMouseTracking(True)
         self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.DefaultContextMenu)
         self.setToolTip(self.tr("Mouse wheel: zoom\nLeft drag: select zoom area\n"
-                                "Right drag: pan\nDouble-click: reset view"))
+                                "Ctrl + left drag: pan\nRight-click: chart options\n"
+                                "Double-click: reset view"))
 
         # The axes and series are plain Python values, so QWidget owns every native object involved.
         self.axis_x: ChartAxis = ChartAxis()
@@ -497,7 +560,6 @@ class GraphsWidget(QtWidgets.QWidget):
         self._x_is_datetime: bool = False
         self._pan_position: QtCore.QPointF | None = None
         self._pan_button: QtCore.Qt.MouseButton | None = None
-        self._right_pan_moved: bool = False
         self._zoom_origin: QtCore.QPointF | None = None
         self._zoom_selection: QtCore.QRectF | None = None
         self._disposed: bool = False
@@ -507,6 +569,7 @@ class GraphsWidget(QtWidgets.QWidget):
         self._grid_color: QtGui.QColor = QtGui.QColor("#cbd5e1")
         self._legend_visible: bool = True
         self._rhi_line_widget: RhiLineChartWidget | None = None
+        self._rhi_selection_overlay: ChartSelectionOverlay | None = None
         self._rhi_line_enabled: bool = False
         self._rhi_line_threshold: int = 64
         self._rhi_line_failed: bool = False
@@ -535,17 +598,25 @@ class GraphsWidget(QtWidgets.QWidget):
         :return: None.
         """
         if dark:
-            self._background_color = QtGui.QColor("#171c24")
-            self._plot_color = QtGui.QColor("#202834")
-            self._label_color = QtGui.QColor("#e7edf5")
-            self._grid_color = QtGui.QColor("#445164")
+            background_color: QtGui.QColor = QtGui.QColor("#171c24")
+            plot_color: QtGui.QColor = QtGui.QColor("#202834")
+            label_color: QtGui.QColor = QtGui.QColor("#e7edf5")
+            grid_color: QtGui.QColor = QtGui.QColor("#445164")
         else:
-            self._background_color = QtGui.QColor("#ffffff")
-            self._plot_color = QtGui.QColor("#f7fbff")
-            self._label_color = QtGui.QColor("#17324a")
-            self._grid_color = QtGui.QColor("#cbd5e1")
-        if self._can_mutate():
-            self.update()
+            background_color = QtGui.QColor("#ffffff")
+            plot_color = QtGui.QColor("#f7fbff")
+            label_color = QtGui.QColor("#17324a")
+            grid_color = QtGui.QColor("#cbd5e1")
+        if (self._background_color != background_color or self._plot_color != plot_color
+                or self._label_color != label_color or self._grid_color != grid_color):
+            self._background_color = background_color
+            self._plot_color = plot_color
+            self._label_color = label_color
+            self._grid_color = grid_color
+            if self._can_mutate():
+                self.update()
+            else:
+                pass
         else:
             pass
 
@@ -1259,6 +1330,7 @@ class GraphsWidget(QtWidgets.QWidget):
         if not self._disposed and self._is_owner_thread():
             self._disposed = True
             self._pan_position = None
+            self._pan_button = None
             self._zoom_origin = None
             self._zoom_selection = None
             self.unsetCursor()
@@ -1266,6 +1338,10 @@ class GraphsWidget(QtWidgets.QWidget):
             if self._rhi_line_widget is not None:
                 self._rhi_line_widget.hide()
                 self._rhi_line_widget.releaseResources()
+            else:
+                pass
+            if self._rhi_selection_overlay is not None:
+                self._rhi_selection_overlay.set_selection(None, QtCore.QRectF())
             else:
                 pass
             self.clear()
@@ -1315,13 +1391,15 @@ class GraphsWidget(QtWidgets.QWidget):
         :param event: Mouse button press delivered by Qt Widgets.
         :return: None.
         """
-        pan_requested: bool = event.button() == QtCore.Qt.MouseButton.RightButton
+        pan_requested: bool = (
+            event.button() == QtCore.Qt.MouseButton.LeftButton
+            and bool(event.modifiers() & QtCore.Qt.KeyboardModifier.ControlModifier)
+        )
         plot_rect: QtCore.QRectF = self._get_plot_rect()
         if self._can_mutate() and pan_requested and plot_rect.contains(event.position()):
             QtWidgets.QToolTip.hideText()
             self._pan_position = event.position()
             self._pan_button = event.button()
-            self._right_pan_moved = False
             self.setCursor(QtCore.Qt.CursorShape.ClosedHandCursor)
             event.accept()
         elif (self._can_mutate() and event.button() == QtCore.Qt.MouseButton.LeftButton
@@ -1329,6 +1407,7 @@ class GraphsWidget(QtWidgets.QWidget):
             QtWidgets.QToolTip.hideText()
             self._zoom_origin = event.position()
             self._zoom_selection = QtCore.QRectF(event.position(), event.position())
+            self._update_rhi_selection_overlay(plot_rect=plot_rect)
             self.setCursor(QtCore.Qt.CursorShape.CrossCursor)
             event.accept()
         else:
@@ -1344,10 +1423,6 @@ class GraphsWidget(QtWidgets.QWidget):
             previous_position: QtCore.QPointF = self._pan_position
             current_position: QtCore.QPointF = event.position()
             delta: QtCore.QPointF = current_position - previous_position
-            if delta.x() != 0.0 or delta.y() != 0.0:
-                self._right_pan_moved = True
-            else:
-                pass
             plot_rect: QtCore.QRectF = self._get_plot_rect()
             if plot_rect.width() > 0.0 and self._content_type != ChartContentType.POLAR:
                 x_minimum: float
@@ -1378,6 +1453,7 @@ class GraphsWidget(QtWidgets.QWidget):
             plot_rect = self._get_plot_rect()
             selected_rect: QtCore.QRectF = QtCore.QRectF(self._zoom_origin, current_position).normalized()
             self._zoom_selection = selected_rect.intersected(plot_rect)
+            self._update_rhi_selection_overlay(plot_rect=plot_rect)
             self.update()
             event.accept()
         elif self._can_mutate():
@@ -1406,6 +1482,7 @@ class GraphsWidget(QtWidgets.QWidget):
             selection: QtCore.QRectF | None = self._zoom_selection
             self._zoom_origin = None
             self._zoom_selection = None
+            self._update_rhi_selection_overlay(plot_rect=self._get_plot_rect())
             self.unsetCursor()
             if selection is not None:
                 self._apply_zoom_selection(selection=selection)
@@ -1438,15 +1515,12 @@ class GraphsWidget(QtWidgets.QWidget):
             event.ignore()
 
     def contextMenuEvent(self, event: QtGui.QContextMenuEvent) -> None:
-        """Offer image export and centering after an unmoved right click.
+        """Offer image export and centering from the chart context menu.
 
         :param event: Context menu request delivered by Qt Widgets.
         :return: None.
         """
-        if self._right_pan_moved:
-            self._right_pan_moved = False
-            event.accept()
-        elif self._can_mutate():
+        if self._can_mutate():
             menu: QtWidgets.QMenu = QtWidgets.QMenu(self)
             save_action: QtGui.QAction = menu.addAction(self.tr("Save image…"))
             center_action: QtGui.QAction = menu.addAction(self.tr("Center data"))
@@ -1488,6 +1562,25 @@ class GraphsWidget(QtWidgets.QWidget):
         _ = checked
         self.reset_viewport()
 
+    def _update_rhi_selection_overlay(self, plot_rect: QtCore.QRectF) -> None:
+        """Keep the selection child above QRhi lines during mouse movement.
+
+        :param plot_rect: Current chart data rectangle used to clip selection.
+        :return: None.
+        """
+        if self._rhi_selection_overlay is not None:
+            self._rhi_selection_overlay.setGeometry(self.rect())
+            if (self._rhi_line_widget is not None and self._rhi_line_enabled
+                    and not self._rhi_line_failed):
+                self._rhi_selection_overlay.set_selection(
+                    selection=self._zoom_selection,
+                    plot_rect=plot_rect,
+                )
+            else:
+                self._rhi_selection_overlay.set_selection(selection=None, plot_rect=plot_rect)
+        else:
+            pass
+
     def set_rhi_line_rendering(self, enabled: bool, series_threshold: int = 64) -> None:
         """Enable the optional QRhi line layer above the requested series count.
 
@@ -1517,6 +1610,8 @@ class GraphsWidget(QtWidgets.QWidget):
         rhi_widget.setAttribute(QtCore.Qt.WidgetAttribute.WA_TranslucentBackground, True)
         rhi_widget.renderFailed.connect(self._on_rhi_render_failed)
         self._rhi_line_widget = rhi_widget
+        selection_overlay: ChartSelectionOverlay = ChartSelectionOverlay(parent=self)
+        self._rhi_selection_overlay = selection_overlay
 
     def _on_rhi_render_failed(self) -> None:
         """Fall back to QPainter after the optional QRhi surface fails.
@@ -1655,6 +1750,7 @@ class GraphsWidget(QtWidgets.QWidget):
         _ = event
         plot_rect: QtCore.QRectF = self._get_plot_rect()
         use_rhi_lines: bool = self._prepare_rhi_line_layer(plot_rect=plot_rect)
+        self._update_rhi_selection_overlay(plot_rect=plot_rect)
         painter: QtGui.QPainter = QtGui.QPainter(self)
         self.paint_to_painter(painter=painter, paint_lines=not use_rhi_lines)
         painter.end()
@@ -1775,6 +1871,23 @@ class GraphsWidget(QtWidgets.QWidget):
                 painter.restore()
             else:
                 pass
+        else:
+            pass
+
+    def changeEvent(self, event: QtCore.QEvent) -> None:
+        """Refresh chart colors when Qt applies a light or dark application theme.
+
+        :param event: Palette or style change delivered by QWidget.
+        :return: None.
+        """
+        QtWidgets.QWidget.changeEvent(self, event)
+        if event.type() in (
+                QtCore.QEvent.Type.PaletteChange,
+                QtCore.QEvent.Type.ApplicationPaletteChange,
+                QtCore.QEvent.Type.StyleChange,
+        ):
+            window_color: QtGui.QColor = self.palette().color(QtGui.QPalette.ColorRole.Window)
+            self.apply_theme(dark=window_color.lightness() < 128)
         else:
             pass
 
