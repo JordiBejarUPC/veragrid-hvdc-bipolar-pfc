@@ -1675,7 +1675,9 @@ class GraphsWidget(QtWidgets.QWidget):
                 cache_key: tuple[object, ...] = (
                     tuple(cache_series), x_minimum, x_maximum, y_minimum, y_maximum,
                     plot_rect.x(), plot_rect.y(), plot_rect.width(), plot_rect.height(),
+                    self._plot_color.rgba(), self._grid_color.rgba(),
                 )
+                self._rhi_line_widget.set_background_color(color=self._plot_color)
                 if cache_key == self._rhi_line_cache_key:
                     self._rhi_line_widget.setGeometry(plot_rect.toAlignedRect())
                     self._rhi_line_widget.show()
@@ -1685,6 +1687,26 @@ class GraphsWidget(QtWidgets.QWidget):
                 vertex_chunks: list[np.ndarray] = list()
                 series_lengths: list[int] = list()
                 series_colors: list[QtGui.QColor] = list()
+                # QRhiWidget owns an opaque native surface, so its chart area and
+                # grid must be drawn in the same GPU pass as its dense lines.
+                tick_index: int = 0
+                while tick_index < 6:
+                    fraction: float = float(tick_index) / 5.0
+                    x_position: float = -1.0 + 2.0 * fraction
+                    y_position: float = -1.0 + 2.0 * fraction
+                    vertical_grid: np.ndarray = np.asarray(
+                        ((x_position, -1.0), (x_position, 1.0)), dtype=np.float32
+                    )
+                    horizontal_grid: np.ndarray = np.asarray(
+                        ((-1.0, y_position), (1.0, y_position)), dtype=np.float32
+                    )
+                    vertex_chunks.append(vertical_grid)
+                    vertex_chunks.append(horizontal_grid)
+                    series_lengths.append(2)
+                    series_lengths.append(2)
+                    series_colors.append(self._grid_color)
+                    series_colors.append(self._grid_color)
+                    tick_index += 1
                 for series in self._series:
                     if series.get_visible() and series.get_series_type() == ChartSeriesType.LINE:
                         x_data: np.ndarray = series.get_x_data()

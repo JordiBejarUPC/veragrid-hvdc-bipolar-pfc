@@ -92,7 +92,20 @@ def test_graphs_widget_routes_dense_lines_to_optional_rhi_layer(
     chart.set_rhi_line_rendering(enabled=True, series_threshold=4)
     assert chart._prepare_rhi_line_layer(plot_rect=chart._get_plot_rect())
     assert isinstance(chart._rhi_line_widget, RhiLineChartWidget)
-    assert chart._rhi_line_widget._series_count == 4
+    assert chart._rhi_line_widget._series_count == 16
+    assert chart._rhi_line_widget._background_color == chart._plot_color
+    assert np.array_equal(
+        chart._rhi_line_widget._vertices[:2, :2],
+        np.array(((-1.0, -1.0), (-1.0, 1.0)), dtype=np.float32),
+    )
+    assert np.array_equal(
+        chart._rhi_line_widget._vertices[:2, 2:],
+        np.tile(
+            np.array((chart._grid_color.redF(), chart._grid_color.greenF(),
+                      chart._grid_color.blueF()), dtype=np.float32),
+            (2, 1),
+        ),
+    )
 
     chart.set_rhi_line_rendering(enabled=False)
     assert not chart._prepare_rhi_line_layer(plot_rect=chart._get_plot_rect())

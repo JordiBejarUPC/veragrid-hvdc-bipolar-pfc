@@ -18,7 +18,7 @@ class RhiLineChartWidget(QtWidgets.QRhiWidget):
 
     __slots__ = ("_vertices", "_series_lengths", "_series_first_vertices", "_series_count",
                  "_buffer", "_buffer_size", "_pipeline", "_rhi", "_vertex_count", "_data_revision",
-                 "_uploaded_revision", "_bindings")
+                 "_uploaded_revision", "_bindings", "_background_color")
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         """Create an empty chart without allocating native graphics resources.
@@ -39,6 +39,19 @@ class RhiLineChartWidget(QtWidgets.QRhiWidget):
         self._data_revision: int = 0
         self._uploaded_revision: int = -1
         self._bindings: QtGui.QRhiShaderResourceBindings | None = None
+        self._background_color: QtGui.QColor = QtGui.QColor("#f7fbff")
+
+    def set_background_color(self, color: QtGui.QColor) -> None:
+        """Set the plot fill used when QRhi clears its opaque child surface.
+
+        :param color: Current themed chart plot color.
+        :return: None.
+        """
+        if self._background_color != color:
+            self._background_color = QtGui.QColor(color)
+            self.update()
+        else:
+            pass
 
     def set_vertices(self,
                      vertices: np.ndarray,
@@ -223,7 +236,7 @@ class RhiLineChartWidget(QtWidgets.QRhiWidget):
             else:
                 pass
             clear_value: QtGui.QRhiDepthStencilClearValue = QtGui.QRhiDepthStencilClearValue(1.0, 0)
-            command_buffer.beginPass(render_target, QtGui.QColor(0, 0, 0, 0), clear_value, update_batch)
+            command_buffer.beginPass(render_target, self._background_color, clear_value, update_batch)
             if self._pipeline is not None and self._buffer is not None:
                 command_buffer.setGraphicsPipeline(self._pipeline)
                 output_size: QtCore.QSize = render_target.pixelSize()
