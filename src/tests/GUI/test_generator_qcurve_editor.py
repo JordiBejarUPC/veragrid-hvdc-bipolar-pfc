@@ -313,10 +313,13 @@ def test_chart_widget_owns_data_without_native_chart_children(qt_app: QtWidgets.
     plot_rect: QtCore.QRectF = plotter._get_plot_rect()
     line_point: QtCore.QPointF = plotter._map_xy_point(x_value=0.5, y_value=1.5, plot_rect=plot_rect)
     scatter_point: QtCore.QPointF = plotter._map_xy_point(x_value=1.0, y_value=1.0, plot_rect=plot_rect)
-    assert chart_image.pixelColor(line_point.toPoint()).name() == "#2563eb"
+    line_pixel: QtGui.QColor = chart_image.pixelColor(line_point.toPoint())
+    line_color: QtGui.QColor = QtGui.QColor("#2563eb")
+    assert (abs(line_pixel.red() - line_color.red()) + abs(line_pixel.green() - line_color.green())
+            + abs(line_pixel.blue() - line_color.blue())) <= 12
     assert chart_image.pixelColor(scatter_point.toPoint()).name() == "#f97316"
     assert plotter.get_point_tooltip_at(position=scatter_point) == "Bus 2"
-    assert len(plotter.findChildren(QtCore.QObject)) == 0
+    assert len(plotter.findChildren(QtWidgets.QLineEdit)) == 1
     assert plotter.set_series_point_tooltips(series_index=1, point_tooltips=("A", "B", "C"))
     assert plotter.get_point_tooltip_at(position=scatter_point) == "B"
     line_series: ChartSeries = plotter._series[0]

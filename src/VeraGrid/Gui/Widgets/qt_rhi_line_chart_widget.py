@@ -85,7 +85,9 @@ class RhiLineChartWidget(QtWidgets.QRhiWidget):
                 area_flags: np.ndarray = np.zeros(lengths.size, dtype=bool)
             else:
                 area_flags = np.asarray(series_is_area, dtype=bool).copy()
-            if (lengths.size > 0 and np.all(lengths >= 2) and int(np.sum(lengths)) == vertices.shape[0]
+            if (lengths.size > 0
+                    and np.all(lengths >= 2)
+                    and int(np.sum(lengths)) == vertices.shape[0]
                     and area_flags.size == lengths.size):
                 packed_vertices: np.ndarray = np.empty((vertices.shape[0], 5), dtype=np.float32)
                 packed_vertices[:, :2] = vertices

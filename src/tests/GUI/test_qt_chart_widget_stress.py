@@ -55,6 +55,133 @@ def test_datetime_axis_tick_format_includes_date_and_time() -> None:
     assert tuple(len(time_component) for time_component in time_part.split(":")) == (2, 2, 2)
 
 
+def test_manual_axis_borders_clip_extreme_data_and_parse_datetime(
+        qt_app: QtWidgets.QApplication) -> None:
+    """Allow finite user limits to keep extreme values outside the visible range.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    _ = qt_app
+    chart: GraphsWidget = GraphsWidget()
+    chart.resize(720, 420)
+    chart.add_line_series(
+        name="Outlier",
+        x_values=np.asarray((0.0, 1.0, 2.0)),
+        y_values=np.asarray((1.0, 2.0, 1.0e20)),
+    )
+    chart._edit_x_minimum()
+    chart._axis_limit_editor.setText("0")
+    chart._apply_axis_input_range()
+    chart._edit_x_maximum()
+    chart._axis_limit_editor.setText("2")
+    chart._apply_axis_input_range()
+    chart._edit_y_minimum()
+    chart._axis_limit_editor.setText("0")
+    chart._apply_axis_input_range()
+    chart._edit_y_maximum()
+    chart._axis_limit_editor.setText("5")
+    chart._apply_axis_input_range()
+    assert chart.axis_x.get_range() == (0.0, 2.0)
+    assert chart.axis_y.get_range() == (0.0, 5.0)
+    chart._edit_y_maximum()
+    chart._axis_limit_editor.setText("inf")
+    chart._apply_axis_input_range()
+    assert chart.axis_y.get_range() == (0.0, 5.0)
+    chart.axis_x.set_zoom(2.0)
+    chart.axis_y.set_zoom(2.0)
+    chart._center_from_context_menu()
+    assert chart.axis_x.get_zoom() == 1.0
+    assert chart.axis_y.get_zoom() == 1.0
+    assert chart.axis_y.get_range()[1] > 1.0e20
+
+    date_axis: GraphsWidget = GraphsWidget()
+    date_axis._x_is_datetime = True
+    date_axis.axis_x.set_range(0.0, 2_000.0)
+    date_axis._edit_x_minimum()
+    date_axis._axis_limit_editor.setText("01/01/1970 00:00:01")
+    date_axis._apply_axis_input_range()
+    assert date_axis.axis_x.get_range() == (1_000.0, 2_000.0)
+    chart.dispose()
+    date_axis.dispose()
+
+
+def test_axis_limit_editor_uses_chart_theme_palette(qt_app: QtWidgets.QApplication) -> None:
+    """Keep the temporary axis limit field visually aligned with chart labels.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    _ = qt_app
+    chart: GraphsWidget = GraphsWidget()
+    assert chart._axis_limit_editor.palette().color(QtGui.QPalette.ColorRole.Base) == chart._plot_color
+    assert chart._axis_limit_editor.palette().color(QtGui.QPalette.ColorRole.Text) == chart._label_color
+    chart.dispose()
+
+
+def test_axis_border_context_action_edits_limit_without_changing_center_gesture(
+        qt_app: QtWidgets.QApplication) -> None:
+    """Expose axis edits in the context menu and preserve plot double-click reset.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    chart: GraphsWidget = GraphsWidget()
+    chart.resize(640, 420)
+    chart.add_line_series(
+        name="Line",
+        x_values=np.asarray((0.0, 1.0, 2.0)),
+        y_values=np.asarray((0.0, 1.0, 2.0)),
+    )
+    chart.show()
+    qt_app.processEvents()
+    global_position: QtCore.QPoint = chart.mapToGlobal(QtCore.QPoint(40, 40))
+    context_event: QtGui.QContextMenuEvent = QtGui.QContextMenuEvent(
+        QtGui.QContextMenuEvent.Reason.Mouse,
+        QtCore.QPoint(40, 40),
+        global_position,
+    )
+    chart.contextMenuEvent(context_event)
+    qt_app.processEvents()
+    menus: list[QtWidgets.QMenu] = chart.findChildren(QtWidgets.QMenu)
+    assert len(menus) == 1
+    axis_action: QtGui.QAction
+    for axis_action in menus[0].actions():
+        if axis_action.text() == "Edit Y maximum…":
+            axis_action.trigger()
+            break
+        else:
+            pass
+    assert chart._axis_limit_editor.isVisible()
+    chart._axis_limit_editor.setText("1.5")
+    enter_event: QtGui.QKeyEvent = QtGui.QKeyEvent(
+        QtCore.QEvent.Type.KeyPress,
+        QtCore.Qt.Key.Key_Return,
+        QtCore.Qt.KeyboardModifier.NoModifier,
+    )
+    QtWidgets.QApplication.sendEvent(chart._axis_limit_editor, enter_event)
+    assert chart.axis_y.get_range()[1] == 1.5
+    assert not chart._axis_limit_editor.isVisible()
+
+    chart.axis_x.set_zoom(2.0)
+    chart.axis_y.set_zoom(2.0)
+    plot_rect: QtCore.QRectF = chart._get_plot_rect()
+    center_double_click: QtGui.QMouseEvent = make_mouse_event(
+        event_type=QtCore.QEvent.Type.MouseButtonDblClick,
+        widget=chart,
+        local_position=plot_rect.center(),
+        button=QtCore.Qt.MouseButton.LeftButton,
+        buttons=QtCore.Qt.MouseButton.LeftButton,
+    )
+    chart.mouseDoubleClickEvent(center_double_click)
+    assert chart.axis_x.get_zoom() == 1.0
+    assert chart.axis_y.get_zoom() == 1.0
+    assert chart.axis_y.get_range()[1] > 2.0
+    chart.dispose()
+    chart.deleteLater()
+    QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
+
+
 def make_wheel_event(widget: GraphsWidget, delta_y: int) -> QtGui.QWheelEvent:
     """Build one wheel event centered in the visible chart widget.
 

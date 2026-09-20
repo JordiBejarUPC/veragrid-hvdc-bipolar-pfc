@@ -532,6 +532,9 @@ class GraphsWidget(QtWidgets.QWidget):
         "_rhi_line_failed",
         "_rhi_line_cache_key",
         "_active_save_dialog",
+        "_axis_limit_editor",
+        "_editing_axis_index",
+        "_editing_minimum",
     )
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
@@ -580,6 +583,15 @@ class GraphsWidget(QtWidgets.QWidget):
         self._rhi_line_failed: bool = False
         self._rhi_line_cache_key: tuple[object, ...] | None = None
         self._active_save_dialog: QtWidgets.QFileDialog | None = None
+        self._axis_limit_editor: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+        self._axis_limit_editor.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        self._axis_limit_editor.setFont(self.font())
+        self._axis_limit_editor.setFrame(True)
+        self._axis_limit_editor.hide()
+        self._axis_limit_editor.returnPressed.connect(self._apply_axis_input_range)
+        self._axis_limit_editor.editingFinished.connect(self._apply_axis_input_range)
+        self._editing_axis_index: int = -1
+        self._editing_minimum: bool = False
         self.apply_theme(dark=self.palette().color(QtGui.QPalette.ColorRole.Window).lightness() < 128)
         self._set_axis_ranges()
 
@@ -625,6 +637,10 @@ class GraphsWidget(QtWidgets.QWidget):
                 pass
         else:
             pass
+        editor_palette: QtGui.QPalette = QtGui.QPalette(self._axis_limit_editor.palette())
+        editor_palette.setColor(QtGui.QPalette.ColorRole.Base, plot_color)
+        editor_palette.setColor(QtGui.QPalette.ColorRole.Text, label_color)
+        self._axis_limit_editor.setPalette(editor_palette)
 
     def setTitle(self, title: str) -> None:
         """Set the visible plot title.
@@ -663,6 +679,93 @@ class GraphsWidget(QtWidgets.QWidget):
             self.update()
         else:
             pass
+
+    def _begin_axis_limit_edit(self, axis_index: int, minimum: bool) -> None:
+        """Show the editor over the selected endpoint label.
+
+        :param axis_index: Zero for X or one for Y.
+        :param minimum: Whether the lower endpoint is being edited.
+        :return: None.
+        """
+        axis: ChartAxis = self.axis_x if axis_index == 0 else self.axis_y
+        border_value: float = axis.get_visual_range()[0 if minimum else 1]
+        is_datetime: bool = self._x_is_datetime and axis_index == 0
+        if is_datetime:
+            editor_text: str = QtCore.QDateTime.fromMSecsSinceEpoch(int(border_value)).toString(
+                "dd/MM/yyyy HH:mm:ss")
+            editor_width: int = 150
+        else:
+            editor_text = f"{border_value:.12g}"
+            editor_width = 100
+        plot_rect: QtCore.QRectF = self._get_plot_rect()
+        if axis_index == 0:
+            anchor_x: float = plot_rect.left() if minimum else plot_rect.right()
+            editor_x: int = int(anchor_x - editor_width * 0.5)
+            editor_y: int = int(plot_rect.bottom() + 2.0)
+        else:
+            editor_x = 2
+            anchor_y: float = plot_rect.bottom() if minimum else plot_rect.top()
+            editor_y = int(anchor_y - 11.0)
+        self._editing_axis_index = axis_index
+        self._editing_minimum = minimum
+        self._axis_limit_editor.setToolTip(self.tr("Enter a finite axis limit and press Enter"))
+        self._axis_limit_editor.setGeometry(editor_x, editor_y, editor_width, 22)
+        self._axis_limit_editor.setText(editor_text)
+        self._axis_limit_editor.show()
+        self._axis_limit_editor.raise_()
+        self._axis_limit_editor.setFocus(QtCore.Qt.FocusReason.MouseFocusReason)
+        self._axis_limit_editor.selectAll()
+
+    def _apply_axis_input_range(self) -> None:
+        """Apply one edited border when it forms a finite, ordered axis range.
+
+        :return: None.
+        """
+        if self._can_mutate() and self._editing_axis_index in (0, 1):
+            axis: ChartAxis = self.axis_x if self._editing_axis_index == 0 else self.axis_y
+            current_minimum: float
+            current_maximum: float
+            current_minimum, current_maximum = axis.get_visual_range()
+            is_datetime: bool = self._x_is_datetime and self._editing_axis_index == 0
+            border_value: float | None = self._parse_axis_input(self._axis_limit_editor.text(), is_datetime)
+            if border_value is not None:
+                requested_minimum: float = border_value if self._editing_minimum else current_minimum
+                requested_maximum: float = current_maximum if self._editing_minimum else border_value
+                if requested_maximum > requested_minimum:
+                    axis.set_range(requested_minimum, requested_maximum)
+                    axis.reset_viewport()
+                else:
+                    pass
+            else:
+                pass
+            self._axis_limit_editor.hide()
+            self._editing_axis_index = -1
+            self.update()
+        else:
+            self._axis_limit_editor.hide()
+
+    def _parse_axis_input(self, text: str, is_datetime: bool) -> float | None:
+        """Parse a finite numeric border or a displayed date-time border.
+
+        :param text: Editor contents to validate.
+        :param is_datetime: Whether this X axis uses epoch milliseconds.
+        :return: Finite border value, or ``None`` when invalid.
+        """
+        if is_datetime:
+            date_value: QtCore.QDateTime = QtCore.QDateTime.fromString(text, "dd/MM/yyyy HH:mm:ss")
+            if date_value.isValid():
+                return float(date_value.toMSecsSinceEpoch())
+            else:
+                return None
+        else:
+            try:
+                numeric_value: float = float(text)
+            except ValueError:
+                return None
+            if np.isfinite(numeric_value):
+                return numeric_value
+            else:
+                return None
 
     def get_series_count(self) -> int:
         """Return the number of Python-owned chart series.
@@ -1544,13 +1647,13 @@ class GraphsWidget(QtWidgets.QWidget):
         QtWidgets.QWidget.leaveEvent(self, event)
 
     def mouseDoubleClickEvent(self, event: QtGui.QMouseEvent) -> None:
-        """Reset zoom and pan from a left-button double-click.
+        """Restore the full data range from a left-button double-click.
 
         :param event: Mouse double-click event delivered by Qt Widgets.
         :return: None.
         """
         if self._can_mutate() and event.button() == QtCore.Qt.MouseButton.LeftButton:
-            self.reset_viewport()
+            self._center_from_context_menu()
             event.accept()
         else:
             event.ignore()
@@ -1566,12 +1669,57 @@ class GraphsWidget(QtWidgets.QWidget):
             menu.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose, True)
             save_action: QtGui.QAction = menu.addAction(self.tr("Save image…"))
             center_action: QtGui.QAction = menu.addAction(self.tr("Center data"))
+            menu.addSeparator()
+            x_minimum_action: QtGui.QAction = menu.addAction(self.tr("Edit X minimum…"))
+            x_maximum_action: QtGui.QAction = menu.addAction(self.tr("Edit X maximum…"))
+            y_minimum_action: QtGui.QAction = menu.addAction(self.tr("Edit Y minimum…"))
+            y_maximum_action: QtGui.QAction = menu.addAction(self.tr("Edit Y maximum…"))
             save_action.triggered.connect(self._save_image_from_context_menu)
             center_action.triggered.connect(self._center_from_context_menu)
+            x_minimum_action.triggered.connect(self._edit_x_minimum)
+            x_maximum_action.triggered.connect(self._edit_x_maximum)
+            y_minimum_action.triggered.connect(self._edit_y_minimum)
+            y_maximum_action.triggered.connect(self._edit_y_maximum)
             menu.popup(event.globalPos())
             event.accept()
         else:
             event.ignore()
+
+    def _edit_x_minimum(self, checked: bool = False) -> None:
+        """Open the inline editor for the X lower border.
+
+        :param checked: Unused QAction state.
+        :return: None.
+        """
+        _ = checked
+        self._begin_axis_limit_edit(axis_index=0, minimum=True)
+
+    def _edit_x_maximum(self, checked: bool = False) -> None:
+        """Open the inline editor for the X upper border.
+
+        :param checked: Unused QAction state.
+        :return: None.
+        """
+        _ = checked
+        self._begin_axis_limit_edit(axis_index=0, minimum=False)
+
+    def _edit_y_minimum(self, checked: bool = False) -> None:
+        """Open the inline editor for the Y lower border.
+
+        :param checked: Unused QAction state.
+        :return: None.
+        """
+        _ = checked
+        self._begin_axis_limit_edit(axis_index=1, minimum=True)
+
+    def _edit_y_maximum(self, checked: bool = False) -> None:
+        """Open the inline editor for the Y upper border.
+
+        :param checked: Unused QAction state.
+        :return: None.
+        """
+        _ = checked
+        self._begin_axis_limit_edit(axis_index=1, minimum=False)
 
     def _save_image_from_context_menu(self, checked: bool = False) -> None:
         """Choose a PNG or SVG destination and export this chart.
@@ -1623,13 +1771,23 @@ class GraphsWidget(QtWidgets.QWidget):
         self._active_save_dialog = None
 
     def _center_from_context_menu(self, checked: bool = False) -> None:
-        """Reset axes to the complete data range.
+        """Restore auto-ranged data bounds after any manual border edits.
 
         :param checked: Unused QAction state.
         :return: None.
         """
         _ = checked
-        self.reset_viewport()
+        if self._can_mutate():
+            if self._content_type == ChartContentType.POLAR:
+                self.axis_x.set_range(0.0, 2.0 * np.pi)
+                self.axis_y.set_range(0.0, max(self._y_max, 1.0) * 1.05)
+            else:
+                self._set_axis_ranges()
+            self.axis_x.reset_viewport()
+            self.axis_y.reset_viewport()
+            self.update()
+        else:
+            pass
 
     def _update_rhi_selection_overlay(self, plot_rect: QtCore.QRectF) -> None:
         """Keep the selection child above QRhi lines during mouse movement.
