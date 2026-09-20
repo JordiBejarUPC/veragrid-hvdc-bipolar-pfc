@@ -1808,7 +1808,7 @@ class GraphsWidget(QtWidgets.QWidget):
         :param plot_rect: Data drawing rectangle.
         :return: None.
         """
-        visible_line_count: int = self._get_visible_line_count()
+        visible_line_count: int = self._count_visible_lines()
         series: ChartSeries
         for series in self._series:
             if series.get_visible() and series.get_series_type() == ChartSeriesType.LINE:
@@ -1833,7 +1833,7 @@ class GraphsWidget(QtWidgets.QWidget):
         :param painter: Active painter for this paint event.
         :param plot_rect: Data drawing rectangle.
         :param series: Owned line series to draw.
-        :param visible_line_count: Number of lines sharing the frame paint budget.
+        :param visible_line_count: Number of visible lines in the current plot.
         :return: None.
         """
         x_data: np.ndarray = series.get_x_data()
@@ -1841,6 +1841,7 @@ class GraphsWidget(QtWidgets.QWidget):
         if len(x_data) > 0:
             indices: np.ndarray = self._sample_xy_indices(
                 x_data=x_data,
+                y_data=y_data,
                 x_is_monotonic=series.get_x_is_monotonic(),
                 plot_rect=plot_rect,
                 visible_line_count=visible_line_count,
@@ -2272,32 +2273,20 @@ class GraphsWidget(QtWidgets.QWidget):
         fraction: float = (float(index) - y_minimum) / (y_maximum - y_minimum)
         return plot_rect.bottom() - fraction * plot_rect.height()
 
-    def _get_visible_line_count(self) -> int:
-        """Return the number of line paths sharing the current paint budget.
-
-        :return: Count of visible XY line series.
-        """
-        visible_line_count: int = 0
-        series: ChartSeries
-        for series in self._series:
-            if series.get_visible() and series.get_series_type() == ChartSeriesType.LINE:
-                visible_line_count += 1
-            else:
-                pass
-        return max(visible_line_count, 1)
-
     def _sample_xy_indices(self,
                            x_data: np.ndarray,
+                           y_data: np.ndarray,
                            x_is_monotonic: bool,
                            plot_rect: QtCore.QRectF,
-                           visible_line_count: int) -> np.ndarray:
-        """Return line samples inside the current viewport within one frame budget.
+                           visible_line_count: int = 1) -> np.ndarray:
+        """Return line samples that preserve local extrema at screen resolution.
 
         :param x_data: Owned horizontal data values.
+        :param y_data: Owned vertical data values.
         :param x_is_monotonic: Whether search-based viewport clipping is safe.
         :param plot_rect: Data drawing rectangle.
-        :param visible_line_count: Number of lines sharing the frame paint budget.
-        :return: Ordered indices suitable for a line path.
+        :param visible_line_count: Visible lines sharing the frame vertex limit.
+        :return: Ordered indices containing each pixel bucket's minimum and maximum.
         """
         if x_is_monotonic and len(x_data) > 0:
             x_minimum: float
@@ -2308,12 +2297,15 @@ class GraphsWidget(QtWidgets.QWidget):
             return self._sample_index_range(
                 first_index=first_index,
                 last_index=last_index,
+                y_data=y_data,
                 plot_rect=plot_rect,
                 visible_line_count=visible_line_count,
             )
         else:
-            return self._sample_indices(
-                point_count=len(x_data),
+            return self._sample_index_range(
+                first_index=0,
+                last_index=len(x_data),
+                y_data=y_data,
                 plot_rect=plot_rect,
                 visible_line_count=visible_line_count,
             )
@@ -2321,37 +2313,83 @@ class GraphsWidget(QtWidgets.QWidget):
     def _sample_index_range(self,
                             first_index: int,
                             last_index: int,
+                            y_data: np.ndarray,
                             plot_rect: QtCore.QRectF,
                             visible_line_count: int) -> np.ndarray:
-        """Sample an ordered half-open index range with the current frame budget.
+        """Keep each screen bucket's extrema from an ordered half-open data range.
 
         :param first_index: First retained data position.
         :param last_index: One past the last retained data position.
+        :param y_data: Owned vertical values used to locate local extrema.
         :param plot_rect: Data drawing rectangle.
-        :param visible_line_count: Number of lines sharing the frame paint budget.
-        :return: Ordered global data positions for one line path.
+        :param visible_line_count: Visible lines sharing the frame vertex limit.
+        :return: Ordered global positions for each bucket's minimum and maximum.
         """
         point_count: int = last_index - first_index
-        maximum_points: int = max(int(plot_rect.width()) * 2 // max(visible_line_count, 1), 2)
-        if point_count > maximum_points:
-            return np.linspace(first_index, last_index - 1, maximum_points, dtype=int)
+        # ponytail: cap aggregate path vertices at 500k; use this budget until profiling justifies a more complex renderer.
+        maximum_points_per_series: int = max(500000 // max(visible_line_count, 1), 2)
+        maximum_buckets: int = max(min(int(plot_rect.width()), maximum_points_per_series // 2), 1)
+        if point_count > maximum_buckets:
+            # Fixed-size NumPy chunks find extrema without Python work per source point.
+            bucket_size: int = (point_count + maximum_buckets - 1) // maximum_buckets
+            bucket_count: int = (point_count + bucket_size - 1) // bucket_size
+            padded_count: int = bucket_count * bucket_size
+            grouped_values: np.ndarray = np.full(padded_count, np.inf, dtype=float)
+            visible_values: np.ndarray = y_data[first_index:last_index]
+            grouped_values[:point_count] = visible_values
+            grouped_values_2d: np.ndarray = grouped_values.reshape(bucket_count, bucket_size)
+            bucket_offsets: np.ndarray = np.arange(bucket_count, dtype=int) * bucket_size
+            minimum_positions: np.ndarray = bucket_offsets + np.argmin(grouped_values_2d, axis=1)
+            grouped_values.fill(-np.inf)
+            grouped_values[:point_count] = visible_values
+            grouped_values_2d = grouped_values.reshape(bucket_count, bucket_size)
+            maximum_positions: np.ndarray = bucket_offsets + np.argmax(grouped_values_2d, axis=1)
+            retained_positions: np.ndarray = np.empty(bucket_count * 2, dtype=int)
+            retained_positions[0::2] = minimum_positions
+            retained_positions[1::2] = maximum_positions
+            retained_positions.sort()
+            return retained_positions + first_index
         else:
             return np.arange(first_index, last_index, dtype=int)
 
     def _sample_indices(self,
                         point_count: int,
                         plot_rect: QtCore.QRectF,
+                        y_data: np.ndarray | None = None,
                         visible_line_count: int = 1) -> np.ndarray:
         """Bound painter work to useful screen resolution for large buffers.
 
         :param point_count: Number of available data points.
         :param plot_rect: Data drawing rectangle.
-        :param visible_line_count: Number of lines sharing the frame paint budget.
+        :param y_data: Optional values for extrema-preserving downsampling.
+        :param visible_line_count: Visible lines sharing the frame vertex limit.
         :return: Ordered indices that retain both series endpoints.
         """
-        return self._sample_index_range(
-            first_index=0,
-            last_index=point_count,
-            plot_rect=plot_rect,
-            visible_line_count=visible_line_count,
-        )
+        if y_data is not None:
+            return self._sample_index_range(
+                first_index=0,
+                last_index=point_count,
+                y_data=y_data,
+                plot_rect=plot_rect,
+                visible_line_count=visible_line_count,
+            )
+        else:
+            maximum_points: int = max(int(plot_rect.width()) * 2, 2)
+            if point_count > maximum_points:
+                return np.linspace(0, point_count - 1, maximum_points, dtype=int)
+            else:
+                return np.arange(point_count, dtype=int)
+
+    def _count_visible_lines(self) -> int:
+        """Count visible lines so dense plots share one bounded paint budget.
+
+        :return: Number of visible XY line series, with one as the empty fallback.
+        """
+        visible_line_count: int = 0
+        series: ChartSeries
+        for series in self._series:
+            if series.get_visible() and series.get_series_type() == ChartSeriesType.LINE:
+                visible_line_count += 1
+            else:
+                pass
+        return max(visible_line_count, 1)

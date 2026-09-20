@@ -226,6 +226,37 @@ def test_chart_widget_rectangle_zoom_covers_every_native_renderer(
     qt_app.processEvents()
 
 
+def test_line_decimation_preserves_spikes_for_dense_series(
+        qt_app: QtWidgets.QApplication) -> None:
+    """Retain local peaks and dips when a long line is reduced to screen pixels.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    chart: GraphsWidget = GraphsWidget()
+    chart.resize(400, 260)
+    source_x: np.ndarray = np.linspace(0.0, 1.0, 10000, dtype=float)
+    source_y: np.ndarray = np.zeros(len(source_x), dtype=float)
+    source_y[4321] = 20.0
+    source_y[7654] = -10.0
+    chart.add_line_series(name='Spikes', x_values=source_x, y_values=source_y)
+    plot_rect: QtCore.QRectF = chart._get_plot_rect()
+    retained_indices: np.ndarray = chart._sample_xy_indices(
+        x_data=chart._series[0].get_x_data(),
+        y_data=chart._series[0].get_y_data(),
+        x_is_monotonic=chart._series[0].get_x_is_monotonic(),
+        plot_rect=plot_rect,
+        visible_line_count=2224,
+    )
+    assert len(retained_indices) <= 500000 // 2224
+    assert 4321 in retained_indices
+    assert 7654 in retained_indices
+    chart.dispose()
+    chart.deleteLater()
+    QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
+    qt_app.processEvents()
+
+
 def test_chart_widget_stress_replaces_data_paints_and_destroys_cleanly(
         qt_app: QtWidgets.QApplication) -> None:
     """Stress XY updates, input, paint, mode changes, and deferred destruction.
