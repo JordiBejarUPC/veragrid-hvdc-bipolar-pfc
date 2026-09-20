@@ -1768,6 +1768,64 @@ def get_contingency_monitorable_branches(branch_data_t: PassiveBranchData,
     return monitorable
 
 
+def evaluate_corrective_flow_addons(multi_contingencies: List[LinearMultiContingency],
+                                           group_indices,
+                                           vsc_delta_store: Dict[int, Dict[int, LpVar]],
+                                           hvdc_delta_store: Dict[int, Dict[int, LpVar]],
+                                           n_vsc: int,
+                                           n_hvdc: int,
+                                           n_branch: int,
+                                           model: LpModel) -> Dict[int, Vec]:
+    """
+    Evaluate the numeric branch flow change of every group's solved corrective Δ set-points.
+
+    Each addon is ``compensated_df · Δ`` in per unit.
+
+    :param multi_contingencies: formulated multi-contingencies in LP order
+    :param group_indices: formulated-group positions to evaluate
+    :param vsc_delta_store: per group position, the per-VSC Δ variable dictionary
+    :param hvdc_delta_store: per group position, the per-HVDC Δ variable dictionary
+    :param n_vsc: number of VSC converters
+    :param n_hvdc: number of HVDC links
+    :param n_branch: number of passive branches
+    :param model: solved LP model the Δ values are read from
+    :return: per group position, the corrective flow change (p.u.) on every branch
+    """
+    addons: Dict[int, Vec] = dict()
+    for c in group_indices:
+        c_int: int = int(c)
+        contingency: LinearMultiContingency = multi_contingencies[c_int]
+        addon_c: Vec = np.zeros(n_branch)
+        has_delta: bool = False
+
+        vsc_deltas: Dict[int, LpVar] = vsc_delta_store.get(c_int, dict())
+        if len(vsc_deltas) > 0 and contingency.compensated_vsc_df is not None:
+            dv: Vec = np.zeros(n_vsc)
+            for d, var in vsc_deltas.items():
+                dv[d] = model.get_value(var)
+            addon_c += contingency.compensated_vsc_df @ dv
+            has_delta = True
+        else:
+            pass  # this group moves no VSC correctively
+
+        hvdc_deltas: Dict[int, LpVar] = hvdc_delta_store.get(c_int, dict())
+        if len(hvdc_deltas) > 0 and contingency.compensated_hvdc_df is not None:
+            dh: Vec = np.zeros(n_hvdc)
+            for d, var in hvdc_deltas.items():
+                dh[d] = model.get_value(var)
+            addon_c += contingency.compensated_hvdc_df @ dh
+            has_delta = True
+        else:
+            pass  # this group moves no HVDC correctively
+
+        if has_delta:
+            addons[c_int] = addon_c
+        else:
+            pass  # no corrective action in this group, the preventive flow applies
+
+    return addons
+
+
 def screen_contingency_violations(multi_contingencies: List[LinearMultiContingency],
                                   admitted_rows: Dict[int, BoolVec],
                                   f0: Vec,
@@ -1873,7 +1931,8 @@ def fill_worst_contingency_per_branch(grid: MultiCircuit,
                                       worst_flow: Vec,
                                       worst_loading: Vec,
                                       alpha_n1_worst: Vec,
-                                      solved_flows: Mat | CompactContingencies | None = None) -> None:
+                                      solved_flows: Mat | CompactContingencies | None = None,
+                                      corrective_addons_mw: Dict[int, Vec] | None = None) -> None:
     """
     For every branch, keep the contingency group that maximises post-contingency loading.
 
@@ -1893,6 +1952,8 @@ def fill_worst_contingency_per_branch(grid: MultiCircuit,
     :param worst_loading: output, |N-1 flow| / contingency rate, filled in place
     :param alpha_n1_worst: output, exchange sensitivity under the worst group, filled in place
     :param solved_flows: solved physical contingency branch flows (groups x branches, MW), if available
+    :param corrective_addons_mw: per formulated group position, the solved corrective
+                                 converter redispatch flow change (MW)
     :return: None
     """
     # numeric copies so LP extracts still enter the sparse matvecs as float
@@ -1970,6 +2031,13 @@ def fill_worst_contingency_per_branch(grid: MultiCircuit,
                         fc = physical_state[1] * solved_flows.nc.Sbase
                     else:
                         fc = solved_flows[c, :]
+                elif corrective_addons_mw is not None:
+                    addon_mw: Union[Vec, None] = corrective_addons_mw.get(c, None)
+                    if addon_mw is not None:
+                        # the LP relieved this group correctively
+                        fc = fc + addon_mw
+                    else:
+                        pass  # no corrective action in this group, keep the preventive flow
                 else:
                     pass  # Keep the contingency flow already calculated
 
@@ -2914,27 +2982,16 @@ def run_linear_ntc_opf(grid: MultiCircuit,
             inj0_num: Vec = np.array([lp_model.get_value(x) for x in mip_vars.bus_vars.Pinj[t_idx, :]])
 
             # numeric flow change of every admitted corrective group's solved Δ set-points
-            delta_addons: Dict[int, Vec] = dict()
-            for c_adm in admitted_rows.keys():
-                addon_c: Vec = np.zeros(nc.passive_branch_data.nelm)
-                ctg_adm = lazy_mctg.multi_contingencies[c_adm]
-                vsc_deltas_adm: Dict[int, LpVar] = vsc_delta_store.get(c_adm, dict())
-                if len(vsc_deltas_adm) > 0 and ctg_adm.compensated_vsc_df is not None:
-                    dv: Vec = np.zeros(nc.vsc_data.nelm)
-                    for d_adm, var_adm in vsc_deltas_adm.items():
-                        dv[d_adm] = lp_model.get_value(var_adm)
-                    addon_c += ctg_adm.compensated_vsc_df @ dv
-                else:
-                    pass  # this group moves no VSC correctively
-                hvdc_deltas_adm: Dict[int, LpVar] = hvdc_delta_store.get(c_adm, dict())
-                if len(hvdc_deltas_adm) > 0 and ctg_adm.compensated_hvdc_df is not None:
-                    dh: Vec = np.zeros(nc.hvdc_data.nelm)
-                    for d_adm, var_adm in hvdc_deltas_adm.items():
-                        dh[d_adm] = lp_model.get_value(var_adm)
-                    addon_c += ctg_adm.compensated_hvdc_df @ dh
-                else:
-                    pass  # this group moves no HVDC correctively
-                delta_addons[c_adm] = addon_c
+            delta_addons: Dict[int, Vec] = evaluate_corrective_flow_addons(
+                multi_contingencies=lazy_mctg.multi_contingencies,
+                group_indices=list(admitted_rows.keys()),
+                vsc_delta_store=vsc_delta_store,
+                hvdc_delta_store=hvdc_delta_store,
+                n_vsc=nc.vsc_data.nelm,
+                n_hvdc=nc.hvdc_data.nelm,
+                n_branch=nc.passive_branch_data.nelm,
+                model=lp_model,
+            )
 
             admissions: List[Tuple[int, IntVec]] = screen_contingency_violations(
                 multi_contingencies=lazy_mctg.multi_contingencies,
@@ -3067,6 +3124,27 @@ def run_linear_ntc_opf(grid: MultiCircuit,
         reporting_contingencies = None
         solved_flows = None
 
+    # The worst contingency report must reflect the same corrected N-1 state the limits
+    # were enforced
+    corrective_addons_mw: Union[Dict[int, Vec], None] = None
+    if status == lp_model.OPTIMAL and lazy_mctg is not None:
+        final_addons_pu: Dict[int, Vec] = evaluate_corrective_flow_addons(
+            multi_contingencies=lazy_mctg.multi_contingencies,
+            group_indices=list(admitted_rows.keys()),
+            vsc_delta_store=vsc_delta_store,
+            hvdc_delta_store=hvdc_delta_store,
+            n_vsc=nc.vsc_data.nelm,
+            n_hvdc=nc.hvdc_data.nelm,
+            n_branch=nc.passive_branch_data.nelm,
+            model=lp_model,
+        )
+        if len(final_addons_pu) > 0:
+            corrective_addons_mw = {c: addon * grid.Sbase for c, addon in final_addons_pu.items()}
+        else:
+            pass  # preventive run or no corrective move so we report the preventive flows
+    else:
+        pass  # failed solve or no lazy formulation so report the preventive flows
+
     # one numeric N-1 pass on the final operating point
     fill_worst_contingency_per_branch(
         grid=grid,
@@ -3082,6 +3160,7 @@ def run_linear_ntc_opf(grid: MultiCircuit,
         worst_loading=vars_v.branch_vars.worst_contingency_loading[t_idx, :],
         alpha_n1_worst=vars_v.branch_vars.alpha_n1_worst[t_idx, :],
         solved_flows=solved_flows,
+        corrective_addons_mw=corrective_addons_mw,
     )
 
     # fill the power shift
