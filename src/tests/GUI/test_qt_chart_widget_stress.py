@@ -10,7 +10,13 @@ from __future__ import annotations
 import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from VeraGrid.Gui.Widgets.qt_chart_widget import ChartContentType, ChartSeriesType, GraphsWidget, PolarAngleUnit
+from VeraGrid.Gui.Widgets.qt_chart_widget import (
+    ChartContentType,
+    ChartSeriesType,
+    GraphsWidget,
+    PolarAngleUnit,
+    format_chart_value,
+)
 
 
 class ObjectDestructionProbe:
@@ -33,6 +39,19 @@ class ObjectDestructionProbe:
         """
         _ = destroyed_object
         self.destroyed_count += 1
+
+
+def test_datetime_axis_tick_format_includes_date_and_time() -> None:
+    """Display datetime ticks as day/month/year and 24-hour time.
+
+    :return: None.
+    """
+    formatted_value: str = format_chart_value(value=1_700_000_000_000.0, is_datetime=True)
+    date_part: str
+    time_part: str
+    date_part, time_part = formatted_value.split("\n")
+    assert tuple(len(date_component) for date_component in date_part.split("/")) == (2, 2, 4)
+    assert tuple(len(time_component) for time_component in time_part.split(":")) == (2, 2, 2)
 
 
 def make_wheel_event(widget: GraphsWidget, delta_y: int) -> QtGui.QWheelEvent:

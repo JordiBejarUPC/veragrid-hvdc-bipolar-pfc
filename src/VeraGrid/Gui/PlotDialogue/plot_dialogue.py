@@ -32,7 +32,7 @@ class PlotDialogue(QtWidgets.QDialog):
 
         :param title: Initial dialog and chart title.
         :param parent: Optional Qt owner for the complete dialog hierarchy.
-        :param use_rhi_for_many_series: Whether dense XY line series may use QRhi.
+        :param use_rhi_for_many_series: Whether dense XY lines and cumulative areas may use QRhi.
         :return: None.
         """
         QtWidgets.QDialog.__init__(self, parent)

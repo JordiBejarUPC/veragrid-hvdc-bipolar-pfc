@@ -3,7 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-"""Experimental GPU-backed line plot using Qt's QWidget RHI surface."""
+"""Experimental GPU-backed line and area plots using Qt's QWidget RHI surface."""
 
 from collections.abc import Sequence
 from pathlib import Path
@@ -14,11 +14,12 @@ from PySide6.support import VoidPtr
 
 
 class RhiLineChartWidget(QtWidgets.QRhiWidget):
-    """Render multiple line series from one contiguous GPU vertex buffer."""
+    """Render line and stacked-area series from one contiguous GPU vertex buffer."""
 
     __slots__ = ("_vertices", "_series_lengths", "_series_first_vertices", "_series_count",
-                 "_buffer", "_buffer_size", "_pipeline", "_rhi", "_vertex_count", "_data_revision",
-                 "_uploaded_revision", "_bindings", "_background_color")
+                 "_series_is_area", "_buffer", "_buffer_size", "_pipeline", "_area_pipeline", "_rhi",
+                 "_vertex_count", "_data_revision", "_uploaded_revision", "_bindings",
+                 "_background_color")
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         """Create an empty chart without allocating native graphics resources.
@@ -30,10 +31,12 @@ class RhiLineChartWidget(QtWidgets.QRhiWidget):
         self._vertices: np.ndarray = np.zeros((0, 5), dtype=np.float32)
         self._series_lengths: np.ndarray = np.zeros(0, dtype=np.int32)
         self._series_first_vertices: np.ndarray = np.zeros(0, dtype=np.int32)
+        self._series_is_area: np.ndarray = np.zeros(0, dtype=bool)
         self._series_count: int = 0
         self._buffer: QtGui.QRhiBuffer | None = None
         self._buffer_size: int = 0
         self._pipeline: QtGui.QRhiGraphicsPipeline | None = None
+        self._area_pipeline: QtGui.QRhiGraphicsPipeline | None = None
         self._rhi: QtGui.QRhi | None = None
         self._vertex_count: int = 0
         self._data_revision: int = 0
@@ -56,19 +59,26 @@ class RhiLineChartWidget(QtWidgets.QRhiWidget):
     def set_vertices(self,
                      vertices: np.ndarray,
                      series_lengths: Sequence[int],
-                     series_colors: Sequence[QtGui.QColor]) -> bool:
-        """Replace the plot with finite clip-space line vertices and colors.
+                     series_colors: Sequence[QtGui.QColor],
+                     series_is_area: Sequence[bool] | None = None) -> bool:
+        """Replace the plot with finite clip-space line or area geometry.
 
         :param vertices: XY vertex coordinates shaped as ``(points, 2)``.
-        :param series_lengths: Vertex count for each contiguous line.
-        :param series_colors: Color for each line.
-        :return: Whether the buffers contain valid line strips.
+        :param series_lengths: Vertex count for each contiguous primitive.
+        :param series_colors: Color for each primitive.
+        :param series_is_area: Optional triangle-list flags paired with primitives.
+        :return: Whether the buffers contain valid line or area primitives.
         """
         if (vertices.ndim == 2 and vertices.shape[1] == 2
                 and len(series_lengths) == len(series_colors)
                 and np.all(np.isfinite(vertices))):
             lengths: np.ndarray = np.asarray(series_lengths, dtype=np.int32)
-            if lengths.size > 0 and np.all(lengths >= 2) and int(np.sum(lengths)) == vertices.shape[0]:
+            if series_is_area is None:
+                area_flags: np.ndarray = np.zeros(lengths.size, dtype=bool)
+            else:
+                area_flags = np.asarray(series_is_area, dtype=bool)
+            if (lengths.size > 0 and np.all(lengths >= 2) and int(np.sum(lengths)) == vertices.shape[0]
+                    and area_flags.size == lengths.size):
                 packed_vertices: np.ndarray = np.empty((vertices.shape[0], 5), dtype=np.float32)
                 packed_vertices[:, :2] = vertices
                 first_vertices: np.ndarray = np.empty(lengths.size, dtype=np.int32)
@@ -85,6 +95,7 @@ class RhiLineChartWidget(QtWidgets.QRhiWidget):
                 self._vertices = np.ascontiguousarray(packed_vertices)
                 self._series_lengths = lengths
                 self._series_first_vertices = first_vertices
+                self._series_is_area = area_flags
                 self._series_count = int(lengths.size)
                 self._vertex_count = int(vertices.shape[0])
                 self._data_revision += 1
@@ -104,6 +115,7 @@ class RhiLineChartWidget(QtWidgets.QRhiWidget):
         self._vertices = np.zeros((0, 5), dtype=np.float32)
         self._series_lengths = np.zeros(0, dtype=np.int32)
         self._series_first_vertices = np.zeros(0, dtype=np.int32)
+        self._series_is_area = np.zeros(0, dtype=bool)
         self._series_count = 0
         self._vertex_count = 0
         self._data_revision += 1
@@ -128,7 +140,7 @@ class RhiLineChartWidget(QtWidgets.QRhiWidget):
             pass
 
     def _create_pipeline(self, rhi: QtGui.QRhi) -> None:
-        """Build a line pipeline from packaged, backend-neutral shader packs.
+        """Build line-strip and triangle-list pipelines from shared shaders.
 
         :param rhi: Active renderer instance owned by Qt.
         :return: None.
@@ -140,6 +152,7 @@ class RhiLineChartWidget(QtWidgets.QRhiWidget):
             bindings: QtGui.QRhiShaderResourceBindings = rhi.newShaderResourceBindings()
             bindings.setBindings([])
             pipeline: QtGui.QRhiGraphicsPipeline = rhi.newGraphicsPipeline()
+            area_pipeline: QtGui.QRhiGraphicsPipeline = rhi.newGraphicsPipeline()
             stages: list[QtGui.QRhiShaderStage] = [
                 QtGui.QRhiShaderStage(QtGui.QRhiShaderStage.Type.Vertex, vertex_shader),
                 QtGui.QRhiShaderStage(QtGui.QRhiShaderStage.Type.Fragment, fragment_shader),
@@ -159,11 +172,19 @@ class RhiLineChartWidget(QtWidgets.QRhiWidget):
             pipeline.setVertexInputLayout(input_layout)
             pipeline.setTopology(QtGui.QRhiGraphicsPipeline.Topology.LineStrip)
             pipeline.setRenderPassDescriptor(self.renderTarget().renderPassDescriptor())
-            if bindings.create() and pipeline.create():
+            area_pipeline.setShaderStages(stages)
+            area_pipeline.setShaderResourceBindings(bindings)
+            area_pipeline.setVertexInputLayout(input_layout)
+            area_pipeline.setTopology(QtGui.QRhiGraphicsPipeline.Topology.Triangles)
+            area_pipeline.setCullMode(QtGui.QRhiGraphicsPipeline.CullMode.None_)
+            area_pipeline.setRenderPassDescriptor(self.renderTarget().renderPassDescriptor())
+            if bindings.create() and pipeline.create() and area_pipeline.create():
                 self._pipeline = pipeline
+                self._area_pipeline = area_pipeline
                 self._bindings = bindings
             else:
                 pipeline.destroy()
+                area_pipeline.destroy()
                 bindings.destroy()
                 self.renderFailed.emit()
         else:
@@ -237,8 +258,7 @@ class RhiLineChartWidget(QtWidgets.QRhiWidget):
                 pass
             clear_value: QtGui.QRhiDepthStencilClearValue = QtGui.QRhiDepthStencilClearValue(1.0, 0)
             command_buffer.beginPass(render_target, self._background_color, clear_value, update_batch)
-            if self._pipeline is not None and self._buffer is not None:
-                command_buffer.setGraphicsPipeline(self._pipeline)
+            if self._pipeline is not None and self._area_pipeline is not None and self._buffer is not None:
                 output_size: QtCore.QSize = render_target.pixelSize()
                 viewport: QtGui.QRhiViewport = QtGui.QRhiViewport(
                     0.0, 0.0, float(output_size.width()), float(output_size.height())
@@ -248,12 +268,12 @@ class RhiLineChartWidget(QtWidgets.QRhiWidget):
                 command_buffer.setVertexInput(0, [vertex_buffer])
                 series_index: int = 0
                 while series_index < self._series_count:
-                    command_buffer.draw(
-                        int(self._series_lengths[series_index]),
-                        1,
-                        int(self._series_first_vertices[series_index]),
-                        0,
-                    )
+                    if self._series_is_area[series_index]:
+                        command_buffer.setGraphicsPipeline(self._area_pipeline)
+                    else:
+                        command_buffer.setGraphicsPipeline(self._pipeline)
+                    command_buffer.draw(int(self._series_lengths[series_index]), 1,
+                                        int(self._series_first_vertices[series_index]), 0)
                     series_index += 1
             else:
                 pass
@@ -283,6 +303,11 @@ class RhiLineChartWidget(QtWidgets.QRhiWidget):
         if self._pipeline is not None:
             self._pipeline.destroy()
             self._pipeline = None
+        else:
+            pass
+        if self._area_pipeline is not None:
+            self._area_pipeline.destroy()
+            self._area_pipeline = None
         else:
             pass
         if self._bindings is not None:

@@ -428,7 +428,7 @@ def format_chart_value(value: float, is_datetime: bool) -> str:
     """
     if is_datetime:
         date_value: QtCore.QDateTime = QtCore.QDateTime.fromMSecsSinceEpoch(int(value))
-        return date_value.toString("yyyy-MM-dd")
+        return date_value.toString("dd/MM/yyyy\nHH:mm:ss")
     elif abs(value) >= 10000.0 or (abs(value) > 0.0 and abs(value) < 0.01):
         return f"{value:.2e}"
     else:
@@ -890,7 +890,8 @@ class GraphsWidget(QtWidgets.QWidget):
             if np.any(valid_mask):
                 retained_x_data: np.ndarray = np.ascontiguousarray(x_data[valid_mask], dtype=float)
                 new_series: list[ChartSeries] = list()
-                cumulative_values: np.ndarray = np.zeros(len(retained_x_data), dtype=float)
+                cumulative_positive: np.ndarray = np.zeros(len(retained_x_data), dtype=float)
+                cumulative_negative: np.ndarray = np.zeros(len(retained_x_data), dtype=float)
                 minimum_value: float = 0.0
                 maximum_value: float = 0.0
                 for series_index in range(len(values_data)):
@@ -898,18 +899,22 @@ class GraphsWidget(QtWidgets.QWidget):
                         values_data[series_index][valid_mask],
                         dtype=float,
                     )
-                    cumulative_values += retained_data
-                    minimum_value = min(minimum_value, float(np.min(cumulative_values)))
-                    maximum_value = max(maximum_value, float(np.max(cumulative_values)))
+                    positive_values: np.ndarray = np.maximum(retained_data, 0.0)
+                    negative_values: np.ndarray = np.minimum(retained_data, 0.0)
+                    cumulative_positive += positive_values
+                    cumulative_negative += negative_values
+                    minimum_value = min(minimum_value, float(np.min(cumulative_negative)))
+                    maximum_value = max(maximum_value, float(np.max(cumulative_positive)))
                     new_series.append(
                         ChartSeries(
                             series_type=ChartSeriesType.CUMULATIVE_AREA,
                             name=str(series_names[series_index]),
                             x_data=retained_x_data,
                             y_data=retained_data,
-                            color=self._make_series_color(
+                            color=self._make_cumulative_area_color(
                                 color_name=color_values[series_index],
                                 series_index=series_index,
+                                series_count=len(series_names),
                             ),
                         )
                     )
@@ -1583,10 +1588,10 @@ class GraphsWidget(QtWidgets.QWidget):
             pass
 
     def set_rhi_line_rendering(self, enabled: bool, series_threshold: int = 64) -> None:
-        """Enable the optional QRhi line layer above the requested series count.
+        """Enable optional QRhi rendering for dense lines and cumulative areas.
 
-        :param enabled: Whether QRhi may replace QPainter for dense XY lines.
-        :param series_threshold: Minimum visible line count for that replacement.
+        :param enabled: Whether QRhi may replace QPainter for supported plot types.
+        :param series_threshold: Minimum visible XY line count for line replacement.
         :return: None.
         """
         if self._can_mutate():
@@ -1627,11 +1632,22 @@ class GraphsWidget(QtWidgets.QWidget):
         self.update()
 
     def _prepare_rhi_line_layer(self, plot_rect: QtCore.QRectF) -> bool:
-        """Prepare the transparent QRhi overlay when dense line rendering is enabled.
+        """Prepare the QRhi overlay for supported dense chart geometry.
 
         :param plot_rect: Current data viewport used for clip-space transforms.
         :return: Whether QPainter should omit its line paths for this frame.
         """
+        if self._content_type == ChartContentType.CUMULATIVE_AREA:
+            # QRhi area fills are visually incorrect on the active backend;
+            # keep the stacked profile on the verified painter path.
+            self._rhi_line_cache_key = None
+            if self._rhi_line_widget is not None:
+                self._rhi_line_widget.hide()
+            else:
+                pass
+            return False
+        else:
+            pass
         line_count: int = self._count_visible_lines()
         rhi_selected: bool = (
             self._rhi_line_enabled
@@ -1764,6 +1780,214 @@ class GraphsWidget(QtWidgets.QWidget):
                 pass
             return False
 
+    def _prepare_rhi_area_layer(self, plot_rect: QtCore.QRectF) -> bool:
+        """Prepare stacked cumulative areas as QRhi triangle lists.
+
+        :param plot_rect: Current data viewport used for clip-space transforms.
+        :return: Whether QPainter should omit its cumulative-area paths.
+        """
+        rhi_selected: bool = self._rhi_line_enabled and not self._rhi_line_failed
+        if rhi_selected and self._rhi_line_widget is None:
+            self._create_rhi_line_widget()
+        else:
+            pass
+        if rhi_selected and self._rhi_line_widget is not None and plot_rect.width() > 2.0 and plot_rect.height() > 2.0:
+            x_minimum: float
+            x_maximum: float
+            y_minimum: float
+            y_maximum: float
+            x_minimum, x_maximum = self.axis_x.get_visual_range()
+            y_minimum, y_maximum = self.axis_y.get_visual_range()
+            x_span: float = x_maximum - x_minimum
+            y_span: float = y_maximum - y_minimum
+            area_series: list[ChartSeries] = list()
+            cache_series: list[tuple[int, int, int, int, int, bool]] = list()
+            series: ChartSeries
+            for series in self._series:
+                if series.get_series_type() == ChartSeriesType.CUMULATIVE_AREA:
+                    area_series.append(series)
+                    cache_series.append((
+                        id(series.get_x_data()), id(series.get_y_data()),
+                        series.get_x_data().size, series.get_y_data().size,
+                        series.get_color().rgba(), series.get_visible(),
+                    ))
+                else:
+                    pass
+            cache_key: tuple[object, ...] = (
+                ChartContentType.CUMULATIVE_AREA, tuple(cache_series),
+                x_minimum, x_maximum, y_minimum, y_maximum,
+                plot_rect.x(), plot_rect.y(), plot_rect.width(), plot_rect.height(),
+                self._plot_color.rgba(), self._grid_color.rgba(),
+            )
+            self._rhi_line_widget.set_background_color(color=self._plot_color)
+            if cache_key == self._rhi_line_cache_key:
+                self._rhi_line_widget.setGeometry(plot_rect.toAlignedRect())
+                self._rhi_line_widget.show()
+                return True
+            else:
+                pass
+            if len(area_series) > 0 and x_span > 0.0 and y_span > 0.0:
+                x_data: np.ndarray = area_series[0].get_x_data()
+                sample_indices: np.ndarray = self._sample_indices(
+                    point_count=x_data.size,
+                    plot_rect=plot_rect,
+                    visible_line_count=len(area_series),
+                )
+                vertex_chunks: list[np.ndarray] = list()
+                series_lengths: list[int] = list()
+                series_colors: list[QtGui.QColor] = list()
+                series_is_area: list[bool] = list()
+                cumulative_positive: np.ndarray = np.zeros(x_data.size, dtype=float)
+                cumulative_negative: np.ndarray = np.zeros(x_data.size, dtype=float)
+                for series in area_series:
+                    y_data: np.ndarray = series.get_y_data()
+                    positive_values: np.ndarray = np.maximum(y_data, 0.0)
+                    negative_values: np.ndarray = np.minimum(y_data, 0.0)
+                    upper_positive: np.ndarray = cumulative_positive + positive_values
+                    upper_negative: np.ndarray = cumulative_negative + negative_values
+                    if series.get_visible() and sample_indices.size >= 2:
+                        area_color: QtGui.QColor = series.get_color()
+                        if np.any(positive_values != 0.0):
+                            positive_vertices: np.ndarray = self._make_rhi_area_triangle_vertices(
+                                x_data=x_data,
+                                lower_values=cumulative_positive,
+                                upper_values=upper_positive,
+                                indices=sample_indices,
+                                x_minimum=x_minimum,
+                                x_span=x_span,
+                                y_minimum=y_minimum,
+                                y_span=y_span,
+                            )
+                            vertex_chunks.append(positive_vertices)
+                            series_lengths.append(int(positive_vertices.shape[0]))
+                            series_colors.append(area_color)
+                            series_is_area.append(True)
+                        else:
+                            pass
+                        if np.any(negative_values != 0.0):
+                            negative_vertices: np.ndarray = self._make_rhi_area_triangle_vertices(
+                                x_data=x_data,
+                                lower_values=cumulative_negative,
+                                upper_values=upper_negative,
+                                indices=sample_indices,
+                                x_minimum=x_minimum,
+                                x_span=x_span,
+                                y_minimum=y_minimum,
+                                y_span=y_span,
+                            )
+                            negative_color: QtGui.QColor = self._blend_area_color(
+                                color=area_color,
+                                alpha=0.6,
+                            )
+                            vertex_chunks.append(negative_vertices)
+                            series_lengths.append(int(negative_vertices.shape[0]))
+                            series_colors.append(negative_color)
+                            series_is_area.append(True)
+                        else:
+                            pass
+                    else:
+                        pass
+                    cumulative_positive = upper_positive
+                    cumulative_negative = upper_negative
+                # Paint grid guides last so they remain visible over pre-blended area fills.
+                tick_index: int = 0
+                while tick_index < 6:
+                    fraction: float = float(tick_index) / 5.0
+                    x_position: float = -1.0 + 2.0 * fraction
+                    y_position: float = -1.0 + 2.0 * fraction
+                    vertex_chunks.append(np.asarray(((x_position, -1.0), (x_position, 1.0)), dtype=np.float32))
+                    vertex_chunks.append(np.asarray(((-1.0, y_position), (1.0, y_position)), dtype=np.float32))
+                    series_lengths.extend((2, 2))
+                    series_colors.extend((self._grid_color, self._grid_color))
+                    series_is_area.extend((False, False))
+                    tick_index += 1
+                if len(vertex_chunks) > 0:
+                    packed_vertices: np.ndarray = np.concatenate(vertex_chunks, axis=0)
+                    if self._rhi_line_widget.set_vertices(
+                            vertices=packed_vertices,
+                            series_lengths=series_lengths,
+                            series_colors=series_colors,
+                            series_is_area=series_is_area):
+                        self._rhi_line_cache_key = cache_key
+                        self._rhi_line_widget.setGeometry(plot_rect.toAlignedRect())
+                        self._rhi_line_widget.show()
+                        return True
+                    else:
+                        self._rhi_line_cache_key = None
+                        self._rhi_line_widget.hide()
+                        return False
+                else:
+                    self._rhi_line_cache_key = None
+                    self._rhi_line_widget.hide()
+                    return False
+            else:
+                self._rhi_line_cache_key = None
+                self._rhi_line_widget.hide()
+                return False
+        else:
+            self._rhi_line_cache_key = None
+            if self._rhi_line_widget is not None:
+                self._rhi_line_widget.hide()
+            else:
+                pass
+            return False
+
+    def _make_rhi_area_triangle_vertices(self,
+                                     x_data: np.ndarray,
+                                     lower_values: np.ndarray,
+                                     upper_values: np.ndarray,
+                                     indices: np.ndarray,
+                                     x_minimum: float,
+                                     x_span: float,
+                                     y_minimum: float,
+                                     y_span: float) -> np.ndarray:
+        """Build two GPU triangles for each adjacent area sample pair.
+
+        :param x_data: Shared horizontal coordinates.
+        :param lower_values: Lower edge for each source sample.
+        :param upper_values: Upper edge for each source sample.
+        :param indices: Ordered samples used by the displayed area strip.
+        :param x_minimum: Visible minimum X coordinate.
+        :param x_span: Visible X range size.
+        :param y_minimum: Visible minimum Y coordinate.
+        :param y_span: Visible Y range size.
+        :return: Triangle-list vertices with consistent winding in clip coordinates.
+        """
+        area_vertices: np.ndarray = np.empty(((indices.size - 1) * 6, 2), dtype=np.float32)
+        mapped_x: np.ndarray = ((x_data[indices] - x_minimum) * (2.0 / x_span) - 1.0).astype(np.float32)
+        lower_y: np.ndarray = (
+            (lower_values[indices] - y_minimum) * (2.0 / y_span) - 1.0
+        ).astype(np.float32)
+        upper_y: np.ndarray = (
+            (upper_values[indices] - y_minimum) * (2.0 / y_span) - 1.0
+        ).astype(np.float32)
+        area_vertices[0::6, 0] = mapped_x[:-1]
+        area_vertices[0::6, 1] = lower_y[:-1]
+        area_vertices[1::6, 0] = mapped_x[1:]
+        area_vertices[1::6, 1] = lower_y[1:]
+        area_vertices[2::6, 0] = mapped_x[:-1]
+        area_vertices[2::6, 1] = upper_y[:-1]
+        area_vertices[3::6, 0] = mapped_x[:-1]
+        area_vertices[3::6, 1] = upper_y[:-1]
+        area_vertices[4::6, 0] = mapped_x[1:]
+        area_vertices[4::6, 1] = lower_y[1:]
+        area_vertices[5::6, 0] = mapped_x[1:]
+        area_vertices[5::6, 1] = upper_y[1:]
+        return area_vertices
+
+    def _blend_area_color(self, color: QtGui.QColor, alpha: float) -> QtGui.QColor:
+        """Pre-blend a translucent GPU fill against the opaque themed plot color.
+
+        :param color: Original band color.
+        :param alpha: Fill opacity from zero to one.
+        :return: Opaque RGB color that visually matches the painter fill.
+        """
+        return QtGui.QColor.fromRgbF(
+            color.redF() * alpha + self._plot_color.redF() * (1.0 - alpha),
+            color.greenF() * alpha + self._plot_color.greenF() * (1.0 - alpha),
+            color.blueF() * alpha + self._plot_color.blueF() * (1.0 - alpha),
+        )
+
     def paintEvent(self, event: QtGui.QPaintEvent) -> None:
         """Paint the entire chart synchronously from Python-owned buffers.
 
@@ -1800,10 +2024,14 @@ class GraphsWidget(QtWidgets.QWidget):
                 painter.restore()
             elif self._content_type == ChartContentType.CUMULATIVE_AREA:
                 self._paint_xy_axes(painter=painter, plot_rect=plot_rect)
-                painter.save()
-                painter.setClipRect(plot_rect)
-                self._paint_cumulative_areas(painter=painter, plot_rect=plot_rect)
-                painter.restore()
+                if paint_lines:
+                    painter.save()
+                    painter.setClipRect(plot_rect)
+                    self._paint_cumulative_areas(painter=painter, plot_rect=plot_rect)
+                    painter.restore()
+                    self._paint_xy_grid(painter=painter, plot_rect=plot_rect)
+                else:
+                    pass
             elif self._content_type == ChartContentType.POLAR:
                 self._paint_polar_axes(painter=painter, plot_rect=plot_rect)
                 painter.save()
@@ -2059,6 +2287,45 @@ class GraphsWidget(QtWidgets.QWidget):
         )
         return QtGui.QColor(palette_colors[series_index % len(palette_colors)])
 
+    def _make_cumulative_area_color(self,
+                                    color_name: str | None,
+                                    series_index: int,
+                                    series_count: int) -> QtGui.QColor:
+        """Match the former stacked-result Viridis colors without Matplotlib.
+
+        :param color_name: Optional explicit color supplied by the caller.
+        :param series_index: Position in the cumulative stack.
+        :param series_count: Number of plotted series used to span the palette.
+        :return: Explicit color or an interpolated Viridis color.
+        """
+        if color_name is not None:
+            requested_color: QtGui.QColor = QtGui.QColor(color_name)
+            if requested_color.isValid():
+                return requested_color
+            else:
+                pass
+        else:
+            pass
+        viridis_colors: tuple[tuple[int, int, int], ...] = (
+            (68, 1, 84), (72, 40, 120), (62, 73, 137), (49, 104, 142),
+            (38, 130, 142), (31, 158, 137), (53, 183, 121), (110, 206, 88),
+            (181, 222, 43), (253, 231, 37),
+        )
+        if series_count > 1:
+            palette_position: float = (
+                float(series_index) * float(len(viridis_colors) - 1) / float(series_count - 1)
+            )
+        else:
+            palette_position = 0.0
+        lower_index: int = min(int(palette_position), len(viridis_colors) - 2)
+        fraction: float = palette_position - float(lower_index)
+        lower_color: tuple[int, int, int] = viridis_colors[lower_index]
+        upper_color: tuple[int, int, int] = viridis_colors[lower_index + 1]
+        red_value: int = round(float(lower_color[0]) + (float(upper_color[0]) - float(lower_color[0])) * fraction)
+        green_value: int = round(float(lower_color[1]) + (float(upper_color[1]) - float(lower_color[1])) * fraction)
+        blue_value: int = round(float(lower_color[2]) + (float(upper_color[2]) - float(lower_color[2])) * fraction)
+        return QtGui.QColor(red_value, green_value, blue_value)
+
     def _get_plot_rect(self) -> QtCore.QRectF:
         """Return the data rectangle after title, legend, and axis margins.
 
@@ -2153,7 +2420,7 @@ class GraphsWidget(QtWidgets.QWidget):
             painter.setPen(QtGui.QPen(self._label_color))
             x_value: float = x_minimum + (x_maximum - x_minimum) * fraction
             y_value: float = y_minimum + (y_maximum - y_minimum) * fraction
-            painter.drawText(QtCore.QRectF(x_position - 42.0, plot_rect.bottom() + 5.0, 84.0, 18.0),
+            painter.drawText(QtCore.QRectF(x_position - 42.0, plot_rect.bottom() + 2.0, 84.0, 34.0),
                              QtCore.Qt.AlignmentFlag.AlignHCenter | QtCore.Qt.AlignmentFlag.AlignTop,
                              format_chart_value(value=x_value, is_datetime=self._x_is_datetime))
             painter.drawText(QtCore.QRectF(2.0, y_position - 9.0, plot_rect.left() - 9.0, 18.0),
@@ -2162,7 +2429,7 @@ class GraphsWidget(QtWidgets.QWidget):
             painter.setPen(grid_pen)
 
         painter.setPen(QtGui.QPen(self._label_color))
-        painter.drawText(QtCore.QRectF(plot_rect.left(), plot_rect.bottom() + 28.0, plot_rect.width(), 20.0),
+        painter.drawText(QtCore.QRectF(plot_rect.left(), plot_rect.bottom() + 36.0, plot_rect.width(), 20.0),
                          QtCore.Qt.AlignmentFlag.AlignHCenter | QtCore.Qt.AlignmentFlag.AlignTop,
                          self.axis_x.get_title())
         painter.save()
@@ -2171,6 +2438,31 @@ class GraphsWidget(QtWidgets.QWidget):
         painter.drawText(QtCore.QRectF(-plot_rect.height() * 0.5, -10.0, plot_rect.height(), 20.0),
                          QtCore.Qt.AlignmentFlag.AlignHCenter | QtCore.Qt.AlignmentFlag.AlignVCenter,
                          self.axis_y.get_title())
+        painter.restore()
+
+    def _paint_xy_grid(self, painter: QtGui.QPainter, plot_rect: QtCore.QRectF) -> None:
+        """Paint grid guides above opaque stacked areas, as Matplotlib did.
+
+        :param painter: Active painter for this paint event.
+        :param plot_rect: Data drawing rectangle.
+        :return: None.
+        """
+        painter.save()
+        painter.setClipRect(plot_rect)
+        painter.setPen(QtGui.QPen(self._grid_color, 1.0))
+        tick_index: int
+        for tick_index in range(6):
+            fraction: float = float(tick_index) / 5.0
+            x_position: float = plot_rect.left() + plot_rect.width() * fraction
+            y_position: float = plot_rect.bottom() - plot_rect.height() * fraction
+            painter.drawLine(
+                QtCore.QPointF(x_position, plot_rect.top()),
+                QtCore.QPointF(x_position, plot_rect.bottom()),
+            )
+            painter.drawLine(
+                QtCore.QPointF(plot_rect.left(), y_position),
+                QtCore.QPointF(plot_rect.right(), y_position),
+            )
         painter.restore()
 
     def _paint_xy_series(self,
@@ -2326,7 +2618,7 @@ class GraphsWidget(QtWidgets.QWidget):
             pass
 
     def _paint_cumulative_areas(self, painter: QtGui.QPainter, plot_rect: QtCore.QRectF) -> None:
-        """Paint each stacked area between its prior and cumulative values.
+        """Paint separate positive and negative cumulative area stacks.
 
         :param painter: Active painter clipped to the numeric plot rectangle.
         :param plot_rect: Rectangle used to map the shared X and Y coordinates.
@@ -2335,54 +2627,108 @@ class GraphsWidget(QtWidgets.QWidget):
         if len(self._series) > 0:
             point_count: int = len(self._series[0].get_x_data())
             indices: np.ndarray = self._sample_indices(point_count=point_count, plot_rect=plot_rect)
-            cumulative_values: np.ndarray = np.zeros(point_count, dtype=float)
+            cumulative_positive: np.ndarray = np.zeros(point_count, dtype=float)
+            cumulative_negative: np.ndarray = np.zeros(point_count, dtype=float)
             series: ChartSeries
             for series in self._series:
                 if series.get_series_type() == ChartSeriesType.CUMULATIVE_AREA:
                     x_data: np.ndarray = series.get_x_data()
                     y_data: np.ndarray = series.get_y_data()
-                    upper_values: np.ndarray = cumulative_values + y_data
-                    if series.get_visible() and len(indices) > 0:
-                        first_index: int = int(indices[0])
-                        path: QtGui.QPainterPath = QtGui.QPainterPath()
-                        lower_first: QtCore.QPointF = self._map_xy_point(
-                            x_value=float(x_data[first_index]),
-                            y_value=float(cumulative_values[first_index]),
-                            plot_rect=plot_rect,
-                        )
-                        path.moveTo(lower_first)
-                        point_index: int
-                        for point_index in range(len(indices)):
-                            data_index: int = int(indices[point_index])
-                            upper_point: QtCore.QPointF = self._map_xy_point(
-                                x_value=float(x_data[data_index]),
-                                y_value=float(upper_values[data_index]),
-                                plot_rect=plot_rect,
-                            )
-                            path.lineTo(upper_point)
-                        reverse_index: int
-                        for reverse_index in range(len(indices) - 1, -1, -1):
-                            data_index = int(indices[reverse_index])
-                            lower_point: QtCore.QPointF = self._map_xy_point(
-                                x_value=float(x_data[data_index]),
-                                y_value=float(cumulative_values[data_index]),
-                                plot_rect=plot_rect,
-                            )
-                            path.lineTo(lower_point)
-                        path.closeSubpath()
+                    positive_values: np.ndarray = np.maximum(y_data, 0.0)
+                    negative_values: np.ndarray = np.minimum(y_data, 0.0)
+                    upper_positive: np.ndarray = cumulative_positive + positive_values
+                    upper_negative: np.ndarray = cumulative_negative + negative_values
+                    if series.get_visible() and indices.size >= 2:
                         area_color: QtGui.QColor = series.get_color()
-                        fill_color: QtGui.QColor = QtGui.QColor(area_color)
-                        fill_color.setAlpha(145)
-                        painter.setPen(QtGui.QPen(area_color.darker(120), 1.25))
-                        painter.setBrush(QtGui.QBrush(fill_color))
-                        painter.drawPath(path)
+                        if np.any(positive_values != 0.0):
+                            self._paint_cumulative_area_band(
+                                painter=painter,
+                                x_data=x_data,
+                                lower_values=cumulative_positive,
+                                upper_values=upper_positive,
+                                indices=indices,
+                                plot_rect=plot_rect,
+                                color=area_color,
+                                alpha=255,
+                            )
+                        else:
+                            pass
+                        if np.any(negative_values != 0.0):
+                            self._paint_cumulative_area_band(
+                                painter=painter,
+                                x_data=x_data,
+                                lower_values=cumulative_negative,
+                                upper_values=upper_negative,
+                                indices=indices,
+                                plot_rect=plot_rect,
+                                color=area_color,
+                                alpha=153,
+                            )
+                        else:
+                            pass
                     else:
                         pass
-                    cumulative_values = upper_values
+                    # Each original value contributes only to its matching sign stack.
+                    cumulative_positive = upper_positive
+                    cumulative_negative = upper_negative
                 else:
                     pass
         else:
             pass
+
+    def _paint_cumulative_area_band(self,
+                                   painter: QtGui.QPainter,
+                                   x_data: np.ndarray,
+                                   lower_values: np.ndarray,
+                                   upper_values: np.ndarray,
+                                   indices: np.ndarray,
+                                   plot_rect: QtCore.QRectF,
+                                   color: QtGui.QColor,
+                                   alpha: int) -> None:
+        """Draw one filled strip between two cumulative boundaries.
+
+        :param painter: Active painter clipped to the plot rectangle.
+        :param x_data: Shared horizontal coordinates.
+        :param lower_values: Lower edge for each original sample.
+        :param upper_values: Upper edge for each original sample.
+        :param indices: Ordered source samples selected for display.
+        :param plot_rect: Numeric plot rectangle used for coordinate mapping.
+        :param color: Original series color.
+        :param alpha: Fill opacity matching the legacy Matplotlib positive or negative stack.
+        :return: None.
+        """
+        first_index: int = int(indices[0])
+        first_point: QtCore.QPointF = self._map_xy_point(
+            x_value=float(x_data[first_index]),
+            y_value=float(lower_values[first_index]),
+            plot_rect=plot_rect,
+        )
+        path: QtGui.QPainterPath = QtGui.QPainterPath()
+        path.moveTo(first_point)
+        point_index: int
+        for point_index in range(indices.size):
+            data_index: int = int(indices[point_index])
+            upper_point: QtCore.QPointF = self._map_xy_point(
+                x_value=float(x_data[data_index]),
+                y_value=float(upper_values[data_index]),
+                plot_rect=plot_rect,
+            )
+            path.lineTo(upper_point)
+        reverse_index: int
+        for reverse_index in range(indices.size - 1, -1, -1):
+            data_index = int(indices[reverse_index])
+            lower_point: QtCore.QPointF = self._map_xy_point(
+                x_value=float(x_data[data_index]),
+                y_value=float(lower_values[data_index]),
+                plot_rect=plot_rect,
+            )
+            path.lineTo(lower_point)
+        path.closeSubpath()
+        fill_color: QtGui.QColor = QtGui.QColor(color)
+        fill_color.setAlpha(alpha)
+        painter.setPen(QtGui.QPen(QtCore.Qt.PenStyle.NoPen))
+        painter.setBrush(QtGui.QBrush(fill_color))
+        painter.drawPath(path)
 
     def _get_polar_rect(self, plot_rect: QtCore.QRectF) -> QtCore.QRectF:
         """Return a centred square inside the available plot rectangle.

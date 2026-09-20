@@ -114,6 +114,75 @@ def test_graphs_widget_routes_dense_lines_to_optional_rhi_layer(
     QtWidgets.QApplication.sendPostedEvents(None)
 
 
+def test_graphs_widget_keeps_cumulative_areas_on_qpainter(
+        qt_app: QtWidgets.QApplication) -> None:
+    """Keep stacked area bands on QPainter until QRhi matches its rendering.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    _ = qt_app
+    chart: GraphsWidget = GraphsWidget()
+    chart.resize(720, 480)
+    x_values: np.ndarray = np.linspace(0.0, 10.0, 20000, dtype=float)
+    first_values: np.ndarray = np.sin(x_values)
+    second_values: np.ndarray = np.cos(x_values)
+    assert chart.set_cumulative_area_series(
+        x_values=x_values,
+        series_names=("First", "Second"),
+        series_values=(first_values, second_values),
+        colors=("#2563eb", "#f97316"),
+    )
+    positive_stack_maximum: float = float(
+        np.max(np.maximum(first_values, 0.0) + np.maximum(second_values, 0.0))
+    )
+    negative_stack_minimum: float = float(
+        np.min(np.minimum(first_values, 0.0) + np.minimum(second_values, 0.0))
+    )
+    assert np.isclose(chart._y_min, negative_stack_minimum)
+    assert np.isclose(chart._y_max, positive_stack_maximum)
+    chart.set_rhi_line_rendering(enabled=True)
+    assert not chart._prepare_rhi_line_layer(plot_rect=chart._get_plot_rect())
+    assert chart._rhi_line_widget is not None
+    assert not chart._rhi_line_widget.isVisible()
+    assert chart._content_type.name == "CUMULATIVE_AREA"
+
+    chart.dispose()
+    chart.deleteLater()
+    QtWidgets.QApplication.sendPostedEvents(None)
+
+
+def test_rhi_area_tessellation_covers_each_sample_interval(
+        qt_app: QtWidgets.QApplication) -> None:
+    """Build two consistently wound GPU triangles for one area interval.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    _ = qt_app
+    chart: GraphsWidget = GraphsWidget()
+    vertices: np.ndarray = chart._make_rhi_area_triangle_vertices(
+        x_data=np.array((0.0, 1.0), dtype=float),
+        lower_values=np.array((0.0, 0.0), dtype=float),
+        upper_values=np.array((1.0, 1.0), dtype=float),
+        indices=np.array((0, 1), dtype=int),
+        x_minimum=0.0,
+        x_span=1.0,
+        y_minimum=0.0,
+        y_span=1.0,
+    )
+    assert np.array_equal(
+        vertices,
+        np.array((
+            (-1.0, -1.0), (1.0, -1.0), (-1.0, 1.0),
+            (-1.0, 1.0), (1.0, -1.0), (1.0, 1.0),
+        ), dtype=np.float32),
+    )
+    chart.dispose()
+    chart.deleteLater()
+    QtWidgets.QApplication.sendPostedEvents(None)
+
+
 def test_rhi_line_chart_packs_large_line_batch(qt_app: QtWidgets.QApplication) -> None:
     """Exercise CPU packing at the approximate supplied graphics-data scale.
 

@@ -34,6 +34,12 @@
       <enum>Qt::Orientation::Horizontal</enum>
      </property>
      <widget class="QFrame" name="seriesSelectorFrame">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
       <property name="minimumSize">
        <size>
         <width>220</width>
@@ -52,6 +58,12 @@
       <layout class="QVBoxLayout" name="seriesSelectorLayout">
        <item>
         <widget class="QFrame" name="frame">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
          <property name="frameShape">
           <enum>QFrame::Shape::NoFrame</enum>
          </property>
@@ -79,10 +91,10 @@
            </widget>
           </item>
           <item>
-          <widget class="QPushButton" name="selectAllButton">
-           <property name="toolTip">
-            <string>Select all series</string>
-           </property>
+           <widget class="QPushButton" name="selectAllButton">
+            <property name="toolTip">
+             <string>Select all series</string>
+            </property>
             <property name="text">
              <string/>
             </property>
@@ -93,10 +105,10 @@
            </widget>
           </item>
           <item>
-          <widget class="QPushButton" name="selectNoneButton">
-           <property name="toolTip">
-            <string>Select no series</string>
-           </property>
+           <widget class="QPushButton" name="selectNoneButton">
+            <property name="toolTip">
+             <string>Select no series</string>
+            </property>
             <property name="text">
              <string/>
             </property>
@@ -111,6 +123,12 @@
        </item>
        <item>
         <widget class="QListWidget" name="seriesListWidget">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
          <property name="frameShape">
           <enum>QFrame::Shape::NoFrame</enum>
          </property>
@@ -176,6 +194,9 @@
    </property>
   </action>
   <action name="actionopencloseTree">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="icon">
     <iconset resource="../Icons/icons.qrc">
      <normaloff>:/Icons/icons/tree.png</normaloff>:/Icons/icons/tree.png</iconset>
@@ -185,9 +206,6 @@
    </property>
    <property name="toolTip">
     <string>Show or hide the series list</string>
-   </property>
-   <property name="checkable">
-    <bool>true</bool>
    </property>
    <property name="menuRole">
     <enum>QAction::MenuRole::NoRole</enum>
