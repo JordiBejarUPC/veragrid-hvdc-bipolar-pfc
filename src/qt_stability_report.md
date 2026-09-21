@@ -56,6 +56,30 @@ The timing of the failure is nondeterministic. Thread scheduling, solver duratio
 - If the terminal reports SIGSEGV with a BLAS/NumPy stack on ARM macOS, H-02 is a stronger match.
 - If the failure follows Cancel and the post-processing UI briefly updates before exit, premature `done_signal` delivery in F-02 is the strongest match.
 
+## Additional reproduced case: OPF results copied into power flow
+
+**Observed workflow:** open `src/tests/data/grids/IEEE39_1W_batt.gridcal`, run OPF from the GUI, enable the toolbar/menu action whose tooltip says `Copy OPF data` (`actionOpf_to_Power_flow`), and then run power flow from the GUI.
+
+This has now been reproduced in a spawned GUI subprocess with a dedicated regression harness at `src/tests/GUI/test_opf_to_power_flow_copy_gui.py`. The subprocess reaches the phase `running power flow with OPF copy` and then terminates with `SIGBUS`.
+
+`faulthandler` shows that the crash is not occurring while copying OPF arrays or indexing battery/generator results. The fatal stack is inside Numba/llvmlite finalizing generated code from the GUI simulation worker thread:
+
+```text
+Fatal Python error: Bus error
+
+Current thread [GcThread]:
+  llvmlite/binding/executionengine.py finalize_object
+  numba/core/codegen.py finalize
+  numba/core/dispatcher.py compile
+  VeraGridEngine/Simulations/PowerFlow/Formulations/pf_basic_formulation.py:273 in Jacobian
+  VeraGridEngine/Simulations/PowerFlow/NumericalMethods/newton_raphson_fx.py:85
+  VeraGridEngine/Simulations/PowerFlow/power_flow_worker.py
+```
+
+The implicated first-time JIT target is `create_J_vc_csc(...)`, called by `PfBasicFormulation.Jacobian()`. Running the equivalent OPF-to-power-flow path directly through the engine in the main thread succeeds, including the full OPF time-series to power-flow time-series path for the same battery grid. That makes malformed OPF copy data unlikely as the primary explanation.
+
+The current conclusion is that this GUI workflow exposes first-time Numba/llvmlite compilation/finalization inside `GcThread` on macOS/Python 3.14. A crude main-thread precompile of the same Jacobian signature avoided the crash during investigation, which supports the diagnosis, but that workaround was intentionally not kept because the implementation was not acceptable. The durable fix should avoid first-time Numba compilation inside Qt worker threads through a clean, centralized strategy, or remove the relevant JIT dependency from the GUI worker execution path.
+
 ## Current findings
 
 ### F-01 - Critical: a rerun forcibly terminates the previous simulation thread
