@@ -1,13 +1,16 @@
 from __future__ import annotations
 
-import shutil
+import faulthandler
 import multiprocessing
 import queue
+import random
+import shutil
 import time
 import traceback
 from pathlib import Path
 from typing import Any
 
+import pytest
 from PySide6 import QtCore
 from PySide6 import QtWidgets
 
@@ -15,6 +18,7 @@ import VeraGridEngine as vge
 from VeraGrid.Gui.Main.VeraGridMain import VeraGridMainGUI
 from VeraGrid.Gui.DeviceEditors.TowerBuilder.LineBuilderDialogue import TowerBuilderGUI
 from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely
+from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
 from VeraGrid.templates import get_cables_catalogue
 from VeraGrid.templates import get_sequence_lines_catalogue
 from VeraGrid.templates import get_transformer_catalogue
@@ -547,3 +551,147 @@ def test_original_honduras_tower_edit_save_and_solve(tmp_path: Path) -> None:
         raise AssertionError(f"Tower GUI subprocess exited with code {process.exitcode}: {detail}")
 
     status_queue.close()
+
+
+def run_random_device_editor_flow(working_file_name: str, status_queue: Any, seed: int) -> None:
+    """
+    Randomly open device and tower editors, close them, and save in an isolated GUI process.
+
+    :param working_file_name: Writable copy of the checked-in grid.
+    :param status_queue: Queue for phase updates and Python exception details.
+    :param seed: Deterministic seed for reproducing the editor sequence.
+    :return: Nothing.
+    """
+    faulthandler.enable()
+    status_queue.put(f"seed={seed} starting")
+    app: QtWidgets.QApplication | None = QtWidgets.QApplication.instance()
+    if app is None:
+        app = QtWidgets.QApplication(["device-editor-gui-fuzz"])
+    else:
+        pass
+
+    working_file: Path = Path(working_file_name)
+    gui: VeraGridMainGUI = VeraGridMainGUI()
+    modal_closer: ModalDialogAutoCloser = ModalDialogAutoCloser(app=app, protected_widget=gui, parent=gui)
+    modal_closer.start()
+    random_generator: random.Random = random.Random(seed)
+    operation_trace: list[str] = list()
+
+    try:
+        gui.open_file_now(filenames=str(working_file))
+        wait_for_file_open(gui=gui, app=app, timeout_s=30.0)
+
+        tower_devices: list[EditableDevice] = list()
+        editable_devices: list[EditableDevice] = list()
+        device: object
+        for device in gui.circuit.get_all_elements_iter():
+            if isinstance(device, EditableDevice):
+                if device.device_type == DeviceType.OverheadLineTypeDevice:
+                    tower_devices.append(device)
+                elif device.device_type in (
+                        DeviceType.GeneratorDevice,
+                        DeviceType.LoadDevice,
+                        DeviceType.LineDevice,
+                        DeviceType.Transformer2WDevice,
+                        DeviceType.BusDevice,
+                ):
+                    editable_devices.append(device)
+                else:
+                    pass
+            else:
+                pass
+
+        assert len(tower_devices) > 0
+        assert len(editable_devices) > 0
+
+        operation_index: int
+        for operation_index in range(30):
+            if random_generator.random() < 0.3:
+                selected_tower: EditableDevice = random_generator.choice(tower_devices)
+                responder: TowerEditorAutoResponder = TowerEditorAutoResponder(app=app, parent=app)
+                responder.arm()
+                gui.launch_device_editor(elm=selected_tower)
+                assert responder.was_clicked(), f"seed={seed}, trace={operation_trace}"
+                operation_trace.append(f"tower:{selected_tower.name}")
+            else:
+                selected_device: EditableDevice = random_generator.choice(editable_devices)
+                gui.launch_device_editor(elm=selected_device)
+                operation_trace.append(f"device:{selected_device.device_type.name}:{selected_device.name}")
+
+            app.processEvents()
+            if (operation_index + 1) % 10 == 0:
+                status_queue.put(f"seed={seed}, editors={operation_index + 1}, trace={operation_trace[-5:]}")
+                gui.save_file_now(filename=str(working_file))
+                wait_for_file_save(gui=gui, app=app, timeout_s=30.0)
+                app.processEvents()
+            else:
+                pass
+
+        modal_closer.stop()
+        gui.save_file_now(filename=str(working_file))
+        wait_for_file_save(gui=gui, app=app, timeout_s=30.0)
+    except Exception:
+        status_queue.put(f"seed={seed}, trace={operation_trace}\n{traceback.format_exc()}")
+        raise
+    finally:
+        modal_closer.stop()
+        close_gui_accepting_exit(gui=gui, app=app)
+        gui.deleteLater()
+        QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.DeferredDelete)
+        app.processEvents()
+
+    reopened_circuit: vge.MultiCircuit = FileOpen(str(working_file)).open()
+    assert len(reopened_circuit.overhead_line_types) == len(tower_devices)
+    status_queue.put(f"seed={seed} completed, editors={len(operation_trace)}")
+
+
+@pytest.mark.parametrize("seed", (20260921, 20260922, 8675309))
+def test_seeded_random_device_editors_can_close_and_save(tmp_path: Path, seed: int) -> None:
+    """
+    Search repeatable device-editor open, close, and save sequences in crash-contained processes.
+
+    :param tmp_path: Temporary output directory.
+    :param seed: Deterministic random operation seed.
+    :return: Nothing.
+    """
+    working_file: Path = tmp_path / TOWER_EDIT_CRASH_FIXTURE.name
+    shutil.copyfile(src=TOWER_EDIT_CRASH_FIXTURE, dst=working_file)
+    process_context: multiprocessing.context.BaseContext = multiprocessing.get_context("spawn")
+    status_queue: Any = process_context.Queue()
+    process: multiprocessing.Process = process_context.Process(
+        target=run_random_device_editor_flow,
+        args=(str(working_file), status_queue, seed),
+    )
+    process.start()
+
+    last_message: str = "no child progress received"
+    last_progress_time_s: float = time.monotonic()
+    timeout_s: float = 180.0
+    while process.is_alive() and time.monotonic() - last_progress_time_s <= timeout_s:
+        try:
+            queued_message: object = status_queue.get(timeout=1.0)
+            last_message = queued_message if isinstance(queued_message, str) else repr(queued_message)
+            last_progress_time_s = time.monotonic()
+        except queue.Empty:
+            pass
+
+    if process.is_alive():
+        process.terminate()
+        process.join(10.0)
+        status_queue.close()
+        status_queue.join_thread()
+        raise AssertionError(f"seed={seed} GUI editor stress timed out: {last_message}")
+    else:
+        process.join(10.0)
+
+    try:
+        while True:
+            queued_message = status_queue.get_nowait()
+            last_message = queued_message if isinstance(queued_message, str) else repr(queued_message)
+    except queue.Empty:
+        pass
+    finally:
+        status_queue.close()
+        status_queue.join_thread()
+
+    assert process.exitcode == 0, f"seed={seed}, exitcode={process.exitcode}, last status={last_message}"
