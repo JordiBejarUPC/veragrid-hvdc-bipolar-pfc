@@ -140,6 +140,7 @@ class LatexRenderer:
         "_dpi",
         "_minimum_row_height",
         "_maximum_mathtext_length",
+        "_maximum_fallback_width",
         "_cache",
         "_svg_cache",
     )
@@ -155,6 +156,7 @@ class LatexRenderer:
         self._dpi: int = dpi
         self._minimum_row_height: int = 24
         self._maximum_mathtext_length: int = 2000
+        self._maximum_fallback_width: int = 960
         self._cache: dict[str, RenderedEquation] = dict()
         self._svg_cache: dict[str, RenderedSvgEquation] = dict()
 
@@ -178,7 +180,11 @@ class LatexRenderer:
                     f"Equation is too large for graphical preview ({len(latex)} characters). "
                     "See Python code."
                 )
-                rendered: RenderedEquation = self._render_to_pixmap(preview_message, False)
+                rendered: RenderedEquation = self._render_to_pixmap(
+                    preview_message,
+                    False,
+                    self._maximum_fallback_width,
+                )
             else:
                 rendered = self._render_to_pixmap(latex, False)
             self._cache[latex] = rendered
@@ -216,7 +222,11 @@ class LatexRenderer:
                     f"Equation is too large for graphical preview ({len(latex)} characters). "
                     "See Python code."
                 )
-                rendered: RenderedSvgEquation = self._render_to_svg(preview_message, False)
+                rendered: RenderedSvgEquation = self._render_to_svg(
+                    preview_message,
+                    False,
+                    self._maximum_fallback_width,
+                )
             else:
                 rendered = self._render_to_svg(latex, False)
             self._svg_cache[latex] = rendered
@@ -266,11 +276,17 @@ class LatexRenderer:
 
     # -- internals ---------------------------------------------------------
 
-    def _render_to_pixmap(self, latex: str, use_mathtext: bool) -> RenderedEquation:
+    def _render_to_pixmap(
+            self,
+            latex: str,
+            use_mathtext: bool,
+            maximum_width: int | None = None,
+    ) -> RenderedEquation:
         """Render equation source with a Qt painter.
 
         :param latex: Equation source.
         :param use_mathtext: Compatibility flag; Qt renders source literally.
+        :param maximum_width: Optional logical-pixel cap for fallback messages.
         :return: Rendered Qt image and preferred size.
         """
         _ = use_mathtext
@@ -278,7 +294,24 @@ class LatexRenderer:
         font.setPixelSize(max(1, int(round(float(self._font_size * self._dpi) / 72.0))))
         metrics: QtGui.QFontMetrics = QtGui.QFontMetrics(font)
         padding: int = 2
-        image_width: int = max(1, metrics.horizontalAdvance(latex) + padding * 2)
+        draw_text: str = latex
+        if maximum_width is not None:
+            available_width: int = max(1, maximum_width - padding * 2)
+            if metrics.horizontalAdvance(draw_text) > available_width:
+                draw_text = metrics.elidedText(
+                    draw_text,
+                    Qt.TextElideMode.ElideRight,
+                    available_width,
+                )
+            else:
+                pass
+        else:
+            pass
+        measured_width: int = metrics.horizontalAdvance(draw_text) + padding * 2
+        if maximum_width is None:
+            image_width: int = max(1, measured_width)
+        else:
+            image_width = max(1, min(maximum_width, measured_width))
         image_height: int = max(self._minimum_row_height, metrics.height() + padding * 2)
         image: QtGui.QImage = QtGui.QImage(
             image_width,
@@ -289,7 +322,7 @@ class LatexRenderer:
         painter: QtGui.QPainter = QtGui.QPainter(image)
         painter.setFont(font)
         painter.setPen(QtWidgets.QApplication.palette().color(QtGui.QPalette.ColorRole.Text))
-        painter.drawText(padding, padding + metrics.ascent(), latex)
+        painter.drawText(padding, padding + metrics.ascent(), draw_text)
         painter.end()
         pixmap: QPixmap = QPixmap.fromImage(image)
         size: QtCore.QSize = QtCore.QSize(image_width, image_height)
@@ -299,11 +332,17 @@ class LatexRenderer:
             uses_mathtext=False,
         )
 
-    def _render_to_svg(self, latex: str, use_mathtext: bool) -> RenderedSvgEquation:
+    def _render_to_svg(
+            self,
+            latex: str,
+            use_mathtext: bool,
+            maximum_width: int | None = None,
+    ) -> RenderedSvgEquation:
         """Render equation source as self-contained SVG text.
 
         :param latex: Equation source.
         :param use_mathtext: Compatibility flag; Qt renders source literally.
+        :param maximum_width: Optional logical-pixel cap for fallback messages.
         :return: SVG text payload and intrinsic logical size.
         """
         _ = use_mathtext
@@ -311,7 +350,24 @@ class LatexRenderer:
         font.setPixelSize(max(1, int(round(float(self._font_size * self._dpi) / 72.0))))
         metrics: QtGui.QFontMetrics = QtGui.QFontMetrics(font)
         padding: int = 2
-        image_width: int = max(1, metrics.horizontalAdvance(latex) + padding * 2)
+        draw_text: str = latex
+        if maximum_width is not None:
+            available_width: int = max(1, maximum_width - padding * 2)
+            if metrics.horizontalAdvance(draw_text) > available_width:
+                draw_text = metrics.elidedText(
+                    draw_text,
+                    Qt.TextElideMode.ElideRight,
+                    available_width,
+                )
+            else:
+                pass
+        else:
+            pass
+        measured_width: int = metrics.horizontalAdvance(draw_text) + padding * 2
+        if maximum_width is None:
+            image_width: int = max(1, measured_width)
+        else:
+            image_width = max(1, min(maximum_width, measured_width))
         image_height: int = max(1, metrics.height() + padding * 2)
         baseline: int = padding + metrics.ascent()
         font_size: int = max(1, font.pixelSize())
@@ -321,7 +377,7 @@ class LatexRenderer:
             f'viewBox="0 0 {image_width} {image_height}">'
             f'<text x="{padding}" y="{baseline}" '
             f'font-family="{escape(font.family(), quote=True)}" '
-            f'font-size="{font_size}px" fill="#000000">{escape(latex)}</text></svg>'
+            f'font-size="{font_size}px" fill="#000000">{escape(draw_text)}</text></svg>'
         )
         svg_data: QtCore.QByteArray = QtCore.QByteArray(svg_source.encode("utf-8"))
         return RenderedSvgEquation(

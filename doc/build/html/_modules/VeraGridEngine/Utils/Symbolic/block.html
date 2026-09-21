@@ -5,7 +5,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VeraGridEngine.Utils.Symbolic.block &mdash; VeraGrid 6.5.26 documentation</title>
+  <title>VeraGridEngine.Utils.Symbolic.block &mdash; VeraGrid 6.5.37 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css?v=4ae1632d" />
@@ -14,7 +14,7 @@
   
       <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../../../../_static/documentation_options.js?v=c62e3d9e"></script>
+      <script src="../../../../_static/documentation_options.js?v=069969c3"></script>
       <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
       <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/js/theme.js"></script>
@@ -2347,6 +2347,26 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Persisted block field &#39;name&#39; must be a string&quot;</span><span class="p">)</span>
 
+    <span class="k">def</span><span class="w"> </span><span class="nf">read_model_family_name</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Read the optional structurally equivalent model-family label.</span>
+
+<span class="sd">        Older persisted blocks predate model comparison and therefore omit</span>
+<span class="sd">        this field. They intentionally load with an empty label so the GUI can</span>
+<span class="sd">        generate a deterministic ``device_type_n`` name.</span>
+
+<span class="sd">        :return: Persisted family label, or an empty string for legacy data.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">family_name_value</span><span class="p">:</span> <span class="nb">object</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_optional_value</span><span class="p">(</span>
+            <span class="n">field_name</span><span class="o">=</span><span class="s2">&quot;model_family_name&quot;</span><span class="p">,</span>
+            <span class="n">default_value</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">family_name_value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;&quot;</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">family_name_value</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">family_name_value</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Persisted block field &#39;model_family_name&#39; must be a string&quot;</span><span class="p">)</span>
+
     <span class="k">def</span><span class="w"> </span><span class="nf">read_block_uid</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Read the stable block identifier or its allocation marker.</span>
 
@@ -2788,7 +2808,8 @@
                  <span class="n">api_obj_mapping</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">ParamPowerFlowReferenceType</span><span class="p">,</span> <span class="n">Var</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">is_decomposable</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
                  <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
-                 <span class="n">uid</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+                 <span class="n">uid</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">model_family_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        This represents a group of equations or a group of blocks</span>
 
@@ -2818,9 +2839,14 @@
 <span class="sd">        :param is_decomposable: Whether the editor and compiler may expose the block&#39;s internal structure.</span>
 <span class="sd">        :param name: Human-readable block name.</span>
 <span class="sd">        :param uid: Stable block identifier, or ``None`` to allocate a new identifier.</span>
+<span class="sd">        :param model_family_name: Optional user-facing family shared by structurally equivalent root models.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="c1"># This semantic label identifies a complete model family without</span>
+        <span class="c1"># changing the names of the root block or any of its children. Empty</span>
+        <span class="c1"># values preserve the automatically generated comparator labels.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model_family_name</span> <span class="o">=</span> <span class="n">model_family_name</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">uid</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">_new_uid</span><span class="p">()</span> <span class="k">if</span> <span class="n">uid</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">uid</span>
 
@@ -2927,6 +2953,43 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span></div>
 
 
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">model_family_name</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the optional user-defined structural model-family label.</span>
+
+<span class="sd">        Historical ``.veragrid`` files may restore pickled ``Block`` objects</span>
+<span class="sd">        without calling the current constructor. Reading the instance storage</span>
+<span class="sd">        directly keeps those objects valid and supplies the same empty default</span>
+<span class="sd">        used by the declarative parser.</span>
+
+<span class="sd">        :return: Persisted family label or an empty string for legacy blocks.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Current instances store the value behind the property. The second</span>
+        <span class="c1"># lookup also accepts files produced during the short-lived direct</span>
+        <span class="c1"># attribute representation, while the final empty default covers all</span>
+        <span class="c1"># older files that predate model-family labels entirely.</span>
+        <span class="n">stored_value</span><span class="p">:</span> <span class="nb">object</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;_model_family_name&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">stored_value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">stored_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model_family_name&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">stored_value</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">stored_value</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;&quot;</span>
+
+    <span class="nd">@model_family_name</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">model_family_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Store one model-family label without changing the block name.</span>
+
+<span class="sd">        :param name: Family label, with an empty string selecting automatic naming.</span>
+<span class="sd">        :return: None.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="s2">&quot;_model_family_name&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="s2">&quot;_model_family_name&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+
 <div class="viewcode-block" id="Block.to_dict">
 <a class="viewcode-back" href="../../../../rst_source/api/auto/VeraGridEngine.Utils.Symbolic.html#VeraGridEngine.Utils.Symbolic.block.Block.to_dict">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
@@ -2943,6 +3006,7 @@
         <span class="n">validate_dynamic_model_contract</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
         <span class="k">return</span> <span class="p">{</span>
             <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="s2">&quot;model_family_name&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_family_name</span><span class="p">,</span>
             <span class="s2">&quot;uid&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">uid</span><span class="p">,</span>
 
             <span class="s2">&quot;state_vars&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">_expr_to_dict</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">state_vars</span><span class="p">],</span>
@@ -3138,6 +3202,7 @@
             <span class="n">external_mapping</span><span class="o">=</span><span class="n">_parse_external_mapping</span><span class="p">(</span><span class="n">reader</span><span class="p">),</span>
             <span class="n">api_obj_mapping</span><span class="o">=</span><span class="n">_parse_api_object_mapping</span><span class="p">(</span><span class="n">reader</span><span class="p">),</span>
             <span class="n">name</span><span class="o">=</span><span class="n">reader</span><span class="o">.</span><span class="n">read_block_name</span><span class="p">(),</span>
+            <span class="n">model_family_name</span><span class="o">=</span><span class="n">reader</span><span class="o">.</span><span class="n">read_model_family_name</span><span class="p">(),</span>
             <span class="n">uid</span><span class="o">=</span><span class="n">reader</span><span class="o">.</span><span class="n">read_block_uid</span><span class="p">(),</span>
         <span class="p">)</span>
 
@@ -3307,6 +3372,7 @@
             <span class="n">memo</span><span class="p">[</span><span class="nb">id</span><span class="p">(</span><span class="bp">self</span><span class="p">)]</span> <span class="o">=</span> <span class="n">result</span>
 
             <span class="n">result</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">memo</span><span class="p">)</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">model_family_name</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model_family_name</span><span class="p">,</span> <span class="n">memo</span><span class="p">)</span>
             <span class="n">result</span><span class="o">.</span><span class="n">uid</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">uid</span><span class="p">,</span> <span class="n">memo</span><span class="p">)</span>
             <span class="n">result</span><span class="o">.</span><span class="n">is_decomposable</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">is_decomposable</span><span class="p">,</span> <span class="n">memo</span><span class="p">)</span>
             <span class="n">result</span><span class="o">.</span><span class="n">tpe_uid</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tpe_uid</span><span class="p">,</span> <span class="n">memo</span><span class="p">)</span>
