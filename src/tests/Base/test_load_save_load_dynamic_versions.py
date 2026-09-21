@@ -28,7 +28,7 @@ def test_load_save_load() -> None:
         os.makedirs(os.path.join("data", "output"))
 
     # for name in ['kundur_rms_6_0_22.veragrid',
-    #              'kundur_rms_from_gui_6_0_22.veragrid',]:
+    #              'kundur_from_gui_6_0_22.veragrid',]:
 
     for name in []:
 
