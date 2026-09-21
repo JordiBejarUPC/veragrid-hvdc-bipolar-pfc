@@ -1053,7 +1053,7 @@ def build_dialog_for_smoke(target: DialogSmokeTarget, context: DialogSmokeContex
     elif target == DialogSmokeTarget.VALIDATION_SECTION:
         dialog = ValidationSectionDialog(section_results=list())
     elif target == DialogSmokeTarget.CGMES_EXPORT:
-        dialog = CgmesExportDialogue(app=fake_app)
+        dialog = CgmesExportDialogue(app=fake_app, parent=None)
     elif target == DialogSmokeTarget.CGMES_IMPORT:
         dialog = CgmesImportDialogue(app=fake_app, options=FileOpenOptions())
     elif target == DialogSmokeTarget.COORDINATES_INPUT:
@@ -1061,11 +1061,11 @@ def build_dialog_for_smoke(target: DialogSmokeTarget, context: DialogSmokeContex
     elif target == DialogSmokeTarget.CATALOGUE:
         dialog = CatalogueGUI()
     elif target == DialogSmokeTarget.DGS_EXPORT:
-        dialog = DgsExportDialogue(app=fake_app)
+        dialog = DgsExportDialogue(app=fake_app, parent=None)
     elif target == DialogSmokeTarget.DGS_IMPORT:
         dialog = DgsImportDialogue(options=FileOpenOptions())
     elif target == DialogSmokeTarget.MATPOWER_EXPORT:
-        dialog = MatpowerExportDialogue(app=fake_app)
+        dialog = MatpowerExportDialogue(app=fake_app, parent=None)
     elif target == DialogSmokeTarget.EXCEL_DIALOG:
         dialog = ExcelDialog()
     elif target == DialogSmokeTarget.MODELS_INPUT:
@@ -1081,7 +1081,7 @@ def build_dialog_for_smoke(target: DialogSmokeTarget, context: DialogSmokeContex
             magnitude="P",
         )
     elif target == DialogSmokeTarget.PSSE_EXPORT:
-        dialog = PsseExportDialogue(app=fake_app)
+        dialog = PsseExportDialogue(app=fake_app, parent=None)
     elif target == DialogSmokeTarget.PSSE_IMPORT:
         dialog = PsseImportDialogue(app=fake_app, options=FileOpenOptions())
     elif target == DialogSmokeTarget.ROSETA_EXPLORER:
@@ -1089,7 +1089,7 @@ def build_dialog_for_smoke(target: DialogSmokeTarget, context: DialogSmokeContex
     elif target == DialogSmokeTarget.SERVER_FILE:
         dialog = ServerFileDialogue(parent=None, app=fake_app)
     elif target == DialogSmokeTarget.UCTE_EXPORT:
-        dialog = UcteExportDialogue(app=fake_app)
+        dialog = UcteExportDialogue(app=fake_app, parent=None)
     elif target == DialogSmokeTarget.FMU_TEMPLATE_EDITOR:
         dialog = FmuTemplateEditorDialog(
             circuit=circuit,
@@ -1117,7 +1117,7 @@ def build_dialog_for_smoke(target: DialogSmokeTarget, context: DialogSmokeContex
         elements.append("Beta")
         dialog = ListSelectWindow(title="Select value", elements=elements)
     elif target == DialogSmokeTarget.PROCEDURAL_GRID:
-        dialog = ProceduralGridWindow(app=fake_app)
+        dialog = ProceduralGridWindow(app=fake_app, parent=None)
     elif target == DialogSmokeTarget.MAP_WARNING:
         dialog = MapWarningDialog()
     elif target == DialogSmokeTarget.VOLTAGE_WARNING:
@@ -1125,7 +1125,7 @@ def build_dialog_for_smoke(target: DialogSmokeTarget, context: DialogSmokeContex
         offenders.append(("Bus", 33.0))
         dialog = VoltageWarningDialog(offenders=offenders, valid_voltages=[10.0, 20.0])
     elif target == DialogSmokeTarget.RMS_PLOT:
-        dialog = RmsPlotDialog(results=build_rms_results(circuit=circuit))
+        dialog = RmsPlotDialog(results=build_rms_results(circuit=circuit), parent=None)
     elif target == DialogSmokeTarget.SHORT_CIRCUIT_SELECTOR:
         dialog = ShortCircuitSelector()
     elif target == DialogSmokeTarget.SIGMA_ANALYSIS:

@@ -22,7 +22,7 @@ class MatpowerExportDialogue(QtWidgets.QDialog):
     Dialogue to export the active circuit to MATPOWER.
     """
 
-    def __init__(self, app: IoMain) -> None:
+    def __init__(self, parent: QtWidgets.QWidget | None, app: IoMain) -> None:
         """
         Build the MATPOWER export dialogue.
 
@@ -30,10 +30,10 @@ class MatpowerExportDialogue(QtWidgets.QDialog):
             launch the save workflow.
         :return: None.
         """
-        QtWidgets.QDialog.__init__(self)
+        QtWidgets.QDialog.__init__(self, parent=parent)
         self.ui = Ui_MatpowerExportDialog()
         self.ui.setupUi(self)
-        self.setWindowTitle(self.tr("MATPOWER export"))
+        self.setWindowTitle(self.tr("MatPower export"))
         self.setModal(True)
 
         self.app: IoMain = app
@@ -73,6 +73,10 @@ class MatpowerExportDialogue(QtWidgets.QDialog):
 
         self.ui.time_slot_slider.setValue(-1)
         self.update_time_slot_text()
+
+    def refresh_export_context(self) -> None:
+        """Refresh the time selector for the active project."""
+        self._configure_time_slot_widgets()
 
     def _connect_signals(self) -> None:
         """

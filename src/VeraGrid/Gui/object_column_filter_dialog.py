@@ -320,6 +320,8 @@ class ObjectColumnFilterDialog(QtWidgets.QDialog):
                  proxy_model: ObjectModelFilterProxy,
                  source_column: int,
                  table_view: QtWidgets.QTableView,
+                 refresh_object_table_dependants_ptr,
+                 global_position,
                  parent: QtWidgets.QWidget | None = None) -> None:
         """
         Constructor.
@@ -417,6 +419,9 @@ class ObjectColumnFilterDialog(QtWidgets.QDialog):
         layout.addLayout(grip_layout)
 
         self.fill_values()
+
+        self.filters_changed.connect(refresh_object_table_dependants_ptr)
+        self.show_at(global_position=global_position)
 
     def show_at(self, global_position: QtCore.QPoint) -> None:
         """

@@ -497,7 +497,7 @@ class CoordinatesInputGUI(QtWidgets.QDialog):
                     logger.add_error("Duplicated header", device=hdr)
 
                 logs_dialogue: LogsDialogue = LogsDialogue(name=self.tr("Duplicated headers"),
-                                                           logger=logger, expand_all=True)
+                                                           logger=logger, expand_all=True, parent=self)
                 exec_dialog_safely(dialog=logs_dialogue)
 
                 # filter the headers

@@ -300,12 +300,7 @@ class VeraGridMainGUI(ScriptingMain):
                 self.save_all_config()
                 ai_stopped: bool = self.shutdown_ai_dialogue_if_available()
                 threads_stopped: bool = self.stop_all_threads()
-                child_windows_closed: bool = self.close_open_child_windows(delete_windows=True)
-                if ai_stopped and threads_stopped and child_windows_closed:
-                    event.accept()
-                else:
-                    self.show_warning_toast(self.tr("Some operations are still stopping. Close again after they finish."))
-                    event.ignore()
+
             else:
                 # save config regardless
                 self.save_all_config()
@@ -316,12 +311,7 @@ class VeraGridMainGUI(ScriptingMain):
             self.save_all_config()
             ai_stopped: bool = self.shutdown_ai_dialogue_if_available()
             threads_stopped: bool = self.stop_all_threads()
-            child_windows_closed: bool = self.close_open_child_windows(delete_windows=True)
-            if ai_stopped and threads_stopped and child_windows_closed:
-                event.accept()
-            else:
-                self.show_warning_toast(self.tr("Some operations are still stopping. Close again after they finish."))
-                event.ignore()
+
 
 
 def create_linux_desktop_entry(app_name: str, qrc_icon_path: str):

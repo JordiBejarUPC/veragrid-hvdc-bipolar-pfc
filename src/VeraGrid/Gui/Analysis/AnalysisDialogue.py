@@ -2174,7 +2174,7 @@ QWidget#overviewPage QProgressBar::chunk {{
                 fixable_error.fix(logger=logger, fix_ts=self.ui.fixTimeSeriesCheckBox.isChecked())
 
             if logger.has_logs():
-                dialogue: LogsDialogue = LogsDialogue(self.tr("Fixed issues"), logger)
+                dialogue: LogsDialogue = LogsDialogue(self.tr("Fixed issues"), logger, parent=self)
                 dialogue.setModal(True)
                 exec_dialog_safely(dialog=dialogue)
             else:

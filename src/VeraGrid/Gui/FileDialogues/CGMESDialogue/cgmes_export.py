@@ -26,7 +26,7 @@ class CgmesExportDialogue(QtWidgets.QDialog):
     Dialogue to export the active circuit to CGMES.
     """
 
-    def __init__(self, app: IoMain) -> None:
+    def __init__(self, parent: QtWidgets.QWidget | None, app: IoMain) -> None:
         """
         Build the CGMES export dialogue.
 
@@ -34,7 +34,7 @@ class CgmesExportDialogue(QtWidgets.QDialog):
             launch the save workflow.
         :return: None.
         """
-        QtWidgets.QDialog.__init__(self)
+        QtWidgets.QDialog.__init__(self, parent=parent)
         self.ui = Ui_CgmesExportDialog()
         self.ui.setupUi(self)
         self.setWindowTitle(self.tr('CGMES export'))
@@ -92,6 +92,13 @@ class CgmesExportDialogue(QtWidgets.QDialog):
 
         self.ui.time_slot_slider.setValue(-1)
         self.update_time_slot_text()
+
+    def refresh_export_context(self) -> None:
+        """Refresh the project references before reusing this dialogue."""
+        self.grid = self.app.circuit
+        self.sessions_data = self.app.session
+        self.project_directory = self.app.project_directory
+        self._configure_time_slot_widgets()
 
     def _connect_signals(self) -> None:
         """

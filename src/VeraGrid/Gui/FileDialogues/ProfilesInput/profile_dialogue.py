@@ -704,7 +704,7 @@ class ProfileInputGUI(QtWidgets.QDialog):
 
         else:
             if logger.has_logs():
-                dlg: LogsDialogue = LogsDialogue(self.tr("Import issues"), logger)
+                dlg: LogsDialogue = LogsDialogue(self.tr("Import issues"), logger, parent=self)
                 dlg.setModal(True)
                 exec_dialog_safely(dialog=dlg)
 
