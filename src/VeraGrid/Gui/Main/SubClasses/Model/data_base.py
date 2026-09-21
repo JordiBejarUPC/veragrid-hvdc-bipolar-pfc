@@ -2235,7 +2235,7 @@ class DataBaseTableMain(DiagramsMain):
                         else:
                             pass
                     if has_histogram:
-                        self._open_plot_dialogs.append(plot_dialogue)
+                        self.register_open_plot_dialog(plot_dialogue)
                         plot_dialogue.show()
                     else:
                         plot_dialogue.reject()

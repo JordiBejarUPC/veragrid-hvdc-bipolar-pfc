@@ -43,7 +43,6 @@ from VeraGridEngine.IO.veragrid.contingency_parser import import_contingencies_f
 from VeraGridEngine.IO.veragrid.catalogue import save_catalogue, load_catalogue
 from VeraGridEngine.Compilers.Gslv.activation import install_gslv_license
 from VeraGrid.Gui.CatalogueElementsDialogue.catalogue_elements_dialogue import CatalogueElementsSelectionDialogue
-from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
 
 
 def get_session_tree_icon_map(session_data_dict: Dict[str, Dict[str, List[str]]]) -> Dict[str, str]:
@@ -110,6 +109,8 @@ class IoMain(ScenariosMain):
         # create the main window
         ScenariosMain.__init__(self, parent)
 
+        self.rosetta_gui: Union[RosetaExplorerGUI, None] = None
+
         self.accepted_extensions = ['.veragrid', '.dveragrid',
                                     '.gridcal', '.dgridcal',
                                     '.xlsx', '.xls', '.sqlite', '.gch5',
@@ -121,6 +122,11 @@ class IoMain(ScenariosMain):
                                     '.vgplugin', '.gslv']
 
         # window pointers
+        self.cgmes_dialogue: CgmesExportDialogue | None = None
+        self.psse_export_dialogue: PsseExportDialogue | None = None
+        self.dgs_export_dialogue: DgsExportDialogue | None = None
+        self.matpower_export_dialogue: MatpowerExportDialogue | None = None
+        self.ucte_export_dialogue: UcteExportDialogue | None = None
         self.remote_database_file_idtag: str = ""
         self.remote_database_model_idtag: str = ""
         self.remote_database_file_name: str = ""
@@ -324,11 +330,9 @@ class IoMain(ScenariosMain):
 
         self.ui.grid_name_line_edit.setText("")
 
-        analysis_dialogue: QtWidgets.QWidget | None = self.window_manager.get("analysis_dialogue")
+        analysis_dialogue: QtWidgets.QMainWindow | QtWidgets.QDialog | None = self.window_manager.get("analysis_dialogue")
         if is_dialog_available(dialog=analysis_dialogue):
             analysis_dialogue.close()
-        else:
-            pass
 
         self.clear_stuff_running()
         self.clear_results()
@@ -965,8 +969,7 @@ class IoMain(ScenariosMain):
                     else:
                         # else, show the logger if it is necessary
                         if open_logger_requires_dialog(self.open_file_thread_object.logger):
-                            dlg = LogsDialogue(self.tr('Open CGMES file logger'),
-                                               self.open_file_thread_object.logger, parent=self)
+                            dlg = LogsDialogue(self.tr('Open CGMES file logger'), self.open_file_thread_object.logger)
                             exec_dialog_safely(dialog=dlg)
                         else:
                             pass
@@ -974,8 +977,7 @@ class IoMain(ScenariosMain):
                 else:
                     # else, show the logger if it is necessary
                     if open_logger_requires_dialog(self.open_file_thread_object.logger):
-                        dlg = LogsDialogue(self.tr('Open file logger'),
-                                           self.open_file_thread_object.logger, parent=self)
+                        dlg = LogsDialogue(self.tr('Open file logger'), self.open_file_thread_object.logger)
                         exec_dialog_safely(dialog=dlg)
                     else:
                         pass
@@ -996,7 +998,7 @@ class IoMain(ScenariosMain):
                 warning_msg(text=self.tr('Error while loading the file(s)'))
                 # else, show the logger if it is necessary
                 if len(self.open_file_thread_object.logger) > 0:
-                    dlg = LogsDialogue(self.tr('Open file logger'), self.open_file_thread_object.logger, parent=self)
+                    dlg = LogsDialogue(self.tr('Open file logger'), self.open_file_thread_object.logger)
                     exec_dialog_safely(dialog=dlg)
         else:
             # center nodes
@@ -1099,7 +1101,7 @@ class IoMain(ScenariosMain):
 
             if open_logger_requires_dialog(self.open_file_thread_object.logger):
                 dlg = LogsDialogue(self.tr('Open file logger'),
-                                   self.open_file_thread_object.logger, parent=self)
+                                   self.open_file_thread_object.logger)
                 exec_dialog_safely(dialog=dlg)
             else:
                 pass
@@ -1330,8 +1332,7 @@ class IoMain(ScenariosMain):
         """
         if self.save_file_thread_object.logger is not None:
             if len(self.save_file_thread_object.logger) > 0:
-                dlg: LogsDialogue = LogsDialogue(self.tr('Save file logger'),
-                                                 self.save_file_thread_object.logger, parent=self)
+                dlg: LogsDialogue = LogsDialogue(self.tr('Save file logger'), self.save_file_thread_object.logger)
                 exec_dialog_safely(dialog=dlg)
             else:
                 pass
@@ -1612,7 +1613,7 @@ class IoMain(ScenariosMain):
             logger = self.circuit.set_contingencies(contingencies=contingencies)
 
             if len(logger) > 0:
-                dlg = LogsDialogue(self.tr('Contingencies import'), logger, parent=self)
+                dlg = LogsDialogue(self.tr('Contingencies import'), logger)
                 exec_dialog_safely(dialog=dlg)
 
     def export_contingencies(self) -> None:
@@ -1731,8 +1732,19 @@ class IoMain(ScenariosMain):
 
         :return: None.
         """
+        dialog: PsseExportDialogue | None = self.psse_export_dialogue
+        if is_dialog_available(dialog=dialog):
+            pass
+        else:
+            dialog = PsseExportDialogue(app=self)
+            self.psse_export_dialogue = dialog
 
-        exec_dialog_safely(PsseExportDialogue(parent=self, app=self))
+        if dialog is not None:
+            dialog.show()
+            dialog.raise_()
+            dialog.activateWindow()
+        else:
+            pass
 
     def export_power_factory(self) -> None:
         """
@@ -1740,7 +1752,19 @@ class IoMain(ScenariosMain):
 
         :return: None.
         """
-        exec_dialog_safely(dialog=DgsExportDialogue(parent=self, app=self))
+        dialog: DgsExportDialogue | None = self.dgs_export_dialogue
+        if is_dialog_available(dialog=dialog):
+            pass
+        else:
+            dialog = DgsExportDialogue(app=self)
+            self.dgs_export_dialogue = dialog
+
+        if dialog is not None:
+            dialog.show()
+            dialog.raise_()
+            dialog.activateWindow()
+        else:
+            pass
 
     def export_matpower(self) -> None:
         """
@@ -1748,7 +1772,19 @@ class IoMain(ScenariosMain):
 
         :return: None.
         """
-        exec_dialog_safely(MatpowerExportDialogue(parent=self, app=self))
+        dialog: MatpowerExportDialogue | None = self.matpower_export_dialogue
+        if is_dialog_available(dialog=dialog):
+            pass
+        else:
+            dialog = MatpowerExportDialogue(app=self)
+            self.matpower_export_dialogue = dialog
+
+        if dialog is not None:
+            dialog.show()
+            dialog.raise_()
+            dialog.activateWindow()
+        else:
+            pass
 
     def export_ucte(self) -> None:
         """
@@ -1756,7 +1792,19 @@ class IoMain(ScenariosMain):
 
         :return: None.
         """
-        exec_dialog_safely(UcteExportDialogue(parent=self, app=self))
+        dialog: UcteExportDialogue | None = self.ucte_export_dialogue
+        if is_dialog_available(dialog=dialog):
+            pass
+        else:
+            dialog = UcteExportDialogue(app=self)
+            self.ucte_export_dialogue = dialog
+
+        if dialog is not None:
+            dialog.show()
+            dialog.raise_()
+            dialog.activateWindow()
+        else:
+            pass
 
     def export_cim(self) -> None:
         """
@@ -1797,7 +1845,19 @@ class IoMain(ScenariosMain):
 
         :return: None.
         """
-        exec_dialog_safely(CgmesExportDialogue(parent=self, app=self))
+        dialog: CgmesExportDialogue | None = self.cgmes_dialogue
+        if is_dialog_available(dialog=dialog):
+            pass
+        else:
+            dialog = CgmesExportDialogue(app=self)
+            self.cgmes_dialogue = dialog
+
+        if dialog is not None:
+            dialog.show()
+            dialog.raise_()
+            dialog.activateWindow()
+        else:
+            pass
 
     def export_power_grid_models(self) -> None:
         """

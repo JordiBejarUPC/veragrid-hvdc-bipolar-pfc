@@ -131,7 +131,7 @@ class CompiledArraysMain(ServerMain):
                 )
                 plot_dialogue.chart.set_axis_titles(self.tr("Column index"), self.tr("Row index"))
                 plot_dialogue.chart.setTitle(self.tr("Array sparsity pattern"))
-                self._open_plot_dialogs.append(plot_dialogue)
+                self.register_open_plot_dialog(plot_dialogue)
                 plot_dialogue.show()
             else:
                 plot_dialogue.reject()
@@ -158,7 +158,7 @@ class CompiledArraysMain(ServerMain):
                 plot_dialogue.chart.set_axis_titles(self.tr("Position"), self.tr("Value"))
                 plot_dialogue.chart.setTitle(self.tr("Array values"))
 
-            self._open_plot_dialogs.append(plot_dialogue)
+            self.register_open_plot_dialog(plot_dialogue)
             plot_dialogue.show()
 
     def recompile_circuits_for_display(self):

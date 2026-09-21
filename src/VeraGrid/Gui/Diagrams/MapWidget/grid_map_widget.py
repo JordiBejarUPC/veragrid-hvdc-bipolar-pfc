@@ -2026,7 +2026,7 @@ class GridMapWidget(BaseDiagramWidget):
                     pass
 
             if has_power_plot or has_voltage_plot:
-                self.gui._open_plot_dialogs.append(plot_dialogue)
+                self.gui.register_open_plot_dialog(plot_dialogue)
                 plot_dialogue.show()
             else:
                 plot_dialogue.reject()

@@ -8,7 +8,7 @@ import json
 import os.path
 import sys
 import webbrowser
-from typing import Dict, List, Union
+from typing import Dict, List, Union, Callable
 
 import numpy as np
 import pandas as pd
@@ -221,7 +221,6 @@ class BaseMainGui(QMainWindow):
 
         # window pointers ----------------------------------------------------------------------------------------------
         self.window_manager = WindowManager(main_window=self)
-        self.ai_chat_dialogue: AiChatDialogue | None = None
 
         self.ai_mcp_client: VeraGridMcpClient = VeraGridMcpClient(self.ai_mcp_config_file_path())
         self.ai_ollama_manager: OllamaProcessManager = OllamaProcessManager()
@@ -290,14 +289,23 @@ class BaseMainGui(QMainWindow):
         self.ui.engineComboBox.currentIndexChanged.connect(self.refresh_ai_context_if_available)
         self.ui.available_results_to_color_comboBox.currentIndexChanged.connect(self.refresh_ai_context_if_available)
 
-    def show_dialogue(self, win: QMainWindow | QDialog, key: str | None = None):
+    def show_dialogue(self,
+                      win: QMainWindow | QDialog,
+                      key: str | None = None,
+                      delete_on_close: bool = True) -> QMainWindow | QDialog:
         """
+        Safely display a managed window or dialogue.
 
-        :param win:
-        :param key:
-        :return:
+        :param win: Window instance.
+        :param key: Unique key to refer to the window.
+        :param delete_on_close: Whether the window is deleted upon close.
+        :return: Displayed window.
         """
-        self.window_manager.show(win=win, key=key)
+        return self.window_manager.show(
+            win=win,
+            key=key,
+            delete_on_close=delete_on_close,
+        )
 
     def changeEvent(self, event: QtCore.QEvent) -> None:
         """
@@ -462,6 +470,34 @@ class BaseMainGui(QMainWindow):
             self.ui.file_information_label.setText(self._file_name)
         else:
             self.ui.file_information_label.setText("")
+
+    def register_open_plot_dialog(self, dialog: QtWidgets.QDialog) -> None:
+        """
+        Track one open plot dialog and clean up its reference upon destruction.
+
+        :param dialog: Plot dialog instance.
+        :return: None.
+        """
+        # Ensure that dialog is only tracked once to prevent duplicate listeners
+        if dialog not in self._open_plot_dialogs:
+            self._open_plot_dialogs.append(dialog)
+            # Connect the destroyed signal directly to the slot without lambdas
+            dialog.destroyed.connect(self._unregister_open_plot_dialog)
+
+    def _unregister_open_plot_dialog(self, dialog_obj: QtCore.QObject | None = None) -> None:
+        """
+        Remove a destroyed plot dialog from active tracking.
+
+        :param dialog_obj: Qt object being destroyed, or None.
+        :return: None.
+        """
+        # Rebuild tracked dialogs list, pruning the destroyed instance and any invalid widgets
+        cleaned_dialogs: list[QtWidgets.QDialog] = list()
+        dialog_item: QtWidgets.QDialog
+        for dialog_item in self._open_plot_dialogs:
+            if dialog_item is not dialog_obj and is_dialog_available(dialog_item):
+                cleaned_dialogs.append(dialog_item)
+        self._open_plot_dialogs = cleaned_dialogs
 
     def create_dynamic_editor_workspace(self, show_tree: bool = False) -> DynamicEditorWorkspaceWindow:
         """
@@ -982,23 +1018,50 @@ class BaseMainGui(QMainWindow):
 
         self.start_ai_services_from_config()
 
-    def ensure_ai_dialogue(self) -> None:
+    @property
+    def analysis_dialogue(self) -> GridAnalysisGUI | None:
         """
-        Create the floating AI dialogue lazily and bind it to the live main window.
+        Grid analysis dialogue managed via WindowManager.
 
-        :returns: Nothing.
+        :return: Active GridAnalysisGUI instance or None.
         """
-        if self.ai_chat_dialogue is None:
-            self.ai_chat_dialogue = AiChatDialogue(parent=self, app=self, mcp_client=self.ai_mcp_client)
-            self.ai_chat_dialogue.set_embedded_mode(False)
-            self.ai_chat_dialogue.apply_backend_state(self.ai_backend_state)
-            self.ai_chat_dialogue.dialogue_visibility_changed.connect(
+        dialog: QtWidgets.QMainWindow | QtWidgets.QDialog | None = self.window_manager.get("analysis_dialogue")
+        if isinstance(dialog, GridAnalysisGUI) and is_dialog_available(dialog):
+            return dialog
+        return None
+
+    @property
+    def ai_chat_dialogue(self) -> AiChatDialogue | None:
+        """
+        AI dialogue managed via WindowManager.
+
+        :return: Active AiChatDialogue instance, or None if not registered.
+        """
+        dialog: QMainWindow | QDialog | None = self.window_manager.get("AI_chat")
+        if isinstance(dialog, AiChatDialogue) and shiboken6.isValid(dialog):
+            return dialog
+        else:
+            return None
+
+    def ensure_ai_dialogue(self) -> AiChatDialogue:
+        """
+        Create the floating AI dialogue lazily via WindowManager and bind it to the live main window.
+
+        :returns: The AiChatDialogue instance.
+        """
+        ai_chat: AiChatDialogue | None = self.ai_chat_dialogue
+        if ai_chat is None:
+            ai_chat = AiChatDialogue(parent=self, app=self, mcp_client=self.ai_mcp_client)
+            ai_chat.set_embedded_mode(False)
+            ai_chat.apply_backend_state(self.ai_backend_state)
+            ai_chat.dialogue_visibility_changed.connect(
                 self.handle_ai_dialogue_visibility_changed
             )
-            self.show_dialogue(win=self.ai_chat_dialogue, key="AI_chat")
+            self.show_dialogue(win=ai_chat, key="AI_chat", delete_on_close=False)
         else:
-            self.ai_chat_dialogue.apply_backend_state(self.ai_backend_state)
-            self.show_dialogue(win=self.ai_chat_dialogue, key="AI_chat")
+            ai_chat.apply_backend_state(self.ai_backend_state)
+            self.show_dialogue(win=ai_chat, key="AI_chat", delete_on_close=False)
+        return ai_chat
 
     def sync_ai_dialogue_action_state(self, visible: bool) -> None:
         """
@@ -1072,9 +1135,7 @@ class BaseMainGui(QMainWindow):
             pass
         else:
             if visible:
-                self.ai_chat_dialogue.show()
-                self.ai_chat_dialogue.raise_()
-                self.ai_chat_dialogue.activateWindow()
+                self.show_dialogue(win=self.ai_chat_dialogue, key="AI_chat", delete_on_close=False)
                 self.refresh_ai_context_if_available()
                 self.ai_backend_state = self.ai_chat_dialogue.get_backend_state()
                 self.start_ai_services_from_config()

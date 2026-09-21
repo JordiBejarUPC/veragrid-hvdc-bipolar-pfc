@@ -6297,7 +6297,7 @@ class SchematicWidget(BaseDiagramWidget):
         if has_profiles or has_results:
             plot_dialogue.select_default_catalog_series()
             plot_dialogue.set_series_selector_visible(visible=True)
-            self.gui._open_plot_dialogs.append(plot_dialogue)
+            self.gui.register_open_plot_dialog(plot_dialogue)
             plot_dialogue.show()
         else:
             plot_dialogue.reject()

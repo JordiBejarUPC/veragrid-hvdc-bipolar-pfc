@@ -26,6 +26,19 @@ class ResultsPlotOwner(QtWidgets.QWidget):
         super().__init__()
         self._open_plot_dialogs: list[PlotDialogue] = list()
 
+    def register_open_plot_dialog(self, dialog: QtWidgets.QDialog) -> None:
+        """
+        Track one open plot dialog in the owner.
+
+        :param dialog: Plot dialog to track.
+        :return: None.
+        """
+        if dialog in self._open_plot_dialogs:
+            pass
+        else:
+            self._open_plot_dialogs.append(dialog)
+
+
 
 def close_plot_dialogue(dialog: PlotDialogue, app: QtWidgets.QApplication) -> None:
     """Close one plot dialog through its real Qt ownership lifecycle.

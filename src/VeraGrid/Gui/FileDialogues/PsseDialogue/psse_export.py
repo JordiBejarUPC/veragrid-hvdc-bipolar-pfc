@@ -24,7 +24,7 @@ class PsseExportDialogue(QtWidgets.QDialog):
     Dialogue to export the active circuit to PSSE RAW or RAWX.
     """
 
-    def __init__(self, parent: QtWidgets.QWidget | None, app: IoMain) -> None:
+    def __init__(self, app: IoMain) -> None:
         """
         Build the PSS/E export dialogue.
 
@@ -32,7 +32,7 @@ class PsseExportDialogue(QtWidgets.QDialog):
             launch the save workflow.
         :return: None.
         """
-        QtWidgets.QDialog.__init__(self, parent=parent)
+        QtWidgets.QDialog.__init__(self)
         self.ui = Ui_PsseExportDialog()
         self.ui.setupUi(self)
         self.setWindowTitle(self.tr('PSS/e export'))
@@ -91,10 +91,6 @@ class PsseExportDialogue(QtWidgets.QDialog):
 
         self.ui.time_slot_slider.setValue(-1)
         self.update_time_slot_text()
-
-    def refresh_export_context(self) -> None:
-        """Refresh the time selector for the active project."""
-        self._configure_time_slot_widgets()
 
     def _connect_signals(self) -> None:
         """

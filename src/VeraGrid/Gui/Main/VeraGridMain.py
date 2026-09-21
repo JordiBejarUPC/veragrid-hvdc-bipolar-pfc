@@ -295,22 +295,26 @@ class VeraGridMainGUI(ScriptingMain):
             quit_msg = self.tr("Are you sure that you want to exit VeraGrid?")
             reply: bool = yes_no_question(text=quit_msg, title=self.tr("Close"), parent=self)
 
-            if reply:
-                # save config regardless
-                self.save_all_config()
-                ai_stopped: bool = self.shutdown_ai_dialogue_if_available()
-                threads_stopped: bool = self.stop_all_threads()
-
-            else:
+            if not reply:
                 # save config regardless
                 self.save_all_config()
                 event.ignore()
-        else:
-            # no buses so exit
-            # save config regardless
-            self.save_all_config()
-            ai_stopped: bool = self.shutdown_ai_dialogue_if_available()
-            threads_stopped: bool = self.stop_all_threads()
+                return
+
+        # save config regardless
+        self.save_all_config()
+        ai_stopped: bool = self.shutdown_ai_dialogue_if_available()
+        threads_stopped: bool = self.stop_all_threads()
+
+        if not threads_stopped or not ai_stopped:
+            event.ignore()
+            self.show_warning_toast(
+                self.tr("Some operations are still stopping. Try again after they finish.")
+            )
+            return
+
+        self.window_manager.close_all()
+        event.accept()
 
 
 
