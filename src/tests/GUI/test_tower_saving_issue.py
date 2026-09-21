@@ -609,8 +609,10 @@ def run_random_device_editor_flow(working_file_name: str, status_queue: Any, see
             if random_generator.random() < 0.3:
                 selected_tower: EditableDevice = random_generator.choice(tower_devices)
                 responder: TowerEditorAutoResponder = TowerEditorAutoResponder(app=app, parent=app)
+                modal_closer.stop()
                 responder.arm()
                 gui.launch_device_editor(elm=selected_tower)
+                modal_closer.start()
                 assert responder.was_clicked(), f"seed={seed}, trace={operation_trace}"
                 operation_trace.append(f"tower:{selected_tower.name}")
             else:
