@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (QApplication, QDialog, QFrame, QHBoxLayout,
     QHeaderView, QPushButton, QSizePolicy, QSpacerItem,
     QSplitter, QTableView, QVBoxLayout, QWidget)
 
-from VeraGrid.Gui.Widgets.matplotlibwidget import MatplotlibWidget
+from VeraGrid.Gui.Widgets.qt_chart_widget import GraphsWidget
 
 class Ui_GeneratorQCurveEditorDialog(object):
     def setupUi(self, GeneratorQCurveEditorDialog):
@@ -71,7 +71,7 @@ class Ui_GeneratorQCurveEditorDialog(object):
         self.rightLayout = QVBoxLayout(self.rightFrame)
         self.rightLayout.setObjectName(u"rightLayout")
         self.rightLayout.setContentsMargins(0, 0, 0, 0)
-        self.plotter = MatplotlibWidget(self.rightFrame)
+        self.plotter = GraphsWidget(self.rightFrame)
         self.plotter.setObjectName(u"plotter")
 
         self.rightLayout.addWidget(self.plotter)
@@ -91,4 +91,3 @@ class Ui_GeneratorQCurveEditorDialog(object):
         self.addRowButton.setText(QCoreApplication.translate("GeneratorQCurveEditorDialog", u"Add", None))
         self.delRowButton.setText(QCoreApplication.translate("GeneratorQCurveEditorDialog", u"Del", None))
     # retranslateUi
-

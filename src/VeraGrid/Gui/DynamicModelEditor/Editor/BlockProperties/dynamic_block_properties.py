@@ -5297,6 +5297,29 @@ class RetainedModeDraftTableModel(QtCore.QAbstractTableModel):
         return removed, message
 
 
+def build_block_property_header_row(
+        label_item: QtGui.QStandardItem,
+) -> List[QtGui.QStandardItem]:
+    """Build a complete non-editable structural row for the property tree.
+
+    Every header row needs one real item per visible column so the native
+    alternating-row background and row selection extend across the full table.
+
+    :param label_item: First-column item carrying the category or block label.
+    :return: Four-item structural row matching the property-tree schema.
+    """
+    items: List[QtGui.QStandardItem] = list((
+        label_item,
+        QtGui.QStandardItem(),
+        QtGui.QStandardItem(),
+        QtGui.QStandardItem(),
+    ))
+    item: QtGui.QStandardItem
+    for item in items:
+        item.setEditable(False)
+    return items
+
+
 class BlockPropertyTreeModel(QtGui.QStandardItemModel):
     """Present structural and symbol drafts in a single owner-grouped tree.
 
@@ -5406,7 +5429,7 @@ class BlockPropertyTreeModel(QtGui.QStandardItemModel):
             )
             structure_group.setEditable(False)
             structure_group.setData(BlockSymbolCategory.GENERAL, Qt.ItemDataRole.UserRole + 2)
-            self.appendRow(structure_group)
+            self.appendRow(build_block_property_header_row(label_item=structure_group))
             row_index: int
             for row_index in range(self._structure.rowCount()):
                 self.append_source_row(structure_group, self._structure.index(row_index, 0))
@@ -5448,7 +5471,7 @@ class BlockPropertyTreeModel(QtGui.QStandardItemModel):
             category_group: QtGui.QStandardItem = QtGui.QStandardItem(category.value)
             category_group.setEditable(False)
             category_group.setData(category, Qt.ItemDataRole.UserRole + 2)
-            self.appendRow(category_group)
+            self.appendRow(build_block_property_header_row(label_item=category_group))
             owner_index: int
             owner: Block
             for owner_index, owner in enumerate(self._root_block.get_all_blocks()):
@@ -5456,7 +5479,7 @@ class BlockPropertyTreeModel(QtGui.QStandardItemModel):
                 owner_item.setEditable(False)
                 owner_item.setData(owner, Qt.ItemDataRole.UserRole + 1)
                 owner_item.setData(category, Qt.ItemDataRole.UserRole + 2)
-                category_group.appendRow(owner_item)
+                category_group.appendRow(build_block_property_header_row(label_item=owner_item))
                 if category == BlockSymbolCategory.RETAINED_MODES:
                     mode_index: int
                     for mode_index in range(self._modes.rowCount()):
@@ -5796,6 +5819,8 @@ class BlockPropertyValueDelegate(StructuralSettingDelegate):
 class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
     """Property editor content for one Dynamic Model Editor block."""
 
+    _PROPERTY_BASE_COLUMN_WIDTHS: tuple[int, int, int, int] = (170, 100, 230, 60)
+
     # Symbolic UIDs are wider than Qt's 32-bit ``int`` signal type.
     blockApplied = Signal(object)
     structuralRebuildRequested = Signal(object)
@@ -5829,6 +5854,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         "_dae_editor",
         "_prepared_to_delete",
         "_draft_has_changes",
+        "_property_columns_initialized",
     )
 
     def __init__(self,
@@ -5940,6 +5966,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
 
         self._prepared_to_delete: bool = False
         self._draft_has_changes: bool = False
+        self._property_columns_initialized: bool = False
 
         self._configure_add_symbol_dialog()
         self._configure_procedural_menu()
@@ -6067,7 +6094,41 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         :return: None.
         """
         QtWidgets.QDialog.showEvent(self, event)
+        if self._property_columns_initialized:
+            pass
+        else:
+            self._fit_initial_property_columns()
+            self._property_columns_initialized = True
         self.filter_properties(self.ui.property_search.text())
+
+    def _fit_initial_property_columns(self) -> None:
+        """Fill the initial property-tree viewport with weighted columns.
+
+        Value keeps its established editing width. Any additional room in the
+        default dialogue is distributed across Name, Type, and Output, after
+        which all sections remain manually resizable.
+
+        :return: None.
+        """
+        header: QtWidgets.QHeaderView = self.ui.property_tree.header()
+        base_widths: tuple[int, int, int, int] = self._PROPERTY_BASE_COLUMN_WIDTHS
+        available_width: int = max(
+            self.ui.property_tree.viewport().width(),
+            sum(base_widths),
+        )
+        extra_width: int = available_width - sum(base_widths)
+        name_extra: int = int(extra_width * 0.4)
+        type_extra: int = int(extra_width * 0.3)
+        output_extra: int = extra_width - name_extra - type_extra
+        initial_widths: List[int] = list((
+            base_widths[0] + name_extra,
+            base_widths[1] + type_extra,
+            base_widths[2],
+            base_widths[3] + output_extra,
+        ))
+        column_index: int
+        for column_index in range(header.count()):
+            header.resizeSection(column_index, initial_widths[column_index])
 
     def _find_initial_equation_buffer_index(self) -> int:
         """
@@ -6116,7 +6177,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         property_header: QtWidgets.QHeaderView = self.ui.property_tree.header()
         configure_interactive_table_header(
             property_header,
-            list((170, 100, 230, 60)),
+            list(self._PROPERTY_BASE_COLUMN_WIDTHS),
         )
         self.restore_property_tree()
 

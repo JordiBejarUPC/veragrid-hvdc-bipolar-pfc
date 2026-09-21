@@ -456,6 +456,8 @@ def rms_kundur() -> None:
     # grid.add_generator(bus=bus3, api_obj=gen3)
     # grid.add_generator(bus=bus4, api_obj=gen4)
 
+    gce.save_file(grid=grid, filename="kundur_6_5_29.veragrid")
+
     pf_options = PowerFlowOptions(
         solver_type=gce.SolverType.NR,
         retry_with_other_methods=False,

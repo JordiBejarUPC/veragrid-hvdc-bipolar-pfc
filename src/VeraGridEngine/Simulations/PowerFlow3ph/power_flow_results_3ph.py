@@ -5,15 +5,13 @@
 
 import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
-import matplotlib.colors as plt_colors
 from typing import List, Tuple
 
 from VeraGridEngine.Simulations.results_table import ResultsTable
 from VeraGridEngine.Simulations.results_template import ResultsTemplate, ResultsProperty
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import NumericPowerFlowResults
 from VeraGridEngine.basic_structures import IntVec, Vec, StrVec, CxVec, ConvergenceReport, Logger
-from VeraGridEngine.enumerations import StudyResultsType, ResultTypes, DeviceType
+from VeraGridEngine.enumerations import StudyResultsType, ResultTypes, DeviceType, ResultTablePlotType
 
 
 def get_3p_indices(length_3p: int) -> Tuple[IntVec, IntVec, IntVec, IntVec]:
@@ -866,18 +864,8 @@ class PowerFlowResults3Ph(ResultsTemplate):
             V = np.c_[self.voltage_A, self.voltage_B, self.voltage_C]
             vm = np.abs(V)
             va = np.angle(V, deg=True)
-            va_rad = np.angle(V, deg=False)
             data = np.c_[vm, va]
 
-            if self.plotting_allowed():
-                plt.ion()
-                color_norm = plt_colors.LogNorm()
-                fig = plt.figure(figsize=(8, 6))
-                ax3 = plt.subplot(1, 1, 1, projection='polar')
-                sc3 = ax3.scatter(va_rad, vm, c=vm, norm=color_norm)
-                fig.suptitle(result_type.value)
-                plt.tight_layout()
-                plt.show(block=False)
 
             return ResultsTable(data=data,
                                 index=self.bus_names,
@@ -886,6 +874,7 @@ class PowerFlowResults3Ph(ResultsTemplate):
                                 cols_device_type=DeviceType.NoDevice,
                                 title=result_type.value,
                                 ylabel='(p.u., deg)',
+                                plot_type=ResultTablePlotType.POLAR,
                                 units='(p.u., deg)')
 
         elif result_type == ResultTypes.BusActivePowerA:

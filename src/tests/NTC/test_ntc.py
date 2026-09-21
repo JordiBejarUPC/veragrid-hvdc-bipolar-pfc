@@ -1095,6 +1095,32 @@ def test_ntc_corrective_n1():
     assert res_corr.inter_area_flows >= res_prev.inter_area_flows - 1.0
 
 
+def test_ntc_corrective_n1_report_matches_corrected_state():
+    """
+    Corrective N-1 on the '8 bus 2 modes' grid. The worst contingency report must show the
+    corrected (post action) N-1 loadings, i.e. the same preventive + corrective converter
+    redispatch flows the LP enforced the limits on.
+
+    The parallel DC cables were reported at ~200% N-1 loading (the
+    preventive doubling after the loss of the twin cable) while the total slack was 0 MW,
+    because the report ignored the solved corrective setpoint changes. After the fix the
+    reported survivor flow is 1000 MW (100%), matching the enforced corrected state.
+    """
+    res = _run_ntc_8_bus_2_modes(corrective=True)
+
+    assert res.converged
+    assert np.isclose(res.inter_area_flows, 5000.0, atol=1.0)
+    assert np.isclose(res.get_total_slack_mw(), 0.0, atol=0.1)
+
+    dc_idx = [i for i, name in enumerate(res.branch_names) if 'Dc line' in name]
+    assert len(dc_idx) == 4
+
+    for i in dc_idx:
+        # each cable runs at its 1000 MW rating in N and N-1
+        assert np.isclose(res.worst_contingency_flow[i], 1000.0, atol=1.0)
+        assert res.worst_contingency_loading[i] <= 1.0 + 1e-3
+
+
 def _run_ntc_8_bus_preventive_with_deactivated_groups(deactivated_group_names: set):
     """
     Run the preventive NTC on the '8 bus 2 modes' grid after deactivating the named contingency groups.

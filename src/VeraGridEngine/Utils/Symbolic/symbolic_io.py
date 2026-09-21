@@ -1047,6 +1047,7 @@ class BlockSaver:
 
             "event_dict": events_list,
             "name": blk.name,
+            "model_family_name": blk.model_family_name,
             "children": [child.uid for child in blk.children],
             "in_vars": in_vars,
             "out_vars": out_vars,
@@ -1399,6 +1400,15 @@ class BlockParser:
         active_ancestor_uids: set[int] = set(ancestor_uids)
         active_ancestor_uids.add(main_block_uid)
         block_name: str = data.get("name", "")
+        # Model-family labels were introduced after the existing symbolic file
+        # format. Missing and explicit null values therefore mean that no
+        # custom family was assigned; neither state may prevent an old project
+        # from opening.
+        raw_model_family_name: object = data.get("model_family_name", "")
+        if isinstance(raw_model_family_name, str):
+            model_family_name: str = raw_model_family_name
+        else:
+            model_family_name = ""
         normalized_block_uid: int | None = normalize_persisted_block_uid(data.get("uid", main_block_uid))
         if normalized_block_uid is not None:
             block_uid_value: int = normalized_block_uid
@@ -1749,7 +1759,8 @@ class BlockParser:
             api_obj_mapping=api_obj_mapping,
             reformulated_vars=reformulated_vars,
             name=block_name,
-            uid=block_uid_value
+            uid=block_uid_value,
+            model_family_name=model_family_name,
         )
 
         dynamic_model_contract_raw: object | None = data.get(
@@ -2483,6 +2494,7 @@ def _duplicate_block(block: Block,
         external_mapping=new_external_mapping,
         api_obj_mapping=new_api_obj_mapping,
         name=block.name,
+        model_family_name=block.model_family_name,
     )
 
     # Intent targets use stable block and variable identities. Rebuild both

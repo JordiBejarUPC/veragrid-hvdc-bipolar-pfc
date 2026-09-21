@@ -20,7 +20,7 @@ from PySide6.QtWidgets import (QApplication, QDialog, QDoubleSpinBox, QFrame,
     QSizePolicy, QSpacerItem, QSplitter, QTableView,
     QTimeEdit, QToolBox, QVBoxLayout, QWidget)
 
-from VeraGrid.Gui.Widgets.matplotlibwidget import MatplotlibWidget
+from VeraGrid.Gui.Widgets.qt_chart_widget import GraphsWidget
 from VeraGrid.Gui.Icons.icons_rc import *
 
 class Ui_Dialog(object):
@@ -253,7 +253,7 @@ class Ui_Dialog(object):
         self.PlotFrame.setFrameShadow(QFrame.Raised)
         self.horizontalLayout = QHBoxLayout(self.PlotFrame)
         self.horizontalLayout.setObjectName(u"horizontalLayout")
-        self.plotwidget = MatplotlibWidget(self.PlotFrame)
+        self.plotwidget = GraphsWidget(self.PlotFrame)
         self.plotwidget.setObjectName(u"plotwidget")
 
         self.horizontalLayout.addWidget(self.plotwidget)
@@ -286,4 +286,3 @@ class Ui_Dialog(object):
         self.draw_by_points_pushButton.setText("")
         self.toolBox.setItemText(self.toolBox.indexOf(self.page), QCoreApplication.translate("Dialog", u"Definition by data points", None))
     # retranslateUi
-

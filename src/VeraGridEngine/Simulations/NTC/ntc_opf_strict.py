@@ -10,7 +10,7 @@ That means that solves the OPF problem for a complete time series at once
 from __future__ import annotations
 import os
 import numpy as np
-from typing import List, Union, Tuple, Callable
+from typing import List, Union, Tuple, Callable, Dict
 
 from VeraGridEngine.enumerations import MIPSolvers, MIPFramework, ZonalGrouping
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
@@ -36,6 +36,7 @@ from VeraGridEngine.Simulations.NTC.ntc_opf import (add_corrective_contingency_f
                                                     get_contingency_monitorable_branches,
                                                     compute_vsc_pmode3_saturation_rates,
                                                     fill_worst_contingency_per_branch,
+                                                    evaluate_corrective_flow_addons,
                                                     has_pmode3_control,
                                                     pmode3_formulation)
 from VeraGridEngine.IO.file_system import opf_file_path
@@ -1060,7 +1061,9 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
                                                   alpha_n1_abs: Mat,
                                                   corrective_contingencies: bool = False,
                                                   vsc_active: BoolVec | None = None,
-                                                  hvdc_active: BoolVec | None = None):
+                                                  hvdc_active: BoolVec | None = None,
+                                                  vsc_delta_store: Union[Dict[int, Dict[int, LpVar]], None] = None,
+                                                  hvdc_delta_store: Union[Dict[int, Dict[int, LpVar]], None] = None):
     """
     Formulate the branches
     :param t_idx: time index
@@ -1078,6 +1081,8 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
     :param ntc_load_rule:
     :param alpha_threshold:
     :param alpha_n1_abs:
+    :param vsc_delta_store: per group index, the persistent VSC Δ variable dictionary
+    :param hvdc_delta_store: per group index, the persistent HVDC Δ variable dictionary
     :return objective function
     """
     f_obj = 0.0
@@ -1118,13 +1123,21 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
         if corrective_contingencies:
             # corrective N-1: the converters may change their set-points after the outage (shared helper)
             # note: "f_obj = f_obj + ..." copies the whole objective per contingency, making it slower
+            if vsc_delta_store is None:
+                vsc_deltas_c: Union[Dict[int, LpVar], None] = None
+                hvdc_deltas_c: Union[Dict[int, LpVar], None] = None
+            else:
+                vsc_deltas_c = vsc_delta_store.setdefault(int(c), dict())
+                hvdc_deltas_c = hvdc_delta_store.setdefault(int(c), dict())
+
             f_obj += add_corrective_contingency_formulation(
                 t_idx=t_idx, c=c, Sbase=Sbase, contingency=contingency,
                 contingency_flows=contingency_flows, changed_idx=changed_idx,
                 branch_data_t=branch_data_t, branch_vars=branch_vars,
                 vsc_vars=vsc_vars, hvdc_vars=hvdc_vars, con_loading=con_loading_zeros,
                 prob=prob, logger=Logger(), corrective_rows=corrective_rows,
-                vsc_active=vsc_active, hvdc_active=hvdc_active)
+                vsc_active=vsc_active, hvdc_active=hvdc_active,
+                vsc_delta_vars=vsc_deltas_c, hvdc_delta_vars=hvdc_deltas_c)
         else:
             # preventive N-1: the converters stay at their base-case set-point (hard limits, no slack)
             f_obj += add_preventive_contingency_formulation_strict(
@@ -1654,6 +1667,8 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
 
     controlled_states = None
     report_mctg: Union[LinearMultiContingencies, None] = None
+    vsc_delta_store: Dict[int, Dict[int, LpVar]] = dict()
+    hvdc_delta_store: Dict[int, Dict[int, LpVar]] = dict()
 
     if zonal_grouping == ZonalGrouping.NoGrouping:
 
@@ -1765,7 +1780,9 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
                         alpha_n1_abs=np.abs(alpha_n1),  # as per RE requirement
                         corrective_contingencies=corrective_contingencies,
                         vsc_active=nc.vsc_data.active,
-                        hvdc_active=nc.hvdc_data.active
+                        hvdc_active=nc.hvdc_data.active,
+                        vsc_delta_store=vsc_delta_store,
+                        hvdc_delta_store=hvdc_delta_store
                     )
             else:
                 print("Contingencies enabled, but no contingency groups provided")
@@ -1818,6 +1835,27 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
         reporting_contingencies = None
         solved_flows = None
 
+    # The worst-contingency report must reflect the same corrected N-1 state the limits
+    # were enforced
+    corrective_addons_mw: Union[Dict[int, Vec], None] = None
+    if status == lp_model.OPTIMAL and report_mctg is not None and controlled_states is None:
+        final_addons_pu: Dict[int, Vec] = evaluate_corrective_flow_addons(
+            multi_contingencies=report_mctg.multi_contingencies,
+            group_indices=list(range(len(report_mctg.multi_contingencies))),
+            vsc_delta_store=vsc_delta_store,
+            hvdc_delta_store=hvdc_delta_store,
+            n_vsc=nc.vsc_data.nelm,
+            n_hvdc=nc.hvdc_data.nelm,
+            n_branch=nc.passive_branch_data.nelm,
+            model=lp_model,
+        )
+        if len(final_addons_pu) > 0:
+            corrective_addons_mw = {c: addon * grid.Sbase for c, addon in final_addons_pu.items()}
+        else:
+            pass  # preventive run or no corrective move, so we report the preventive flows
+    else:
+        pass  # failed solve, compact states, or no contingencies, so report the preventive flows
+
     # one numeric N-1 pass on the final operating point
     fill_worst_contingency_per_branch(
         grid=grid,
@@ -1833,6 +1871,7 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
         worst_loading=vars_v.branch_vars.worst_contingency_loading[t_idx, :],
         alpha_n1_worst=vars_v.branch_vars.alpha_n1_worst[t_idx, :],
         solved_flows=solved_flows,
+        corrective_addons_mw=corrective_addons_mw,
     )
 
     # fill the power shift

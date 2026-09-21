@@ -153,6 +153,9 @@
    <addaction name="separator"/>
    <addaction name="actionRMS_Plots"/>
    <addaction name="actionEMT_Plots"/>
+   <addaction name="separator"/>
+   <addaction name="actionRMS_Compare"/>
+   <addaction name="actionEMT_Compare"/>
   </widget>
   <action name="actionview_tree">
    <property name="icon">
@@ -242,6 +245,24 @@
    </property>
    <property name="text"><string>EMT Plots</string></property>
    <property name="toolTip"><string>Open the EMT plots editor</string></property>
+   <property name="menuRole"><enum>QAction::MenuRole::NoRole</enum></property>
+  </action>
+  <action name="actionRMS_Compare">
+   <property name="icon">
+    <iconset resource="../../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/rms_compare.png</normaloff>:/Icons/icons/rms_compare.png</iconset>
+   </property>
+   <property name="text"><string>RMS Compare</string></property>
+   <property name="toolTip"><string>Compare saved RMS models and parameters</string></property>
+   <property name="menuRole"><enum>QAction::MenuRole::NoRole</enum></property>
+  </action>
+  <action name="actionEMT_Compare">
+   <property name="icon">
+    <iconset resource="../../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/emt_compare.png</normaloff>:/Icons/icons/emt_compare.png</iconset>
+   </property>
+   <property name="text"><string>EMT Compare</string></property>
+   <property name="toolTip"><string>Compare saved EMT models and parameters</string></property>
    <property name="menuRole"><enum>QAction::MenuRole::NoRole</enum></property>
   </action>
  </widget>

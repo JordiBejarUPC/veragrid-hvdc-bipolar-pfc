@@ -223,20 +223,31 @@ def correct_bus_types(gen_idx: IntVec,
                       control_mode_int: IntVec,
                       gen_controllable_bus_idx: IntVec,
                       bus_types: IntVec,
-                      v_ctrl_val: int):
+                      v_ctrl_val: int) -> None:
     """
-    Function to Correct bus types because of generators moving around due to the topology processing
+    Correct remote voltage-controlled bus types after topology processing.
+
     :param gen_idx:
     :param control_mode_int:
     :param gen_controllable_bus_idx:
     :param bus_types:
     :param v_ctrl_val: value for GeneratorControlMode.V
-    :return:
+    :return: None.
     """
-    for i, k in enumerate(gen_idx):
+    for i in range(len(gen_idx)):
+        # A negative index means that the device controls its local bus, whose
+        # type was already assigned during compilation and must not be remapped.
+        controlled_bus_idx: int = gen_controllable_bus_idx[i]
         if control_mode_int[i] == v_ctrl_val:
-            if bus_types[gen_controllable_bus_idx[i]] != 2:
-                bus_types[gen_controllable_bus_idx[i]] = 2
+            if controlled_bus_idx >= 0:
+                if bus_types[controlled_bus_idx] != 2:
+                    bus_types[controlled_bus_idx] = 2
+                else:
+                    pass
+            else:
+                pass
+        else:
+            pass
 
 
 def select_ac_phase_reference_buses(

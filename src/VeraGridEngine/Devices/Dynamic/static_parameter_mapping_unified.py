@@ -3332,7 +3332,7 @@ def assign_transformer2w_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowReferenceType.transformer_tap_ratio,
+        key=ParamPowerFlowReferenceType.tap_phase,
         value=float(transformer.tap_phase),
         logger=logger,
         device_name=transformer.name,

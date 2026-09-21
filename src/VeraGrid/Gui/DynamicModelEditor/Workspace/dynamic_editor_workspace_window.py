@@ -11,6 +11,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_page import DynamicEventsPage
 from VeraGrid.Gui.DynamicModelEditor.Plots.dynamic_plots_page import DynamicPlotsPage
+from VeraGrid.Gui.DynamicModelEditor.ModelComparison.dynamic_model_comparison_page import DynamicModelComparisonPage
 from VeraGrid.Gui.DynamicModelEditor.Workspace.detachable_editor_tabs_widget import DetachableEditorTabWidget
 from VeraGrid.Gui.DynamicModelEditor.Editor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGrid.Gui.DynamicModelEditor.Workspace.Tabs.dynamic_editor_tab import DynamicEditorTab
@@ -99,10 +100,14 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         self.ui.actionEMT_Events.triggered.connect(self.open_emt_events_entry)
         self.ui.actionRMS_Plots.triggered.connect(self.open_rms_plots_editor)
         self.ui.actionEMT_Plots.triggered.connect(self.open_emt_plots_editor)
+        self.ui.actionRMS_Compare.triggered.connect(self.open_rms_comparison_editor)
+        self.ui.actionEMT_Compare.triggered.connect(self.open_emt_comparison_editor)
         self.ui.actionRMS_Events.setEnabled(False)
         self.ui.actionEMT_Events.setEnabled(False)
         self.ui.actionRMS_Plots.setEnabled(False)
         self.ui.actionEMT_Plots.setEnabled(False)
+        self.ui.actionRMS_Compare.setEnabled(False)
+        self.ui.actionEMT_Compare.setEnabled(False)
 
         self.device_tree_widget.entryPageRequested.connect(self._open_device_tree_entry)
 
@@ -160,7 +165,7 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
 
     def workspace_for_page(
             self,
-            page: DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage | DynamicPlotsPage,
+            page: DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage | DynamicPlotsPage | DynamicModelComparisonPage,
     ) -> "DynamicEditorWorkspaceWindow | None":
         """
         Return the workspace in this session that owns one page.
@@ -172,7 +177,7 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
 
     def note_page_activated(
             self,
-            page: DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage | DynamicPlotsPage,
+            page: DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage | DynamicPlotsPage | DynamicModelComparisonPage,
     ) -> None:
         """
         Forward page-activation bookkeeping to the shared session.
@@ -285,6 +290,31 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
             target_workspace=target,
         )
 
+    def open_dynamic_comparison_for(
+            self,
+            circuit: MultiCircuit,
+            mode: DynamicSimulationMode,
+            target_workspace: "DynamicEditorWorkspaceWindow | None" = None,
+    ) -> DynamicModelComparisonPage:
+        """Open the circuit-wide RMS or EMT saved-model comparator.
+
+        :param circuit: Circuit whose complete saved models are compared.
+        :param mode: RMS or EMT comparison family.
+        :param target_workspace: Preferred destination workspace.
+        :return: Open global comparison page.
+        """
+        target: DynamicEditorWorkspaceWindow = target_workspace if target_workspace is not None else self
+        if not target.is_available_for_pages():
+            raise RuntimeError("Cannot open dynamic model comparison in a closing workspace")
+        else:
+            pass
+        target._set_workspace_circuit(circuit=circuit)
+        return self.session.open_comparison_page(
+            circuit=circuit,
+            mode=mode,
+            target_workspace=target,
+        )
+
     def show_hide_tree(self) -> None:
         """
         Toggle visibility of the device tree panel.
@@ -338,6 +368,8 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         self.ui.actionEMT_Events.setEnabled(True)
         self.ui.actionRMS_Plots.setEnabled(True)
         self.ui.actionEMT_Plots.setEnabled(True)
+        self.ui.actionRMS_Compare.setEnabled(True)
+        self.ui.actionEMT_Compare.setEnabled(True)
 
     def _rebuild_tree(self) -> None:
         """
@@ -405,7 +437,7 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         tree_index: QtCore.QModelIndex = self.ui.treeView.currentIndex()
         entry: DynamicEditorEntry | None = self._entry_from_tree_index(tree_index)
         if entry is None:
-            page: DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage | DynamicPlotsPage | None = self.current_page()
+            page: DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage | DynamicPlotsPage | DynamicModelComparisonPage | None = self.current_page()
             if page is not None:
                 entry = page.get_dynamic_editor_entry()
             else:
@@ -526,6 +558,38 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         else:
             pass
 
+    def open_rms_comparison_editor(self, _checked: bool = False) -> None:
+        """Open the global RMS saved-model comparator.
+
+        :param _checked: QAction checked state supplied by Qt.
+        :return: None.
+        """
+        del _checked
+        if self._current_circuit is not None:
+            self.open_dynamic_comparison_for(
+                circuit=self._current_circuit,
+                mode=DynamicSimulationMode.RMS,
+                target_workspace=self,
+            )
+        else:
+            pass
+
+    def open_emt_comparison_editor(self, _checked: bool = False) -> None:
+        """Open the global EMT saved-model comparator.
+
+        :param _checked: QAction checked state supplied by Qt.
+        :return: None.
+        """
+        del _checked
+        if self._current_circuit is not None:
+            self.open_dynamic_comparison_for(
+                circuit=self._current_circuit,
+                mode=DynamicSimulationMode.EMT,
+                target_workspace=self,
+            )
+        else:
+            pass
+
     def _on_tree_double_clicked(self, index: QtCore.QModelIndex) -> None:
         """
         Open the double-clicked tree entry in RMS mode.
@@ -625,7 +689,7 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
 
     def add_editor_page(
             self,
-            page: DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage | DynamicPlotsPage,
+            page: DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage | DynamicPlotsPage | DynamicModelComparisonPage,
             tab_title: str,
             activate: bool = True,
             insert_index: int = -1,
@@ -658,7 +722,7 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
 
     def index_of_page(
             self,
-            page: DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage | DynamicPlotsPage,
+            page: DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage | DynamicPlotsPage | DynamicModelComparisonPage,
     ) -> int:
         """
         Return the tab index for one page, or ``-1`` when absent.
@@ -671,7 +735,7 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
     def page_at(
             self,
             index: int,
-    ) -> DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage | DynamicPlotsPage | None:
+    ) -> DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage | DynamicPlotsPage | DynamicModelComparisonPage | None:
         """
         Return the page at one tab index.
 
@@ -683,24 +747,24 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         else:
             pass
         page = self.editor_tabs.widget(index)
-        if isinstance(page, (DynamicBlockEditorGUI, DynamicEditorTab, DynamicEventsPage, DynamicPlotsPage)):
+        if isinstance(page, (DynamicBlockEditorGUI, DynamicEditorTab, DynamicEventsPage, DynamicPlotsPage, DynamicModelComparisonPage)):
             return page
         else:
             return None
 
-    def pages_iter(self) -> Iterator[DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage | DynamicPlotsPage]:
+    def pages_iter(self) -> Iterator[DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage | DynamicPlotsPage | DynamicModelComparisonPage]:
         """Yield every valid editor page in tab order.
 
         :return: Iterator over the hosted dynamic editor pages.
         """
         for index in range(self.editor_tabs.count()):
             page = self.editor_tabs.widget(index)
-            if isinstance(page, (DynamicBlockEditorGUI, DynamicEditorTab, DynamicEventsPage, DynamicPlotsPage)):
+            if isinstance(page, (DynamicBlockEditorGUI, DynamicEditorTab, DynamicEventsPage, DynamicPlotsPage, DynamicModelComparisonPage)):
                 yield page
             else:
                 pass
 
-    def current_page(self) -> DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage | DynamicPlotsPage | None:
+    def current_page(self) -> DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage | DynamicPlotsPage | DynamicModelComparisonPage | None:
         """
         Return the currently selected tab page.
 
@@ -710,7 +774,7 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
 
     def remove_page(
             self,
-            page: DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage | DynamicPlotsPage,
+            page: DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage | DynamicPlotsPage | DynamicModelComparisonPage,
     ) -> None:
         """
         Remove one page from the tab widget.
@@ -727,7 +791,7 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
 
     def set_page_tab_title(
             self,
-            page: DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage | DynamicPlotsPage,
+            page: DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage | DynamicPlotsPage | DynamicModelComparisonPage,
             title: str,
     ) -> None:
         """
@@ -757,7 +821,7 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         else:
             pass
 
-        pages_to_close: list[DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage | DynamicPlotsPage] = list((page,))
+        pages_to_close: list[DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage | DynamicPlotsPage | DynamicModelComparisonPage] = list((page,))
         if not self.session.can_close_pages(pages=pages_to_close, parent=self):
             return
         else:
@@ -787,8 +851,8 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         """
         # Iterate over a stable snapshot because removing each tab changes the
         # live tab order and unregisters the page from the shared session.
-        pages_to_dispose: list[DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage | DynamicPlotsPage] = list(self.pages_iter())
-        page_to_dispose: DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage | DynamicPlotsPage
+        pages_to_dispose: list[DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage | DynamicPlotsPage | DynamicModelComparisonPage] = list(self.pages_iter())
+        page_to_dispose: DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage | DynamicPlotsPage | DynamicModelComparisonPage
         for page_to_dispose in pages_to_dispose:
             page_to_dispose.prepare_to_delete()
             self.session.unregister_page(page_to_dispose)
@@ -856,6 +920,22 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
             self.ui.actionEMT_Events.triggered.disconnect(self.open_emt_events_entry)
         except (RuntimeError, TypeError):
             pass
+        try:
+            self.ui.actionRMS_Plots.triggered.disconnect(self.open_rms_plots_editor)
+        except (RuntimeError, TypeError):
+            pass
+        try:
+            self.ui.actionEMT_Plots.triggered.disconnect(self.open_emt_plots_editor)
+        except (RuntimeError, TypeError):
+            pass
+        try:
+            self.ui.actionRMS_Compare.triggered.disconnect(self.open_rms_comparison_editor)
+        except (RuntimeError, TypeError):
+            pass
+        try:
+            self.ui.actionEMT_Compare.triggered.disconnect(self.open_emt_comparison_editor)
+        except (RuntimeError, TypeError):
+            pass
 
         # Pages own the high-risk editor scene/model subtrees. Dispose them
         # before deleting the tab host that presents their Qt widgets.
@@ -898,7 +978,7 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         if self._prepared_to_delete:
             pass
         else:
-            pages_to_close: list[DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage | DynamicPlotsPage] = list(self.pages_iter())
+            pages_to_close: list[DynamicBlockEditorGUI | DynamicEditorTab | DynamicEventsPage | DynamicPlotsPage | DynamicModelComparisonPage] = list(self.pages_iter())
             if not self.session.can_close_pages(pages=pages_to_close, parent=self):
                 event.ignore()
                 return
