@@ -13,7 +13,6 @@ import sys
 from typing import Tuple, TYPE_CHECKING
 from scipy.sparse import csc_matrix
 from scipy.sparse import linalg as spla
-import matplotlib.pyplot as plt
 
 from VeraGridEngine.Devices.Parents.editable_device import GCProp
 from VeraGridEngine.Simulations.options_template import OptionsTemplate
@@ -1137,94 +1136,6 @@ class  PseudoTransient:
         else:
             return f_algeb
 
-    def _plot_diagnostics(self,
-                          dtau_hist: list[float],
-                          dx_error_hist: list[float],
-                          residual_hist: list[float],
-                          x_hist: list[np.ndarray],
-                          state_eq_hist: list[np.ndarray]) -> None:
-        fig, axs = plt.subplots(3, 1, figsize=(8, 10), sharex=True)
-
-        if len(dx_error_hist) > 0:
-            axs[0].semilogy(dx_error_hist, label="||dx||")
-        axs[0].set_ylabel("dx error (log)")
-        axs[0].legend()
-
-        if len(residual_hist) > 0:
-            axs[1].semilogy(residual_hist, label="Residual norm")
-        axs[1].set_ylabel("Residual (log)")
-        axs[1].legend()
-
-        if len(dtau_hist) > 0:
-            axs[2].semilogy(dtau_hist, label="dtau")
-        axs[2].set_ylabel("dtau")
-        axs[2].set_xlabel("Step index")
-        axs[2].legend()
-
-        x_hist_arr = np.array(x_hist)
-        if x_hist_arr.size == 0 or x_hist_arr.ndim < 2:
-            return
-
-        state_vars = self._problem_state_vars()
-        n_state_vars = len(state_vars)
-        algeb_vars = self._problem_algebraic_vars()
-        n_algeb_vars = len(algeb_vars)
-        vars_per_plot = 5
-
-        if n_state_vars > 0:
-            nplots_state = (n_state_vars + vars_per_plot - 1) // vars_per_plot
-            fig_state, axs_state = plt.subplots(nplots_state, 1, figsize=(10, 2.5 * nplots_state), sharex=True)
-            if nplots_state == 1:
-                axs_state = [axs_state]
-            for i in range(nplots_state):
-                start = i * vars_per_plot
-                end = min((i + 1) * vars_per_plot, n_state_vars)
-                for var in state_vars[start:end]:
-                    axs_state[i].plot(x_hist_arr[:, self.problem.uid2idx_vars[var.uid]], label=var.name)
-                axs_state[i].set_ylabel("Value")
-                axs_state[i].legend(loc="best", fontsize="x-small", ncol=2, frameon=False)
-            axs_state[-1].set_xlabel("Step index")
-
-        if n_algeb_vars > 0:
-            nplots_algeb = (n_algeb_vars + vars_per_plot - 1) // vars_per_plot
-            fig_algeb, axs_algeb = plt.subplots(nplots_algeb, 1, figsize=(10, 2.5 * nplots_algeb), sharex=True)
-            if nplots_algeb == 1:
-                axs_algeb = [axs_algeb]
-            for i in range(nplots_algeb):
-                start = i * vars_per_plot
-                end = min((i + 1) * vars_per_plot, n_algeb_vars)
-                for var in algeb_vars[start:end]:
-                    axs_algeb[i].plot(x_hist_arr[:, self.problem.uid2idx_vars[var.uid]], label=var.name)
-                axs_algeb[i].set_ylabel("Value")
-                axs_algeb[i].legend(loc="best", fontsize="x-small", ncol=2, frameon=False)
-            axs_algeb[-1].set_xlabel("Step index")
-
-        state_eq_hist_arr = np.array(state_eq_hist)
-        n_state_eqs = int(self.problem.get_states_number())
-        if n_state_eqs > 0 and state_eq_hist_arr.size > 0 and state_eq_hist_arr.ndim == 2:
-            nplots_state_eq = (n_state_eqs + vars_per_plot - 1) // vars_per_plot
-            fig_state_eq, axs_state_eq = plt.subplots(nplots_state_eq, 1, figsize=(10, 2.5 * nplots_state_eq), sharex=True)
-            if nplots_state_eq == 1:
-                axs_state_eq = [axs_state_eq]
-
-            state_vars = self._problem_state_vars()
-            labels = list()
-            for i in range(n_state_eqs):
-                if i < len(state_vars):
-                    labels.append(f"state_update({state_vars[i].name})")
-                else:
-                    labels.append(f"state_update[{i}]")
-
-            for i in range(nplots_state_eq):
-                start = i * vars_per_plot
-                end = min((i + 1) * vars_per_plot, n_state_eqs)
-                for j in range(start, end):
-                    axs_state_eq[i].plot(state_eq_hist_arr[:, j], label=labels[j])
-                axs_state_eq[i].axhline(0.0, color="k", linewidth=0.8, alpha=0.4)
-                axs_state_eq[i].set_ylabel("Eq value")
-                axs_state_eq[i].legend(loc="best", fontsize="x-small", ncol=2, frameon=False)
-            axs_state_eq[-1].set_xlabel("Step index")
-        plt.show(block=False)
 
     def _report_failure_svd_diagnostics(self, x: Vec, xn: Vec, dx: Vec, dtau: float, context: str) -> None:
         if not self.verbose:
@@ -1600,8 +1511,6 @@ class  PseudoTransient:
                 dtau=dtau,
                 context=f"failed run exception at step={step_idx} try={tries}",
             )
-            if plot:
-                self._plot_diagnostics(dtau_hist, dx_error_hist, residual_hist, x_hist, state_eq_hist)
             raise
         finally:
             self._fixed_var_indices = original_fixed_indices
@@ -1628,7 +1537,5 @@ class  PseudoTransient:
             if 0 <= idx < x_new.size:
                 init_guess[var] = x_new[idx]
 
-        if plot:
-            self._plot_diagnostics(dtau_hist, dx_error_hist, residual_hist, x_hist, state_eq_hist)
 
         return x_new, init_guess

@@ -144,20 +144,6 @@ class CDF:
         n = len(self.arr)
         return np.sum(self.arr) * (1 / n)
 
-    def plot(self, plt, LINEWIDTH: int, ax=None):
-        """
-        Plots the CFD
-        :param plt: MatPlotLib plt module
-        :param LINEWIDTH: line width in pixels
-        :param ax: MatPlotLib axis to plot into
-        :return:
-        """
-        if ax is None:
-            fig = plt.figure()
-            ax = fig.add_subplot(111)
-        ax.plot(self.prob, self.arr, linewidth=LINEWIDTH)
-        ax.set_xlabel('$p(x)$')
-        ax.set_ylabel('$x$')
 
 
 def classify_by_hour(t: pd.DatetimeIndex) -> List[List[int]]:

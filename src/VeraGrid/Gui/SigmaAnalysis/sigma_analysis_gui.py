@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFrame,
     QSlider, QSpacerItem, QSplitter, QStatusBar,
     QTabWidget, QTableView, QVBoxLayout, QWidget)
 
-from VeraGrid.Gui.Widgets.matplotlibwidget import MatplotlibWidget
+from VeraGrid.Gui.Widgets.qt_chart_widget import GraphsWidget
 from VeraGrid.Gui.Icons.icons_rc import *
 
 class Ui_MainWindow(object):
@@ -137,7 +137,7 @@ class Ui_MainWindow(object):
         self.tab.setObjectName(u"tab")
         self.verticalLayout_2 = QVBoxLayout(self.tab)
         self.verticalLayout_2.setObjectName(u"verticalLayout_2")
-        self.plotwidget = MatplotlibWidget(self.tab)
+        self.plotwidget = GraphsWidget(self.tab)
         self.plotwidget.setObjectName(u"plotwidget")
 
         self.verticalLayout_2.addWidget(self.plotwidget)
@@ -205,4 +205,3 @@ class Ui_MainWindow(object):
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2), QCoreApplication.translate("MainWindow", u"Data", None))
         self.menuActions.setTitle(QCoreApplication.translate("MainWindow", u"Actions", None))
     # retranslateUi
-

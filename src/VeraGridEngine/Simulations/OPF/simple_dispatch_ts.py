@@ -737,19 +737,5 @@ def run_greedy_dispatch_ts(grid: MultiCircuit,
             inpts)
 
 
-if __name__ == '__main__':
-    import VeraGridEngine.api as gce
-    from matplotlib import pyplot as plt
-
-    fname = "/home/santi/Documentos/Git/eRoots/tonga_planning/model_conversion_and_validation/Tongatapu/models/Tongatapu_v4_2024_ts.veragrid"
-
-    grid_ = gce.open_file(fname)
-
-    (load_profile_,
-     gen_dispatch_,
-     batt_dispatch_,
-     batt_energy_,
-     load_shedding_,
-     greedy_inpts_) = run_greedy_dispatch_ts(grid=grid_, time_indices=None, logger=Logger())
 
     # print()

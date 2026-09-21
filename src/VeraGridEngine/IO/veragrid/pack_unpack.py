@@ -90,6 +90,7 @@ def get_objects_dictionary() -> Dict[str, ALL_DEV_TYPES]:
 
         'wires': devices.Wire(),
         'overhead_line_types': devices.OverheadLineType(),
+        'underground_cable_constructions': devices.UndergroundCableType(),
         'underground_cable_types': devices.UndergroundLineType(),
         'sequence_line_types': devices.SequenceLineType(),
         'dc_cable_types': devices.DcCableType(),
@@ -701,6 +702,9 @@ def veragrid_object_to_json(elm: ALL_DEV_TYPES,
             data[name] = obj.to_list()
 
         elif prop.tpe == SubObjectType.ListOfWires:
+            data[name] = obj.to_list()
+
+        elif prop.tpe == SubObjectType.ListOfCables:
             data[name] = obj.to_list()
 
         elif prop.tpe == SubObjectType.TapChanger:
@@ -1493,6 +1497,15 @@ def parse_object_type_from_json(template_elm: ALL_DEV_TYPES,
                                     list_of_wires: devices.ListOfWires = elm.get_snapshot_value(prop=gc_prop)
                                     list_of_wires.parse(data=property_value,
                                                         wire_dict=elements_dict_by_type[DeviceType.WireDevice])
+
+                                elif gc_prop.tpe == SubObjectType.ListOfCables:
+
+                                    # Fill cable systems after their physical cable catalogue is available.
+                                    list_of_cables: devices.ListOfCables = elm.get_snapshot_value(prop=gc_prop)
+                                    list_of_cables.parse(
+                                        data=property_value,
+                                        cable_dict=elements_dict_by_type[DeviceType.UndergroundCableTypeDevice],
+                                    )
 
 
                                 elif gc_prop.tpe == SubObjectType.ImpedanceTripletList:

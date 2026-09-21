@@ -1188,16 +1188,6 @@ class Ui_mainWindow(object):
 
         self.verticalLayout_4.addWidget(self.fps_spinBox)
 
-        self.label_40 = QLabel(self.frame_51)
-        self.label_40.setObjectName(u"label_40")
-
-        self.verticalLayout_4.addWidget(self.label_40)
-
-        self.plt_style_comboBox = QComboBox(self.frame_51)
-        self.plt_style_comboBox.setObjectName(u"plt_style_comboBox")
-
-        self.verticalLayout_4.addWidget(self.plt_style_comboBox)
-
         self.verticalSpacer_14 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
         self.verticalLayout_4.addItem(self.verticalSpacer_14)
@@ -6167,10 +6157,6 @@ class Ui_mainWindow(object):
         self.fps_spinBox.setToolTip(QCoreApplication.translate("mainWindow", u"Video frames per second", None))
 #endif // QT_CONFIG(tooltip)
         self.fps_spinBox.setSuffix(QCoreApplication.translate("mainWindow", u" FPS", None))
-        self.label_40.setText(QCoreApplication.translate("mainWindow", u"Plotting style", None))
-#if QT_CONFIG(tooltip)
-        self.plt_style_comboBox.setToolTip(QCoreApplication.translate("mainWindow", u"MatPlotlib plot styles to choose from", None))
-#endif // QT_CONFIG(tooltip)
         self.toolBox.setItemText(self.toolBox.indexOf(self.page_4), QCoreApplication.translate("mainWindow", u"General settings", None))
 #if QT_CONFIG(tooltip)
         self.available_results_to_color_comboBox.setToolTip(QCoreApplication.translate("mainWindow", u"Available results", None))
@@ -7161,4 +7147,3 @@ class Ui_mainWindow(object):
         self.menuEvents.setTitle(QCoreApplication.translate("mainWindow", u"Events", None))
         self.toolBar.setWindowTitle(QCoreApplication.translate("mainWindow", u"toolBar", None))
     # retranslateUi
-

@@ -9,14 +9,12 @@ from datetime import datetime, timedelta
 import pandas as pd
 import requests
 import pvlib
-from matplotlib.axes import Axes
-from matplotlib import pyplot as plt
 from PySide6 import QtCore, QtGui, QtWidgets
 from VeraGrid.Gui.dialog_lifecycle import delete_dialogs_safely
 from VeraGrid.Gui.messages import error_msg
 from VeraGrid.Gui.DeviceEditors.GeneratorEditor.SolarPowerWizard.solar_power_wizard_gui import Ui_MainWindow
-from VeraGrid.Gui.matplotlib_dialog import show_matplotlib_figure
 from VeraGrid.Gui.pandas_model import PandasModel
+from VeraGrid.Gui.PlotDialogue.plot_dialogue import PlotDialogue
 
 
 def get_weather_column(data: pd.DataFrame, candidates: List[str]) -> Union[np.ndarray, None]:
@@ -363,13 +361,30 @@ class SolarPvWizard(QtWidgets.QDialog):
             self.ui.resultsTableView.setModel(None)
 
     def plot(self) -> None:
+        """Show the generated photovoltaic profile in a retained native chart.
 
-        df: pd.DataFrame = pd.DataFrame(data=self.P, index=self.time_array, columns=['P (MW)'])
-        axis: Axes = df.plot()
-        show_matplotlib_figure(figure=axis.figure,
-                               parent=self,
-                               open_dialogs=self._open_plot_dialogs,
-                               title=self.tr("Solar power profile"))
+        :return: None.
+        """
+        delete_dialogs_safely(dialogs=self._open_plot_dialogs)
+        plot_dialogue: PlotDialogue = PlotDialogue(
+            title=self.tr('Solar power profile'),
+            parent=self,
+        )
+        accepted: bool = plot_dialogue.set_time_series(
+            time_values=np.asarray(self.time_array),
+            series_names=(self.tr('P (MW)'),),
+            series_values=(np.asarray(self.P, dtype=float),),
+            colors=('#f59e0b',),
+            title=self.tr('Solar power profile'),
+            y_axis_title=self.tr('Power (MW)'),
+        )
+        if accepted:
+            # Keep a Python owner until the wizard shuts down, avoiding an
+            # orphaned PySide wrapper while the modeless child is visible.
+            self._open_plot_dialogs.append(plot_dialogue)
+            plot_dialogue.show()
+        else:
+            plot_dialogue.reject()
 
     def accept_click(self) -> None:
         """

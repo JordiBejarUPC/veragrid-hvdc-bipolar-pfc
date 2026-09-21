@@ -12,8 +12,6 @@ import networkx as nx
 import numpy as np
 import shiboken6
 from PySide6 import QtGui, QtWidgets, QtCore
-from matplotlib import pyplot as plt
-from pandas.plotting import register_matplotlib_converters
 
 import VeraGridEngine.Devices.Diagrams.palettes as palettes
 from VeraGridEngine import ContingencyOperationTypes, MapDiagram
@@ -265,19 +263,7 @@ class DiagramsMain(CompiledArraysMain):
 
         self.available_results_steps_dict = None
 
-        # list of styles
-        self.ui.plt_style_comboBox.setModel(
-            gf.ComboModel(text_items=[(style, style) for style in plt.style.available])
-        )
-        if 'fivethirtyeight' in plt.style.available:
-            idx = self.ui.plt_style_comboBox.findData('fivethirtyeight')
-            if idx > -1:
-                self.ui.plt_style_comboBox.setCurrentIndex(idx)
-
         self.ui.diagramSearchLineEdit.setPlaceholderText(self.tr("Type to search in the current diagram"))
-
-        # configure matplotlib for pandas time series
-        register_matplotlib_converters()
 
         # task watcher for video export
         self.video_thread: VideoExportWorker | None = None
@@ -340,7 +326,6 @@ class DiagramsMain(CompiledArraysMain):
         self.ui.diagramsListView.clicked.connect(self.set_selected_diagram_on_click)
 
         # combobox change
-        self.ui.plt_style_comboBox.currentIndexChanged.connect(self.plot_style_change)
         self.ui.palette_comboBox.currentIndexChanged.connect(self.set_diagrams_palette)
         self.ui.tile_provider_comboBox.currentIndexChanged.connect(self.set_diagrams_map_tile_provider)
 
@@ -2940,13 +2925,6 @@ class DiagramsMain(CompiledArraysMain):
 
         self.ui.defaultBusVoltageSpinBox.setValue(widget.diagram.default_bus_voltage)
         self._enable_setting_auto_upgrade = True
-
-    def plot_style_change(self):
-        """
-        Change the style
-        """
-        style = self.ui.plt_style_comboBox.currentData()
-        plt.style.use(style)
 
     def diagrams_time_slider_change(self) -> None:
         """

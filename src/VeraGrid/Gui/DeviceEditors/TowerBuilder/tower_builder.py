@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QApplication, QComboBox, QDial
     QSpacerItem, QSplitter, QTableView, QVBoxLayout,
     QWidget)
 
-from VeraGrid.Gui.Widgets.matplotlibwidget import MatplotlibWidget
+from VeraGrid.Gui.Widgets.qt_chart_widget import GraphsWidget
 from VeraGrid.Gui.Icons.icons_rc import *
 
 class Ui_TowerBuilderDialog(object):
@@ -235,7 +235,7 @@ class Ui_TowerBuilderDialog(object):
 
         self.verticalLayout_7.addWidget(self.label_4)
 
-        self.plotwidget = MatplotlibWidget(self.PlotFrame)
+        self.plotwidget = GraphsWidget(self.PlotFrame)
         self.plotwidget.setObjectName(u"plotwidget")
 
         self.verticalLayout_7.addWidget(self.plotwidget)
@@ -306,4 +306,3 @@ class Ui_TowerBuilderDialog(object):
         self.compute_pushButton.setText("")
         self.acceptButton.setText(QCoreApplication.translate("TowerBuilderDialog", u"Accept", None))
     # retranslateUi
-

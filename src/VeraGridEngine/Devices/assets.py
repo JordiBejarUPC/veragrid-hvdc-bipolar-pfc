@@ -118,6 +118,7 @@ class Assets:
         '_it_measurements',
         '_overhead_line_types',
         '_wire_types',
+        '_underground_cable_constructions',
         '_underground_cable_types',
         '_dc_cable_types',
         '_sequence_line_types',
@@ -267,6 +268,9 @@ class Assets:
 
         # list of wire types
         self._wire_types: List[dev.Wire] = list()
+
+        # physical single-core underground cable constructions
+        self._underground_cable_constructions: List[dev.UndergroundCableType] = list()
 
         # underground cable lines
         self._underground_cable_types: List[dev.UndergroundLineType] = list()
@@ -464,6 +468,7 @@ class Assets:
             "Catalogue": [
                 dev.Wire(),
                 dev.OverheadLineType(),
+                dev.UndergroundCableType(),
                 dev.UndergroundLineType(),
                 dev.DcCableType(),
                 dev.SequenceLineType(),
@@ -3714,6 +3719,57 @@ class Assets:
                     elm.wire = None
         try:
             self._wire_types.remove(obj)
+        except ValueError:
+            pass
+
+    # ------------------------------------------------------------------------------------------------------------------
+    # Underground cable physical types
+    # ------------------------------------------------------------------------------------------------------------------
+
+    @property
+    def underground_cable_constructions(self) -> List[dev.UndergroundCableType]:
+        """Return the physical single-core cable catalogue.
+
+        :return: Physical cable catalogue.
+        """
+        return self._underground_cable_constructions
+
+    @underground_cable_constructions.setter
+    def underground_cable_constructions(self, value: List[dev.UndergroundCableType]) -> None:
+        """Replace the physical single-core cable catalogue.
+
+        :param value: New physical cable catalogue.
+        :return: None.
+        """
+        self._underground_cable_constructions = value
+
+    def add_underground_cable(self, obj: dev.UndergroundCableType) -> None:
+        """Add one physical cable construction.
+
+        :param obj: Cable construction to add.
+        :return: None.
+        """
+        if isinstance(obj, dev.UndergroundCableType):
+            self._underground_cable_constructions.append(obj)
+        else:
+            print('The catalogue entry is not an underground cable type!')
+
+    def delete_underground_cable(self, obj: dev.UndergroundCableType) -> None:
+        """Delete one physical cable and clear system references to it.
+
+        :param obj: Cable construction to delete.
+        :return: None.
+        """
+        system: dev.UndergroundLineType
+        relationship: dev.CableInSystem
+        for system in self._underground_cable_types:
+            for relationship in system.cables_in_system.data:
+                if relationship.cable == obj:
+                    relationship.cable = None
+                else:
+                    pass
+        try:
+            self._underground_cable_constructions.remove(obj)
         except ValueError:
             pass
 
@@ -7586,6 +7642,9 @@ class Assets:
         elif device_type == DeviceType.UnderGroundLineDevice:
             return self._underground_cable_types
 
+        elif device_type == DeviceType.UndergroundCableTypeDevice:
+            return self._underground_cable_constructions
+
         elif device_type == DeviceType.DcCableTypeDevice:
             return self._dc_cable_types
 
@@ -7897,6 +7956,9 @@ class Assets:
                 d.set_var_factory(self._var_factory)
             self._underground_cable_types = devices
 
+        elif device_type == DeviceType.UndergroundCableTypeDevice:
+            self._underground_cable_constructions = devices
+
         elif device_type == DeviceType.DcCableTypeDevice:
             for d in devices:
                 d.set_var_factory(self._var_factory)
@@ -8153,6 +8215,9 @@ class Assets:
         elif obj.device_type == DeviceType.UnderGroundLineDevice:
             self.add_underground_line(obj=obj)
 
+        elif obj.device_type == DeviceType.UndergroundCableTypeDevice:
+            self.add_underground_cable(obj=obj)
+
         elif obj.device_type == DeviceType.DcCableTypeDevice:
             self.add_dc_cable_type(obj=obj)
 
@@ -8392,6 +8457,9 @@ class Assets:
 
         elif obj.device_type == DeviceType.UnderGroundLineDevice:
             self.delete_underground_line(obj)
+
+        elif obj.device_type == DeviceType.UndergroundCableTypeDevice:
+            self.delete_underground_cable(obj)
 
         elif obj.device_type == DeviceType.DcCableTypeDevice:
             self.delete_dc_cable_type(obj)
@@ -9097,6 +9165,9 @@ class Assets:
 
         elif elm_type == DeviceType.WireDevice:
             elm = dev.Wire()
+
+        elif elm_type == DeviceType.UndergroundCableTypeDevice:
+            elm = dev.UndergroundCableType()
 
         elif elm_type == DeviceType.OverheadLineTypeDevice:
             elm = dev.OverheadLineType()

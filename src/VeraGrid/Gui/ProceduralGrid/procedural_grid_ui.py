@@ -20,7 +20,7 @@ from PySide6.QtWidgets import (QApplication, QComboBox, QDialog, QFrame,
     QPushButton, QSizePolicy, QSpacerItem, QSpinBox,
     QSplitter, QVBoxLayout, QWidget)
 
-from VeraGrid.Gui.Widgets.matplotlibwidget import MatplotlibWidget
+from VeraGrid.Gui.Widgets.qt_chart_widget import GraphsWidget
 from VeraGrid.Gui.Icons.icons_rc import *
 
 class Ui_Dialog(object):
@@ -110,7 +110,7 @@ class Ui_Dialog(object):
 
         self.plotVerticalLayout.addWidget(self.summaryLabel)
 
-        self.plotWidget = MatplotlibWidget(self.plotFrame)
+        self.plotWidget = GraphsWidget(self.plotFrame)
         self.plotWidget.setObjectName(u"plotWidget")
         sizePolicy = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         sizePolicy.setHorizontalStretch(0)
@@ -186,4 +186,3 @@ class Ui_Dialog(object):
 #endif // QT_CONFIG(tooltip)
         self.acceptButton.setText(QCoreApplication.translate("Dialog", u"Accept", None))
     # retranslateUi
-
