@@ -132,6 +132,22 @@ class TowerEditorAutoResponder(QtCore.QObject):
         """
         return self._clicked
 
+    def wait_until_clicked(self, timeout_s: float = 10.0) -> bool:
+        """
+        Pump Qt events until the tower editor is accepted or the timeout expires.
+
+        :param timeout_s: Maximum wait time in seconds.
+        :return: True when the tower editor was accepted.
+        """
+        deadline_s: float = time.monotonic() + timeout_s
+
+        while not self._clicked and time.monotonic() < deadline_s:
+            self._app.processEvents()
+            time.sleep(0.01)
+
+        self._app.processEvents()
+        return self._clicked
+
     def arm(self) -> None:
         """
         Start polling for the expected tower editor.
@@ -317,9 +333,8 @@ def edit_tower_from_database_row(gui: VeraGridMainGUI, app: QtWidgets.QApplicati
     responder: TowerEditorAutoResponder = TowerEditorAutoResponder(app=app, parent=app)
     responder.arm()
     gui.launch_object_editor()
-    app.processEvents()
 
-    accepted_editor: bool = responder.was_clicked()
+    accepted_editor: bool = responder.wait_until_clicked()
     responder.deleteLater()
     assert accepted_editor
 
@@ -613,7 +628,7 @@ def run_random_device_editor_flow(working_file_name: str, status_queue: Any, see
                 responder.arm()
                 gui.launch_device_editor(elm=selected_tower)
                 modal_closer.start()
-                assert responder.was_clicked(), f"seed={seed}, trace={operation_trace}"
+                assert responder.wait_until_clicked(), f"seed={seed}, trace={operation_trace}"
                 operation_trace.append(f"tower:{selected_tower.name}")
             else:
                 selected_device: EditableDevice = random_generator.choice(editable_devices)
