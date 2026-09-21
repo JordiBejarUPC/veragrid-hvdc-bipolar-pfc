@@ -5,8 +5,26 @@ from pathlib import Path
 import numpy as np
 from PySide6 import QtCore, QtWidgets
 
+from VeraGrid.Gui.Main.SubClasses.Results.results import ResultsMain
 from VeraGrid.Gui.PlotDialogue.plot_dialogue import PlotDialogue
 from VeraGrid.Gui.Widgets.qt_chart_widget import ChartContentType, PolarAngleUnit
+from VeraGrid.Gui.results_model import ResultsModel
+from VeraGridEngine.enumerations import DeviceType
+from VeraGridEngine.Simulations.results_table import ResultsTable
+
+
+class ResultsPlotOwner(QtWidgets.QWidget):
+    """Minimal Qt owner for exercising the Results plotting method."""
+
+    __slots__ = ("_open_plot_dialogs",)
+
+    def __init__(self) -> None:
+        """Create the dialog owner and its retained plot list.
+
+        :return: None.
+        """
+        super().__init__()
+        self._open_plot_dialogs: list[PlotDialogue] = list()
 
 
 def close_plot_dialogue(dialog: PlotDialogue, app: QtWidgets.QApplication) -> None:
@@ -288,5 +306,55 @@ def test_plot_dialogue_dense_rhi_is_opt_in_and_applies_to_new_tabs(
     dialogue: PlotDialogue
     for dialogue in (painter_dialog, rhi_dialog):
         dialogue.deleteLater()
+    QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
+    app.processEvents()
+
+
+def test_results_wide_time_series_stays_on_qpainter(
+        qt_app: QtWidgets.QApplication) -> None:
+    """Keep wide Results plots off the QRhi path that distorted their lines.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    app: QtWidgets.QApplication = qt_app
+    series_count: int = 80
+    time_values: np.ndarray = np.array(
+        ('2026-01-01T00:00', '2026-01-01T01:00', '2026-01-01T02:00'),
+        dtype='datetime64[m]',
+    )
+    branch_values: np.ndarray = (
+        np.array((1.0, 2.0, 3.0), dtype=float)[:, np.newaxis]
+        + np.arange(series_count, dtype=float)[np.newaxis, :]
+    )
+    table: ResultsTable = ResultsTable(
+        data=branch_values,
+        columns=np.array(tuple(f'branch {i}' for i in range(series_count)), dtype=str),
+        index=time_values,
+        title='Branch Loading',
+        cols_device_type=DeviceType.NoDevice,
+        idx_device_type=DeviceType.TimeDevice,
+        xlabel='Time',
+        ylabel='Loading (%)',
+    )
+    model: ResultsModel = ResultsModel(table=table)
+    owner: ResultsPlotOwner = ResultsPlotOwner()
+
+    ResultsMain.open_native_results_series_plot(
+        owner,
+        mdl=model,
+        selected_columns=None,
+        selected_rows=None,
+        stacked=False,
+    )
+
+    assert len(owner._open_plot_dialogs) == 1
+    plot_dialogue: PlotDialogue = owner._open_plot_dialogs[0]
+    assert plot_dialogue.chart.get_series_count() == series_count
+    assert not plot_dialogue.chart._rhi_line_enabled
+    assert plot_dialogue.chart._rhi_line_widget is None
+
+    close_plot_dialogue(dialog=plot_dialogue, app=app)
+    owner.deleteLater()
     QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
     app.processEvents()

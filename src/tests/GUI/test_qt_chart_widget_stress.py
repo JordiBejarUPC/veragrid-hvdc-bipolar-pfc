@@ -7,7 +7,15 @@
 
 from __future__ import annotations
 
+import faulthandler
+import multiprocessing
+import queue
+import time
+import traceback
+from typing import Any
+
 import numpy as np
+import pytest
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from VeraGrid.Gui.Widgets.qt_chart_widget import (
@@ -883,6 +891,222 @@ def test_dense_random_chart_reuses_vertices_during_zoom_and_pan(
     delete_chart_owner(owner=owner, chart=chart, probe=probe, app=qt_app)
 
 
+def exercise_seeded_random_gui_operations(
+        app: QtWidgets.QApplication,
+        message_queue: Any,
+        seed: int) -> None:
+    """Exercise random mode changes and input sequences across Qt lifetimes.
+
+    :param app: QApplication owned by the crash-contained child process.
+    :param message_queue: Parent-visible queue used as a progress heartbeat.
+    :param seed: Reproducible random operation seed.
+    :return: None.
+    """
+    random_generator: np.random.Generator = np.random.default_rng(seed)
+    window_index: int
+    for window_index in range(6):
+        owner: QtWidgets.QDialog = QtWidgets.QDialog()
+        layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(owner)
+        chart: GraphsWidget = GraphsWidget(parent=owner)
+        probe: ObjectDestructionProbe = ObjectDestructionProbe()
+        chart.destroyed.connect(probe.mark_destroyed)
+        layout.addWidget(chart)
+        chart.resize(520, 360)
+        owner.show()
+        app.processEvents()
+        try:
+            operation_trace: list[str] = list()
+            operation_index: int
+            for operation_index in range(36):
+                operation: int = int(random_generator.integers(0, 9))
+                point_count: int = int(random_generator.integers(2, 80))
+                series_count: int = int(random_generator.integers(1, 7))
+                x_values: np.ndarray = np.linspace(-10.0, 10.0, point_count, dtype=float)
+                series_index: int
+                if operation == 0:
+                    names: list[str] = list()
+                    values: list[np.ndarray] = list()
+                    for series_index in range(series_count):
+                        names.append(f"series {series_index}")
+                        values.append(random_generator.normal(size=point_count))
+                    if bool(random_generator.integers(0, 2)):
+                        values[0][int(random_generator.integers(0, point_count))] = np.nan
+                    else:
+                        pass
+                    accepted: bool = chart.set_line_series(
+                        x_values=x_values,
+                        series_names=names,
+                        series_values=values,
+                    )
+                    assert accepted, f"seed {seed}, operation trace: {operation_trace}"
+                    operation_trace.append("replace lines")
+                elif operation == 1:
+                    names = list()
+                    values = list()
+                    for series_index in range(series_count):
+                        names.append(f"area {series_index}")
+                        values.append(random_generator.normal(size=point_count))
+                    accepted = chart.set_cumulative_area_series(
+                        x_values=x_values,
+                        series_names=names,
+                        series_values=values,
+                    )
+                    assert accepted, f"seed {seed}, operation trace: {operation_trace}"
+                    operation_trace.append("replace areas")
+                elif operation == 2:
+                    histogram_values: np.ndarray = random_generator.normal(size=point_count * 3)
+                    if bool(random_generator.integers(0, 2)):
+                        histogram_values[int(random_generator.integers(0, len(histogram_values)))] = np.nan
+                    else:
+                        pass
+                    accepted = chart.set_histogram(
+                        values=histogram_values,
+                        bin_count=int(random_generator.integers(1, 20)),
+                    )
+                    assert accepted, f"seed {seed}, operation trace: {operation_trace}"
+                    operation_trace.append("replace histogram")
+                elif operation == 3:
+                    bar_count: int = int(random_generator.integers(1, 12))
+                    chart.add_horizontal_bar_series(
+                        labels=tuple(f"bar {series_index}" for series_index in range(bar_count)),
+                        values=random_generator.normal(size=bar_count),
+                        positive_color="#0f766e",
+                        negative_color="#dc2626",
+                    )
+                    assert chart._content_type == ChartContentType.HORIZONTAL_BAR
+                    operation_trace.append("replace bars")
+                elif operation == 4:
+                    angles: np.ndarray = np.linspace(0.0, 360.0, point_count, dtype=float)
+                    radii: np.ndarray = np.abs(random_generator.normal(size=point_count))
+                    accepted = chart.set_polar_series(
+                        series_names=("random polar",),
+                        angle_values=(angles,),
+                        radius_values=(radii,),
+                        angle_unit=PolarAngleUnit.DEGREES,
+                        connect_points=bool(random_generator.integers(0, 2)),
+                    )
+                    assert accepted, f"seed {seed}, operation trace: {operation_trace}"
+                    operation_trace.append("replace polar")
+                elif operation == 5:
+                    if chart.get_series_count() > 0:
+                        visible_index: int = int(random_generator.integers(0, chart.get_series_count()))
+                        chart.set_series_visible(
+                            series_index=visible_index,
+                            visible=bool(random_generator.integers(0, 2)),
+                        )
+                    else:
+                        chart.clear()
+                    operation_trace.append("toggle visibility")
+                elif operation == 6:
+                    chart.wheelEvent(make_wheel_event(
+                        widget=chart,
+                        delta_y=120 if bool(random_generator.integers(0, 2)) else -120,
+                    ))
+                    operation_trace.append("wheel zoom")
+                elif operation == 7:
+                    if chart._content_type == ChartContentType.XY and chart.get_series_count() > 0:
+                        drag_select_zoom(chart=chart)
+                        if bool(random_generator.integers(0, 2)):
+                            chart.reset_viewport()
+                        else:
+                            pass
+                    else:
+                        chart.reset_viewport()
+                    operation_trace.append("selection zoom")
+                else:
+                    chart.resize(
+                        int(random_generator.integers(320, 1200)),
+                        int(random_generator.integers(240, 800)),
+                    )
+                    chart.setVisible(bool(random_generator.integers(0, 2)))
+                    chart.show()
+                    operation_trace.append("resize and show")
+
+                app.processEvents()
+                chart.repaint()
+                image: QtGui.QImage = paint_chart_to_image(widget=chart)
+                assert not image.isNull(), f"seed {seed}, operation trace: {operation_trace}"
+                message_queue.put(
+                    f"seed={seed} window={window_index + 1}/6 "
+                    f"action={operation_index + 1}/36 trace={operation_trace[-4:]}"
+                )
+
+        finally:
+            if not chart._disposed:
+                delete_chart_owner(owner=owner, chart=chart, probe=probe, app=app)
+            else:
+                pass
+
+
+def run_seeded_random_gui_operations_in_child(message_queue: Any, seed: int) -> None:
+    """Run the random chart sequence in a process that can safely crash.
+
+    :param message_queue: Parent-visible queue for progress and Python failures.
+    :param seed: Reproducible random operation seed.
+    :return: None.
+    """
+    faulthandler.enable()
+    message_queue.put(f"starting chart GUI fuzz seed={seed}")
+    try:
+        app: QtWidgets.QApplication = QtWidgets.QApplication(
+            list(("chart-gui-fuzz", "-platform", "offscreen"))
+        )
+        exercise_seeded_random_gui_operations(app=app, message_queue=message_queue, seed=seed)
+        message_queue.put(f"chart GUI fuzz completed seed={seed}")
+    except Exception:
+        message_queue.put(traceback.format_exc())
+        raise
+
+
+@pytest.mark.parametrize("seed", (20260921, 20260922, 8675309))
+def test_seeded_random_gui_operations_survive_repaint_and_close(
+        qt_app: QtWidgets.QApplication,
+        seed: int) -> None:
+    """Fuzz chart modes and lifetimes in a child process with a watchdog.
+
+    :param qt_app: Shared parent Qt application; the fuzz worker owns its own.
+    :param seed: Reproducible random operation seed.
+    :return: None.
+    """
+    _ = qt_app
+    process_context: multiprocessing.context.BaseContext = multiprocessing.get_context("spawn")
+    message_queue: Any = process_context.Queue()
+    process: multiprocessing.Process = process_context.Process(
+        target=run_seeded_random_gui_operations_in_child,
+        args=(message_queue, seed),
+    )
+    process.start()
+    last_message: str = "no child progress received"
+    last_progress_time_s: float = time.monotonic()
+    timeout_s: float = 90.0
+    while process.is_alive() and time.monotonic() - last_progress_time_s <= timeout_s:
+        try:
+            queued_message: object = message_queue.get(timeout=1.0)
+            last_message = queued_message if isinstance(queued_message, str) else repr(queued_message)
+            last_progress_time_s = time.monotonic()
+        except queue.Empty:
+            pass
+
+    if process.is_alive():
+        process.terminate()
+        process.join(10.0)
+        raise AssertionError(f"chart GUI fuzz timed out after {timeout_s}s: {last_message}")
+    else:
+        process.join(10.0)
+
+    try:
+        while True:
+            queued_message = message_queue.get_nowait()
+            last_message = queued_message if isinstance(queued_message, str) else repr(queued_message)
+    except queue.Empty:
+        pass
+    finally:
+        message_queue.close()
+        message_queue.join_thread()
+
+    assert process.exitcode == 0, last_message
+
+
 def test_chart_context_and_save_dialogs_do_not_retain_or_reenter_chart(
         qt_app: QtWidgets.QApplication) -> None:
     """Open and close chart menus and save dialogs without nested event loops.
@@ -948,25 +1172,20 @@ def test_rhi_widget_copies_and_releases_all_cpu_buffers(
     renderer: RhiLineChartWidget = RhiLineChartWidget()
     vertices: np.ndarray = np.asarray(((-1.0, -1.0), (1.0, 1.0)), dtype=np.float32)
     lengths: np.ndarray = np.asarray((2,), dtype=np.int32)
-    area_flags: np.ndarray = np.asarray((False,), dtype=bool)
     assert renderer.set_vertices(
         vertices=vertices,
         series_lengths=lengths,
         series_colors=(QtGui.QColor("#2563eb"),),
-        series_is_area=area_flags,
     )
     vertices.fill(0.0)
     lengths[0] = 0
-    area_flags[0] = True
     assert renderer._vertices[1, 0] == 1.0
     assert renderer._series_lengths[0] == 2
-    assert not renderer._series_is_area[0]
 
     renderer.clear_data()
     assert renderer._vertices.size == 0
     assert renderer._series_lengths.size == 0
     assert renderer._series_first_vertices.size == 0
-    assert renderer._series_is_area.size == 0
     assert renderer._vertex_count == 0
 
     renderer.dispose()

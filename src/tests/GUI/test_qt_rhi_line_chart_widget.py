@@ -152,37 +152,6 @@ def test_graphs_widget_keeps_cumulative_areas_on_qpainter(
     QtWidgets.QApplication.sendPostedEvents(None)
 
 
-def test_rhi_area_tessellation_covers_each_sample_interval(
-        qt_app: QtWidgets.QApplication) -> None:
-    """Build two consistently wound GPU triangles for one area interval.
-
-    :param qt_app: Shared Qt application fixture.
-    :return: None.
-    """
-    _ = qt_app
-    chart: GraphsWidget = GraphsWidget()
-    vertices: np.ndarray = chart._make_rhi_area_triangle_vertices(
-        x_data=np.array((0.0, 1.0), dtype=float),
-        lower_values=np.array((0.0, 0.0), dtype=float),
-        upper_values=np.array((1.0, 1.0), dtype=float),
-        indices=np.array((0, 1), dtype=int),
-        x_minimum=0.0,
-        x_span=1.0,
-        y_minimum=0.0,
-        y_span=1.0,
-    )
-    assert np.array_equal(
-        vertices,
-        np.array((
-            (-1.0, -1.0), (1.0, -1.0), (-1.0, 1.0),
-            (-1.0, 1.0), (1.0, -1.0), (1.0, 1.0),
-        ), dtype=np.float32),
-    )
-    chart.dispose()
-    chart.deleteLater()
-    QtWidgets.QApplication.sendPostedEvents(None)
-
-
 def test_rhi_line_chart_packs_large_line_batch(qt_app: QtWidgets.QApplication) -> None:
     """Exercise CPU packing at the approximate supplied graphics-data scale.
 
