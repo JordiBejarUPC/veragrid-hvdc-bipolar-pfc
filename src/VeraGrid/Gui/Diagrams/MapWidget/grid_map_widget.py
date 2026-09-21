@@ -1209,13 +1209,16 @@ class GridMapWidget(BaseDiagramWidget):
         for idtag, graphic_object in dev_dict.items():
             graphic_object.sort_voltage_levels()
 
-    def add_object_to_the_schematic(self, elm: ALL_DEV_TYPES, logger: Logger = Logger()):
+    def add_object_to_the_schematic(self, elm: ALL_DEV_TYPES, logger: Logger | None = None):
         """
 
         :param elm:
         :param logger:
         :return:
         """
+        if logger is None:
+            logger = Logger()
+
         graphic_obj = self.graphics_manager.query(elm=elm)
 
         if graphic_obj is None:

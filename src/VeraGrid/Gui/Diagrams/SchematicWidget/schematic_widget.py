@@ -1100,12 +1100,14 @@ class SchematicWidget(BaseDiagramWidget):
 
     def draw_additional_diagram(self,
                                 diagram: SchematicDiagram,
-                                logger: Logger = Logger()) -> None:
+                                logger: Logger | None = None) -> None:
         """
         Draw a new diagram
         :param diagram: SchematicDiagram
         :param logger: Logger
         """
+        if logger is None:
+            logger = Logger()
         self._is_loading_diagram = True
         self.suspend_viewport_updates_for_loading()
         inj_dev_by_bus = self.circuit.get_injection_devices_grouped_by_bus()
@@ -2954,7 +2956,7 @@ class SchematicWidget(BaseDiagramWidget):
                        from_port: OPTIONAL_PORT = None,
                        to_port: OPTIONAL_PORT = None,
                        draw_labels: bool = True,
-                       logger: Logger = Logger()) -> _LINE_GRAPHIC_T | None:
+                       logger: Logger | None = None) -> _LINE_GRAPHIC_T | None:
         """
         add API branch to the Scene
         :param branch: Branch instance
@@ -2964,6 +2966,8 @@ class SchematicWidget(BaseDiagramWidget):
         :param draw_labels: Draw labels by default?
         :param logger: Logger
         """
+        if logger is None:
+            logger = Logger()
 
         # search for the api object, because it may be created already
         graphic_object = self._query_graphic_of_type(elm=branch, graphic_type=new_graphic_func)
@@ -3009,7 +3013,7 @@ class SchematicWidget(BaseDiagramWidget):
                      from_port: OPTIONAL_PORT = None,
                      to_port: OPTIONAL_PORT = None,
                      draw_labels: bool = True,
-                     logger: Logger = Logger()) -> Union[LineGraphicItem, None]:
+                     logger: Logger | None = None) -> Union[LineGraphicItem, None]:
         """
         add API branch to the Scene
         :param branch: Branch instance
@@ -3032,7 +3036,7 @@ class SchematicWidget(BaseDiagramWidget):
                         from_port: OPTIONAL_PORT = None,
                         to_port: OPTIONAL_PORT = None,
                         draw_labels: bool = True,
-                        logger: Logger = Logger()) -> Union[DcLineGraphicItem, None]:
+                        logger: Logger | None = None) -> Union[DcLineGraphicItem, None]:
         """
         add API branch to the Scene
         :param branch: Branch instance
@@ -3055,7 +3059,7 @@ class SchematicWidget(BaseDiagramWidget):
                      from_port: OPTIONAL_PORT = None,
                      to_port: OPTIONAL_PORT = None,
                      draw_labels: bool = True,
-                     logger: Logger = Logger()) -> Union[HvdcGraphicItem, None]:
+                     logger: Logger | None = None) -> Union[HvdcGraphicItem, None]:
         """
         add API branch to the Scene
         :param branch: Branch instance
@@ -3078,7 +3082,7 @@ class SchematicWidget(BaseDiagramWidget):
                     x: float | None = None,
                     y: float | None = None,
                     r: float = 0.0,
-                    logger: Logger = Logger()) -> Union[VscGraphicItem, VscGraphicItem3Term, None]:
+                    logger: Logger | None = None) -> Union[VscGraphicItem, VscGraphicItem3Term, None]:
         """
         add API VSC to the Scene
         :param elm: VSC instance
@@ -3088,6 +3092,8 @@ class SchematicWidget(BaseDiagramWidget):
         :param logger: Logger
         :return: VscGraphicItem or None
         """
+        if logger is None:
+            logger = Logger()
 
         # search for the api object, because it may be created already
         graphic_object = self.graphics_manager.query(elm=elm)
@@ -3186,7 +3192,7 @@ class SchematicWidget(BaseDiagramWidget):
                      from_port: OPTIONAL_PORT = None,
                      to_port: OPTIONAL_PORT = None,
                      draw_labels: bool = True,
-                     logger: Logger = Logger()) -> Union[UpfcGraphicItem, None]:
+                     logger: Logger | None = None) -> Union[UpfcGraphicItem, None]:
         """
         add API branch to the Scene
         :param branch: Branch instance
@@ -3209,7 +3215,7 @@ class SchematicWidget(BaseDiagramWidget):
                                  from_port: OPTIONAL_PORT = None,
                                  to_port: OPTIONAL_PORT = None,
                                  draw_labels: bool = True,
-                                 logger: Logger = Logger()) -> Union[SeriesReactanceGraphicItem, None]:
+                                 logger: Logger | None = None) -> Union[SeriesReactanceGraphicItem, None]:
         """
         add API branch to the Scene
         :param branch: Branch instance
@@ -3232,7 +3238,7 @@ class SchematicWidget(BaseDiagramWidget):
                             from_port: OPTIONAL_PORT = None,
                             to_port: OPTIONAL_PORT = None,
                             draw_labels: bool = True,
-                            logger: Logger = Logger()) -> Union[TransformerGraphicItem, None]:
+                            logger: Logger | None = None) -> Union[TransformerGraphicItem, None]:
         """
         add API branch to the Scene
         :param branch: Branch instance
@@ -3255,7 +3261,7 @@ class SchematicWidget(BaseDiagramWidget):
                         from_port: OPTIONAL_PORT = None,
                         to_port: OPTIONAL_PORT = None,
                         draw_labels: bool = True,
-                        logger: Logger = Logger()) -> Union[WindingGraphicItem, None]:
+                        logger: Logger | None = None) -> Union[WindingGraphicItem, None]:
         """
         add API branch to the Scene
         :param branch: Branch instance
@@ -3284,7 +3290,7 @@ class SchematicWidget(BaseDiagramWidget):
                        from_port: OPTIONAL_PORT = None,
                        to_port: OPTIONAL_PORT = None,
                        draw_labels: bool = True,
-                       logger: Logger = Logger()) -> Union[SwitchGraphicItem, None]:
+                       logger: Logger | None = None) -> Union[SwitchGraphicItem, None]:
         """
         add API branch to the Scene
         :param branch: Branch instance
@@ -3690,7 +3696,7 @@ class SchematicWidget(BaseDiagramWidget):
             injections_by_bus: Union[None, Dict[Bus, Dict[DeviceType, List[INJECTION_DEVICE_TYPES]]]] = None,
             injections_by_fluid_node: Union[None, Dict[FluidNode, Dict[DeviceType, List[FLUID_TYPES]]]] = None,
             injections_by_cn: Union[None, Dict[Bus, Dict[DeviceType, List[INJECTION_DEVICE_TYPES]]]] = None,
-            logger: Logger = Logger()):
+            logger: Logger | None = None):
         """
 
         :param elm:
@@ -3700,6 +3706,8 @@ class SchematicWidget(BaseDiagramWidget):
         :param logger:
         :return:
         """
+        if logger is None:
+            logger = Logger()
 
         if self.graphics_manager.query(elm=elm) is None:
 

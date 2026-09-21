@@ -984,7 +984,7 @@ class ProfileInputGUI(QtWidgets.QDialog):
             if mode == StringSubstitutions.PSSeBranchName:
 
                 for i, name in enumerate(self.profile_names):
-                    if '_':
+                    if '_' in name:
                         vals = name.split('_')
                         if len(vals) < 7:
                             pass
@@ -995,7 +995,7 @@ class ProfileInputGUI(QtWidgets.QDialog):
             if mode == StringSubstitutions.PSSeBusGenerator:
 
                 for i, name in enumerate(self.profile_names):
-                    if '_':
+                    if '_' in name:
                         vals = name.split('_')
                         if len(vals) == 3:
                             self.profile_names[i] = vals[0] + '_1'

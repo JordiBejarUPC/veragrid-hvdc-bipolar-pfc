@@ -1164,7 +1164,7 @@ class BaseDiagramWidget(QSplitter):
         """
         pass
 
-    def start_video_recording(self, fname: str, fps: int = 30, logger: Logger = Logger()) -> Tuple[int, int]:
+    def start_video_recording(self, fname: str, fps: int = 30, logger: Logger | None = None) -> Tuple[int, int]:
         """
         Save video
         :param fname: file name
@@ -1172,6 +1172,8 @@ class BaseDiagramWidget(QSplitter):
         :param logger: LOgger
         :returns width, height
         """
+        if logger is None:
+            logger = Logger()
 
         image = self.get_image()
         w = image.width()
