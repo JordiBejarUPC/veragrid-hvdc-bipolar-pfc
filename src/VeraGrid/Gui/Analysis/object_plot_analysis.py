@@ -5,7 +5,6 @@
 
 import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
 from typing import List, Union, Any
 import math
 from PySide6 import QtGui
@@ -1566,15 +1565,14 @@ def grid_analysis(circuit: MultiCircuit,
 
 
 def object_histogram_analysis(circuit: MultiCircuit,
-                              object_type: DeviceType,
-                              t_idx: Union[None, int],
-                              fig=None):
-    """
-    Draw the histogram analysis of the provided object type
-    :param circuit: Circuit
-    :param object_type: Object Type (DeviceType)
-    :param t_idx: Time index (None or int) to get the data
-    :param fig: matplotlib figure (if None, a new one is created)
+                              object_type: str,
+                              t_idx: Union[None, int]) -> tuple[list[str], list[np.ndarray]] | None:
+    """Collect numeric object properties for the native histogram renderer.
+
+    :param circuit: Circuit providing objects and property values.
+    :param object_type: Device-type value selected in the object database.
+    :param t_idx: Optional profile time index.
+    :return: Property names and copied numeric vectors, or ``None`` when unsupported.
     """
 
     if object_type == DeviceType.LineDevice.value:
@@ -1618,74 +1616,21 @@ def object_histogram_analysis(circuit: MultiCircuit,
         objects = circuit.get_loads()
 
     else:
-        return
+        return None
 
-    n = len(objects)
-    p = len(properties)
-    vals = np.zeros((n, p))
-    extended_prop = np.zeros(p, dtype=object)
-    log_scale_extended = np.zeros(p, dtype=object)
-    for j in range(len(properties)):
-
-        if len(objects):
-            gc_prop = objects[0].registered_properties[properties[j]]
-
-            for i, elem in enumerate(objects):
-                val = elem.get_property_value(prop=gc_prop, t_idx=t_idx)
-                vals[i, j] = val
-                extended_prop[j] = properties[j]
-                log_scale_extended[j] = log_scale[j]
-
-    # create figure if needed
-    if fig is None:
-        fig = plt.figure(figsize=(12, 6))
-
-    fig.suptitle('Analysis of the ' + str(object_type), fontsize=16)
-    fig.set_facecolor('white')
-
-    if n > 0:
-        k = int(np.round(math.sqrt(p)))
-        axs = np.empty(p + 1, dtype=object)
-
-        for j in range(p):
-            x = vals[:, j]
-            mu = x.mean()
-            variance = x.var()
-            sigma = math.sqrt(variance)
-            r = (mu - 6 * sigma, mu + 6 * sigma)
-
-            # plot
-            ax = fig.add_subplot(k, k + 1, j + 1)
-            ax.set_facecolor('white')
-            # bin_edges = np.histogram_bin_edges(x)
-            ax.hist(x,
-                    # bins=len(bin_edges),
-                    range=r,
-                    cumulative=False,
-                    bottom=None,
-                    histtype='bar',
-                    align='mid',
-                    orientation='vertical')
-            ax.plot(x, np.zeros(n), 'o')
-            ax.set_title(str(extended_prop[j]))
-
-            if log_scale_extended[j]:
-                ax.set_xscale('log')
-
-            axs[j] = ax
-
-        if object_type in [DeviceType.LineDevice.value,
-                           DeviceType.Transformer2WDevice.value]:
-            r = vals[:, 0]
-            x = vals[:, 1]
-
-            # plot
-            ax = fig.add_subplot(k, k + 1, p + 2)
-            ax.set_facecolor('white')
-            ax.scatter(r, x)
-            ax.set_title("R-X")
-            ax.set_xlabel("R")
-            ax.set_ylabel("X")
-            axs[p] = ax
-
-    fig.tight_layout(rect=(0, 0.03, 1, 0.95))
+    if len(objects) > 0:
+        values_by_property: list[np.ndarray] = list()
+        property_name: str
+        for property_name in properties:
+            property_definition = objects[0].registered_properties[property_name]
+            values: np.ndarray = np.empty(len(objects), dtype=float)
+            object_index: int
+            for object_index in range(len(objects)):
+                values[object_index] = float(objects[object_index].get_property_value(
+                    prop=property_definition,
+                    t_idx=t_idx,
+                ))
+            values_by_property.append(values)
+        return properties, values_by_property
+    else:
+        return None

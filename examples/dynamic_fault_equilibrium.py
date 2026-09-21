@@ -382,11 +382,7 @@ def physical_results(result):
 
 
 def write_report(result, reference_pf, reference, directory: Path, kqv: float):
-    """Write a reproducible numerical report and time-domain comparison figure."""
-    import matplotlib
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
-    from matplotlib.lines import Line2D
+    """Write a reproducible numerical report."""
 
     directory.mkdir(parents=True, exist_ok=True)
     voltage, power, converter_current, fault_current, kcl = physical_results(result)
@@ -432,73 +428,6 @@ def write_report(result, reference_pf, reference, directory: Path, kqv: float):
     np.savetxt(directory / "equilibrium_convergence.csv", result["trace"],
                delimiter=",", header="residual_inf", comments="")
 
-    plt.rcParams.update({"font.size": 10, "axes.spines.top": False, "axes.spines.right": False})
-    fig = plt.figure(figsize=(14, 8.5))
-    panels = fig.add_gridspec(2, 2, left=0.07, right=0.98, bottom=0.14,
-                             top=0.77, hspace=0.48, wspace=0.24)
-    fig.suptitle("Fault response: trajectory and two independent steady-state solves", fontsize=17, y=0.975)
-    fig.text(0.5, 0.925, f"Two-bus grid · converter terminal quantities · Rf = {result['fault_r']:g} p.u. · dynamic Kqv = {kqv:g} · legacy Kqv = 2", ha="center", fontsize=10)
-    curve_color, legacy_color, equilibrium_color = "#265e9b", "#d16027", "#168565"
-    fig.legend(handles=[
-        Line2D([], [], color=curve_color, linewidth=2, label="RMS time-domain trajectory"),
-        Line2D([], [], color=legacy_color, marker="s", linestyle="none", markersize=8,
-               label="Legacy WECC steady-state point"),
-        Line2D([], [], color=equilibrium_color, marker="D", linestyle="none", markersize=8,
-               label=r"Dynamic equations at $t\to\infty$: direct solve, $\dot{x}=0$"),
-    ], loc="upper center", bbox_to_anchor=(0.5, 0.902), ncol=3, frameon=False, fontsize=10)
-    fig.text(0.5, 0.83, "The two markers are computed independently. The direct dynamic equilibrium is solved before time integration.",
-             ha="center", fontsize=10, color="#444444")
-    times = result["times"]
-    trajectory = result["trajectory"]
-    vm = trajectory[:, result["vm_indices"][1]]
-    output_current = np.hypot(trajectory[:, result["p_index"]], trajectory[:, result["q_index"]]) / (0.5 * vm)
-    baseline_values = ([None] * 4 if baseline_voltage is None else [
-        abs(baseline_voltage[1]), abs(baseline_power) / (0.5 * abs(baseline_voltage[1])),
-        baseline_power.real * result["grid"].Sbase, baseline_power.imag * result["grid"].Sbase,
-    ])
-    dynamic_values = [abs(voltage[1]), abs(converter_current) / 0.5,
-                      power.real * result["grid"].Sbase, power.imag * result["grid"].Sbase]
-    quantities = [
-        ("Converter voltage", "Voltage [p.u.]", vm),
-        ("Converter current", "Current [p.u. on 50 MVA base]", output_current),
-        ("Converter active power", "Active power [MW]", trajectory[:, result["p_index"]] * result["grid"].Sbase),
-        ("Converter reactive power", "Reactive power [MVAr]", trajectory[:, result["q_index"]] * result["grid"].Sbase),
-    ]
-    # The categorical marker panel shares the vertical scale with the trajectory.
-    # Separate x positions keep matching solutions visible without implying that
-    # either steady-state solve is a sample at a later physical time.
-    for panel, (title, units, series), legacy_value, dynamic_value in zip(
-            panels, quantities, baseline_values, dynamic_values):
-        pair = panel.subgridspec(1, 2, width_ratios=[3.0, 1.35], wspace=0.07)
-        ax = fig.add_subplot(pair[0])
-        points = fig.add_subplot(pair[1], sharey=ax)
-        ax.plot(times, series, color=curve_color, linewidth=2)
-        ax.axvline(0.1, color="gray", alpha=0.6, linewidth=1)
-        ax.set(ylabel=units, xlabel="Physical time [s]", xlim=(times[0], times[-1]))
-        ax.set_title(title, loc="left", fontsize=12, fontweight="medium")
-        if legacy_value is not None:
-            points.plot(0, legacy_value, marker="s", color=legacy_color, markersize=8, linestyle="none")
-            points.annotate(f"{legacy_value:.6g}", (0, legacy_value), xytext=(0, 12), textcoords="offset points",
-                            ha="center", fontsize=9, color=legacy_color)
-        else:
-            points.text(0.24, 0.5, "Did not\nconverge", transform=points.transAxes,
-                        ha="center", va="center", fontsize=8, color=legacy_color)
-        points.plot(1, dynamic_value, marker="D", color=equilibrium_color, markersize=8, linestyle="none")
-        points.annotate(f"{dynamic_value:.6g}", (1, dynamic_value), xytext=(0, 12), textcoords="offset points",
-                        ha="center", fontsize=9, color=equilibrium_color)
-        points.set(xlim=(-0.5, 1.5), xticks=[0, 1], xlabel="Independent steady-state solves")
-        points.set_xticklabels(["Legacy", "Dynamic\n" + r"$t\to\infty$"], fontsize=9)
-        points.xaxis.label.set_fontsize(8)
-        points.set_facecolor("#f4f7f8")
-        points.spines["left"].set_visible(False)
-        points.tick_params(axis="y", left=False, labelleft=False)
-        ax.margins(y=0.22)
-        ax.grid(alpha=0.18)
-        points.grid(axis="y", alpha=0.18)
-    reference_label = "Legacy solver did not converge" if baseline_error is None else f"Legacy voltage difference: {baseline_error:.2e} p.u."
-    fig.text(0.5, 0.035, f"Fault applied at 0.1 s and never cleared. Shaded panels compare steady-state solutions on the same vertical scale as the trajectory.\nRMS endpoint vs direct equilibrium: {result['endpoint_error']:.2e}   |   {reference_label}", ha="center", fontsize=9)
-    fig.savefig(directory / "comparison.png", dpi=160)
-    plt.close(fig)
     return summary
 
 
@@ -525,7 +454,7 @@ def main():
     else:
         print("Legacy WECC solver did not converge; its output is excluded from the comparison.")
     print(f"Equilibrium / RMS solve time (compilation excluded): {summary['equilibrium_solve_seconds']:.3f} / {summary['rms_integration_seconds']:.3f} s")
-    print(f"Plot and numerical results: {args.output.resolve()}")
+    print(f"Numerical results: {args.output.resolve()}")
 
 
 if __name__ == "__main__":

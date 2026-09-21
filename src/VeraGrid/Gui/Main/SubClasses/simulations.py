@@ -9,9 +9,9 @@ from typing import List, Tuple, Dict, Union
 
 # GUI imports
 from PySide6 import QtGui, QtCore
-from matplotlib.colors import LinearSegmentedColormap
 
 import VeraGrid.Gui.gui_functions as gf
+from VeraGrid.Gui.Visualization.visualization import NativeColorMap
 from VeraGrid.Gui.i18n import translate_tree_label
 from VeraGrid.Gui.general_dialogues import LogsDialogue
 from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
@@ -3441,7 +3441,7 @@ class SimulationsMain(TimeEventsMain):
                         seq: List[Tuple[float, str]] = [(0, 'green'),
                                                         (0.6, 'orange'),
                                                         (1.0, 'red')]
-                        cmap = LinearSegmentedColormap.from_list(name='vcolors', colors=seq)
+                        cmap: NativeColorMap = NativeColorMap(stops=seq)
 
                         self.buses_for_storage = list()
                         colors = list()

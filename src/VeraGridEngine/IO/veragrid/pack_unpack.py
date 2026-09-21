@@ -1372,40 +1372,6 @@ def search_and_apply_json_profile(json_entry: Dict[str, Dict[str, Union[str, Uni
                                   collection=collection)
 
 
-def _convert_legacy_cable_properties(json_entry: Dict[str, Any]) -> Dict[str, Any]:
-    """Read the two supported layers from old cable construction vectors.
-
-    :param json_entry: Native cable construction record, old or scalar format.
-    :return: Record with scalar inputs; explicit scalar fields take precedence.
-    """
-    converted: Dict[str, Any] = json_entry.copy()
-    legacy_fields: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
-        ('thIns', ('thIns',)),
-        ('crho', ('crho_core', 'crho_sheath')),
-        ('Cf', ('Cf_core', 'Cf_sheath')),
-        ('my', ('my_core', 'my_sheath')),
-        ('cepsr', ('cepsr_core_sheath', 'cepsr_outer')),
-        ('ctand', ('ctand_core_sheath', 'ctand_outer')),
-    )
-    legacy_name: str
-    scalar_names: Tuple[str, ...]
-    for legacy_name, scalar_names in legacy_fields:
-        legacy_value: Any = json_entry.get(legacy_name, None)
-        if isinstance(legacy_value, (list, tuple, np.ndarray)):
-            # The former third entry was not part of the two-layer calculation.
-            index: int
-            scalar_name: str
-            for index, scalar_name in enumerate(scalar_names):
-                if index < len(legacy_value) and (scalar_name == legacy_name or scalar_name not in json_entry):
-                    converted[scalar_name] = legacy_value[index]
-                else:
-                    pass
-        else:
-            # New scalar records need no conversion.
-            pass
-    return converted
-
-
 def parse_object_type_from_json(template_elm: ALL_DEV_TYPES,
                                 data_list: List[Dict[str, Dict[str, str]]],
                                 elements_dict_by_type: Dict[DeviceType, Dict[str, ALL_DEV_TYPES]],
@@ -1429,21 +1395,12 @@ def parse_object_type_from_json(template_elm: ALL_DEV_TYPES,
     parsed_devices: List[ALL_DEV_TYPES] = list()
     tpe_key = template_elm.device_type.value
     obj_num = len(data_list)
-
     for obj_i, json_entry in enumerate(data_list):
-        # Report progress while loading each object.
+
         if text_func is not None:
             text_func(f"Parsing {tpe_key} model data ({obj_i}/{obj_num})")
-        else:
-            pass
 
-        if template_elm.device_type == DeviceType.UndergroundCableTypeDevice:
-            # Upgrade only legacy cable records before the generic scalar parser.
-            json_entry = _convert_legacy_cable_properties(json_entry=json_entry)
-        else:
-            pass
-
-        idtag: str = json_entry['idtag']
+        idtag = json_entry['idtag']
         elm: ALL_DEV_TYPES = type(template_elm)(idtag=idtag)
         elm.disable_auto_updates()
 

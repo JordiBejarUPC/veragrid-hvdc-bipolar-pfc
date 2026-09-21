@@ -8,14 +8,14 @@ from typing import List
 
 import numpy as np
 import pandas as pd
-from matplotlib.axes import Axes
-from matplotlib.figure import Figure
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtWidgets
 
-from VeraGrid.Gui.DeviceEditors.TowerBuilder.tower_builder import Ui_TowerBuilderDialog
 from VeraGrid.Gui.DeviceEditors.UndergroundCableBuilder.table_models import (
     UndergroundCableCatalogueModel,
     UndergroundCableSystemModel,
+)
+from VeraGrid.Gui.DeviceEditors.UndergroundCableBuilder.underground_cable_builder_ui import (
+    Ui_UndergroundCableBuilderDialog,
 )
 from VeraGrid.Gui.general_dialogues import LogsDialogue
 from VeraGrid.Gui.pandas_model import PandasModel
@@ -27,7 +27,7 @@ from VeraGridEngine.Devices.Branches.underground_line_type import CableInSystem,
 class UndergroundCableBuilderGUI(QtWidgets.QDialog):
     """Edit and calculate a PowerFactory-style underground cable system."""
 
-    __slots__ = ('ui', 'system', 'catalogue_model', 'composition_model', 'rated_current_spin_box')
+    __slots__ = ('ui', 'system', 'catalogue_model', 'composition_model')
 
     def __init__(self,
                  system: UndergroundLineType | None = None,
@@ -41,36 +41,16 @@ class UndergroundCableBuilderGUI(QtWidgets.QDialog):
         :return: None.
         """
         QtWidgets.QDialog.__init__(self, parent)
-        self.ui: Ui_TowerBuilderDialog = Ui_TowerBuilderDialog()
+        self.ui: Ui_UndergroundCableBuilderDialog = Ui_UndergroundCableBuilderDialog()
         self.ui.setupUi(self)
         self.system: UndergroundLineType = UndergroundLineType() if system is None else system
         catalogue: List[UndergroundCableType] = list() if cables_catalogue is None else cables_catalogue
-
-        # The existing tower form already has exactly the controls needed by a
-        # physical cable system, so only its visible terminology changes.
-        self.setWindowTitle(self.tr('Underground cable builder'))
-        self.ui.label_12.setText(self.tr('Cable construction catalogue'))
-        self.ui.label_10.setText(self.tr('Cable system composition'))
-        self.ui.label_4.setText(self.tr('Cable positions'))
-        self.ui.rho_doubleSpinBox.setSuffix(self.tr(' Ω·m'))
-        self.ui.add_to_tower_pushButton.setToolTip(self.tr('Add cable to system'))
-        self.ui.delete_from_tower_pushButton.setToolTip(self.tr('Delete cable from system'))
 
         self.ui.name_lineEdit.setText(self.system.name)
         self.ui.rho_doubleSpinBox.setValue(self.system.earth_resistivity)
         self.ui.frequency_doubleSpinBox.setValue(self.system.freq)
         self.ui.voltage_doubleSpinBox.setValue(self.system.Vnom)
-
-        # Rated current belongs to TypCabsys (dInom), not to the physical
-        # TypCab construction, so it lives with the other system-wide inputs.
-        rated_current_label: QtWidgets.QLabel = QtWidgets.QLabel(self.tr('Rated current'), self.ui.frame_6)
-        self.rated_current_spin_box: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self.ui.frame_6)
-        self.rated_current_spin_box.setDecimals(6)
-        self.rated_current_spin_box.setMaximum(1.0e9)
-        self.rated_current_spin_box.setSuffix(self.tr(' kA'))
-        self.rated_current_spin_box.setValue(self.system.Imax)
-        self.ui.horizontalLayout_3.addWidget(rated_current_label)
-        self.ui.horizontalLayout_3.addWidget(self.rated_current_spin_box)
+        self.ui.rated_current_doubleSpinBox.setValue(self.system.Imax)
 
         self.catalogue_model: UndergroundCableCatalogueModel = UndergroundCableCatalogueModel(
             cables=catalogue,
@@ -109,7 +89,7 @@ class UndergroundCableBuilderGUI(QtWidgets.QDialog):
         self.ui.frequency_doubleSpinBox.valueChanged.connect(self.compute)
         self.ui.rho_doubleSpinBox.valueChanged.connect(self.compute)
         self.ui.voltage_doubleSpinBox.valueChanged.connect(self.compute)
-        self.rated_current_spin_box.valueChanged.connect(self.compute)
+        self.ui.rated_current_doubleSpinBox.valueChanged.connect(self.compute)
 
         if self.system.has_physical_data():
             self.compute()
@@ -188,7 +168,7 @@ class UndergroundCableBuilderGUI(QtWidgets.QDialog):
         self.system.freq = self.ui.frequency_doubleSpinBox.value()
         self.system.earth_resistivity = self.ui.rho_doubleSpinBox.value()
         self.system.Vnom = self.ui.voltage_doubleSpinBox.value()
-        self.system.Imax = self.rated_current_spin_box.value()
+        self.system.Imax = self.ui.rated_current_doubleSpinBox.value()
         relation: CableInSystem
         for relation in self.system.cables_in_system.data:
             if relation.cable is not None:
@@ -325,14 +305,46 @@ class UndergroundCableBuilderGUI(QtWidgets.QDialog):
             self._set_matrix(matrix=sequence_admittance, labels=labels, scale=1.0e6)
 
     def plot(self) -> None:
-        """Redraw the cable positions with burial depth increasing downwards.
+        """Redraw the cable positions with the QWidget chart renderer.
 
         :return: None.
         """
-        self.ui.plotwidget.clear()
-        figure: Figure = self.ui.plotwidget.get_figure()
-        figure.set_facecolor('white')
-        axes: Axes = self.ui.plotwidget.get_axis()
-        self.system.plot(ax=axes)
-        figure.tight_layout()
+        cables: List[CableInSystem] = self.system.cables_in_system.data
+        cable_count: int = len(cables)
+        x_values: np.ndarray = np.empty(cable_count, dtype=float)
+        depth_values: np.ndarray = np.empty(cable_count, dtype=float)
+        point_tooltips: List[str] = list()
+        cable_index: int
+
+        # Copy every plotted value into chart-owned buffers so deleting a table
+        # row never leaves the widget holding an engine object or stale pointer.
+        for cable_index in range(cable_count):
+            relation: CableInSystem = cables[cable_index]
+            x_values[cable_index] = relation.xpos
+            depth_values[cable_index] = relation.ypos
+            point_tooltips.append(relation.name)
+
+        series_data: List[tuple[np.ndarray, np.ndarray, str | None]] = list(
+            [(x_values, depth_values, '#2563eb')]
+        )
+        updated: bool = self.ui.plotwidget.replace_xy_series_data(series_data=series_data)
+        if updated:
+            self.ui.plotwidget.set_series_point_tooltips(
+                series_index=0,
+                point_tooltips=point_tooltips,
+            )
+        else:
+            self.ui.plotwidget.clear()
+            self.ui.plotwidget.add_scatter_series(
+                name=self.tr('Cable positions'),
+                x_values=x_values,
+                y_values=depth_values,
+                color='#2563eb',
+                point_tooltips=point_tooltips,
+            )
+        self.ui.plotwidget.setTitle(self.tr('Underground cable position'))
+        self.ui.plotwidget.set_axis_titles(
+            self.tr('Horizontal position (m)'),
+            self.tr('Depth (m)'),
+        )
         self.ui.plotwidget.redraw()

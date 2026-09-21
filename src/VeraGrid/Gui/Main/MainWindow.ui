@@ -1017,20 +1017,6 @@
                                </widget>
                               </item>
                               <item>
-                               <widget class="QLabel" name="label_40">
-                                <property name="text">
-                                 <string>Plotting style</string>
-                                </property>
-                               </widget>
-                              </item>
-                              <item>
-                               <widget class="QComboBox" name="plt_style_comboBox">
-                                <property name="toolTip">
-                                 <string>MatPlotlib plot styles to choose from</string>
-                                </property>
-                               </widget>
-                              </item>
-                              <item>
                                <spacer name="verticalSpacer_14">
                                 <property name="orientation">
                                  <enum>Qt::Orientation::Vertical</enum>
@@ -7965,12 +7951,22 @@
                     </property>
                     <item>
                      <property name="text">
+                      <string>implicit euler</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
                       <string>trapezoid</string>
                      </property>
                     </item>
                     <item>
                      <property name="text">
-                      <string>implicit euler</string>
+                      <string>bdf2</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
+                      <string>euler</string>
                      </property>
                     </item>
                    </widget>
@@ -8628,6 +8624,11 @@
                     <item>
                      <property name="text">
                       <string>implicit euler</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
+                      <string>bdf2</string>
                      </property>
                     </item>
                    </widget>

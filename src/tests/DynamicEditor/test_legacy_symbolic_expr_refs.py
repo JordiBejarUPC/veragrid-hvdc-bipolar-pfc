@@ -136,6 +136,56 @@ def test_block_roundtrip_shares_expression_registry_across_fields() -> None:
     assert restored_discrete_expression is restored_expression
 
 
+def test_legacy_block_instance_without_model_family_name_uses_empty_default() -> None:
+    """Verify constructor-bypassing legacy instances expose the optional label.
+
+    Historical ``.veragrid`` loaders may restore an instance dictionary without
+    calling the current constructor. Removing the backing value reproduces that
+    state and protects every normal property read and declarative serialization.
+
+    :return: None.
+    """
+    legacy_block: Block = Block(name="legacy_without_model_family")
+    legacy_block.__dict__.pop("_model_family_name", None)
+
+    assert legacy_block.model_family_name == ""
+    assert legacy_block.to_dict()["model_family_name"] == ""
+
+
+def test_symbolic_block_model_family_roundtrip_accepts_legacy_absence() -> None:
+    """Verify new family labels persist while legacy symbolic records stay valid.
+
+    :return: None.
+    """
+    source_factory: VarFactory = VarFactory()
+    source_block: Block = Block(
+        name="family_roundtrip_block",
+        model_family_name="generator_family",
+    )
+    copied_block: Block = source_block.copy()
+    assert copied_block.model_family_name == "generator_family"
+
+    saver: BlockSaver = BlockSaver(source_factory)
+    saver.save_block(source_block, main=True)
+    saved_blocks: Dict[int, Dict[str, Any]] = saver.get_blocks()
+
+    current_parser: BlockParser = BlockParser(VarFactory())
+    current_block: Block = current_parser.parse_block(saved_blocks, source_block.uid)
+    assert current_block.model_family_name == "generator_family"
+
+    # Removing the optional field reproduces every archive written before the
+    # model comparator existed; opening it must not require a migration step.
+    del saved_blocks[source_block.uid]["model_family_name"]
+    legacy_parser: BlockParser = BlockParser(VarFactory())
+    legacy_block: Block = legacy_parser.parse_block(saved_blocks, source_block.uid)
+    assert legacy_block.model_family_name == ""
+
+    saved_blocks[source_block.uid]["model_family_name"] = None
+    null_parser: BlockParser = BlockParser(VarFactory())
+    null_block: Block = null_parser.parse_block(saved_blocks, source_block.uid)
+    assert null_block.model_family_name == ""
+
+
 def test_tree_payload_without_graph_ids_remains_supported() -> None:
     """
     Verify that older tree-only symbolic payloads still deserialize unchanged.

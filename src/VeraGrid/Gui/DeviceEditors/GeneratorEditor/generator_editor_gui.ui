@@ -116,7 +116,7 @@
         <number>0</number>
        </property>
        <item>
-        <widget class="MatplotlibWidget" name="plotter" native="true"/>
+        <widget class="GraphsWidget" name="plotter" native="true"/>
        </item>
       </layout>
      </widget>
@@ -126,9 +126,9 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>MatplotlibWidget</class>
+   <class>GraphsWidget</class>
    <extends>QWidget</extends>
-   <header>matplotlibwidget.h</header>
+   <header>VeraGrid.Gui.Widgets.qtgraphs_widget</header>
   </customwidget>
  </customwidgets>
  <resources/>
