@@ -56,12 +56,6 @@ class ModalDialogAutoCloser(QtCore.QObject):
 
         :return: None.
         """
-        active_modal_widget: QtWidgets.QWidget | None = self._app.activeModalWidget()
-        if active_modal_widget is None:
-            pass
-        else:
-            self.close_widget(widget=active_modal_widget)
-
         widget: QtWidgets.QWidget
         for widget in self._app.topLevelWidgets():
             self.close_widget(widget=widget)

@@ -1,8 +1,12 @@
 from __future__ import annotations
 
 import shutil
+import multiprocessing
+import queue
 import time
+import traceback
 from pathlib import Path
+from typing import Any
 
 from PySide6 import QtCore
 from PySide6 import QtWidgets
@@ -441,40 +445,49 @@ def test_tower_editor_cleanup_survives_forced_gc(qt_app: QtWidgets.QApplication)
     assert active_modal_widget is None
 
 
-def test_original_honduras_tower_edit_save_and_solve(qt_app: QtWidgets.QApplication, tmp_path: Path) -> None:
+def run_original_honduras_tower_flow(working_file_name: str, status_queue: Any) -> None:
     """
-    Reproduce the original tower edit/save crash flow using the checked-in grid.
+    Run the native-crash reproduction in a process that pytest can safely reap.
 
-    :param qt_app: Shared Qt application fixture.
-    :param tmp_path: Temporary output directory.
+    :param working_file_name: Writable copy of the checked-in grid.
+    :param status_queue: Queue for phase updates and Python exception details.
     :return: Nothing.
     """
-    app: QtWidgets.QApplication = qt_app
-    working_file: Path = tmp_path / TOWER_EDIT_CRASH_FIXTURE.name
-    shutil.copyfile(src=TOWER_EDIT_CRASH_FIXTURE, dst=working_file)
+    app: QtWidgets.QApplication | None = QtWidgets.QApplication.instance()
+    if app is None:
+        app = QtWidgets.QApplication(["tower-clean-crash"])
+    else:
+        pass
 
+    working_file: Path = Path(working_file_name)
     gui: VeraGridMainGUI = VeraGridMainGUI()
     modal_closer: ModalDialogAutoCloser = ModalDialogAutoCloser(app=app, protected_widget=gui, parent=gui)
     modal_closer.start()
 
     try:
+        status_queue.put("opening grid")
         gui.open_file_now(filenames=str(working_file))
         wait_for_file_open(gui=gui, app=app, timeout_s=30.0)
 
         tower_count: int = len(gui.circuit.overhead_line_types)
         assert tower_count >= 2
 
+        status_queue.put("editing towers")
         edit_tower_from_database_row(gui=gui, app=app, row=1)
         app.processEvents()
 
         edit_tower_from_database_row(gui=gui, app=app, row=0)
         app.processEvents()
 
+        status_queue.put("saving grid")
         gui.save_file_now(filename=str(working_file))
         wait_for_file_save(gui=gui, app=app, timeout_s=30.0)
         assert working_file.exists()
 
         app.processEvents()
+    except Exception:
+        status_queue.put(traceback.format_exc())
+        raise
     finally:
         modal_closer.stop()
         close_gui_accepting_exit(gui=gui, app=app)
@@ -482,7 +495,55 @@ def test_original_honduras_tower_edit_save_and_solve(qt_app: QtWidgets.QApplicat
         QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.DeferredDelete)
         app.processEvents()
 
+    status_queue.put("reopening saved grid and solving")
     reopened_circuit: vge.MultiCircuit = FileOpen(str(working_file)).open()
     power_flow_results: object = vge.power_flow(grid=reopened_circuit, options=vge.PowerFlowOptions())
     voltage_frame: object = power_flow_results.get_voltage_df()
     assert voltage_frame is not None
+
+
+def test_original_honduras_tower_edit_save_and_solve(tmp_path: Path) -> None:
+    """
+    Reproduce the original tower edit/save crash flow using the checked-in grid.
+
+    :param tmp_path: Temporary output directory.
+    :return: Nothing.
+    """
+    working_file: Path = tmp_path / TOWER_EDIT_CRASH_FIXTURE.name
+    shutil.copyfile(src=TOWER_EDIT_CRASH_FIXTURE, dst=working_file)
+    context: multiprocessing.context.SpawnContext = multiprocessing.get_context("spawn")
+    status_queue: Any = context.Queue()
+    process: multiprocessing.context.SpawnProcess = context.Process(
+        target=run_original_honduras_tower_flow,
+        args=(str(working_file), status_queue),
+    )
+    process.start()
+
+    deadline_s: float = time.monotonic() + 240.0
+    last_status: str = "child process started"
+    timed_out: bool = False
+    while process.is_alive() and time.monotonic() < deadline_s:
+        try:
+            last_status = status_queue.get(timeout=1.0)
+        except queue.Empty:
+            pass
+
+    if process.is_alive():
+        timed_out = True
+        process.terminate()
+        process.join(timeout=10.0)
+    else:
+        process.join()
+
+    if timed_out:
+        raise AssertionError(f"Tower GUI subprocess timed out after phase: {last_status}")
+    if process.exitcode != 0:
+        detail: str = last_status
+        while True:
+            try:
+                detail = status_queue.get_nowait()
+            except queue.Empty:
+                break
+        raise AssertionError(f"Tower GUI subprocess exited with code {process.exitcode}: {detail}")
+
+    status_queue.close()
