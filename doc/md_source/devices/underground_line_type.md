@@ -89,7 +89,7 @@ Assigning `line.template` alone does not calculate or copy the electrical parame
 ### Registered properties
 Profile-enabled properties: none.
 
-|name                    |class_type         |unit        |mandatory|max_chars|descriptions                                                                    |has_profile|comment|
+|          name          |    class_type     |    unit    |mandatory|max_chars|                                  descriptions                                  |has_profile|comment|
 |------------------------|-------------------|------------|---------|---------|--------------------------------------------------------------------------------|-----------|-------|
 |idtag                   |str                |            |False    |         |Unique ID                                                                       |False      |       |
 |name                    |str                |            |False    |         |Name of the device.                                                             |False      |       |

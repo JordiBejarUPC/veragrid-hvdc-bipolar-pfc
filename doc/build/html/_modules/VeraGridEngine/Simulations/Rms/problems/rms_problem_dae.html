@@ -5,7 +5,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VeraGridEngine.Simulations.Rms.problems.rms_problem_dae &mdash; VeraGrid 6.5.26 documentation</title>
+  <title>VeraGridEngine.Simulations.Rms.problems.rms_problem_dae &mdash; VeraGrid 6.5.37 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../../_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="../../../../../_static/graphviz.css?v=4ae1632d" />
@@ -14,7 +14,7 @@
   
       <script src="../../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../../../../../_static/documentation_options.js?v=c62e3d9e"></script>
+      <script src="../../../../../_static/documentation_options.js?v=069969c3"></script>
       <script src="../../../../../_static/doctools.js?v=fd6eb6e6"></script>
       <script src="../../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../../_static/js/theme.js"></script>
@@ -1441,6 +1441,17 @@
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">bus_index</span> <span class="o">=</span> <span class="n">bus_dict</span><span class="p">[</span><span class="n">elm</span><span class="o">.</span><span class="n">bus</span><span class="p">]</span>
 
+                <span class="c1"># Static values must be resolved before parameter registration;</span>
+                <span class="c1"># explicit initialization then sees physical values rather than</span>
+                <span class="c1"># template defaults (notably for shunt conductance/susceptance).</span>
+                <span class="n">assign_static_api_object_mapping_for_device</span><span class="p">(</span>
+                    <span class="n">grid</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="p">,</span>
+                    <span class="n">device</span><span class="o">=</span><span class="n">elm</span><span class="p">,</span>
+                    <span class="n">mdl</span><span class="o">=</span><span class="n">elm</span><span class="o">.</span><span class="n">rms_model</span><span class="p">,</span>
+                    <span class="n">problem_mapping</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_static_parameters_values_mapping</span><span class="p">,</span>
+                    <span class="n">logger</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="p">,</span>
+                <span class="p">)</span>
+
                 <span class="bp">self</span><span class="o">.</span><span class="n">add_variables_to_compilation_dicts</span><span class="p">(</span><span class="n">elm</span><span class="p">,</span> <span class="n">elm</span><span class="o">.</span><span class="n">rms_model</span><span class="p">)</span>
                 <span class="n">register_rms_fmu_cs_device</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">elm</span><span class="p">,</span> <span class="n">elm</span><span class="o">.</span><span class="n">rms_model</span><span class="p">)</span>
                 <span class="n">register_rms_fmu_me_device</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">elm</span><span class="p">,</span> <span class="n">elm</span><span class="o">.</span><span class="n">rms_model</span><span class="p">)</span>
@@ -2812,11 +2823,17 @@
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Event parameter &#39;</span><span class="si">{</span><span class="n">ep</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; (uid=</span><span class="si">{</span><span class="n">ep</span><span class="o">.</span><span class="n">uid</span><span class="si">}</span><span class="s2">) is already registered in the system. &quot;</span>
                                  <span class="sa">f</span><span class="s2">&quot;Previous device may have created a duplicate event parameter.&quot;</span><span class="p">)</span>
 
+            <span class="n">declared_eq</span><span class="p">:</span> <span class="n">Expr</span> <span class="o">|</span> <span class="n">Const</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_static_parameters_values_mapping</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ep</span><span class="p">,</span> <span class="n">eq</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">ep</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_static_parameters_values_mapping</span><span class="p">:</span>
+                <span class="n">mapped_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_static_parameters_values_mapping</span><span class="p">[</span><span class="n">ep</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
+                <span class="k">if</span> <span class="n">mapped_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">event_params_init_dict</span><span class="p">[</span><span class="n">ep</span><span class="o">.</span><span class="n">uid</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">mapped_value</span><span class="p">)</span>
+
             <span class="n">effective_eq</span><span class="p">:</span> <span class="n">Expr</span> <span class="o">|</span> <span class="n">Const</span> <span class="o">=</span> <span class="n">_resolve_rms_runtime_parameter_expression</span><span class="p">(</span>
                 <span class="n">device</span><span class="o">=</span><span class="n">elm</span><span class="p">,</span>
                 <span class="n">owner_block</span><span class="o">=</span><span class="n">mdl</span><span class="p">,</span>
                 <span class="n">parameter</span><span class="o">=</span><span class="n">ep</span><span class="p">,</span>
-                <span class="n">declared_expression</span><span class="o">=</span><span class="n">eq</span><span class="p">,</span>
+                <span class="n">declared_expression</span><span class="o">=</span><span class="n">declared_eq</span><span class="p">,</span>
                 <span class="n">is_discrete_parameter</span><span class="o">=</span><span class="n">ep</span><span class="o">.</span><span class="n">uid</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_discrete_event_parameter_uids</span><span class="p">,</span>
             <span class="p">)</span>
 
@@ -2830,8 +2847,8 @@
             <span class="n">runtime_expression</span><span class="p">:</span> <span class="n">Expr</span> <span class="o">|</span> <span class="n">Const</span> <span class="o">=</span> <span class="n">effective_eq</span> <span class="k">if</span> <span class="n">runtime_eq</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">runtime_eq</span>
 
             <span class="k">if</span> <span class="n">runtime_eq</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">ep</span><span class="o">.</span><span class="n">uid</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_discrete_event_parameter_uids</span><span class="p">:</span>
-                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">eq</span><span class="p">,</span> <span class="n">Const</span><span class="p">)</span> <span class="ow">and</span> <span class="n">eq</span><span class="o">.</span><span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="n">runtime_expression</span> <span class="o">=</span> <span class="n">Const</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">eq</span><span class="o">.</span><span class="n">value</span><span class="p">))</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">effective_eq</span><span class="p">,</span> <span class="n">Const</span><span class="p">)</span> <span class="ow">and</span> <span class="n">effective_eq</span><span class="o">.</span><span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">runtime_expression</span> <span class="o">=</span> <span class="n">Const</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">effective_eq</span><span class="o">.</span><span class="n">value</span><span class="p">))</span>
                 <span class="k">else</span><span class="p">:</span>
                     <span class="n">runtime_expression</span> <span class="o">=</span> <span class="n">Const</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">_mode_runtime_expression_by_uid</span><span class="p">[</span><span class="n">ep</span><span class="o">.</span><span class="n">uid</span><span class="p">]</span> <span class="o">=</span> <span class="n">effective_eq</span>
@@ -3182,20 +3199,27 @@
 
 <div class="viewcode-block" id="RmsProblemDae.advance_fmu_cs_devices">
 <a class="viewcode-back" href="../../../../../rst_source/api/auto/VeraGridEngine.Simulations.Rms.problems.html#VeraGridEngine.Simulations.Rms.problems.rms_problem_dae.RmsProblemDae.advance_fmu_cs_devices">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">advance_fmu_cs_devices</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">x_snapshot</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">h</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">advance_fmu_cs_devices</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">x_snapshot</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">h</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Advance imported FMU Co-Simulation devices for one RMS communication step.</span>
 
 <span class="sd">        :param t: Current simulation time.</span>
 <span class="sd">        :param x_snapshot: Current accepted state vector.</span>
 <span class="sd">        :param h: RMS communication step.</span>
-<span class="sd">        :return: None.</span>
+<span class="sd">        :return: Whether at least one registered CS adapter advanced.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
+        <span class="n">co_simulation_advanced</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_fmu_cs_adapters</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="n">advance_rms_fmu_cs_devices</span><span class="p">(</span><span class="n">problem</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">time_value</span><span class="o">=</span><span class="n">t</span><span class="p">,</span> <span class="n">x_snapshot</span><span class="o">=</span><span class="n">x_snapshot</span><span class="p">,</span> <span class="n">step_size</span><span class="o">=</span><span class="n">h</span><span class="p">)</span>
+            <span class="n">co_simulation_advanced</span> <span class="o">=</span> <span class="n">advance_rms_fmu_cs_devices</span><span class="p">(</span>
+                <span class="n">problem</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span>
+                <span class="n">time_value</span><span class="o">=</span><span class="n">t</span><span class="p">,</span>
+                <span class="n">x_snapshot</span><span class="o">=</span><span class="n">x_snapshot</span><span class="p">,</span>
+                <span class="n">step_size</span><span class="o">=</span><span class="n">h</span><span class="p">,</span>
+            <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">pass</span></div>
+            <span class="k">pass</span>
+        <span class="k">return</span> <span class="n">co_simulation_advanced</span></div>
 
 
 <div class="viewcode-block" id="RmsProblemDae.close_fmu_cs_devices">
