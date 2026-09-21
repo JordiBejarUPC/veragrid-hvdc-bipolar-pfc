@@ -1066,7 +1066,6 @@ class ResultsMain(SimulationsMain):
             plot_dialogue: PlotDialogue = PlotDialogue(
                 title=dialog_title,
                 parent=self,
-                use_rhi_for_many_series=True,
             )
             accepted: bool
             if stacked and len(series_names) > 1:
