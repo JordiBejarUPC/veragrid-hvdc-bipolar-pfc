@@ -17,6 +17,7 @@ from VeraGrid.Gui.DeviceEditors.UndergroundCableBuilder.table_models import (
 from VeraGrid.Gui.DeviceEditors.UndergroundCableBuilder.underground_cable_builder_ui import (
     Ui_UndergroundCableBuilderDialog,
 )
+from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
 from VeraGrid.Gui.general_dialogues import LogsDialogue
 from VeraGrid.Gui.pandas_model import PandasModel
 from VeraGridEngine.basic_structures import CxMat, Logger
@@ -117,7 +118,7 @@ class UndergroundCableBuilderGUI(QtWidgets.QDialog):
         message.setText(text)
         message.setWindowTitle(title)
         message.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
-        message.exec()
+        exec_dialog_safely(dialog=message)
 
     def name_changed(self, text: str) -> None:
         """Apply the edited system name.
@@ -201,7 +202,7 @@ class UndergroundCableBuilderGUI(QtWidgets.QDialog):
             pass
         else:
             log_dialog: LogsDialogue = LogsDialogue(name=self.tr('Cable calculation'), logger=logger)
-            log_dialog.exec()
+            exec_dialog_safely(dialog=log_dialog)
 
     def _matrix_labels(self, primitive: bool) -> List[str]:
         """Build labels for primitive or reduced phase matrices.
