@@ -18,7 +18,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriv
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
 
 
-def test_native_legacy_underground_line_preserves_power_flow() -> None:
+def test_legacy_underground_line() -> None:
     """Load an old scalar cable catalogue and preserve its balanced power flow.
 
     :return: None.
