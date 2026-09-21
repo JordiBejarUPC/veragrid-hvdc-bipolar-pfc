@@ -2,93 +2,100 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-from typing import Any
+from pathlib import Path
 
-import VeraGridEngine.Devices as dev
+import numpy as np
+
 from VeraGridEngine.basic_structures import Logger
-from VeraGridEngine.Devices.types import ALL_DEV_TYPES
-from VeraGridEngine.IO.veragrid.pack_unpack import parse_object_type_from_json, veragrid_object_to_json
+from VeraGridEngine.Devices.Branches.line import Line
+from VeraGridEngine.Devices.Branches.underground_line_type import UndergroundLineType
+from VeraGridEngine.Devices.Injections.generator import Generator
+from VeraGridEngine.Devices.Injections.load import Load
+from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.enumerations import SolverType
+from VeraGridEngine.IO.file_open import FileOpen
+from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
+from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
 
 
-def test_native_legacy_cable_vectors_load_as_scalar_properties() -> None:
-    """Preserve old cable records while preferring explicitly saved scalar inputs.
+def test_native_legacy_underground_line_preserves_power_flow() -> None:
+    """Load an old scalar cable catalogue and preserve its balanced power flow.
 
     :return: None.
     """
-    # These lists reproduce the former native JSON representation, including
-    # third entries which were never used by the core/sheath calculation.
-    legacy: dict[str, Any] = dict(
-        idtag='legacy-cable',
-        thIns=list((7.0, 1.6, 9.0)),
-        crho=list((2.8, 1.7, 9.0)),
-        Cf=list((100.0, 99.4, 90.0)),
-        my=list((1.0, 0.99999, 9.0)),
-        cepsr=list((2.3, 2.5, 9.0)),
-        ctand=list((0.0, 0.01, 0.9)),
-    )
-    old_scalar: dict[str, Any] = dict(
-        idtag='old-scalar-cable', Vnom=15.0, rpha=0.22,
-        diaCon=12.0, diaTube=0.0, diaCab=31.0, thSht=0.2, thIns=8.0,
-        crho_core=2.82, crho_sheath=1.72, Cf_core=98.0, Cf_sheath=99.0,
-        cepsr_core_sheath=2.4, cepsr_outer=2.7, ctand_core_sheath=0.001, ctand_outer=0.002,
-        my_core=0.999, my_sheath=0.998, ks=0.8, kp=0.9,
-    )
-    current: dict[str, float] = dict(
-        nominal_voltage=15.0, core_dc_resistance=0.22,
-        core_diameter=12.0, core_internal_diameter=0.0, cable_diameter=31.0,
-        sheath_thickness=0.2, main_insulation_thickness=8.0,
-        core_resistivity=2.82, sheath_resistivity=1.72,
-        core_filling_factor=98.0, sheath_filling_factor=99.0,
-        main_insulation_permittivity=2.4, outer_insulation_permittivity=2.7,
-        main_insulation_loss_tangent=0.001, outer_insulation_loss_tangent=0.002,
-        core_relative_permeability=0.999, sheath_relative_permeability=0.998,
-        skin_effect_factor=0.8, proximity_effect_factor=0.9,
-    )
-    mixed: dict[str, Any] = legacy.copy()
-    mixed.update(idtag='mixed-cable', thIns=8.0, Cf_core=97.0, cepsr_outer=2.6)
-    mixed.update(current)
-    logger: Logger = Logger()
-    parsed: list[ALL_DEV_TYPES]
-    parsed_by_id: dict[str, ALL_DEV_TYPES]
-    parsed, parsed_by_id = parse_object_type_from_json(
-        template_elm=dev.UndergroundCableType(),
-        data_list=list((legacy, old_scalar, mixed)),
-        elements_dict_by_type=dict(),
-        time_profile=None,
-        block_parser=None,
-        logger=logger,
-    )
-    restored: dev.UndergroundCableType = parsed_by_id['legacy-cable']
-    assert restored.main_insulation_thickness == 7.0
-    assert (restored.core_resistivity, restored.sheath_resistivity) == (2.8, 1.7)
-    assert (restored.core_filling_factor, restored.sheath_filling_factor) == (100.0, 99.4)
-    assert (restored.core_relative_permeability, restored.sheath_relative_permeability) == (1.0, 0.99999)
-    assert (restored.main_insulation_permittivity, restored.outer_insulation_permittivity) == (2.3, 2.5)
-    assert (restored.main_insulation_loss_tangent, restored.outer_insulation_loss_tangent) == (0.0, 0.01)
-    assert len(logger) == 0
-    assert legacy['thIns'] == list((7.0, 1.6, 9.0))
+    # This committed fixture predates the physical cable implementation. Load
+    # its native records, rather than manufacturing legacy JSON with today's API.
+    file_path: Path = Path(__file__).resolve().parents[1] / 'data' / 'grids' / 'test_line_templates.gridcal'
+    opener: FileOpen = FileOpen(file_name=str(file_path))
+    grid: MultiCircuit = opener.open()
+    assert not opener.logger.has_errors(), str(opener.logger)
+    assert len(grid.buses) == 2
+    assert len(grid.lines) == 1
+    assert len(grid.underground_cable_types) == 1
+    assert len(grid.underground_cable_constructions) == 0
 
-    # Saving the migrated cable must emit the current scalar format only.
-    saved: dict[str, Any] = veragrid_object_to_json(elm=restored, block_saver=None)
-    assert saved['main_insulation_thickness'] == 7.0
-    assert saved['sheath_filling_factor'] == 99.4
-    assert 'crho' not in saved
-    assert 'Cf' not in saved
-    assert 'my' not in saved
-    assert 'cepsr' not in saved
-    assert 'ctand' not in saved
+    # The old UndergroundLineType keeps its scalar inputs and line reference;
+    # it does not require an UndergroundCableType or any geometric composition.
+    cable: UndergroundLineType = grid.underground_cable_types[0]
+    line: Line = grid.lines[0]
+    assert line.template is cable
+    assert cable.idtag == '5cce623cf66c4326aa38f65b6f61282e'
+    assert not cable.has_physical_data()
+    np.testing.assert_array_equal(
+        (cable.Imax, cable.Vnom, cable.freq, cable.R, cable.X, cable.B, cable.C,
+         cable.R0, cable.X0, cable.B0, cable.C0, cable.n_circuits, cable.capex, cable.opex),
+        (25.0, 10.0, 50.0, 0.01, 0.02, 0.03, 0.0,
+         0.0, 0.0, 0.0, 0.0, 1, 0.0, 0.0),
+    )
 
-    # Both scalar generations load identically; new names override vector and
-    # previous scalar names when multiple generations coexist in one record.
-    record_id: str
-    for record_id in ('old-scalar-cable', 'mixed-cable'):
-        saved = veragrid_object_to_json(elm=parsed_by_id[record_id], block_saver=None)
-        property_name: str
-        expected_value: float
-        for property_name, expected_value in current.items():
-            assert saved[property_name] == expected_value
-        for property_name in old_scalar:
-            if property_name != 'idtag':
-                assert property_name not in saved
-            else:
-                pass
+    # The fixture tests catalogue loading: it has no injections and its saved
+    # line B is stale (30000 pu). Reapply the unchanged scalar template, then
+    # supply a fixed operating point, identically to the pre-feature baseline.
+    logger: Logger = grid.apply_all_branch_types()
+    assert not logger.has_errors(), str(logger)
+    np.testing.assert_allclose(
+        (line.R, line.X, line.B, line.R0, line.X0, line.B0, line.rate),
+        (0.01, 0.02, 0.0, 0.0, 0.0, 0.0, 433.0127018922193),
+        rtol=0.0,
+        atol=1.0e-12,
+    )
+    grid.buses[0].is_slack = True
+    grid.add_generator(bus=grid.buses[0], api_obj=Generator(name='Supply', P=20.0, vset=1.0))
+    grid.add_load(bus=grid.buses[1], api_obj=Load(name='Demand', P=20.0, Q=10.0))
+    options: PowerFlowOptions = PowerFlowOptions(
+        solver_type=SolverType.NR,
+        retry_with_other_methods=False,
+        tolerance=1.0e-10,
+    )
+    driver: PowerFlowDriver = PowerFlowDriver(grid=grid, options=options)
+    driver.run()
+    assert driver.results.converged
+    assert not driver.logger.has_errors(), str(driver.logger)
+
+    # Reference computed with this fixture and operating point at cfd0311aa,
+    # before underground_cables. Check complex voltages, both-end powers and
+    # losses so an unchanged voltage magnitude alone cannot mask a regression.
+    np.testing.assert_allclose(
+        driver.results.voltage,
+        np.array((1.0 + 0.0j, 0.995974797746821 - 0.003j)),
+        rtol=0.0,
+        atol=1.0e-10,
+    )
+    np.testing.assert_allclose(
+        driver.results.Sf,
+        np.array((20.050404506358177 + 10.100809012715928j,)),
+        rtol=0.0,
+        atol=1.0e-8,
+    )
+    np.testing.assert_allclose(
+        driver.results.St,
+        np.array((-20.0 - 10.0j,)),
+        rtol=0.0,
+        atol=1.0e-8,
+    )
+    np.testing.assert_allclose(
+        driver.results.losses,
+        np.array((0.0504045063579959 + 0.10080901271599j,)),
+        rtol=0.0,
+        atol=1.0e-8,
+    )
