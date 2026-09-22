@@ -42,7 +42,7 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import (SchematicWid
 from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import GridMapWidget, generate_map_diagram
 from VeraGrid.Gui.Diagrams.base_diagram_widget import BaseDiagramWidget
 from VeraGrid.Gui.Diagrams.SchematicWidget.diagram_bus_selection_dialogue import DiagramBusSelectorDialogue
-from VeraGrid.Gui.Diagrams.diagrams_model import DiagramsModel, DiagramsTreeModel
+from VeraGrid.Gui.Diagrams.diagrams_model import DiagramsTreeModel
 from VeraGrid.Gui.messages import yes_no_question, error_msg, info_msg
 from VeraGrid.Gui.Main.SubClasses.Model.compiled_arrays import CompiledArraysMain
 from VeraGrid.Gui.Main.object_select_window import ObjectSelectWindow, ListSelectWindow
@@ -358,11 +358,16 @@ class DiagramsMain(CompiledArraysMain):
         # TreeView
         self.ui.combinationsTreeView.clicked.connect(self.combinations_tree_clicked)
 
-        # context menu
+        # context menu and drag-and-drop
         if diagrams_view is not None:
             diagrams_view.customContextMenuRequested.connect(self.show_diagrams_context_menu)
             diagrams_view.setContextMenuPolicy(QtGui.Qt.ContextMenuPolicy.CustomContextMenu)
             diagrams_view.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
+            diagrams_view.setDragEnabled(True)
+            diagrams_view.setAcceptDrops(True)
+            diagrams_view.setDropIndicatorShown(True)
+            diagrams_view.setDragDropMode(QtWidgets.QAbstractItemView.DragDropMode.DragDrop)
+            diagrams_view.setDefaultDropAction(QtCore.Qt.DropAction.MoveAction)
 
     def shutdown_tile_sources(self) -> bool:
         """
@@ -2259,6 +2264,31 @@ class DiagramsMain(CompiledArraysMain):
             diagrams_view.setModel(mdl)
             if hasattr(diagrams_view, 'expandAll'):
                 diagrams_view.expandAll()
+            if hasattr(mdl, 'item_dropped'):
+                mdl.item_dropped.connect(self._on_diagram_tree_item_dropped)
+
+    def _on_diagram_tree_item_dropped(self, item: Any) -> None:
+        """
+        Handle post-drop UI updates: expand ancestors and select moved item.
+        """
+        diagrams_view = getattr(self.ui, 'diagramsTreeView', getattr(self.ui, 'diagramsListView', None))
+        if diagrams_view is None:
+            return
+
+        model = diagrams_view.model() if hasattr(diagrams_view, 'model') else None
+        if model is None or not hasattr(model, 'index_for_item'):
+            return
+
+        index = model.index_for_item(item)
+        if index.isValid():
+            p_idx = index.parent()
+            while p_idx.isValid():
+                if hasattr(diagrams_view, 'expand'):
+                    diagrams_view.expand(p_idx)
+                p_idx = p_idx.parent()
+            diagrams_view.setCurrentIndex(index)
+            if hasattr(diagrams_view, 'scrollTo'):
+                diagrams_view.scrollTo(index)
 
     def set_diagrams_list_view(self) -> None:
         """
@@ -2275,12 +2305,12 @@ class DiagramsMain(CompiledArraysMain):
         if diagrams_view is None:
             return None
 
-        model = diagrams_view.model()
+        model = diagrams_view.model() if hasattr(diagrams_view, 'model') else None
         if model is None or not hasattr(model, 'get_item'):
             return None
 
-        indices = diagrams_view.selectedIndexes()
-        selected_index = indices[0] if len(indices) else diagrams_view.currentIndex()
+        indices = diagrams_view.selectedIndexes() if hasattr(diagrams_view, 'selectedIndexes') else []
+        selected_index = indices[0] if len(indices) else (diagrams_view.currentIndex() if hasattr(diagrams_view, 'currentIndex') else QtCore.QModelIndex())
         if not selected_index.isValid():
             return None
 
@@ -2292,17 +2322,20 @@ class DiagramsMain(CompiledArraysMain):
         return None
 
     def add_diagram_folder(self,
-                           parent_folder: dev.DiagramFolder | None = None,
+                           parent_folder: dev.DiagramFolder | bool | None = False,
                            folder_name: str | None = None) -> dev.DiagramFolder | None:
         """
         Prompt user for a folder name and create a new DiagramFolder.
         """
-        if parent_folder is None:
+        if parent_folder is False:
             parent_folder = self.get_selected_diagram_folder()
+        elif not isinstance(parent_folder, dev.DiagramFolder):
+            parent_folder = None
 
         if folder_name is None:
+            parent_widget = self if isinstance(self, QtWidgets.QWidget) else None
             name, ok = QtWidgets.QInputDialog.getText(
-                self,
+                parent_widget,
                 self.tr("New Folder"),
                 self.tr("Folder name:"),
                 QtWidgets.QLineEdit.EchoMode.Normal,
@@ -2317,10 +2350,15 @@ class DiagramsMain(CompiledArraysMain):
 
         diagrams_view = getattr(self.ui, 'diagramsTreeView', getattr(self.ui, 'diagramsListView', None))
         if diagrams_view is not None:
-            model = diagrams_view.model()
+            model = diagrams_view.model() if hasattr(diagrams_view, 'model') else None
             if model is not None and hasattr(model, 'index_for_item'):
                 idx = model.index_for_item(new_folder)
                 if idx.isValid():
+                    p_idx = idx.parent()
+                    while p_idx.isValid():
+                        if hasattr(diagrams_view, 'expand'):
+                            diagrams_view.expand(p_idx)
+                        p_idx = p_idx.parent()
                     diagrams_view.setCurrentIndex(idx)
                     if hasattr(diagrams_view, 'scrollTo'):
                         diagrams_view.scrollTo(idx)
@@ -3951,8 +3989,15 @@ class DiagramsMain(CompiledArraysMain):
 
         context_menu = QtWidgets.QMenu(parent=diagrams_view)
         index = diagrams_view.indexAt(pos)
-        model = diagrams_view.model()
+        model = diagrams_view.model() if hasattr(diagrams_view, 'model') else None
         item = model.get_item(index) if (model is not None and hasattr(model, 'get_item')) else None
+
+        target_folder = None
+        if index.isValid() and item is not None:
+            if isinstance(item, dev.DiagramFolder):
+                target_folder = item
+            elif isinstance(item, dev.BaseDiagram):
+                target_folder = item.group
 
         gf.add_menu_entry(menu=context_menu,
                           text=self.tr("New schematic"),
@@ -3974,7 +4019,7 @@ class DiagramsMain(CompiledArraysMain):
         gf.add_menu_entry(menu=context_menu,
                           text=self.tr("New folder"),
                           icon_path=":/Icons/icons/tree.png",
-                          function_ptr=self.add_diagram_folder)
+                          function_ptr=lambda checked=False, p=target_folder: self.add_diagram_folder(parent_folder=p))
 
         if index.isValid() and item is not None:
             gf.add_menu_entry(menu=context_menu,

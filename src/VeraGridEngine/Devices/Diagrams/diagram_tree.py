@@ -279,7 +279,7 @@ class DiagramTree(collections.abc.MutableSequence):
         :param parent: Optional parent DiagramFolder
         :return: Created or added DiagramFolder
         """
-        if parent is not None:
+        if parent is not None and isinstance(parent, DiagramFolder):
             return parent.add_folder(folder_or_name)
         if isinstance(folder_or_name, str):
             folder = DiagramFolder(name=folder_or_name, parent=None)

@@ -2465,6 +2465,8 @@ def parse_multiverse_data(data: Dict[str, VERAGRID_FILE_TYPE],
                 parsed_diagrams.parse_data(node_tree_data, diagrams_by_id)
 
             node.diagrams = parsed_diagrams
+            if node.circuit is not None:
+                node.circuit.diagrams = parsed_diagrams
         else:
             logger.add_error("Node ID not found", value=str(node_id))
 

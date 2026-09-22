@@ -25,6 +25,7 @@ class DiagramsTreeModel(QtCore.QAbstractItemModel):
     and fallback compatibility with flat widget lists.
     """
     MIME_TYPE = "application/x-veragrid-diagram-tree-item"
+    item_dropped = QtCore.Signal(object)
 
     def __init__(self,
                  tree_or_widgets: Optional[Union[DiagramTree, List[DIAGRAM_WIDGET_TYPES]]] = None,
@@ -210,19 +211,19 @@ class DiagramsTreeModel(QtCore.QAbstractItemModel):
         return True
 
     def flags(self, index: QtCore.QModelIndex) -> QtCore.Qt.ItemFlag:
+        """
+
+        :param index:
+        :return:
+        """
         if not index.isValid():
             return QtCore.Qt.ItemFlag.ItemIsDropEnabled
 
-        flags = (QtCore.Qt.ItemFlag.ItemIsEnabled |
-                 QtCore.Qt.ItemFlag.ItemIsSelectable |
-                 QtCore.Qt.ItemFlag.ItemIsEditable |
-                 QtCore.Qt.ItemFlag.ItemIsDragEnabled)
-
-        item = index.internalPointer()
-        if isinstance(item, DiagramFolder):
-            flags |= QtCore.Qt.ItemFlag.ItemIsDropEnabled
-
-        return flags
+        return (QtCore.Qt.ItemFlag.ItemIsEnabled |
+                QtCore.Qt.ItemFlag.ItemIsSelectable |
+                QtCore.Qt.ItemFlag.ItemIsEditable |
+                QtCore.Qt.ItemFlag.ItemIsDragEnabled |
+                QtCore.Qt.ItemFlag.ItemIsDropEnabled)
 
     def index_for_item(self, item: Union[DiagramFolder, BaseDiagram]) -> QtCore.QModelIndex:
         """
@@ -272,12 +273,44 @@ class DiagramsTreeModel(QtCore.QAbstractItemModel):
     # Drag and Drop support
     # -------------------------------------------------------------------------
     def supportedDropActions(self) -> QtCore.Qt.DropAction:
-        return QtCore.Qt.DropAction.MoveAction
+        """
+
+        :return:
+        """
+        return QtCore.Qt.DropAction.MoveAction | QtCore.Qt.DropAction.CopyAction
+
+    def canDropMimeData(self,
+                        data: QtCore.QMimeData,
+                        action: QtCore.Qt.DropAction,
+                        row: int,
+                        column: int,
+                        parent: QtCore.QModelIndex) -> bool:
+        """
+
+        :param data:
+        :param action:
+        :param row:
+        :param column:
+        :param parent:
+        :return:
+        """
+        if not data.hasFormat(self.MIME_TYPE):
+            return False
+        return True
 
     def mimeTypes(self) -> List[str]:
+        """
+
+        :return:
+        """
         return [self.MIME_TYPE]
 
     def mimeData(self, indexes: List[QtCore.QModelIndex]) -> QtCore.QMimeData:
+        """
+
+        :param indexes:
+        :return:
+        """
         mime = QtCore.QMimeData()
         if not indexes:
             return mime
@@ -300,7 +333,16 @@ class DiagramsTreeModel(QtCore.QAbstractItemModel):
                      row: int,
                      column: int,
                      parent: QtCore.QModelIndex) -> bool:
-        if action != QtCore.Qt.DropAction.MoveAction or not data.hasFormat(self.MIME_TYPE):
+        """
+
+        :param data:
+        :param action:
+        :param row:
+        :param column:
+        :param parent:
+        :return:
+        """
+        if not data.hasFormat(self.MIME_TYPE):
             return False
 
         try:
@@ -317,6 +359,10 @@ class DiagramsTreeModel(QtCore.QAbstractItemModel):
             parent_item = parent.internalPointer()
             if isinstance(parent_item, DiagramFolder):
                 target_folder = parent_item
+            elif isinstance(parent_item, BaseDiagram):
+                target_folder = parent_item.group
+        else:
+            target_folder = None
 
         if item_type == "diagram":
             diagram = None
@@ -328,21 +374,23 @@ class DiagramsTreeModel(QtCore.QAbstractItemModel):
                 self.beginResetModel()
                 self._tree.move_diagram(diagram, target_folder=target_folder)
                 self.endResetModel()
+                self.item_dropped.emit(diagram)
                 return True
 
         elif item_type == "folder":
             folder = self._tree.find_folder(idtag)
             if folder is not None:
+                if target_folder is folder:
+                    return False
+                if target_folder is not None and folder.find_folder(target_folder.idtag) is not None:
+                    return False
                 try:
                     self.beginResetModel()
                     self._tree.move_folder(folder, target_parent=target_folder)
                     self.endResetModel()
+                    self.item_dropped.emit(folder)
                     return True
                 except ValueError:
                     return False
 
         return False
-
-
-# Backward compatibility alias
-DiagramsModel = DiagramsTreeModel

@@ -27,8 +27,8 @@ from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QComb
     QTreeView, QVBoxLayout, QWidget)
 try:
     import icons_rc
-except ModuleNotFoundError:
-    from VeraGrid.Gui.Icons.icons_rc import *
+except ImportError:
+    from VeraGrid.Gui.Icons import icons_rc
 
 class Ui_mainWindow(object):
     def setupUi(self, mainWindow):
@@ -888,6 +888,9 @@ class Ui_mainWindow(object):
         self.diagramsTreeView = QTreeView(self.page)
         self.diagramsTreeView.setObjectName(u"diagramsTreeView")
         self.diagramsTreeView.setFrameShape(QFrame.Shape.NoFrame)
+        self.diagramsTreeView.setDragEnabled(True)
+        self.diagramsTreeView.setDragDropMode(QAbstractItemView.DragDropMode.DragDrop)
+        self.diagramsTreeView.setDefaultDropAction(Qt.DropAction.MoveAction)
         self.diagramsTreeView.setHeaderHidden(True)
         self.diagramsListView = self.diagramsTreeView
 
