@@ -60,6 +60,43 @@ class PseudoTransientOptions(OptionsTemplate):
     :param residual_reset_improvement_tol: Relative residual improvement required to avoid reset.
     """
 
+    __slots__ = (
+        "equilibrium_inputs_as_params",
+        "equilibrium_references_as_params",
+        "equilibrium_references_as_equations",
+        "delta_seed",
+        "allow_best_effort_init",
+        "use_weighted_residual",
+        "weight_algebraic",
+        "use_weighted_linear_solve",
+        "linear_solve_state_weight",
+        "linear_solve_algebraic_weight",
+        "use_state_tau_scaling",
+        "use_state_tau_dtau_scale",
+        "state_tau_min",
+        "state_tau_max",
+        "state_tau_eps",
+        "allow_lsqr_fallback",
+        "use_svd_diagnostics",
+        "svd_diagnostics_limit",
+        "linear_solve_damp",
+        "artificial_algebraic_mass",
+        "artificial_algebraic_mass_names",
+        "positive_clamp_names",
+        "positive_clamp_min",
+        "soft_positive_names",
+        "soft_positive_min",
+        "soft_positive_eps",
+        "dtau_ser_min_factor",
+        "dtau_ser_max_factor",
+        "dtau_stall_ratio",
+        "dtau_stall_steps",
+        "dtau_stall_boost",
+        "stop_on_residual_stall",
+        "residual_reset_steps",
+        "residual_reset_improvement_tol",
+    )
+
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
         GCProp(key="equilibrium_inputs_as_params", tpe=bool),
         GCProp(key="equilibrium_references_as_params", tpe=bool),
@@ -175,7 +212,62 @@ class PseudoTransientOptions(OptionsTemplate):
         self.residual_reset_improvement_tol: float = float(residual_reset_improvement_tol)
 
 
-class  PseudoTransient:
+class PseudoTransient:
+    """
+    Pseudo-transient solver.
+    """
+
+    __slots__ = (
+        "problem",
+        "h",
+        "dtau0",
+        "dtau_min",
+        "dtau_max",
+        "steps",
+        "max_iter_0",
+        "tol",
+        "reference_error_tol",
+        "verbose",
+        "options",
+        "use_weighted_residual",
+        "weight_algebraic",
+        "use_weighted_linear_solve",
+        "linear_solve_state_weight",
+        "linear_solve_algebraic_weight",
+        "use_state_tau_scaling",
+        "use_state_tau_dtau_scale",
+        "state_tau_min",
+        "state_tau_max",
+        "state_tau_eps",
+        "allow_lsqr_fallback",
+        "use_svd_diagnostics",
+        "svd_diagnostics_limit",
+        "linear_solve_damp",
+        "artificial_algebraic_mass",
+        "artificial_algebraic_mass_names",
+        "positive_clamp_names",
+        "positive_clamp_min",
+        "soft_positive_names",
+        "soft_positive_min",
+        "soft_positive_eps",
+        "dtau_ser_min_factor",
+        "dtau_ser_max_factor",
+        "dtau_stall_ratio",
+        "dtau_stall_steps",
+        "dtau_stall_boost",
+        "stop_on_residual_stall",
+        "residual_reset_steps",
+        "residual_reset_improvement_tol",
+        "fixed_var_uids",
+        "_fixed_var_indices",
+        "debug_check_x_new",
+        "debug_x_new_abs_max",
+        "t",
+        "y",
+        "state_tau",
+        "_singular_report_count",
+        "_svd_report_count",
+    )
 
     def __init__(self,
                  problem: RmsProblemDae | EmtPseudoTransientProblemAdapter,

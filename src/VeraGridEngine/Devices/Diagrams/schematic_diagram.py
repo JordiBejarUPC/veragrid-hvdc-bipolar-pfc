@@ -111,6 +111,8 @@ class SchematicDiagram(BaseDiagram):
     Diagram
     """
 
+    __slots__ = ()
+
     def __init__(self, idtag=None, name=''):
         """
 

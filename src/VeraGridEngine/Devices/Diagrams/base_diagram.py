@@ -240,6 +240,11 @@ class PointsGroup:
     Diagram
     """
 
+    __slots__ = (
+        'name',
+        'locations',
+    )
+
     def __init__(self, name: str = '') -> None:
         """
 
@@ -366,6 +371,24 @@ class BaseDiagram:
     Diagram
     """
 
+    __slots__ = (
+        'idtag',
+        'name',
+        'data',
+        'diagram_type',
+        '_use_flow_based_width',
+        '_min_branch_width',
+        '_max_branch_width',
+        '_min_bus_width',
+        '_max_bus_width',
+        '_arrow_size',
+        '_use_api_colors',
+        '_palette',
+        '_default_bus_voltage',
+        '_group',
+        '_group_idtag',
+    )
+
     def __init__(self,
                  idtag: Union[str, None],
                  name: str,
@@ -427,15 +450,21 @@ class BaseDiagram:
                          locations to objects in a target circuit.
         :return: A copied diagram with detached layout containers.
         """
-        cpy = self.__class__.__new__(self.__class__)
-
-        for attr_name, attr_value in self.__dict__.items():
-            if attr_name in ("data", "_group"):
-                continue
-
-            setattr(cpy, attr_name, copy.deepcopy(attr_value))
-
+        cpy: BaseDiagram = self.__class__.__new__(self.__class__)
+        cpy.idtag = self.idtag
+        cpy.name = self.name
+        cpy.diagram_type = self.diagram_type
+        cpy._use_flow_based_width = self._use_flow_based_width
+        cpy._min_branch_width = self._min_branch_width
+        cpy._max_branch_width = self._max_branch_width
+        cpy._min_bus_width = self._min_bus_width
+        cpy._max_bus_width = self._max_bus_width
+        cpy._arrow_size = self._arrow_size
+        cpy._use_api_colors = self._use_api_colors
+        cpy._palette = self._palette
+        cpy._default_bus_voltage = self._default_bus_voltage
         cpy._group = None
+        cpy._group_idtag = self._group_idtag
         cpy.data = dict()
         for category, points_group in self.data.items():
             category_obj_dict = None if obj_dict is None else obj_dict.get(category, None)

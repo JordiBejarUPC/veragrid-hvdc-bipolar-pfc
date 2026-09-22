@@ -13,6 +13,18 @@ class BatteryData(GeneratorData):
     Structure to host the battery compiled data
     """
 
+    __slots__ = (
+        "enom",
+        "e_min",
+        "e_max",
+        "min_soc",
+        "max_soc",
+        "soc_0",
+        "discharge_efficiency",
+        "charge_efficiency",
+        "efficiency",
+    )
+
     def __init__(self, nelm: int, nbus: int):
         """
         Battery data arrays

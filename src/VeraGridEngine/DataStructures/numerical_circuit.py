@@ -373,6 +373,42 @@ class NumericalCircuit:
     Class storing the calculation information of the devices
     """
 
+    __slots__ = (
+        "nbus",
+        "nbr",
+        "t_idx",
+        "nload",
+        "ngen",
+        "nbatt",
+        "nshunt",
+        "nhvdc",
+        "nvsc",
+        "nfluidnode",
+        "nfluidturbine",
+        "nfluidpump",
+        "nfluidp2x",
+        "nfluidpath",
+        "Sbase",
+        "bus_data",
+        "passive_branch_data",
+        "active_branch_data",
+        "hvdc_data",
+        "vsc_data",
+        "load_data",
+        "battery_data",
+        "generator_data",
+        "shunt_data",
+        "fluid_node_data",
+        "fluid_turbine_data",
+        "fluid_pump_data",
+        "fluid_p2x_data",
+        "fluid_path_data",
+        "__bus_map_arr",
+        "__topology_performed",
+        "structs_idtag_dict",
+        "bus_dict",
+    )
+
     def __init__(self,
                  nbus: int,
                  nbr: int,
@@ -451,6 +487,7 @@ class NumericalCircuit:
         # used during contingency analysis to modify the structures active, etc...
         # based on the device idtag
         self.structs_idtag_dict: Dict[str, Tuple[DataStructType, int]] = dict()
+        self.bus_dict: Dict[Any, int] | None = None
 
     def propagate_bus_result(self, bus_magnitude: Vec | CxVec):
         """

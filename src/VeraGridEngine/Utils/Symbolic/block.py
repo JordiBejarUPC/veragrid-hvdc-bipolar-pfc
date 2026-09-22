@@ -2570,6 +2570,42 @@ class Block:
     Class representing a Block
     """
 
+    __slots__ = (
+        'name',
+        '_model_family_name',
+        'uid',
+        'is_decomposable',
+        'tpe_uid',
+        'vars_glob_name2uid',
+        'state_vars',
+        'state_eqs',
+        'algebraic_vars',
+        'algebraic_eqs',
+        'inequalities',
+        'diff_vars',
+        'reformulated_vars',
+        'differential_eqs',
+        'parameters',
+        'init_values',
+        'init_eqs',
+        'diff_init_eqs',
+        'discrete_eqs',
+        'post_init_seed_eqs',
+        'children',
+        'in_vars',
+        'out_vars',
+        'event_dict',
+        'mode_dict',
+        'boolean_guards',
+        'procedural_logic',
+        'connection_intents',
+        'external_mapping',
+        'api_obj_mapping',
+        'var_mapping',
+        '_diagram',
+        'dynamic_model_contract',
+    )
+
     def __init__(self,
                  state_vars: List[Var] | None = None,
                  state_eqs: List[Expr] | None = None,
@@ -2743,26 +2779,9 @@ class Block:
     def model_family_name(self) -> str:
         """Return the optional user-defined structural model-family label.
 
-        Historical ``.veragrid`` files may restore pickled ``Block`` objects
-        without calling the current constructor. Reading the instance storage
-        directly keeps those objects valid and supplies the same empty default
-        used by the declarative parser.
-
         :return: Persisted family label or an empty string for legacy blocks.
         """
-        # Current instances store the value behind the property. The second
-        # lookup also accepts files produced during the short-lived direct
-        # attribute representation, while the final empty default covers all
-        # older files that predate model-family labels entirely.
-        stored_value: object | None = self.__dict__.get("_model_family_name", None)
-        if stored_value is None:
-            stored_value = self.__dict__.get("model_family_name", "")
-        else:
-            pass
-        if isinstance(stored_value, str):
-            return stored_value
-        else:
-            return ""
+        return self._model_family_name
 
     @model_family_name.setter
     def model_family_name(self, name: str) -> None:
@@ -2772,9 +2791,9 @@ class Block:
         :return: None.
         """
         if isinstance(name, str):
-            self.__dict__["_model_family_name"] = name
+            self._model_family_name = name
         else:
-            self.__dict__["_model_family_name"] = ""
+            self._model_family_name = ""
 
     def to_dict(self) -> Dict[str, Any]:
         """

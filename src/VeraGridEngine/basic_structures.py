@@ -38,6 +38,8 @@ class CDF:
     Inverse Cumulative density function of a given array of data
     """
 
+    __slots__ = ("arr", "iscomplex", "prob", "idx", "len")
+
     def __init__(self, data: Vec | pd.Series):
         """
         Constructor
@@ -294,6 +296,19 @@ class LogEntry:
     Logger entry
     """
 
+    __slots__ = (
+        "time",
+        "msg",
+        "severity",
+        "device",
+        "device_class",
+        "device_property",
+        "value",
+        "expected_value",
+        "object_value",
+        "expected_object_value",
+    )
+
     def __init__(self,
                  time: Union[str, None] = None,
                  msg="",
@@ -351,6 +366,8 @@ class Logger:
     """
     Logger class
     """
+
+    __slots__ = ("entries", "debug_entries")
 
     def __init__(self) -> None:
 
@@ -671,6 +688,8 @@ class ConvergenceReport:
     Convergence report
     """
 
+    __slots__ = ("methods_", "converged_", "error_", "elapsed_", "iterations_")
+
     def __init__(self) -> None:
         """
         Constructor
@@ -773,6 +792,8 @@ class CompressedJsonStruct:
     """
     Compressed json block
     """
+
+    __slots__ = ("__fields", "__data", "__fields_pos_dict")
 
     def __init__(self, fields: List[str] = None, data: List[Any] = None):
         self.__fields: List[str] = list()
@@ -886,6 +907,8 @@ class ListSet(list):
     This is a class that behaves like a list except for the query "in" where it behaves like a set O(1)
     """
 
+    __slots__ = ("_set",)
+
     def __init__(self, iterable=None):
         """Initialize the ListSet with an optional iterable."""
         super().__init__()
@@ -966,6 +989,8 @@ class Vector:
     """
     Python implementation of a C++ like std::vector
     """
+
+    __slots__ = ("_data",)
 
     def __init__(self, size=0, value=None):
         """
