@@ -53,6 +53,7 @@ device_type_icons = {
     DeviceType.BranchGroupDevice.value: ":/Icons/icons/branch_group.png",
     DeviceType.ModellingAuthority.value: ":/Icons/icons/modelling_authority.png",
     DeviceType.FacilityDevice.value: ":/Icons/icons/powerplant.png",
+    DeviceType.MarketUnitsGroupDevice.value: ":/Icons/icons/market_unit.png",
     DeviceType.MarketUnitDevice.value: ":/Icons/icons/market_unit.png",
     DeviceType.ControlPc.value: ":/Icons/icons/control_pc.png",
 
