@@ -65,9 +65,6 @@ class DataBaseTableMain(DiagramsMain):
         # Tree proxy used to filter the visible database device tree while preserving source item payloads.
         self.device_tree_proxy_model: QtCore.QSortFilterProxyModel | None = None
 
-        # Current column filter popup, kept alive while it is shown.
-        self.object_column_filter_dialog: ObjectColumnFilterDialog | None = None
-
         # Width-resize controller for the object table index/name header.
         self.db_table_index_resizer: VerticalHeaderWidthResizer | None = None
 
@@ -90,18 +87,18 @@ class DataBaseTableMain(DiagramsMain):
 
         prop_filter_mdl = gf.ComboModel(
             icon_enum_values=[
-                (PrpCat.All,":/Icons/icons/edit.png"),
-                (PrpCat.TP,":/Icons/icons/automatic_layout.png"),
-                (PrpCat.PF,":/Icons/icons/pf.png"),
-                (PrpCat.PF3,":/Icons/icons/pf3.png"),
-                (PrpCat.SC,":/Icons/icons/short_circuit.png"),
-                (PrpCat.OPF,":/Icons/icons/dcopf.png"),
-                (PrpCat.CON,":/Icons/icons/otdf.png"),
-                (PrpCat.REL,":/Icons/icons/reliability.png"),
-                (PrpCat.NTC,":/Icons/icons/ntc_opf.png"),
-                (PrpCat.INV,":/Icons/icons/expansion_planning.png"),
-                (PrpCat.RMS,":/Icons/icons/dyn.png"),
-                (PrpCat.EMT,":/Icons/icons/dyn_emt.png"),
+                (PrpCat.All, ":/Icons/icons/edit.png"),
+                (PrpCat.TP, ":/Icons/icons/automatic_layout.png"),
+                (PrpCat.PF, ":/Icons/icons/pf.png"),
+                (PrpCat.PF3, ":/Icons/icons/pf3.png"),
+                (PrpCat.SC, ":/Icons/icons/short_circuit.png"),
+                (PrpCat.OPF, ":/Icons/icons/dcopf.png"),
+                (PrpCat.CON, ":/Icons/icons/otdf.png"),
+                (PrpCat.REL, ":/Icons/icons/reliability.png"),
+                (PrpCat.NTC, ":/Icons/icons/ntc_opf.png"),
+                (PrpCat.INV, ":/Icons/icons/expansion_planning.png"),
+                (PrpCat.RMS, ":/Icons/icons/dyn.png"),
+                (PrpCat.EMT, ":/Icons/icons/dyn_emt.png"),
             ],
             translate=self.tr
         )
@@ -194,7 +191,8 @@ class DataBaseTableMain(DiagramsMain):
 
                 group_item.appendRow(device_item)
 
-        device_tree_proxy_model: QtCore.QSortFilterProxyModel = QtCore.QSortFilterProxyModel(self.ui.dataStructuresTreeView)
+        device_tree_proxy_model: QtCore.QSortFilterProxyModel = QtCore.QSortFilterProxyModel(
+            self.ui.dataStructuresTreeView)
         device_tree_proxy_model.setSourceModel(db_tree_model)
         device_tree_proxy_model.setRecursiveFilteringEnabled(True)
         device_tree_proxy_model.setAutoAcceptChildRows(True)
@@ -476,20 +474,17 @@ class DataBaseTableMain(DiagramsMain):
         source_column: int = header.logicalIndexAt(position)
 
         if model is not None and source_column > -1:
-            old_dialog: ObjectColumnFilterDialog | None = self.object_column_filter_dialog
-            if is_dialog_available(dialog=old_dialog):
-                delete_dialog_safely(dialog=old_dialog)
-            else:
-                pass
 
-            self.object_column_filter_dialog = ObjectColumnFilterDialog(
-                proxy_model=model,
-                source_column=source_column,
-                table_view=self.ui.dataStructureTableView,
-                parent=self,
+            exec_dialog_safely(
+                dialog=ObjectColumnFilterDialog(
+                    proxy_model=model,
+                    source_column=source_column,
+                    table_view=self.ui.dataStructureTableView,
+                    refresh_object_table_dependants_ptr=self.refresh_object_table_dependants,
+                    global_position=header.mapToGlobal(position),
+                    parent=self,
+                )
             )
-            self.object_column_filter_dialog.filters_changed.connect(self.refresh_object_table_dependants)
-            self.object_column_filter_dialog.show_at(global_position=header.mapToGlobal(position))
         else:
             pass
 
@@ -525,7 +520,6 @@ class DataBaseTableMain(DiagramsMain):
             if len(objects) > 0:
 
                 if len(sel_idx) > 0:
-
                     unique = {idx.row() for idx in sel_idx}
                     selected_objects = proxy_model.get_objects_at_proxy_rows(proxy_rows=sorted(unique))
 
@@ -580,7 +574,8 @@ class DataBaseTableMain(DiagramsMain):
 
         if len(selected_objects):
 
-            ok = yes_no_question(self.tr('Are you sure that you want to delete_with_dialogue the selected elements?'), self.tr('Delete'))
+            ok = yes_no_question(self.tr('Are you sure that you want to delete_with_dialogue the selected elements?'),
+                                 self.tr('Delete'))
             if ok:
                 for obj in selected_objects:
 
@@ -690,7 +685,8 @@ class DataBaseTableMain(DiagramsMain):
                     diagram.add_object_to_the_schematic(elm=device, logger=logger)
 
             if len(logger):
-                dlg = LogsDialogue(name=self.tr("Add selected DB objects to current diagram"), logger=logger)
+                dlg = LogsDialogue(name=self.tr("Add selected DB objects to current diagram"),
+                                   logger=logger, parent=self)
                 dlg.setModal(True)
                 exec_dialog_safely(dialog=dlg)
 
@@ -822,8 +818,8 @@ class DataBaseTableMain(DiagramsMain):
 
             ok = yes_no_question(
                 text=self.tr("This will delete all buses and their connected elements that were not selected."
-                     "This cannot be undone and it is dangerous if you don't know"
-                     "what you are doing. \nAre you sure?"),
+                             "This cannot be undone and it is dangerous if you don't know"
+                             "what you are doing. \nAre you sure?"),
                 title=self.tr("Crop model to buses selection?"))
 
             if ok:
@@ -868,14 +864,16 @@ class DataBaseTableMain(DiagramsMain):
                 self.update_date_dependent_combos()
 
                 if reduction_logger.has_logs():
-                    logs_dialogue: LogsDialogue = LogsDialogue(name=self.tr("Grid reduction"), logger=reduction_logger)
+                    logs_dialogue: LogsDialogue = LogsDialogue(name=self.tr("Grid reduction"),
+                                                               logger=reduction_logger, parent=self)
                     exec_dialog_safely(dialog=logs_dialogue)
                 else:
                     pass
             else:
                 self.show_warning_toast("No reduction done")
                 if reduction_logger.has_logs():
-                    logs_dialogue: LogsDialogue = LogsDialogue(name=self.tr("Grid reduction"), logger=reduction_logger)
+                    logs_dialogue: LogsDialogue = LogsDialogue(name=self.tr("Grid reduction"),
+                                                               logger=reduction_logger, parent=self)
                     exec_dialog_safely(dialog=logs_dialogue)
                 else:
                     pass
@@ -920,14 +918,16 @@ class DataBaseTableMain(DiagramsMain):
                 self.show_info_toast("Done!")
 
                 if reduction_logger.has_logs():
-                    logs_dialogue: LogsDialogue = LogsDialogue(name=self.tr("Grid reduction"), logger=reduction_logger)
+                    logs_dialogue: LogsDialogue = LogsDialogue(name=self.tr("Grid reduction"),
+                                                               logger=reduction_logger, parent=self)
                     exec_dialog_safely(dialog=logs_dialogue)
                 else:
                     pass
             else:
                 self.show_warning_toast("No reduction done")
                 if reduction_logger.has_logs():
-                    logs_dialogue: LogsDialogue = LogsDialogue(name=self.tr("Grid reduction"), logger=reduction_logger)
+                    logs_dialogue: LogsDialogue = LogsDialogue(name=self.tr("Grid reduction"),
+                                                               logger=reduction_logger, parent=self)
                     exec_dialog_safely(dialog=logs_dialogue)
                 else:
                     pass
@@ -1202,7 +1202,8 @@ class DataBaseTableMain(DiagramsMain):
                     )
                     if exec_dialog_safely(dialog=dlg) == QtWidgets.QDialog.DialogCode.Accepted:
                         selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
-                        if selected_buses[0] is not None and selected_buses[1] is not None and selected_buses[2] is not None:
+                        if selected_buses[0] is not None and selected_buses[1] is not None and selected_buses[
+                            2] is not None:
                             obj: dev.Transformer3W = dev.Transformer3W(name=dlg.get_name(),
                                                                        bus1=selected_buses[0],
                                                                        bus2=selected_buses[1],
@@ -1226,7 +1227,8 @@ class DataBaseTableMain(DiagramsMain):
                     )
                     if exec_dialog_safely(dialog=dlg) == QtWidgets.QDialog.DialogCode.Accepted:
                         selected_buses: List[ALL_DEV_TYPES | None] = dlg.get_buses()
-                        if selected_buses[0] is not None and selected_buses[1] is not None and selected_buses[2] is not None:
+                        if selected_buses[0] is not None and selected_buses[1] is not None and selected_buses[
+                            2] is not None:
                             obj: dev.TransformerNW = dev.TransformerNW(name=dlg.get_name(),
                                                                        winding_count=len(selected_buses),
                                                                        buses=selected_buses)
@@ -1699,11 +1701,11 @@ class DataBaseTableMain(DiagramsMain):
                 obj = dev.MarketUnit(name=name)
                 self.circuit.add_market_unit(obj)
 
-            # elif elm_type == DeviceType.DynamicModelHostDevice:
-            #
-            #     name = f'RMS model {self.circuit.get_rms_models_number()}'
-            #     obj = dev.DynamicModelHost(name=name)
-            #     self.circuit.add_rms_model(obj)
+            elif elm_type == DeviceType.MarketUnitsGroupDevice:
+
+                name = f'Market unit group{self.circuit.get_market_unit_group_number()}'
+                obj = dev.MarketUnitsGroup(name=name)
+                self.circuit.add_market_unit_group(obj)
 
             elif elm_type == DeviceType.EmtModelTemplateDevice:
 
@@ -1869,8 +1871,8 @@ class DataBaseTableMain(DiagramsMain):
                     else:
 
                         warning_msg(self.tr('No editor available.\n'
-                                    'The values can be changed from the table or '
-                                    'via context menus in the graphical interface.'),
+                                            'The values can be changed from the table or '
+                                            'via context menus in the graphical interface.'),
                                     self.tr('Edit'))
                 else:
                     info_msg(self.tr('Choose an element from the table'))
@@ -2166,7 +2168,7 @@ class DataBaseTableMain(DiagramsMain):
                         logger.add_error("No object found for selected row", device=str(i))
 
                 if logger.size():
-                    logs_window = LogsDialogue(self.tr("Assign to profile"), logger=logger)
+                    logs_window = LogsDialogue(self.tr("Assign to profile"), logger=logger, parent=self)
                     exec_dialog_safely(dialog=logs_window)
                 else:
                     lst = ", ".join(attr_list)
@@ -2233,7 +2235,7 @@ class DataBaseTableMain(DiagramsMain):
                         else:
                             pass
                     if has_histogram:
-                        self._open_plot_dialogs.append(plot_dialogue)
+                        self.register_open_plot_dialog(plot_dialogue)
                         plot_dialogue.show()
                     else:
                         plot_dialogue.reject()
@@ -2289,7 +2291,7 @@ class DataBaseTableMain(DiagramsMain):
             logger = self.delete_shit()
 
             if len(logger) > 0:
-                dlg: LogsDialogue = LogsDialogue(self.tr("Delete inconsistencies"), logger)
+                dlg: LogsDialogue = LogsDialogue(self.tr("Delete inconsistencies"), logger, parent=self)
                 dlg.setModal(True)
                 exec_dialog_safely(dialog=dlg)
             else:
@@ -2348,14 +2350,15 @@ class DataBaseTableMain(DiagramsMain):
         Clean the DataBase
         """
 
-        ok = yes_no_question(self.tr("This action may delete_with_dialogue unused objects and references, \nAre you sure?"),
-                             title=self.tr("DB clean"))
+        ok = yes_no_question(
+            self.tr("This action may delete_with_dialogue unused objects and references, \nAre you sure?"),
+            title=self.tr("DB clean"))
 
         if ok:
             logger = self.circuit.clean()
 
             if len(logger) > 0:
-                dlg: LogsDialogue = LogsDialogue(self.tr('DB clean logger'), logger)
+                dlg: LogsDialogue = LogsDialogue(self.tr('DB clean logger'), logger, parent=self)
                 exec_dialog_safely(dialog=dlg)
             else:
                 pass
@@ -2622,8 +2625,8 @@ class DataBaseTableMain(DiagramsMain):
         :return:
         """
         ok = yes_no_question(text=self.tr("Setting the database buses x,y position from their latitude and longitude "
-                                  "values will change the buses values but not the current diagrams. "
-                                  "New diagrams will use the new values"),
+                                          "values will change the buses values but not the current diagrams. "
+                                          "New diagrams will use the new values"),
                              title="")
 
         if ok:
@@ -2639,9 +2642,10 @@ class DataBaseTableMain(DiagramsMain):
         Restore investments to the circuit
         :return:
         """
-        ok = yes_no_question(text=self.tr("This action will restore the circuit to the state before the last investment "
-                                  "modification. Do you want to proceed?"),
-                             title=self.tr("Restore investments"))
+        ok = yes_no_question(
+            text=self.tr("This action will restore the circuit to the state before the last investment "
+                         "modification. Do you want to proceed?"),
+            title=self.tr("Restore investments"))
 
         if ok:
             self.circuit.restore_investments()

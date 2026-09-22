@@ -5,7 +5,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VeraGridEngine.Simulations.EMT.problems.emt_problem_template &mdash; VeraGrid 6.5.26 documentation</title>
+  <title>VeraGridEngine.Simulations.EMT.problems.emt_problem_template &mdash; VeraGrid 6.5.37 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../../_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="../../../../../_static/graphviz.css?v=4ae1632d" />
@@ -14,7 +14,7 @@
   
       <script src="../../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../../../../../_static/documentation_options.js?v=c62e3d9e"></script>
+      <script src="../../../../../_static/documentation_options.js?v=069969c3"></script>
       <script src="../../../../../_static/doctools.js?v=fd6eb6e6"></script>
       <script src="../../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../../_static/js/theme.js"></script>
@@ -924,7 +924,11 @@
 
         <span class="k">if</span> <span class="n">n_runtime</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_event_params_values</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_runtime_parameter_values</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">seed_values</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_event_params_values</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_event_params_values</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">def_event_params_fn</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_event_params_values</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_event_params_values</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">def_event_params_fn</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_event_params_values</span><span class="p">,</span>
+                <span class="mf">0.0</span><span class="p">,</span>
+                <span class="n">defer_unavailable_dependencies</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">pass</span>
 
@@ -1219,11 +1223,50 @@
             <span class="n">expression</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_event_parameters_eqs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">expression</span><span class="p">,</span> <span class="n">Const</span><span class="p">)</span> <span class="ow">and</span> <span class="n">expression</span><span class="o">.</span><span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">out</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">expression</span><span class="p">,</span> <span class="n">Expr</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_runtime_expression_dependencies_available</span><span class="p">(</span><span class="n">expression</span><span class="p">):</span>
+                <span class="c1"># Runtime initialization happens once while the generic problem</span>
+                <span class="c1"># storage is being assembled and again after explicit/native</span>
+                <span class="c1"># initialization.  A model-owned runtime expression may depend</span>
+                <span class="c1"># on algebraic or state values that are intentionally unavailable</span>
+                <span class="c1"># during the first pass.  Preserve its provisional seed here;</span>
+                <span class="c1"># explicit initialization will resolve the expression through</span>
+                <span class="c1"># the full dependency graph and promote the resulting scalar.</span>
+                <span class="n">out</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">out</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_evaluate_runtime_expression</span><span class="p">(</span><span class="n">expression</span><span class="p">,</span> <span class="n">out</span><span class="p">,</span> <span class="n">tm</span><span class="p">)</span>
             <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
 
         <span class="k">return</span> <span class="n">out</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_runtime_expression_dependencies_available</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">expression</span><span class="p">:</span> <span class="n">Expr</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return whether a runtime expression can be evaluated at this stage.</span>
+
+<span class="sd">        Runtime and constant parameters are always represented in the problem</span>
+<span class="sd">        vectors. Algebraic, state, and differential variables become available</span>
+<span class="sd">        only after an initialization value has been assigned. Variables owned by</span>
+<span class="sd">        a connected sibling block are deliberately deferred to the explicit</span>
+<span class="sd">        initialization graph, which supplies its external UID bindings.</span>
+
+<span class="sd">        :param expression: Runtime initialization expression to inspect.</span>
+<span class="sd">        :return: ``True`` when every referenced variable has a usable binding.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">variable</span> <span class="ow">in</span> <span class="n">expression</span><span class="o">.</span><span class="n">get_vars</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">variable</span><span class="o">.</span><span class="n">uid</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_glob_time</span><span class="o">.</span><span class="n">uid</span> <span class="ow">or</span> <span class="n">variable</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;time&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">TIME_NAME</span><span class="p">}:</span>
+                <span class="k">pass</span>
+            <span class="k">elif</span> <span class="n">variable</span><span class="o">.</span><span class="n">uid</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_uid2idx_event_params</span><span class="p">:</span>
+                <span class="k">pass</span>
+            <span class="k">elif</span> <span class="n">variable</span><span class="o">.</span><span class="n">uid</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_uid2idx_params</span><span class="p">:</span>
+                <span class="k">pass</span>
+            <span class="k">elif</span> <span class="n">variable</span><span class="o">.</span><span class="n">uid</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_uid2idx_vars</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_guess</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">variable</span><span class="o">.</span><span class="n">uid</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="kc">False</span>
+            <span class="k">elif</span> <span class="n">variable</span><span class="o">.</span><span class="n">uid</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_uid2idx_diff</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">diff_init_guess</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">variable</span><span class="o">.</span><span class="n">uid</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="kc">False</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="k">return</span> <span class="kc">True</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_evaluate_runtime_expression</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">expression</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">runtime_params</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">tm</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
@@ -1530,7 +1573,12 @@
 
 <div class="viewcode-block" id="EmtProblemTemplate.def_event_params_fn">
 <a class="viewcode-back" href="../../../../../rst_source/api/auto/VeraGridEngine.Simulations.EMT.problems.html#VeraGridEngine.Simulations.EMT.problems.emt_problem_template.EmtProblemTemplate.def_event_params_fn">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">def_event_params_fn</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ev_param</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">tm</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Vec</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">def_event_params_fn</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">ev_param</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span>
+            <span class="n">tm</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+            <span class="n">defer_unavailable_dependencies</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Vec</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Update only the continuous runtime parameter slice.</span>
 
@@ -1540,6 +1588,8 @@
 
 <span class="sd">        :param ev_param: Current flat runtime parameter vector.</span>
 <span class="sd">        :param tm: Current simulation time.</span>
+<span class="sd">        :param defer_unavailable_dependencies: Preserve the current value when</span>
+<span class="sd">            construction-time algebraic/state dependencies are not initialized.</span>
 <span class="sd">        :return: Updated flat runtime parameter vector.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">n_continuous</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_runtime_continuous_eqs</span><span class="p">)</span>
@@ -1554,7 +1604,14 @@
                 <span class="n">global_idx</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_runtime_continuous_slice</span><span class="o">.</span><span class="n">start</span> <span class="o">+</span> <span class="n">i</span>
                 <span class="n">expression</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_runtime_continuous_eqs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
 
-                <span class="n">out</span><span class="p">[</span><span class="n">global_idx</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_evaluate_runtime_expression</span><span class="p">(</span><span class="n">expression</span><span class="p">,</span> <span class="n">out</span><span class="p">,</span> <span class="n">tm</span><span class="p">)</span>
+                <span class="k">if</span> <span class="p">(</span>
+                    <span class="n">defer_unavailable_dependencies</span>
+                    <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">expression</span><span class="p">,</span> <span class="n">Expr</span><span class="p">)</span>
+                    <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_runtime_expression_dependencies_available</span><span class="p">(</span><span class="n">expression</span><span class="p">)</span>
+                <span class="p">):</span>
+                    <span class="k">pass</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">out</span><span class="p">[</span><span class="n">global_idx</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_evaluate_runtime_expression</span><span class="p">(</span><span class="n">expression</span><span class="p">,</span> <span class="n">out</span><span class="p">,</span> <span class="n">tm</span><span class="p">)</span>
                 <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
 
             <span class="k">return</span> <span class="n">out</span></div>
@@ -1787,8 +1844,6 @@
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">event_parameters_eqs</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">]:</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_event_parameters_eqs</span></div>
-
-
 
 
 </pre></div>

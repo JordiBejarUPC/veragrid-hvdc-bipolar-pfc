@@ -201,7 +201,7 @@ class UndergroundCableBuilderGUI(QtWidgets.QDialog):
         if calculated:
             pass
         else:
-            log_dialog: LogsDialogue = LogsDialogue(name=self.tr('Cable calculation'), logger=logger)
+            log_dialog: LogsDialogue = LogsDialogue(name=self.tr('Cable calculation'), logger=logger, parent=self)
             exec_dialog_safely(dialog=log_dialog)
 
     def _matrix_labels(self, primitive: bool) -> List[str]:

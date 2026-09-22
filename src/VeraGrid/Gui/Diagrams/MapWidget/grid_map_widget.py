@@ -1209,13 +1209,16 @@ class GridMapWidget(BaseDiagramWidget):
         for idtag, graphic_object in dev_dict.items():
             graphic_object.sort_voltage_levels()
 
-    def add_object_to_the_schematic(self, elm: ALL_DEV_TYPES, logger: Logger = Logger()):
+    def add_object_to_the_schematic(self, elm: ALL_DEV_TYPES, logger: Logger | None = None):
         """
 
         :param elm:
         :param logger:
         :return:
         """
+        if logger is None:
+            logger = Logger()
+
         graphic_obj = self.graphics_manager.query(elm=elm)
 
         if graphic_obj is None:
@@ -2026,7 +2029,7 @@ class GridMapWidget(BaseDiagramWidget):
                     pass
 
             if has_power_plot or has_voltage_plot:
-                self.gui._open_plot_dialogs.append(plot_dialogue)
+                self.gui.register_open_plot_dialog(plot_dialogue)
                 plot_dialogue.show()
             else:
                 plot_dialogue.reject()

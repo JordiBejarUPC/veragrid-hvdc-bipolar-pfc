@@ -11,7 +11,7 @@ from pathlib import Path
 
 import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
-
+import shiboken6
 from VeraGrid.Gui.Widgets.qt_rhi_line_chart_widget import RhiLineChartWidget
 
 
@@ -1475,7 +1475,20 @@ class GraphsWidget(QtWidgets.QWidget):
             for chart_menu in self.findChildren(QtWidgets.QMenu):
                 chart_menu.close()
             if self._active_save_dialog is not None:
-                self._active_save_dialog.close()
+                if shiboken6.isValid(self._active_save_dialog):
+                    try:
+                        self._active_save_dialog.fileSelected.disconnect(self._save_chart_to_file)
+                    except (RuntimeError, TypeError):
+                        pass
+                    try:
+                        self._active_save_dialog.finished.disconnect(self._clear_active_save_dialog)
+                    except (RuntimeError, TypeError):
+                        pass
+                    try:
+                        self._active_save_dialog.destroyed.disconnect(self._clear_active_save_dialog)
+                    except (RuntimeError, TypeError):
+                        pass
+                    self._active_save_dialog.close()
                 self._active_save_dialog = None
             else:
                 pass
@@ -1737,6 +1750,7 @@ class GraphsWidget(QtWidgets.QWidget):
             file_dialog.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose, True)
             file_dialog.fileSelected.connect(self._save_chart_to_file)
             file_dialog.finished.connect(self._clear_active_save_dialog)
+            file_dialog.destroyed.connect(self._clear_active_save_dialog)
             self._active_save_dialog = file_dialog
             file_dialog.open()
         else:
@@ -1761,10 +1775,10 @@ class GraphsWidget(QtWidgets.QWidget):
         else:
             pass
 
-    def _clear_active_save_dialog(self, result: int) -> None:
+    def _clear_active_save_dialog(self, result: object = None) -> None:
         """Drop the reference after the child save dialog has finished.
 
-        :param result: Dialog result code.
+        :param result: Dialog result code or destroyed object.
         :return: None.
         """
         _ = result

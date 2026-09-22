@@ -2343,39 +2343,40 @@
 
 ### UndergroundCableType
 
-|name                         |class_type      |unit   |mandatory|max_chars|descriptions                                                                                           |has_profile|comment|
-|-----------------------------|----------------|-------|---------|---------|-------------------------------------------------------------------------------------------------------|-----------|-------|
-|idtag                        |str             |       |False    |         |Unique ID                                                                                              |False      |       |
-|name                         |str             |       |False    |         |Name of the device.                                                                                    |False      |       |
-|code                         |str             |       |False    |         |Secondary ID                                                                                           |False      |       |
-|rdfid                        |str             |       |False    |         |RDF ID for further compatibility                                                                       |False      |       |
-|action                       |enum ActionType |       |False    |         |Object action to perform. Only used for model merging.                                                 |False      |       |
-|selected_to_merge            |bool            |       |False    |         |Whether this object should be applied during diff merge.                                               |False      |       |
-|comment                      |str             |       |False    |         |User comment                                                                                           |False      |       |
-|diff_changes                 |MergeInformation|       |False    |         |                                                                                                       |False      |       |
-|nominal_voltage              |float           |kV     |False    |         |Rated cable voltage                                                                                    |False      |       |
-|core_dc_resistance           |float           |Ohm/km |False    |         |Imported core DC resistance at 20 degrees Celsius; informational, not used by the geometric calculation|False      |       |
-|core_diameter                |float           |mm     |False    |         |Core outer diameter                                                                                    |False      |       |
-|core_internal_diameter       |float           |mm     |False    |         |Core inner diameter                                                                                    |False      |       |
-|cable_diameter               |float           |mm     |False    |         |Overall cable diameter, including outer insulation                                                     |False      |       |
-|sheath_thickness             |float           |mm     |False    |         |Metallic sheath thickness                                                                              |False      |       |
-|main_insulation_thickness    |float           |mm     |False    |         |Core-to-sheath insulation thickness; outer insulation is derived from cable_diameter                   |False      |       |
-|core_resistivity             |float           |uOhm*cm|False    |         |Core resistivity at 20 degrees Celsius                                                                 |False      |       |
-|sheath_resistivity           |float           |uOhm*cm|False    |         |Sheath resistivity at 20 degrees Celsius                                                               |False      |       |
-|core_filling_factor          |float           |%      |False    |         |Core conducting filling factor                                                                         |False      |       |
-|sheath_filling_factor        |float           |%      |False    |         |Sheath conducting filling factor                                                                       |False      |       |
-|main_insulation_permittivity |float           |       |False    |         |Core-to-sheath insulation relative permittivity                                                        |False      |       |
-|outer_insulation_permittivity|float           |       |False    |         |Outer insulation relative permittivity                                                                 |False      |       |
-|main_insulation_loss_tangent |float           |       |False    |         |Core-to-sheath insulation dielectric loss factor                                                       |False      |       |
-|outer_insulation_loss_tangent|float           |       |False    |         |Outer insulation dielectric loss factor                                                                |False      |       |
-|core_relative_permeability   |float           |       |False    |         |Core relative magnetic permeability                                                                    |False      |       |
-|sheath_relative_permeability |float           |       |False    |         |Sheath relative magnetic permeability                                                                  |False      |       |
-|skin_effect_factor           |float           |       |False    |         |Core skin-effect factor                                                                                |False      |       |
-|proximity_effect_factor      |float           |       |False    |         |Imported core proximity-effect factor; informational, not used by this calculation                     |False      |       |
+|            name             |   class_type   | unit  |mandatory|max_chars|                                                descriptions                                                |has_profile|comment|
+|-----------------------------|----------------|-------|---------|---------|------------------------------------------------------------------------------------------------------------|-----------|-------|
+|idtag                        |str             |       |False    |         |Unique ID                                                                                                   |False      |       |
+|name                         |str             |       |False    |         |Name of the device.                                                                                         |False      |       |
+|code                         |str             |       |False    |         |Secondary ID                                                                                                |False      |       |
+|rdfid                        |str             |       |False    |         |RDF ID for further compatibility                                                                            |False      |       |
+|action                       |enum ActionType |       |False    |         |Object action to perform. Only used for model merging.                                                      |False      |       |
+|selected_to_merge            |bool            |       |False    |         |Whether this object should be applied during diff merge.                                                    |False      |       |
+|comment                      |str             |       |False    |         |User comment                                                                                                |False      |       |
+|diff_changes                 |MergeInformation|       |False    |         |                                                                                                            |False      |       |
+|nominal_voltage              |float           |kV     |False    |         |Rated cable voltage (PowerFactory uline)                                                                    |False      |       |
+|core_dc_resistance           |float           |Ohm/km |False    |         |Imported core DC resistance at 20 degrees Celsius; informational, not used by the geometric calculation     |False      |       |
+|core_diameter                |float           |mm     |False    |         |Core outer diameter                                                                                         |False      |       |
+|core_internal_diameter       |float           |mm     |False    |         |Core inner diameter                                                                                         |False      |       |
+|cable_diameter               |float           |mm     |False    |         |Overall cable diameter, including outer insulation                                                          |False      |       |
+|sheath_thickness             |float           |mm     |False    |         |Metallic sheath thickness                                                                                   |False      |       |
+|main_insulation_thickness    |float           |mm     |False    |         |Core-to-sheath insulation thickness (PowerFactory thIns[0]); outer insulation is derived from cable_diameter|False      |       |
+|core_resistivity             |float           |uOhm*cm|False    |         |Core resistivity at 20 degrees Celsius (PowerFactory crho[0])                                               |False      |       |
+|sheath_resistivity           |float           |uOhm*cm|False    |         |Sheath resistivity at 20 degrees Celsius (PowerFactory crho[1])                                             |False      |       |
+|core_filling_factor          |float           |%      |False    |         |Core conducting filling factor (PowerFactory Cf[0])                                                         |False      |       |
+|sheath_filling_factor        |float           |%      |False    |         |Sheath conducting filling factor (PowerFactory Cf[1])                                                       |False      |       |
+|main_insulation_permittivity |float           |       |False    |         |Core-to-sheath insulation relative permittivity (PowerFactory cepsr[0])                                     |False      |       |
+|outer_insulation_permittivity|float           |       |False    |         |Outer insulation relative permittivity (PowerFactory cepsr[1])                                              |False      |       |
+|main_insulation_loss_tangent |float           |       |False    |         |Core-to-sheath insulation dielectric loss factor (PowerFactory ctand[0])                                    |False      |       |
+|outer_insulation_loss_tangent|float           |       |False    |         |Outer insulation dielectric loss factor (PowerFactory ctand[1])                                             |False      |       |
+|core_relative_permeability   |float           |       |False    |         |Core relative magnetic permeability (PowerFactory my[0])                                                    |False      |       |
+|sheath_relative_permeability |float           |       |False    |         |Sheath relative magnetic permeability (PowerFactory my[1])                                                  |False      |       |
+|skin_effect_factor           |float           |       |False    |         |Core skin-effect factor                                                                                     |False      |       |
+|proximity_effect_factor      |float           |       |False    |         |Imported core proximity-effect factor; informational, not used by this calculation                          |False      |       |
+
 
 ### UndergroundLineType
 
-|name                    |class_type         |unit        |mandatory|max_chars|descriptions                                                                    |has_profile|comment|
+|          name          |    class_type     |    unit    |mandatory|max_chars|                                  descriptions                                  |has_profile|comment|
 |------------------------|-------------------|------------|---------|---------|--------------------------------------------------------------------------------|-----------|-------|
 |idtag                   |str                |            |False    |         |Unique ID                                                                       |False      |       |
 |name                    |str                |            |False    |         |Name of the device.                                                             |False      |       |

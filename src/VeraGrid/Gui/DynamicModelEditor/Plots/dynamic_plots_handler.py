@@ -11,7 +11,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from VeraGrid.Gui.Icons.icon_associations import device_type_icons
 from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_support import create_dynamic_events_group_with_dialog
-from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
+from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely, is_dialog_available
 from VeraGrid.Gui.PlotDialogue.plot_dialogue import PlotDialogue
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.Events.dynamic_plot import DynamicPlot
@@ -5319,15 +5319,33 @@ class DynamicsResultsHandler:
         """
         return len(self.source_labels) > 1
 
+    def _cleanup_plot_dialogue(self, destroyed_obj: QtCore.QObject | None = None) -> None:
+        """Remove destroyed plot dialogues from the active list.
+
+        :param destroyed_obj: Qt object being destroyed, or None.
+        :return: None.
+        """
+        self._open_plot_dialogues = [
+            dlg for dlg in self._open_plot_dialogues
+            if dlg is not destroyed_obj and is_dialog_available(dlg)
+        ]
+
     def close_plot_dialogs(self) -> None:
         """Close and release every native plot dialog owned by this handler.
 
         :return: None.
         """
         plot_dialogue: PlotDialogue
-        for plot_dialogue in self._open_plot_dialogues:
-            plot_dialogue.reject()
-            plot_dialogue.deleteLater()
+        for plot_dialogue in list(self._open_plot_dialogues):
+            if is_dialog_available(plot_dialogue):
+                try:
+                    plot_dialogue.reject()
+                except Exception:
+                    pass
+                try:
+                    plot_dialogue.deleteLater()
+                except Exception:
+                    pass
         self._open_plot_dialogues.clear()
 
     def _show_plot_dialogue(self, plot_dialogue: PlotDialogue) -> None:
@@ -5337,6 +5355,7 @@ class DynamicsResultsHandler:
         :return: None.
         """
         self._open_plot_dialogues.append(plot_dialogue)
+        plot_dialogue.destroyed.connect(self._cleanup_plot_dialogue)
         plot_dialogue.show()
 
     def plot_series(self, series: DynamicResultSeries) -> None:

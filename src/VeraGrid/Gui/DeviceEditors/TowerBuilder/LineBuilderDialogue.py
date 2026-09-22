@@ -298,7 +298,7 @@ class TowerBuilderGUI(QtWidgets.QDialog):
         all_ok, logs = self.compute()
 
         if not all_ok:
-            logger_diag = LogsDialogue(name=self.tr('Tower computation'), logger=logs)
+            logger_diag = LogsDialogue(name=self.tr('Tower computation'), logger=logs, parent=self)
             exec_dialog_safely(dialog=logger_diag)
 
     def example_1(self):

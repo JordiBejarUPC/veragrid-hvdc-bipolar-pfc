@@ -704,7 +704,7 @@ class ProfileInputGUI(QtWidgets.QDialog):
 
         else:
             if logger.has_logs():
-                dlg: LogsDialogue = LogsDialogue(self.tr("Import issues"), logger)
+                dlg: LogsDialogue = LogsDialogue(self.tr("Import issues"), logger, parent=self)
                 dlg.setModal(True)
                 exec_dialog_safely(dialog=dlg)
 
@@ -984,7 +984,7 @@ class ProfileInputGUI(QtWidgets.QDialog):
             if mode == StringSubstitutions.PSSeBranchName:
 
                 for i, name in enumerate(self.profile_names):
-                    if '_':
+                    if '_' in name:
                         vals = name.split('_')
                         if len(vals) < 7:
                             pass
@@ -995,7 +995,7 @@ class ProfileInputGUI(QtWidgets.QDialog):
             if mode == StringSubstitutions.PSSeBusGenerator:
 
                 for i, name in enumerate(self.profile_names):
-                    if '_':
+                    if '_' in name:
                         vals = name.split('_')
                         if len(vals) == 3:
                             self.profile_names[i] = vals[0] + '_1'

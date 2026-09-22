@@ -524,7 +524,7 @@ class TimeEventsMain(DataBaseTableMain):
                     if accepted:
                         # BaseMainGui retains these modeless child dialogs and
                         # closes them before its native main-window teardown.
-                        self._open_plot_dialogs.append(plot_dialogue)
+                        self.register_open_plot_dialog(plot_dialogue)
                         plot_dialogue.show()
                     else:
                         plot_dialogue.reject()
