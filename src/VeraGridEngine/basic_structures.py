@@ -148,48 +148,83 @@ class CDF:
 
 def classify_by_hour(t: pd.DatetimeIndex) -> List[List[int]]:
     """
-    Passes an array of TimeStamps to an array of arrays of indices
-    classified by hour of the year
-    @param t: Pandas time Index array
-    @return: list of lists of integer indices
+    Classify timestamp indices into bins grouped by continuous hour from series start.
+
+    :param t: Pandas DatetimeIndex array containing timestamps.
+    :return: List of lists containing integer indices belonging to each hour bucket.
     """
-    n = len(t)
+    n: int = len(t)
 
-    offset = t[0].hour * t[0].dayofyear
-    mx = t[n - 1].hour * t[n - 1].dayofyear
+    # An empty DatetimeIndex cannot be anchored or partitioned.
+    if n == 0:
+        return list()
+    else:
+        pass
 
+    # Anchor to the start hour to ensure sub-hourly timestamps begin at bucket 0.
+    t0: pd.Timestamp = t[0].floor("h")
+
+    # Compute continuous elapsed hours for each timestamp using integer division of elapsed seconds.
+    # This prevents arithmetic collisions across days, leap years, and calendar year boundaries.
+    hours_from_start: npt.NDArray[np.int_] = np.asarray((t - t0).total_seconds() // 3600, dtype=int)
+    max_h: int = int(np.max(hours_from_start))
+
+    # Pre-allocate hourly buckets from hour 0 to max_h inclusive.
     arr: List[List[int]] = list()
-
-    for i in range(mx - offset + 1):
+    bucket_idx: int
+    for bucket_idx in range(max_h + 1):
         arr.append(list())
 
+    # Map each timestamp index to its corresponding hourly bin.
+    i: int
     for i in range(n):
-        hourofyear = t[i].hour * t[i].dayofyear
-        arr[hourofyear - offset].append(i)
+        hour_bin: int = int(hours_from_start[i])
+        arr[hour_bin].append(i)
 
     return arr
 
 
-def classify_by_day(t: pd.DatetimeIndex) -> list[list[int]]:
+def classify_by_day(t: pd.DatetimeIndex) -> List[List[int]]:
     """
-    Passes an array of TimeStamps to an array of arrays of indices
-    classified by day of the year
-    @param t: Pandas time Index array
-    @return: list of lists of integer indices
+    Classify timestamp indices into bins grouped by continuous day from series start.
+
+    :param t: Pandas DatetimeIndex array containing timestamps.
+    :return: List of lists containing integer indices belonging to each day bucket.
     """
-    n = len(t)
+    n: int = len(t)
 
-    offset = t[0].dayofyear
-    mx = t[n - 1].dayofyear
+    # An empty DatetimeIndex cannot be anchored or partitioned.
+    if n == 0:
+        return list()
+    else:
+        pass
 
-    arr: list[list[int]] = list()
+    # Normalize timezone localization to naive wall-clock time for calendar day continuity.
+    t_anchor: pd.DatetimeIndex
+    if t.tz is not None:
+        t_anchor = t.tz_localize(None)
+    else:
+        t_anchor = t
 
-    for i in range(mx - offset + 1):
+    # Anchor to the start day (midnight) to ensure all timestamps begin at day bucket 0.
+    t0: pd.Timestamp = t_anchor[0].floor("D")
+
+    # Compute continuous elapsed calendar days for each timestamp using integer division of elapsed seconds.
+    # This prevents arithmetic collisions across days, leap years, and calendar year boundaries.
+    days_from_start: npt.NDArray[np.int_] = np.asarray((t_anchor - t0).total_seconds() // 86400, dtype=int)
+    max_d: int = int(np.max(days_from_start))
+
+    # Pre-allocate daily buckets from day 0 to max_d inclusive.
+    arr: List[List[int]] = list()
+    bucket_idx: int
+    for bucket_idx in range(max_d + 1):
         arr.append(list())
 
+    # Map each timestamp index to its corresponding daily bin.
+    i: int
     for i in range(n):
-        hourofyear = t[i].dayofyear
-        arr[hourofyear - offset].append(i)
+        day_bin: int = int(days_from_start[i])
+        arr[day_bin].append(i)
 
     return arr
 

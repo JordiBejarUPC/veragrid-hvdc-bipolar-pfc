@@ -182,9 +182,22 @@ def get_pv_lib_weather_df(time_array: Sequence[Union[str, datetime, pd.Timestamp
 
         for ts in time_index:
             target_year: int = base_year + int(ts.year - ts1.year)
+            target_month: int = int(ts.month)
+            target_day: int = int(ts.day)
+
+            # Prevent ValueError: day is out of range for month when remapping Feb 29 onto non-leap years
+            if target_month == 2 and target_day == 29:
+                is_leap: bool = (target_year % 4 == 0) and (target_year % 100 != 0 or target_year % 400 == 0)
+                if not is_leap:
+                    target_day = 28
+                else:
+                    pass
+            else:
+                pass
+
             mapped_timestamp: datetime = datetime(year=target_year,
-                                                  month=int(ts.month),
-                                                  day=int(ts.day),
+                                                  month=target_month,
+                                                  day=target_day,
                                                   hour=int(ts.hour),
                                                   minute=int(ts.minute),
                                                   second=int(ts.second),

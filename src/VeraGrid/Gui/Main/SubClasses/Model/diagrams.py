@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import os
 from time import perf_counter
-from typing import List, Tuple, Union, Callable, Iterable
+from typing import List, Tuple, Union, Callable, Iterable, Any
 
 import networkx as nx
 import numpy as np
