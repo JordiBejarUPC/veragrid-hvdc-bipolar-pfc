@@ -7,7 +7,7 @@ import copy
 import sys
 import uuid
 import networkx as nx
-from typing import Any, Dict, Union, List, Tuple, TYPE_CHECKING
+from typing import Any, Dict, Union, List, Optional, Tuple, TYPE_CHECKING
 
 from VeraGridEngine.Devices.Diagrams.graphic_location import GraphicLocation
 from VeraGridEngine.Devices.Diagrams.map_location import MapLocation
