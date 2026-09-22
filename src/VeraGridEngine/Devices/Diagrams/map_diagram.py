@@ -38,7 +38,10 @@ class MapDiagram(BaseDiagram):
         :param tile_source: tiles' source
         :param start_level: zoom level
         """
-        BaseDiagram.__init__(self, idtag=idtag, name=name, diagram_type=DiagramType.SubstationLineMap,
+        BaseDiagram.__init__(self,
+                             idtag=idtag,
+                             name=name,
+                             diagram_type=DiagramType.SubstationLineMap,
                              use_flow_based_width=use_flow_based_width,
                              min_branch_width=min_branch_width,
                              max_branch_width=max_branch_width,

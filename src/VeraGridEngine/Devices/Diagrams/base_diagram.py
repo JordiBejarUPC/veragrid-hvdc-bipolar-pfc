@@ -369,10 +369,10 @@ class BaseDiagram:
     def __init__(self,
                  idtag: Union[str, None],
                  name: str,
-                 diagram_type: DiagramType = DiagramType,
+                 diagram_type: DiagramType,
                  use_flow_based_width: bool = False,
-                 min_branch_width: int = 1.0,
-                 max_branch_width=5,
+                 min_branch_width: float = 1.0,
+                 max_branch_width=5.0,
                  min_bus_width=1.0,
                  max_bus_width=20,
                  arrow_size=20,
@@ -501,7 +501,6 @@ class BaseDiagram:
     @min_bus_width.setter
     def min_bus_width(self, value: float):
         self._min_bus_width = value
-
 
     @property
     def max_bus_width(self) -> float:
@@ -636,19 +635,22 @@ class BaseDiagram:
         """
         data = {category: group.get_dict() for category, group in self.data.items()}
 
-        return {'type': self.diagram_type.value,
-                'idtag': self.idtag,
-                'name': self.name,
-                "use_flow_based_width": self.use_flow_based_width,
-                "min_branch_width": self.min_branch_width,
-                "max_branch_width": self.max_branch_width,
-                "min_bus_width": self.min_bus_width,
-                "max_bus_width": self.max_bus_width,
-                "arrow_size": self.arrow_size,
-                "use_api_colors": self.use_api_colors,
-                "palette": self.palette.value,
-                "default_bus_voltage": self.default_bus_voltage,
-                'data': data}
+        return {
+            'type': self.diagram_type.value,
+            'idtag': self.idtag,
+            'name': self.name,
+            "use_flow_based_width": self.use_flow_based_width,
+            "min_branch_width": self.min_branch_width,
+            "max_branch_width": self.max_branch_width,
+            "min_bus_width": self.min_bus_width,
+            "max_bus_width": self.max_bus_width,
+            "arrow_size": self.arrow_size,
+            "use_api_colors": self.use_api_colors,
+            "palette": self.palette.value,
+            "default_bus_voltage": self.default_bus_voltage,
+            "group": self.group.idtag if self.group is not None else None,
+            'data': data
+        }
 
     def parse_data(self,
                    data: Dict[str, Dict[str, Dict[str, Union[int, float, bool, List[Tuple[float, float]]]]]],
@@ -692,6 +694,11 @@ class BaseDiagram:
                                     logger=logger,
                                     category=category)
             self.data[category] = points_group
+
+        # parse group
+        group_idtag: str | None = data.get("group", None)
+        if group_idtag is not None:
+            diagram_groups = obj_dict[DeviceType.Dia]
 
     def build_graph(self) -> Tuple[nx.MultiDiGraph, List[Bus | FluidNode | Transformer3W | TransformerNW]]:
         """
