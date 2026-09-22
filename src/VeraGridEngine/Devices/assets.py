@@ -144,6 +144,7 @@ class Assets:
         '_fuels',
         '_emission_gases',
         '_facilities',
+        '_market_unit_groups',
         '_market_units',
         '_fluid_nodes',
         '_fluid_paths',
@@ -343,6 +344,9 @@ class Assets:
 
         # list of facilities
         self._facilities: List[dev.Facility] = list()
+
+        # list of market units
+        self._market_unit_groups: List[dev.MarketUnitsGroup] = list()
 
         # list of market units
         self._market_units: List[dev.MarketUnit] = list()
