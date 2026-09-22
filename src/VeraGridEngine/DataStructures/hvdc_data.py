@@ -123,7 +123,6 @@ class HvdcData(BranchParentData):
         """
 
         data: HvdcData = super().copy()
-        data.__class__ = HvdcData
 
         data.dispatchable = self.dispatchable.copy()
 

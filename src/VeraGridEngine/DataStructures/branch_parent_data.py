@@ -215,7 +215,7 @@ class BranchParentData:
         :return: new BranchData instance
         """
 
-        data = BranchParentData(nelm=self.nelm, nbus=self.nbus)
+        data: BranchParentData = self.__class__(nelm=self.nelm, nbus=self.nbus)
 
         data.names = self.names.copy()
         data.idtag = self.idtag.copy()

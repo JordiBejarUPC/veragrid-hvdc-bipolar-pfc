@@ -165,7 +165,6 @@ class VscData(BranchParentData):
         :return: new BranchData instance
         """
         data: VscData = super().copy()
-        data.__class__ = VscData
 
         data.F_dcn = self.F_dcn.copy()
 

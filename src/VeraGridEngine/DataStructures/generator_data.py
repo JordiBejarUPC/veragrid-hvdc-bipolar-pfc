@@ -167,8 +167,8 @@ class GeneratorData:
         :return: new GeneratorData instance
         """
 
-        data = GeneratorData(nelm=len(elm_idx),
-                             nbus=len(bus_idx))
+        data: GeneratorData = self.__class__(nelm=len(elm_idx),
+                                              nbus=len(bus_idx))
 
         data.names = self.names[elm_idx]
         data.idtag = self.idtag[elm_idx]
@@ -279,7 +279,7 @@ class GeneratorData:
         :return: new GeneratorData instance
         """
 
-        data = GeneratorData(nelm=self.nelm, nbus=self.nbus)
+        data: GeneratorData = self.__class__(nelm=self.nelm, nbus=self.nbus)
 
         data.names = self.names.copy()
         data.idtag = self.idtag.copy()

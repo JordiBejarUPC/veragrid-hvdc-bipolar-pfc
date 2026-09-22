@@ -156,7 +156,6 @@ class PassiveBranchData(BranchParentData):
         :return: new BranchData instance
         """
         data: PassiveBranchData = super().copy()
-        data.__class__ = PassiveBranchData
 
         data.R = self.R.copy()
         data.X = self.X.copy()
