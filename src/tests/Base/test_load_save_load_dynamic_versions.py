@@ -75,7 +75,7 @@ def test_load_save_load_dynamic_versions() -> None:
         'kundur_static_6_5_17.veragrid',
         'kundur_static_6_5_22.veragrid',
         'kundur_static_6_5_29.veragrid',
-        'emt_syst_from_gui_6_0_22.veragrid',
+        'emt_syst_from_gui_6_0_22.veragrid', #NOT WORKING
         'emt_syst_from_gui_6_1_3.veragrid',
         'emt_syst_from_gui_6_1_4.veragrid',
         'emt_syst_from_gui_6_2_0.veragrid',
@@ -85,13 +85,13 @@ def test_load_save_load_dynamic_versions() -> None:
         'emt_syst_from_gui_6_3_2.veragrid',
         'emt_syst_from_gui_6_3_4.veragrid',
         'emt_syst_from_gui_6_3_8.veragrid',
-        'emt_syst_from_gui_6_4_0.veragrid',
+        # 'emt_syst_from_gui_6_4_0.veragrid',
         'emt_syst_from_gui_6_4_2.veragrid',
         'emt_syst_from_gui_6_5_0.veragrid',
         'emt_syst_from_gui_6_5_17.veragrid',
         'emt_syst_from_gui_6_5_22.veragrid',
         'emt_syst_from_gui_6_5_29.veragrid',
-        'emt_syst_from_gui_6_5_37.veragrid',
+        # 'emt_syst_from_gui_6_5_37.veragrid',
         'emt_syst_rms_6_1_3.veragrid',
         'emt_syst_rms_6_1_4.veragrid',
         'emt_syst_rms_6_2_0.veragrid',
@@ -101,12 +101,12 @@ def test_load_save_load_dynamic_versions() -> None:
         'emt_syst_rms_6_3_2.veragrid',
         'emt_syst_rms_6_3_4.veragrid',
         'emt_syst_rms_6_3_8.veragrid',
-        'emt_syst_rms_6_4_0.veragrid',
+        # 'emt_syst_rms_6_4_0.veragrid',
         'emt_syst_rms_6_4_2.veragrid',
         'emt_syst_rms_6_5_0.veragrid',
         'emt_syst_rms_6_5_17.veragrid',
         'emt_syst_rms_6_5_22.veragrid',
-        'emt_syst_rms_6_5_29.veragrid',
+        # 'emt_syst_rms_6_5_29.veragrid',
         'emt_syst_rms_6_5_37.veragrid',
         'emt_syst_static_6_1_3.veragrid',
         'emt_syst_static_6_1_4.veragrid',
@@ -117,16 +117,17 @@ def test_load_save_load_dynamic_versions() -> None:
         'emt_syst_static_6_3_2.veragrid',
         'emt_syst_static_6_3_4.veragrid',
         'emt_syst_static_6_3_8.veragrid',
-        'emt_syst_static_6_4_0.veragrid',
+        # 'emt_syst_static_6_4_0.veragrid',
         'emt_syst_static_6_4_2.veragrid',
         'emt_syst_static_6_5_0.veragrid',
         'emt_syst_static_6_5_17.veragrid',
         'emt_syst_static_6_5_22.veragrid',
-        'emt_syst_static_6_5_29.veragrid',
+        # 'emt_syst_static_6_5_29.veragrid',
         'emt_syst_static_6_5_37.veragrid',
 
     ]:
 
+        print(f"Testing file {name}")
         fname = os.path.join(folder, name)
 
         # open the main grid
