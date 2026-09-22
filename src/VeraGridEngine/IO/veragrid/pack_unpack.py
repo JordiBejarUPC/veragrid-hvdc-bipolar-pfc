@@ -2282,6 +2282,7 @@ def parse_veragrid_data(data: VERAGRID_FILE_TYPE,
 
         if len(list_of_diagrams):
             obj_dict = circuit.get_all_elements_dict_by_type(add_locations=True)
+            diagrams_by_id: Dict[str, devices.BaseDiagram] = dict()
 
             for diagram_dict in list_of_diagrams:
 
@@ -2289,13 +2290,19 @@ def parse_veragrid_data(data: VERAGRID_FILE_TYPE,
                     diagram = devices.SchematicDiagram()
                     diagram.parse_data(data=diagram_dict, obj_dict=obj_dict, logger=logger)
                     circuit.add_diagram(diagram)
+                    diagrams_by_id[diagram.idtag] = diagram
 
                 elif diagram_dict['type'] == DiagramType.SubstationLineMap.value:
                     diagram = devices.MapDiagram()
                     diagram.parse_data(data=diagram_dict, obj_dict=obj_dict, logger=logger)
                     circuit.add_diagram(diagram)
+                    diagrams_by_id[diagram.idtag] = diagram
                 else:
                     print('unrecognized diagram', diagram_dict['type'])
+
+            diagram_tree_data = data.get('diagram_tree', None)
+            if diagram_tree_data is not None and hasattr(circuit.diagrams, 'parse_data'):
+                circuit.diagrams.parse_data(diagram_tree_data, diagrams_by_id)
 
     if text_func is not None:
         text_func("Done!")
@@ -2340,6 +2347,7 @@ def parse_multiverse_data(data: Dict[str, VERAGRID_FILE_TYPE],
 
     diffs_dict: Dict[str, MultiCircuit] = dict()
     diagrams_dict: Dict[str, List[Dict[str, Any]]] = dict()
+    diagram_tree_dict: Dict[str, Optional[Dict[str, Any]]] = dict()
     composed_by_node_id: Dict[int, MultiCircuit] = dict()
 
     # IMPORTANT:
@@ -2381,9 +2389,11 @@ def parse_multiverse_data(data: Dict[str, VERAGRID_FILE_TYPE],
 
             if model_data is not None:
                 diagrams_dict[circuit_idtag] = model_data.get("diagrams", list())
+                diagram_tree_dict[circuit_idtag] = model_data.get("diagram_tree", None)
 
                 model_without_diagrams = dict(model_data)
                 model_without_diagrams["diagrams"] = list()
+                model_without_diagrams.pop("diagram_tree", None)
 
                 previous_circuit = None if parent_id is None else composed_by_node_id[parent_id]
 
@@ -2434,18 +2444,25 @@ def parse_multiverse_data(data: Dict[str, VERAGRID_FILE_TYPE],
             node = mv.get_node(node_id)
             full_circuit = mv.checkout(node)
             obj_dict = full_circuit.get_all_elements_dict_by_type(add_locations=True)
-            parsed_diagrams: List[Any] = list()
+            parsed_diagrams: devices.DiagramTree = devices.DiagramTree()
+            diagrams_by_id: Dict[str, devices.BaseDiagram] = dict()
 
             for diagram_dict in diagrams_dict.get(circuit_idtag, list()):
                 if diagram_dict['type'] in [DiagramType.Schematic.value, "bus-branch"]:
                     diagram = devices.SchematicDiagram()
                     diagram.parse_data(data=diagram_dict, obj_dict=obj_dict, logger=logger)
                     parsed_diagrams.append(diagram)
+                    diagrams_by_id[diagram.idtag] = diagram
 
                 elif diagram_dict['type'] == DiagramType.SubstationLineMap.value:
                     diagram = devices.MapDiagram()
                     diagram.parse_data(data=diagram_dict, obj_dict=obj_dict, logger=logger)
                     parsed_diagrams.append(diagram)
+                    diagrams_by_id[diagram.idtag] = diagram
+
+            node_tree_data = diagram_tree_dict.get(circuit_idtag, None)
+            if node_tree_data is not None and hasattr(parsed_diagrams, 'parse_data'):
+                parsed_diagrams.parse_data(node_tree_data, diagrams_by_id)
 
             node.diagrams = parsed_diagrams
         else:

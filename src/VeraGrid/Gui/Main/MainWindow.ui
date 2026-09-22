@@ -349,12 +349,15 @@
                             </widget>
                            </item>
                            <item>
-                            <widget class="QListView" name="diagramsListView">
+                            <widget class="QTreeView" name="diagramsTreeView">
                              <property name="toolTip">
-                              <string>List of available diagrams</string>
+                              <string>Tree of available diagrams and categories</string>
                              </property>
                              <property name="frameShape">
                               <enum>QFrame::Shape::NoFrame</enum>
+                             </property>
+                             <property name="headerHidden">
+                              <bool>true</bool>
                              </property>
                             </widget>
                            </item>

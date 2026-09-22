@@ -416,6 +416,8 @@ class BaseDiagram:
 
         self._palette = palette
         self._default_bus_voltage: float = default_bus_voltage
+        self._group: Optional[Any] = None
+        self._group_idtag: Optional[str] = None
 
     def copy(self, obj_dict: Dict[str, Dict[str, ALL_DEV_TYPES]] | None = None) -> "BaseDiagram":
         """
@@ -428,11 +430,12 @@ class BaseDiagram:
         cpy = self.__class__.__new__(self.__class__)
 
         for attr_name, attr_value in self.__dict__.items():
-            if attr_name == "data":
+            if attr_name in ("data", "_group"):
                 continue
 
             setattr(cpy, attr_name, copy.deepcopy(attr_value))
 
+        cpy._group = None
         cpy.data = dict()
         for category, points_group in self.data.items():
             category_obj_dict = None if obj_dict is None else obj_dict.get(category, None)
@@ -539,6 +542,19 @@ class BaseDiagram:
     def palette(self, value: Colormaps):
         assert isinstance(value, Colormaps)
         self._palette = value
+
+    @property
+    def group(self) -> Optional[Any]:
+        """
+        Parent folder/group of this diagram.
+        """
+        return self._group
+
+    @group.setter
+    def group(self, value: Optional[Any]) -> None:
+        self._group = value
+        if value is not None and hasattr(value, 'idtag'):
+            self._group_idtag = value.idtag
 
     # default_bus_voltage property
     @property
@@ -648,7 +664,6 @@ class BaseDiagram:
             "use_api_colors": self.use_api_colors,
             "palette": self.palette.value,
             "default_bus_voltage": self.default_bus_voltage,
-            "group": self.group.idtag if self.group is not None else None,
             'data': data
         }
 
@@ -663,6 +678,9 @@ class BaseDiagram:
         :param logger: logger
         """
         self.data = dict()
+
+        if 'idtag' in data and data['idtag']:
+            self.idtag = str(data['idtag']).replace('_', '').replace('-', '')
 
         self.name = data['name']
 
@@ -694,11 +712,6 @@ class BaseDiagram:
                                     logger=logger,
                                     category=category)
             self.data[category] = points_group
-
-        # parse group
-        group_idtag: str | None = data.get("group", None)
-        if group_idtag is not None:
-            diagram_groups = obj_dict[DeviceType.Dia]
 
     def build_graph(self) -> Tuple[nx.MultiDiGraph, List[Bus | FluidNode | Transformer3W | TransformerNW]]:
         """
@@ -952,13 +965,18 @@ class BaseDiagram:
         self.arrow_size = arrow_size
 
 
-def copy_diagrams(diagrams: List[BaseDiagram],
-                  obj_dict: Dict[str, Dict[str, ALL_DEV_TYPES]] | None = None) -> List[BaseDiagram]:
+def copy_diagrams(diagrams: Any,
+                  obj_dict: Dict[str, Dict[str, ALL_DEV_TYPES]] | None = None) -> Any:
     """
     Copy diagrams while treating API objects as pointers.
 
-    :param diagrams: Diagrams to copy.
+    :param diagrams: Diagrams list or DiagramTree to copy.
     :param obj_dict: Optional target circuit object dictionary used to rebind pointers.
-    :return: Copied diagrams.
+    :return: Copied diagrams or DiagramTree.
     """
-    return [diagram.copy(obj_dict=obj_dict) for diagram in diagrams]
+    if hasattr(diagrams, "copy") and callable(diagrams.copy) and hasattr(diagrams, "folders"):
+        return diagrams.copy(obj_dict=obj_dict)
+    elif isinstance(diagrams, list):
+        return [diagram.copy(obj_dict=obj_dict) for diagram in diagrams]
+    else:
+        return [diagram.copy(obj_dict=obj_dict) for diagram in diagrams]

@@ -857,7 +857,7 @@ class MultiCircuit(Assets):
         cpy.rebind_internal_device_references()
 
         obj_dict = cpy.get_all_elements_dict_by_type(add_locations=True)
-        cpy.diagrams = [diagram.copy(obj_dict=obj_dict) for diagram in self.diagrams]
+        cpy.diagrams = dev.copy_diagrams(self.diagrams, obj_dict=obj_dict)
 
         return cpy
 

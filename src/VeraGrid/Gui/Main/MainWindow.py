@@ -25,7 +25,10 @@ from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QComb
     QSpacerItem, QSpinBox, QSplitter, QTabWidget,
     QTableView, QTextEdit, QToolBar, QToolBox,
     QTreeView, QVBoxLayout, QWidget)
-from VeraGrid.Gui.Icons.icons_rc import *
+try:
+    import icons_rc
+except ModuleNotFoundError:
+    from VeraGrid.Gui.Icons.icons_rc import *
 
 class Ui_mainWindow(object):
     def setupUi(self, mainWindow):
@@ -882,11 +885,13 @@ class Ui_mainWindow(object):
 
         self.verticalLayout_37.addWidget(self.frame_36)
 
-        self.diagramsListView = QListView(self.page)
-        self.diagramsListView.setObjectName(u"diagramsListView")
-        self.diagramsListView.setFrameShape(QFrame.Shape.NoFrame)
+        self.diagramsTreeView = QTreeView(self.page)
+        self.diagramsTreeView.setObjectName(u"diagramsTreeView")
+        self.diagramsTreeView.setFrameShape(QFrame.Shape.NoFrame)
+        self.diagramsTreeView.setHeaderHidden(True)
+        self.diagramsListView = self.diagramsTreeView
 
-        self.verticalLayout_37.addWidget(self.diagramsListView)
+        self.verticalLayout_37.addWidget(self.diagramsTreeView)
 
         self.toolBox.addItem(self.page, icon49, u"Diagrams")
         self.page_2 = QWidget()
@@ -6068,7 +6073,7 @@ class Ui_mainWindow(object):
         self.diagramSearchLineEdit.setPlaceholderText(QCoreApplication.translate("mainWindow", u"Search diagram by name", None))
         self.diagramSearchButton.setText("")
 #if QT_CONFIG(tooltip)
-        self.diagramsListView.setToolTip(QCoreApplication.translate("mainWindow", u"List of available diagrams", None))
+        self.diagramsTreeView.setToolTip(QCoreApplication.translate("mainWindow", u"Tree of available diagrams and categories", None))
 #endif // QT_CONFIG(tooltip)
         self.toolBox.setItemText(self.toolBox.indexOf(self.page), QCoreApplication.translate("mainWindow", u"Diagrams", None))
         self.label_118.setText(QCoreApplication.translate("mainWindow", u"Map tile provider", None))
@@ -7147,3 +7152,4 @@ class Ui_mainWindow(object):
         self.menuEvents.setTitle(QCoreApplication.translate("mainWindow", u"Events", None))
         self.toolBar.setWindowTitle(QCoreApplication.translate("mainWindow", u"toolBar", None))
     # retranslateUi
+
