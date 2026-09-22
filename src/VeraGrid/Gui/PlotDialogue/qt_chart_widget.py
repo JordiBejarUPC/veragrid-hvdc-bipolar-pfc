@@ -430,7 +430,7 @@ def format_chart_value(value: float, is_datetime: bool) -> str:
     if is_datetime:
         date_value: QtCore.QDateTime = QtCore.QDateTime.fromMSecsSinceEpoch(int(value))
         return date_value.toString("dd/MM/yyyy\nHH:mm:ss")
-    elif abs(value) >= 10000.0 or (abs(value) > 0.0 and abs(value) < 0.01):
+    elif abs(value) >= 10000.0 or (0.0 < abs(value) < 0.01):
         return f"{value:.2e}"
     else:
         return f"{value:.4g}"
