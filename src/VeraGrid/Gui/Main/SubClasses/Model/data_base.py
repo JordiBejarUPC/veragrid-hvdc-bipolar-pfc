@@ -130,6 +130,9 @@ class DataBaseTableMain(DiagramsMain):
         # line edit enter
         self.ui.smart_search_lineEdit.returnPressed.connect(self.objects_smart_search)
 
+        # table click
+        self.ui.dataStructureTableView.clicked.connect(self.on_data_structure_table_clicked)
+
         # context menu
         self.ui.dataStructureTableView.customContextMenuRequested.connect(self.show_objects_context_menu)
 
@@ -1946,6 +1949,19 @@ class DataBaseTableMain(DiagramsMain):
 
         context_menu.exec(self.ui.dataStructureTableView.verticalHeader().mapToGlobal(pos))
 
+    def on_data_structure_table_clicked(self, proxy_index: QtCore.QModelIndex) -> None:
+        """
+        Handle clicks on the data structure table.
+        Open the hosted device editor when the click is accompanied by the Ctrl modifier.
+
+        :param proxy_index: Clicked index in the visible table model.
+        :return: None.
+        """
+        if bool(QtWidgets.QApplication.keyboardModifiers() & QtCore.Qt.KeyboardModifier.ControlModifier):
+            self.open_hosted_device_editor_at_proxy_index(proxy_index=proxy_index)
+        else:
+            pass
+
     def open_hosted_device_editor_at_proxy_index(self, proxy_index: QtCore.QModelIndex) -> bool:
         """
         Open the editor for the device stored in one object-table cell.
@@ -2410,8 +2426,11 @@ class DataBaseTableMain(DiagramsMain):
             else:
                 pass
 
-            if self.open_hosted_device_editor_at_proxy_index(proxy_index=context_index):
-                return
+            if bool(QtWidgets.QApplication.keyboardModifiers() & QtCore.Qt.KeyboardModifier.ControlModifier):
+                if self.open_hosted_device_editor_at_proxy_index(proxy_index=context_index):
+                    return
+                else:
+                    pass
             else:
                 pass
 
