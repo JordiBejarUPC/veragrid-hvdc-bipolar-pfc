@@ -7,7 +7,7 @@ from PySide6 import QtCore, QtWidgets
 
 from VeraGrid.Gui.Main.SubClasses.Results.results import ResultsMain
 from VeraGrid.Gui.PlotDialogue.plot_dialogue import PlotDialogue
-from VeraGrid.Gui.Widgets.qt_chart_widget import ChartContentType, PolarAngleUnit
+from VeraGrid.Gui.PlotDialogue.qt_chart_widget import ChartContentType, PolarAngleUnit
 from VeraGrid.Gui.results_model import ResultsModel
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Simulations.results_table import ResultsTable

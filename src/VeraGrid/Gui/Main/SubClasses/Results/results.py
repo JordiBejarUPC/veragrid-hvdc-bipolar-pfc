@@ -17,7 +17,7 @@ from VeraGrid.Gui.general_dialogues import fill_tree_from_logs
 from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, exec_dialog_safely
 from VeraGrid.Gui.PlotDialogue.plot_dialogue import PlotDialogue
 from VeraGrid.Gui.PlotDialogue.result_table_data import get_result_table_series
-from VeraGrid.Gui.Widgets.qt_chart_widget import GraphsWidget, PolarAngleUnit
+from VeraGrid.Gui.PlotDialogue.qt_chart_widget import GraphsWidget, PolarAngleUnit
 import VeraGridEngine.Utils.Filtering as flt
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.enumerations import (ResultTypes, SimulationTypes, PlotSimulationType, DynamicPlotEntryKind,

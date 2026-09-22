@@ -16,6 +16,10 @@ from VeraGrid.Gui.dialog_lifecycle import delete_dialogs_safely
 from VeraGrid.Gui.messages import error_msg
 from VeraGrid.Gui.pandas_model import PandasModel
 from VeraGrid.Gui.PlotDialogue.plot_dialogue import PlotDialogue
+from VeraGrid.Gui.profile_wizard_utils import (
+    build_mapped_time_index,
+    get_longitude_time_offset,
+)
 
 
 class WindTurbineParameterModel(QtCore.QAbstractTableModel):
@@ -184,56 +188,7 @@ def get_wind_reference_base_year(ts1: pd.Timestamp, ts2: pd.Timestamp) -> Tuple[
         return False, reference_year, message
 
 
-def build_mapped_wind_time_index(time_index: pd.DatetimeIndex, base_year: int) -> pd.DatetimeIndex:
-    """
-    Map circuit timestamps to a historical weather year while preserving month, day and time.
-
-    :param time_index: Circuit time index.
-    :param base_year: Historical base year used for the mapped timestamps.
-    :return: Historical weather time index.
-    """
-    ts1: pd.Timestamp = time_index[0]
-    mapped_timestamps: List[datetime] = list()
-
-    for ts in time_index:
-        target_year: int = base_year + int(ts.year - ts1.year)
-        target_month: int = int(ts.month)
-        target_day: int = int(ts.day)
-
-        # Prevent ValueError: day is out of range for month when remapping Feb 29 onto non-leap years
-        if target_month == 2 and target_day == 29:
-            is_leap: bool = (target_year % 4 == 0) and (target_year % 100 != 0 or target_year % 400 == 0)
-            if not is_leap:
-                target_day = 28
-            else:
-                pass
-        else:
-            pass
-
-        mapped_timestamp: datetime = datetime(year=target_year,
-                                              month=target_month,
-                                              day=target_day,
-                                              hour=int(ts.hour),
-                                              minute=int(ts.minute),
-                                              second=int(ts.second),
-                                              microsecond=int(ts.microsecond))
-        mapped_timestamps.append(mapped_timestamp)
-
-    return pd.DatetimeIndex(pd.to_datetime(mapped_timestamps))
-
-
-def get_longitude_time_offset(longitude: float) -> timedelta:
-    """
-    Get the local solar time offset from longitude.
-
-    :param longitude: Site longitude in degrees.
-    :type longitude: float
-    :return: Offset to add to UTC timestamps to obtain local solar time.
-    :rtype: timedelta
-    """
-    offset_hours: float = float(longitude) / 15.0
-
-    return timedelta(hours=offset_hours)
+build_mapped_wind_time_index = build_mapped_time_index
 
 
 def get_open_meteo_wind_weather_df(time_index: pd.DatetimeIndex,

@@ -10,7 +10,7 @@ from pathlib import Path
 from PySide6 import QtCore, QtGui
 from PySide6.QtSvg import QSvgGenerator
 
-from VeraGrid.Gui.Widgets.qt_chart_widget import GraphsWidget
+from VeraGrid.Gui.PlotDialogue.qt_chart_widget import GraphsWidget
 
 
 def save_chart_image(chart: GraphsWidget, file_name: str) -> bool:

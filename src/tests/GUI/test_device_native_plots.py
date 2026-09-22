@@ -12,7 +12,7 @@ from PySide6 import QtCore, QtWidgets
 
 from VeraGrid.Gui.Diagrams.base_diagram_widget import BaseDiagramWidget
 from VeraGrid.Gui.PlotDialogue.plot_dialogue import PlotDialogue
-from VeraGrid.Gui.Widgets.qt_chart_widget import GraphsWidget
+from VeraGrid.Gui.PlotDialogue.qt_chart_widget import GraphsWidget
 from VeraGridEngine.enumerations import DeviceType, ResultTypes, StudyResultsType
 from VeraGridEngine.Simulations.results_table import ResultsTable
 from VeraGridEngine.Simulations.results_template import ResultsTemplate

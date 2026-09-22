@@ -5,14 +5,12 @@
 from __future__ import annotations
 import sys
 import os
-import json
 import numpy as np
 import shiboken6
 from typing import Any, List, Set, Dict, Union, Tuple, TYPE_CHECKING, Iterable, TypeVar
 from collections.abc import Callable
 from collections import defaultdict
 from warnings import warn
-import networkx as nx
 
 from PySide6.QtCore import (Qt, QPoint, QSize, QPointF, QRect, QRectF, QMimeData, QIODevice, QByteArray,
                             QDataStream, QModelIndex, QTimer, QCoreApplication)
@@ -37,7 +35,6 @@ from VeraGridEngine.Devices.Branches.transformer3w import Transformer3W, Winding
 from VeraGridEngine.Devices.Branches.transformerNw import TransformerNW
 from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.Injections.battery import Battery
-from VeraGridEngine.Devices.Injections.shunt import Shunt
 from VeraGridEngine.Devices.Injections.controllable_shunt import ControllableShunt
 from VeraGridEngine.Devices.Injections.static_generator import StaticGenerator
 from VeraGridEngine.Devices.Injections.load import Load
@@ -78,7 +75,7 @@ from VeraGrid.Gui.Diagrams.base_diagram_widget import BaseDiagramWidget
 from VeraGrid.Gui.general_dialogues import InputNumberDialogue
 from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
 from VeraGrid.Gui.PlotDialogue.plot_dialogue import PlotDialogue
-from VeraGrid.Gui.Widgets.qt_chart_widget import GraphsWidget
+from VeraGrid.Gui.PlotDialogue.qt_chart_widget import GraphsWidget
 import VeraGrid.Gui.Visualization.visualization as viz
 from VeraGrid.Gui.messages import error_msg, warning_msg, yes_no_question
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem

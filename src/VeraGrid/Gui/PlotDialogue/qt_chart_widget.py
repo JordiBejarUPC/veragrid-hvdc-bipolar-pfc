@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 import shiboken6
-from VeraGrid.Gui.Widgets.qt_rhi_line_chart_widget import RhiLineChartWidget
+from VeraGrid.Gui.PlotDialogue.qt_rhi_line_chart_widget import RhiLineChartWidget
 
 
 class ChartSeriesType(Enum):

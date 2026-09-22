@@ -39,7 +39,7 @@ from VeraGrid.Gui.messages import yes_no_question, info_msg
 from VeraGrid.Gui.object_model import ObjectsModel
 from VeraGrid.Gui.PlotDialogue.plot_dialogue import PlotDialogue
 from VeraGrid.Gui.PlotDialogue.result_table_data import get_result_table_series
-from VeraGrid.Gui.Widgets.qt_chart_widget import GraphsWidget
+from VeraGrid.Gui.PlotDialogue.qt_chart_widget import GraphsWidget
 import VeraGrid.Gui.gui_functions as gf
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
 from VeraGridEngine.Simulations.results_table import ResultsTable

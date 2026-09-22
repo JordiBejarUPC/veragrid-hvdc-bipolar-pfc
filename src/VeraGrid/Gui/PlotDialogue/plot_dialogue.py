@@ -15,7 +15,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from VeraGrid.Gui.PlotDialogue.plot_dialogue_ui import Ui_PlotDialogue
 from VeraGrid.Gui.PlotDialogue.plot_export import save_chart_image
-from VeraGrid.Gui.Widgets.qt_chart_widget import GraphsWidget, PolarAngleUnit
+from VeraGrid.Gui.PlotDialogue.qt_chart_widget import GraphsWidget, PolarAngleUnit
 
 
 class PlotSeries:

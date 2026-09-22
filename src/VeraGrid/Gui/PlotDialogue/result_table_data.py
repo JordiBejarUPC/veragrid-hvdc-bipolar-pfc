@@ -7,7 +7,7 @@
 
 import numpy as np
 
-from VeraGrid.Gui.Widgets.qt_chart_widget import GraphsWidget
+from VeraGrid.Gui.PlotDialogue.qt_chart_widget import GraphsWidget
 from VeraGridEngine.Simulations.results_table import ResultsTable
 
 
