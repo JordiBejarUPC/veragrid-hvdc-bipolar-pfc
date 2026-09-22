@@ -1701,11 +1701,11 @@ class DataBaseTableMain(DiagramsMain):
                 obj = dev.MarketUnit(name=name)
                 self.circuit.add_market_unit(obj)
 
-            # elif elm_type == DeviceType.DynamicModelHostDevice:
-            #
-            #     name = f'RMS model {self.circuit.get_rms_models_number()}'
-            #     obj = dev.DynamicModelHost(name=name)
-            #     self.circuit.add_rms_model(obj)
+            elif elm_type == DeviceType.MarketUnitsGroupDevice:
+
+                name = f'Market unit group{self.circuit.get_market_unit_group_number()}'
+                obj = dev.MarketUnitsGroup(name=name)
+                self.circuit.add_market_unit_group(obj)
 
             elif elm_type == DeviceType.EmtModelTemplateDevice:
 

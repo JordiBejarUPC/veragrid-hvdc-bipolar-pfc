@@ -107,6 +107,7 @@ ALL_DEV_TYPES = Union[
     ModellingAuthority,
     Facility,
     MarketUnit,
+    MarketUnitsGroup,
     Fuel,
     Investment,
     InvestmentsGroup,
