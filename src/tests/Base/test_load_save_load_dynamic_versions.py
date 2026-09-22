@@ -11,7 +11,7 @@ from VeraGridEngine.Utils.Symbolic import Block
 from VeraGridEngine.Utils.Symbolic.symbolic_io import compare_blocks
 
 
-def test_load_save_load() -> None:
+def test_load_save_load_dynamic_versions() -> None:
     """
     This test checks if the saving and load process is correct
 
@@ -27,8 +27,6 @@ def test_load_save_load() -> None:
     if not os.path.exists(os.path.join("data", "output")):
         os.makedirs(os.path.join("data", "output"))
 
-    # for name in ['kundur_rms_6_0_22.veragrid',
-    #              'kundur_from_gui_6_0_22.veragrid',]:
 
     for name in [
         'kundur_from_gui_6_0_22.veragrid',

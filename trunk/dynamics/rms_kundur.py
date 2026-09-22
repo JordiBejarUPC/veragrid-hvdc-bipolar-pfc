@@ -219,7 +219,7 @@ def rms_kundur() -> None:
     grid.add_line(trafo_G3)
     grid.add_line(trafo_G4)
 
-    gce.save_file(grid=grid, filename="kundur_static_grid.veragrid")
+    gce.save_file(grid=grid, filename="../../src/tests/data/dynamic_versions/kundur_static_6_5_37.veragrid")
 
 
 
@@ -456,7 +456,7 @@ def rms_kundur() -> None:
     # grid.add_generator(bus=bus3, api_obj=gen3)
     # grid.add_generator(bus=bus4, api_obj=gen4)
 
-    gce.save_file(grid=grid, filename="kundur_6_5_29.veragrid")
+    gce.save_file(grid=grid, filename="../../src/tests/data/dynamic_versions/kundur_rms_6_5_37.veragrid")
 
     pf_options = PowerFlowOptions(
         solver_type=gce.SolverType.NR,
