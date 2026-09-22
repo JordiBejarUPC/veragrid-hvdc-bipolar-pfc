@@ -2078,208 +2078,208 @@ def parse_veragrid_data(data: VERAGRID_FILE_TYPE,
     else:
         pass
 
-    if model_data is not None:
-        if len(model_data) > 0:
-            # Some scripting releases appended the same physical devices twice.
-            # Exact repetitions are collapsed by idtag. When only RMS/EMT model
-            # references differ, the reference to the populated block wins so the
-            # recoverable dynamic model is retained in the unique device record.
-            model_content_fields: List[str] = list()
-            model_content_fields.append("children")
-            model_content_fields.append("state_vars")
-            model_content_fields.append("state_eqs")
-            model_content_fields.append("algebraic_vars")
-            model_content_fields.append("algebraic_eqs")
-            model_content_fields.append("diff_vars")
-            model_content_fields.append("differential_eqs")
-            model_content_fields.append("parameters")
-            model_content_fields.append("event_dict")
-            model_content_fields.append("external_mapping")
-            model_content_fields.append("api_obj_mapping")
-            model_content_fields.append("procedural_logic")
-
-            dynamic_model_properties: List[str] = list()
-            dynamic_model_properties.append("rms_model")
-            dynamic_model_properties.append("emt_model")
-            collapsed_device_count: int = 0
-            model_table_name: str
-            raw_model_table: Any
-            for model_table_name, raw_model_table in model_data.items():
-                if isinstance(raw_model_table, list):
-                    model_table: List[Any] = raw_model_table
-                    unique_model_entries: List[Any] = list()
-                    model_entry_by_idtag: Dict[str, Dict[str, Any]] = dict()
-                    raw_model_entry: Any
-                    for raw_model_entry in model_table:
-                        if isinstance(raw_model_entry, dict):
-                            model_entry: Dict[str, Any] = raw_model_entry
-                            raw_idtag: Any = model_entry.get("idtag", None)
-                            if raw_idtag is not None:
-                                device_idtag: str = str(raw_idtag)
-                                existing_model_entry: Dict[str, Any] | None = model_entry_by_idtag.get(
-                                    device_idtag, None
-                                )
-                                if existing_model_entry is None:
-                                    model_entry_by_idtag[device_idtag] = model_entry
-                                    unique_model_entries.append(model_entry)
-                                else:
-                                    if existing_model_entry == model_entry:
-                                        collapsed_device_count += 1
-                                    else:
-                                        # Compare every persisted physical property
-                                        # while deliberately excluding model pointers.
-                                        physical_properties_match: bool = True
-                                        persisted_property_names: set[str] = set(existing_model_entry.keys())
-                                        persisted_property_names.update(model_entry.keys())
-                                        persisted_property_name: str
-                                        for persisted_property_name in persisted_property_names:
-                                            if persisted_property_name not in dynamic_model_properties:
-                                                if (existing_model_entry.get(persisted_property_name, None)
-                                                        != model_entry.get(persisted_property_name, None)):
-                                                    physical_properties_match = False
-                                                else:
-                                                    pass
-                                            else:
-                                                pass
-
-                                        if physical_properties_match:
-                                            dynamic_model_property: str
-                                            for dynamic_model_property in dynamic_model_properties:
-                                                existing_model_reference: Any = existing_model_entry.get(
-                                                    dynamic_model_property, None
-                                                )
-                                                candidate_model_reference: Any = model_entry.get(
-                                                    dynamic_model_property, None
-                                                )
-
-                                                if isinstance(existing_model_reference, dict):
-                                                    existing_model_uid: int | None = normalize_persisted_block_uid(
-                                                        existing_model_reference.get("model", None)
-                                                    )
-                                                else:
-                                                    existing_model_uid = normalize_persisted_block_uid(
-                                                        existing_model_reference
-                                                    )
-
-                                                if isinstance(candidate_model_reference, dict):
-                                                    candidate_model_uid: int | None = normalize_persisted_block_uid(
-                                                        candidate_model_reference.get("model", None)
-                                                    )
-                                                else:
-                                                    candidate_model_uid = normalize_persisted_block_uid(
-                                                        candidate_model_reference
-                                                    )
-
-                                                existing_model_has_content: bool = False
-                                                if existing_model_uid is not None:
-                                                    existing_block_data: Dict[str, Any] | None = blocks_data.get(
-                                                        existing_model_uid, None
-                                                    )
-                                                    if existing_block_data is not None:
-                                                        content_field_name: str
-                                                        for content_field_name in model_content_fields:
-                                                            content_value: Any = existing_block_data.get(
-                                                                content_field_name, None
-                                                            )
-                                                            if content_value is not None:
-                                                                if isinstance(content_value, (list, dict, str)):
-                                                                    if len(content_value) > 0:
-                                                                        existing_model_has_content = True
-                                                                    else:
-                                                                        pass
-                                                                else:
-                                                                    existing_model_has_content = True
-                                                            else:
-                                                                pass
-                                                    else:
-                                                        pass
-                                                else:
-                                                    pass
-
-                                                candidate_model_has_content: bool = False
-                                                if candidate_model_uid is not None:
-                                                    candidate_block_data: Dict[str, Any] | None = blocks_data.get(
-                                                        candidate_model_uid, None
-                                                    )
-                                                    if candidate_block_data is not None:
-                                                        for content_field_name in model_content_fields:
-                                                            content_value = candidate_block_data.get(
-                                                                content_field_name, None
-                                                            )
-                                                            if content_value is not None:
-                                                                if isinstance(content_value, (list, dict, str)):
-                                                                    if len(content_value) > 0:
-                                                                        candidate_model_has_content = True
-                                                                    else:
-                                                                        pass
-                                                                else:
-                                                                    candidate_model_has_content = True
-                                                            else:
-                                                                pass
-                                                    else:
-                                                        pass
-                                                else:
-                                                    pass
-
-                                                if candidate_model_has_content:
-                                                    if not existing_model_has_content:
-                                                        existing_model_entry[dynamic_model_property] = \
-                                                            candidate_model_reference
-                                                    else:
-                                                        if candidate_model_uid != existing_model_uid:
-                                                            # Existing loader pointer dictionaries used the
-                                                            # last record for an idtag. Preserve that precedence
-                                                            # when both historical records contain real models.
-                                                            existing_model_entry[dynamic_model_property] = \
-                                                                candidate_model_reference
-                                                            logger.add_warning(
-                                                                msg=("Duplicate device has different populated "
-                                                                     "dynamic models"),
-                                                                device=device_idtag,
-                                                                value=existing_model_uid,
-                                                                expected_value=candidate_model_uid,
-                                                                device_property=dynamic_model_property,
-                                                                device_class=model_table_name,
-                                                            )
-                                                        else:
-                                                            pass
-                                                else:
-                                                    pass
-
-                                            collapsed_device_count += 1
-                                        else:
-                                            # Conflicting physical records cannot be merged semantically.
-                                            # Retain the first complete record deterministically and report
-                                            # the ambiguity instead of rewriting physical network data.
-                                            logger.add_warning(
-                                                msg="Duplicate device idtag has conflicting persisted properties",
-                                                device=device_idtag,
-                                                device_class=model_table_name,
-                                            )
-                                            collapsed_device_count += 1
-                            else:
-                                unique_model_entries.append(model_entry)
-                        else:
-                            unique_model_entries.append(raw_model_entry)
-
-                    if len(unique_model_entries) != len(model_table):
-                        model_data[model_table_name] = unique_model_entries
-                    else:
-                        pass
-                else:
-                    pass
-
-            if collapsed_device_count > 0:
-                logger.add_info(
-                    msg="Collapsed duplicate legacy device records",
-                    value=collapsed_device_count,
-                )
-            else:
-                pass
-        else:
-            pass
-    else:
-        pass
+    # if model_data is not None:
+    #     if len(model_data) > 0:
+    #         # Some scripting releases appended the same physical devices twice.
+    #         # Exact repetitions are collapsed by idtag. When only RMS/EMT model
+    #         # references differ, the reference to the populated block wins so the
+    #         # recoverable dynamic model is retained in the unique device record.
+    #         model_content_fields: List[str] = list()
+    #         model_content_fields.append("children")
+    #         model_content_fields.append("state_vars")
+    #         model_content_fields.append("state_eqs")
+    #         model_content_fields.append("algebraic_vars")
+    #         model_content_fields.append("algebraic_eqs")
+    #         model_content_fields.append("diff_vars")
+    #         model_content_fields.append("differential_eqs")
+    #         model_content_fields.append("parameters")
+    #         model_content_fields.append("event_dict")
+    #         model_content_fields.append("external_mapping")
+    #         model_content_fields.append("api_obj_mapping")
+    #         model_content_fields.append("procedural_logic")
+    #
+    #         dynamic_model_properties: List[str] = list()
+    #         dynamic_model_properties.append("rms_model")
+    #         dynamic_model_properties.append("emt_model")
+    #         collapsed_device_count: int = 0
+    #         model_table_name: str
+    #         raw_model_table: Any
+    #         for model_table_name, raw_model_table in model_data.items():
+    #             if isinstance(raw_model_table, list):
+    #                 model_table: List[Any] = raw_model_table
+    #                 unique_model_entries: List[Any] = list()
+    #                 model_entry_by_idtag: Dict[str, Dict[str, Any]] = dict()
+    #                 raw_model_entry: Any
+    #                 for raw_model_entry in model_table:
+    #                     if isinstance(raw_model_entry, dict):
+    #                         model_entry: Dict[str, Any] = raw_model_entry
+    #                         raw_idtag: Any = model_entry.get("idtag", None)
+    #                         if raw_idtag is not None:
+    #                             device_idtag: str = str(raw_idtag)
+    #                             existing_model_entry: Dict[str, Any] | None = model_entry_by_idtag.get(
+    #                                 device_idtag, None
+    #                             )
+    #                             if existing_model_entry is None:
+    #                                 model_entry_by_idtag[device_idtag] = model_entry
+    #                                 unique_model_entries.append(model_entry)
+    #                             else:
+    #                                 if existing_model_entry == model_entry:
+    #                                     collapsed_device_count += 1
+    #                                 else:
+    #                                     # Compare every persisted physical property
+    #                                     # while deliberately excluding model pointers.
+    #                                     physical_properties_match: bool = True
+    #                                     persisted_property_names: set[str] = set(existing_model_entry.keys())
+    #                                     persisted_property_names.update(model_entry.keys())
+    #                                     persisted_property_name: str
+    #                                     for persisted_property_name in persisted_property_names:
+    #                                         if persisted_property_name not in dynamic_model_properties:
+    #                                             if (existing_model_entry.get(persisted_property_name, None)
+    #                                                     != model_entry.get(persisted_property_name, None)):
+    #                                                 physical_properties_match = False
+    #                                             else:
+    #                                                 pass
+    #                                         else:
+    #                                             pass
+    #
+    #                                     if physical_properties_match:
+    #                                         dynamic_model_property: str
+    #                                         for dynamic_model_property in dynamic_model_properties:
+    #                                             existing_model_reference: Any = existing_model_entry.get(
+    #                                                 dynamic_model_property, None
+    #                                             )
+    #                                             candidate_model_reference: Any = model_entry.get(
+    #                                                 dynamic_model_property, None
+    #                                             )
+    #
+    #                                             if isinstance(existing_model_reference, dict):
+    #                                                 existing_model_uid: int | None = normalize_persisted_block_uid(
+    #                                                     existing_model_reference.get("model", None)
+    #                                                 )
+    #                                             else:
+    #                                                 existing_model_uid = normalize_persisted_block_uid(
+    #                                                     existing_model_reference
+    #                                                 )
+    #
+    #                                             if isinstance(candidate_model_reference, dict):
+    #                                                 candidate_model_uid: int | None = normalize_persisted_block_uid(
+    #                                                     candidate_model_reference.get("model", None)
+    #                                                 )
+    #                                             else:
+    #                                                 candidate_model_uid = normalize_persisted_block_uid(
+    #                                                     candidate_model_reference
+    #                                                 )
+    #
+    #                                             existing_model_has_content: bool = False
+    #                                             if existing_model_uid is not None:
+    #                                                 existing_block_data: Dict[str, Any] | None = blocks_data.get(
+    #                                                     existing_model_uid, None
+    #                                                 )
+    #                                                 if existing_block_data is not None:
+    #                                                     content_field_name: str
+    #                                                     for content_field_name in model_content_fields:
+    #                                                         content_value: Any = existing_block_data.get(
+    #                                                             content_field_name, None
+    #                                                         )
+    #                                                         if content_value is not None:
+    #                                                             if isinstance(content_value, (list, dict, str)):
+    #                                                                 if len(content_value) > 0:
+    #                                                                     existing_model_has_content = True
+    #                                                                 else:
+    #                                                                     pass
+    #                                                             else:
+    #                                                                 existing_model_has_content = True
+    #                                                         else:
+    #                                                             pass
+    #                                                 else:
+    #                                                     pass
+    #                                             else:
+    #                                                 pass
+    #
+    #                                             candidate_model_has_content: bool = False
+    #                                             if candidate_model_uid is not None:
+    #                                                 candidate_block_data: Dict[str, Any] | None = blocks_data.get(
+    #                                                     candidate_model_uid, None
+    #                                                 )
+    #                                                 if candidate_block_data is not None:
+    #                                                     for content_field_name in model_content_fields:
+    #                                                         content_value = candidate_block_data.get(
+    #                                                             content_field_name, None
+    #                                                         )
+    #                                                         if content_value is not None:
+    #                                                             if isinstance(content_value, (list, dict, str)):
+    #                                                                 if len(content_value) > 0:
+    #                                                                     candidate_model_has_content = True
+    #                                                                 else:
+    #                                                                     pass
+    #                                                             else:
+    #                                                                 candidate_model_has_content = True
+    #                                                         else:
+    #                                                             pass
+    #                                                 else:
+    #                                                     pass
+    #                                             else:
+    #                                                 pass
+    #
+    #                                             if candidate_model_has_content:
+    #                                                 if not existing_model_has_content:
+    #                                                     existing_model_entry[dynamic_model_property] = \
+    #                                                         candidate_model_reference
+    #                                                 else:
+    #                                                     if candidate_model_uid != existing_model_uid:
+    #                                                         # Existing loader pointer dictionaries used the
+    #                                                         # last record for an idtag. Preserve that precedence
+    #                                                         # when both historical records contain real models.
+    #                                                         existing_model_entry[dynamic_model_property] = \
+    #                                                             candidate_model_reference
+    #                                                         logger.add_warning(
+    #                                                             msg=("Duplicate device has different populated "
+    #                                                                  "dynamic models"),
+    #                                                             device=device_idtag,
+    #                                                             value=existing_model_uid,
+    #                                                             expected_value=candidate_model_uid,
+    #                                                             device_property=dynamic_model_property,
+    #                                                             device_class=model_table_name,
+    #                                                         )
+    #                                                     else:
+    #                                                         pass
+    #                                             else:
+    #                                                 pass
+    #
+    #                                         collapsed_device_count += 1
+    #                                     else:
+    #                                         # Conflicting physical records cannot be merged semantically.
+    #                                         # Retain the first complete record deterministically and report
+    #                                         # the ambiguity instead of rewriting physical network data.
+    #                                         logger.add_warning(
+    #                                             msg="Duplicate device idtag has conflicting persisted properties",
+    #                                             device=device_idtag,
+    #                                             device_class=model_table_name,
+    #                                         )
+    #                                         collapsed_device_count += 1
+    #                         else:
+    #                             unique_model_entries.append(model_entry)
+    #                     else:
+    #                         unique_model_entries.append(raw_model_entry)
+    #
+    #                 if len(unique_model_entries) != len(model_table):
+    #                     model_data[model_table_name] = unique_model_entries
+    #                 else:
+    #                     pass
+    #             else:
+    #                 pass
+    #
+    #         if collapsed_device_count > 0:
+    #             logger.add_info(
+    #                 msg="Collapsed duplicate legacy device records",
+    #                 value=collapsed_device_count,
+    #             )
+    #         else:
+    #             pass
+    #     else:
+    #         pass
+    # else:
+    #     pass
 
     block_parser = BlockParser(
         var_factory=circuit.var_factory,
