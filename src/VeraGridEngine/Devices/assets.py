@@ -9439,13 +9439,12 @@ class Assets:
 
         elif elm_type == DeviceType.MarketUnitsGroupDevice:
             elm = dev.MarketUnitsGroup()
-            dictionary_of_lists = {
-                DeviceType.FacilityDevice: self.facilities,
-            }
+            dictionary_of_lists = dict()
 
         elif elm_type == DeviceType.MarketUnitDevice:
             elm = dev.MarketUnit()
             dictionary_of_lists = {
+                DeviceType.FacilityDevice: self.facilities,
                 DeviceType.MarketUnitsGroupDevice: self.market_unit_groups,
             }
 
