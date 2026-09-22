@@ -13,13 +13,11 @@ from VeraGridEngine.Utils.Symbolic.symbolic_io import compare_blocks
 
 def test_load_save_load_dynamic_versions() -> None:
     """
-    This test checks if the saving and load process is correct
+    This test checks if the saving and load process is correct for old dynamic versions with legacy.
 
     The test consists in:
-    - loading grids in different gridcal variations (grid1)
-    - saving the grid with a different name
-    - loading the saved grid (grid2)
-    - comparing that grid1 == grid2
+    - Loading grids created from gui and from scripting with dynamic models.
+    - The grids were created in old VeraGrid versions in which some symbolism might have changed compared to the current version.
 
     """
     folder = os.path.join('data', 'dynamic_versions')
