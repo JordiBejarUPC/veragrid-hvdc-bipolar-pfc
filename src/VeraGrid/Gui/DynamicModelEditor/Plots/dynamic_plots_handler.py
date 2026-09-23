@@ -5727,6 +5727,15 @@ class DynamicsResultsHandler:
                 # The table index must reuse the same elapsed-seconds axis as the
                 # plot so the numeric view and the rendered chart stay aligned.
                 first_time: np.ndarray = _build_relative_time_axis(time_array=self.results.time_array)
+                finite_time_values: np.ndarray = first_time[np.isfinite(first_time)]
+                if len(finite_time_values) > 0:
+                    x_axis_minimum: float = float(np.min(finite_time_values))
+                    x_axis_maximum: float = float(np.max(finite_time_values))
+                else:
+                    # Without one finite coordinate, the table cannot expose a
+                    # meaningful temporal interval to the plotting subsystem.
+                    return None
+
                 series: DynamicResultSeries
                 for series in compatible_series:
                     series_time, _ = self._get_series_plot_data(series=series)
@@ -5772,7 +5781,9 @@ class DynamicsResultsHandler:
                     xlabel="Time [s]",
                     ylabel="",
                     cols_device_type=DeviceType.NoDevice,
-                    idx_device_type=DeviceType.NoDevice
+                    idx_device_type=DeviceType.NoDevice,
+                    x_axis_minimum=x_axis_minimum,
+                    x_axis_maximum=x_axis_maximum,
                 )
 
                 mdl = ResultsModel(table=table)

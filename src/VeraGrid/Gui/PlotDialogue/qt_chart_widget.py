@@ -439,7 +439,12 @@ def format_chart_value(value: float, is_datetime: bool) -> str:
     :return: Visible tick text.
     """
     if is_datetime:
-        date_value: QtCore.QDateTime = QtCore.QDateTime.fromMSecsSinceEpoch(int(value))
+        # Epoch coordinates are absolute values, so their labels must not move
+        # with the workstation time zone.
+        date_value: QtCore.QDateTime = QtCore.QDateTime.fromMSecsSinceEpoch(
+            int(value),
+            QtCore.Qt.TimeSpec.UTC,
+        )
         return date_value.toString("dd/MM/yyyy\nHH:mm:ss")
     elif abs(value) >= 10000.0 or (0.0 < abs(value) < 0.01):
         return f"{value:.2e}"
@@ -716,8 +721,13 @@ class GraphsWidget(QtWidgets.QWidget):
         border_value: float = axis.get_visual_range()[0 if minimum else 1]
         is_datetime: bool = self._x_is_datetime and axis_index == 0
         if is_datetime:
-            editor_text: str = QtCore.QDateTime.fromMSecsSinceEpoch(int(border_value)).toString(
-                "dd/MM/yyyy HH:mm:ss")
+            # Use UTC both here and while parsing so editing a displayed limit
+            # returns exactly the same epoch coordinate on every workstation.
+            editor_date: QtCore.QDateTime = QtCore.QDateTime.fromMSecsSinceEpoch(
+                int(border_value),
+                QtCore.Qt.TimeSpec.UTC,
+            )
+            editor_text: str = editor_date.toString("dd/MM/yyyy HH:mm:ss")
             editor_width: int = 150
         else:
             editor_text = f"{border_value:.12g}"
@@ -777,9 +787,19 @@ class GraphsWidget(QtWidgets.QWidget):
         :return: Finite border value, or ``None`` when invalid.
         """
         if is_datetime:
-            date_value: QtCore.QDateTime = QtCore.QDateTime.fromString(text, "dd/MM/yyyy HH:mm:ss")
-            if date_value.isValid():
-                return float(date_value.toMSecsSinceEpoch())
+            local_date_value: QtCore.QDateTime = QtCore.QDateTime.fromString(
+                text,
+                "dd/MM/yyyy HH:mm:ss",
+            )
+            if local_date_value.isValid():
+                # Rebuild the parsed calendar fields as UTC instead of letting
+                # Qt attach the machine's local time zone implicitly.
+                utc_date_value: QtCore.QDateTime = QtCore.QDateTime(
+                    local_date_value.date(),
+                    local_date_value.time(),
+                    QtCore.Qt.TimeSpec.UTC,
+                )
+                return float(utc_date_value.toMSecsSinceEpoch())
             else:
                 return None
         else:
