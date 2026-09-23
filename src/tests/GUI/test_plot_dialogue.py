@@ -371,3 +371,20 @@ def test_results_wide_time_series_stays_on_qpainter(
     owner.deleteLater()
     QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
     app.processEvents()
+
+
+def test_plot_dialogue_native_close_releases_chart_once(
+        qt_app: QtWidgets.QApplication) -> None:
+    """Release chart resources when the native window close button is used.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    dialog: PlotDialogue = PlotDialogue(title='Native close')
+    chart: GraphsWidget = dialog.chart
+    dialog.show()
+    qt_app.processEvents()
+    dialog.close()
+    qt_app.processEvents()
+    assert dialog._closed
+    assert chart._disposed
