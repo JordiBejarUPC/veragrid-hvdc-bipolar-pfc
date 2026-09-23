@@ -218,6 +218,7 @@ class DgsCircuit:
         "inttemplates",
         "intgrfs",
         "intgrfcons",
+        "intgrfgroups",
         "intgrfnets",
         "matrixes",
         "relfuses",
