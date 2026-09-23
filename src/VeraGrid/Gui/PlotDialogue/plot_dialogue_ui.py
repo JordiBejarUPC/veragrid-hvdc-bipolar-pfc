@@ -3,20 +3,26 @@
 ################################################################################
 ## Form generated from reading UI file 'plot_dialogue.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.11.0
+## Created by: Qt User Interface Compiler version 6.11.2
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
 
-from PySide6.QtCore import (QCoreApplication, QMetaObject, QSize, Qt)
-from PySide6.QtGui import (QAction, QIcon)
-from PySide6.QtWidgets import (QFrame, QHBoxLayout,
-                               QLineEdit, QPushButton, QSizePolicy,
-                               QSplitter, QTabWidget, QToolBar, QTreeWidget,
-                               QTreeWidgetItem, QVBoxLayout, QWidget)
+from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
+    QMetaObject, QObject, QPoint, QRect,
+    QSize, QTime, QUrl, Qt)
+from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
+    QCursor, QFont, QFontDatabase, QGradient,
+    QIcon, QImage, QKeySequence, QLinearGradient,
+    QPainter, QPalette, QPixmap, QRadialGradient,
+    QTransform)
+from PySide6.QtWidgets import (QApplication, QFrame, QHBoxLayout, QHeaderView,
+    QLineEdit, QMainWindow, QPushButton, QSizePolicy,
+    QSplitter, QTabWidget, QToolBar, QTreeWidget,
+    QTreeWidgetItem, QVBoxLayout, QWidget)
 
 from VeraGrid.Gui.PlotDialogue.qt_chart_widget import GraphsWidget
-
+from VeraGrid.Gui.Icons import icons_rc
 
 class Ui_PlotDialogue(object):
     def setupUi(self, PlotDialogue):
@@ -45,16 +51,18 @@ class Ui_PlotDialogue(object):
         icon3 = QIcon()
         icon3.addFile(u":/Icons/icons/plus.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.actionAddPlot.setIcon(icon3)
-        self.verticalLayout = QVBoxLayout(PlotDialogue)
+        self.centralwidget = QWidget(PlotDialogue)
+        self.centralwidget.setObjectName(u"centralwidget")
+        self.verticalLayout = QVBoxLayout(self.centralwidget)
         self.verticalLayout.setObjectName(u"verticalLayout")
-        self.plotToolBar = QToolBar(PlotDialogue)
+        self.plotToolBar = QToolBar(self.centralwidget)
         self.plotToolBar.setObjectName(u"plotToolBar")
         self.plotToolBar.setMovable(False)
         self.plotToolBar.setFloatable(False)
 
         self.verticalLayout.addWidget(self.plotToolBar)
 
-        self.plotSplitter = QSplitter(PlotDialogue)
+        self.plotSplitter = QSplitter(self.centralwidget)
         self.plotSplitter.setObjectName(u"plotSplitter")
         self.plotSplitter.setOrientation(Qt.Orientation.Horizontal)
         self.seriesSelectorFrame = QFrame(self.plotSplitter)
@@ -138,6 +146,7 @@ class Ui_PlotDialogue(object):
 
         self.verticalLayout.addWidget(self.plotSplitter)
 
+        PlotDialogue.setCentralWidget(self.centralwidget)
 
         self.plotToolBar.addAction(self.actionopencloseTree)
         self.plotToolBar.addSeparator()
