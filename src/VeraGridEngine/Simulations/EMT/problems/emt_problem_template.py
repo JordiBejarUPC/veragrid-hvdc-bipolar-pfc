@@ -287,16 +287,7 @@ def _implements_forced_event_time_api(boundary_updater: Any) -> bool:
     :param boundary_updater: Boundary updater instance.
     :return: ``True`` when the API is implemented.
     """
-    updater_type: type = type(boundary_updater)
-    base_type: type
-
-    for base_type in updater_type.__mro__:
-        if "get_next_forced_event_time" in base_type.__dict__:
-            return True
-        else:
-            pass
-
-    return False
+    return "get_next_forced_event_time" in dir(boundary_updater)
 
 
 def _implements_step_resolution_api(boundary_updater: Any) -> bool:
@@ -306,14 +297,7 @@ def _implements_step_resolution_api(boundary_updater: Any) -> bool:
     :return: ``True`` when transactional step resolution is implemented.
     """
 
-    updater_type: type = type(boundary_updater)
-    base_type: type
-    for base_type in updater_type.__mro__:
-        if "resolve_step" in base_type.__dict__:
-            return True
-        else:
-            pass
-    return False
+    return "resolve_step" in dir(boundary_updater)
 
 
 def _emt_event_spec_time_sort_key(event_spec: Dict[str, float | str | None]) -> float:
@@ -1050,7 +1034,7 @@ class EmtProblemTemplate(ABC):
             if runtime_parameter.uid in runtime_equation_lookup:
                 refreshed_equations.append(runtime_equation_lookup[runtime_parameter.uid])
             else:
-                runtime_idx: int | None = self.uid2idx_event_params.get(runtime_parameter.uid, None) if hasattr(self, 'uid2idx_event_params') else None
+                runtime_idx: int | None = self.uid2idx_event_params.get(runtime_parameter.uid, None)
                 if runtime_idx is None or runtime_idx >= len(self._event_parameters_eqs):
                     refreshed_equations.append(Const(None))
                 else:
@@ -1679,4 +1663,3 @@ class EmtProblemTemplate(ABC):
     @property
     def event_parameters_eqs(self) -> List[Any]:
         return self._event_parameters_eqs
-
