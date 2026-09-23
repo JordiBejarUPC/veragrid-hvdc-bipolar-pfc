@@ -962,6 +962,7 @@ class RmsProblemDaeFullVec(RmsProblemTemplate):
         "mdl_index2bus",
         "mdl_index2busfrom",
         "mdl_index2busto",
+        "_uid2idx_t",
     )
 
     def __init__(self,
