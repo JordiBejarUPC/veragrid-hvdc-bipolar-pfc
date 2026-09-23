@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>📐 Grid Modelling &mdash; VeraGrid 6.5.37 documentation</title>
+  <title>📐 Grid Modelling &mdash; VeraGrid 6.7.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="../_static/graphviz.css?v=4ae1632d" />
@@ -15,7 +15,7 @@
   
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../_static/documentation_options.js?v=069969c3"></script>
+      <script src="../_static/documentation_options.js?v=9cce70e7"></script>
       <script src="../_static/doctools.js?v=fd6eb6e6"></script>
       <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/js/theme.js"></script>
@@ -2349,7 +2349,7 @@ in parallel with the generator’s impedance, as shown in the schematic bellow:<
 </section>
 <section id="id10">
 <h3>Registered properties<a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
-<p>Profile-enabled properties: <code class="docutils literal notranslate"><span class="pre">active</span></code>, <code class="docutils literal notranslate"><span class="pre">Cost</span></code>, <code class="docutils literal notranslate"><span class="pre">shift_key</span></code>, <code class="docutils literal notranslate"><span class="pre">P</span></code>, <code class="docutils literal notranslate"><span class="pre">Pmin</span></code>, <code class="docutils literal notranslate"><span class="pre">Pmax</span></code>, <code class="docutils literal notranslate"><span class="pre">Q</span></code>, <code class="docutils literal notranslate"><span class="pre">Qmin</span></code>, <code class="docutils literal notranslate"><span class="pre">Qmax</span></code>, <code class="docutils literal notranslate"><span class="pre">Pf</span></code>, <code class="docutils literal notranslate"><span class="pre">Vset</span></code>, <code class="docutils literal notranslate"><span class="pre">Cost2</span></code>, <code class="docutils literal notranslate"><span class="pre">Cost0</span></code>, <code class="docutils literal notranslate"><span class="pre">enabled_dispatch</span></code>, <code class="docutils literal notranslate"><span class="pre">must_run</span></code>, <code class="docutils literal notranslate"><span class="pre">market_unit</span></code>, <code class="docutils literal notranslate"><span class="pre">market_unit_share</span></code>, <code class="docutils literal notranslate"><span class="pre">srap_enabled</span></code>.</p>
+<p>Profile-enabled properties: <code class="docutils literal notranslate"><span class="pre">active</span></code>, <code class="docutils literal notranslate"><span class="pre">Cost</span></code>, <code class="docutils literal notranslate"><span class="pre">shift_key</span></code>, <code class="docutils literal notranslate"><span class="pre">P</span></code>, <code class="docutils literal notranslate"><span class="pre">Pmin</span></code>, <code class="docutils literal notranslate"><span class="pre">Pmax</span></code>, <code class="docutils literal notranslate"><span class="pre">Q</span></code>, <code class="docutils literal notranslate"><span class="pre">Qmin</span></code>, <code class="docutils literal notranslate"><span class="pre">Qmax</span></code>, <code class="docutils literal notranslate"><span class="pre">Pf</span></code>, <code class="docutils literal notranslate"><span class="pre">Vset</span></code>, <code class="docutils literal notranslate"><span class="pre">Cost2</span></code>, <code class="docutils literal notranslate"><span class="pre">Cost0</span></code>, <code class="docutils literal notranslate"><span class="pre">enabled_dispatch</span></code>, <code class="docutils literal notranslate"><span class="pre">must_run</span></code>, <code class="docutils literal notranslate"><span class="pre">srap_enabled</span></code>.</p>
 <table class="docutils align-default">
 <thead>
 <tr class="row-odd"><th class="head"><p>name</p></th>
@@ -3099,24 +3099,6 @@ in parallel with the generator’s impedance, as shown in the schematic bellow:<
 <td><p></p></td>
 <td><p>List of fuels</p></td>
 <td><p>False</p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-even"><td><p>market_unit</p></td>
-<td><p>Market unit</p></td>
-<td><p></p></td>
-<td><p>False</p></td>
-<td><p></p></td>
-<td><p>Market unit associated to this generator.</p></td>
-<td><p>True</p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-odd"><td><p>market_unit_share</p></td>
-<td><p>float</p></td>
-<td><p>p.u.</p></td>
-<td><p>False</p></td>
-<td><p></p></td>
-<td><p>Participation share of the generator inside the market unit.</p></td>
-<td><p>True</p></td>
 <td><p></p></td>
 </tr>
 <tr class="row-even"><td><p>srap_enabled</p></td>
@@ -3156,7 +3138,7 @@ in parallel with the generator’s impedance, as shown in the schematic bellow:<
 <p>This device connects to a bus and contributes power, current, or admittance to the solved network model.</p>
 <section id="id11">
 <h3>Registered properties<a class="headerlink" href="#id11" title="Link to this heading"></a></h3>
-<p>Profile-enabled properties: <code class="docutils literal notranslate"><span class="pre">active</span></code>, <code class="docutils literal notranslate"><span class="pre">Cost</span></code>, <code class="docutils literal notranslate"><span class="pre">shift_key</span></code>, <code class="docutils literal notranslate"><span class="pre">P</span></code>, <code class="docutils literal notranslate"><span class="pre">Pmin</span></code>, <code class="docutils literal notranslate"><span class="pre">Pmax</span></code>, <code class="docutils literal notranslate"><span class="pre">Q</span></code>, <code class="docutils literal notranslate"><span class="pre">Qmin</span></code>, <code class="docutils literal notranslate"><span class="pre">Qmax</span></code>, <code class="docutils literal notranslate"><span class="pre">Pf</span></code>, <code class="docutils literal notranslate"><span class="pre">Vset</span></code>, <code class="docutils literal notranslate"><span class="pre">Cost2</span></code>, <code class="docutils literal notranslate"><span class="pre">Cost0</span></code>, <code class="docutils literal notranslate"><span class="pre">enabled_dispatch</span></code>, <code class="docutils literal notranslate"><span class="pre">must_run</span></code>, <code class="docutils literal notranslate"><span class="pre">market_unit</span></code>, <code class="docutils literal notranslate"><span class="pre">market_unit_share</span></code>, <code class="docutils literal notranslate"><span class="pre">srap_enabled</span></code>.</p>
+<p>Profile-enabled properties: <code class="docutils literal notranslate"><span class="pre">active</span></code>, <code class="docutils literal notranslate"><span class="pre">Cost</span></code>, <code class="docutils literal notranslate"><span class="pre">shift_key</span></code>, <code class="docutils literal notranslate"><span class="pre">P</span></code>, <code class="docutils literal notranslate"><span class="pre">Pmin</span></code>, <code class="docutils literal notranslate"><span class="pre">Pmax</span></code>, <code class="docutils literal notranslate"><span class="pre">Q</span></code>, <code class="docutils literal notranslate"><span class="pre">Qmin</span></code>, <code class="docutils literal notranslate"><span class="pre">Qmax</span></code>, <code class="docutils literal notranslate"><span class="pre">Pf</span></code>, <code class="docutils literal notranslate"><span class="pre">Vset</span></code>, <code class="docutils literal notranslate"><span class="pre">Cost2</span></code>, <code class="docutils literal notranslate"><span class="pre">Cost0</span></code>, <code class="docutils literal notranslate"><span class="pre">enabled_dispatch</span></code>, <code class="docutils literal notranslate"><span class="pre">must_run</span></code>, <code class="docutils literal notranslate"><span class="pre">srap_enabled</span></code>.</p>
 <table class="docutils align-default">
 <thead>
 <tr class="row-odd"><th class="head"><p>name</p></th>
@@ -3906,24 +3888,6 @@ in parallel with the generator’s impedance, as shown in the schematic bellow:<
 <td><p></p></td>
 <td><p>List of fuels</p></td>
 <td><p>False</p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-even"><td><p>market_unit</p></td>
-<td><p>Market unit</p></td>
-<td><p></p></td>
-<td><p>False</p></td>
-<td><p></p></td>
-<td><p>Market unit associated to this generator.</p></td>
-<td><p>True</p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-odd"><td><p>market_unit_share</p></td>
-<td><p>float</p></td>
-<td><p>p.u.</p></td>
-<td><p>False</p></td>
-<td><p></p></td>
-<td><p>Participation share of the generator inside the market unit.</p></td>
-<td><p>True</p></td>
 <td><p></p></td>
 </tr>
 <tr class="row-even"><td><p>srap_enabled</p></td>

@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Data Models &mdash; VeraGrid 6.5.37 documentation</title>
+  <title>Data Models &mdash; VeraGrid 6.7.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="../_static/graphviz.css?v=4ae1632d" />
@@ -15,7 +15,7 @@
   
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../_static/documentation_options.js?v=069969c3"></script>
+      <script src="../_static/documentation_options.js?v=9cce70e7"></script>
       <script src="../_static/doctools.js?v=fd6eb6e6"></script>
       <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/js/theme.js"></script>
@@ -1623,24 +1623,6 @@
 <td><p></p></td>
 <td><p>List of fuels</p></td>
 <td><p>False</p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-even"><td><p>market_unit</p></td>
-<td><p>Market unit</p></td>
-<td><p></p></td>
-<td><p>False</p></td>
-<td><p></p></td>
-<td><p>Market unit associated to this generator.</p></td>
-<td><p>True</p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-odd"><td><p>market_unit_share</p></td>
-<td><p>float</p></td>
-<td><p>p.u.</p></td>
-<td><p>False</p></td>
-<td><p></p></td>
-<td><p>Participation share of the generator inside the market unit.</p></td>
-<td><p>True</p></td>
 <td><p></p></td>
 </tr>
 <tr class="row-even"><td><p>srap_enabled</p></td>
@@ -8978,24 +8960,6 @@
 <td><p>False</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p>market_unit</p></td>
-<td><p>Market unit</p></td>
-<td><p></p></td>
-<td><p>False</p></td>
-<td><p></p></td>
-<td><p>Market unit associated to this generator.</p></td>
-<td><p>True</p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-odd"><td><p>market_unit_share</p></td>
-<td><p>float</p></td>
-<td><p>p.u.</p></td>
-<td><p>False</p></td>
-<td><p></p></td>
-<td><p>Participation share of the generator inside the market unit.</p></td>
-<td><p>True</p></td>
-<td><p></p></td>
-</tr>
 <tr class="row-even"><td><p>srap_enabled</p></td>
 <td><p>bool</p></td>
 <td><p></p></td>
@@ -11486,6 +11450,60 @@
 <td><p>False</p></td>
 <td><p></p></td>
 <td><p></p></td>
+<td><p>False</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p>device_idtag</p></td>
+<td><p>str</p></td>
+<td><p></p></td>
+<td><p>False</p></td>
+<td><p></p></td>
+<td><p>Unique ID</p></td>
+<td><p>False</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p>tpe</p></td>
+<td><p>enum DeviceType</p></td>
+<td><p></p></td>
+<td><p>False</p></td>
+<td><p></p></td>
+<td><p>Device type</p></td>
+<td><p>False</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p>device_name</p></td>
+<td><p>str</p></td>
+<td><p></p></td>
+<td><p>False</p></td>
+<td><p></p></td>
+<td><p>Device name</p></td>
+<td><p>False</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p>group</p></td>
+<td><p>Market units group</p></td>
+<td><p></p></td>
+<td><p>False</p></td>
+<td><p></p></td>
+<td><p>Investment group</p></td>
+<td><p>False</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p>commissioning_date</p></td>
+<td><p>float</p></td>
+<td><p></p></td>
+<td><p>False</p></td>
+<td><p></p></td>
+<td><p>Date when the investment is commissioned</p></td>
+<td><p>False</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p>decommissioning_date</p></td>
+<td><p>float</p></td>
+<td><p></p></td>
+<td><p>False</p></td>
+<td><p></p></td>
+<td><p>Date when the investment is decommissioned</p></td>
 <td><p>False</p></td>
 <td><p></p></td>
 </tr>

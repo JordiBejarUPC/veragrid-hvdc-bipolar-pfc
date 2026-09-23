@@ -25,10 +25,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QComb
     QSpacerItem, QSpinBox, QSplitter, QTabWidget,
     QTableView, QTextEdit, QToolBar, QToolBox,
     QTreeView, QVBoxLayout, QWidget)
-try:
-    import icons_rc
-except ImportError:
-    from VeraGrid.Gui.Icons import icons_rc
+from VeraGrid.Gui.Icons.icons_rc import *
 
 class Ui_mainWindow(object):
     def setupUi(self, mainWindow):
@@ -892,7 +889,6 @@ class Ui_mainWindow(object):
         self.diagramsTreeView.setDragDropMode(QAbstractItemView.DragDropMode.DragDrop)
         self.diagramsTreeView.setDefaultDropAction(Qt.DropAction.MoveAction)
         self.diagramsTreeView.setHeaderHidden(True)
-        self.diagramsListView = self.diagramsTreeView
 
         self.verticalLayout_37.addWidget(self.diagramsTreeView)
 

@@ -105,8 +105,6 @@
 |must_run                |bool                     |       |False    |         |P >= Pmin constraint. Used in OPF with unit commitment active.                  |True       |       |
 |emissions               |AssociationsList         |t/MWh  |False    |         |List of emissions                                                               |False      |       |
 |fuels                   |AssociationsList         |t/MWh  |False    |         |List of fuels                                                                   |False      |       |
-|market_unit             |Market unit              |       |False    |         |Market unit associated to this generator.                                       |True       |       |
-|market_unit_share       |float                    |p.u.   |False    |         |Participation share of the generator inside the market unit.                    |True       |       |
 |srap_enabled            |bool                     |       |False    |         |Is the unit available for SRAP participation?                                   |True       |       |
 |tpe                     |enum GeneratorType       |       |False    |         |Machine type of the generator.                                                  |False      |       |
 |is_static_generator     |bool                     |       |False    |         |Use the static generator short-circuit model.                                   |False      |       |
@@ -1038,8 +1036,6 @@
 |must_run                |bool                     |       |False    |         |P >= Pmin constraint. Used in OPF with unit commitment active.                  |True       |       |
 |emissions               |AssociationsList         |t/MWh  |False    |         |List of emissions                                                               |False      |       |
 |fuels                   |AssociationsList         |t/MWh  |False    |         |List of fuels                                                                   |False      |       |
-|market_unit             |Market unit              |       |False    |         |Market unit associated to this generator.                                       |True       |       |
-|market_unit_share       |float                    |p.u.   |False    |         |Participation share of the generator inside the market unit.                    |True       |       |
 |srap_enabled            |bool                     |       |False    |         |Is the unit available for SRAP participation?                                   |True       |       |
 |tpe                     |enum GeneratorType       |       |False    |         |Machine type of the generator.                                                  |False      |       |
 |is_static_generator     |bool                     |       |False    |         |Use the static generator short-circuit model.                                   |False      |       |
@@ -1339,17 +1335,23 @@
 
 ### MarketUnit
 
-|      name       |   class_type   |unit|mandatory|max_chars|                      descriptions                      |has_profile|comment|
-|-----------------|----------------|----|---------|---------|--------------------------------------------------------|-----------|-------|
-|idtag            |str             |    |False    |         |Unique ID                                               |False      |       |
-|name             |str             |    |False    |         |Name of the device.                                     |False      |       |
-|code             |str             |    |False    |         |Secondary ID                                            |False      |       |
-|rdfid            |str             |    |False    |         |RDF ID for further compatibility                        |False      |       |
-|action           |enum ActionType |    |False    |         |Object action to perform. Only used for model merging.  |False      |       |
-|selected_to_merge|bool            |    |False    |         |Whether this object should be applied during diff merge.|False      |       |
-|comment          |str             |    |False    |         |User comment                                            |False      |       |
-|diff_changes     |MergeInformation|    |False    |         |                                                        |False      |       |
-|color            |str             |    |False    |         |Color to paint the element in the map diagram           |False      |       |
+|        name        |    class_type    |unit|mandatory|max_chars|                      descriptions                      |has_profile|comment|
+|--------------------|------------------|----|---------|---------|--------------------------------------------------------|-----------|-------|
+|idtag               |str               |    |False    |         |Unique ID                                               |False      |       |
+|name                |str               |    |False    |         |Name of the device.                                     |False      |       |
+|code                |str               |    |False    |         |Secondary ID                                            |False      |       |
+|rdfid               |str               |    |False    |         |RDF ID for further compatibility                        |False      |       |
+|action              |enum ActionType   |    |False    |         |Object action to perform. Only used for model merging.  |False      |       |
+|selected_to_merge   |bool              |    |False    |         |Whether this object should be applied during diff merge.|False      |       |
+|comment             |str               |    |False    |         |User comment                                            |False      |       |
+|diff_changes        |MergeInformation  |    |False    |         |                                                        |False      |       |
+|device_idtag        |str               |    |False    |         |Unique ID                                               |False      |       |
+|tpe                 |enum DeviceType   |    |False    |         |Device type                                             |False      |       |
+|device_name         |str               |    |False    |         |Device name                                             |False      |       |
+|group               |Market units group|    |False    |         |Investment group                                        |False      |       |
+|commissioning_date  |float             |    |False    |         |Date when the investment is commissioned                |False      |       |
+|decommissioning_date|float             |    |False    |         |Date when the investment is decommissioned              |False      |       |
+|color               |str               |    |False    |         |Color to paint the element in the map diagram           |False      |       |
 
 
 ### ModellingAuthority

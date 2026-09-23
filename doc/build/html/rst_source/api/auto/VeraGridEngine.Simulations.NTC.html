@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VeraGridEngine.Simulations.NTC package &mdash; VeraGrid 6.5.37 documentation</title>
+  <title>VeraGridEngine.Simulations.NTC package &mdash; VeraGrid 6.7.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
@@ -15,7 +15,7 @@
   
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../../../_static/documentation_options.js?v=069969c3"></script>
+      <script src="../../../_static/documentation_options.js?v=9cce70e7"></script>
       <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
       <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/js/theme.js"></script>
@@ -250,6 +250,51 @@ That means that solves the OPF problem for a complete time series at once</p>
 :param pos_slack: positive flow slack variable</p>
 </dd></dl>
 
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.BranchNtcVars.alpha">
+<span class="sig-name descname"><span class="pre">alpha</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.BranchNtcVars.alpha" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.BranchNtcVars.alpha_n1_worst">
+<span class="sig-name descname"><span class="pre">alpha_n1_worst</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.BranchNtcVars.alpha_n1_worst" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.BranchNtcVars.contingency_flow_data">
+<span class="sig-name descname"><span class="pre">contingency_flow_data</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">LpVariable</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Variable</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">LpAffineExpression</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">LinearExpr</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">LpVariable</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Variable</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">LpVariable</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Variable</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.BranchNtcVars.contingency_flow_data" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.BranchNtcVars.contingency_rates">
+<span class="sig-name descname"><span class="pre">contingency_rates</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.BranchNtcVars.contingency_rates" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.BranchNtcVars.flow_constraints_lb">
+<span class="sig-name descname"><span class="pre">flow_constraints_lb</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.BranchNtcVars.flow_constraints_lb" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.BranchNtcVars.flow_constraints_ub">
+<span class="sig-name descname"><span class="pre">flow_constraints_ub</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.BranchNtcVars.flow_constraints_ub" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.BranchNtcVars.flow_slacks_neg">
+<span class="sig-name descname"><span class="pre">flow_slacks_neg</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.BranchNtcVars.flow_slacks_neg" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.BranchNtcVars.flow_slacks_pos">
+<span class="sig-name descname"><span class="pre">flow_slacks_pos</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.BranchNtcVars.flow_slacks_pos" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.BranchNtcVars.flows">
+<span class="sig-name descname"><span class="pre">flows</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.BranchNtcVars.flows" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.BranchNtcVars.get_total_flow_slack">
 <span class="sig-name descname"><span class="pre">get_total_flow_slack</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/VeraGridEngine/Simulations/NTC/ntc_opf.html#BranchNtcVars.get_total_flow_slack"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.BranchNtcVars.get_total_flow_slack" title="Link to this definition"></a></dt>
@@ -266,6 +311,51 @@ That means that solves the OPF problem for a complete time series at once</p>
 :return: BranchVars</p>
 </dd></dl>
 
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.BranchNtcVars.inter_space_branches">
+<span class="sig-name descname"><span class="pre">inter_space_branches</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.BranchNtcVars.inter_space_branches" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.BranchNtcVars.loading">
+<span class="sig-name descname"><span class="pre">loading</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.BranchNtcVars.loading" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.BranchNtcVars.monitor">
+<span class="sig-name descname"><span class="pre">monitor</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.BranchNtcVars.monitor" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.BranchNtcVars.monitor_logic">
+<span class="sig-name descname"><span class="pre">monitor_logic</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.BranchNtcVars.monitor_logic" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.BranchNtcVars.rates">
+<span class="sig-name descname"><span class="pre">rates</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.BranchNtcVars.rates" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.BranchNtcVars.tap_angles">
+<span class="sig-name descname"><span class="pre">tap_angles</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.BranchNtcVars.tap_angles" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.BranchNtcVars.worst_contingency_flow">
+<span class="sig-name descname"><span class="pre">worst_contingency_flow</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.BranchNtcVars.worst_contingency_flow" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.BranchNtcVars.worst_contingency_idx">
+<span class="sig-name descname"><span class="pre">worst_contingency_idx</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.BranchNtcVars.worst_contingency_idx" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.BranchNtcVars.worst_contingency_loading">
+<span class="sig-name descname"><span class="pre">worst_contingency_loading</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.BranchNtcVars.worst_contingency_loading" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
 </dd></dl>
 
 <dl class="py class">
@@ -273,12 +363,72 @@ That means that solves the OPF problem for a complete time series at once</p>
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">VeraGridEngine.Simulations.NTC.ntc_opf.</span></span><span class="sig-name descname"><span class="pre">BusNtcVars</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_elm</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/VeraGridEngine/Simulations/NTC/ntc_opf.html#BusNtcVars"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.BusNtcVars" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>Struct to store the bus related vars</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.BusNtcVars.Pbalance">
+<span class="sig-name descname"><span class="pre">Pbalance</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.BusNtcVars.Pbalance" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.BusNtcVars.Pinj">
+<span class="sig-name descname"><span class="pre">Pinj</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.BusNtcVars.Pinj" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.BusNtcVars.Va">
+<span class="sig-name descname"><span class="pre">Va</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.BusNtcVars.Va" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.BusNtcVars.Vm">
+<span class="sig-name descname"><span class="pre">Vm</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.BusNtcVars.Vm" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.BusNtcVars.angle_max">
+<span class="sig-name descname"><span class="pre">angle_max</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.BusNtcVars.angle_max" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.BusNtcVars.angle_min">
+<span class="sig-name descname"><span class="pre">angle_min</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.BusNtcVars.angle_min" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.BusNtcVars.delta_p">
+<span class="sig-name descname"><span class="pre">delta_p</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.BusNtcVars.delta_p" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.BusNtcVars.get_values">
 <span class="sig-name descname"><span class="pre">get_values</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">Sbase</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.Utils.MIP.html#VeraGridEngine.Utils.MIP.pulp_interface.PulpLpModel" title="VeraGridEngine.Utils.MIP.pulp_interface.PulpLpModel"><span class="pre">PulpLpModel</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="VeraGridEngine.Utils.MIP.html#VeraGridEngine.Utils.MIP.ortools_interface.OrToolsLpModel" title="VeraGridEngine.Utils.MIP.ortools_interface.OrToolsLpModel"><span class="pre">OrToolsLpModel</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#VeraGridEngine.Simulations.NTC.ntc_opf.BusNtcVars" title="VeraGridEngine.Simulations.NTC.ntc_opf.BusNtcVars"><span class="pre">BusNtcVars</span></a></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Simulations/NTC/ntc_opf.html#BusNtcVars.get_values"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.BusNtcVars.get_values" title="Link to this definition"></a></dt>
 <dd><p>Return an instance of this class where the arrays content are not LP vars but their value
 :return: BusVars</p>
 </dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.BusNtcVars.kirchhoff">
+<span class="sig-name descname"><span class="pre">kirchhoff</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.BusNtcVars.kirchhoff" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.BusNtcVars.load_p">
+<span class="sig-name descname"><span class="pre">load_p</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.BusNtcVars.load_p" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.BusNtcVars.load_shedding">
+<span class="sig-name descname"><span class="pre">load_shedding</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.BusNtcVars.load_shedding" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.BusNtcVars.proportions">
+<span class="sig-name descname"><span class="pre">proportions</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.BusNtcVars.proportions" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.BusNtcVars.shadow_prices">
+<span class="sig-name descname"><span class="pre">shadow_prices</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.BusNtcVars.shadow_prices" title="Link to this definition"></a></dt>
+<dd></dd></dl>
 
 </dd></dl>
 
@@ -296,6 +446,16 @@ That means that solves the OPF problem for a complete time series at once</p>
 :return: GenerationVars</p>
 </dd></dl>
 
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.GenerationVars.p">
+<span class="sig-name descname"><span class="pre">p</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.GenerationVars.p" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.GenerationVars.p_inc">
+<span class="sig-name descname"><span class="pre">p_inc</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.GenerationVars.p_inc" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
 </dd></dl>
 
 <dl class="py class">
@@ -303,12 +463,42 @@ That means that solves the OPF problem for a complete time series at once</p>
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">VeraGridEngine.Simulations.NTC.ntc_opf.</span></span><span class="sig-name descname"><span class="pre">HvdcNtcVars</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_elm</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/VeraGridEngine/Simulations/NTC/ntc_opf.html#HvdcNtcVars"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.HvdcNtcVars" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>Struct to store the generation vars</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.HvdcNtcVars.flows">
+<span class="sig-name descname"><span class="pre">flows</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.HvdcNtcVars.flows" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.HvdcNtcVars.get_values">
 <span class="sig-name descname"><span class="pre">get_values</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">Sbase</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.Utils.MIP.html#VeraGridEngine.Utils.MIP.pulp_interface.PulpLpModel" title="VeraGridEngine.Utils.MIP.pulp_interface.PulpLpModel"><span class="pre">PulpLpModel</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="VeraGridEngine.Utils.MIP.html#VeraGridEngine.Utils.MIP.ortools_interface.OrToolsLpModel" title="VeraGridEngine.Utils.MIP.ortools_interface.OrToolsLpModel"><span class="pre">OrToolsLpModel</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#VeraGridEngine.Simulations.NTC.ntc_opf.HvdcNtcVars" title="VeraGridEngine.Simulations.NTC.ntc_opf.HvdcNtcVars"><span class="pre">HvdcNtcVars</span></a></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Simulations/NTC/ntc_opf.html#HvdcNtcVars.get_values"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.HvdcNtcVars.get_values" title="Link to this definition"></a></dt>
 <dd><p>Return an instance of this class where the arrays content are not LP vars but their value
 :return: HvdcVars</p>
 </dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.HvdcNtcVars.inter_space_hvdc">
+<span class="sig-name descname"><span class="pre">inter_space_hvdc</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.HvdcNtcVars.inter_space_hvdc" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.HvdcNtcVars.loading">
+<span class="sig-name descname"><span class="pre">loading</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.HvdcNtcVars.loading" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.HvdcNtcVars.rates">
+<span class="sig-name descname"><span class="pre">rates</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.HvdcNtcVars.rates" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.HvdcNtcVars.y">
+<span class="sig-name descname"><span class="pre">y</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.HvdcNtcVars.y" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.HvdcNtcVars.z">
+<span class="sig-name descname"><span class="pre">z</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.HvdcNtcVars.z" title="Link to this definition"></a></dt>
+<dd></dd></dl>
 
 </dd></dl>
 
@@ -324,6 +514,11 @@ That means that solves the OPF problem for a complete time series at once</p>
 :return: LoadVars</p>
 </dd></dl>
 
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.LoadVars.p">
+<span class="sig-name descname"><span class="pre">p</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.LoadVars.p" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
 </dd></dl>
 
 <dl class="py class">
@@ -331,6 +526,26 @@ That means that solves the OPF problem for a complete time series at once</p>
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">VeraGridEngine.Simulations.NTC.ntc_opf.</span></span><span class="sig-name descname"><span class="pre">NtcVars</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nbus</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ng</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nb</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nl</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nbr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_hvdc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_vsc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.Utils.MIP.html#VeraGridEngine.Utils.MIP.pulp_interface.PulpLpModel" title="VeraGridEngine.Utils.MIP.pulp_interface.PulpLpModel"><span class="pre">PulpLpModel</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="VeraGridEngine.Utils.MIP.html#VeraGridEngine.Utils.MIP.ortools_interface.OrToolsLpModel" title="VeraGridEngine.Utils.MIP.ortools_interface.OrToolsLpModel"><span class="pre">OrToolsLpModel</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/VeraGridEngine/Simulations/NTC/ntc_opf.html#NtcVars"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>Structure to host the opf variables</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.acceptable_solution">
+<span class="sig-name descname"><span class="pre">acceptable_solution</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.acceptable_solution" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.batt_vars">
+<span class="sig-name descname"><span class="pre">batt_vars</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.batt_vars" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.branch_vars">
+<span class="sig-name descname"><span class="pre">branch_vars</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.branch_vars" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.bus_vars">
+<span class="sig-name descname"><span class="pre">bus_vars</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.bus_vars" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.check_kirchhoff">
 <span class="sig-name descname"><span class="pre">check_kirchhoff</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tol</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1e-10</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/VeraGridEngine/Simulations/NTC/ntc_opf.html#NtcVars.check_kirchhoff"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.check_kirchhoff" title="Link to this definition"></a></dt>
@@ -340,6 +555,31 @@ That means that solves the OPF problem for a complete time series at once</p>
 </dd>
 </dl>
 </dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.delta_1">
+<span class="sig-name descname"><span class="pre">delta_1</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.delta_1" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.delta_2">
+<span class="sig-name descname"><span class="pre">delta_2</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.delta_2" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.delta_sl_1">
+<span class="sig-name descname"><span class="pre">delta_sl_1</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.delta_sl_1" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.delta_sl_2">
+<span class="sig-name descname"><span class="pre">delta_sl_2</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.delta_sl_2" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.gen_vars">
+<span class="sig-name descname"><span class="pre">gen_vars</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.gen_vars" title="Link to this definition"></a></dt>
+<dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.get_values">
@@ -360,6 +600,81 @@ That means that solves the OPF problem for a complete time series at once</p>
 </dl>
 </dd></dl>
 
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.hvdc_vars">
+<span class="sig-name descname"><span class="pre">hvdc_vars</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.hvdc_vars" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.inter_area_flows">
+<span class="sig-name descname"><span class="pre">inter_area_flows</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.inter_area_flows" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.load_vars">
+<span class="sig-name descname"><span class="pre">load_vars</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.load_vars" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.model">
+<span class="sig-name descname"><span class="pre">model</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.model" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.n_hvdc">
+<span class="sig-name descname"><span class="pre">n_hvdc</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.n_hvdc" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.n_vsc">
+<span class="sig-name descname"><span class="pre">n_vsc</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.n_vsc" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.nb">
+<span class="sig-name descname"><span class="pre">nb</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.nb" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.nbr">
+<span class="sig-name descname"><span class="pre">nbr</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.nbr" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.nbus">
+<span class="sig-name descname"><span class="pre">nbus</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.nbus" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.ng">
+<span class="sig-name descname"><span class="pre">ng</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.ng" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.nl">
+<span class="sig-name descname"><span class="pre">nl</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.nl" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.nt">
+<span class="sig-name descname"><span class="pre">nt</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.nt" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.power_shift">
+<span class="sig-name descname"><span class="pre">power_shift</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.power_shift" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.structural_ntc">
+<span class="sig-name descname"><span class="pre">structural_ntc</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.structural_ntc" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.vsc_vars">
+<span class="sig-name descname"><span class="pre">vsc_vars</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.NtcVars.vsc_vars" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
 </dd></dl>
 
 <dl class="py class">
@@ -367,12 +682,42 @@ That means that solves the OPF problem for a complete time series at once</p>
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">VeraGridEngine.Simulations.NTC.ntc_opf.</span></span><span class="sig-name descname"><span class="pre">VscNtcVars</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_elm</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/VeraGridEngine/Simulations/NTC/ntc_opf.html#VscNtcVars"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.VscNtcVars" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>Struct to store the VSC vars</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.VscNtcVars.flows">
+<span class="sig-name descname"><span class="pre">flows</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.VscNtcVars.flows" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.VscNtcVars.get_values">
 <span class="sig-name descname"><span class="pre">get_values</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">Sbase</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.Utils.MIP.html#VeraGridEngine.Utils.MIP.pulp_interface.PulpLpModel" title="VeraGridEngine.Utils.MIP.pulp_interface.PulpLpModel"><span class="pre">PulpLpModel</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="VeraGridEngine.Utils.MIP.html#VeraGridEngine.Utils.MIP.ortools_interface.OrToolsLpModel" title="VeraGridEngine.Utils.MIP.ortools_interface.OrToolsLpModel"><span class="pre">OrToolsLpModel</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#VeraGridEngine.Simulations.NTC.ntc_opf.VscNtcVars" title="VeraGridEngine.Simulations.NTC.ntc_opf.VscNtcVars"><span class="pre">VscNtcVars</span></a></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Simulations/NTC/ntc_opf.html#VscNtcVars.get_values"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.VscNtcVars.get_values" title="Link to this definition"></a></dt>
 <dd><p>Return an instance of this class where the arrays content are not LP vars but their value
-:return: HvdcVars</p>
+:return: VscNtcVars</p>
 </dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.VscNtcVars.inter_space_vsc">
+<span class="sig-name descname"><span class="pre">inter_space_vsc</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.VscNtcVars.inter_space_vsc" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.VscNtcVars.loading">
+<span class="sig-name descname"><span class="pre">loading</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.VscNtcVars.loading" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.VscNtcVars.rates">
+<span class="sig-name descname"><span class="pre">rates</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.VscNtcVars.rates" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.VscNtcVars.y">
+<span class="sig-name descname"><span class="pre">y</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.VscNtcVars.y" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf.VscNtcVars.z">
+<span class="sig-name descname"><span class="pre">z</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf.VscNtcVars.z" title="Link to this definition"></a></dt>
+<dd></dd></dl>
 
 </dd></dl>
 
@@ -902,6 +1247,41 @@ That means that solves the OPF problem for a complete time series at once</p>
 :param pos_slack: positive flow slack variable (accepted for interface compatibility, not stored)</p>
 </dd></dl>
 
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.BranchNtcVars.alpha">
+<span class="sig-name descname"><span class="pre">alpha</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.BranchNtcVars.alpha" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.BranchNtcVars.alpha_n1_worst">
+<span class="sig-name descname"><span class="pre">alpha_n1_worst</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.BranchNtcVars.alpha_n1_worst" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.BranchNtcVars.contingency_flow_data">
+<span class="sig-name descname"><span class="pre">contingency_flow_data</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">LpVariable</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Variable</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">LpAffineExpression</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">LinearExpr</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.BranchNtcVars.contingency_flow_data" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.BranchNtcVars.contingency_rates">
+<span class="sig-name descname"><span class="pre">contingency_rates</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.BranchNtcVars.contingency_rates" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.BranchNtcVars.flow_constraints_lb">
+<span class="sig-name descname"><span class="pre">flow_constraints_lb</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.BranchNtcVars.flow_constraints_lb" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.BranchNtcVars.flow_constraints_ub">
+<span class="sig-name descname"><span class="pre">flow_constraints_ub</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.BranchNtcVars.flow_constraints_ub" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.BranchNtcVars.flows">
+<span class="sig-name descname"><span class="pre">flows</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.BranchNtcVars.flows" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.BranchNtcVars.get_values">
 <span class="sig-name descname"><span class="pre">get_values</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">Sbase</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.Utils.MIP.html#VeraGridEngine.Utils.MIP.ortools_interface.OrToolsLpModel" title="VeraGridEngine.Utils.MIP.ortools_interface.OrToolsLpModel"><span class="pre">OrToolsLpModel</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.BranchNtcVars" title="VeraGridEngine.Simulations.NTC.ntc_opf_strict.BranchNtcVars"><span class="pre">BranchNtcVars</span></a></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Simulations/NTC/ntc_opf_strict.html#BranchNtcVars.get_values"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.BranchNtcVars.get_values" title="Link to this definition"></a></dt>
@@ -911,6 +1291,51 @@ That means that solves the OPF problem for a complete time series at once</p>
 :return: BranchVars</p>
 </dd></dl>
 
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.BranchNtcVars.inter_space_branches">
+<span class="sig-name descname"><span class="pre">inter_space_branches</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.BranchNtcVars.inter_space_branches" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.BranchNtcVars.loading">
+<span class="sig-name descname"><span class="pre">loading</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.BranchNtcVars.loading" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.BranchNtcVars.monitor">
+<span class="sig-name descname"><span class="pre">monitor</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.BranchNtcVars.monitor" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.BranchNtcVars.monitor_logic">
+<span class="sig-name descname"><span class="pre">monitor_logic</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.BranchNtcVars.monitor_logic" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.BranchNtcVars.rates">
+<span class="sig-name descname"><span class="pre">rates</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.BranchNtcVars.rates" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.BranchNtcVars.tap_angles">
+<span class="sig-name descname"><span class="pre">tap_angles</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.BranchNtcVars.tap_angles" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.BranchNtcVars.worst_contingency_flow">
+<span class="sig-name descname"><span class="pre">worst_contingency_flow</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.BranchNtcVars.worst_contingency_flow" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.BranchNtcVars.worst_contingency_idx">
+<span class="sig-name descname"><span class="pre">worst_contingency_idx</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.BranchNtcVars.worst_contingency_idx" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.BranchNtcVars.worst_contingency_loading">
+<span class="sig-name descname"><span class="pre">worst_contingency_loading</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.BranchNtcVars.worst_contingency_loading" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
 </dd></dl>
 
 <dl class="py class">
@@ -918,12 +1343,67 @@ That means that solves the OPF problem for a complete time series at once</p>
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">VeraGridEngine.Simulations.NTC.ntc_opf_strict.</span></span><span class="sig-name descname"><span class="pre">BusNtcVars</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_elm</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/VeraGridEngine/Simulations/NTC/ntc_opf_strict.html#BusNtcVars"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.BusNtcVars" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>Struct to store the bus related vars</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.BusNtcVars.Pbalance">
+<span class="sig-name descname"><span class="pre">Pbalance</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.BusNtcVars.Pbalance" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.BusNtcVars.Pinj">
+<span class="sig-name descname"><span class="pre">Pinj</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.BusNtcVars.Pinj" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.BusNtcVars.Va">
+<span class="sig-name descname"><span class="pre">Va</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.BusNtcVars.Va" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.BusNtcVars.Vm">
+<span class="sig-name descname"><span class="pre">Vm</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.BusNtcVars.Vm" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.BusNtcVars.angle_max">
+<span class="sig-name descname"><span class="pre">angle_max</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.BusNtcVars.angle_max" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.BusNtcVars.angle_min">
+<span class="sig-name descname"><span class="pre">angle_min</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.BusNtcVars.angle_min" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.BusNtcVars.delta_p">
+<span class="sig-name descname"><span class="pre">delta_p</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.BusNtcVars.delta_p" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.BusNtcVars.get_values">
 <span class="sig-name descname"><span class="pre">get_values</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">Sbase</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.Utils.MIP.html#VeraGridEngine.Utils.MIP.ortools_interface.OrToolsLpModel" title="VeraGridEngine.Utils.MIP.ortools_interface.OrToolsLpModel"><span class="pre">OrToolsLpModel</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.BusNtcVars" title="VeraGridEngine.Simulations.NTC.ntc_opf_strict.BusNtcVars"><span class="pre">BusNtcVars</span></a></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Simulations/NTC/ntc_opf_strict.html#BusNtcVars.get_values"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.BusNtcVars.get_values" title="Link to this definition"></a></dt>
 <dd><p>Return an instance of this class where the arrays content are not LP vars but their value
 :return: BusVars</p>
 </dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.BusNtcVars.kirchhoff">
+<span class="sig-name descname"><span class="pre">kirchhoff</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.BusNtcVars.kirchhoff" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.BusNtcVars.load_p">
+<span class="sig-name descname"><span class="pre">load_p</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.BusNtcVars.load_p" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.BusNtcVars.proportions">
+<span class="sig-name descname"><span class="pre">proportions</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.BusNtcVars.proportions" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.BusNtcVars.shadow_prices">
+<span class="sig-name descname"><span class="pre">shadow_prices</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.BusNtcVars.shadow_prices" title="Link to this definition"></a></dt>
+<dd></dd></dl>
 
 </dd></dl>
 
@@ -932,12 +1412,42 @@ That means that solves the OPF problem for a complete time series at once</p>
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">VeraGridEngine.Simulations.NTC.ntc_opf_strict.</span></span><span class="sig-name descname"><span class="pre">HvdcNtcVars</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_elm</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/VeraGridEngine/Simulations/NTC/ntc_opf_strict.html#HvdcNtcVars"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.HvdcNtcVars" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>Struct to store the generation vars</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.HvdcNtcVars.flows">
+<span class="sig-name descname"><span class="pre">flows</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.HvdcNtcVars.flows" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.HvdcNtcVars.get_values">
 <span class="sig-name descname"><span class="pre">get_values</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">Sbase</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.Utils.MIP.html#VeraGridEngine.Utils.MIP.ortools_interface.OrToolsLpModel" title="VeraGridEngine.Utils.MIP.ortools_interface.OrToolsLpModel"><span class="pre">OrToolsLpModel</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.HvdcNtcVars" title="VeraGridEngine.Simulations.NTC.ntc_opf_strict.HvdcNtcVars"><span class="pre">HvdcNtcVars</span></a></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Simulations/NTC/ntc_opf_strict.html#HvdcNtcVars.get_values"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.HvdcNtcVars.get_values" title="Link to this definition"></a></dt>
 <dd><p>Return an instance of this class where the arrays content are not LP vars but their value
 :return: HvdcVars</p>
 </dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.HvdcNtcVars.inter_space_hvdc">
+<span class="sig-name descname"><span class="pre">inter_space_hvdc</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.HvdcNtcVars.inter_space_hvdc" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.HvdcNtcVars.loading">
+<span class="sig-name descname"><span class="pre">loading</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.HvdcNtcVars.loading" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.HvdcNtcVars.rates">
+<span class="sig-name descname"><span class="pre">rates</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.HvdcNtcVars.rates" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.HvdcNtcVars.y">
+<span class="sig-name descname"><span class="pre">y</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.HvdcNtcVars.y" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.HvdcNtcVars.z">
+<span class="sig-name descname"><span class="pre">z</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.HvdcNtcVars.z" title="Link to this definition"></a></dt>
+<dd></dd></dl>
 
 </dd></dl>
 
@@ -946,9 +1456,44 @@ That means that solves the OPF problem for a complete time series at once</p>
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">VeraGridEngine.Simulations.NTC.ntc_opf_strict.</span></span><span class="sig-name descname"><span class="pre">NtcVars</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nbus</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ng</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nb</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nl</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nbr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_hvdc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_vsc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.Utils.MIP.html#VeraGridEngine.Utils.MIP.ortools_interface.OrToolsLpModel" title="VeraGridEngine.Utils.MIP.ortools_interface.OrToolsLpModel"><span class="pre">OrToolsLpModel</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/VeraGridEngine/Simulations/NTC/ntc_opf_strict.html#NtcVars"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>Structure to host the opf variables</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.acceptable_solution">
+<span class="sig-name descname"><span class="pre">acceptable_solution</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.acceptable_solution" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.branch_vars">
+<span class="sig-name descname"><span class="pre">branch_vars</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.branch_vars" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.bus_vars">
+<span class="sig-name descname"><span class="pre">bus_vars</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.bus_vars" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.check_kirchhoff">
 <span class="sig-name descname"><span class="pre">check_kirchhoff</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tol</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1e-10</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/VeraGridEngine/Simulations/NTC/ntc_opf_strict.html#NtcVars.check_kirchhoff"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.check_kirchhoff" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.delta_1">
+<span class="sig-name descname"><span class="pre">delta_1</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.delta_1" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.delta_2">
+<span class="sig-name descname"><span class="pre">delta_2</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.delta_2" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.delta_sl_1">
+<span class="sig-name descname"><span class="pre">delta_sl_1</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.delta_sl_1" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.delta_sl_2">
+<span class="sig-name descname"><span class="pre">delta_sl_2</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.delta_sl_2" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
@@ -970,6 +1515,76 @@ That means that solves the OPF problem for a complete time series at once</p>
 </dl>
 </dd></dl>
 
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.hvdc_vars">
+<span class="sig-name descname"><span class="pre">hvdc_vars</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.hvdc_vars" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.inter_area_flows">
+<span class="sig-name descname"><span class="pre">inter_area_flows</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.inter_area_flows" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.model">
+<span class="sig-name descname"><span class="pre">model</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.model" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.n_hvdc">
+<span class="sig-name descname"><span class="pre">n_hvdc</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.n_hvdc" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.n_vsc">
+<span class="sig-name descname"><span class="pre">n_vsc</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.n_vsc" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.nb">
+<span class="sig-name descname"><span class="pre">nb</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.nb" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.nbr">
+<span class="sig-name descname"><span class="pre">nbr</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.nbr" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.nbus">
+<span class="sig-name descname"><span class="pre">nbus</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.nbus" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.ng">
+<span class="sig-name descname"><span class="pre">ng</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.ng" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.nl">
+<span class="sig-name descname"><span class="pre">nl</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.nl" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.nt">
+<span class="sig-name descname"><span class="pre">nt</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.nt" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.power_shift">
+<span class="sig-name descname"><span class="pre">power_shift</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.power_shift" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.structural_ntc">
+<span class="sig-name descname"><span class="pre">structural_ntc</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.structural_ntc" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.vsc_vars">
+<span class="sig-name descname"><span class="pre">vsc_vars</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.NtcVars.vsc_vars" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
 </dd></dl>
 
 <dl class="py class">
@@ -977,12 +1592,42 @@ That means that solves the OPF problem for a complete time series at once</p>
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">VeraGridEngine.Simulations.NTC.ntc_opf_strict.</span></span><span class="sig-name descname"><span class="pre">VscNtcVars</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_elm</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/VeraGridEngine/Simulations/NTC/ntc_opf_strict.html#VscNtcVars"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.VscNtcVars" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>Struct to store the VSC vars</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.VscNtcVars.flows">
+<span class="sig-name descname"><span class="pre">flows</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.VscNtcVars.flows" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.VscNtcVars.get_values">
 <span class="sig-name descname"><span class="pre">get_values</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">Sbase</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.Utils.MIP.html#VeraGridEngine.Utils.MIP.ortools_interface.OrToolsLpModel" title="VeraGridEngine.Utils.MIP.ortools_interface.OrToolsLpModel"><span class="pre">OrToolsLpModel</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.VscNtcVars" title="VeraGridEngine.Simulations.NTC.ntc_opf_strict.VscNtcVars"><span class="pre">VscNtcVars</span></a></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Simulations/NTC/ntc_opf_strict.html#VscNtcVars.get_values"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.VscNtcVars.get_values" title="Link to this definition"></a></dt>
 <dd><p>Return an instance of this class where the arrays content are not LP vars but their value
-:return: HvdcVars</p>
+:return: VscNtcVars</p>
 </dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.VscNtcVars.inter_space_vsc">
+<span class="sig-name descname"><span class="pre">inter_space_vsc</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.VscNtcVars.inter_space_vsc" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.VscNtcVars.loading">
+<span class="sig-name descname"><span class="pre">loading</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.VscNtcVars.loading" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.VscNtcVars.rates">
+<span class="sig-name descname"><span class="pre">rates</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.VscNtcVars.rates" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.VscNtcVars.y">
+<span class="sig-name descname"><span class="pre">y</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.VscNtcVars.y" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_opf_strict.VscNtcVars.z">
+<span class="sig-name descname"><span class="pre">z</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_opf_strict.VscNtcVars.z" title="Link to this definition"></a></dt>
+<dd></dd></dl>
 
 </dd></dl>
 
@@ -1294,28 +1939,78 @@ return:</p>
 <dd></dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_options.OptimalNetTransferCapacityOptions.action">
-<span class="sig-name descname"><span class="pre">action</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="VeraGridEngine.html#VeraGridEngine.enumerations.ActionType" title="VeraGridEngine.enumerations.ActionType"><span class="pre">ActionType</span></a></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_options.OptimalNetTransferCapacityOptions.action" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_options.OptimalNetTransferCapacityOptions.branch_exchange_sensitivity">
+<span class="sig-name descname"><span class="pre">branch_exchange_sensitivity</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_options.OptimalNetTransferCapacityOptions.branch_exchange_sensitivity" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_options.OptimalNetTransferCapacityOptions.comment">
-<span class="sig-name descname"><span class="pre">comment</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_options.OptimalNetTransferCapacityOptions.comment" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_options.OptimalNetTransferCapacityOptions.branch_rating_contribution">
+<span class="sig-name descname"><span class="pre">branch_rating_contribution</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_options.OptimalNetTransferCapacityOptions.branch_rating_contribution" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_options.OptimalNetTransferCapacityOptions.device_type">
-<span class="sig-name descname"><span class="pre">device_type</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="VeraGridEngine.html#VeraGridEngine.enumerations.DeviceType" title="VeraGridEngine.enumerations.DeviceType"><span class="pre">DeviceType</span></a></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_options.OptimalNetTransferCapacityOptions.device_type" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_options.OptimalNetTransferCapacityOptions.consider_contingencies">
+<span class="sig-name descname"><span class="pre">consider_contingencies</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_options.OptimalNetTransferCapacityOptions.consider_contingencies" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_options.OptimalNetTransferCapacityOptions.diff_changes">
-<span class="sig-name descname"><span class="pre">diff_changes</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_options.OptimalNetTransferCapacityOptions.diff_changes" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_options.OptimalNetTransferCapacityOptions.corrective_contingencies">
+<span class="sig-name descname"><span class="pre">corrective_contingencies</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_options.OptimalNetTransferCapacityOptions.corrective_contingencies" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_options.OptimalNetTransferCapacityOptions.selected_to_merge">
-<span class="sig-name descname"><span class="pre">selected_to_merge</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_options.OptimalNetTransferCapacityOptions.selected_to_merge" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_options.OptimalNetTransferCapacityOptions.lin_options">
+<span class="sig-name descname"><span class="pre">lin_options</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="VeraGridEngine.Simulations.LinearFactors.html#VeraGridEngine.Simulations.LinearFactors.linear_analysis_options.LinearAnalysisOptions" title="VeraGridEngine.Simulations.LinearFactors.linear_analysis_options.LinearAnalysisOptions"><span class="pre">LinearAnalysisOptions</span></a></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_options.OptimalNetTransferCapacityOptions.lin_options" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_options.OptimalNetTransferCapacityOptions.loading_threshold_to_report">
+<span class="sig-name descname"><span class="pre">loading_threshold_to_report</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_options.OptimalNetTransferCapacityOptions.loading_threshold_to_report" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_options.OptimalNetTransferCapacityOptions.monitor_only_ntc_load_rule_branches">
+<span class="sig-name descname"><span class="pre">monitor_only_ntc_load_rule_branches</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_options.OptimalNetTransferCapacityOptions.monitor_only_ntc_load_rule_branches" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_options.OptimalNetTransferCapacityOptions.opf_options">
+<span class="sig-name descname"><span class="pre">opf_options</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="VeraGridEngine.Simulations.OPF.html#VeraGridEngine.Simulations.OPF.opf_options.OptimalPowerFlowOptions" title="VeraGridEngine.Simulations.OPF.opf_options.OptimalPowerFlowOptions"><span class="pre">OptimalPowerFlowOptions</span></a></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_options.OptimalNetTransferCapacityOptions.opf_options" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_options.OptimalNetTransferCapacityOptions.receiving_bus_idx">
+<span class="sig-name descname"><span class="pre">receiving_bus_idx</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">int64</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_options.OptimalNetTransferCapacityOptions.receiving_bus_idx" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_options.OptimalNetTransferCapacityOptions.sending_bus_idx">
+<span class="sig-name descname"><span class="pre">sending_bus_idx</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">int64</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_options.OptimalNetTransferCapacityOptions.sending_bus_idx" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_options.OptimalNetTransferCapacityOptions.skip_generation_limits">
+<span class="sig-name descname"><span class="pre">skip_generation_limits</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_options.OptimalNetTransferCapacityOptions.skip_generation_limits" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_options.OptimalNetTransferCapacityOptions.strict_formulation">
+<span class="sig-name descname"><span class="pre">strict_formulation</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_options.OptimalNetTransferCapacityOptions.strict_formulation" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_options.OptimalNetTransferCapacityOptions.transfer_method">
+<span class="sig-name descname"><span class="pre">transfer_method</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="VeraGridEngine.html#VeraGridEngine.enumerations.AvailableTransferMode" title="VeraGridEngine.enumerations.AvailableTransferMode"><span class="pre">AvailableTransferMode</span></a></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_options.OptimalNetTransferCapacityOptions.transfer_method" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_options.OptimalNetTransferCapacityOptions.transmission_reliability_margin">
+<span class="sig-name descname"><span class="pre">transmission_reliability_margin</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_options.OptimalNetTransferCapacityOptions.transmission_reliability_margin" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Simulations.NTC.ntc_options.OptimalNetTransferCapacityOptions.use_branch_exchange_sensitivity">
+<span class="sig-name descname"><span class="pre">use_branch_exchange_sensitivity</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><a class="headerlink" href="#VeraGridEngine.Simulations.NTC.ntc_options.OptimalNetTransferCapacityOptions.use_branch_exchange_sensitivity" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 </dd></dl>

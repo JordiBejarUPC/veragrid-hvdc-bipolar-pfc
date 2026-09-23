@@ -5,7 +5,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VeraGridEngine.Simulations.Rms.numerical.pseudo_transient &mdash; VeraGrid 6.5.37 documentation</title>
+  <title>VeraGridEngine.Simulations.Rms.numerical.pseudo_transient &mdash; VeraGrid 6.7.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../../_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="../../../../../_static/graphviz.css?v=4ae1632d" />
@@ -14,7 +14,7 @@
   
       <script src="../../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../../../../../_static/documentation_options.js?v=069969c3"></script>
+      <script src="../../../../../_static/documentation_options.js?v=9cce70e7"></script>
       <script src="../../../../../_static/doctools.js?v=fd6eb6e6"></script>
       <script src="../../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../../_static/js/theme.js"></script>
@@ -166,6 +166,43 @@
 <span class="sd">    :param residual_reset_improvement_tol: Relative residual improvement required to avoid reset.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;equilibrium_inputs_as_params&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;equilibrium_references_as_params&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;equilibrium_references_as_equations&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;delta_seed&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;allow_best_effort_init&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;use_weighted_residual&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;weight_algebraic&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;use_weighted_linear_solve&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;linear_solve_state_weight&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;linear_solve_algebraic_weight&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;use_state_tau_scaling&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;use_state_tau_dtau_scale&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;state_tau_min&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;state_tau_max&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;state_tau_eps&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;allow_lsqr_fallback&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;use_svd_diagnostics&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;svd_diagnostics_limit&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;linear_solve_damp&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;artificial_algebraic_mass&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;artificial_algebraic_mass_names&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;positive_clamp_names&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;positive_clamp_min&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;soft_positive_names&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;soft_positive_min&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;soft_positive_eps&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;dtau_ser_min_factor&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;dtau_ser_max_factor&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;dtau_stall_ratio&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;dtau_stall_steps&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;dtau_stall_boost&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;stop_on_residual_stall&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;residual_reset_steps&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;residual_reset_improvement_tol&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
     <span class="n">LOCAL_PROPERTY_DECLARATIONS</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">GCProp</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
         <span class="n">GCProp</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="s2">&quot;equilibrium_inputs_as_params&quot;</span><span class="p">,</span> <span class="n">tpe</span><span class="o">=</span><span class="nb">bool</span><span class="p">),</span>
         <span class="n">GCProp</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="s2">&quot;equilibrium_references_as_params&quot;</span><span class="p">,</span> <span class="n">tpe</span><span class="o">=</span><span class="nb">bool</span><span class="p">),</span>
@@ -284,7 +321,62 @@
 
 <div class="viewcode-block" id="PseudoTransient">
 <a class="viewcode-back" href="../../../../../rst_source/api/auto/VeraGridEngine.Simulations.Rms.numerical.html#VeraGridEngine.Simulations.Rms.numerical.pseudo_transient.PseudoTransient">[docs]</a>
-<span class="k">class</span><span class="w">  </span><span class="nc">PseudoTransient</span><span class="p">:</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">PseudoTransient</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Pseudo-transient solver.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;problem&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;h&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;dtau0&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;dtau_min&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;dtau_max&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;steps&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;max_iter_0&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;tol&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;reference_error_tol&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;verbose&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;options&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;use_weighted_residual&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;weight_algebraic&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;use_weighted_linear_solve&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;linear_solve_state_weight&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;linear_solve_algebraic_weight&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;use_state_tau_scaling&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;use_state_tau_dtau_scale&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;state_tau_min&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;state_tau_max&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;state_tau_eps&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;allow_lsqr_fallback&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;use_svd_diagnostics&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;svd_diagnostics_limit&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;linear_solve_damp&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;artificial_algebraic_mass&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;artificial_algebraic_mass_names&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;positive_clamp_names&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;positive_clamp_min&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;soft_positive_names&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;soft_positive_min&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;soft_positive_eps&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;dtau_ser_min_factor&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;dtau_ser_max_factor&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;dtau_stall_ratio&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;dtau_stall_steps&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;dtau_stall_boost&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;stop_on_residual_stall&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;residual_reset_steps&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;residual_reset_improvement_tol&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;fixed_var_uids&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_fixed_var_indices&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;debug_check_x_new&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;debug_x_new_abs_max&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;t&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;y&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;state_tau&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_singular_report_count&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_svd_report_count&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                  <span class="n">problem</span><span class="p">:</span> <span class="n">RmsProblemDae</span> <span class="o">|</span> <span class="n">EmtPseudoTransientProblemAdapter</span><span class="p">,</span>
