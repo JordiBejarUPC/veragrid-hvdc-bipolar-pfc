@@ -44,8 +44,6 @@ class ResultsTable:
         "complex_plot_x_column",
         "complex_plot_y_columns",
         "complex_plot_y_scales",
-        "x_axis_minimum",
-        "x_axis_maximum",
     )
 
     def __init__(self,
@@ -67,9 +65,7 @@ class ResultsTable:
                  plot_title: str | None = None,
                  complex_plot_x_column: str | None = None,
                  complex_plot_y_columns: StrVec | None = None,
-                 complex_plot_y_scales: Vec | None = None,
-                 x_axis_minimum: float | None = None,
-                 x_axis_maximum: float | None = None) -> None:
+                 complex_plot_y_scales: Vec | None = None) -> None:
         """
         ResultsTable constructor
         :param data:
@@ -88,8 +84,6 @@ class ResultsTable:
         :param complex_plot_x_column: Column name used as the real coordinate.
         :param complex_plot_y_columns: Allowed imaginary-coordinate column names.
         :param complex_plot_y_scales: Overlay scales corresponding to the allowed imaginary columns.
-        :param x_axis_minimum: Optional lower horizontal limit retained by native plots.
-        :param x_axis_maximum: Optional upper horizontal limit retained by native plots.
         :return: None.
         """
         if data.ndim == 1:
@@ -155,11 +149,6 @@ class ResultsTable:
         else:
             raise ValueError("Complex plot Y columns and scales must have the same length.")
 
-        # Plot-specific bounds belong to the table so filtered and sliced
-        # views retain the same coordinate-system contract as their source.
-        self.x_axis_minimum: float | None = x_axis_minimum
-        self.x_axis_maximum: float | None = x_axis_maximum
-
     @property
     def data(self):
         """
@@ -218,8 +207,6 @@ class ResultsTable:
         self.complex_plot_x_column = None
         self.complex_plot_y_columns = np.empty(0, dtype=np.str_)
         self.complex_plot_y_scales = np.empty(0, dtype=float)
-        self.x_axis_minimum = None
-        self.x_axis_maximum = None
 
     def sort_column(self, c: int, max_to_min: bool = True):
         """
@@ -266,9 +253,7 @@ class ResultsTable:
                                     plot_title=self.plot_title,
                                     complex_plot_x_column=self.complex_plot_x_column,
                                     complex_plot_y_columns=self.complex_plot_y_columns,
-                                    complex_plot_y_scales=self.complex_plot_y_scales,
-                                    x_axis_minimum=self.x_axis_minimum,
-                                    x_axis_maximum=self.x_axis_maximum)
+                                    complex_plot_y_scales=self.complex_plot_y_scales)
 
         return sliced_model
 
@@ -296,9 +281,7 @@ class ResultsTable:
                                     plot_title=self.plot_title,
                                     complex_plot_x_column=self.complex_plot_x_column,
                                     complex_plot_y_columns=self.complex_plot_y_columns,
-                                    complex_plot_y_scales=self.complex_plot_y_scales,
-                                    x_axis_minimum=self.x_axis_minimum,
-                                    x_axis_maximum=self.x_axis_maximum)
+                                    complex_plot_y_scales=self.complex_plot_y_scales)
 
         return sliced_model
 
@@ -327,9 +310,7 @@ class ResultsTable:
                                     plot_title=self.plot_title,
                                     complex_plot_x_column=self.complex_plot_x_column,
                                     complex_plot_y_columns=self.complex_plot_y_columns,
-                                    complex_plot_y_scales=self.complex_plot_y_scales,
-                                    x_axis_minimum=self.x_axis_minimum,
-                                    x_axis_maximum=self.x_axis_maximum)
+                                    complex_plot_y_scales=self.complex_plot_y_scales)
         return sliced_model
 
     def search_in_columns(self, txt):

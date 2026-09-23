@@ -1087,19 +1087,6 @@ class ResultsMain(SimulationsMain):
                     y_axis_title=table.y_label,
                 )
             if accepted:
-                # Some result families have a meaningful horizontal domain.
-                # Apply both explicit limits only when the table provides a
-                # valid interval, leaving every generic result plot unchanged.
-                if table.x_axis_minimum is not None and table.x_axis_maximum is not None:
-                    if table.x_axis_maximum > table.x_axis_minimum:
-                        plot_dialogue.chart.axis_x.set_range(
-                            table.x_axis_minimum,
-                            table.x_axis_maximum,
-                        )
-                    else:
-                        pass
-                else:
-                    pass
                 self.register_open_plot_dialog(plot_dialogue)
                 plot_dialogue.show()
             else:

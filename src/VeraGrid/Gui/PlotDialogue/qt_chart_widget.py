@@ -44,6 +44,29 @@ class PolarAngleUnit(Enum):
     DEGREES = auto()
 
 
+def calculate_tight_axis_padding(minimum: float, maximum: float) -> float:
+    """Calculate a proportional margin for one finite data interval.
+
+    :param minimum: Lowest finite data value represented on the axis.
+    :param maximum: Highest finite data value represented on the axis.
+    :return: Five-percent padding based on the span, or on the value magnitude for a constant interval.
+    """
+    # A varying signal is framed from its actual excursion so short time
+    # windows and small-amplitude results do not inherit an arbitrary margin.
+    span: float = maximum - minimum
+    if span > 0.0:
+        padding: float = span * 0.05
+    else:
+        # A constant signal still needs a non-degenerate axis. Its magnitude
+        # supplies a meaningful scale, with a small neutral range at zero.
+        magnitude: float = max(abs(minimum), abs(maximum))
+        if magnitude > 0.0:
+            padding = magnitude * 0.05
+        else:
+            padding = 0.05
+    return padding
+
+
 class ChartAxis:
     """Value axis state held in Python and consumed by the painter only."""
 
@@ -552,6 +575,7 @@ class GraphsWidget(QtWidgets.QWidget):
         "_axis_limit_editor",
         "_editing_axis_index",
         "_editing_minimum",
+        "_tight_axis_layout",
     )
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
@@ -610,6 +634,7 @@ class GraphsWidget(QtWidgets.QWidget):
         self._axis_limit_editor.editingFinished.connect(self._apply_axis_input_range)
         self._editing_axis_index: int = -1
         self._editing_minimum: bool = False
+        self._tight_axis_layout: bool = False
         self.apply_theme(dark=self.palette().color(QtGui.QPalette.ColorRole.Window).lightness() < 128)
         self._set_axis_ranges()
 
@@ -890,6 +915,19 @@ class GraphsWidget(QtWidgets.QWidget):
         else:
             pass
 
+    def set_tight_axis_layout(self, enabled: bool) -> None:
+        """Use data-scaled margins for both chart axes.
+
+        :param enabled: Whether both axis margins follow their finite data ranges.
+        :return: None.
+        """
+        if self._can_mutate():
+            self._tight_axis_layout = enabled
+            self._set_axis_ranges()
+            self.update()
+        else:
+            pass
+
     def set_line_series(self,
                         x_values: Sequence[float] | np.ndarray,
                         series_names: Sequence[str],
@@ -1001,6 +1039,7 @@ class GraphsWidget(QtWidgets.QWidget):
 
             # Validate and allocate first, then replace every old buffer in one GUI-thread mutation.
             self.clear()
+            self._tight_axis_layout = True
             self._series = new_series
             self._has_points = has_points
             self._x_min = minimum_x
@@ -1086,6 +1125,7 @@ class GraphsWidget(QtWidgets.QWidget):
 
                 # Release the old Python buffers before swapping the chart mode.
                 self.clear()
+                self._tight_axis_layout = True
                 self._content_type = ChartContentType.CUMULATIVE_AREA
                 self._series = new_series
                 self._has_points = True
@@ -1212,6 +1252,7 @@ class GraphsWidget(QtWidgets.QWidget):
             self._x_is_datetime = False
             self._legend_visible = True
             self._equal_axis_scale = False
+            self._tight_axis_layout = False
             self.axis_x.reset_viewport()
             self.axis_y.reset_viewport()
             self._set_axis_ranges()
@@ -2331,8 +2372,12 @@ class GraphsWidget(QtWidgets.QWidget):
 
         :return: None.
         """
-        x_padding: float = max((self._x_max - self._x_min) * 0.05, 0.5)
-        y_padding: float = max((self._y_max - self._y_min) * 0.05, 0.5)
+        if self._tight_axis_layout:
+            x_padding: float = calculate_tight_axis_padding(minimum=self._x_min, maximum=self._x_max)
+            y_padding: float = calculate_tight_axis_padding(minimum=self._y_min, maximum=self._y_max)
+        else:
+            x_padding = max((self._x_max - self._x_min) * 0.05, 0.5)
+            y_padding = max((self._y_max - self._y_min) * 0.05, 0.5)
         if self._content_type == ChartContentType.HORIZONTAL_BAR:
             self.axis_x.set_range(self._x_min - x_padding, self._x_max + x_padding)
             self.axis_y.set_range(self._y_min, self._y_max)

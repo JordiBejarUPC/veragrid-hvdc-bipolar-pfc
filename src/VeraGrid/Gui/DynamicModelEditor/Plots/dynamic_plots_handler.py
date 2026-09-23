@@ -13,6 +13,7 @@ from VeraGrid.Gui.Icons.icon_associations import device_type_icons
 from VeraGrid.Gui.DynamicModelEditor.Events.dynamic_events_support import create_dynamic_events_group_with_dialog
 from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely, is_dialog_available
 from VeraGrid.Gui.PlotDialogue.plot_dialogue import PlotDialogue
+from VeraGrid.Gui.PlotDialogue.qt_chart_widget import GraphsWidget
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.Events.dynamic_plot import DynamicPlot
 from VeraGridEngine.Devices.Events.dynamic_plot_entry import DynamicPlotEntry
@@ -1541,39 +1542,6 @@ def _build_relative_time_axis(time_array: np.ndarray | pd.DatetimeIndex) -> np.n
                 pass
 
     return relative_time_axis
-
-
-def _remove_dynamic_time_axis_margins(plot_dialogue: PlotDialogue,
-                                      time_values: np.ndarray) -> None:
-    """
-    Fit an RMS or EMT time-series plot exactly to its finite time samples.
-
-    :param plot_dialogue: Dynamic-results plot whose horizontal axis is temporal.
-    :param time_values: Elapsed simulation times represented by the plotted curves.
-    :return: None.
-
-    The shared chart deliberately keeps a minimum numeric margin for generic
-    plots. That margin is much wider than a short EMT simulation, so dynamic
-    time-series callers replace only the horizontal range after adding data.
-    """
-    # Ignore invalid time samples so one malformed coordinate cannot discard
-    # an otherwise usable temporal range.
-    finite_time_values: np.ndarray = np.asarray(time_values, dtype=float)
-    finite_time_values = finite_time_values[np.isfinite(finite_time_values)]
-
-    if len(finite_time_values) > 0:
-        minimum_time: float = float(np.min(finite_time_values))
-        maximum_time: float = float(np.max(finite_time_values))
-
-        # A non-degenerate range can be applied without inventing any space
-        # before or after the simulated interval. Single-point traces retain
-        # the chart fallback because a zero-width axis cannot be rendered.
-        if maximum_time > minimum_time:
-            plot_dialogue.chart.axis_x.set_range(minimum_time, maximum_time)
-        else:
-            pass
-    else:
-        pass
 
 
 def collect_dynamic_model_plot_variables(model: Block,
@@ -5411,10 +5379,6 @@ class DynamicsResultsHandler:
             y_axis_title="",
         )
         if accepted:
-            _remove_dynamic_time_axis_margins(
-                plot_dialogue=plot_dialogue,
-                time_values=x_values,
-            )
             self._show_plot_dialogue(plot_dialogue=plot_dialogue)
         else:
             plot_dialogue.reject()
@@ -5462,7 +5426,8 @@ class DynamicsResultsHandler:
             pass
 
         plot_dialogue: PlotDialogue = PlotDialogue(title=plot_group_name, parent=self.dialog_parent)
-        chart = plot_dialogue.chart
+        chart: GraphsWidget = plot_dialogue.chart
+        chart.set_tight_axis_layout(enabled=True)
         plotted_anything: bool = False
         variable: DynamicResultSeries | DynamicPlotEntry | Var
         for variable in variables:
@@ -5508,10 +5473,6 @@ class DynamicsResultsHandler:
                 pass
 
         if plotted_anything:
-            _remove_dynamic_time_axis_margins(
-                plot_dialogue=plot_dialogue,
-                time_values=_build_relative_time_axis(time_array=self.results.time_array),
-            )
             chart.setTitle(plot_group_name)
             chart.set_axis_titles('Time [s]', '')
             self._show_plot_dialogue(plot_dialogue=plot_dialogue)
@@ -5727,15 +5688,6 @@ class DynamicsResultsHandler:
                 # The table index must reuse the same elapsed-seconds axis as the
                 # plot so the numeric view and the rendered chart stay aligned.
                 first_time: np.ndarray = _build_relative_time_axis(time_array=self.results.time_array)
-                finite_time_values: np.ndarray = first_time[np.isfinite(first_time)]
-                if len(finite_time_values) > 0:
-                    x_axis_minimum: float = float(np.min(finite_time_values))
-                    x_axis_maximum: float = float(np.max(finite_time_values))
-                else:
-                    # Without one finite coordinate, the table cannot expose a
-                    # meaningful temporal interval to the plotting subsystem.
-                    return None
-
                 series: DynamicResultSeries
                 for series in compatible_series:
                     series_time, _ = self._get_series_plot_data(series=series)
@@ -5782,8 +5734,6 @@ class DynamicsResultsHandler:
                     ylabel="",
                     cols_device_type=DeviceType.NoDevice,
                     idx_device_type=DeviceType.NoDevice,
-                    x_axis_minimum=x_axis_minimum,
-                    x_axis_maximum=x_axis_maximum,
                 )
 
                 mdl = ResultsModel(table=table)
@@ -6243,10 +6193,6 @@ class DynamicsResultsHandler:
                     y_axis_title='',
                 )
                 if accepted:
-                    _remove_dynamic_time_axis_margins(
-                        plot_dialogue=plot_dialogue,
-                        time_values=time_values,
-                    )
                     self._show_plot_dialogue(plot_dialogue=plot_dialogue)
                     return True
                 else:

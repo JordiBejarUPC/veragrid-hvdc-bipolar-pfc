@@ -88,6 +88,17 @@ def test_dynamic_native_dialogs_survive_repeated_plot_and_close_cycles(
         assert handler.add_var_to_group(group_name=f'Time {cycle_index}', var_uid=1)
         assert handler.add_var_to_group(group_name=f'Time {cycle_index}', var_uid=2)
         assert handler.plot_group(plot_group_name=f'Time {cycle_index}')
+        time_chart: GraphsWidget = handler._open_plot_dialogues[-1].chart
+        time_x_minimum: float
+        time_x_maximum: float
+        time_x_minimum, time_x_maximum = time_chart.axis_x.get_range()
+        time_y_minimum: float
+        time_y_maximum: float
+        time_y_minimum, time_y_maximum = time_chart.axis_y.get_range()
+        assert np.isclose(time_x_minimum, -0.075)
+        assert np.isclose(time_x_maximum, 1.575)
+        assert np.isclose(time_y_minimum, 0.89)
+        assert np.isclose(time_y_maximum, 3.31)
 
         first_series = handler.series_by_var_uid[1][0]
         second_series = handler.series_by_var_uid[2][0]
