@@ -71,6 +71,9 @@
           </property>
           <item>
            <widget class="QPushButton" name="addRowButton">
+            <property name="toolTip">
+             <string>Add entry</string>
+            </property>
             <property name="text">
              <string/>
             </property>
@@ -82,6 +85,9 @@
           </item>
           <item>
            <widget class="QPushButton" name="delRowButton">
+            <property name="toolTip">
+             <string>Delete selected</string>
+            </property>
             <property name="text">
              <string/>
             </property>
@@ -106,8 +112,11 @@
           </item>
           <item>
            <widget class="QPushButton" name="applyButton">
-            <property name="statusTip">
+            <property name="toolTip">
              <string>Apply curve to Qmin, Qmax, Pmin, Pmax</string>
+            </property>
+            <property name="statusTip">
+             <string/>
             </property>
             <property name="text">
              <string/>
@@ -150,7 +159,7 @@
   <customwidget>
    <class>GraphsWidget</class>
    <extends>QWidget</extends>
-   <header>VeraGrid.Gui.Widgets.qtgraphs_widget</header>
+   <header>VeraGrid.Gui.PlotDialogue.qt_chart_widget</header>
   </customwidget>
  </customwidgets>
  <resources>

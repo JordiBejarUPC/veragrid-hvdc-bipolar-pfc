@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (QApplication, QDialog, QFrame, QHBoxLayout,
     QHeaderView, QPushButton, QSizePolicy, QSpacerItem,
     QSplitter, QTableView, QVBoxLayout, QWidget)
 
-from VeraGrid.Gui.Widgets.qtgraphs_widget import GraphsWidget
+from VeraGrid.Gui.PlotDialogue.qt_chart_widget import GraphsWidget
 from VeraGrid.Gui.Icons.icons_rc import *
 
 class Ui_GeneratorQCurveEditorDialog(object):
@@ -103,10 +103,19 @@ class Ui_GeneratorQCurveEditorDialog(object):
 
     def retranslateUi(self, GeneratorQCurveEditorDialog):
         GeneratorQCurveEditorDialog.setWindowTitle(QCoreApplication.translate("GeneratorQCurveEditorDialog", u"Reactive power curve editor", None))
+#if QT_CONFIG(tooltip)
+        self.addRowButton.setToolTip(QCoreApplication.translate("GeneratorQCurveEditorDialog", u"Add entry", None))
+#endif // QT_CONFIG(tooltip)
         self.addRowButton.setText("")
+#if QT_CONFIG(tooltip)
+        self.delRowButton.setToolTip(QCoreApplication.translate("GeneratorQCurveEditorDialog", u"Delete selected", None))
+#endif // QT_CONFIG(tooltip)
         self.delRowButton.setText("")
+#if QT_CONFIG(tooltip)
+        self.applyButton.setToolTip(QCoreApplication.translate("GeneratorQCurveEditorDialog", u"Apply curve to Qmin, Qmax, Pmin, Pmax", None))
+#endif // QT_CONFIG(tooltip)
 #if QT_CONFIG(statustip)
-        self.applyButton.setStatusTip(QCoreApplication.translate("GeneratorQCurveEditorDialog", u"Apply curve to Qmin, Qmax, Pmin, Pmax", None))
+        self.applyButton.setStatusTip("")
 #endif // QT_CONFIG(statustip)
         self.applyButton.setText("")
     # retranslateUi
